@@ -324,10 +324,6 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
  .flight-pair-delta{font-size:13px}
  .flight-option-footer strong{font-size:20px}
 }
-@media(max-width:374px){
- dialog.tour-dialog #modal-footer,dialog:has(.tour-layout) #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch}
- dialog.tour-dialog #modal-footer .primary,dialog:has(.tour-layout) #modal-footer .primary{width:100%;max-width:none}
-}
 
 /* v16: comparable room/meal packages on one exact departure and duration. */
 .offer-view-switch{display:inline-flex;gap:4px;padding:4px;margin:0 0 18px;background:#edf1f9;border-radius:11px;max-width:100%}
@@ -925,9 +921,10 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .tour-dialog .saved-tour-notice{padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
  .tour-dialog .tour-summary{gap:12px;padding:12px 0;margin-bottom:16px}
  .tour-dialog .tour-stay .stay-grid{margin-top:12px;gap:10px}
- dialog.tour-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr) minmax(132px,1fr);gap:10px;padding:10px 14px max(12px,env(safe-area-inset-bottom));align-items:center}
- dialog.tour-dialog #modal-footer .footer-total{min-width:0}
- dialog.tour-dialog #modal-footer .footer-total strong{font-size:24px;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+ dialog.tour-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:10px 14px max(12px,env(safe-area-inset-bottom));align-items:stretch}
+ dialog.tour-dialog #modal-footer .footer-total{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:3px 10px}
+ dialog.tour-dialog #modal-footer .footer-total small{grid-column:1/-1}
+ dialog.tour-dialog #modal-footer .footer-total strong{font-size:24px;white-space:nowrap;line-height:1.25}
  dialog.tour-dialog #modal-footer .primary{width:100%;max-width:none;font-size:14px;padding:10px;min-height:48px;line-height:1.4}
 }
 
@@ -1001,9 +998,10 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .hotel-details-dialog #modal-back:not([hidden]){grid-column:auto;width:44px;height:44px;padding:0;justify-content:center}
  .hotel-details-dialog #modal-back-label{display:none}
  .hotel-details-dialog #modal-body{padding-top:12px}
- dialog.hotel-details-dialog #modal-footer{grid-template-columns:minmax(0,1fr) minmax(132px,1fr);gap:10px;padding:10px 14px max(12px,env(safe-area-inset-bottom));align-items:center}
- .hotel-details-dialog #modal-footer .footer-total{min-width:0}
- .hotel-details-dialog #modal-footer .footer-total strong{font-size:23px;line-height:1.25;white-space:normal;overflow-wrap:anywhere}
+ dialog.hotel-details-dialog #modal-footer{grid-template-columns:minmax(0,1fr);gap:10px;padding:10px 14px max(12px,env(safe-area-inset-bottom));align-items:stretch}
+ .hotel-details-dialog #modal-footer .footer-total{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:3px 10px}
+ .hotel-details-dialog #modal-footer .footer-total small{grid-column:1/-1}
+ .hotel-details-dialog #modal-footer .footer-total strong{font-size:23px;line-height:1.25;white-space:nowrap}
  .hotel-details-dialog #modal-footer .primary{font-size:14px;padding:10px;min-height:48px;line-height:1.4}
 }
 
@@ -1075,8 +1073,9 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 .budget-dialog input[aria-invalid="true"]{border-color:#b63c28}
 .budget-dialog .budget-presets{gap:8px}
 @media(max-width:760px){
- .quick-field>span:first-child{grid-column:1/-1}
- .quick-field .chevron{grid-row:2}
+ .quick-field>span:first-child{grid-column:1/-1;grid-row:1;padding-right:20px}
+ .quick-field>strong{grid-column:1/-1;grid-row:2}
+ .quick-field .chevron{grid-row:1;align-self:start}
  .quick-field{align-content:start;min-height:76px;padding:10px}
  .budget-dialog .form-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
  .budget-dialog .form-row label{min-width:0;font-size:14px}
