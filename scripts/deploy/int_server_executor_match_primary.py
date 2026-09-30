@@ -158,7 +158,8 @@ def run_match_primary_proof_readback(stage):
     if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>256*1024:
         fail('primary_proof_read_failed')
     data=json.loads(run.stdout)
-    if (not isinstance(data,dict) or set(data)!={'state','batch','rows','provider_http_calls','database_writes','mapping_writes','safe_to_write_now'}
+    top_fields={'state','batch','rows','provider_http_calls','database_writes','mapping_writes','safe_to_write_now'}
+    if (not isinstance(data,dict) or set(data) not in (top_fields,top_fields|{'origin_lookup'})
             or data.get('state')!='completed_saved_proof_audit' or data.get('batch')!='samo3-20260929'
             or any(type(data.get(k)) is not int or data[k]!=0 for k in ('provider_http_calls','database_writes','mapping_writes'))
             or data.get('safe_to_write_now') is not False): fail('primary_proof_authority')
@@ -204,6 +205,29 @@ def run_match_primary_proof_readback(stage):
                     or not isinstance(check['json_pointer'],str) or not re.fullmatch(r'/edges/[0-9]{1,8}',check['json_pointer'])
                     or type(check['verified']) is not bool or not isinstance(check['failed_fields'],list)
                     or any(f not in edge_fields for f in check['failed_fields'])): fail('primary_proof_projection')
+    inventory=data.get('origin_lookup')
+    if inventory is not None:
+        if (not isinstance(inventory,dict) or set(inventory)!={'state','files_read','bytes_read','skipped_large_files','invalid_files','rows'}
+                or inventory['state'] not in ('completed_bounded_inventory','partial_bounded_inventory')
+                or any(type(inventory[k]) is not int or inventory[k]<0 for k in ('files_read','bytes_read','skipped_large_files','invalid_files'))
+                or inventory['files_read']>5000 or inventory['bytes_read']>536870912
+                or not isinstance(inventory['rows'],list) or len(inventory['rows'])!=3): fail('primary_proof_inventory')
+        seen=set()
+        for row in inventory['rows']:
+            if (not isinstance(row,dict) or set(row)!={'tv_hotel_id','references'} or type(row['tv_hotel_id']) is not int
+                    or row['tv_hotel_id'] not in expected or row['tv_hotel_id'] in seen
+                    or not isinstance(row['references'],list) or len(row['references'])>100): fail('primary_proof_inventory')
+            identity=row['tv_hotel_id'];seen.add(identity)
+            operator=43 if identity==420 else 25
+            for ref in row['references']:
+                if (not isinstance(ref,dict) or set(ref)!={'source_operation','file','sha256','json_pointer','verified','failed_fields'}
+                        or not isinstance(ref['source_operation'],str) or not re.fullmatch(r'hotel-match-[a-zA-Z0-9_-]{1,180}',ref['source_operation'])
+                        or ref['file'] not in ('result.json','tv-edge-'+str(identity)+'-'+str(operator)+'.json')
+                        or not isinstance(ref['sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',ref['sha256'])
+                        or not isinstance(ref['json_pointer'],str)
+                        or not (re.fullmatch(r'/edges/[0-9]{1,8}',ref['json_pointer']) if ref['file']=='result.json' else ref['json_pointer']=='')
+                        or type(ref['verified']) is not bool or not isinstance(ref['failed_fields'],list)
+                        or any(f not in edge_fields for f in ref['failed_fields'])): fail('primary_proof_inventory')
     return data
 
 '''
