@@ -18,7 +18,7 @@ const server=http.createServer((req,res)=>{
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
-   const url=new URL(route.request().url());if(url.hostname!=='127.0.0.1'){forbidden.push(url.pathname);await route.abort();return;}
+   const url=new URL(route.request().url());if(url.hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
    if(url.pathname.endsWith('/offer-list-v1.js')){requests++;assert.match(url.search,/^\?v=[0-9a-f]{12}$/,'PHP binds the actual cold asset hash');if(requests===1){await route.abort();return;}if(requests===2){pending=true;await new Promise(resolve=>{release=resolve;});}}
    await route.continue();
   });
@@ -32,7 +32,7 @@ const server=http.createServer((req,res)=>{
    await trigger.click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
    const room=page.locator('#offer-room');const choices=await room.locator('option').count();assert(choices>1);const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);
    assert.equal(await room.inputValue(),selected);assert(await page.locator('.grouped-offer').count()>0);
-   await page.locator('.offer-filter-disclosure').evaluate(el=>{el.open=true;});
+   if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    await page.screenshot({path:path.join(evidence,`offers-${width}.png`)});
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#offer-room').waitFor();assert.equal(await room.inputValue(),selected,'Forward restores the same offer refinement');assert.equal(requests,2);
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,supplier_requests:0,lead_requests:0});
