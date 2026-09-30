@@ -58,6 +58,9 @@ function observe(source,s){
  ctx.sharedOfferNote=call('sharedOfferNote',()=>s.shared?'Общее примечание':'');
  // DOM identities are represented as stable names in collaborator traces.
  for(const name of ['focusReference','restoreFocus'])ctx[name]=(...args)=>{record(name,...args.map(x=>x?.id||x));return name==='focusReference'?{selector:'#old',top:17}:undefined;};
+ // The optimized bulk port supplies the same price sequence to this DOM owner.
+ // The real bulk algorithm is characterized in calendar-inventory.cjs.
+ ctx.calendarMinimums=(days,options,observations)=>days.map(day=>ctx.calendarMinimum(day,options,observations));
  vm.createContext(ctx);vm.runInContext(owner(source,s.kind),ctx);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
