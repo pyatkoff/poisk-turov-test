@@ -61,3 +61,22 @@ if(process.argv.includes('--benchmark')){
  const before=measure(original),after=measure(candidate);console.log(JSON.stringify({workload:'1047 synthetic hotels, seven dates, nine warm runs',before,after,speedup:before.medianMs/after.medianMs,wholePageTiming:false}));
 }
 console.log(`PASS calendar inventory: ${actual.length} original price sequences; digest ${digest}; raw inputs retained, one hotel scan, duplicate/favorite/saved-scope mutations detected; supplier/lead HTTP 0`);
+
+// Filter counts need existence only; normal consumers retain every sorted offer.
+{
+ const hs=fixture(),ctx=make(source,hs);
+ for(const filters of variants)for(const selectedDate of [null,day(2)])for(const onlyFavorites of [false,true]){
+  ctx.state.filters={...defaultFilters(),...filters};
+  for(const h of hs){const options={selectedDate,onlyFavorites},all=ctx.hotelOffers(h,options),first=ctx.hotelOffers(h,{...options,firstOnly:true});assert.equal(first.length,all.length?1:0);if(first.length)assert(all.includes(first[0]),'raw identity retained');}
+ }
+ const h=fixture()[1];h.offers=Array.from({length:1000},(_,i)=>({...h.offers[2],key:String(i),total:100000+i}));
+ const budget=make(source,[h]);
+ vm.runInContext('globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',budget);
+ const options={selectedDate:day(2),onlyFavorites:false};
+ assert.equal(budget.hotelOffers(h,{...options,firstOnly:true}).length,1);
+ assert.equal(budget.ageCalls,2,'existence stops on first match');
+ budget.ageCalls=0;const full=budget.hotelOffers(h,options);
+ assert.equal(full.length,1000);assert.equal(budget.ageCalls,1001,'search ages serialized once per call');
+ assert.strictEqual(full[0],h.offers[0]);assert.strictEqual(full[999],h.offers[999]);
+ console.log('PASS filter existence: 720 hotel/filter/date/shortlist cases; first-only age calls 2000->2, full 2000->1001; raw references and sorted output retained');
+}
