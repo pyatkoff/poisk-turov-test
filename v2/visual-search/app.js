@@ -946,10 +946,30 @@ function updateModalBack(){
  button.setAttribute('aria-label',label);button.title=previous?label+': '+previous.title:label;
  $('#modal-back-label').textContent=label;
 }
+function captureModalStep(m){
+ return {type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,focus:focusReference(actionTrigger||document.activeElement,m)};
+}
+function restoreModalStepSnapshot(previous){
+ $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;selectedOffer=previous.offer;updateModalBack();
+}
+function restoreHotelDetailStep(previous){
+  const id=Number($('.hotel-section-nav')?.dataset.hotelId),h=hotels.find(h=>h.id===id);
+  const meal=$('#hotel-room-meal')?.value||'',meals=new Set(hotelOffers(h).map(o=>o.meal));
+  const openRooms=$$('.room-overview[open],article.hotel-room-card').map(room=>room.dataset.room);
+  const expandedMore=$$('.hotel-room-more[open]').map(more=>more.closest('[data-room]').dataset.room);
+  renderHotelRooms(id,!meal||meals.has(meal)?meal:'',openRooms);
+  for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
+  const returningOffer=previous.focus?.selector?$('#modal-body').querySelector(previous.focus.selector):null;
+  if(returningOffer?.matches('[data-action="offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
+}
+function restoreModalStepFocus(previous){
+ const modalBody=$('#modal-body');restoreFocus(previous.focus,$('#modal-title'),$('#modal'));modalBody.scrollTop=previous.scroll;
+ if(Number.isFinite(previous.focus?.top)&&modalBody.contains(document.activeElement)){const top=document.activeElement.getBoundingClientRect().top-modalBody.getBoundingClientRect().top;modalBody.scrollTop+=top-previous.focus.top;}
+}
 function showModal(type,title,kicker,body,wide=false){
  cancelVerification();hotelRoomObserver?.disconnect();hotelRoomObserver=null;const m=$('#modal'),newStep=!m.open||modalType!==type;
  if(!m.open){modalHistory.length=0;enterUIHistory();}
- else if(!restoringModal&&modalType!==type){modalHistory.push({type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,focus:focusReference(actionTrigger||document.activeElement,m)});}
+ else if(!restoringModal&&modalType!==type){modalHistory.push(captureModalStep(m));}
  modalType=type;updateModalBack();m.className=type==='gallery'?'gallery-dialog':wide?'wide-dialog':type==='dates'?'dates-dialog':'';$('#modal-title').textContent=title;$('#modal-kicker').textContent=kicker;$('#modal-body').innerHTML=body;$('#modal-footer').innerHTML='';$('#modal-footer').hidden=true;$('#modal-body').scrollTop=0;
  if(!m.open)m.showModal();document.body.style.overflow='hidden';m.scrollTop=0;$('#modal-body').scrollTop=0;hydrate();syncDestinationViewport();if(newStep&&!restoringModal)$('#modal-title').focus({preventScroll:true});queueMicrotask(rememberUIRoute);
 }
@@ -963,26 +983,16 @@ function modalBack(){
  while(previous&&['andromeda-flights','anex-current'].includes(previous.type)&&retainedProviderView(previous.offer)?.type!==previous.type)previous=modalHistory.pop();
  if(!previous)return;
  restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
- $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;selectedOffer=previous.offer;updateModalBack();
+ restoreModalStepSnapshot(previous);
  if(previous.type==='offer')renderRealOffer();
  if(['andromeda-flights','andromeda-verified','anex-current','anex-additional','anex-quote','provider-application','anex-application'].includes(previous.type)){
   restoreProviderView(selectedOffer);
   if(previous.type==='provider-application')openAndromedaApplicationPreview();
   if(previous.type==='anex-application')openAnexApplicationPreview();
  }
- if(previous.type==='hotel-details'){
-  const id=Number($('.hotel-section-nav')?.dataset.hotelId),h=hotels.find(h=>h.id===id);
-  const meal=$('#hotel-room-meal')?.value||'',meals=new Set(hotelOffers(h).map(o=>o.meal));
-  const openRooms=$$('.room-overview[open],article.hotel-room-card').map(room=>room.dataset.room);
-  const expandedMore=$$('.hotel-room-more[open]').map(more=>more.closest('[data-room]').dataset.room);
-  renderHotelRooms(id,!meal||meals.has(meal)?meal:'',openRooms);
-  for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
-  const returningOffer=previous.focus?.selector?$('#modal-body').querySelector(previous.focus.selector):null;
-  if(returningOffer?.matches('[data-action="offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
- }
+ if(previous.type==='hotel-details')restoreHotelDetailStep(previous);
  restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);refreshSavedTourControls();
- const modalBody=$('#modal-body');restoreFocus(previous.focus,$('#modal-title'),$('#modal'));modalBody.scrollTop=previous.scroll;
- if(Number.isFinite(previous.focus?.top)&&modalBody.contains(document.activeElement)){const top=document.activeElement.getBoundingClientRect().top-modalBody.getBoundingClientRect().top;modalBody.scrollTop+=top-previous.focus.top;}
+ restoreModalStepFocus(previous);
  syncHotelSectionNavigation();rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
