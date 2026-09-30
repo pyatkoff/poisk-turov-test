@@ -31,7 +31,7 @@ const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
  if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();}
- else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="choose-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
