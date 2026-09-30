@@ -23,7 +23,7 @@ const server=http.createServer((req,res)=>{
     await page.screenshot({path:path.join(evidence,`${scenario}-${width}.png`)});
     await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
    }else{
-    await page.locator('.error-text[role="alert"]').waitFor();
+    await page.locator('#modal-body .error-text[role="alert"]').waitFor();
     for(const action of ['start-tour-flights','offer-flights','retry-flights','choose-flight','confirm-tour','start-lead'])assert.equal(await page.locator(`#modal [data-action="${action}"]`).count(),0,`${scenario} removes ${action}`);
     assert.equal(await page.locator('#prototype-lead-form').count(),0);assert(!(await page.locator('#modal-body').textContent()).includes('Рейс уточнит менеджер'),'terminal tour removes the optional-flight invitation');
     await page.screenshot({path:path.join(evidence,`${scenario}-${width}.png`)});await page.locator('#modal-footer [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);assert(await page.locator('.hotel-card').first().isVisible(),'terminal tour returns to results');
