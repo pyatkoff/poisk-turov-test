@@ -44,7 +44,6 @@
   .destination-selection button,
   .flex-dates button,
   .filter-panel .check-row,
-  .filter-panel .star-options button,
   .filter-top .text-button {
     min-height:44px;
   }
@@ -95,9 +94,6 @@
     bottom:calc(155px + env(safe-area-inset-bottom));
   }
 
-  .hotel-image-wrap {
-    aspect-ratio:3 / 2;
-  }
 
   .hotel-detail-photos {
     grid-template-rows:108px 108px;
