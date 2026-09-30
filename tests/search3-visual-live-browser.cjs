@@ -9,6 +9,37 @@ const contactLayout=async(page,width,provider)=>{
  if(width===390){assert(Math.abs(fields[0].x-fields[1].x)<1,provider+' fields align in one mobile column');assert(fields[1].y>=fields[0].y+fields[0].height,provider+' fields stack without overlap');assert(fields.every(field=>field.width>300),provider+' fields use the available mobile width');}
  else assert(fields[1].x>=fields[0].x+fields[0].width,provider+' keeps two contact columns on tablet/desktop');
 };
+const mobileFooterLayout=async(page,width)=>{
+ if(width!==390)return;
+ const verify=async()=>{
+  const boxes=await page.locator('#modal-footer').evaluate(footer=>{
+   const total=footer.querySelector('.footer-total'),price=total.querySelector('strong'),button=footer.querySelector('.primary'),rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom};};
+   return{hidden:footer.hidden,display:getComputedStyle(footer).display,total:rect(total),price:rect(price),button:rect(button),nowrap:getComputedStyle(price).whiteSpace};
+  });
+  assert.equal(boxes.hidden,false,'visible tour footer remains visible');
+  assert(boxes.button.y>=boxes.total.bottom,'mobile action is below price and status');
+  assert(Math.abs(boxes.button.x-boxes.total.x)<1&&Math.abs(boxes.button.width-boxes.total.width)<1,'mobile action uses the full available row');
+  assert.equal(boxes.nowrap,'nowrap','tour price does not break inside the amount');
+  assert(boxes.price.x+boxes.price.width<=boxes.total.x+boxes.total.width+1,'whole price fits in the footer');
+ };
+ await verify();await page.setViewportSize({width:360,height:900});
+ try{await verify();await page.screenshot({path:path.join(evidence,'tour-footer-360.png')});}
+ finally{await page.setViewportSize({width,height:900});}
+};
+const mobileQuickFieldLayout=async(page,width)=>{
+ if(width!==390)return;
+ await page.setViewportSize({width:360,height:900});
+ try{
+  const boxes=await page.locator('#quick-budget').evaluate(field=>{
+   const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,right:b.right};},value=field.querySelector('strong'),label=field.querySelector('span:not(.chevron)'),arrow=field.querySelector('.chevron');
+   return{field:rect(field),value:rect(value),label:rect(label),arrow:rect(arrow),column:getComputedStyle(value).gridColumn,text:value.textContent};
+  });
+  assert.equal(boxes.column,'1 / -1','budget value spans both columns');
+  assert(boxes.value.y>boxes.label.y,'budget value is below its label');
+  assert(boxes.arrow.y<boxes.value.y,'chevron leaves the value row free');
+  assert(boxes.value.right<=boxes.field.right,'budget value stays inside its field');
+ }finally{await page.setViewportSize({width,height:900});}
+};
 const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -78,6 +109,7 @@ const server=http.createServer((req,res)=>{
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
+  await mobileQuickFieldLayout(page,width);
   assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
   assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','a locked pre-hydration control cannot replace URL state');
   await page.locator('#quick-stars [data-action="any-stars"]').click();
@@ -188,7 +220,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   const tvOffer=page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
   if(!await tvOffer.isVisible())await tvOffer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
-  await tvOffer.click();await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
+  await tvOffer.click();await mobileFooterLayout(page,width);await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
   assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
   assert.equal((await page.locator('.selection-steps li').nth(1).textContent()).trim(),'2Перелёт позже');
   assert.equal(await page.locator('.selection-steps li').nth(1).evaluate(el=>el.classList.contains('previous')),false);
