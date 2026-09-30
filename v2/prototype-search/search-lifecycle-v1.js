@@ -81,8 +81,24 @@
       || typeof options.prepare !== 'function'
       || typeof options.currentKey !== 'function') throw new Error('Prototype search lifecycle dependencies are unavailable.');
 
-    let generation = 0, bound = false, submitScheduledGeneration = null, scopeScheduledGeneration = null, activeResponse = null;
+    let generation = 0, bound = false, activeResponse = null;
     const canSubmit = () => typeof options.canSubmit !== 'function' || options.canSubmit() !== false;
+
+    // Each action coalesces independently, but shares cancellation by generation.
+    // A stale callback must not clear a newer generation's queued reservation.
+    const scheduleCurrent = action => {
+      let scheduledGeneration = null;
+      return () => {
+        const scheduled = generation;
+        if (scheduledGeneration === scheduled) return true;
+        scheduledGeneration = scheduled;
+        queueMicrotask(() => {
+          if (scheduledGeneration === scheduled) scheduledGeneration = null;
+          if (scheduled === generation) action();
+        });
+        return true;
+      };
+    };
 
     const run = (runOptions = {}) => {
       const prepared = options.prepare(runOptions);
@@ -133,22 +149,13 @@
       return started;
     };
 
-    const requestSubmit = () => {
-      const scheduledGeneration = generation;
-      if (submitScheduledGeneration === scheduledGeneration) return true;
-      submitScheduledGeneration = scheduledGeneration;
-      queueMicrotask(() => {
-        if (submitScheduledGeneration === scheduledGeneration) submitScheduledGeneration = null;
-        if (scheduledGeneration !== generation || !canSubmit() || typeof form.requestSubmit !== 'function') return;
-        form.requestSubmit();
-      });
-      return true;
-    };
+    const requestSubmit = scheduleCurrent(() => {
+      if (!canSubmit() || typeof form.requestSubmit !== 'function') return;
+      form.requestSubmit();
+    });
 
-    const inspectSupplierScope = scheduledGeneration => {
-      if (scopeScheduledGeneration === scheduledGeneration) scopeScheduledGeneration = null;
-      if (scheduledGeneration !== generation
-        || form.hidden !== true
+    const inspectSupplierScope = () => {
+      if (form.hidden !== true
         || typeof options.supplierFilters !== 'function'
         || typeof data.supplierScope !== 'function'
         || typeof data.supplierScopeCovered !== 'function') return;
@@ -177,12 +184,9 @@
       if (typeof options.afterEvent === 'function') options.afterEvent({type: 'coverage-gap'}, response);
     };
 
+    const scheduleScopeInspection = scheduleCurrent(inspectSupplierScope);
     const scheduleSupplierScope = () => {
-      if (form.hidden !== true) return;
-      const scheduledGeneration = generation;
-      if (scopeScheduledGeneration === scheduledGeneration) return;
-      scopeScheduledGeneration = scheduledGeneration;
-      queueMicrotask(() => inspectSupplierScope(scheduledGeneration));
+      if (form.hidden === true) scheduleScopeInspection();
     };
 
     const click = event => {
