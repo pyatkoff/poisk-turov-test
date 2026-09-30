@@ -31,8 +31,18 @@ for(const provider of ['tourvisor','andromeda','anex','fixture'])for(const live 
 scenarios.push({provider:'tourvisor',live:true,flags:0,noOffer:true},{provider:'tourvisor',live:true,flags:0,noHotel:true});
 function records(source){return scenarios.map(s=>observe(source,s));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
-if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'offer HTML and collaborator-order equivalence');
-if(!process.argv.includes('--capture'))assert.equal(digest,'1fe709d5b40c2fc691860711c02e7cc5f44afd24b470b96f35b32c383489fadc','pinned original offer rendering observations');
+const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
+assert(source.includes(flightGuard),'terminal flight presentation guard');
+const baseline=records(source.replace(flightGuard,'${flightSummaryHTML(o)}'));
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'1fe709d5b40c2fc691860711c02e7cc5f44afd24b470b96f35b32c383489fadc','original oracle unchanged outside the intentional flight-summary delta');
+function expectedDelta(before){return before.map((record,index)=>{
+ const s=scenarios[index];if(!s.unavailable&&!(s.flags&64)&&!(s.flags&128))return record;
+ const expected=JSON.parse(JSON.stringify(record));expected.calls=expected.calls.filter(c=>c[0]!=='flightSummaryHTML');
+ for(const c of expected.calls)if(c[0]==='showModal')c[4]=c[4].replace('[flightSummaryHTML]','');
+ return expected;
+});}
+assert.deepEqual(actual,expectedDelta(baseline),'only terminal/unavailable flight block and its renderer invocation may disappear');
+if(i>=0)assert.deepEqual(actual,expectedDelta(records(fs.readFileSync(process.argv[i+1],'utf8'))),'original/candidate exact intentional presentation delta');
 const verified=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:16});
 assert(verified.calls.some(c=>c[0]==='rememberProviderView'));
 assert(verified.calls.find(c=>c[0]==='showModal')[4].includes('tour-layout'));
@@ -40,7 +50,13 @@ const loading=observe(source,{provider:'tourvisor',live:true,unavailable:false,f
 assert(!loading.calls.some(c=>c[0]==='rememberProviderView'));
 const terminal=observe(source,{provider:'anex',live:true,unavailable:true,flags:64});
 assert(terminal.dom.find(([key])=>key==='#modal-footer')[1].html.includes('data-action="all-offers"'));
+assert(!terminal.calls.some(c=>c[0]==='flightSummaryHTML'));
+const flightError=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:16|256});
+assert(flightError.calls.some(c=>c[0]==='flightSummaryHTML'),'available flight-error retains the retry block');
+assert(flightError.dom.find(([key])=>key==='#modal-footer')[1].html.includes('data-action="confirm-tour"'),'available flight-error retains application');
+assert.notDeepEqual(records(source.replace(flightGuard,'${flightSummaryHTML(o)}')),actual,'unavailable flight actions mutation detected');
+assert.notDeepEqual(records(source.replace(flightGuard,"${unavailable?'':flightSummaryHTML(o)}")),actual,'terminal-only flight actions mutation detected');
 assert.notDeepEqual(records(source.replace('o.quoteErrorTerminal===true||','false||')),actual,'terminal action mutation detected');
 assert.notDeepEqual(records(source.replace('&&!o.loading&&!o.quoteError&&!o.flightsLoading','&&!o.quoteError&&!o.flightsLoading')),actual,'retained selection guard mutation detected');
 assert.notDeepEqual(records(source.replace("${o.pricePending?'Цена уточняется':money(o.total)}","${money(o.total)}")),actual,'pending price disclosure mutation detected');
-console.log(`PASS offer rendering: ${actual.length} states, byte-identical HTML and price/fuel/callback-order digest ${digest}; supplier/lead HTTP 0`);
+console.log(`PASS offer rendering: ${actual.length} states, original oracle retained with exact terminal-flight delta; actual digest ${digest}; supplier/lead HTTP 0`);

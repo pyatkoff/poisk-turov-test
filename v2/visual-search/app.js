@@ -1212,10 +1212,6 @@ function cardEntryOfferKey(button){
  if(!hotel||selectedOffer?.hotelId!==id)return fallback;
  return hotelOffers(hotel).some(o=>o.key===selectedOffer.key)?selectedOffer.key:fallback;
 }
-function tourHandoffSummary(o){
- const h=selectedTourHotel(o);
- return [o.provider==='fixture'?'ДЕМОНСТРАЦИОННЫЙ ТУР — не для бронирования':'Параметры тура — цена и наличие требуют подтверждения',h?.name||'Отель уточняется','Маршрут: '+(o.origin||o.search?.origin||'Город вылета уточняется')+' → '+[countryNames[h?.country]||countryNames[o.search?.country],h?.resort].filter(Boolean).join(', '),'Даты: '+dateLong(o.day)+' — '+dateLong(o.returnDay)+' · '+nightsText(o.nights),guestsText(o)+(o.ages?.length?' · '+childAgesLabel(o.ages,true):''),'Туроператор: '+o.operator,'Номер: '+o.room,'Питание: '+mealLabel(o),'Перелёт: '+savedFlightTextPlain(o),'Багаж: '+flightAllowanceText(o,'baggage'),'Ручная кладь: '+flightAllowanceText(o,'carryOn'),'Цена предложения за всех: '+(o.pricePending?'уточняется':money(o.total)),'Топливный сбор: '+fuelText(o),'Трансфер и страховка: состав и включение в цену не указаны.','Отмена и изменения: условия не указаны.','Окончательная сумма требует подтверждения. Заявка не отправлена.'].join('\n');
-}
 function flightAllowanceText(o,field){
  const v=flightPairFor(o);if(!v)return typeof o.savedFlightAllowance?.[field]==='string'?o.savedFlightAllowance[field]:'Уточняется после выбора и проверки рейсов';
  return [['forward','Туда'],['backward','Обратно']].map(([key,label])=>label+': '+window.AnyTourFlightPickerV18.directionAllowance(v[key],field)).join(' · ');
@@ -1362,7 +1358,7 @@ function offerDetailBodyHTML(o,h,unavailable,terminalQuoteError,selectionHint){
  ${o.quoteError?`<p class="error-text" role="alert">${esc(o.quoteError)}</p>`:''}
  ${o.pricePending?'<p class="error-text" role="status">Цена выбранного перелёта пока не подтверждена. Можно выбрать другой вариант или оставить рейс менеджеру.</p>':''}
 
- <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${flightSummaryHTML(o)}</div>
+ <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}</div>
  <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Получаем цену предложения…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`;
 }
 function offerDetailFooterHTML(o,footerAction,footerStatus){
@@ -1798,8 +1794,6 @@ function selectedTourRecord(){const offer=selectedTourOfferSnapshot(savedSelecti
 function scheduleSelectedTourExpiry(){clearTimeout(selectedTourExpiryTimer);if(!savedSelectionObservedAt)return;const delay=savedSelectionObservedAt+selectedTourTTL-Date.now();if(delay<=0){expireSelectedTour();return;}selectedTourExpiryTimer=setTimeout(()=>{expireSelectedTour();updateNav();refreshSavedTourControls();},delay+25);}
 function expireSelectedTour(){clearTimeout(selectedTourExpiryTimer);selectedTourExpiryTimer=null;savedSelection=null;savedSelectionHotel=null;savedSelectionObservedAt=0;clearStored(selectedTourKey);}
 function persistSelectedTour(){const record=selectedTourRecord();try{if(record)localStorage.setItem(selectedTourKey,JSON.stringify(record));else localStorage.removeItem(selectedTourKey);savedSelectionPersistent=!!record;}catch{savedSelectionPersistent=false;}scheduleSelectedTourExpiry();}
-function storeSelectedTour(o,h,observedAt=Date.now()){if(o.provider==='recorded')return;savedSelection=o;savedSelectionHotel=selectedTourHotelSnapshot(h);savedSelectionObservedAt=observedAt;persistSelectedTour();}
-function restoreSelectedTour(){const record=getStored(selectedTourKey,null),now=Date.now(),observedAt=Number(record?.observedAt),offer=selectedTourOfferSnapshot(record?.offer),hotel=selectedTourHotelSnapshot(record?.hotel);if(record?.version!==1||!Number.isFinite(observedAt)||observedAt>now+60000||now-observedAt>=selectedTourTTL||!offer||!hotel||offer.hotelId!==hotel.id){expireSelectedTour();return;}savedSelection=offer;savedSelectionHotel=hotel;savedSelectionObservedAt=observedAt;savedSelectionPersistent=true;scheduleSelectedTourExpiry();}
 function demoteSavedTour(){if(!readSelectedTour())return;savedSelection=selectedTourOfferSnapshot(savedSelection);persistSelectedTour();}
 function sameSelectedTourConditions(o,target){return !!o&&!!target&&o.hotelId===target.hotelId&&o.day===target.day&&o.nights===target.nights&&o.adults===target.adults&&JSON.stringify(o.ages||[])===JSON.stringify(target.ages||[])&&o.room===target.room&&o.meal===target.meal&&o.operator===target.operator&&o.flight===target.flight;}
 function readSelectedTour(){if(savedSelectionObservedAt&&Date.now()-savedSelectionObservedAt>=selectedTourTTL)expireSelectedTour();return savedSelection;}
@@ -1811,7 +1805,6 @@ function savedTourControlsHTML(o,{showResults=true}={}){
  return `<section id="saved-tour-controls" class="tour-save-choice" aria-label="Сохранить выбранный тур">${same?`<strong>${icon('check')} В «Мой тур»</strong><p id="saved-tour-storage-status" role="status" tabindex="-1">${savedSelectionPersistent?'Сохранён в этом браузере до '+esc(until)+'.':'Браузер не разрешил сохранение. Тур доступен только до перезагрузки страницы.'} Цена и наличие требуют проверки.</p><div class="tour-save-actions">${showResults?'<button class="secondary" data-action="close-modal">К результатам</button>':''}<button class="text-button" data-action="remove-selected-tour">Удалить из «Мой тур»</button></div>`:`<button class="secondary" data-action="save-tour-for-later" ${canSave?'':'disabled'}>${icon('suitcase')} ${saved?'Заменить тур в «Мой тур»':'Сохранить в «Мой тур»'}</button><p id="saved-tour-storage-status" role="status" tabindex="-1">${saved?'Сейчас сохранён '+esc(selectedTourHotel(saved)?.name||'другой тур')+'. Новый выбор заменит его.':'Номер, питание, даты и цена сохранятся в этом браузере на 24 часа. Это не бронирование.'}</p>`}</section>`;
 }
 function refreshSavedTourControls(focus=false){const section=$('#saved-tour-controls');if(!section||!selectedOffer)return;section.outerHTML=savedTourControlsHTML(selectedOffer,{showResults:modalType!=='selected-tour'});if(focus)$('#saved-tour-storage-status').focus({preventScroll:true});}
-function saveTourForLater(){const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h||o.loading||o.flightsLoading||o.pricePending||!selectedTourOfferSnapshot(o))return;storeSelectedTour(o,h);updateNav();refreshSavedTourControls(true);rememberUIRoute();}
 function openSelectedTour(){
  const saved=readSelectedTour();if(saved){selectedOffer=saved;renderRealOffer();return;}
  const canUndo=removedSelectedTour&&Date.now()-removedSelectedTourObservedAt<selectedTourTTL;

@@ -84,6 +84,7 @@ jobs:
           node tests/search3-visual-hotel-details-rendering.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
           node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
