@@ -58,10 +58,64 @@ var publicValue=7;var result;
   assert.deepEqual(names(privateProbe.replace('result={value:',dynamic+';result={value:')),[],'dynamic lookup/reflection bails out: '+dynamic);
  }
  assert.deepEqual(names(privateProbe.replace('return a+b;','function inner(privateOperation){return privateOperation(1);};return a+b;')),[],'shadow binding keeps names');
- assert.deepEqual(names(privateProbe.replace('(function(){','(function(argument){')),[],'non-private argument wrapper rejected');
+ const parameterProbe=privateProbe.replace('(function(){','(function(namespace){').replace('publicApi={publicOperation};})();','namespace.publicApi={publicOperation};})(globalThis);');
+ assert.deepEqual(names(parameterProbe),['privateOperation'],'namespace parameter does not expose private callees');
+ const parameterOutput=await compile(parameterProbe,{privateFunctions:true});
+ assert.deepEqual(run(parameterOutput),run(parameterProbe),'namespace wrapper preserves observable values');
+ const parameterContext={};vm.runInNewContext(parameterOutput,parameterContext);
+ assert.equal(parameterContext.publicApi.publicOperation.name,'publicOperation');assert.equal(parameterContext.publicApi.publicOperation.length,1);
+ assert(!parameterOutput.includes('function privateOperation('),'namespace-private declaration shortened');
+ assert.equal(await compile(parameterProbe,{privateFunctions:true}),parameterOutput);
+ const argumentProbe=`var result,publicApi,effects=[];(function(namespace){
+ function privateOperation(value){effects.push('body');return value;}
+ result={value:privateOperation(7),effects};namespace.publicApi={};})((effects.push('argument'),globalThis));`;
+ assert.deepEqual(names(argumentProbe),['privateOperation']);
+ assert.deepEqual(run(await compile(argumentProbe,{privateFunctions:true})),run(argumentProbe),'wrapper argument side effects retain exact execution order');
+ for(const parameter of ['privateOperation','{argument}','argument=1'])assert.deepEqual(names(privateProbe.replace('(function(){','(function('+parameter+'){')),[],'shadow/default/destructuring wrapper keeps names');
+ assert.deepEqual(names(privateProbe+'(function(){})();'),[],'multiple wrapper scopes are not mixed');
  const app=manifest.files.find(file=>file.target==='visual-search/app.js');
  assert(app.private_function_bindings.length>200,'actual eligible private app declarations recorded');
- for(const file of manifest.files)if(file!==app)assert.deepEqual(file.private_function_bindings,[],'all other assets retain function names');
+ const additional=['tour-controller-v4.js','prototype-search/data.js','search3-local-db-provider-v1.js','visual-search/local-db-parser.js','visual-search/flight-picker-v18.js'];
+ for(const file of manifest.files)if(file!==app){
+  if(additional.includes(file.target))assert(file.private_function_bindings.length>0,'bounded derived asset records eligible declarations');
+  else assert.deepEqual(file.private_function_bindings,[],'assets outside the allowlist retain function names');
+ }
+ // Observe actual namespace APIs and request/payload/presentation behavior in
+ // fresh VMs, without instrumenting or modifying any readable runtime source.
+ const apiNames={'tour-controller-v4.js':'V2TourController','prototype-search/data.js':'AnyTourPrototypeData',
+  'search3-local-db-provider-v1.js':'AnyTourLocalDbProviderV1','visual-search/local-db-parser.js':'AnyTourLocalDbProviderV1','visual-search/flight-picker-v18.js':'AnyTourFlightPickerV18'};
+ function observeAsset(code,target){
+  const events=[],http=[],location={protocol:'https:',hostname:'anytoour.ru',pathname:'/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru',href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',search:''};
+  const rejectHTTP=()=>{http.push('unexpected');throw Error('no HTTP permitted');};
+  const document={cookie:'',addEventListener:type=>events.push('document:'+type),querySelector:()=>null};
+  const window={location,V2_CONFIG:{},V2Runtime:{state:{searchId:17},api:rejectHTTP},fetch:rejectHTTP,
+   Search3CanonicalProfilesV1:{create:()=>({})},V2LeadSearchContext:{enrichPayload:payload=>payload},addEventListener:type=>events.push('window:'+type)};
+  vm.runInNewContext(code,{window,document,location,URL,URLSearchParams,AbortController,structuredClone,setTimeout,clearTimeout,fetch:rejectHTTP},{filename:target});
+  const api=window[apiNames[target]];assert(api,target+' exposes the existing namespace');
+  const descriptors=Reflect.ownKeys(api).map(key=>{const d=Object.getOwnPropertyDescriptor(api,key),v=api[key];return {key,enumerable:d.enumerable,configurable:d.configurable,writable:d.writable,
+   get:d.get&&{name:d.get.name,arity:d.get.length},set:d.set&&{name:d.set.name,arity:d.set.length},
+   type:typeof v,value:typeof v==='function'?{name:v.name,arity:v.length}:v};});
+  let behavior;
+  if(target==='prototype-search/data.js'){
+   api.catalog.departures=[{id:1,name:'Москва'}];api.catalog.countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
+   const request=api.params({origin:'Москва',country:'4',from:'2026-10-13',to:'2026-10-19',minNights:7,maxNights:7,adults:2,ages:[12,4]},['101'],{stars:[5],min:50000,max:180000});
+   behavior={request,sameScope:api.sameScope(request,{...request,scopeVersion:1}),
+    amounts:[null,'',0,-1,133500.5,'133500.5',{value:'7.5'},Infinity].map(value=>api.amount(value)),
+    dates:['13.10.2026','2026-10-13','invalid'].map(value=>api.date(value)),meals:['AI','UAI','BB','RO','Код от поставщика'].map(value=>api.meal(value)),
+    fuel:[api.fuel({fuelCharge:0}),api.fuel({fuelCharge:20},{fuelCharge:0}),api.fuel({}),api.fuel({fuelCharge:{value:'20.5'}})]};
+  }else if(target==='tour-controller-v4.js'){
+   const session=api.createLeadSession({tour:{id:'fixture',price:120000,adults:2,nights:7,date:'2026-10-13',hotel:{name:'Вымышленный отель'}},searchId:17,search:{},flight:null});
+   const values=new Map([['name','Тест'],['phone','+7 000 000-00-00'],['comment','Проверка'],['consent','1']]);
+   behavior={payload:session.payload({get:key=>values.get(key)}),frozen:Object.isFrozen(session)};
+  }else if(target.includes('local-db'))behavior={outsideLocal:api.localCandidate(),endpoint:api.endpoint(),invalid:[api.parse(null),api.parse({}),api.offerTour({},'1')]};
+  else behavior={summary:api.selectionSummary({variants:[]},null),allowances:[0,20,null].map(baggage=>api.allowanceValue({baggage},'baggage'))};
+  assert.equal(http.length,0,'no supplier/lead HTTP while inspecting public APIs');
+  return JSON.parse(JSON.stringify({descriptors,frozen:Object.isFrozen(api),events,behavior}));
+ }
+ for(const target of additional){
+  const readable=fs.readFileSync(path.resolve(__dirname,'../v2',target),'utf8'),served=fs.readFileSync(path.join(root,target),'utf8');
+  assert.deepEqual(observeAsset(served,target),observeAsset(readable,target),target+' retains public names/arity/descriptors and behavior');
+ }
 
  console.log('PASS compiled visual assets: '+manifest.files.length+' exact files; public API/template/eval/arithmetic probes; '+JSON.stringify(manifest.totals));
 })().catch(e=>{console.error(e);process.exitCode=1});
