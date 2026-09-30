@@ -28,7 +28,7 @@ function syntax(node,rename=false,context=''){
 // Only direct-call-only declarations inside one private, anonymous IIFE
 // may lose their diagnostic name. Any escape/inspection/shadow or dynamic
 // lookup keeps the name; the default compiler still retains every name.
-function privateFunctionBindings(tree){
+function privateFunctionBindings(tree,{preserveFunctions=[]}={}){
  const wrappers=tree.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&['FunctionExpression','ArrowFunctionExpression'].includes(n.expression.callee.type));
  if(wrappers.length!==1)return [];
  const call=wrappers[0].expression;
@@ -51,10 +51,10 @@ function privateFunctionBindings(tree){
    else if(v&&typeof v==='object')visit(v,node,k);
   }
  }
- visit(tree);return dynamic?[]:[...candidates].filter(name=>called.has(name)).sort();
+ visit(tree);return dynamic?[]:[...candidates].filter(name=>called.has(name)&&!preserveFunctions.includes(name)).sort();
 }
-async function compile(code,{privateFunctions=false}={}){
- const source=parsed(code),privateNames=privateFunctions?privateFunctionBindings(source.tree):[];
+async function compile(code,{privateFunctions=false,preserveFunctions=[]}={}){
+ const source=parsed(code),privateNames=privateFunctions?privateFunctionBindings(source.tree,{preserveFunctions}):[];
  const keepNames=privateNames.length?new RegExp('^(?!(?:'+privateNames.map(name=>name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')$)'):true;
  const exact=await terser.minify(code,{compress:false,mangle:false,keep_fnames:true,keep_classnames:true,
   format:{comments:'all',quote_style:3,keep_quoted_props:true,keep_numbers:true}});
@@ -78,14 +78,17 @@ function inventory(root){
 // A bounded artifact allowlist, never a source/API edit. Other assets keep names.
 const privateBindingAssets=new Set(['visual-search/app.js','tour-controller-v4.js','prototype-search/data.js',
  'search3-local-db-provider-v1.js','visual-search/local-db-parser.js','visual-search/flight-picker-v18.js']);
+// The full 132/1000-flight oracle extracts the real normalizer from served code.
+// Its entry/boundary declarations are observed instrumentation, not private names.
+const observedBindings={'prototype-search/data.js':['andromedaPoint','normalizeAndromedaQuote']};
 async function build(root){
  root=path.resolve(root);const graphs=inventory(root),files=[];
  for(const src of new Set([...graphs.live,...graphs.offline,...graphs.ondemand])){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
-  const source=fs.readFileSync(input,'utf8'),privateFunctions=privateBindingAssets.has(relative),code=await compile(source,{privateFunctions}),target=relative;
+  const source=fs.readFileSync(input,'utf8'),privateFunctions=privateBindingAssets.has(relative),preserveFunctions=observedBindings[relative]||[],code=await compile(source,{privateFunctions,preserveFunctions}),target=relative;
   const output=path.join(root,target);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,code);
-  files.push({src,source:relative,target,private_function_bindings:privateFunctions?privateFunctionBindings(parsed(source).tree):[],source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
+  files.push({src,source:relative,target,private_function_bindings:privateFunctions?privateFunctionBindings(parsed(source).tree,{preserveFunctions}):[],source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
  }
  const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand]};
  const totals={};for(const[name,graph]of Object.entries(completeGraphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});

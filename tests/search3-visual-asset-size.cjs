@@ -51,6 +51,7 @@ var publicValue=7;var result;
  assert(compact.includes('function publicOperation(')&&compact.includes('function observedOperation('),'escaping/observed names retained');
  assert.equal(await compile(privateProbe,{privateFunctions:true}),compact,'private output deterministic');
  assert((await compile(privateProbe)).includes('function privateOperation('),'default name contract unchanged');
+ assert((await compile(privateProbe,{privateFunctions:true,preserveFunctions:['privateOperation']})).includes('function privateOperation('),'observed instrumentation name remains available');
  for(const observation of ['privateOperation.name','privateOperation.length','privateOperation.toString()','publicApi=privateOperation','[privateOperation]','{privateOperation}','privateOperation.bind(null)','Reflect.get(privateOperation,"name")']){
   assert.deepEqual(names(privateProbe.replace('result={value:',observation+';result={value:')),[],'observation/escape excludes private binding: '+observation);
  }
@@ -116,6 +117,8 @@ var publicValue=7;var result;
   const readable=fs.readFileSync(path.resolve(__dirname,'../v2',target),'utf8'),served=fs.readFileSync(path.join(root,target),'utf8');
   assert.deepEqual(observeAsset(served,target),observeAsset(readable,target),target+' retains public names/arity/descriptors and behavior');
  }
+ const dataCode=fs.readFileSync(path.join(root,'prototype-search/data.js'),'utf8');
+ for(const name of ['andromedaPoint','normalizeAndromedaQuote'])assert(dataCode.includes('function '+name+'('),'canonical parser oracle retains observed '+name);
 
  console.log('PASS compiled visual assets: '+manifest.files.length+' exact files; public API/template/eval/arithmetic probes; '+JSON.stringify(manifest.totals));
 })().catch(e=>{console.error(e);process.exitCode=1});
