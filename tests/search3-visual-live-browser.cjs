@@ -3,6 +3,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const contactLayout=async(page,width,provider)=>{
+ const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(label=>{const box=label.getBoundingClientRect();return{x:box.x,y:box.y,width:box.width,height:box.height};}));
+ assert.equal(fields.length,2,provider+' keeps name and phone fields');
+ if(width===390){assert(Math.abs(fields[0].x-fields[1].x)<1,provider+' fields align in one mobile column');assert(fields[1].y>=fields[0].y+fields[0].height,provider+' fields stack without overlap');assert(fields.every(field=>field.width>300),provider+' fields use the available mobile width');}
+ else assert(fields[1].x>=fields[0].x+fields[0].width,provider+' keeps two contact columns on tablet/desktop');
+};
 const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -161,6 +167,19 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#origin').inputValue(),'Москва');assert.equal(await page.locator('#cards').innerHTML(),cardsBeforeDeparture);assert.equal(page.url(),urlBeforeDeparture);
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,startsBeforeDeparture,'departure recovery never starts a supplier search');
 
+  const beforeGallery=transport.calls.length;
+  await page.locator('.hotel-image-button[data-id="501"]').click();
+  const contrast=await page.locator('.gallery-dialog .modal-header').evaluate(header=>{
+   const rgb=value=>(value.match(/[\d.]+/g)||[]).slice(0,3).map(Number);
+   const luminance=color=>rgb(color).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+   const background=luminance(getComputedStyle(header).backgroundColor);
+   const ratio=el=>{const text=luminance(getComputedStyle(el).color);return(Math.max(text,background)+.05)/(Math.min(text,background)+.05);};
+   return{title:ratio(header.querySelector('h2')),close:ratio(header.querySelector('[data-action="close-modal"]'))};
+  });
+  assert(contrast.title>=4.5&&contrast.close>=3,'gallery title and close contrast against the actual header');
+  await page.screenshot({path:path.join(evidence,`gallery-header-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();
+  assert.equal(transport.calls.length,beforeGallery,'gallery adds no provider request');
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert((await page.locator('#modal-body').textContent()).includes('Тестовая улица'));
   assert.match(await page.locator('#modal-body').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact remains visible in hotel details');
@@ -176,10 +195,7 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('.tour-fuel-disclosure').textContent(),/включён в цену/);
   assert.match(await page.locator('#modal-footer').textContent(),/Цена предложения/);
   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/120000/,'fuel is already part of the supplier total');
-  const contactFields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(label=>{const box=label.getBoundingClientRect();return{x:box.x,y:box.y,width:box.width,height:box.height};}));
-  assert.equal(contactFields.length,2,'application keeps name and phone fields');
-  if(width===390){assert(Math.abs(contactFields[0].x-contactFields[1].x)<1,'phone contact fields align in one mobile column');assert(contactFields[1].y>=contactFields[0].y+contactFields[0].height,'phone contact fields stack at full width');assert(contactFields.every(field=>field.width>300),'stacked phone contact fields use the available width');}
-  else{assert(contactFields[1].x>=contactFields[0].x+contactFields[0].width,'tablet and desktop keep the compact two-column contact row');}
+  await contactLayout(page,width,'Tourvisor');
   const quoteOnlyCalls=transport.calls.length;
   await page.screenshot({path:path.join(evidence,`application-without-flight-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();
@@ -250,6 +266,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('[name="consent"]').isChecked(),false);
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
+  await contactLayout(page,width,'SAMO');
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'SAMO STANDARD','125500');
   await page.screenshot({path:path.join(evidence,`samo-application-forward-${width}.png`)});
@@ -291,6 +308,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
   await page.locator('.verification-tour').scrollIntoViewIfNeeded();
+  await contactLayout(page,width,'ANEX');
   await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'ANEX CONCRETE','123000');
   await page.screenshot({path:path.join(evidence,`anex-application-forward-${width}.png`)});
