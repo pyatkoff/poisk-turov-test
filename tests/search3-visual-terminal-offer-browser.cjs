@@ -19,7 +19,7 @@ const server=http.createServer((req,res)=>{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=${scenario}`);
    await page.locator('.hotel-card [data-action="offer"]').first().click();
    if(scenario==='flights'){
-    await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();
+    await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
     await page.getByRole('button',{name:'К деталям тура',exact:true}).click();
     await page.locator('[data-action="retry-flights"]').click();
     await page.getByRole('heading',{name:'Выберите перелёт',exact:true}).waitFor();
