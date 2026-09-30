@@ -1350,13 +1350,8 @@ function offerPrimaryActionHTML(o,h,unavailable,terminalQuoteError){
  if(o.tour)return `<button class="primary" data-action="confirm-tour">${flightPairFor(o)&&!o.pricePending?'К заявке':'Оставить заявку · рейс уточнит менеджер'} ${icon('arrow')}</button>`;
  return `<button class="primary" data-action="start-lead" data-key="${esc(o.key)}">К заявке ${icon('arrow')}</button>`;
 }
-function renderRealOffer(){
- const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
- if(o.provider==='tourvisor'&&data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.loading&&!o.quoteError&&!o.flightsLoading)rememberProviderView(o,'tourvisor-selection');
- const unavailable=needsRefresh(o);
- const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
- const selectionHint=offerSelectionHint(o,terminalQuoteError);
- showModal('offer','Ваш тур в деталях',o.loading?'ПРОВЕРЯЕМ ПРЕДЛОЖЕНИЕ':'ПРОВЕРЬТЕ УСЛОВИЯ',`
+function offerDetailBodyHTML(o,h,unavailable,terminalQuoteError,selectionHint){
+ return `
  ${unavailable?'':selectionStepsHTML(!o.tour||o.loading||o.quoteError?0:1)}${quotePriceChangeHTML(o)}<div class="tour-hero">${h.photos?.length?`<img src="${esc(photoUrl(h))}" alt="Фото ${esc(h.name)}">`:`<div class="tour-photo-missing">${icon('image')}<span>Нет фото</span></div>`}<div>${hotelStarsHTML(h)}<h3>${esc(h.name)}</h3><p>${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</p></div></div>
 
  ${unavailable&&!terminalQuoteError?(data.live?`<p class="saved-tour-notice">${esc(refreshOfferNotice(o))}</p>`:window.AnyTourPrototypeLead.unavailableMarkup(o)):''}
@@ -1364,11 +1359,22 @@ function renderRealOffer(){
  ${o.pricePending?'<p class="error-text" role="status">Цена выбранного перелёта пока не подтверждена. Можно выбрать другой вариант или оставить рейс менеджеру.</p>':''}
 
  <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${flightSummaryHTML(o)}</div>
- <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Получаем цену предложения…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`,true);
+ <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Получаем цену предложения…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`;
+}
+function offerDetailFooterHTML(o,footerAction,footerStatus){
+ return `<div class="footer-total"><span>${o.quoteError?'Цена из выдачи за всех':'За всех туристов'}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong><small class="footer-price-status">${footerStatus}</small></div>${footerAction}`;
+}
+function renderRealOffer(){
+ const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
+ if(o.provider==='tourvisor'&&data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.loading&&!o.quoteError&&!o.flightsLoading)rememberProviderView(o,'tourvisor-selection');
+ const unavailable=needsRefresh(o);
+ const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
+ const selectionHint=offerSelectionHint(o,terminalQuoteError);
+ showModal('offer','Ваш тур в деталях',o.loading?'ПРОВЕРЯЕМ ПРЕДЛОЖЕНИЕ':'ПРОВЕРЬТЕ УСЛОВИЯ',offerDetailBodyHTML(o,h,unavailable,terminalQuoteError,selectionHint),true);
  $('#modal').classList.add('tour-dialog');
  const footerAction=offerPrimaryActionHTML(o,h,unavailable,terminalQuoteError);
  const footerStatus=selectedPriceStatus(o);
- $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>${o.quoteError?'Цена из выдачи за всех':'За всех туристов'}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong><small class="footer-price-status">${footerStatus}</small></div>${footerAction}`;
+ $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=offerDetailFooterHTML(o,footerAction,footerStatus);
 }
 function openFlightPicker(){
  if(!selectedOffer?.variants?.length)return;flightDraft={base:selectedOffer,id:selectedOffer.flightChoiceId};const o=selectedOffer;
