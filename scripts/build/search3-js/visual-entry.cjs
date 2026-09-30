@@ -25,12 +25,41 @@ function syntax(node,rename=false,context=''){
   result[k]=syntax(v,rename,next);
  }return result;
 }
-async function compile(code){
- const source=parsed(code);
+// Only direct-call-only declarations inside one private, argument-free IIFE
+// may lose their diagnostic name. Any escape/inspection/shadow or dynamic
+// lookup keeps the name; the default compiler still retains every name.
+function privateFunctionBindings(tree){
+ const wrappers=tree.body.filter(n=>n.type==='ExpressionStatement'&&n.expression.type==='CallExpression'&&['FunctionExpression','ArrowFunctionExpression'].includes(n.expression.callee.type));
+ if(wrappers.length!==1)return [];
+ const call=wrappers[0].expression;
+ if(call.arguments.length||call.callee.params.length||call.callee.id||call.callee.body.type!=='BlockStatement')return [];
+ const declarations=new Map(call.callee.body.body.filter(n=>n.type==='FunctionDeclaration').map(n=>[n.id.name,n]));
+ const candidates=new Set(declarations.keys()),called=new Set();let dynamic=false;
+ function visit(node,parent,key){
+  if(!node||typeof node!=='object')return;
+  if(node.type==='WithStatement'||node.type==='Identifier'&&['eval','Function'].includes(node.name))dynamic=true;
+  if(node.type==='MemberExpression'){
+   const property=node.computed?node.property.value:node.property.name;
+   if(['eval','Function','caller','callee','stack','prepareStackTrace','constructor'].includes(property))dynamic=true;
+  }
+  if(node.type==='Identifier'&&candidates.has(node.name)&&node!==declarations.get(node.name).id){
+   if(parent?.type==='CallExpression'&&key==='callee')called.add(node.name);
+   else candidates.delete(node.name);
+  }
+  for(const[k,v]of Object.entries(node)){
+   if(Array.isArray(v))v.forEach(child=>visit(child,node,k));
+   else if(v&&typeof v==='object')visit(v,node,k);
+  }
+ }
+ visit(tree);return dynamic?[]:[...candidates].filter(name=>called.has(name)).sort();
+}
+async function compile(code,{privateFunctions=false}={}){
+ const source=parsed(code),privateNames=privateFunctions?privateFunctionBindings(source.tree):[];
+ const keepNames=privateNames.length?new RegExp('^(?!(?:'+privateNames.map(name=>name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')$)'):true;
  const exact=await terser.minify(code,{compress:false,mangle:false,keep_fnames:true,keep_classnames:true,
   format:{comments:'all',quote_style:3,keep_quoted_props:true,keep_numbers:true}});
  assert.deepEqual(syntax(parsed(exact.code).tree),syntax(source.tree),'Visual asset printing changed executable syntax');
- const result=await terser.minify(code,{compress:false,mangle:{toplevel:false,eval:false,properties:false},keep_fnames:true,keep_classnames:true,
+ const result=await terser.minify(code,{compress:false,mangle:{toplevel:false,eval:false,properties:false},keep_fnames:keepNames,keep_classnames:true,
   format:{comments:/^!|@(?:license|preserve|cc_on)|copyright|source(?:mapping)?url/i,quote_style:3,keep_quoted_props:true,keep_numbers:true}});
  assert.deepEqual(syntax(parsed(result.code).tree,true),syntax(source.tree,true),'Visual asset renaming changed statement/literal/arithmetic/public key structure');
  const output=result.code+'\n';return Buffer.byteLength(output)<Buffer.byteLength(code)?output:code;
@@ -51,14 +80,14 @@ async function build(root){
  for(const src of new Set([...graphs.live,...graphs.offline,...graphs.ondemand])){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
-  const source=fs.readFileSync(input,'utf8'),code=await compile(source),target=relative;
+  const source=fs.readFileSync(input,'utf8'),privateFunctions=relative==='visual-search/app.js',code=await compile(source,{privateFunctions}),target=relative;
   const output=path.join(root,target);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,code);
-  files.push({src,source:relative,target,source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
+  files.push({src,source:relative,target,private_function_bindings:privateFunctions?privateFunctionBindings(parsed(source).tree):[],source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
  }
  const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand]};
  const totals={};for(const[name,graph]of Object.entries(completeGraphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});
- const manifest={schema:1,tool:'terser@5.51.2',policy:'binding-renaming-only; no expression compression; globals/properties/function names/arity retained',graphs,totals,files};
+ const manifest={schema:1,tool:'terser@5.51.2',policy:'binding-renaming-only; no expression compression; globals/properties/classes/arity retained; names retained except proven direct-call-only private visual app declarations',graphs,totals,files};
  fs.writeFileSync(path.join(root,'visual-search/asset-size.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
 }
-module.exports={compile,syntax,inventory,build};
+module.exports={compile,syntax,inventory,build,privateFunctionBindings};
 if(require.main===module)build(process.argv[2]||'v2').then(m=>console.log('VISUAL_COMPILED_ASSETS '+JSON.stringify(m.totals))).catch(e=>{console.error(e);process.exitCode=1});

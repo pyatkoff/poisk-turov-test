@@ -1,6 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm');
-const {compile}=require('../scripts/build/search3-js/visual-entry.cjs');
+const {compile,privateFunctionBindings}=require('../scripts/build/search3-js/visual-entry.cjs');
+const {parsed}=require('../scripts/build/search3-js/compact.cjs');
 const root=path.resolve(process.argv[2]||'v2'),manifest=JSON.parse(fs.readFileSync(path.join(root,'visual-search/asset-size.json')));
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 for(const file of manifest.files){
@@ -32,5 +33,35 @@ var publicValue=7;var result;
  function run(code){const context={};vm.runInNewContext(code,context);return JSON.parse(JSON.stringify({result:context.result,publicValue:context.publicValue}));}
  assert.deepEqual(run(output),run(original),'compiler preserves observable JS semantics');assert(output.includes('Copyright AnyTour'),'legal notice retained');
  assert.equal(await compile(original),output,'deterministic output');
+ // Names observable through public values or reflection remain intact. Only
+ // immediate-IIFE declarations referenced exclusively as callees are eligible.
+ const privateProbe=`var result,publicApi;(function(){
+ function privateOperation(a,b){return a+b;}
+ function publicOperation(a){return privateOperation(a,3);}
+ function observedOperation(a){return a;}
+ const callback=observedOperation;
+ result={value:publicOperation(4),callback:callback(5),name:callback.name,arity:callback.length};
+ publicApi={publicOperation};})();`;
+ const names=code=>privateFunctionBindings(parsed(code).tree);
+ assert.deepEqual(names(privateProbe),['privateOperation'],'only unobserved, nonescaping callee is eligible');
+ const compact=await compile(privateProbe,{privateFunctions:true});
+ assert.deepEqual(run(compact),run(privateProbe),'private shortening preserves returned values and observed API names/arity');
+ const apiContext={};vm.runInNewContext(compact,apiContext);assert.equal(apiContext.publicApi.publicOperation.name,'publicOperation');assert.equal(apiContext.publicApi.publicOperation.length,1);
+ assert(!compact.includes('function privateOperation('),'private declaration shortened');
+ assert(compact.includes('function publicOperation(')&&compact.includes('function observedOperation('),'escaping/observed names retained');
+ assert.equal(await compile(privateProbe,{privateFunctions:true}),compact,'private output deterministic');
+ assert((await compile(privateProbe)).includes('function privateOperation('),'default name contract unchanged');
+ for(const observation of ['privateOperation.name','privateOperation.length','privateOperation.toString()','publicApi=privateOperation','[privateOperation]','{privateOperation}','privateOperation.bind(null)','Reflect.get(privateOperation,"name")']){
+  assert.deepEqual(names(privateProbe.replace('result={value:',observation+';result={value:')),[],'observation/escape excludes private binding: '+observation);
+ }
+ for(const dynamic of ['eval("privateOperation.name")','window["eval"]("privateOperation.name")','Function("return 1")()','callback.caller','callback.callee','new Error().stack']){
+  assert.deepEqual(names(privateProbe.replace('result={value:',dynamic+';result={value:')),[],'dynamic lookup/reflection bails out: '+dynamic);
+ }
+ assert.deepEqual(names(privateProbe.replace('return a+b;','function inner(privateOperation){return privateOperation(1);};return a+b;')),[],'shadow binding keeps names');
+ assert.deepEqual(names(privateProbe.replace('(function(){','(function(argument){')),[],'non-private argument wrapper rejected');
+ const app=manifest.files.find(file=>file.target==='visual-search/app.js');
+ assert(app.private_function_bindings.length>200,'actual eligible private app declarations recorded');
+ for(const file of manifest.files)if(file!==app)assert.deepEqual(file.private_function_bindings,[],'all other assets retain function names');
+
  console.log('PASS compiled visual assets: '+manifest.files.length+' exact files; public API/template/eval/arithmetic probes; '+JSON.stringify(manifest.totals));
 })().catch(e=>{console.error(e);process.exitCode=1});
