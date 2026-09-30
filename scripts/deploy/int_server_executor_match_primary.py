@@ -9,6 +9,7 @@ import ast
 import re
 
 MODE = 'match-primary-candidate'
+READBACK_MODE = 'match-primary-proof-readback'
 BATCH = 'samo3-20260929'
 OPERATION_RE = re.compile(r'\Aint-andromeda-match-primary-[a-z0-9-]{8,48}-v[1-9][0-9]*\Z')
 SOURCE_FILES = (
@@ -16,6 +17,7 @@ SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_raw_native_pending11_v78.php',
     'scripts/diagnostics/hotel_match_primary_candidate_v1.php',
 )
+PROOF_SOURCE_FILES = SOURCE_FILES + ('scripts/diagnostics/hotel_match_primary_proof_audit_v1.php',)
 
 
 def register_parser(core) -> None:
@@ -26,7 +28,7 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] != MODE:
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
@@ -35,7 +37,7 @@ def register_parser(core) -> None:
                   and OPERATION_RE.fullmatch(operation) is not None, 'primary_operation')
         core.need(batch == BATCH, 'primary_batch')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation,
-                'batch': BATCH, 'maximum_writes': 3, 'provider_http_calls': 0}
+                'batch': BATCH, 'maximum_writes': 0 if mode == READBACK_MODE else 3, 'provider_http_calls': 0}
 
     core.parse_command = parse
 
@@ -139,31 +141,115 @@ REMOTE_DISPATCH = r'''    if mode=='match-primary-candidate':
 '''
 
 
-def remote_with_primary(core) -> str:
+REMOTE_PROOF_HANDLER = r'''
+def run_match_primary_proof_readback(stage):
+    if (payload.get('batch')!='samo3-20260929' or payload.get('maximum_writes')!=0
+            or payload.get('provider_http_calls')!=0
+            or not re.fullmatch(r'int-andromeda-match-primary-[a-z0-9-]{8,48}-v[1-9][0-9]*',operation)):
+        fail('primary_proof_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root:
+        fail('primary_proof_private_root')
+    runner=stage/'scripts/diagnostics/hotel_match_primary_proof_audit_v1.php'
+    if not safe_file(runner,2*1024*1024): fail('primary_proof_runner_missing')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0',str(runner),'--read-saved',str(root)],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=90)
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>256*1024:
+        fail('primary_proof_read_failed')
+    data=json.loads(run.stdout)
+    if (not isinstance(data,dict) or set(data)!={'state','batch','rows','provider_http_calls','database_writes','mapping_writes','safe_to_write_now'}
+            or data.get('state')!='completed_saved_proof_audit' or data.get('batch')!='samo3-20260929'
+            or any(type(data.get(k)) is not int or data[k]!=0 for k in ('provider_http_calls','database_writes','mapping_writes'))
+            or data.get('safe_to_write_now') is not False): fail('primary_proof_authority')
+    expected={
+        420:('9501','operator_342','24402','hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1','1d10e02a1a541a242b7466b3eab99887203c005ee270469f2c351179a3387faa'),
+        16944:('2000034238','operator_315','211585','hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1','8e42b3e76cdef4075f09c9f8da68a8dd3881b93a263b094c88b74cc69b25ce3d'),
+        42903:('3126','operator_315','849821','hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1','11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794'),
+    }
+    rows=data.get('rows')
+    if not isinstance(rows,list) or len(rows)!=3: fail('primary_proof_rows')
+    seen=set()
+    fields={'tv_hotel_id','catalog_id','supplier_namespace','native_id','source_operation','source_result_sha256','safe_to_write_now','state','failures'}
+    proof_fields={'proof_matches','source_targets','target_natives','edge_checks','invalid_edge_rows','edge_checks_omitted'}
+    failure_names={'producer_edges_missing','verified_edge_missing','source_target_not_unique','target_native_not_unique',
+        'retained_relative_path','retained_file','retained_read','retained_digest','retained_json','retained_terminal','salvaged_terminal_required','retained_read_failed'}
+    edge_fields={'tv_hotel_id','operator_id','state','link_state','namespace','positive_native_candidates',
+        'operator_link_sha256','tour_id_sha256','search_id_sha256','operator_link_host'}
+    for row in rows:
+        if not isinstance(row,dict): fail('primary_proof_rows')
+        identity=row.get('tv_hotel_id')
+        if type(identity) is not int or identity not in expected or identity in seen: fail('primary_proof_pair')
+        seen.add(identity)
+        if (tuple(row.get(k) for k in ('catalog_id','supplier_namespace','native_id','source_operation','source_result_sha256'))!=expected[identity]
+                or row.get('safe_to_write_now') is not False): fail('primary_proof_pair')
+        state=row.get('state'); failures=row.get('failures')
+        if (state not in ('producer_unavailable','proof_hold','saved_tv_proof_verified')
+                or not isinstance(failures,list) or any(f not in failure_names for f in failures)
+                or (state=='saved_tv_proof_verified')!= (failures==[])): fail('primary_proof_state')
+        if state=='producer_unavailable':
+            if set(row)!=fields: fail('primary_proof_projection')
+            continue
+        # Missing edges has the smaller diagnostic schema; no raw field is permitted.
+        if set(row) not in (fields|proof_fields,fields|{'proof_matches','source_targets','target_natives','edge_checks'}): fail('primary_proof_projection')
+        for key in ('proof_matches','invalid_edge_rows','edge_checks_omitted'):
+            if key in row and (type(row[key]) is not int or row[key]<0): fail('primary_proof_count')
+        for key in ('source_targets','target_natives','edge_checks'):
+            if not isinstance(row.get(key),list) or len(row[key])>1000: fail('primary_proof_projection')
+        if any(type(i) is not int or i<=0 for i in row['source_targets']): fail('primary_proof_target')
+        if any(not isinstance(n,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',n) for n in row['target_natives']): fail('primary_proof_native')
+        if len(row['edge_checks'])>100: fail('primary_proof_projection')
+        for check in row['edge_checks']:
+            if (not isinstance(check,dict) or set(check)!={'json_pointer','verified','failed_fields'}
+                    or not isinstance(check['json_pointer'],str) or not re.fullmatch(r'/edges/[0-9]{1,8}',check['json_pointer'])
+                    or type(check['verified']) is not bool or not isinstance(check['failed_fields'],list)
+                    or any(f not in edge_fields for f in check['failed_fields'])): fail('primary_proof_projection')
+    return data
+
+'''
+
+REMOTE_PROOF_DISPATCH = r'''    if mode=='match-primary-proof-readback':
+        result['match_primary_proof_readback']=run_match_primary_proof_readback(stage)
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def remote_with_primary(core, proof: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
     collector = "    if mode not in ('reconcile',"
     core.need(remote.count(definition) == 1 and remote.count(dispatch) == 1
               and remote.count(collector) == 2, 'primary_registration_source_drift')
-    remote = remote.replace(definition, REMOTE_HANDLER + definition, 1)
-    remote = remote.replace(dispatch, REMOTE_DISPATCH + dispatch, 1)
-    remote = remote.replace(collector, "    if mode not in ('match-primary-candidate','reconcile',")
+    handler = REMOTE_PROOF_HANDLER if proof else REMOTE_HANDLER
+    mode_dispatch = REMOTE_PROOF_DISPATCH if proof else REMOTE_DISPATCH
+    selected_mode = READBACK_MODE if proof else MODE
+    remote = remote.replace(definition, handler + definition, 1)
+    remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
+    remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
     ast.parse(remote)
     return remote
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') != MODE:
+    if command.get('mode') not in (MODE, READBACK_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
-        str(command.get('source_sha','')), MODE,
+        str(command.get('source_sha','')), command['mode'],
         str(command.get('operation_id','')), str(command.get('batch','')),
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
-    remote = remote_with_primary(core)
+    proof = command['mode'] == READBACK_MODE
+    remote = remote_with_primary(core, proof)
     files = list(core.FIXED)
-    for path in SOURCE_FILES:
+    for path in PROOF_SOURCE_FILES if proof else SOURCE_FILES:
         if path not in files:
             files.append(path)
     core.FIXED = files
