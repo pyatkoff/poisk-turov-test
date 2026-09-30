@@ -175,7 +175,8 @@ function hotelOffers(h,options={}){
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
  const ages=JSON.stringify([...s.ages].sort()),matches=o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===ages&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
- return (h.offers||[]).filter(matches).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
+ const offers=(h.offers||[]).filter(matches);
+ return options.sort===false?offers:offers.sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
 }
 function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
@@ -184,7 +185,7 @@ function calendarMinimums(days,options={},observations=[]){
  if(!days.length)return[];
  const s=options.search||state.search,f=options.filters||state.filters,span=[...days].sort(),requested=new Set(days),minimums=new Map(),saved=new Map();
  const search={...s,from:span[0],to:span.at(-1)};
- for(const h of options.calendarHotels||hotels)for(const o of hotelOffers(h,{...options,search,day:'',selectedDate:null,ignoreDate:true,onlyFavorites:false})){
+ for(const h of options.calendarHotels||hotels)for(const o of hotelOffers(h,{...options,search,day:'',selectedDate:null,ignoreDate:true,onlyFavorites:false,sort:false})){
   if(requested.has(o.day))minimums.set(o.day,Math.min(minimums.get(o.day)??Infinity,o.total));
  }
  // Keep the first saved observation for a date, just as the old find() did.
@@ -1146,7 +1147,7 @@ function openDates(source='form',restore=null){
 function refreshCalendarPriceCache(){
  datePrices.clear();const s={...dateContext.search,from:startDay,to:endDay},f=dateContext.filters;
  const add=(day,price)=>{if(day>=startDay&&day<=endDay&&Number.isFinite(price)&&price>0)datePrices.set(day,Math.min(datePrices.get(day)??Infinity,price));};
- for(const h of [...hotels,...calendarHotels])for(const o of hotelOffers(h,{search:s,filters:f,selectedDate:null,onlyFavorites:false}))add(o.day,o.total);
+ for(const h of [...hotels,...calendarHotels])for(const o of hotelOffers(h,{search:s,filters:f,selectedDate:null,onlyFavorites:false,sort:false}))add(o.day,o.total);
  if(data.observationScopeSupported(s,f))for(const point of calendarObservations)add(point.date,point.price);
 }
 function calendarPrice(day){return datePrices.get(day)??null;}

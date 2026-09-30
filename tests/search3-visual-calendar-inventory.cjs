@@ -106,3 +106,29 @@ function membership(source){
  assert.equal(ctx.placeCalls,1,'multi-resort predicate computes places once per hotel');
  console.log(`PASS hotel membership: ${rows.length} model cases; digest ${hash}; 31410 unused resort inventories -> 0; one inventory for multi-resort match`);
 }
+
+function expandedCalendar(source){
+ const hs=fixture(),ctx=make(source,hs),rows=[];
+ ctx.calendarHotels=[hs[1],hs[0]];ctx.startDay=day(0);ctx.endDay=day(6);ctx.datePrices=new Map();
+ ctx.calendarObservations=[{date:day(0),price:0},{date:day(1),price:90000},{date:day(1),price:89000},{date:day(2),price:NaN},{date:day(7),price:1}];
+ vm.runInContext(section(source,'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);
+ for(const filters of variants)for(const supported of [false,true]){
+  ctx.dateContext={search:ctx.state.search,filters:{...defaultFilters(),...filters}};ctx.supported=supported;ctx.refreshCalendarPriceCache();
+  rows.push(Array.from({length:7},(_,i)=>ctx.datePrices.get(day(i))??null));
+ }
+ return rows;
+}
+{
+ const rows=expandedCalendar(source),hash=crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');if(compare>=0)assert.deepEqual(rows,expandedCalendar(fs.readFileSync(process.argv[compare+1],'utf8')),'expanded calendar price parity');
+ assert.equal(hash,'b3d315ee46ea6ba1e7eeb5c657afffa370f5be2042a74a85b07debd532521423','pinned original expanded calendar prices');
+ const hs=fixture(),ctx=make(source,hs),raw=hs[1].offers;
+ const options={selectedDate:null,onlyFavorites:false},all=ctx.hotelOffers(hs[1],options),unordered=ctx.hotelOffers(hs[1],{...options,sort:false});
+ assert.deepEqual(Array.from(unordered).sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day)),Array.from(all),'same raw offers after ordering');
+ assert(unordered.every(o=>raw.includes(o)),'unordered offers retain references');
+ let sorts=0;for(const h of hs)h.offers.filter=function(...args){const rows=Array.prototype.filter.apply(this,args);rows.sort=function(...args){sorts++;return Array.prototype.sort.apply(this,args)};return rows;};
+ ctx.run([day(0),day(1),day(2)],{},[]);assert.equal(sorts,0,'calendar does not sort offer arrays');
+ Object.assign(ctx,{calendarHotels:[hs[1]],startDay:day(0),endDay:day(6),datePrices:new Map(),calendarObservations:[],dateContext:{search:ctx.state.search,filters:defaultFilters()}});
+ vm.runInContext(section(source,'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);ctx.refreshCalendarPriceCache();assert.equal(sorts,0,'expanded calendar does not sort offer arrays');
+ ctx.hotelOffers(hs[1],options);assert.equal(sorts,1,'normal offer consumers remain sorted');
+ console.log(`PASS calendar ordering: ${rows.length} expanded price sequences; digest ${hash}; raw membership retained; per-hotel calendar sorts removed, normal sorting retained`);
+}
