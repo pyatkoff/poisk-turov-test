@@ -3,6 +3,28 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const mobileCardPriceLayout=async(page,width,evidence)=>{
+ if(width!==390)return;
+ const card=page.locator('.hotel-card').first(),amount=card.locator('.starting-price strong'),original=await amount.textContent();
+ try{
+  await amount.evaluate(el=>{el.textContent='1\u00a0035\u00a0282 ₽';});
+  for(const mobileWidth of [360,390,430]){
+   await page.setViewportSize({width:mobileWidth,height:900});
+   const boxes=await card.evaluate(el=>{
+    const panel=el.querySelector('.hotel-price'),rect=node=>{const b=node.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width};};
+    return{panel:rect(panel),price:rect(panel.querySelector('.starting-price strong')),total:rect(panel.querySelector('.starting-price')),status:rect(panel.querySelector('.fuel-note')),action:rect(panel.querySelector('.primary')),nowrap:getComputedStyle(panel.querySelector('.starting-price strong')).whiteSpace};
+   });
+   assert.equal(boxes.nowrap,'nowrap');
+   assert(boxes.price.x>=boxes.panel.x&&boxes.price.right<=boxes.panel.right,'whole seven-digit price fits at '+mobileWidth);
+   assert(boxes.status.y>=boxes.total.bottom&&boxes.action.y>=boxes.status.bottom,'price, status and action stay in vertical order at '+mobileWidth);
+   assert(Math.abs(boxes.action.x-boxes.total.x)<1&&Math.abs(boxes.action.width-boxes.total.width)<1,'mobile action fills the price row at '+mobileWidth);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
+   fs.writeFileSync(path.join(evidence,'card-price-'+mobileWidth+'.json'),JSON.stringify(boxes,null,2));
+  }
+ }finally{await amount.evaluate((el,text)=>{el.textContent=text;},original);await page.setViewportSize({width,height:900});}
+ assert.equal(await amount.textContent(),original,'layout stress restores the fictional fixture price');
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  await summary.locator('[data-action="filters"]').first().click();
@@ -212,6 +234,7 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('.hotel-card .hotel-facts').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact is visible on the target hotel card');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
+  await mobileCardPriceLayout(page,width,evidence);
   await appliedSummaryControls(page,width,transport,evidence);
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
   await page.locator('#applied-search [data-action="edit-search"]').click();transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();
