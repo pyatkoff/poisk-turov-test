@@ -41,20 +41,22 @@ function inventory(root){
  const array=php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);assert(array,'explicit LIVE script graph');
  const live=[...array[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
  const offline=[...html.matchAll(/<script src="([^"?]+\.js)"/g)].map(m=>m[1]);
- const graphs={live,offline};
- for(const src of [...live,...offline])assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
+ const ondemand=[...html.matchAll(/data-offer-list-src="([^"?]+\.js)"/g)].map(m=>m[1]);assert.equal(ondemand.length,1,'one explicit cold offer-list owner');
+ const graphs={live,offline,ondemand};
+ for(const src of [...live,...offline,...ondemand])assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
  return graphs;
 }
 async function build(root){
  root=path.resolve(root);const graphs=inventory(root),files=[];
- for(const src of new Set([...graphs.live,...graphs.offline])){
+ for(const src of new Set([...graphs.live,...graphs.offline,...graphs.ondemand])){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
   const source=fs.readFileSync(input,'utf8'),code=await compile(source),target=relative;
   const output=path.join(root,target);fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,code);
   files.push({src,source:relative,target,source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
  }
- const totals={};for(const[name,graph]of Object.entries(graphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});
+ const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand]};
+ const totals={};for(const[name,graph]of Object.entries(completeGraphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});
  const manifest={schema:1,tool:'terser@5.51.2',policy:'binding-renaming-only; no expression compression; globals/properties/function names/arity retained',graphs,totals,files};
  fs.writeFileSync(path.join(root,'visual-search/asset-size.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
 }

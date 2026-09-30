@@ -45,6 +45,7 @@ jobs:
           node tests/search3-visual-calendar-inventory.cjs
           node tests/search3-visual-flight-filter-work.cjs
           node tests/search3-visual-results-rendering.cjs
+          node tests/search3-visual-offer-list-lazy.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
   visual-migration:
@@ -77,6 +78,8 @@ jobs:
           node tests/search3-visual-data-orchestration.cjs
           node tests/search3-visual-event-dispatch.cjs
           node tests/search3-visual-modal-history.cjs
+          node tests/search3-visual-offer-list-lazy.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
           node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
@@ -94,3 +97,4 @@ jobs:
           name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}
           path: visual-live-evidence/
           if-no-files-found: warn
+

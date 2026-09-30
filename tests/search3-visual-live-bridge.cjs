@@ -4,6 +4,8 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
+// Transport fixtures install the presentation owner; cold loading has its own probe.
+scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};

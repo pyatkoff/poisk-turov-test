@@ -2,14 +2,16 @@
 // Baseline is app blob 33bee027, before the combined structural extraction.
 // No application bootstrap, supplier transport, quote or lead submission executes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
-const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+const cold=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/offer-list-v1.js'),'utf8');
+const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(){','function mountOfferList(){');
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
 function owner(source,kind){
  if(kind==='results')return section(source,"let renderedCardLimit=24,renderedCardScope='';",'function syncFilters(){');
  if(kind==='calendar')return section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(){');
- return section(source,source.includes('function offerListInventory(){')?'function offerListInventory(){':'function renderOfferList(reset=false){','let verifiedOffer=null;');
+ const first=source.includes('function offerListInventory(){')?'function offerListInventory(){':'function renderOfferList(reset=false){';
+ const start=source.indexOf(first),end=source.indexOf('let verifiedOffer=null;',start);return end<0?source.slice(start):source.slice(start,end);
 }
 function observe(source,s){
  const trace=[],nodes=new Map();let ctx;
@@ -61,6 +63,7 @@ function observe(source,s){
  // The optimized bulk port supplies the same price sequence to this DOM owner.
  // The real bulk algorithm is characterized in calendar-inventory.cjs.
  ctx.calendarMinimums=(days,options,observations)=>days.map(day=>ctx.calendarMinimum(day,options,observations));
+ ctx.setComparisonQuotes=value=>{ctx.comparisonQuotes=value;};
  vm.createContext(ctx);vm.runInContext(owner(source,s.kind),ctx);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);

@@ -35,8 +35,9 @@ if (!$offline) {
         }
     }
 }
-echo preg_replace_callback('/\b(src|href)="(\.\.?\/[^"?]+\.(?:js|css))"/', function ($match) {
+echo preg_replace_callback('/\b(src|href|data-offer-list-src)="(\.\.?\/[^"?]+\.(?:js|css))"/', function ($match) {
     $path = __DIR__ . '/' . $match[2];
     if (!is_file($path)) return $match[0];
     return $match[1] . '="' . $match[2] . '?v=' . substr(hash_file('sha256', $path), 0, 12) . '"';
 }, $html);
+

@@ -9,6 +9,9 @@ for(const file of manifest.files){
 }
 assert(manifest.totals.live.gzip_after<manifest.totals.live.gzip_before*0.90,'measurable initial transfer reduction');
 assert.deepEqual(manifest.graphs.live,require('../scripts/build/search3-js/visual-entry.cjs').inventory(root).live,'source order/dependencies unchanged');
+assert.deepEqual(manifest.graphs.ondemand,['./offer-list-v1.js']);
+assert(!manifest.graphs.live.includes('./offer-list-v1.js')&&!manifest.graphs.offline.includes('./offer-list-v1.js'),'cold owner is absent from both initial graphs');
+for(const name of ['live','offline'])for(const key of ['raw','served','gzip_before','gzip_after'])assert.equal(manifest.totals['complete_'+name][key],manifest.totals[name][key]+manifest.totals.ondemand[key],'full-load bytes include the cold owner');
 // Exercise syntax-sensitive cases independently from the application fixtures:
 // global/API names, function.name/length, numeric and Unicode keys, __proto__,
 // side-effect order, signed zero, direct eval, labels and tagged template raw text.
