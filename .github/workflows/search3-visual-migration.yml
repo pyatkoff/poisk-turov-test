@@ -28,6 +28,7 @@ jobs:
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
+          node tests/search3-visual-event-dispatch.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
           node tests/search3-visual-anex-flight-continuation.cjs
