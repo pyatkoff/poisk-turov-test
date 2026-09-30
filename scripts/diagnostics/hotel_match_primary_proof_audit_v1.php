@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__.'/hotel_match_primary_candidate_v1.php';
 
 function pp1_edge_failures(array $edge,int $id,array $spec): array {
+    if(pm1_tv_projection($edge,$id,$spec)!==null)return [];
     $failures=[];
     foreach(['tv_hotel_id'=>$id,'operator_id'=>$spec['operator']] as $key=>$expected){
         if((int)($edge[$key]??0)!==$expected)$failures[]=$key;
@@ -41,7 +42,7 @@ function pp1_producer(array $producer,int $id,array $spec): array {
         ++$relevantCount;
         $reasons=pp1_edge_failures($edge,$id,$spec);
         // The original writer predicate remains the authority, not this explanatory list.
-        $verified=$reasons===[]&&pm1_tv_edge($edge,$id,$spec);
+        $verified=$reasons===[]&&pm1_tv_projection($edge,$id,$spec)!==null;
         if($verified){$proof=true;++$proofCount;}
         if(count($checks)<100)$checks[]=['json_pointer'=>'/edges/'.str_replace(['~','/'],['~0','~1'],(string)$index),
             'verified'=>$verified,'failed_fields'=>$reasons];
