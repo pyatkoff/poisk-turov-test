@@ -164,9 +164,9 @@ def run_match_primary_proof_readback(stage):
             or any(type(data.get(k)) is not int or data[k]!=0 for k in ('provider_http_calls','database_writes','mapping_writes'))
             or data.get('safe_to_write_now') is not False): fail('primary_proof_authority')
     expected={
-        420:('9501','operator_342','24402','hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1','1d10e02a1a541a242b7466b3eab99887203c005ee270469f2c351179a3387faa'),
-        16944:('2000034238','operator_315','211585','hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1','8e42b3e76cdef4075f09c9f8da68a8dd3881b93a263b094c88b74cc69b25ce3d'),
-        42903:('3126','operator_315','849821','hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1','11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794'),
+        420:('9501','operator_342','24402','hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4','2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564'),
+        16944:('2000034238','operator_315','211585','hotel-match-residual2041-search30-common4-1971-20260921-v3','76c740c4efbb95a2c2c44fd7fe69ecea30b5091c0e17dfec2bb4cf30da75cea2'),
+        42903:('3126','operator_315','849821','hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4','2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564'),
     }
     rows=data.get('rows')
     if not isinstance(rows,list) or len(rows)!=3: fail('primary_proof_rows')
