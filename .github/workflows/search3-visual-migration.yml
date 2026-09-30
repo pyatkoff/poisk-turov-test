@@ -46,6 +46,7 @@ jobs:
           node tests/search3-visual-flight-filter-work.cjs
           node tests/search3-visual-results-rendering.cjs
           node tests/search3-visual-offer-list-lazy.cjs
+          node tests/search3-visual-hotel-details-lazy.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
   visual-migration:
@@ -79,7 +80,10 @@ jobs:
           node tests/search3-visual-event-dispatch.cjs
           node tests/search3-visual-modal-history.cjs
           node tests/search3-visual-offer-list-lazy.cjs
+          node tests/search3-visual-hotel-details-lazy.cjs
+          node tests/search3-visual-hotel-details-rendering.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
           node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
