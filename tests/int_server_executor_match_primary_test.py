@@ -147,4 +147,93 @@ class PrimaryRegistrationTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):ns['run_match_primary_candidate'](Path(tmp)/'stage')
                 run.assert_not_called()
 
+    def proof_command(self):
+        return self.core.PREFIX+SOURCE+' '+registration.READBACK_MODE+' '+OP.replace('samo3-20260929','proof-readback-20261001')+' '+registration.BATCH
+
+    def proof_fixture(self):
+        specs=[(420,'9501','operator_342','24402','hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1','1d10e02a1a541a242b7466b3eab99887203c005ee270469f2c351179a3387faa'),
+               (16944,'2000034238','operator_315','211585','hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1','8e42b3e76cdef4075f09c9f8da68a8dd3881b93a263b094c88b74cc69b25ce3d'),
+               (42903,'3126','operator_315','849821','hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1','11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794')]
+        return dict(state='completed_saved_proof_audit',batch=registration.BATCH,provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,
+                    rows=[dict(zip(['tv_hotel_id','catalog_id','supplier_namespace','native_id','source_operation','source_result_sha256'],s),
+                               safe_to_write_now=False,state='proof_hold',failures=['verified_edge_missing'],proof_matches=0,source_targets=[s[0]],target_natives=[s[3]],
+                               edge_checks=[dict(json_pointer='/edges/0',verified=False,failed_fields=['operator_link_host'])],invalid_edge_rows=0,edge_checks_omitted=0) for s in specs])
+
+    def proof_namespace(self,home):
+        ns=self.handler_namespace(home)
+        ns['payload']=dict(batch=registration.BATCH,maximum_writes=0,provider_http_calls=0)
+        ns['operation']=OP.replace('samo3-20260929','proof-readback-20261001')
+        exec(registration.REMOTE_PROOF_HANDLER,ns)
+        root=home/'.anytoour-match/operations';root.mkdir(parents=True)
+        (home/'.anytoour-match/primary-batch-samo3-20260929.json').write_text('immutable-marker')
+        (root/'retained-proof.json').write_text('immutable-proof')
+        stage=home/'stage';runner=stage/registration.PROOF_SOURCE_FILES[-1]
+        runner.parent.mkdir(parents=True);runner.write_text('<?php // fixture')
+        return ns,stage,root,runner
+
+    def test_proof_command_zero_authority_and_no_collector(self):
+        command=self.core.parse_command(self.proof_command())
+        self.assertEqual(command['maximum_writes'],0)
+        bad=dict(command,maximum_writes=3)
+        with self.assertRaises(ValueError):registration.activate(self.core,bad)
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+        registration.activate(self.core,command)
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        self.assertEqual(self.core.FIXED,self.old_files+list(registration.PROOF_SOURCE_FILES))
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+                and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.READBACK_MODE)))
+        entry=load('proof_stock_entry','scripts/deploy/int_server_executor_anex_secret_transport.py')
+        self.assertNotIn(registration.READBACK_MODE,entry.DIRECT_ANEX_MODES)
+        self.assertNotIn(registration.READBACK_MODE,entry.SUPPLIER_SLOT_MODES)
+        for extra in [' /tmp/path',' supplier=1',' 4']:
+            with self.assertRaises(ValueError):self.core.parse_command(self.proof_command()+extra)
+
+    def test_proof_read_does_not_create_child_or_touch_batch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);ns,stage,root,runner=self.proof_namespace(home)
+            def snapshot():return {str(p.relative_to(home)):p.read_bytes() for p in (home/'.anytoour-match').rglob('*') if p.is_file()}
+            before=snapshot();data=self.proof_fixture()
+            def child(argv,**kwargs):
+                self.assertEqual(argv,['php','-d','display_errors=0','-d','log_errors=0',str(runner),'--read-saved',str(root)])
+                self.assertLessEqual(set(kwargs['env']),{'PATH','HOME','LANG','LC_ALL'})
+                self.assertNotIn('MATCH_OPERATION_DIR',kwargs['env'])
+                return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
+            with patch.dict(os.environ,{'ANEX_API_TOKEN':'fixture-secret','DB_PASSWORD':'fixture-secret'}),patch.object(subprocess,'run',side_effect=child) as run:
+                self.assertEqual(ns['run_match_primary_proof_readback'](stage),data)
+                self.assertEqual(run.call_count,1)
+            self.assertEqual(snapshot(),before)
+            self.assertFalse((root/ns['operation']).exists())
+
+    def test_proof_rejects_widened_or_secret_projection(self):
+        mutations=[lambda d:d.update(mapping_writes=1),lambda d:d.update(database_writes=True),lambda d:d.update(provider_http_calls=1),
+                   lambda d:d['rows'].append(copy.deepcopy(d['rows'][0])),lambda d:d['rows'][0].update(tv_hotel_id=421),
+                   lambda d:d['rows'][0].update(native_id='999'),lambda d:d['rows'][0].update(source_result_sha256='a'*64),
+                   lambda d:d['rows'][0].update(operatorLink='fixture-secret'),lambda d:d['rows'][0]['edge_checks'][0].update(raw='fixture-secret'),
+                   lambda d:d['rows'][0]['edge_checks'][0].update(json_pointer='fixture-secret'),lambda d:d['rows'][0].update(safe_to_write_now=True)]
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.proof_namespace(Path(tmp))
+            for mutate in mutations:
+                data=self.proof_fixture();mutate(data)
+                with patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')):
+                    with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
+            ns['payload']['maximum_writes']=3
+            with patch.object(subprocess,'run') as run:
+                with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
+                run.assert_not_called()
+
+    def test_proof_missing_inputs_are_a_read_result_not_write_authority(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.proof_namespace(Path(tmp));data=self.proof_fixture()
+            for row in data['rows']:
+                for key in ('proof_matches','source_targets','target_natives','edge_checks','invalid_edge_rows','edge_checks_omitted'):del row[key]
+                row.update(state='producer_unavailable',failures=['retained_file'])
+            with patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')):
+                self.assertEqual(ns['run_match_primary_proof_readback'](stage),data)
+            root.rename(root.with_name('retired'));root.symlink_to(root.with_name('retired'),target_is_directory=True)
+            with patch.object(subprocess,'run') as run:
+                with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
+                run.assert_not_called()
+
 if __name__=='__main__':unittest.main()
