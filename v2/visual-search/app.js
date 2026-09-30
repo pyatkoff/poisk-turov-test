@@ -34,13 +34,22 @@ const scrollBehavior=()=>matchMedia('(prefers-reduced-motion: reduce)').matches?
 const icon = n => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${paths[n]||paths.check}</svg>`;
 const hydrate = () => $$('[data-icon]').forEach(el=>{el.outerHTML=icon(el.dataset.icon)});
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money = n => Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽';
-const shortMoney = n => (n/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})+' тыс.';
+// Reuse presentation formatters across cards and calendar cells.
+const amountFormatter=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2});
+const shortAmountFormatter=new Intl.NumberFormat('ru-RU',{maximumFractionDigits:1});
+const ratingFormatter=new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1});
+const dayFormatter=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'});
+const fullDayFormatter=new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+const monthFormatter=new Intl.DateTimeFormat('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'});
+const money = n => amountFormatter.format(Number(n))+' ₽';
+const shortAmount = n => shortAmountFormatter.format(n/1000);
+const shortMoney = n => shortAmount(n)+' тыс.';
 const dateObj = s=>new Date(s+'T12:00:00Z');
 const iso = d=>d.toISOString().slice(0,10);
 const addDays = (s,n)=>iso(new Date(dateObj(s).getTime()+n*86400000));
-const dateText = s=>dateObj(s).toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).replace('.','');
-const dateLong = s=>dateObj(s).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+const formatDate=(formatter,date)=>Number.isNaN(date.getTime())?'Invalid Date':formatter.format(date);
+const dateText = s=>formatDate(dayFormatter,dateObj(s)).replace('.','');
+const dateLong = s=>formatDate(fullDayFormatter,dateObj(s));
 const flightDateText = s=>{const raw=String(s||'');const iso=/^\d{8}$/.test(raw)?`${raw.slice(0,4)}-${raw.slice(4,6)}-${raw.slice(6,8)}`:raw;return /^\d{4}-\d{2}-\d{2}$/.test(iso)&&!Number.isNaN(dateObj(iso).getTime())?dateText(iso):raw||'Дата уточняется';};
 const rangeText = (a,b)=>a===b?dateText(a):`${dateText(a)} — ${dateText(b)}`;
 const nightsText = n=>`${n} ${n%10===1&&n!==11?'ночь':n%10>=2&&n%10<=4&&(n<12||n>14)?'ночи':'ночей'}`;
@@ -92,7 +101,7 @@ let searchResponse={key:'',phase:'complete',operators:[...operators],pending:fal
 const searchKey=s=>JSON.stringify([s.origin,s.country,s.from,s.to,s.minNights,s.maxNights,s.adults,s.ages]);
 const responseFor=s=>searchResponse.key===searchKey(s)?searchResponse:{phase:'complete',operators,pending:false};
 const ratingValue=h=>Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;
-const ratingText=h=>ratingValue(h)===null?'—':ratingValue(h).toLocaleString('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1});
+const ratingText=h=>ratingValue(h)===null?'—':ratingFormatter.format(ratingValue(h));
 function hotelStarsHTML(h){const stars=Number(h?.stars);if(!Number.isInteger(stars)||stars<1||stars>5)return'';const label=stars===1?'1 звезда':stars<5?stars+' звезды':stars+' звёзд';return `<div class="hotel-stars" aria-label="${label}">${'★'.repeat(stars)}</div>`;}
 const guestsText=(s=state.search)=>`${s.adults} взр.${s.ages.length?' + '+s.ages.length+' реб.':''}`;
 const durationText=(s=state.search)=>s.minNights===s.maxNights?nightsText(s.minNights):`${s.minNights}–${s.maxNights} ночей`;
@@ -1131,10 +1140,10 @@ function refreshCalendarPriceCache(){
 }
 function calendarPrice(day){return datePrices.get(day)??null;}
 function monthFrame(month){
- const date=dateObj(month),first=(date.getUTCDay()+6)%7,count=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate(),heading=date.toLocaleDateString('ru-RU',{month:'long',year:'numeric',timeZone:'UTC'});
+ const date=dateObj(month),first=(date.getUTCDay()+6)%7,count=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate(),heading=formatDate(monthFormatter,date);
  const prices=Array.from({length:count},(_,i)=>{const d=month.slice(0,8)+String(i+1).padStart(2,'0');return d>=startDay&&d<=endDay?calendarPrice(d):null}),cheapest=Math.min(...prices.filter(p=>p!==null));
  let days='<span></span>'.repeat(first);
- for(let n=1;n<=count;n++){const day=month.slice(0,8)+String(n).padStart(2,'0'),valid=day>=startDay&&day<=endDay,price=prices[n-1];days+=`<button class="month-day ${price!==null&&price===cheapest?'is-cheap':''}" data-action="day-pick" data-date="${day}" ${!valid?'disabled':''} aria-label="${dateLong(day)}${price!==null?', от '+money(price):valid?', цена пока неизвестна':''}"><span>${n}</span><small>${price!==null?(price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1}):valid?'—':''}</small></button>`;}
+ for(let n=1;n<=count;n++){const day=month.slice(0,8)+String(n).padStart(2,'0'),valid=day>=startDay&&day<=endDay,price=prices[n-1];days+=`<button class="month-day ${price!==null&&price===cheapest?'is-cheap':''}" data-action="day-pick" data-date="${day}" ${!valid?'disabled':''} aria-label="${dateLong(day)}${price!==null?', от '+money(price):valid?', цена пока неизвестна':''}"><span>${n}</span><small>${price!==null?shortAmount(price):valid?'—':''}</small></button>`;}
  return `<section class="calendar-month" data-month="${month}"><h3>${heading.charAt(0).toUpperCase()+heading.slice(1)}</h3><div class="month-grid">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span class="weekday">${d}</span>`).join('')}${days}</div></section>`;
 }
 function renderDateCalendar(){
@@ -2175,7 +2184,7 @@ function refreshCalendarPrices(){
  refreshCalendarPriceCache();
  $$('#date-calendar .calendar-month').forEach(month=>{
   const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=Math.min(...prices.filter(p=>p!==null));
-  cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':(price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1});b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
+  cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':shortAmount(price);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
  });
  renderDateSelectionPrice();
 }
