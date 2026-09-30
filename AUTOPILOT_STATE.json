@@ -1285,19 +1285,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3: per-axis OTA acceptance after completed technical preparation",
+    "title": "Search3 NEXT: behavior-preserving refactor pass; optimization follows",
     "status": "ACTIVE_OWNER_AUTHORIZED",
     "issue": 1646,
     "coordinator_issue": 3419,
     "pr": null,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner 2026-09-23: complete the new bounded prototype-specific Search3 refactor pass without replaying old #2423, then reconcile the exact LOCAL-preview predecessor, publish the accumulated checked Search3 source through the guarded updater, perform live target acceptance, and continue the functional SEARCH roadmap. Do not open another refactor pass without new defect/dependency evidence.",
-    "last_fully_checked_release_sha": "fb066b0eec80017507a4fe586af6ffc9d8dca425",
-    "published_source_sha": "74d17728478691e4c87f99f160a85934f4c361da",
-    "acceptance_status": "FUNCTIONAL_ACCUMULATION_PUBLISHED_HTTP_READBACK_GREEN_INTERACTIVE_LIVE_ACCEPTANCE_OPEN",
-    "next_action": "Accumulated functional Search3 update is installed in the isolated LOCAL preview. Command5790501295 / run35829449669 is terminal SUCCESS/no-replay: source 74d17728478691e4c87f99f160a85934f4c361da, release fb066b0eec80017507a4fe586af6ffc9d8dca425, predecessor f78668ba3fb74615b34ed5f1a4737dce5d1c2500; routes200=9, canonical200, lead403, supplier_searches0, real_leads0, production/sibling unchanged, rollback retained. Installed behavior includes disabled canonical-submit fail-closed, truthful current-search ANEX/Andromeda price provenance, and visible LOCAL readiness states. Do NOT repeat this publisher. Continue highest-priority functional #1646 from fresh claims/release; active claim5790142651 owns data.js/source-receipt LOCAL accounting until released. Fresh interactive target click-through/physical Safari remains not_measured because the public browser reader in this session cannot access the target. Do not reopen either completed refactor pass without new defect evidence.",
-    "audit": "ARCHITECTURE.md#search3-prototype-ownership"
+    "owner_request": "Owner 2026-09-30: «Делай именно refactor pass. На данный момент упор именно на него. Потом на оптимизацию скриптов всех». After detailed NEXT target audit, owner instructed «давай делать». Continue the current bounded behavior-preserving pass; optimization follows as a separate phase. Preserve protected contracts and production gate.",
+    "last_fully_checked_release_sha": "fb2ef5d736b80027432c9465e2d1fc9f15f14bfd",
+    "published_source_sha": "cb47476cb56182dd20c8a109a69eef37b288999b",
+    "acceptance_status": "REFACTOR_P5_P7_PUBLISHED_NEXT_P8_CI_CHECKED_FULL_PASS_ACTIVE",
+    "next_action": "Continue the actual result/filter/date rendering and context boundaries in LIVE visual-search/app.js from fresh release/claims with before/after characterization. P1–P7 are installed in NEXT; P8 CI dependency closure is merged. Latest installation: sourcecb47476cb56182dd20c8a109a69eef37b288999b, releasebcefc0e1cf6344337fcafaf63adc18adca660c17, command5907449550, publisher36690902732, deployment artifact11086040981:833files,36visual assets,9routes200,lead403,counter0,previous e2f9 retained, production/sibling unchanged, supplier searches0/real leads0. Public browser app hash74f5fbd18011 and no-search guest age0/close/focus spot check confirmed; physical Safari/fresh suppliers remain unverified. All source/workflow/publisher claims released. Do not replay the publisher, old LOCAL commands/claims or completed P1–P8. Full refactor is still active; optimization starts only after it. Gallery-header and SAMO mobile-form defects are separate bug packets; protected manager-inquiry contract is not authorized by this refactor.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5907610322"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
