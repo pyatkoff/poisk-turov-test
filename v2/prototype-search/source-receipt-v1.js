@@ -114,9 +114,8 @@
     const host = document.getElementById('results');
     if (host) host.dataset.searchReceipt = JSON.stringify(receipt);
   };
-  const originalSearch = source.search;
-  const wrappedSearch = function(search, callback, ...args) {
-    const receipt = {
+  const createReceiptState = () => ({
+    receipt: {
       schemaVersion: 1,
       phase: 'loading',
       providers: {},
@@ -124,52 +123,63 @@
       union: null,
       dedupe: null,
       projection: {hotels: 0, offers: 0}
-    };
-    let projectedUnion = null, terminalSeen = false;
-    write(receipt);
-    return originalSearch.call(this, search, event => {
-      if (event && typeof event === 'object') {
-        if (event.type === 'loading') receipt.phase = 'loading';
-        if (event.type === 'results') {
-          const snapshot = resultSnapshot(event);
-          receipt.projection = snapshot.projection;
-          projectedUnion = snapshot.union;
-          receipt.union = snapshot.union;
-          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
-        }
-        if (event.type === 'provider' && safeKey(event.provider)) {
-          const provider = cleanSource(event);
-          receipt.providers[event.provider] = provider.status || 'loading';
-          if (terminalSeen) {
-            receipt.sources[event.provider] = provider;
-            receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
-          }
-        }
-        if (event.type === 'database' && terminalSeen) {
-          const database = cleanSource(event);
-          receipt.sources.database = database;
-          if (database.status) receipt.providers.database = database.status;
-          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
-        }
-        if (event.type === 'database-error' && terminalSeen) {
-          const database = cleanSource({...event, status:'error'});
-          receipt.sources.database = database;
-          receipt.providers.database = 'error';
-          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
-        }
-        if (event.type === 'complete') {
-          receipt.phase = event.partial === true ? 'partial' : 'complete';
-          receipt.sources = cleanSources(event.sources);
-          for (const [provider, row] of Object.entries(receipt.sources)) {
-            if (row.status) receipt.providers[provider] = row.status;
-          }
-          receipt.union = projectedUnion || cleanUnion(event.union);
-          receipt.dedupe = dedupeSnapshot(receipt.sources, receipt.union);
-          terminalSeen = true;
-        }
-        if (event.type === 'error') receipt.phase = 'error';
+    },
+    projectedUnion: null,
+    terminalSeen: false
+  });
+  const refreshDedupe = state => {
+    state.receipt.dedupe = dedupeSnapshot(state.receipt.sources, state.receipt.union);
+  };
+  const applyReceiptEvent = (state, event) => {
+    if (!event || typeof event !== 'object') return;
+    const receipt = state.receipt;
+    if (event.type === 'loading') receipt.phase = 'loading';
+    if (event.type === 'results') {
+      const snapshot = resultSnapshot(event);
+      receipt.projection = snapshot.projection;
+      state.projectedUnion = snapshot.union;
+      receipt.union = snapshot.union;
+      refreshDedupe(state);
+    }
+    if (event.type === 'provider' && safeKey(event.provider)) {
+      const provider = cleanSource(event);
+      receipt.providers[event.provider] = provider.status || 'loading';
+      if (state.terminalSeen) {
+        receipt.sources[event.provider] = provider;
+        refreshDedupe(state);
       }
-      write(receipt);
+    }
+    if (event.type === 'database' && state.terminalSeen) {
+      const database = cleanSource(event);
+      receipt.sources.database = database;
+      if (database.status) receipt.providers.database = database.status;
+      refreshDedupe(state);
+    }
+    if (event.type === 'database-error' && state.terminalSeen) {
+      const database = cleanSource({...event, status:'error'});
+      receipt.sources.database = database;
+      receipt.providers.database = 'error';
+      refreshDedupe(state);
+    }
+    if (event.type === 'complete') {
+      receipt.phase = event.partial === true ? 'partial' : 'complete';
+      receipt.sources = cleanSources(event.sources);
+      for (const [provider, row] of Object.entries(receipt.sources)) {
+        if (row.status) receipt.providers[provider] = row.status;
+      }
+      receipt.union = state.projectedUnion || cleanUnion(event.union);
+      refreshDedupe(state);
+      state.terminalSeen = true;
+    }
+    if (event.type === 'error') receipt.phase = 'error';
+  };
+  const originalSearch = source.search;
+  const wrappedSearch = function(search, callback, ...args) {
+    const state = createReceiptState();
+    write(state.receipt);
+    return originalSearch.call(this, search, event => {
+      applyReceiptEvent(state, event);
+      write(state.receipt);
       return callback(event);
     }, ...args);
   };
