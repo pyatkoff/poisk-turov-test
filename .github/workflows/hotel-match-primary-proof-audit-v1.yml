@@ -1,0 +1,22 @@
+name: MATCH saved primary proof audit v1 (offline)
+on:
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_primary_proof_audit_v1.php
+      - scripts/diagnostics/hotel_match_primary_candidate_v1.php
+      - scripts/diagnostics/hotel_match_raw_native_pending11_v78.php
+      - scripts/diagnostics/hotel_match_pending8_transition_v76.php
+      - tests/hotel_match_primary_proof_audit_v1_test.php
+      - .github/workflows/hotel-match-primary-proof-audit-v1.yml
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring
+      - run: php tests/hotel_match_primary_proof_audit_v1_test.php
