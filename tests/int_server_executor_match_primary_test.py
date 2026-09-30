@@ -236,4 +236,21 @@ class PrimaryRegistrationTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
                 run.assert_not_called()
 
+    def test_origin_inventory_is_bounded_and_sanitized(self):
+        data=self.proof_fixture()
+        ref=dict(source_operation='hotel-match-fixture',file='tv-edge-420-43.json',sha256='a'*64,json_pointer='',verified=True,failed_fields=[])
+        data['origin_lookup']=dict(state='completed_bounded_inventory',files_read=1,bytes_read=256,skipped_large_files=0,invalid_files=0,
+                                   rows=[dict(tv_hotel_id=i,references=[ref] if i==420 else []) for i in (420,16944,42903)])
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.proof_namespace(Path(tmp))
+            with patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')):
+                self.assertEqual(ns['run_match_primary_proof_readback'](stage),data)
+            for mutate in [lambda d:d['origin_lookup'].update(bytes_read=536870913),
+                           lambda d:d['origin_lookup']['rows'][0]['references'][0].update(raw='fixture-secret'),
+                           lambda d:d['origin_lookup']['rows'][0]['references'][0].update(file='../result.json'),
+                           lambda d:d['origin_lookup']['rows'][0].update(tv_hotel_id=421)]:
+                bad=copy.deepcopy(data);mutate(bad)
+                with patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(bad),stderr='')):
+                    with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
+
 if __name__=='__main__':unittest.main()
