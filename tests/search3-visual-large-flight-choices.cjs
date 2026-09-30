@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),vm=require('node:vm');
 const {execFileSync}=require('node:child_process'),{chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
-const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/';
+const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/';
 const flightRef=i=>'flight_'+(i+1).toString(16).padStart(32,'0');
 function choices(seed,count=132){return Array.from({length:count},(_,i)=>({...seed[i<count/2?0:1],name:'TEST SAMO '+(i<count/2?'OUT':'BACK')+' '+(i+1),flight_ref:flightRef(i)}));}
 function parserChecks(){

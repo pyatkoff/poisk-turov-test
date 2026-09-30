@@ -8,6 +8,7 @@ on:
       - 'scripts/build/search3_assets.py'
       - 'scripts/build/search3-js/**'
       - 'tests/search3-js-compaction.cjs'
+      - 'tests/search3-visual-asset-size.cjs'
       - 'tests/search3-andromeda-provider.cjs'
       - 'tests/search3-andromeda-provider-config.php'
       - 'tests/search3-css-printing.cjs'
@@ -142,6 +143,8 @@ jobs:
           cp "$payload/index.php" "$payload/search-page-v2.php"
           cp "$payload/home-entry-v1.php" "$payload/index.php"
           python3 -B scripts/build/search3_site_preview_isolation.py "$payload"
+          node scripts/build/search3-js/visual-entry.cjs "$payload"
+          node tests/search3-visual-asset-size.cjs "$payload"
 
           cat > "$payload/.htaccess" <<'HTACCESS'
           Options -Indexes

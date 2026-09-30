@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
+      - 'scripts/build/search3-js/**'
       - 'v2/prototype-search/config.js'
       - 'v2/runtime-v3.js'
       - 'v2/lead-search-context.js'
@@ -61,6 +62,12 @@ jobs:
           node-version: '22'
       - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
       - run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Build the exact compiled visual fixture graph
+        run: |
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          cp -a v2 "$RUNNER_TEMP/visual-compiled"
+          node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
+          node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
@@ -74,7 +81,7 @@ jobs:
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
           node tests/search3-visual-anex-flight-continuation.cjs
-          node tests/search3-visual-live-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
           php -l v2/visual-search/index.php

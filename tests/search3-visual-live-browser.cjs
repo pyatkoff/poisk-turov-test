@@ -40,7 +40,7 @@ const mobileQuickFieldLayout=async(page,width)=>{
   assert(boxes.value.right<=boxes.field.right,'budget value stays inside its field');
  }finally{await page.setViewportSize({width,height:900});}
 };
-const root=path.resolve(__dirname,'../v2'),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
+const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
 const settledHotelScroll=page=>page.locator('#modal-body').evaluate(async el=>{
