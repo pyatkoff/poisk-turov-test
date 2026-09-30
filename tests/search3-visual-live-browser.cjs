@@ -49,7 +49,7 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  await summary.locator('[data-action="budget"]').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');await page.locator('[data-action="apply-budget"]').click();
  await summary.locator('[data-action="meals"]').click();await page.locator('[data-meal-choice][value=""]').check();await page.locator('[data-action="apply-meals"]').click();
  await summary.locator('[data-action="filters"]').first().click();if(!await star.isVisible())await page.locator('.filter-group').filter({has:page.locator('[data-action="star"]')}).locator('.filter-section-toggle').click();await star.click();if(width<=1100)await page.locator('#apply-filters').click();
- assert.match(await summary.locator('[data-action="filters"]').first().textContent(),/Любая категория/);assert.match(await summary.locator('[data-action="meals"]').textContent(),/Любое/);assert.match(await summary.locator('[data-action="budget"]').textContent(),/Без ограничений/);
+ assert.equal(await summary.locator('[data-action="filters"]').first().textContent(),'ЗвёздыЛюбая');assert.match(await summary.locator('[data-action="filters"]').first().getAttribute('aria-label'),/Любая категория/);assert.match(await summary.locator('[data-action="meals"]').textContent(),/Любое/);assert.match(await summary.locator('[data-action="budget"]').textContent(),/Без ограничений/);
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'summary edits never repeat supplier search');
 };
 const contactLayout=async(page,width,provider)=>{
