@@ -38,6 +38,30 @@ foreach(PM1_PAIRS as $id=>$spec){
     ppcheck($run($many)['failures']===['source_target_not_unique'],'conflict_after_projection_cap');
 }
 $dir=sys_get_temp_dir().'/pp1-'.bin2hex(random_bytes(8));mkdir($dir,0700);
+foreach(PM1_PAIRS as $id=>$spec){
+    $detail=$id!==16944;
+    $url='https://'.($spec['operator']===25?'b2b.fstravel.com':'searchtour.intourist.ru').'/search?HOTELS='.$spec['native'];
+    $legacy=['tv_hotel_id'=>$id,'operator_id'=>$spec['operator'],'state'=>'detail_identity_verified','link_state'=>'captured_single_native',
+        'positive_native_candidates'=>[(int)$spec['native']],'operator_link'=>$url,'operator_link_sha256'=>hash('sha256',$url),'tour_id'=>'123456'];
+    if($detail)$legacy+=['target_supplier_namespace'=>$spec['namespace'],'retained_search_id'=>'789','returned_tv_hotel_id'=>$id,'returned_operator_id'=>$spec['operator'],'returned_tour_id'=>'123456'];
+    else $legacy['search_id']='789';
+    ppcheck(!pm1_tv_edge($legacy,$id,$spec),'legacy_originally_rejected');
+    $projection=pm1_tv_projection($legacy,$id,$spec);
+    ppcheck($projection!==null&&pm1_tv_edge($projection,$id,$spec),'legacy_strict_projection');
+    ppcheck(array_intersect(['operator_link','tour_id','search_id'],array_keys($projection))===[],'legacy_raw_fields_removed');
+    ppcheck(pp1_producer(['edges'=>[$legacy]],$id,$spec)['state']==='saved_tv_proof_verified','legacy_reader');
+    foreach(['tv_hotel_id'=>$id+1,'operator_id'=>99,'state'=>'detail_identity_mismatch','link_state'=>'captured_ambiguous_native',
+        'tour_id'=>'0','operator_link_sha256'=>str_repeat('d',64),'namespace'=>'wrong'] as $key=>$value){
+        $bad=$legacy;$bad[$key]=$value;ppcheck(pm1_tv_projection($bad,$id,$spec)===null,'legacy_mutation_'.$key);
+    }
+    foreach(['https://evil.example/search?HOTELS='.$spec['native'],$url.'&HOTELS='.$spec['native'],$url.'&session=secret',$url.'#fragment'] as $badUrl){
+        $bad=$legacy;$bad['operator_link']=$badUrl;$bad['operator_link_sha256']=hash('sha256',$badUrl);
+        ppcheck(pm1_tv_projection($bad,$id,$spec)===null,'legacy_origin_guard');
+    }
+    $badSpec=$spec;$badSpec['producer_sha']=str_repeat('a',64);ppcheck(pm1_tv_projection($legacy,$id,$badSpec)===null,'legacy_wrong_pin');
+    $bad=$legacy;$bad[$detail?'retained_search_id':'search_id']='0';ppcheck(pm1_tv_projection($bad,$id,$spec)===null,'legacy_bad_search');
+    if($detail){$bad=$legacy;$bad['returned_tour_id']='999';ppcheck(pm1_tv_projection($bad,$id,$spec)===null,'legacy_returned_identity');}
+}
 $before=scandir($dir);$r=pp1_saved($dir);
 ppcheck(scandir($dir)===$before,'no_files_created');
 ppcheck(count($r['rows'])===3&&array_column($r['rows'],'state')===array_fill(0,3,'producer_unavailable'),'exact_missing_scope');

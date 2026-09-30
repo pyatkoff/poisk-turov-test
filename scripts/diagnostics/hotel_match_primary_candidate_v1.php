@@ -13,14 +13,14 @@ const PM1_LEDGER_OP = 'hotel-match-request-ledger-1971-20260928-v93';
 const PM1_LEDGER_SHA = '8da64bc3ac54d707d335b8808b171f46a02ba0464536681bc40b741136df935c';
 const PM1_PAIRS = [
     420 => ['catalog'=>'9501','namespace'=>'operator_342','native'=>'24402','operator'=>43,
-        'producer'=>'hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1',
-        'producer_sha'=>'1d10e02a1a541a242b7466b3eab99887203c005ee270469f2c351179a3387faa'],
+        'producer'=>'hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4',
+        'producer_sha'=>'2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564'],
     16944 => ['catalog'=>'2000034238','namespace'=>'operator_315','native'=>'211585','operator'=>25,
-        'producer'=>'hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1',
-        'producer_sha'=>'8e42b3e76cdef4075f09c9f8da68a8dd3881b93a263b094c88b74cc69b25ce3d'],
+        'producer'=>'hotel-match-residual2041-search30-common4-1971-20260921-v3',
+        'producer_sha'=>'76c740c4efbb95a2c2c44fd7fe69ecea30b5091c0e17dfec2bb4cf30da75cea2'],
     42903 => ['catalog'=>'3126','namespace'=>'operator_315','native'=>'849821','operator'=>25,
-        'producer'=>'hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1',
-        'producer_sha'=>'11408e926160b87a10ffdf04ebb56106f17fb7efc30f95611033a5cb427dc794'],
+        'producer'=>'hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4',
+        'producer_sha'=>'2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564'],
 ];
 
 function pm1_operation(string $operation): bool {
@@ -71,6 +71,45 @@ function pm1_tv_edge(array $e,int $id,array $spec): bool {
     }
     return ($e['operator_link_host']??'')===($spec['operator']===25?'b2b.fstravel.com':'searchtour.intourist.ru');
 }
+/** Project only the two hash-pinned legacy producers; do not weaken pm1_tv_edge. */
+function pm1_tv_projection(array $edge,int $id,array $spec): ?array {
+    if(pm1_tv_edge($edge,$id,$spec))return $edge;
+    $legacy=$spec['producer']??'';
+    $detail=$legacy==='hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4'
+        &&($spec['producer_sha']??'')==='2534eebc2a8b0ba79dbf32dedda165c7e87da609284b25c5209c04747624e564';
+    $search=$legacy==='hotel-match-residual2041-search30-common4-1971-20260921-v3'
+        &&($spec['producer_sha']??'')==='76c740c4efbb95a2c2c44fd7fe69ecea30b5091c0e17dfec2bb4cf30da75cea2';
+    if(!$detail&&!$search)return null;
+    if((int)($edge['tv_hotel_id']??0)!==$id||(int)($edge['operator_id']??0)!==$spec['operator']
+        ||($edge['state']??null)!=='detail_identity_verified'||($edge['link_state']??null)!=='captured_single_native')return null;
+    $ids=$edge['positive_native_candidates']??null;
+    if(!is_array($ids)||!array_is_list($ids)||count($ids)!==1||!is_scalar($ids[0])||(string)$ids[0]!==$spec['native'])return null;
+    if($detail&&($edge['target_supplier_namespace']??null)!==$spec['namespace'])return null;
+    if(isset($edge['namespace'])&&$edge['namespace']!==$spec['namespace'])return null;
+    $tour=$edge['tour_id']??null;$searchId=$edge[$detail?'retained_search_id':'search_id']??null;
+    foreach([$tour,$searchId] as $value)if((!is_int($value)&&!is_string($value))||!preg_match('/^[1-9][0-9]{0,31}$/D',(string)$value))return null;
+    if($detail&&((int)($edge['returned_tv_hotel_id']??0)!==$id
+        ||(int)($edge['returned_operator_id']??0)!==$spec['operator']
+        ||(string)($edge['returned_tour_id']??'')!==(string)$tour))return null;
+    $url=$edge['operator_link']??null;
+    if(!is_string($url)||strlen($url)>8192||!w76_sha($edge['operator_link_sha256']??null)
+        ||!hash_equals($edge['operator_link_sha256'],hash('sha256',$url)))return null;
+    $parts=parse_url($url);$host=$spec['operator']===25?'b2b.fstravel.com':'searchtour.intourist.ru';
+    if(!is_array($parts)||($parts['scheme']??null)!=='https'||($parts['host']??null)!==$host
+        ||isset($parts['user'])||isset($parts['pass'])||isset($parts['fragment'])||isset($parts['port']))return null;
+    $hotels=[];
+    foreach(explode('&',$parts['query']??'') as $pair){
+        [$key,$value]=array_pad(explode('=',$pair,2),2,'');$key=urldecode($key);$value=urldecode($value);
+        if(preg_match('/token|session|password|passwd|secret|authorization|jwt|bearer|sid/i',$key))return null;
+        if(in_array(strtolower($key),['hotels','hotel','hotelid','hotel_id','hotelcode','hotellist'],true))$hotels[]=$value;
+    }
+    if($hotels!==[$spec['native']])return null;
+    $projection=['tv_hotel_id'=>$id,'operator_id'=>$spec['operator'],'namespace'=>$spec['namespace'],
+        'state'=>'detail_identity_verified','link_state'=>'captured_single_native','positive_native_candidates'=>$ids,
+        'operator_link_sha256'=>$edge['operator_link_sha256'],'operator_link_host'=>$host,
+        'tour_id_sha256'=>hash('sha256',(string)$tour),'search_id_sha256'=>hash('sha256',(string)$searchId)];
+    return pm1_tv_edge($projection,$id,$spec)?$projection:null;
+}
 function pm1_prepare(string $root): array {
     $native=pm1_terminal($root,PM1_NATIVE_OP,PM1_NATIVE_SHA,['completed_retained_native_scan']);
     $ledger=pm1_terminal($root,PM1_LEDGER_OP,PM1_LEDGER_SHA,['completed_read_only_request_ledger']);
@@ -113,7 +152,8 @@ function pm1_prepare(string $root): array {
                     if($external===$n)$targets[$other]=true;
                     if($other===$id)$lanes[$external]=true;
                 }
-                if(pm1_tv_edge($edge,$id,$spec))$proof=['kind'=>'independent_tv_audit','row'=>$edge,
+                $projected=pm1_tv_projection($edge,$id,$spec);
+                if($projected!==null)$proof=['kind'=>'independent_tv_audit','row'=>$projected,
                     'source_operation'=>$spec['producer'],'source_result_sha256'=>$spec['producer_sha'],'json_pointer'=>'/edges/'.$index];
             }
             w76_need($proof!==null && array_keys($targets)===[$id] && array_map('strval',array_keys($lanes))===[$n],
