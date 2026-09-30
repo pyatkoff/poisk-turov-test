@@ -120,7 +120,7 @@ const continueToFlights=async page=>{
   await page.locator('[data-action="apply-flight"]').click();
  }else if(await page.locator('[data-action="retry-flights"]').count()){
   await page.locator('[data-action="retry-flights"]').click();
-  await page.locator('[data-action="choose-flight"]').waitFor();
+  await page.locator('[data-action="apply-flight"]').click();
  }
 };
 const server=http.createServer((req,res)=>{
