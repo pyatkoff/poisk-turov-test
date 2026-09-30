@@ -6,7 +6,7 @@ const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  await summary.locator('[data-action="filters"]').first().click();
- const star=page.locator('#filters [data-action="star"]').first(),value=await star.getAttribute('data-value');await star.click();
+ const star=page.locator('#filters [data-action="star"]').first(),value=await star.getAttribute('data-value');if(!await star.isVisible())await page.locator('.filter-group').filter({has:star}).locator('.filter-section-toggle').click();await star.click();
  if(width<=1100)await page.locator('#apply-filters').click();
  assert.match(await summary.locator('[data-action="filters"]').first().textContent(),new RegExp(value+' ★'),'applied summary displays selected stars');
  await summary.locator('[data-action="meals"]').click();
@@ -26,7 +26,7 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  assert.match(await summary.locator('[data-action="budget"]').textContent(),/200\s*000/,'cancelled budget does not replace the applied value');
  await summary.locator('[data-action="budget"]').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');await page.locator('[data-action="apply-budget"]').click();
  await summary.locator('[data-action="meals"]').click();await page.locator('[data-meal-choice][value=""]').check();await page.locator('[data-action="apply-meals"]').click();
- await summary.locator('[data-action="filters"]').first().click();await page.locator('#filters [data-action="star"]').first().click();if(width<=1100)await page.locator('#apply-filters').click();
+ await summary.locator('[data-action="filters"]').first().click();if(!await star.isVisible())await page.locator('.filter-group').filter({has:star}).locator('.filter-section-toggle').click();await star.click();if(width<=1100)await page.locator('#apply-filters').click();
  assert.match(await summary.locator('[data-action="filters"]').first().textContent(),/Любая категория/);assert.match(await summary.locator('[data-action="meals"]').textContent(),/Любое/);assert.match(await summary.locator('[data-action="budget"]').textContent(),/Без ограничений/);
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'summary edits never repeat supplier search');
 };
