@@ -30,9 +30,9 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourOfferList?.create);
    assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late load does not reopen a closed modal');
    await trigger.click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
+   if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    const room=page.locator('#offer-room');const choices=await room.locator('option').count();assert(choices>1);const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);
    assert.equal(await room.inputValue(),selected);assert(await page.locator('.grouped-offer').count()>0);
-   if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    await page.screenshot({path:path.join(evidence,`offers-${width}.png`)});
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#offer-room').waitFor();assert.equal(await room.inputValue(),selected,'Forward restores the same offer refinement');assert.equal(requests,2);
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,supplier_requests:0,lead_requests:0});
