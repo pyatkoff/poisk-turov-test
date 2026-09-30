@@ -25,7 +25,7 @@ function pp1_edge_failures(array $edge,int $id,array $spec): array {
 }
 
 function pp1_producer(array $producer,int $id,array $spec): array {
-    $targets=[];$natives=[];$checks=[];$proof=false;$invalid=0;
+    $targets=[];$natives=[];$checks=[];$proof=false;$proofCount=0;$relevantCount=0;$invalid=0;
     $edges=$producer['edges']??null;
     if(!is_array($edges))return ['state'=>'proof_hold','failures'=>['producer_edges_missing'],
         'proof_matches'=>0,'source_targets'=>[],'target_natives'=>[],'edge_checks'=>[]];
@@ -38,10 +38,11 @@ function pp1_producer(array $producer,int $id,array $spec): array {
         if($single&&$native===$spec['native'])$targets[$other]=true;
         if($single&&$other===$id)$natives[$native]=true;
         if($other!==$id&&$native!==$spec['native'])continue;
+        ++$relevantCount;
         $reasons=pp1_edge_failures($edge,$id,$spec);
         // The original writer predicate remains the authority, not this explanatory list.
         $verified=$reasons===[]&&pm1_tv_edge($edge,$id,$spec);
-        if($verified)$proof=true;
+        if($verified){$proof=true;++$proofCount;}
         if(count($checks)<100)$checks[]=['json_pointer'=>'/edges/'.str_replace(['~','/'],['~0','~1'],(string)$index),
             'verified'=>$verified,'failed_fields'=>$reasons];
     }
@@ -51,7 +52,7 @@ function pp1_producer(array $producer,int $id,array $spec): array {
     if($targetKeys!==[$id])$failures[]='source_target_not_unique';
     if($nativeKeys!==[$spec['native']])$failures[]='target_native_not_unique';
     return ['state'=>$failures?'proof_hold':'saved_tv_proof_verified','failures'=>$failures,
-        'proof_matches'=>count(array_filter($checks,fn($c)=>$c['verified'])),
+        'proof_matches'=>$proofCount,'edge_checks_omitted'=>max(0,$relevantCount-count($checks)),
         'source_targets'=>$targetKeys,'target_natives'=>array_values(array_filter($nativeKeys,
             fn($n)=>preg_match('/^[1-9][0-9]{0,31}$/D',$n)===1)),
         'invalid_edge_rows'=>$invalid,'edge_checks'=>$checks];

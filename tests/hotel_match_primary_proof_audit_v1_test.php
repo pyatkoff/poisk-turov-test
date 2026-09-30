@@ -32,6 +32,10 @@ foreach(PM1_PAIRS as $id=>$spec){
     ppcheck(!str_contains(w76_json($run([$bad])),'fixture-secret'),'invalid_native_redacted');
     $edge['operatorLink']='https://example.test/?token=fixture-secret';$edge['operator_link_host']='secret-host.invalid';
     ppcheck(!str_contains(w76_json($run([$edge])),'fixture-secret')&&!str_contains(w76_json($run([$edge])),'secret-host'),'secret_redacted');
+    $many=array_fill(0,100,$edge);$many[]=ppfixture($id);$r=$run($many);
+    ppcheck($r['state']==='saved_tv_proof_verified'&&$r['proof_matches']===1&&$r['edge_checks_omitted']===1,'proof_after_projection_cap');
+    $conflict=ppfixture($id);$conflict['tv_hotel_id']=$id+1;$many[]=$conflict;
+    ppcheck($run($many)['failures']===['source_target_not_unique'],'conflict_after_projection_cap');
 }
 $dir=sys_get_temp_dir().'/pp1-'.bin2hex(random_bytes(8));mkdir($dir,0700);
 $before=scandir($dir);$r=pp1_saved($dir);
