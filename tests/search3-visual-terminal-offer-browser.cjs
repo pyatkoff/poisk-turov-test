@@ -12,23 +12,31 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
- try{browser=await chromium.launch({headless:true});for(const width of [390,1280])for(const scenario of ['expired','unavailable','flight-error']){
+ try{browser=await chromium.launch({headless:true});for(const width of [390,1280])for(const scenario of ['expired','unavailable','flight-error','flights']){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],external=[];
   page.on('pageerror',e=>errors.push(e.message));await page.route('**/*',async route=>{if(new URL(route.request().url()).hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')external.push(route.request().url());await route.abort();return;}await route.continue();});
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=${scenario}`);
-   await page.locator('.hotel-card [data-action="offer"]').first().click();await page.locator('[data-action="start-tour-flights"]').click();
+   await page.locator('.hotel-card [data-action="offer"]').first().click();
+   if(scenario==='flights'){
+    await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();
+    await page.getByRole('button',{name:'К деталям тура',exact:true}).click();
+    await page.locator('[data-action="retry-flights"]').click();
+    await page.getByRole('heading',{name:'Выберите перелёт',exact:true}).waitFor();
+    assert.equal(await page.locator('[data-action="apply-flight"]').count(),1,'retry after application opens flight picker directly');
+    await page.screenshot({path:path.join(evidence,`${scenario}-retry-${width}.png`)});
+   }else await page.locator('[data-action="start-tour-flights"]').click();
    if(scenario==='flight-error'){
     await page.locator('[data-action="retry-flights"]').waitFor();assert.equal(await page.locator('[data-action="confirm-tour"]').count(),1,'available tour keeps application after flight failure');
     await page.screenshot({path:path.join(evidence,`${scenario}-${width}.png`)});
     await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
-   }else{
+   }else if(scenario!=='flights'){
     await page.locator('#modal-body .error-text[role="alert"]').waitFor();
     for(const action of ['start-tour-flights','offer-flights','retry-flights','choose-flight','confirm-tour','start-lead'])assert.equal(await page.locator(`#modal [data-action="${action}"]`).count(),0,`${scenario} removes ${action}`);
     assert.equal(await page.locator('#prototype-lead-form').count(),0);assert(!(await page.locator('#modal-body').textContent()).includes('Рейс уточнит менеджер'),'terminal tour removes the optional-flight invitation');
     await page.screenshot({path:path.join(evidence,`${scenario}-${width}.png`)});await page.locator('#modal-footer [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);assert(await page.locator('.hotel-card').first().isVisible(),'terminal tour returns to results');
    }
-   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');receipts.push({width,scenario,terminal_flights_removed:scenario!=='flight-error',available_application_retained:scenario==='flight-error',supplier_requests:0,lead_requests:0});
+   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'no horizontal overflow');receipts.push({width,scenario,terminal_flights_removed:['expired','unavailable'].includes(scenario),available_application_retained:scenario==='flight-error',retry_opens_picker:scenario==='flights',supplier_requests:0,lead_requests:0});
   }finally{await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled terminal offer browser',JSON.stringify(receipts));

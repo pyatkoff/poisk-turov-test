@@ -1248,7 +1248,7 @@ function legHTML(segments,label){
 function flightSummaryHTML(o){
  const v=flightPairFor(o),canChoose=o.variants?.length;
  const action=canChoose?`<button class="secondary" data-action="choose-flight">${v?'Изменить рейсы':'Выбрать рейсы'} ${icon('arrow')}</button>`:o.flightsLoading||o.loading?'':o.tour?'<button class="secondary" data-action="retry-flights">Уточнить рейсы</button>':`<button class="secondary" data-action="start-tour-flights" data-key="${esc(o.key)}">Уточнить рейсы ${icon('arrow')}</button>`;
- const content=o.flightsLoading?'<p role="status">Загружаем варианты рейсов…</p>':v?`${window.AnyTourFlightPickerV18.pairSummary(v,{esc,text:data.text})}<details class="tour-flight-details"><summary>Детали рейсов</summary><div>${legHTML(v.forward,'Туда')+legHTML(v.backward,'Обратно')}</div></details>`:o.savedFlightText&&o.savedFlightText!=='Рейс пока не выбран'?'<p class="saved-flight-notice">Сохранённый перелёт · расписание требует проверки</p>'+savedFlightSummaryHTML(o):`<p class="tour-missing">${esc(o.flightsError||'Рейс можно уточнить сейчас или оставить менеджеру.')}</p>`;
+ const content=o.flightsLoading?'<p role="status">Загружаем варианты рейсов…</p>':v?`${window.AnyTourFlightPickerV18.pairSummary(v,{esc,text:data.text})}<details class="tour-flight-details"><summary>Детали рейсов</summary><div>${legHTML(v.forward,'Туда')+legHTML(v.backward,'Обратно')}</div></details>`:o.flightsLoaded&&!o.variants?.length?`<p class="tour-missing" role="status">${esc(o.flightsError||'Поставщик не передал варианты рейсов. Можно повторить проверку или оставить заявку — рейс уточнит менеджер.')}</p>`:o.savedFlightText&&o.savedFlightText!=='Рейс пока не выбран'?'<p class="saved-flight-notice">Сохранённый перелёт · расписание требует проверки</p>'+savedFlightSummaryHTML(o):`<p class="tour-missing">${esc(o.flightsError||'Рейс можно уточнить сейчас или оставить менеджеру.')}</p>`;
  return `<section class="tour-section flight-summary"><div class="tour-section-heading"><h3>${icon('plane')} Перелёт</h3>${action}</div>${content}</section>`;
 }
 // Only the current, still-open selection may consume an asynchronous response.
@@ -1277,7 +1277,7 @@ async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
 }
 async function openOffer(key,restored=null,chooseFlight=false){
  const initial=restored||offerFromKey(key);if(!initial)return;
- andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial)){if(chooseFlight)openFlightPicker();return;}renderRealOffer();
+ andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial)){if(chooseFlight){if(selectedOffer?.variants?.length)openFlightPicker();else if(modalType==='offer'&&selectedOffer?.tour)await loadRealFlights(run,{chooseFlight:true});}return;}renderRealOffer();
  if(needsRefresh(initial)){
   if(initial.provider==='andromeda'&&data.hasAndromedaQuoteAttempt?.(initial))await refreshHotel(initial.hotelId);
   return;
@@ -1286,16 +1286,17 @@ async function openOffer(key,restored=null,chooseFlight=false){
  selectedOffer.loading=true;renderRealOffer();
  await quoteSelectedOffer(initial,run,{chooseFlight:true});
 }
-async function loadRealFlights(run=selectionGeneration){
+async function loadRealFlights(run=selectionGeneration,{chooseFlight=false}={}){
  const o=selectedOffer;if(!o?.tour)return;
  selectedOffer.flightsLoading=true;renderRealOffer();
  try{
   const variants=await data.flights(o.tour);
   if(!isCurrentOfferRequest(run,o.key))return;
   const index=Math.max(0,variants.findIndex(v=>v.isDefault));
-  selectedOffer={...selectedOffer,variants,flightsLoading:false,flightsError:''};
+  selectedOffer={...selectedOffer,variants,flightsLoaded:true,flightsLoading:false,flightsError:''};
   if(variants.length)selectedOffer=withFlightPair(selectedOffer,String(index));
   renderRealOffer();
+  if(chooseFlight&&variants.length)openFlightPicker();
  }catch(error){
   if(isCurrentOfferRequest(run,o.key)){
    selectedOffer={...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};
@@ -2156,7 +2157,7 @@ async function bootRealData(){
  try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();urlStateHydrated=true;await loadResorts(state.search.country);catalogReady=true;updateSearchUI();renderResults();if(modalType==='destination'){if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');renderCalendarScope();loadCalendarPrices();}await restoreURLHotel();if(!data.live)await restoreSavedHotels();$('#fixture-description').textContent=data.describe();if(data.live){const requestedSearch=new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();}else{state.hasSearched=true;runSearch();}}
  catch(error){catalogError=error.message;$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
 }
-document.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;if(b.dataset.action==='refresh-hotel')refreshHotel(Number(b.dataset.id));if(b.dataset.action==='retry-flights')loadRealFlights();if(b.dataset.action==='retry-catalog')bootRealData();});
+document.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;if(b.dataset.action==='refresh-hotel')refreshHotel(Number(b.dataset.id));if(b.dataset.action==='retry-flights')loadRealFlights(selectionGeneration,{chooseFlight:true});if(b.dataset.action==='retry-catalog')bootRealData();});
 document.addEventListener('error',event=>{const img=event.target;if(img.tagName==='IMG'&&img.classList.contains('hotel-image')){img.closest('.hotel-photos')?.classList.add('photo-unavailable');img.removeAttribute('src');img.alt='Фото пока недоступно';}},true);
 
 async function switchFixture(value){

@@ -60,3 +60,45 @@ assert.notDeepEqual(records(source.replace('o.quoteErrorTerminal===true||','fals
 assert.notDeepEqual(records(source.replace('&&!o.loading&&!o.quoteError&&!o.flightsLoading','&&!o.quoteError&&!o.flightsLoading')),actual,'retained selection guard mutation detected');
 assert.notDeepEqual(records(source.replace("${o.pricePending?'Цена уточняется':money(o.total)}","${money(o.total)}")),actual,'pending price disclosure mutation detected');
 console.log(`PASS offer rendering: ${actual.length} states, original oracle retained with exact terminal-flight delta; actual digest ${digest}; supplier/lead HTTP 0`);
+
+// Execute the actual asynchronous loader against controlled supplier responses.
+// The real transport is never called; stale replies must not replace a new tour.
+async function flightRecovery(){
+ const checkSource=process.env.SEARCH3_FLIGHT_RECOVERY_SOURCE?fs.readFileSync(process.env.SEARCH3_FLIGHT_RECOVERY_SOURCE,'utf8'):source;
+ const summary=checkSource.slice(checkSource.indexOf('function flightSummaryHTML('),checkSource.indexOf('async function quoteSelectedOffer('));
+ const loading=checkSource.slice(checkSource.indexOf('async function openOffer('),checkSource.indexOf('function leadReadyOffer('));
+ function setup(){
+  let resolve,reject;const response=new Promise((a,b)=>{resolve=a;reject=b;}),events=[],modal={open:true};
+  const ctx={selectedOffer:{key:'exact-tour',provider:'tourvisor',tour:{price:115764},total:115764,room:'standard room without balcony',variants:[]},selectionGeneration:7,modalType:'offer',andromedaApplicationDraft:null,
+   data:{flights:()=>{events.push('request');return response;},text:String},$:()=>modal,Math,String,esc,
+   icon:()=>'',flightPairFor:o=>o.variants?.[Number(o.flightChoiceId)]||null,
+   window:{AnyTourFlightPickerV18:{pairSummary:()=>'<pair>'}},legHTML:()=>'',savedFlightSummaryHTML:()=>'',
+   withFlightPair:(o,id)=>({...o,flightChoiceId:id}),renderRealOffer:()=>events.push('render'),openFlightPicker:()=>events.push('picker'),
+   restoreProviderView:()=>true,offerFromKey:()=>ctx.selectedOffer,needsRefresh:()=>false,quoteSelectedOffer:()=>{throw Error('cached quote must not be repeated');}};
+  vm.createContext(ctx);vm.runInContext(summary+loading,ctx);return {ctx,resolve,reject,events,modal};
+ }
+ const success=setup(),pending=success.ctx.loadRealFlights(7,{chooseFlight:true});
+ assert.match(success.ctx.flightSummaryHTML(success.ctx.selectedOffer),/role="status">Загружаем/);
+ assert(!success.ctx.flightSummaryHTML(success.ctx.selectedOffer).includes('data-action="retry-flights"'),'pending request hides retry');
+ success.resolve([{isDefault:true}]);await pending;
+ assert.deepEqual(success.events,['render','request','render','picker'],'explicit retry opens loaded picker once');
+ assert.equal(success.ctx.selectedOffer.total,115764);assert.equal(success.ctx.selectedOffer.room,'standard room without balcony');
+ const passive=setup(),passivePending=passive.ctx.loadRealFlights();passive.resolve([{}]);await passivePending;
+ assert(!passive.events.includes('picker'),'existing passive caller retains its navigation policy');
+ const empty=setup(),emptyPending=empty.ctx.loadRealFlights(7,{chooseFlight:true});empty.resolve([]);await emptyPending;
+ assert(!empty.events.includes('picker'));assert.match(empty.ctx.flightSummaryHTML(empty.ctx.selectedOffer),/role="status">Поставщик не передал варианты рейсов/);
+ assert.match(empty.ctx.flightSummaryHTML(empty.ctx.selectedOffer),/оставить заявку/);assert.match(empty.ctx.flightSummaryHTML(empty.ctx.selectedOffer),/data-action="retry-flights"/);
+ const failure=setup(),failedPending=failure.ctx.loadRealFlights(7,{chooseFlight:true});failure.reject(Error('fixture failure'));await failedPending;
+ assert(!failure.events.includes('picker'));assert.match(failure.ctx.flightSummaryHTML(failure.ctx.selectedOffer),/Не удалось загрузить рейсы/);
+ for(const change of ['generation','closed','application','new-tour']){
+  const stale=setup(),stalePending=stale.ctx.loadRealFlights(7,{chooseFlight:true});
+  if(change==='generation')stale.ctx.selectionGeneration++;if(change==='closed')stale.modal.open=false;
+  if(change==='application')stale.ctx.modalType='lead';if(change==='new-tour')stale.ctx.selectedOffer={key:'another-tour',total:999};
+  const before=JSON.stringify(stale.ctx.selectedOffer);stale.resolve([{}]);await stalePending;
+  assert.equal(JSON.stringify(stale.ctx.selectedOffer),before,change+' ignores late result');assert(!stale.events.includes('picker'));
+ }
+ const cached=setup(),cachedPending=cached.ctx.openOffer('exact-tour',null,true);cached.resolve([{}]);await cachedPending;
+ assert.equal(cached.events.filter(e=>e==='request').length,1);assert.equal(cached.events.filter(e=>e==='picker').length,1,'cached tour with no variants loads and opens picker');
+ console.log('PASS flight recovery: explicit success/empty/error, passive navigation, four stale replies, cached no-variant tour; supplier/lead HTTP 0');
+}
+flightRecovery().catch(error=>{console.error(error);process.exitCode=1;});
