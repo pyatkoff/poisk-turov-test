@@ -132,3 +132,53 @@ function expandedCalendar(source){
  ctx.hotelOffers(hs[1],options);assert.equal(sorts,1,'normal offer consumers remain sorted');
  console.log(`PASS calendar ordering: ${rows.length} expanded price sequences; digest ${hash}; raw membership retained; per-hotel calendar sorts removed, normal sorting retained`);
 }
+
+// Batch facet counts are compared with independent scalar existence counts.
+function facetCountRecords(candidate,checkReference=true){
+ const hs=fixture(),ctx=make(candidate,hs),before=JSON.stringify(hs),rows=[];
+ ctx.mealNames.alias=7;ctx.mealNames.invalid='7';
+ vm.runInContext(candidate.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\n'+section(candidate,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;',ctx);
+ const values={operators:['A','B','missing'],meals:['AI','BB','alias','missing'],flight:['regular','charter','unknown'],resorts:['Кемер','Анталья','missing'],stars:[2,3,4,5,9]};
+ for(const filters of variants)for(const live of [false,true])for(const selectedDate of [null,day(2)])for(const onlyFavorites of [false,true]){
+  ctx.data.live=live;const model={filters:{...defaultFilters(),...filters},selectedDate,onlyFavorites};
+  for(const [group,options]of Object.entries(values)){
+   const actual=ctx.facetCounts(model,group,options);
+   const expected=options.map(value=>hs.filter(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,[group]:[value]},firstOnly:true}).length).length);
+   const counts=options.map(value=>actual.get(value));if(checkReference)assert.deepEqual(counts,expected,'scalar facet counts: '+group);rows.push(counts);
+  }
+ }
+ assert.equal(JSON.stringify(hs),before,'facet counting preserves raw objects and offer order');
+ const model={filters:defaultFilters(),selectedDate:null,onlyFavorites:false};
+ assert.equal(ctx.facetCounts(model,'operators',[]).size,0,'empty options');
+ const nil=make(candidate,[null,undefined]);vm.runInContext(section(candidate,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;',nil);
+ assert.equal(nil.facetCounts(model,'operators',['A']).get('A'),0,'nullable entries retain hotelOffers semantics');
+ assert.equal(ctx.facetCounts(model,'operators',['A','A']).size,1,'duplicate options do not multiply counts');
+ assert.equal(ctx.facetCounts(model,'amenities',['pool']).get('pool'),hs.filter(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,amenities:['pool']},firstOnly:true}).length).length,'fallback keeps original scalar semantics');
+ ctx.data.live=true;assert.equal(ctx.facetCounts(model,'meals',['invalid']).get('invalid'),0,'numeric string is not a canonical meal identity');
+ return rows;
+}
+{
+ const rows=facetCountRecords(source),hash=crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+ assert.equal(hash,'2029aef32f0a35ffeac388a0db3df79d1e1ae2fb31a01cf436c1b80c91de2b52','original scalar facet-count sequences');
+ for(const [from,to]of [['remaining.delete(key);',''],['!remaining.has(key)||!matches(o)','!remaining.has(key)'],['if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;','']]){
+  assert(source.includes(from),'actual facet mutation boundary');
+  assert.notDeepEqual(facetCountRecords(source.replace(from,to),false),rows,'facet predicate/deduplication mutation detected');
+ }
+ // Reuse the same hotel and model after updates: this pass has no persistent cache.
+ const h=fixture()[1],ctx=make(source,[h]),model={filters:defaultFilters(),selectedDate:null,onlyFavorites:false};
+ vm.runInContext(section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;',ctx);
+ const options=['new','A','B'],read=()=>options.map(value=>ctx.facetCounts(model,'operators',options).get(value));
+ assert.deepEqual(read(),[0,1,1]);h.offers.push({...h.offers[2],operator:'new'});
+ assert.deepEqual(read(),[1,1,1],'new response contributions are counted');
+ model.filters.min=Infinity;assert.deepEqual(read(),[0,1,0],'filter edits are recalculated');
+ model.filters.min=0;ctx.state.search.origin='другое';assert.deepEqual(read(),[0,0,0],'new search scope is recalculated');
+ // Deterministic work budget; this is not whole-page or production timing.
+ const hs=Array.from({length:100},(_,i)=>{const h=fixture()[1];return {...h,id:i+1,offers:Array.from({length:1000},(_,j)=>({...h.offers[2],key:i+':'+j,operator:'OP'+(j%40),total:100000+j}))};});
+ const work=make(source,hs),values=Array.from({length:40},(_,i)=>'OP'+i),scope={filters:defaultFilters(),selectedDate:null,onlyFavorites:false};
+ vm.runInContext(section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',work);
+ const original=values.map(value=>hs.filter(h=>work.hotelOffers(h,{...scope,filters:{...scope.filters,operators:[value]},firstOnly:true}).length).length),before=work.ageCalls;
+ work.ageCalls=0;const batched=work.facetCounts(scope,'operators',values),after=work.ageCalls;
+ assert.deepEqual(values.map(value=>batched.get(value)),original);assert.equal(before,86000);assert.equal(after,4100);
+ work.ageCalls=0;const missing=work.facetCounts(scope,'operators',[...values,'missing']);assert.equal(missing.get('missing'),0);assert.equal(work.ageCalls,4100,'already-counted identities do not repeat predicate work');
+ console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication guards; age serializations ${before}->${after}; supplier/lead HTTP 0`);
+}

@@ -10,6 +10,7 @@ function environment(html){const dom=new JSDOM(html);const document=dom.window.d
 function facet(source,s){
  const c=environment('<div id="host"></div>'),selected=s.selected?[0,8,18].filter(v=>v<s.n).map(v=>'v'+v):[],filters={resorts:[],operators:[],meals:[],amenities:[],[s.group]:selected};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:m=>{const value=m.filters[s.group]?.[0];return value?Number(value.slice(1))%4:0;},facetQueries:new Map([[s.group,s.query]]),expandedFacets:new Set(s.expanded?[s.group]:[]),amenityNames:new Map()});
+ c.countFacetOptions=(model,group,values)=>new Map(values.map(value=>[value,c.countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
  vm.createContext(c);vm.runInContext(functions(source,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch','amenityFilterGroups']),c);
  const options=Array.from({length:s.n},(_,i)=>['v'+i,'Вариант '+i+(i===8?' Ёлка <&':'')]);
  c.$('#host').innerHTML=c.checkRows(s.group,options);
@@ -52,3 +53,30 @@ if(source.includes('function filterCheckRowHTML(')){
  const work=destination(source,{query:'hotel',status:'complete',ready:true});assert.equal(work.calls,25,'one query normalization plus one per distinct hotel');
 }
 console.log(`PASS filter/destination presentation: ${actual.length} original DOM/focus observations; digest ${digest}; supplier/lead HTTP 0`);
+
+// Actual DOM callers retain zero counts, checked availability and the any-meal row.
+{
+ const c=environment('<div id="host">'+['zero','yes','checked'].map(value=>'<label class="check-row"><input data-filter="operators" value="'+value+'" '+(value==='checked'?'checked':'')+'><small>99</small></label>').join('')+'<label class="check-row"><input data-filter="amenities" value="pool"><small>99</small></label><label class="check-row"><input data-filter-bool="rating"><small>99</small></label></div>');
+ let scalarCalls=0,batchCalls=0;const filters={operators:[],amenities:[],rating:false};
+ Object.assign(c,{editingFilterModel:()=>({filters}),countFacetOptions:(model,group,values)=>{batchCalls++;return new Map(values.map(value=>[value,value==='yes'?5:0]));},countMatchingHotels:model=>{scalarCalls++;return model.filters.rating?2:model.filters.amenities.includes('pool')?3:99;},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{}});
+ vm.createContext(c);vm.runInContext(functions(source,['updateFacetCounts']),c);c.updateFacetCounts();
+ assert.deepEqual(c.$$('.check-row').map(row=>[row.querySelector('small').textContent,row.dataset.available,row.hidden]),[['0','false',true],['5','true',false],['0','true',false],['3','true',false],['2','true',false]]);
+ assert.equal(batchCalls,1,'one batch per section');assert.equal(scalarCalls,2,'zero batched counts do not fall back');
+ c.dom.window.close();
+}
+{
+ const c=environment('<div id="host">'+['','AI','BB'].map(value=>'<label class="meal-option"><input value="'+value+'"><span class="meal-hotel-count">99</span></label>').join('')+'</div>');let current={filters:{meals:['AI']}};
+ Object.assign(c,{mealPreviewModel:()=>current,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value==='AI'?3:0])),countMatchingHotels:model=>model.filters.meals.length?99:9});
+ vm.createContext(c);vm.runInContext(functions(source,['updateMealCounts']),c);c.updateMealCounts();
+ assert.deepEqual(c.$$('.meal-hotel-count').map(span=>span.textContent),['9','3','0'],'any/known/unavailable meal counts');
+ current=null;c.updateMealCounts();assert.equal(c.$$('.meal-hotel-count').length,0,'new draft has no result counts');
+ c.dom.window.close();
+}
+{
+ const c=environment('<div id="host"></div>'),model={filters:{stars:[4]}};
+ Object.assign(c,{hotels:[{country:'4',stars:2},{country:'4',stars:3}],state:{search:{country:'4'}},countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value===2?5:0]))});
+ vm.createContext(c);vm.runInContext(functions(source,['filterStarButtons']),c);c.$('#host').innerHTML=c.filterStarButtons(model);
+ assert.deepEqual(c.$$('button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','5'],['4','true','0']],'selected unavailable star stays visible');
+ c.dom.window.close();
+}
+console.log('PASS facet DOM callers: batch zero/checked availability, scalar amenities/rating, any-meal/null-draft and selected-star counts');

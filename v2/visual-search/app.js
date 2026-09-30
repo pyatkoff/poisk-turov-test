@@ -168,12 +168,16 @@ function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFav
   &&(!f.rating||ratingValue(h)>=4.5)&&(!f.beach||h.beach!==null&&h.beach<=150)&&(!f.family||h.family)&&(!f.spa||h.spa)
   &&(!onlyFavorites||s.country!==state.search.country||state.favorites.includes(h.id));
 }
+function hotelOfferPredicate(s,f,from,to){
+ const ages=JSON.stringify([...s.ages].sort());
+ return o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===ages&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
+}
 function hotelOffers(h,options={}){
  if(!h)return[];
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
  const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
- const ages=JSON.stringify([...s.ages].sort()),matches=o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===ages&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
+ const matches=hotelOfferPredicate(s,f,from,to);
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
  const offers=(h.offers||[]).filter(matches);
  return options.sort===false?offers:offers.sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
@@ -359,6 +363,40 @@ let filterDraft=null,emptySuggestions=[],drawerSuggestions=[],filterBudgetEdit=n
 const appliedFilterModel=()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate});
 const editingFilterModel=()=>filterDraft||appliedFilterModel();
 const countMatchingHotels=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);
+// Facet counts are per hotel, so stop after each requested identity is found.
+// Keep the inventory local to this pass: later responses and edits recalculate it.
+function countFacetOptions(model,group,values){
+ const counts=new Map(values.map(value=>[value,0]));if(!counts.size)return counts;
+ if(!['meals','operators','flight','resorts','stars'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
+ const filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=group==='resorts'||group==='stars',wanted=new Map();
+ const selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate;
+ const from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to);
+ if(!hotelFacet){
+  for(const value of counts.keys()){
+   const key=group==='meals'&&data.live?mealNames[value]:value;if(group==='meals'&&data.live&&!Number.isSafeInteger(key))continue;
+   if(!wanted.has(key))wanted.set(key,[]);wanted.get(key).push(value);
+  }
+  if(!wanted.size)return counts;
+ }
+ for(const h of hotels){
+  if(!h)continue;
+  if(hotelFacet){
+   if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)continue;
+   const facts=group==='resorts'?hotelPlaces(h):[h.stars];
+   for(const value of new Set(facts))if(counts.has(value))counts.set(value,counts.get(value)+1);
+   continue;
+  }
+  if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;
+  const matches=hotelOfferPredicate(s,filters,from,to),remaining=new Set(wanted.keys());
+  for(const o of h.offers||[]){
+   const key=group==='meals'?(data.live?o.mealPlanId:o.meal):group==='operators'?o.operator:o.flight;
+   if(!remaining.has(key)||!matches(o))continue;
+   for(const value of wanted.get(key))counts.set(value,counts.get(value)+1);
+   remaining.delete(key);if(!remaining.size)break;
+  }
+ }
+ return counts;
+}
 const hotelCountText=n=>`${n} ${n%10===1&&n%100!==11?'отель':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'отеля':'отелей'}`;
 function filterChipData(model=appliedFilterModel()){
  const f=model.filters,chips=[];
@@ -460,7 +498,7 @@ function compareMealLabels(a,b){
  return rank(a)-rank(b)||a.localeCompare(b,'ru');
 }
 function comparePopularFacetOptions(a,b){return b[2]-a[2]||a[1].localeCompare(b[1],'ru');}
-function checkRows(group,options){const model=editingFilterModel(),selected=model.filters[group]||[],ordered=options.map(([val,label],index)=>[val,label,countMatchingHotels({...model,filters:{...model.filters,[group]:[val]}}),index]).sort((a,b)=>group==='meals'?compareMealLabels(a[1],b[1]):['resorts','operators'].includes(group)?comparePopularFacetOptions(a,b):Number(selected.includes(b[0]))-Number(selected.includes(a[0]))||Number(b[2]>0)-Number(a[2]>0)||a[3]-b[3]);if(options.length<=7)return fullCheckRows(group,ordered);const label={resorts:'Найти курорт',operators:'Найти туроператора',meals:'Найти питание'}[group]||'Найти вариант';return `<div class="facet-options" data-facet-options="${group}"><div class="facet-search"><label><span class="sr-only">${label} в списке фильтра</span><input type="search" data-facet-search="${group}" value="${esc(facetQueries.get(group)||'')}" placeholder="${label}" autocomplete="off"></label><button type="button" class="icon-button" data-action="clear-facet-query" aria-label="Очистить поиск в списке" hidden>${icon('x')}</button></div><div class="facet-picked" role="group" aria-label="Выбрано в этом разделе"></div><p class="facet-search-status" aria-live="polite" hidden></p>${fullCheckRows(group,ordered.slice(0,7))}<details class="facet-more" data-facet="${group}" ${expandedFacets.has(group)?'open':''}><summary></summary>${fullCheckRows(group,ordered.slice(7))}</details></div>`;}
+function checkRows(group,options){const model=editingFilterModel(),counts=countFacetOptions(model,group,options.map(([value])=>value)),selected=model.filters[group]||[],ordered=options.map(([val,label],index)=>[val,label,counts.get(val),index]).sort((a,b)=>group==='meals'?compareMealLabels(a[1],b[1]):['resorts','operators'].includes(group)?comparePopularFacetOptions(a,b):Number(selected.includes(b[0]))-Number(selected.includes(a[0]))||Number(b[2]>0)-Number(a[2]>0)||a[3]-b[3]);if(options.length<=7)return fullCheckRows(group,ordered);const label={resorts:'Найти курорт',operators:'Найти туроператора',meals:'Найти питание'}[group]||'Найти вариант';return `<div class="facet-options" data-facet-options="${group}"><div class="facet-search"><label><span class="sr-only">${label} в списке фильтра</span><input type="search" data-facet-search="${group}" value="${esc(facetQueries.get(group)||'')}" placeholder="${label}" autocomplete="off"></label><button type="button" class="icon-button" data-action="clear-facet-query" aria-label="Очистить поиск в списке" hidden>${icon('x')}</button></div><div class="facet-picked" role="group" aria-label="Выбрано в этом разделе"></div><p class="facet-search-status" aria-live="polite" hidden></p>${fullCheckRows(group,ordered.slice(0,7))}<details class="facet-more" data-facet="${group}" ${expandedFacets.has(group)?'open':''}><summary></summary>${fullCheckRows(group,ordered.slice(7))}</details></div>`;}
 function applyFacetSearch(host){
  const group=host.dataset.facetOptions,q=normalizeSearch(facetQueries.get(group)||''),rows=[...host.querySelectorAll('.check-row')].map(row=>({row,input:row.querySelector('input'),label:row.querySelector('span').textContent,count:Number(row.querySelector('small').textContent)})),more=host.querySelector('details'),focused=document.activeElement;
  rows.forEach(({row},i)=>{if(row.dataset.facetOrder===undefined)row.dataset.facetOrder=String(i)});
@@ -512,7 +550,9 @@ function hotelHighlights(h){
 
 
 function syncAvailableFilterGroups(){$$('#filters .filter-group').forEach(group=>{const rows=[...group.querySelectorAll('.check-row')];if(rows.length)group.hidden=rows.every(row=>row.dataset.available!=='true'&&!row.querySelector('input')?.checked);});syncFilterSections();}
-function updateFacetCounts(){const model=editingFilterModel();$$('[data-filter],[data-filter-bool]').forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}
+function updateFacetCounts(){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map();
+ for(const input of inputs){const group=input.dataset.filter;if(group&&group!=='amenities'&&!counts.has(group))counts.set(group,countFacetOptions(model,group,inputs.filter(row=>row.dataset.filter===group).map(row=>row.value)));}
+ inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}
 function budgetScale(f){
  let high=Math.max(1000,f.min,f.max??0);
  for(const h of hotels)for(const o of h.offers||[])if(Number.isFinite(o.total)&&o.total>high)high=o.total;
@@ -578,7 +618,7 @@ function jumpToFilterSection(id){
  panel.scrollTop=Math.max(0,top);if(!target.matches('button'))target.tabIndex=-1;target.focus({preventScroll:true});
  $('#filter-section-jump').value='';
 }
-function filterStarButtons(model){const f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),starOptions=[...new Set([...hs.map(h=>h.stars).filter(n=>Number.isInteger(n)&&n>=1&&n<=5),...f.stars])].sort((a,b)=>a-b),starButtons=starOptions.map(n=>{const count=countMatchingHotels({...model,filters:{...f,stars:[n]}}),selected=f.stars.includes(n);return count>0||selected?`<button type="button" data-action="star" data-value="${n}" aria-label="${n} ${n===1?'звезда':n<5?'звезды':'звёзд'} — ${hotelCountText(count)}" aria-pressed="${selected}" class="${selected?'active':''}"><span>${n} ★</span><small aria-hidden="true">${count}</small></button>`:''}).join('');return starButtons;}
+function filterStarButtons(model){const f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),starOptions=[...new Set([...hs.map(h=>h.stars).filter(n=>Number.isInteger(n)&&n>=1&&n<=5),...f.stars])].sort((a,b)=>a-b),counts=countFacetOptions(model,'stars',starOptions),starButtons=starOptions.map(n=>{const count=counts.get(n),selected=f.stars.includes(n);return count>0||selected?`<button type="button" data-action="star" data-value="${n}" aria-label="${n} ${n===1?'звезда':n<5?'звезды':'звёзд'} — ${hotelCountText(count)}" aria-pressed="${selected}" class="${selected?'active':''}"><span>${n} ★</span><small aria-hidden="true">${count}</small></button>`:''}).join('');return starButtons;}
 function updateFilterStars(){const host=$('#filters .star-options');if(!host)return;const focused=document.activeElement,active=host.contains(focused)?focused.dataset.value:null,html=filterStarButtons(editingFilterModel());if(host.innerHTML!==html){host.innerHTML=html;if(active)host.querySelector(`[data-value="${active}"]`)?.focus({preventScroll:true});}host.closest('.filter-group').hidden=!html;}
 function renderFilters(){const queryScope=JSON.stringify([searchKey(state.search),data.scenario]);if(queryScope!==facetQueryScope){facetQueries.clear();facetQueryScope=queryScope;}const model=editingFilterModel(),f=model.filters,hs=hotels.filter(h=>h.country===state.search.country),scale=budgetScale(f),budgetEdit=currentFilterBudgetEdit(f),starButtons=filterStarButtons(model);paintFilters(`
  <div class="filter-group"><h4>Название отеля или курорт</h4><div class="filter-search"><input class="input" id="hotel-query" type="search" value="${esc(f.q)}" placeholder="Название или несколько слов" aria-label="Название отеля или курорт">${icon('search')}<button type="button" class="icon-button clear-hotel-query" data-action="clear-hotel-query" aria-label="Очистить название отеля или курорт" ${f.q?'':'hidden'}>${icon('x')}</button></div></div>
@@ -1028,8 +1068,8 @@ function mealPreviewModel(){
  return {...appliedFilterModel(),filters:{...state.filters,meals:[...mealDraft]}};
 }
 function updateMealCounts(){
- const model=mealPreviewModel();
- $$('.meal-option').forEach(row=>{row.querySelector('.meal-hotel-count')?.remove();if(!model)return;const value=row.querySelector('input').value,count=countMatchingHotels({...model,filters:{...model.filters,meals:value?[value]:[]}});row.insertAdjacentHTML('beforeend',`<span class="meal-hotel-count" aria-label="${hotelCountText(count)}">${count}</span>`);});
+ const model=mealPreviewModel(),rows=$$('.meal-option'),counts=model?countFacetOptions(model,'meals',rows.map(row=>row.querySelector('input').value).filter(Boolean)):null;
+ rows.forEach(row=>{row.querySelector('.meal-hotel-count')?.remove();if(!model)return;const value=row.querySelector('input').value,count=value?counts.get(value):countMatchingHotels({...model,filters:{...model.filters,meals:[]}});row.insertAdjacentHTML('beforeend',`<span class="meal-hotel-count" aria-label="${hotelCountText(count)}">${count}</span>`);});
 }
 function updateMealPicker(){
  const query=($('#meal-query')?.value||'').trim().toLocaleLowerCase('ru-RU');let visible=0;
