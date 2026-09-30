@@ -1285,7 +1285,7 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: O2/O3 published; O4/O5 checked accumulation",
+    "title": "Search3 NEXT: O4/O5/O6 published and accumulated browser acceptance passed",
     "status": "SCRIPT_OPTIMIZATION_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 3419,
@@ -1293,11 +1293,11 @@
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Owner 2026-09-30: «Делай именно refactor pass. На данный момент упор именно на него. Потом на оптимизацию скриптов всех». After detailed NEXT target audit, owner instructed «давай делать». Continue the current bounded behavior-preserving pass; optimization follows as a separate phase. Preserve protected contracts and production gate. Latest continuation: «давай дальше делать»; owner requested fewer repeated checks for the test preview. Lean draft cadence is now implemented; the selected refactor boundaries and separately scoped visual corrections have been checked and published together. Owner then continued «давай дальше» on 2026-09-30; optimization O1 implemented, checked and published. Repeated continuation/permission questions are unnecessary within existing authorized scope.",
-    "last_fully_checked_release_sha": "c1b7cb7bc2912c6da10a0c0e8a2071ac95af9943",
-    "published_source_sha": "5020e9a9701a98ebe1041ae8647040fc4bd92f1d",
-    "acceptance_status": "SCRIPT_OPTIMIZATION_O2_O3_PUBLISHED_O4_O5_CHECKED_NOT_PUBLISHED",
-    "next_action": "Continue measured script optimization from fresh release/claims without repeating completed refactor P1–P11 or O1–O5. Actual NEXT source5020e9a9701a98ebe1041ae8647040fc4bd92f1d, stock publisher36717464954 terminal success, command5911656517 no replay, receipt11096064845:833files/36assets/9routes200/noindex/counter0/lead403, predecessor5ef733897 retained, production/sibling unchanged,supplier_searches0/real_leads0. Public desktop app2b99632ab657, filters1047/1453→5star361/441→5star+AI69/83→reset1047/1453; strip and expanded calendar prices match. Fresh390/768/1280 automated matrix and physicalSafari not claimed. O4 #4170 ae48f509:lazy resort inventories/scalar counts,1600 model parity,synthetic30×1047 inventories31410→0/matchedarrays30→0,median208.58→138.03ms helper-only. O5 #4171 c1b7cb7:calendar offer ordering removed only for two reduction consumers;182strip+30expanded price sequences,rawrefs/normal sorting retained;166DOM/295passive/162event/426format pass. O4/O5 app+113raw/+50gzip, unchanged load graph. Exact O5 Security36723598650/lead36723598580/focused36723598561/build36723598652 success; full visual job skipped draft. Retained source artifact11101872388/digest23e18636b8b4dd755d0282f471f8f0414b92248c37eda6817f2055efdeb64048 for next justified accumulated preview checkpoint. No docs rebuild/deploy. Preserve supplier/auth/payload,price/fuel,lead/CRM/Metrika/search scopes/generation and production gate. Fresh suppliers/realCRM/manager-inquiry contract review deferred. Design draft#4164 separate. Next candidate requires measured redundant work, bounded claim and parity; do not invent savings or repeat publisher. No active runtime writer/publisher/background task remains.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5912546977"
+    "last_fully_checked_release_sha": "ad790158e6fdccc5cf066e9caeba28bb4d2598d8",
+    "published_source_sha": "ad790158e6fdccc5cf066e9caeba28bb4d2598d8",
+    "acceptance_status": "SCRIPT_OPTIMIZATION_O1_O6_PUBLISHED_ACCUMULATED_CHECKPOINT_PASSED",
+    "next_action": "Continue measured bounded script optimization from fresh release and claims; P1–P11 refactor and O1–O6 done. NEXT sourcead790158e6fdccc5cf066e9caeba28bb4d2598d8, PR4173. Full Chromium390/768/1280 run36725716402 success (132SAMO choices/calendar/filter/application dryruns). Exact833-file source build36725574133 artifact11101264629; stock updater36726732896 SUCCESS, command5912944886 issued once, receipt11102861993 terminalpublished_update. Production/sibling unchanged; predecessor5020e9a9701a98ebe1041ae8647040fc4bd92f1d retained; noindex/lead403/supplier_searches0/real_leads0. Public app13042eb8d0b2/flight87d00cdcf18d; demo24→multiword12→unknown0→clear24, selection and186400price retained. O4 lazy resort inventory/scalar counts; O5 only two calendar consumers sort:false; O6 transient normalized row text once/update, 1000rows/fourterms4001→1001calls helper-only. Combined+149raw/+60gzip. Do not replay publisher or rebuild/deploy this docs checkpoint. PhysicalSafari/fresh real suppliers/realCRM/manager-inquiry review deferred. Preserve supplier/auth/payload/price/fuel/leads/CRM/Metrika/search scopes/generation and production gate. Design draft4164 separate. Next candidate needs measured redundant work and parity. No active runtime writer/publisher/background task remains.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-5913891364"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
