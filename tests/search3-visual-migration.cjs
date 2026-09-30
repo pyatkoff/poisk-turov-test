@@ -20,7 +20,9 @@ const bootstrap = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
 assert.match(bootstrap, /\/\_preview\/search3-next-candidate\/visual-search\//);
 assert.match(bootstrap, /http_response_code\(403\)/);
 assert.match(bootstrap, /hash_file\('sha256'/);
-assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css','preview-lead.js','live-bridge.js']);
+assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css','preview-lead.js','live-bridge.js','flight-picker-v18.js']);
+// Keep donor provenance immutable; the exact adapted file is verified below.
+assert.equal(manifest.sourceFiles['flight-picker-v18.js'], 'd6de6d2deb26c5f6fbce4bbbbc70bfafda61961b1d674d67c5fef7a70626d7a5');
 for(const [file,hash] of Object.entries(manifest.adaptedFiles))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'adapted '+file);
 assert.match(bootstrap,/prototype-search\/data\.js/);
 assert.match(bootstrap,/prototype-search\/calendar-exact-hotel-v1\.js/);
