@@ -38,8 +38,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - run: npm install --prefix "$RUNNER_TEMP/facet-tools" --no-audit --no-fund --no-save jsdom@26.1.0
       - name: Verify affected presentation owners and CI restoration
         run: |
+          export NODE_PATH="$RUNNER_TEMP/facet-tools/node_modules"
+          node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-formatting.cjs
           node tests/search3-visual-calendar-inventory.cjs
@@ -73,6 +77,7 @@ jobs:
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
+          node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
