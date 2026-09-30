@@ -9,6 +9,8 @@ on:
       - 'scripts/build/search3-js/**'
       - 'tests/search3-js-compaction.cjs'
       - 'tests/search3-visual-asset-size.cjs'
+      - 'tests/search3-visual-live-browser.cjs'
+      - 'tests/search3-visual-large-flight-choices.cjs'
       - 'tests/search3-andromeda-provider.cjs'
       - 'tests/search3-andromeda-provider-config.php'
       - 'tests/search3-css-printing.cjs'

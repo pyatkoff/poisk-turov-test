@@ -8,7 +8,7 @@ const flightRef=i=>'flight_'+(i+1).toString(16).padStart(32,'0');
 function choices(seed,count=132){return Array.from({length:count},(_,i)=>({...seed[i<count/2?0:1],name:'TEST SAMO '+(i<count/2?'OUT':'BACK')+' '+(i+1),flight_ref:flightRef(i)}));}
 function parserChecks(){
  const source=fs.readFileSync(path.join(root,'prototype-search/data.js'),'utf8');
- const start=source.indexOf('  function andromedaPoint('),end=source.indexOf('  function hasAndromedaQuoteAttempt(',start);
+ const start=source.search(/\bfunction andromedaPoint\(/),offset=source.slice(start).search(/\bfunction hasAndromedaQuoteAttempt\(/),end=start+offset;
  assert(start>0&&end>start,'use the actual canonical normalizer, not a substitute');
  const parse=vm.runInNewContext(source.slice(start,end)+'\nnormalizeAndromedaQuote;');
  const seed=[{direction:'0',name:'TEST OUT'},{direction:'1',name:'TEST BACK'}];
