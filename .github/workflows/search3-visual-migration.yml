@@ -4,7 +4,22 @@ on:
     branches: [release/search3-production-ready-v1]
     paths:
       - 'v2/visual-search/**'
+      - 'v2/prototype-search/config.js'
+      - 'v2/runtime-v3.js'
+      - 'v2/lead-search-context.js'
+      - 'v2/tour-controller-v4.js'
+      - 'v2/lead-form-guard-v1.js'
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/search3-local-db-provider-v1.js'
+      - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/calendar-exact-hotel-v1.js'
+      - 'v2/prototype-search/source-receipt-v1.js'
+      - 'v2/prototype-search/search-lifecycle-v1.js'
+      - 'v2/prototype-search/lead.js'
+      - 'v2/prototype-search/hotel-popularity-v1.js'
+      - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
+      - 'tests/search3-prototype-*.cjs'
       - '.github/workflows/search3-visual-migration.yml'
 permissions:
   contents: read
@@ -25,6 +40,7 @@ jobs:
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
+          node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
