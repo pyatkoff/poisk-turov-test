@@ -40,6 +40,7 @@ jobs:
       - name: Verify affected presentation owners and CI restoration
         run: |
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-visual-formatting.cjs
           node tests/search3-visual-results-rendering.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
