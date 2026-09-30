@@ -264,6 +264,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();
   assert.equal(transport.calls.length,beforeGallery,'gallery adds no provider request');
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
+  await page.locator('#hotel-room-count').waitFor();
   assert((await page.locator('#modal-body').textContent()).includes('Тестовая улица'));
   assert.match(await page.locator('#modal-body').textContent(),/Wi-Fi из локального профиля/,'legacy canonical service fact remains visible in hotel details');
   assert(await page.evaluate(()=>!!(document.querySelector('#hotel-services-heading').compareDocumentPosition(document.querySelector('#hotel-rooms-heading')) & Node.DOCUMENT_POSITION_FOLLOWING)));
