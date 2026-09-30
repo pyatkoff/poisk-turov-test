@@ -491,7 +491,17 @@ function amenityFilterGroups(hs,f){
  const groups=new Map();for(const fact of facts.values()){if(!groups.has(fact.groupId))groups.set(fact.groupId,{name:fact.group,items:[]});groups.get(fact.groupId).items.push(fact);}
  return [...groups.values()].map(group=>`<div class="filter-group"><h4>${esc(group.name)}</h4>${group.items.map(a=>{const selected=(f.amenities||[]).includes(a.key),keys=[...new Set([...(f.amenities||[]),a.key])],count=countMatchingHotels({...editingFilterModel(),filters:{...f,amenities:keys}});return filterCheckRowHTML(`data-filter="amenities" value="${esc(a.key)}"`,a.label,count,selected);}).join('')}</div>`).join('');
 }
-const plainHotelText=value=>data.text(value).replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+// Source HTML stays inert. Parsing through a detached template decodes named,
+// decimal and hexadecimal entities without executing encoded supplier markup.
+function hotelContentText(value){
+ if(typeof value!=='string'&&typeof value!=='number')return '';
+ const template=document.createElement('template');template.innerHTML=String(value);
+ template.content.querySelectorAll('script,style,iframe,object,embed,svg,math,template').forEach(node=>node.remove());
+ template.content.querySelectorAll('br').forEach(node=>node.replaceWith('\n'));
+ template.content.querySelectorAll('p,div,li,ul,ol,tr,h1,h2,h3,h4,section').forEach(node=>node.append('\n'));
+ return (template.content.textContent||'').replace(/[\u200B\uFEFF]/g,'').split('\n').map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+}
+const plainHotelText=value=>hotelContentText(value).replace(/\s+/g,' ').trim();
 
 
 function hotelHighlights(h){
