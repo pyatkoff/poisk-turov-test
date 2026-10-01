@@ -80,7 +80,7 @@ function s3n_preflight(array $scope,array $sources,array $targetOwners,array $ho
         if(isset($manual[$target])||isset($excluded[$target]))$holds[]='target_manual_or_exclusion';
         foreach($targetOwners[$target]??[] as $owner)if((string)($owner['external_hotel_id']??'')!==$cat)$holds[]='target_occupied';
         $holds=array_values(array_unique($holds));sort($holds,SORT_STRING);
-        $out[]=['catalog_id'=>$cat,'operator_id'=>$request['operator_id'],'supplier_namespace'=>$request['supplier_namespace'],
+        $out[]=['catalog_id'=>(string)$cat,'operator_id'=>$request['operator_id'],'supplier_namespace'=>$request['supplier_namespace'],
             'target_tv_hotel_id'=>$target,'target_native_id_for_comparison'=>$request['target_native_id_for_comparison'],
             'state'=>$holds===[]?'eligible_for_source_evidence':'hold','holds'=>$holds,'safe_to_write_now'=>false];
     }
