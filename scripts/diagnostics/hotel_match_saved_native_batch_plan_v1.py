@@ -2,7 +2,9 @@
 """Plan all saved SAMO/TV native-ID candidates without DB, HTTP or acceptance.
 
 Input: the existing MATCH unresolved SAMO and TV nontriple CSV exports. Names,
-prices and ranks never create a pair. Uniqueness is only within the supplied
+prices and ranks never create a native pair. The optional supporting name review
+returns a separate shortlist and never changes the native plan or grants admission.
+Uniqueness is only within the supplied
 snapshots; every candidate still needs raw proof and CURRENT writer checks.
 """
 from __future__ import annotations
@@ -40,6 +42,97 @@ CURRENT_CHECKS = [
     "source_and_target_occupancy", "active_country_category_geography",
     "durable_reservation_and_no_replay", "transaction_and_post_commit_readback",
 ]
+NAME_GENERIC_TOKENS = frozenset(('hotel hotels otel resort resorts spa beach palace '
+    'royal grand golden garden gardens club luxury deluxe collection boutique '
+    'apart apartment apartments suites residence international the and only adults '
+    'all inclusive ex former formerly').split())
+
+
+def supporting_name_review(saved_rows: list[dict], target_summary: dict) -> dict:
+    """Index retained target names for review, never for acceptance or acquisition.
+
+    The caller must bind both immutable inputs by hash. Target ownership is an
+    observation at captured_at_utc, not a new CURRENT check. Original names and
+    every rare-token match (including former names and occupied targets) survive.
+    There is no best-match selection, country inference or native-ID projection.
+    """
+    if (not isinstance(target_summary, dict)
+            or target_summary.get('state') != 'completed_tv_live30_target_catalog_v2'
+            or target_summary.get('operation') != 'int-andromeda-match-live30-target-catalog-v2-20261001-v1'
+            or target_summary.get('no_replay') is not True
+            or target_summary.get('safe_to_write_now') is not False
+            or any(type(target_summary.get(k)) is not int or target_summary[k] != 0
+                   for k in ('provider_http_calls', 'database_writes', 'mapping_writes'))
+            or not isinstance(target_summary.get('rows'), list)
+            or not isinstance(saved_rows, list)
+            or len(saved_rows) > MAX_ROWS or len(target_summary['rows']) > MAX_ROWS
+            or target_summary.get('row_count') != len(target_summary['rows'])):
+        raise ValueError('name_review_input_contract')
+
+    def tokens(name):
+        return {t for t in re.findall(r'[^\W_]+', name.casefold())
+                if len(t) >= 5 and not t.isdigit() and t not in NAME_GENERIC_TOKENS}
+
+    index = defaultdict(set)
+    targets = {}
+    for row in target_summary['rows']:
+        if (not isinstance(row, dict) or type(row.get('id')) is not int
+                or not ID.fullmatch(str(row['id'])) or row['id'] in targets
+                or not isinstance(row.get('name'), str)
+                or not isinstance(row.get('accepted_samo_ids'), list)
+                or any(type(x) not in (int, str) or not ID.fullmatch(str(x))
+                       for x in row['accepted_samo_ids'])
+                or any(type(row.get(k)) is not bool
+                       for k in ('is_active', 'manual_hold', 'exclusion_hold'))):
+            raise ValueError('name_review_target_shape')
+        targets[row['id']] = row
+        for token in tokens(row['name']):
+            index[token].add(row['id'])
+    out = []
+    source_ids = set()
+    for source in saved_rows:
+        if (not isinstance(source, dict) or not isinstance(source.get('samo_catalog_id'), str)
+                or not ID.fullmatch(source['samo_catalog_id'])
+                or source['samo_catalog_id'] in source_ids
+                or not isinstance(source.get('source_names'), str)
+                or not isinstance(source.get('reasons'), list)):
+            raise ValueError('name_review_source_shape')
+        catalog = source['samo_catalog_id']
+        source_ids.add(catalog)
+        hits = defaultdict(set)
+        for token in tokens(source['source_names']):
+            # Frequency selects review signals only; it cannot establish identity.
+            if 0 < len(index[token]) <= 8:
+                for target in index[token]:
+                    hits[target].add(token)
+        candidates = []
+        for target in sorted(hits):
+            row = targets[target]
+            holds = []
+            if row['accepted_samo_ids']: holds.append('target_occupied_in_retained_catalog')
+            if row['manual_hold']: holds.append('target_manual_hold_in_retained_catalog')
+            if row['exclusion_hold']: holds.append('target_exclusion_in_retained_catalog')
+            if not row['is_active']: holds.append('target_inactive_in_retained_catalog')
+            candidates.append({'tv_hotel_id': str(target), 'target_name': row['name'],
+                'country_name': row.get('country_name'), 'region_name': row.get('region_name'),
+                'subregion_name': row.get('subregion_name'), 'shared_rare_tokens': sorted(hits[target]),
+                'accepted_samo_ids': list(row['accepted_samo_ids']), 'holds': holds,
+                'signal': 'name_only', 'safe_to_write_now': False})
+        source_holds = list(source['reasons'])
+        if catalog in PROTECTED_CATALOG_IDS and 'protected_catalog_id' not in source_holds:
+            source_holds.append('protected_catalog_id')
+        out.append({'samo_catalog_id': catalog, 'source_names': source['source_names'],
+            'source_holds': sorted(source_holds), 'source_country_verified': False,
+            'name_review_candidates': candidates, 'safe_to_write_now': False})
+    out.sort(key=lambda row: int(row['samo_catalog_id']))
+    return {'schema': 'hotel-match-supporting-name-review/1',
+        'state': 'completed_supporting_name_review', 'rows': out,
+        'target_observed_at_utc': target_summary.get('captured_at_utc'),
+        'source_rows': len(out), 'target_rows': len(targets),
+        'name_signal_source_rows': sum(bool(r['name_review_candidates']) for r in out),
+        'provider_http_calls': 0, 'database_reads': 0, 'database_writes': 0, 'mapping_writes': 0,
+        'fresh_current_census': False, 'acceptance_policy_defined': False,
+        'acquisition_authorized': False, 'safe_to_write_now': False}
 
 
 def ids(value: str) -> tuple[list[str], bool]:
