@@ -9,7 +9,7 @@
   "supplierRequests": "explicit-user-actions-only",
   "leadDelivery": false,
   "sourceFiles": {
-    "app.js": "7f8025057a94ea21560ac5e55ba8d148fe8b2a39b0aa46a52e473db02cec2325",
+    "app.js": "70492440fc6d04bbbbf040b1154960edf00b13e7137c169daea2dc2b5f4f4566",
     "styles.css": "d86b84b04882a1b6d7ecbef338ae039e78dd6d5ee581675db3dcf8c97d29c816",
     "mobile-controls-v1.css": "8b5c50dd5e352ae95603801d0469a6f89d411365131fe1a4fdc44f20976f151c",
     "fixture-data.js": "1793005f8066fed74e3404ce633dba97fcae034b195d91ec2e11ef9cf92a75e3",
@@ -54,7 +54,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
-    "app.js": "7f8025057a94ea21560ac5e55ba8d148fe8b2a39b0aa46a52e473db02cec2325",
+    "app.js": "70492440fc6d04bbbbf040b1154960edf00b13e7137c169daea2dc2b5f4f4566",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "9b44034378eee5bea456c2498386a1e73ab56665a6144db4c6b9a0108c9127c4",
     "styles.css": "38034cae86ba275778d61eca0cce12bd112fd53c5f4d642a388e6130752cae91",

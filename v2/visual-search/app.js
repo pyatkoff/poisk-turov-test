@@ -640,7 +640,9 @@ function editFilterBudget(){
  if(changed)filterEdited();else if(filterDraft)updateDrawerPreview();
  showFilterBudgetValidity(budget);syncFilterSections();syncFilterResetState();if(filterDraft)rememberUIRoute();return budget;
 }
-let renderedFilterContext=null;
+let renderedFilterContext=null,filterEditorLease=null;
+const filterEditorSelector='[data-facet-search],#hotel-query,#min-price,#max-price,#price-range';
+$('#filters').addEventListener('focusin',event=>{filterEditorLease=event.target.matches?.(filterEditorSelector)?event.target:null;});
 const filterRootBindings=new WeakMap();
 function filterRootBinding(host){
  let binding=filterRootBindings.get(host);
@@ -668,7 +670,8 @@ function reconcileFilterRoots(host,fragment,binding,preserved=null){
  binding.structureDirty=false;return binding;
 }
 function paintFilters(markup,filters){
- const host=$('#filters'),active=document.activeElement,scope=searchKey(state.search);
+ const host=$('#filters'),focused=document.activeElement,focusedEditor=host.contains(focused)&&focused.matches?.(filterEditorSelector)?focused:null;
+ const leased=!focusedEditor&&filterDraft&&filterEditorLease?.isConnected&&host.contains(filterEditorLease)?filterEditorLease:null,active=focusedEditor||leased,scope=searchKey(state.search);
  const facet=active?.dataset.facetSearch;
  const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
  const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
@@ -693,8 +696,8 @@ function paintFilters(markup,filters){
   }
  }
  reconcileFilterRoots(host,template.content,binding,preserved);
- if(preserved&&group&&!host.contains(active)){
-  const restored=host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
+ if(preserved&&group&&(leased||!host.contains(active))){
+  const restored=host.contains(active)?active:host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
   if(restored){restored.value=active.value;restored.focus({preventScroll:true});if(active.selectionStart!==null)try{restored.setSelectionRange(active.selectionStart,active.selectionEnd,active.selectionDirection)}catch{}}
  }
  renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
