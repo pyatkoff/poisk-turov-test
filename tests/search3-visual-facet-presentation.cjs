@@ -45,7 +45,7 @@ function facetRefresh(source,legacy=false){
  let index=0;for(const group of ['meals','operators','flight','resorts','stars'])for(let i=0;i<20;i++)inputs.push(fake({filter:group},group+i,index++));
  for(let i=0;i<5;i++)inputs.push(fake({filter:'amenities'},'amenity'+i,index++));
  for(let i=0;i<4;i++)inputs.push(fake({filterBool:'boolean'+i},'',index++));
- const model={filters:{amenities:[]}},c={editingFilterModel:()=>model,$$:selector=>selector==='[data-filter],[data-filter-bool]'?inputs:[],countFacetOptions:(current,group,values)=>{batchCalls.push([group,[...values]]);return new Map(values.map((value,i)=>[value,i%4]));},countMatchingHotels:()=>{scalarCalls++;return 2;},hotelCountText:n=>n+' отелей',applyFacetSearch:()=>tails.push('facet'),updateFilterStars:()=>tails.push('stars'),syncAvailableFilterGroups:()=>tails.push('groups'),renderFilterNavigation:()=>tails.push('nav')};
+ const model={filters:{amenities:[]}},c={editingFilterModel:()=>model,$:()=>null,$$:selector=>selector==='[data-filter],[data-filter-bool]'?inputs:[],countFacetOptions:(current,group,values)=>{batchCalls.push([group,[...values]]);return new Map(values.map((value,i)=>[value,i%4]));},countMatchingHotels:()=>{scalarCalls++;return 2;},hotelCountText:n=>n+' отелей',applyFacetSearch:()=>tails.push('facet'),updateFilterStars:()=>tails.push('stars'),syncAvailableFilterGroups:()=>tails.push('groups'),renderFilterNavigation:()=>tails.push('nav'),settleFilterRoots:()=>{}};
  const previous=`function updateFacetCounts(){const model=editingFilterModel(),inputs=\$\$('[data-filter],[data-filter-bool]'),counts=new Map();
  for(const input of inputs){const group=input.dataset.filter;if(group&&group!=='amenities'&&!counts.has(group))counts.set(group,countFacetOptions(model,group,inputs.filter(row=>row.dataset.filter===group).map(row=>row.value)));}
  inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});\$\$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}`;
@@ -71,7 +71,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
 {
  const c=environment('<div id="host">'+['zero','yes','checked'].map(value=>'<label class="check-row"><input data-filter="operators" value="'+value+'" '+(value==='checked'?'checked':'')+'><small>99</small></label>').join('')+'<label class="check-row"><input data-filter="amenities" value="pool"><small>99</small></label><label class="check-row"><input data-filter-bool="rating"><small>99</small></label></div>');
  let scalarCalls=0,batchCalls=0;const filters={operators:[],amenities:[],rating:false};
- Object.assign(c,{editingFilterModel:()=>({filters}),countFacetOptions:(model,group,values)=>{batchCalls++;return new Map(values.map(value=>[value,value==='yes'?5:0]));},countMatchingHotels:model=>{scalarCalls++;return model.filters.rating?2:model.filters.amenities.includes('pool')?3:99;},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{}});
+ Object.assign(c,{editingFilterModel:()=>({filters}),countFacetOptions:(model,group,values)=>{batchCalls++;return new Map(values.map(value=>[value,value==='yes'?5:0]));},countMatchingHotels:model=>{scalarCalls++;return model.filters.rating?2:model.filters.amenities.includes('pool')?3:99;},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
  vm.createContext(c);vm.runInContext(functions(source,['updateFacetCounts']),c);c.updateFacetCounts();
  assert.deepEqual(c.$$('.check-row').map(row=>[row.querySelector('small').textContent,row.dataset.available,row.hidden]),[['0','false',true],['5','true',false],['0','true',false],['3','true',false],['2','true',false]]);
  assert.equal(batchCalls,1,'one batch per section');assert.equal(scalarCalls,2,'zero batched counts do not fall back');
@@ -154,7 +154,7 @@ function filterEditorMarkup(){return `\n <div class="filter-group"><h4>Назв�
 function filterPainter(code){
  const c=environment('<div id="filters"></div>'),filters={};
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,filterRootBindings:new WeakMap(),renderedFilterContext:null,state:{search:{country:'4'}},searchKey:()=> 'scope',editingFilterModel:()=>({filters}),applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{}});
- vm.createContext(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','reconcileFilterRoots','paintFilters']),c);
+ vm.createContext(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
  return {c,filters,host:c.$('#filters'),paint:markup=>c.paintFilters(markup,filters)};
 }
 function paintIdentity(code,markup){

@@ -516,7 +516,7 @@ function updateDrawerPreview(){
   if(!button.disabled)button.textContent='Сохранить условия';
  }
 }
-function filterEdited(rebuild=false){if(filterDraft){if(rebuild)renderFilters();else updateFacetCounts();updateDrawerPreview();rememberUIRoute();return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}}
+function filterEdited(rebuild=false){if(filterDraft){if(rebuild)renderFilters();else updateFacetCounts();updateDrawerPreview();rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));}
 const expandedFacets=new Set(),facetQueries=new Map();let facetQueryScope='';
 const expandedFilterSections=new Set();
 function syncFilterSections(){
@@ -577,7 +577,7 @@ function applyFacetSearch(host){
  picked.hidden=!selected.length;
  picked.innerHTML=selected.length?`<span class="facet-picked-label">Выбрано: ${selected.length}</span><div class="facet-picked-items">${selected.map(value=>`<button type="button" class="facet-picked-item" data-action="remove-facet-choice" data-value="${esc(value)}" aria-label="Убрать из выбора: ${esc(labels.get(value)||value)}"><span>${esc(labels.get(value)||value)}</span>${icon('x')}</button>`).join('')}</div>`:'';
  host.querySelector('[data-action="clear-facet-query"]').hidden=!facetQueries.get(group);}
-document.addEventListener('input',event=>{const group=event.target.dataset?.facetSearch;if(group){facetQueries.set(group,event.target.value);applyFacetSearch(event.target.closest('.facet-options'));}});
+document.addEventListener('input',event=>{const group=event.target.dataset?.facetSearch;if(group){facetQueries.set(group,event.target.value);applyFacetSearch(event.target.closest('.facet-options'));settleFilterRoots($('#filters'));}});
 document.addEventListener('toggle',event=>{const group=event.target.dataset?.facet;if(group&&!facetQueries.get(group)){if(event.target.open)expandedFacets.add(group);else expandedFacets.delete(group);}},true);
 function filterCheckRowHTML(attributes,label,count,selected){const available=count>0||selected;return `<label class="check-row" data-available="${available}" ${available?'':'hidden'}><input type="checkbox" ${attributes} ${selected?'checked':''}><span>${esc(label)}</span><small aria-label="${hotelCountText(count)}">${count}</small></label>`;}
 function fullCheckRows(group,options){const model=editingFilterModel();return options.map(([val,label,knownCount])=>filterCheckRowHTML(`data-filter="${group}" value="${esc(val)}"`,label,knownCount??countMatchingHotels({...model,filters:{...model.filters,[group]:[val]}}),model.filters[group].includes(val))).join('');}
@@ -611,7 +611,7 @@ function syncAvailableFilterGroups(){$$('#filters .filter-group').forEach(group=
 function updateFacetCounts(ratingCount){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map(),grouped=new Map();
  for(const input of inputs){const group=input.dataset.filter;if(!group||group==='amenities')continue;if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(input.value);}
  for(const [group,values] of grouped)counts.set(group,countFacetOptions(model,group,values));
- inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=key==='rating'&&ratingCount!==undefined?ratingCount:counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}
+ inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=key==='rating'&&ratingCount!==undefined?ratingCount:counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();settleFilterRoots($('#filters'));}
 function budgetScale(f){
  let high=Math.max(1000,f.min,f.max??0);
  for(const h of hotels)for(const o of h.offers||[])if(Number.isFinite(o.total)&&o.total>high)high=o.total;
@@ -650,15 +650,20 @@ function filterRootBinding(host){
  binding.observer=new MutationObserver(mark);binding.mark=mark;binding.observer.observe(host,{subtree:true,childList:true,attributes:true,characterData:true});filterRootBindings.set(host,binding);return binding;
 }
 function filterRootMarkup(node){return node.nodeType===1?node.outerHTML:`${node.nodeType}:${node.nodeValue}`;}
+function settleFilterRoots(host){const binding=filterRootBindings.get(host);if(binding){binding.observer.takeRecords();binding.structureDirty=false;}}
 function reconcileFilterRoots(host,fragment,binding,preserved=null){
  const fresh=[...fragment.childNodes],current=[...host.childNodes],desired=[];
  for(let index=0;index<fresh.length;index++){
-  const generated=fresh[index],existing=current[index],keep=preserved?.index===index?preserved.node:existing,markup=filterRootMarkup(generated);
-  const node=keep&&keep.parentNode===host&&!binding.structureDirty&&!binding.dirty.has(keep)&&binding.markup.get(keep)===markup?keep:generated.cloneNode(true);
+ const generated=fresh[index],existing=current[index],keep=preserved?.index===index?preserved.node:existing,markup=filterRootMarkup(generated);
+  const active=preserved?.index===index&&keep===preserved.node;
+  const node=keep&&keep.parentNode===host&&(!binding.structureDirty||active)&&!binding.dirty.has(keep)&&(active||binding.markup.get(keep)===markup)?keep:generated.cloneNode(true);
   binding.markup.set(node,markup);binding.dirty.delete(node);desired.push(node);
  }
  let cursor=host.firstChild;
- for(const node of desired){if(node===cursor)cursor=cursor.nextSibling;else host.insertBefore(node,cursor);}
+ for(const node of desired){
+  if(node===preserved?.node&&node!==cursor&&node.parentNode===host)while(cursor&&cursor!==node){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+  if(node===cursor)cursor=cursor.nextSibling;else host.insertBefore(node,cursor);
+ }
  while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
  binding.structureDirty=false;return binding;
 }
@@ -683,13 +688,13 @@ function paintFilters(markup,filters){
   }
  }
  reconcileFilterRoots(host,template.content,binding,preserved);
- if(group&&!host.contains(active)){
+ if(preserved&&group&&!host.contains(active)){
   const restored=host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
   if(restored){restored.value=active.value;restored.focus({preventScroll:true});if(active.selectionStart!==null)try{restored.setSelectionRange(active.selectionStart,active.selectionEnd,active.selectionDirection)}catch{}}
  }
  renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
  // Dynamic facet/count presentation is owned by this painter, not an external disturbance.
- binding.observer.takeRecords();binding.structureDirty=false;
+ settleFilterRoots(host);
 }
 function renderFilterNavigation(){
  const select=$('#filter-section-jump');
@@ -717,7 +722,7 @@ function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(s
  ${f.operators.length||operators.length?`<div class="filter-group"><h4>Туроператор</h4>${checkRows('operators',[...new Set([...f.operators,...operators])].map(o=>[o,o]))}</div>`:''}
  ${amenityFilterGroups(hs,f)}
  <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`,f);
- renderFilterNavigation();syncFilterResetState(model);showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));$('#beach-chip').hidden=true;$('#family-chip').hidden=true;
+ renderFilterNavigation();syncFilterResetState(model);showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));$('#beach-chip').hidden=true;$('#family-chip').hidden=true;settleFilterRoots($('#filters'));
 }
 function loadResultCalendar(){
  if(!catalogReady||!state.hasSearched)return;
