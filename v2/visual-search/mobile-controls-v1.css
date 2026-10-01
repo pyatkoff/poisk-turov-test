@@ -36,7 +36,6 @@
   .active-filter,
   .hotel-links .text-button,
   .compare-btn,
-  .hotel-more .text-button,
   .offer-price .primary,
   .compare-tray > .primary,
   .calendar-heading .text-button,
@@ -48,8 +47,7 @@
     min-height:44px;
   }
 
-  .applied-search > .secondary,
-  .compact-search .secondary {
+  .applied-search > .secondary{
     width:44px;
     min-width:44px;
     min-height:44px;
@@ -57,7 +55,6 @@
 
   .filter-top .mobile-close,
   .favorite-button,
-  .card-photo-arrow,
   .compare-tray .icon-button,
   .modal-header .icon-button,
   #modal-back,
