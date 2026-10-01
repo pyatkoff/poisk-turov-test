@@ -2,7 +2,10 @@
 from __future__ import annotations
 import ast,hashlib,io,json,tarfile
 from pathlib import Path
-MODE='local-profile-acquire-4191';BATCH='local4191-source320-20261001'\nREADBACK_MODE='local-profile-acquire-readback-4191';READBACK_BATCH='local4191-source320-readback-20261001'\nOPERATION='int-andromeda-local-profile-acquire-4191-source320-20261001-v1'\nREADBACK_OPERATION='int-andromeda-local-profile-acquire-readback-4191-20261001-v1'
+MODE='local-profile-acquire-4191';BATCH='local4191-source320-20261001'
+READBACK_MODE='local-profile-acquire-readback-4191';READBACK_BATCH='local4191-source320-readback-20261001'
+OPERATION='int-andromeda-local-profile-acquire-4191-source320-20261001-v1'
+READBACK_OPERATION='int-andromeda-local-profile-acquire-readback-4191-20261001-v1'
 RUNNER='scripts/diagnostics/local_profile_acquire_4191.php'
 SOURCE_FILES=('v2/data/db-v1.php','v2/data/tourvisor-client-v1.php','v2/data/hotel-details-v1.php')
 BUNDLE_FILES=SOURCE_FILES+(RUNNER,)
