@@ -10,7 +10,6 @@ on:
       - 'scripts/deploy/int_server_executor_match_primary.py'
       - 'tests/int_server_executor_test.py'
       - 'tests/int_server_executor_anex_secret_transport_test.py'
-      - 'tests/int_server_executor_anex_secret_transport_test.py'
       - 'tests/int_server_executor_match_primary_test.py'
       - 'scripts/deploy/int_server_executor_local_profile_plan.py'
       - 'scripts/diagnostics/local_profile_plan_4191.php'
