@@ -18,6 +18,7 @@ import zlib
 
 REPO = 'pyatkoff/poisk-turov-test'
 FEATURE = 'feature/anex-search-adapter-20260907'
+LOCAL_PROFILE_SOURCE = 'release/search3-production-ready-v1'
 OWNER_ID = 226193297
 ISSUE = 4217
 PREFIX = '/run-int-server-v1 '
@@ -651,8 +652,9 @@ def checked_event(token: str, event: dict, control_sha: str) -> dict:
     command = parse_command(body)
     main = api_get('/git/ref/heads/main', token)['object']['sha']
     need(main == control_sha, 'main_changed')
-    feature = api_get('/git/ref/heads/' + FEATURE, token)['object']['sha']
-    need(feature == command['source_sha'], 'feature_changed')
+    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] == 'local-profile-plan-4191' else FEATURE
+    feature = api_get('/git/ref/heads/' + source_branch, token)['object']['sha']
+    need(feature == command['source_sha'], 'local_profile_release_changed' if source_branch == LOCAL_PROFILE_SOURCE else 'feature_changed')
     return command
 
 def ensure_supplier_slot(token: str) -> None:
@@ -3073,6 +3075,10 @@ def execute(command: dict, source_root: Path) -> dict:
                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                    timeout=60)
     payload = dict(command)
+    if command['mode'] == 'local-profile-plan-4191':
+        control_sha = os.environ.get('GITHUB_SHA', '')
+        need(SHA_RE.fullmatch(control_sha) is not None, 'local_profile_control_sha')
+        payload['local_profile_control_sha'] = control_sha
     payload['archive'] = remote_archive
     payload['manifest_sha256'] = hashlib.sha256(
         json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()

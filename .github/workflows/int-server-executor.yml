@@ -11,6 +11,9 @@ on:
       - 'tests/int_server_executor_test.py'
       - 'tests/int_server_executor_anex_secret_transport_test.py'
       - 'tests/int_server_executor_match_primary_test.py'
+      - 'scripts/deploy/int_server_executor_local_profile_plan.py'
+      - 'scripts/diagnostics/local_profile_plan_4191.php'
+      - 'tests/int_server_executor_local_profile_plan_test.py'
       - 'scripts/diagnostics/int_funsun_direction_store_server_readback.py'
       - 'tests/int_funsun_direction_store_server_readback_test.py'
   workflow_dispatch:
@@ -47,6 +50,9 @@ jobs:
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
+          php -l scripts/diagnostics/local_profile_plan_4191.php
+          python3 tests/int_server_executor_local_profile_plan_test.py -v
           python3 -m py_compile scripts/diagnostics/int_funsun_direction_store_server_readback.py
           python3 tests/int_funsun_direction_store_server_readback_test.py -v
 
@@ -81,6 +87,9 @@ jobs:
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
+          php -l scripts/diagnostics/local_profile_plan_4191.php
+          python3 tests/int_server_executor_local_profile_plan_test.py -v
       - name: Parse and authorize exact current-source command
         id: command
         env:
