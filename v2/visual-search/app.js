@@ -784,12 +784,29 @@ function renderResultHeadings(items,total,pristine){
  $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
+function paintResultCards(cards,html,sameScope){
+ if(!sameScope||!cards.childElementCount){cards.innerHTML=html;return;}
+ // Parse the current markup in an inert template. Reuse only exactly equal
+ // nodes from this render; no saved result/price inventory can become stale.
+ const template=document.createElement('template');template.innerHTML=html;
+ const keyed=new Map();for(const node of cards.children)if(node.id&&!keyed.has(node.id))keyed.set(node.id,node);
+ let cursor=cards.firstChild;
+ for(const next of [...template.content.childNodes]){
+  const previous=next.id?keyed.get(next.id):cursor;
+  if(next.id)keyed.delete(next.id);
+  const node=previous?.isEqualNode(next)?previous:next;
+  if(node===cursor)cursor=cursor.nextSibling;
+  else if(cursor&&previous===cursor){cards.replaceChild(node,cursor);cursor=node.nextSibling;}
+  else cards.insertBefore(node,cursor);
+ }
+ while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+}
 function renderResultCards(items){
  const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
  const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
  if(!sameCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
- cards.innerHTML=items.length?items.slice(0,renderedCardLimit).map(cardHTML).join('')+(items.length>renderedCardLimit?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`:''):emptyResultsHTML();
+ paintResultCards(cards,items.length?items.slice(0,renderedCardLimit).map(cardHTML).join('')+(items.length>renderedCardLimit?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`:''):emptyResultsHTML(),sameCardScope);
  if(focus){
   const nextAnchor=anchorId?document.getElementById(anchorId):null,fallback=nextAnchor?.querySelector(focusAction?`[data-action="${CSS.escape(focusAction)}"]`:'button')||nextAnchor?.querySelector('button')||cards.querySelector('[data-action="more-cards"]')||$('#results');
   restoreFocus(focus,fallback,cards);

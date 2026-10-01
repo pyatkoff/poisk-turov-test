@@ -93,3 +93,59 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace("offerView.mode==='compare'||!offerView.departure", "false||!offerView.departure")),'comparison date scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+
+// Progressive updates must keep current markup while retaining unchanged live
+// articles and photos. Compare against the old full-innerHTML DOM independently.
+const {JSDOM}=require('jsdom');
+function cardDOM(code=source){
+ const dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards');
+ const ctx={document,Map,Array,JSON,Number,Math,CSS:{escape:s=>String(s)},scrollY:400,
+  window:{scrollTo:()=>{}},$:s=>document.querySelector(s),data:{scenario:'live'},
+  state:{search:{country:'4'},filters:{meals:[]},selectedDate:null,sort:'price',onlyFavorites:false},
+  cardHTML:({hotel:h,offers})=>`<article class="hotel-card" id="hotel-${h.id}" data-hotel-id="${h.id}"><img src="/photo-${h.photo||0}.jpg" alt="${esc(h.name)}"><h3>${esc(h.name)}</h3><strong>${offers[0].total}</strong><button data-action="offer" data-key="${offers[0].key}">Тур</button></article>`,
+  emptyResultsHTML:()=>'<p class="empty">Нет подходящих туров</p>'};
+ dom.window.HTMLElement.prototype.getClientRects=function(){return [{}];};
+ dom.window.HTMLElement.prototype.getBoundingClientRect=function(){return {top:100};};
+ vm.createContext(ctx);vm.runInContext(owner(code,'results')+'\n'+section(code,'function focusReference(','function capturePageReturn('),ctx);
+ const observer=new dom.window.MutationObserver(()=>{});observer.observe(cards,{childList:true});
+ return {dom,ctx,cards,render:items=>{ctx.renderResultCards(items);return observer.takeRecords();},
+  more:()=>vm.runInContext('renderedCardLimit+=24;',ctx),close:()=>{observer.disconnect();dom.window.close();}};
+}
+const entry=(id,total=100000+id)=>({hotel:{id,name:'Hotel <& '+id,photo:id%3},offers:[{key:'tour-'+id,total}]});
+const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].filter(n=>n.matches?.('.hotel-card')).length,0);
+{
+ const h=cardDOM(),items=Array.from({length:55},(_,i)=>entry(i+1)),before=JSON.stringify(items);
+ try{
+  h.render(items);const original=[...h.cards.querySelectorAll('.hotel-card')],photo=original[3].querySelector('img'),focus=original[3].querySelector('button');focus.focus();
+  assert.equal(original.length,24);assert.equal(h.cards.querySelector('[data-action="more-cards"] span').textContent,'Показано 24 из 55');
+  for(let i=0;i<10;i++)assert.equal(removedArticles(h.render(items)),0,'unchanged provider/status refresh removes no articles');
+  original.forEach(n=>assert.strictEqual(h.cards.querySelector('#'+n.id),n));assert.strictEqual(original[3].querySelector('img'),photo);assert.strictEqual(h.ctx.document.activeElement,focus);
+  const changed=items.map((e,i)=>i===3?{...e,offers:[{...e.offers[0],total:133500.5}]}:e);
+  assert.equal(removedArticles(h.render(changed)),1,'one changed current price replaces only its article');
+  assert.equal(h.cards.querySelector('#hotel-4 strong').textContent,'133500.5');assert.notStrictEqual(h.cards.querySelector('#hotel-4'),original[3]);assert.equal(h.ctx.document.activeElement.dataset.key,'tour-4','focused action restored on replaced article');
+  original.filter((_,i)=>i!==3).forEach(n=>assert.strictEqual(h.cards.querySelector('#'+n.id),n));
+  const current=[...h.cards.querySelectorAll('.hotel-card')];h.more();assert.equal(removedArticles(h.render(changed)),0,'load more retains the first 24 articles');assert.equal(h.cards.querySelectorAll('.hotel-card').length,48);current.forEach(n=>assert.strictEqual(h.cards.querySelector('#'+n.id),n));
+  const reordered=[...changed].reverse();h.render(reordered);assert.deepEqual([...h.cards.querySelectorAll('.hotel-card')].map(n=>n.dataset.hotelId),reordered.slice(0,48).map(e=>String(e.hotel.id)),'sort follows current result order');
+  h.ctx.state.filters.meals=['AI'];const reset=h.render(reordered);assert.equal(h.cards.querySelectorAll('.hotel-card').length,24,'changed filter scope resets the existing limit');assert.equal(removedArticles(reset),48,'changed search/filter scope retains the original full replacement path');
+  h.render([]);assert.equal(h.cards.innerHTML,h.ctx.emptyResultsHTML());h.render(items.slice(0,1));assert.equal(h.cards.querySelectorAll('.hotel-card').length,1);assert.equal(h.cards.querySelector('[data-action="more-cards"]'),null);
+  assert.equal(JSON.stringify(items),before,'render preserves raw hotel/offer inputs');
+  console.log('PASS progressive cards: 10 unchanged 24-card updates remove 240->0 articles; one price update 24->1; photo/focus/order/load-more/filter reset retained; no wall-clock or whole-page timing claim');
+ }finally{h.close();}
+}
+{
+ const h=cardDOM(),reference=new JSDOM('<div id="cards"></div>'),expected=reference.window.document.querySelector('#cards');let seed=12345;
+ const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+ try{
+  for(let i=0;i<90;i++){
+   const items=Array.from({length:Math.floor(random()*35)},()=>{const id=Math.floor(random()*18)+1,e=entry(id,Math.floor(random()*10)*100+.5);e.hotel.name=['Hotel <&','Гранд "Отель"','A\nB'][i%3]+id;e.hotel.photo=Math.floor(random()*4);return e;});
+   const html=items.length?items.slice(0,24).map(h.ctx.cardHTML).join('')+(items.length>24?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-24)} отеля <span>Показано 24 из ${items.length}</span></button>`:''):h.ctx.emptyResultsHTML();
+   expected.innerHTML=html;h.render(items);assert.equal(h.cards.innerHTML,expected.innerHTML,'actual DOM equals uncached full rendering, including duplicate IDs/Unicode/escaping/empty states');
+  }
+  // Live-only DOM edits are repaired by exact equality, never trusted as a cache.
+  const items=[entry(1),entry(2)];h.render(items);h.cards.querySelector('#hotel-1 strong').textContent='stale price';h.cards.querySelector('#hotel-2 img').src='/stale.jpg';h.render(items);
+  assert.equal(h.cards.querySelector('#hotel-1 strong').textContent,'100001');assert.equal(h.cards.querySelector('#hotel-2 img').getAttribute('src'),'/photo-2.jpg');
+ }finally{h.close();reference.window.close();}
+ const mutated=cardDOM(source.replace('previous?.isEqualNode(next)?previous:next','previous||next'));
+ try{mutated.render([entry(1,100)]);mutated.render([entry(1,200)]);assert.notEqual(mutated.cards.querySelector('strong').textContent,'200','stale-node-reuse mutation is detected');}finally{mutated.close();}
+ console.log('PASS actual DOM parity: 90 progressive sequences; duplicate IDs, escaping, empty/repopulation, stale DOM edits and equality mutation covered; supplier/lead HTTP 0');
+}
