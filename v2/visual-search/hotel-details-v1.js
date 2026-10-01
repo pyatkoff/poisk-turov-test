@@ -56,7 +56,13 @@ function renderHotelRooms(id,meal='',restoredRooms=null){
  let mealControl=$('#hotel-room-meal');
  if(!mealControl&&meals.length>1&&allOffers.length>2){$('#hotel-room-count').insertAdjacentHTML('beforebegin',`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"></select></label>`);mealControl=$('#hotel-room-meal');}
  if(mealControl){const values=['',...meals];if(meal&&!values.includes(meal))values.push(meal);if(JSON.stringify([...mealControl.options].map(o=>o.value))!==JSON.stringify(values))mealControl.innerHTML=values.map(value=>`<option value="${esc(value)}">${esc(value||'Любое питание')}</option>`).join('');}
- const offers=allOffers.filter(o=>!meal||o.meal===meal),rooms=[...new Set(offers.map(o=>o.room))].map(room=>({room,offers:offers.filter(o=>o.room===room)}));
+ const offers=allOffers.filter(o=>!meal||o.meal===meal),rooms=[],byRoom=new Map();
+ // Set merges signed zero; strict equality leaves the NaN group empty.
+ offers.forEach(o=>{
+  const room=o.room;let group=byRoom.get(room);
+  if(!group){group={room:room===0?0:room,offers:[]};byRoom.set(room,group);rooms.push(group);}
+  if(room===room)group.offers.push(o);
+ });
  $('#hotel-room-count').textContent=`Номера: ${rooms.length} · Туры: ${offers.length}`;
  const roomCards=$('.hotel-room-cards');roomCards.classList.toggle('single-direct-offer',offers.length===1);
  roomCards.innerHTML=rooms.map(({room,offers:rows})=>{
