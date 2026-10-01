@@ -90,9 +90,15 @@ const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stri
 const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold.indexOf('\n return {h,all,filtered,groups};',groupStart);
 assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
 const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
-const oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
+let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
  .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n",'')
  .replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
+const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function renderOfferList(',scopeStart);
+if(scopeStart>=0){
+ assert(scopeEnd>scopeStart,'current heading scope boundary');
+ oldCold=(oldCold.slice(0,scopeStart)+oldCold.slice(scopeEnd))
+  .replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
+}
 const baseline=records(source.replace(section(cold,'function offerListInventory(){','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(){','function mountOfferList(){')));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 if(!process.argv.includes('--capture'))assert.equal(baselineDigest,'21632cf0ab0e31a6537ff66c09acc57bdcc2c14fc15f86dfcc96f770df25479d','pinned original observations');

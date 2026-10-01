@@ -71,6 +71,16 @@ function offerListInventory(){
  }
  return {h,all,filtered,groups};
 }
+function offerGroupScope(offers){
+ const nights=[],seenNights=new Set(),firstDay=offers[0].day;let earliest=firstDay,latest=firstDay,sameDay=true;
+ for(const offer of offers){
+  const night=nightsText(offer.nights);if(!seenNights.has(night)){seenNights.add(night);nights.push(night);}
+  const day=offer.day;if(day===firstDay){if(sameDay)continue;}else sameDay=false;
+  const earliestOrder=day.localeCompare(earliest);
+  if(earliestOrder<0)earliest=day;else if(day.localeCompare(latest)>=0)latest=day;
+ }
+ return `${nights.join(' / ')} · ${sameDay?dateText(firstDay):'Вылеты '+rangeText(earliest,latest)}`;
+}
 function renderOfferList(reset=false){
  if(!optionalShortlistEnabled)offerView.mode='list';
  const {h,all,filtered,groups}=offerListInventory();
@@ -92,7 +102,7 @@ function renderOfferList(reset=false){
  $('#all-offers-list').innerHTML=groups.length?groups.map(({key,offers})=>{
   const first=offers[0],min=Math.min(...offers.map(o=>o.total)),open=offerView.open.includes(key),limit=offerView.limits[key]||4;
   const rows=offers.slice(0,limit).map(o=>`<div class="offer grouped-offer" data-offer-key="${o.key}"><div class="offer-departure"><strong>${dateText(o.day)} → ${dateText(o.returnDay)}</strong><small>${nightsText(o.nights)}</small></div><div class="offer-flight-details"><span class="flight-tag ${o.flight}">${flightLabel(o)}</span>${operatorBadge(o.operator)}${commonNote?'':`<small>${esc(offerMetaNote(o))}</small>`}</div><div class="offer-price"><strong aria-label="${esc(money(o.total))} за всех туристов">${money(o.total)}</strong><button class="primary" data-action="offer" data-key="${o.key}">${offerActionLabel(o)} ${icon('arrow')}</button>${optionalShortlistEnabled?`<button class="text-button compare-tour-link" data-action="compare-tour" data-key="${o.key}">Сравнить на эти даты</button>`:''}</div></div>`).join('');
-  return `<section class="offer-group"><button class="offer-group-heading" data-action="offer-group" data-value="${key}" aria-expanded="${open}" aria-controls="group-${key}"><span><strong>${esc(first.room)}</strong><small>${esc(mealLabel(first))}</small><small class="offer-group-scope" ${open?'hidden':''}>${[...new Set(offers.map(o=>nightsText(o.nights)))].join(' / ')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):'Вылеты '+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small></span><span class="offer-group-min"><strong ${open?'hidden':''}>от ${money(min)}</strong><small>${offerCountText(offers.length)} <span class="rotate-arrow ${open?'up':''}">⌄</span></small></span></button><div id="group-${key}" class="offer-group-body" ${open?'':'hidden'}>${rows}${offers.length>limit?`<button class="text-button group-more" data-action="group-more" data-value="${key}">Ещё варианты (${offers.length-limit}) ${icon('arrow')}</button>`:''}</div></section>`;
+  return `<section class="offer-group"><button class="offer-group-heading" data-action="offer-group" data-value="${key}" aria-expanded="${open}" aria-controls="group-${key}"><span><strong>${esc(first.room)}</strong><small>${esc(mealLabel(first))}</small><small class="offer-group-scope" ${open?'hidden':''}>${offerGroupScope(offers)}</small></span><span class="offer-group-min"><strong ${open?'hidden':''}>от ${money(min)}</strong><small>${offerCountText(offers.length)} <span class="rotate-arrow ${open?'up':''}">⌄</span></small></span></button><div id="group-${key}" class="offer-group-body" ${open?'':'hidden'}>${rows}${offers.length>limit?`<button class="text-button group-more" data-action="group-more" data-value="${key}">Ещё варианты (${offers.length-limit}) ${icon('arrow')}</button>`:''}</div></section>`;
  }).join(''):`<div class="destination-empty offer-recovery-empty"><h3>Нет такого сочетания</h3>${offerRefinementRecovery(all)}<button class="text-button" data-action="reset-offer-filters">Сбросить все условия выбора тура</button></div>`;
 }
 function mountOfferList(){

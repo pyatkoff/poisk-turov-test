@@ -16,6 +16,21 @@ function referenceInventory(hotels,hotelOffers,offerView,offerGroupKey){
  const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));
  return {h,all,filtered,groups};
 }
+function referenceScope(offers){
+ let comparisons=0;
+ const nights=[...new Set(offers.map(o=>String(o.nights)))],days=[...new Set(offers.map(o=>o.day))];
+ const compare=(a,b)=>{comparisons++;return a.day.localeCompare(b.day);};
+ const value=nights.join(' / ')+' · '+(days.length===1?offers[0].day:'Вылеты '+[...offers].sort(compare)[0].day+'/'+[...offers].sort(compare).at(-1).day);
+ return {value,comparisons};
+}
+function groupScope(code,offers){
+ const start=code.indexOf('function offerGroupScope('),end=code.indexOf('function renderOfferList(',start);
+ assert(start>=0&&end>start,'group scope owner boundary');
+ const work={comparisons:0},ctx={Set,String,work,nightsText:String,dateText:String,rangeText:(a,b)=>a+'/'+b,compare:(a,b)=>{work.comparisons++;return String(a).localeCompare(String(b));}};
+ const measuredOwner=code.slice(start,end).replaceAll('day.localeCompare(','compare(day,');
+ vm.createContext(ctx);vm.runInContext(measuredOwner+'globalThis.scopeOwner=offerGroupScope;',ctx);
+ return {value:ctx.scopeOwner(offers),comparisons:work.comparisons};
+}
 function inventory(code,rows,view){
  const start=code.indexOf('function offerListInventory(){'),end=code.indexOf('function renderOfferList(',start);
  assert(start>=0&&end>start);
@@ -50,11 +65,33 @@ for(const special of [Object.freeze([]),Object.freeze([offer(0)]),sparse,Object.
 const measured=inventory(source,rows,baseView());let beforeCalls=0;
 referenceInventory([measured.h],h=>h.rows,baseView(),o=>{beforeCalls++;return key(o);});
 assert.equal(beforeCalls,51000);assert.equal(measured.keyCalls,1000);
+const dayCases=[
+ ['2026-10-12'],
+ ['2026-10-12','2026-10-11'],
+ ['2026-10-12','2026-10-11','2026-10-12'],
+ ['2026-10-10','2026-10-12','2026-10-11'],
+ ['é','e\u0301','é'],
+ ['e\u0301','é','e\u0301'],
+ ['Я','я','Я'],
+ ['2026-10-12','2026-10-10','2026-10-12','2026-10-11'],
+ ['b','a','c','a','b']
+],nightCases=[[7],[7,8],[8,7,8],[7,10,14],[7,7,8,10,8]];
+let scopeCases=0;
+for(const days of dayCases)for(const nights of nightCases)for(let rotation=0;rotation<3;rotation++){
+ const length=Math.max(days.length,nights.length),offers=Array.from({length},(_,i)=>({day:days[(i+rotation)%days.length],nights:nights[(i+rotation)%nights.length]}));
+ assert.deepEqual(groupScope(source,offers).value,referenceScope(offers).value,'scope keeps native stable date range and nights order');scopeCases++;
+}
+const measuredScope=Array.from({length:1000},(_,i)=>({day:'2026-'+String((i*37)%997).padStart(3,'0'),nights:7+i%4}));
+const previousScope=referenceScope(measuredScope),currentScope=groupScope(source,measuredScope);
+assert.equal(currentScope.value,previousScope.value);assert(previousScope.comparisons>currentScope.comparisons*4,'single pass removes full date sorts');
+assert.equal(groupScope(source,Array.from({length:1000},()=>({day:'same',nights:7}))).comparisons,0,'all-one-day scope performs no locale comparisons');
+assert.throws(()=>{const mutated=source.replace('else if(day.localeCompare(latest)>=0)','else if(day.localeCompare(latest)>0)');for(const days of [['é','e\u0301'],['e\u0301','é']]){const offers=days.map((day,i)=>({day,nights:7+i}));assert.equal(groupScope(mutated,offers).value,referenceScope(offers).value);}},'stable equivalent last-date mutation detected');
 // Render both actual owner variants against the same deterministic DOM boundary.
-// The reference restores ONLY the old repeated note call; all markup stays actual.
+// The reference restores the old repeated note and heading inventory work.
 const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
 const legacyNotes=source.replace(hoisted,'').replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
+const legacyRenderer=legacyNotes.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
 function render(code,all,view,shortlist=false,reset=false){
@@ -73,11 +110,11 @@ function render(code,all,view,shortlist=false,reset=false){
 }
 let renders=0;
 for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i)=>({...o,note:i%2?'different':'same'}))])for(const mode of ['list','compare'])for(const sort of ['price','date'])for(const departure of ['','missing'])for(const reset of [false,true]){
- const view={...baseView(),mode,sort,departure},before=render(legacyNotes,all,view,true,reset),after=render(source,all,view,true,reset);
+ const view={...baseView(),mode,sort,departure},before=render(legacyRenderer,all,view,true,reset),after=render(source,all,view,true,reset);
  assert.deepEqual(after.snapshot,before.snapshot,'render output and view state unchanged');
  assert.equal(after.noteCalls,before.noteCalls?1:0,'one same-render note, zero for empty/comparison');renders++;
 }
-const before=render(legacyNotes,rows,baseView()),after=render(source,rows,baseView());
+const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);
@@ -86,4 +123,4 @@ assert.throws(()=>sameReferences(reversedResult.value,referenceInventory([revers
 const copied=source.replace('group.offers.push(offer)','group.offers.push({...offer})');assert.notEqual(copied,source);
 const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} inventory and ${scopeCases} heading reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
