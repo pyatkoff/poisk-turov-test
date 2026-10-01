@@ -362,4 +362,25 @@ const rankMutation=rankingOwner(source.replace('a.rank-b.rank','b.rank-a.rank'))
 rankMutation.ctx.hotels=[2,5].map(id=>({id,rating:4,beach:null,legacyIds:[id],offers:[{key:'rank-'+id,total:100}]}));
 assert.notDeepEqual(Array.from(rankMutation.run(),r=>r.hotel.id),previousRanking(rankMutation.ctx.hotels,'recommended',rankMutation.ctx.popularity).map(r=>r.hotel.id),'popularity tie-break mutation detected');
 console.log('PASS actual result ranking: '+rankingRecords.length+' independent order/reference/progressive observations; digest '+rankingDigest+'; score work '+oldRanking.work.score+' → '+ranking.work.score+', rank work '+oldRanking.work.rank+' → '+ranking.work.rank+'; supplier/lead HTTP 0');
+// Comparison cards already receive the sorted raw offer inventory from
+// savedAvailability(). Reusing it for the "all tours" count must not trigger a
+// second predicate/filter/sort pass per compared hotel.
+function comparisonOwner(code){
+ const body={innerHTML:'',insertAdjacentHTML(){throw Error('unexpected empty comparison body')}},modal={classList:{add(){}}},footer={hidden:false};let calls=0,predicateChecks=0,keyReads=0,seed=11;const random=()=>((seed=seed*48271%2147483647)/2147483647);
+ const hotels=Array.from({length:3},(_,hotel)=>({id:hotel+1,name:'Hotel '+hotel,resort:'Кемер',stars:5,rating:4.8,country:'4',offers:Array.from({length:100},(_,index)=>({key:hotel+':'+index,total:Math.floor(random()*100000)+index,day:'2026-10-'+String(index%21+1).padStart(2,'0'),returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:'Room',meal:'AI',flight:'charter',operator:'Operator'}))}));
+ const order=hotels.map(h=>h.offers.slice()),ctx={Math,Number,String,Array,Map,Set,JSON,innerWidth:1280,hotels,state:{compare:[1,2,3],search:{origin:'Москва',country:'4'},filters:{},onlyFavorites:false},compareView:{pair:[],onlyDifferences:false},countryNames:{'4':'Турция'},
+  $:selector=>selector==='#modal'?modal:selector==='#modal-footer'?footer:selector==='#modal-body'?body:selector==='.comparison tbody'?{children:[1]}:null,
+  hotelOffers:h=>{calls++;return h.offers.filter(()=>{predicateChecks++;return true}).sort((a,b)=>{keyReads+=2;const total=a.total-b.total;if(total)return total;keyReads+=2;return a.day.localeCompare(b.day)})},mealLabel:o=>o.meal,filterCount:()=>0,savedContext:()=>'',savedHotelPhoto:()=>'',esc:String,icon:()=>'',money:String,cardPriceNote:()=>'',ratingText:h=>String(h.rating),dateText:String,nightsText:String,flightLabel:o=>o.flight};
+ vm.createContext(ctx);vm.runInContext(section(code,'function savedAvailability(','function savedRecovery(')+section(code,'function renderCompare(){','function openFavorites(){')+'globalThis.av=savedAvailability;',ctx);ctx.renderCompare();
+ return {ctx,hotels,order,html:body.innerHTML,calls,predicateChecks,keyReads};
+}
+const comparisonSection=section(source,'function renderCompare(){','function openFavorites(){');
+const previousComparisonSource=source.replace(comparisonSection,comparisonSection.replace('entries.map(({hotel:h,offer:o,offers})','entries.map(({hotel:h,offer:o})').replace('${offers.length>1?', '${hotelOffers(h).length>1?'));
+const comparison=comparisonOwner(source),previousComparison=comparisonOwner(previousComparisonSource);
+assert.equal(comparison.html,previousComparison.html,'comparison markup and all-tour visibility retained');
+assert.equal(previousComparison.calls,6,'old comparison performs two full offer passes per hotel');assert.equal(comparison.calls,3,'comparison performs one full offer pass per hotel');
+assert.deepEqual([previousComparison.predicateChecks,comparison.predicateChecks],[600,300],'one predicate pass retained');assert.deepEqual([previousComparison.keyReads,comparison.keyReads],[6408,3204],'one total/day comparator pass retained');
+for(let index=0;index<comparison.hotels.length;index++){assert.deepEqual(comparison.hotels[index].offers,comparison.order[index],'raw offer order unchanged');const entry=comparison.ctx.av(comparison.hotels[index]);entry.offers.forEach(offer=>assert(comparison.hotels[index].offers.includes(offer),'raw offer identity retained'));}
+assert.equal((section(source,'function renderCompare(){','function openFavorites(){').match(/hotelOffers\(/g)||[]).length,0,'renderCompare never re-reads the retained offer inventory');
+console.log('PASS comparison offer inventory: max 3x100 full passes 6→3, predicate checks 600→300, comparator-key reads 6408→3204; markup/count/raw identity/order retained');
 require('./search3-visual-rating-render-inventory.cjs');
