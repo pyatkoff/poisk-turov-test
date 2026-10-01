@@ -31,6 +31,27 @@ function groupScope(code,offers){
  vm.createContext(ctx);vm.runInContext(measuredOwner+'globalThis.scopeOwner=offerGroupScope;',ctx);
  return {value:ctx.scopeOwner(offers),comparisons:work.comparisons};
 }
+const refinementFields=['departure','flight','room','meal'];
+const refinementValue=(offer,field)=>field==='departure'?offer.day:offer[field];
+function referenceRefinementCounts(all,view,options){
+ const work={visits:0,predicates:0},counts={};
+ for(const field of refinementFields){
+  counts[field]=new Map(options[field].map(value=>[value,all.filter(offer=>{work.visits++;return refinementFields.every(current=>{work.predicates++;const selected=current===field?value:view[current];return !selected||refinementValue(offer,current)===selected;});}).length]));
+ }
+ return {counts,work};
+}
+function refinementCounts(code,all,view,options){
+ const start=code.indexOf('function offerRefinementCounts('),end=code.indexOf('function renderOfferRefinements(',start);
+ assert(start>=0&&end>start,'refinement count owner boundary');
+ const work={visits:0,predicates:0},ctx={Map,offerRefinementFields:refinementFields,offerView:view,work};
+ const measuredOwner=code.slice(start,end)
+  .replace('  const offer=all[i];let matches=true;','  work.visits++;const offer=all[i];let matches=true;')
+  .replace('   const selected=offerView[current];','   work.predicates++;const selected=offerView[current];');
+ vm.createContext(ctx);vm.runInContext(measuredOwner+'globalThis.countOwner=offerRefinementCounts;',ctx);
+ const counts=Object.fromEntries(refinementFields.map(field=>[field,ctx.countOwner(all,field,options[field].map(value=>({value}))) ]));
+ return {counts,work};
+}
+function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual[field]],[...expected[field]],field+' option counts');}
 function inventory(code,rows,view){
  const start=code.indexOf('function offerListInventory(){'),end=code.indexOf('function renderOfferList(',start);
  assert(start>=0&&end>start);
@@ -86,12 +107,32 @@ const previousScope=referenceScope(measuredScope),currentScope=groupScope(source
 assert.equal(currentScope.value,previousScope.value);assert(previousScope.comparisons>currentScope.comparisons*4,'single pass removes full date sorts');
 assert.equal(groupScope(source,Array.from({length:1000},()=>({day:'same',nights:7}))).comparisons,0,'all-one-day scope performs no locale comparisons');
 assert.throws(()=>{const mutated=source.replace('else if(day.localeCompare(latest)>=0)','else if(day.localeCompare(latest)>0)');for(const days of [['é','e\u0301'],['e\u0301','é']]){const offers=days.map((day,i)=>({day,nights:7+i}));assert.equal(groupScope(mutated,offers).value,referenceScope(offers).value);}},'stable equivalent last-date mutation detected');
+const refinementRows=Array.from({length:1000},(_,i)=>({day:'2026-10-'+String(1+i%20).padStart(2,'0'),flight:i%2?'charter':'regular',room:'room-'+i%25,meal:['RO','BB','HB','FB','AI'][i%5]}));
+const refinementOptions=Object.fromEntries(refinementFields.map(field=>[field,['',...new Set(refinementRows.map(offer=>refinementValue(offer,field)))]]));
+let refinementCases=0;
+for(let i=0;i<500;i++){
+ const all=refinementRows.slice(0,1+i*37%120),view={...baseView(),departure:i%3?refinementRows[i%all.length].day:'',flight:i%4?refinementRows[i*3%all.length].flight:'',room:i%5?refinementRows[i*7%all.length].room:'',meal:i%6?refinementRows[i*11%all.length].meal:''};
+ if(i%17===0)view.room='absent';
+ const options=Object.fromEntries(refinementFields.map(field=>{const values=['',...new Set(all.map(offer=>refinementValue(offer,field)))];if(view[field]&&!values.includes(view[field]))values.push(view[field]);return [field,values];}));
+ sameCounts(refinementCounts(source,all,view,options).counts,referenceRefinementCounts(all,view,options).counts);refinementCases++;
+}
+const refinementSparse=[];refinementSparse.length=9;refinementSparse[2]=refinementRows[2];refinementSparse[6]=refinementRows[6];
+const refinementProto=Object.create(Array.prototype);refinementProto[4]=refinementRows[4];Object.setPrototypeOf(refinementSparse,refinementProto);
+sameCounts(refinementCounts(source,refinementSparse,baseView(),refinementOptions).counts,referenceRefinementCounts(refinementSparse,baseView(),refinementOptions).counts);refinementCases++;
+const previousRefinements=referenceRefinementCounts(refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
+const currentRefinements=refinementCounts(source,refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
+sameCounts(currentRefinements.counts,previousRefinements.counts);assert.equal(previousRefinements.work.visits,56000);assert.equal(currentRefinements.work.visits,4000);assert.equal(previousRefinements.work.predicates,62670);assert.equal(currentRefinements.work.predicates,4780);
 // Render both actual owner variants against the same deterministic DOM boundary.
-// The reference restores the old repeated note and heading inventory work.
+// The reference restores the old repeated note, heading and refinement inventory work.
 const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
 const legacyNotes=source.replace(hoisted,'').replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
-const legacyRenderer=legacyNotes.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
+const countStart=legacyNotes.indexOf('function offerRefinementCounts('),countEnd=legacyNotes.indexOf('function renderOfferRefinements(',countStart);
+assert(countStart>=0&&countEnd>countStart,'current refinement count boundary');
+const legacyCounts=(legacyNotes.slice(0,countStart)+legacyNotes.slice(countEnd))
+ .replace('  const counts=comparing?null:offerRefinementCounts(all,field,select.options);\n','')
+ .replace('   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(count)}`;');
+const legacyRenderer=legacyCounts.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
 function render(code,all,view,shortlist=false,reset=false){
@@ -117,10 +158,13 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);
+const forbiddenComparisonInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("unused comparison inventory");');
+render(forbiddenComparisonInventory,rows,{...baseView(),mode:'compare'},true);
+assert.throws(()=>render(forbiddenComparisonInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);
 const reversedResult=inventory(reversed,rows,baseView());
 assert.throws(()=>sameReferences(reversedResult.value,referenceInventory([reversedResult.h],h=>h.rows,baseView(),key)),'reversed group order mutation detected');
 const copied=source.replace('group.offers.push(offer)','group.offers.push({...offer})');assert.notEqual(copied,source);
 const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} inventory and ${scopeCases} heading reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading and ${refinementCases} refinement reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
