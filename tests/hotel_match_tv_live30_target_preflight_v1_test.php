@@ -1,0 +1,32 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php';
+$checks=0;
+function tpcheck(bool $ok,string $name): void {global $checks;++$checks;if(!$ok)throw new RuntimeException('target_preflight_test:'.$name);}
+tpcheck(TP30_OP==='int-andromeda-match-live30-target-preflight-20261001-v1','fixed_operation');
+tpcheck(array_keys(TP30_TABLES)===['catalog_hotels','tour_operator_identity_observations','andromeda_hotel_identities','anex_hotel_decisions','anex_review_pair_exclusions'],'fixed_tables');
+echo 'TV_TARGET_PREFLIGHT_PURE_PASS '.$checks."\n";
+if(getenv('MATCH_TV_PREFLIGHT_MYSQL_TEST')!=='1')exit(0);
+$db=new PDO('mysql:host=127.0.0.1;port=33306;dbname=match_primary_fixture;charset=utf8mb4','root','match-fixture-only',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+tpcheck($db->query('SELECT DATABASE()')->fetchColumn()==='match_primary_fixture','fixture_database_only');
+$tables=array_keys(TP30_TABLES);foreach($tables as $table)$db->exec('DROP TABLE IF EXISTS '.$table);
+$db->exec('CREATE TABLE catalog_hotels (id BIGINT PRIMARY KEY,name VARCHAR(600),country_id INT,country_name VARCHAR(600),region_name VARCHAR(600),subregion_name VARCHAR(600),category INT,is_active INT,latitude DOUBLE NULL,longitude DOUBLE NULL) ENGINE=InnoDB');
+$db->exec('CREATE TABLE tour_operator_identity_observations (hotel_id BIGINT,last_seen_at DATETIME) ENGINE=InnoDB');
+$db->exec('CREATE TABLE andromeda_hotel_identities (supplier_namespace VARCHAR(64),external_hotel_id VARCHAR(64),local_hotel_id BIGINT NULL,decision_status VARCHAR(32)) ENGINE=InnoDB');
+$db->exec('CREATE TABLE anex_hotel_decisions (catalog_hotel_id BIGINT NULL) ENGINE=InnoDB');
+$db->exec('CREATE TABLE anex_review_pair_exclusions (catalog_hotel_id BIGINT NULL) ENGINE=InnoDB');
+$db->exec("INSERT INTO catalog_hotels VALUES (1,'GOOD HOTEL',4,'Турция','Сиде',NULL,4,1,36.8,31.3),(2,'https://bad.example',4,'Турция','Сиде',NULL,4,1,91,31.3),(3,'OLD',4,'Турция','Сиде',NULL,4,1,36.8,31.3)");
+$db->exec("INSERT INTO tour_operator_identity_observations VALUES (1,UTC_TIMESTAMP()),(2,UTC_TIMESTAMP()),(3,DATE_SUB(UTC_TIMESTAMP(),INTERVAL 31 DAY))");
+for($i=1;$i<=33;++$i)$db->prepare("INSERT INTO andromeda_hotel_identities VALUES ('andromeda_catalog',?,1,'accepted')")->execute([(string)$i]);
+$db->exec("INSERT INTO andromeda_hotel_identities VALUES ('andromeda_catalog','bad',2,'accepted')");
+$db->exec('INSERT INTO anex_hotel_decisions VALUES (1)');$db->exec('INSERT INTO anex_review_pair_exclusions VALUES (2)');
+$before=[];foreach($tables as $table)$before[$table]=$db->query('SELECT * FROM '.$table)->fetchAll(PDO::FETCH_ASSOC);
+$out=tp30_current($db);
+tpcheck($out['schema_complete']===true&&!array_filter($out['missing_columns']),'schema_complete');
+tpcheck(!in_array(false,$out['query_status'],true),'all_aggregate_queries_ran');
+tpcheck($out['metrics']['cohort']===2&&$out['metrics']['invalid_coordinates']===1&&$out['metrics']['invalid_text']===1,'cohort_guard_counts');
+tpcheck($out['metrics']['invalid_accepted_native']===1&&$out['metrics']['max_accepted_aliases']===33,'native_guard_counts');
+tpcheck($out['metrics']['manual_targets']===1&&$out['metrics']['excluded_targets']===1,'protection_counts');
+tpcheck(!$db->inTransaction(),'read_transaction_closed');
+foreach($tables as $table)tpcheck($before[$table]===$db->query('SELECT * FROM '.$table)->fetchAll(PDO::FETCH_ASSOC),'rows_unchanged_'.$table);
+echo 'TV_TARGET_PREFLIGHT_MYSQL_PASS '.$checks."\n";
