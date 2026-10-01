@@ -422,8 +422,8 @@ const countMatchingHotels=model=>{const s=model.search||state.search,f=model.fil
 // Keep the inventory local to this pass: later responses and edits recalculate it.
 function countFacetOptions(model,group,values,selectedInventory=null){
  const counts=new Map(values.map(value=>[value,0]));if(!counts.size)return counts;
- if(!['meals','operators','flight','resorts','stars'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
- const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=group==='resorts'||group==='stars',wanted=new Map(),selectedKeys=new Set();
+ if(!['meals','operators','flight','resorts','stars','amenities'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
+ const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=['resorts','stars','amenities'].includes(group),wanted=new Map(),selectedKeys=new Set();
  if(selectedInventory)selectedInventory.count=0;
  const selectedDate=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate;
  const from=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.from),to=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.to);
@@ -435,13 +435,17 @@ function countFacetOptions(model,group,values,selectedInventory=null){
   for(const value of selectedValues){const key=group==='meals'&&data.live?mealNames[value]:value;if(group!=='meals'||!data.live||Number.isSafeInteger(key))selectedKeys.add(key);}
   if(!wanted.size)return counts;
  }
- const matches=hotelFacet?null:hotelOfferPredicate(s,filters,from,to);
+ const matches=!hotelFacet||group==='amenities'?hotelOfferPredicate(s,filters,from,to):null;
  for(const h of hotels){
   if(!h)continue;
   if(hotelFacet){
-   if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)continue;
-   const facts=group==='resorts'?hotelPlaces(h):[h.stars];
-   if(selectedInventory&&(!selectedValues.length||selectedValues.some(value=>facts.includes(value))))selectedInventory.count++;
+   if(group==='amenities'){
+    if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites)||(h.offers||[]).find(matches)===undefined)continue;
+   }else if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)continue;
+   let facts;if(group==='resorts')facts=hotelPlaces(h);else if(group==='stars')facts=[h.stars];else{facts=new Set();(h.amenities||[]).forEach(value=>facts.add(value.key));}
+   const selectedMatch=group==='amenities'?selectedValues.every(value=>facts.has(value)):!selectedValues.length||selectedValues.some(value=>facts.includes(value));
+   if(selectedInventory&&selectedMatch)selectedInventory.count++;
+   if(group==='amenities'&&!selectedMatch)continue;
    for(const value of new Set(facts))if(counts.has(value))counts.set(value,counts.get(value)+1);
    continue;
   }
@@ -592,8 +596,9 @@ function fullCheckRows(group,options){const model=editingFilterModel();return op
 function amenityFilterGroups(hs,f){
  const facts=new Map();hs.forEach(h=>(h.amenities||[]).forEach(a=>{if(a?.filterable===false)return;facts.set(a.key,a);amenityNames.set(a.key,a);}));
  for(const key of f.amenities||[])if(!facts.has(key)&&amenityNames.has(key))facts.set(key,amenityNames.get(key));
+ const counts=countFacetOptions(editingFilterModel(),'amenities',[...facts.keys()]);
  const groups=new Map();for(const fact of facts.values()){if(!groups.has(fact.groupId))groups.set(fact.groupId,{name:fact.group,items:[]});groups.get(fact.groupId).items.push(fact);}
- return [...groups.values()].map(group=>`<div class="filter-group"><h4>${esc(group.name)}</h4>${group.items.map(a=>{const selected=(f.amenities||[]).includes(a.key),keys=[...new Set([...(f.amenities||[]),a.key])],count=countMatchingHotels({...editingFilterModel(),filters:{...f,amenities:keys}});return filterCheckRowHTML(`data-filter="amenities" value="${esc(a.key)}"`,a.label,count,selected);}).join('')}</div>`).join('');
+ return [...groups.values()].map(group=>`<div class="filter-group"><h4>${esc(group.name)}</h4>${group.items.map(a=>{const selected=(f.amenities||[]).includes(a.key);return filterCheckRowHTML(`data-filter="amenities" value="${esc(a.key)}"`,a.label,counts.get(a.key),selected);}).join('')}</div>`).join('');
 }
 // Source HTML stays inert. Parsing through a detached template decodes named,
 // decimal and hexadecimal entities without executing encoded supplier markup.
@@ -617,7 +622,7 @@ function hotelHighlights(h){
 
 function syncAvailableFilterGroups(){$$('#filters .filter-group').forEach(group=>{const rows=[...group.querySelectorAll('.check-row')];if(rows.length)group.hidden=rows.every(row=>row.dataset.available!=='true'&&!row.querySelector('input')?.checked);});syncFilterSections();}
 function updateFacetCounts(ratingCount){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map(),grouped=new Map(),selectedInventory={count:null};
- for(const input of inputs){const group=input.dataset.filter;if(!group||group==='amenities')continue;if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(input.value);}
+ for(const input of inputs){const group=input.dataset.filter;if(!group)continue;if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(input.value);}
  const starOptions=filterStarOptions(model);if(starOptions.length)grouped.set('stars',starOptions);
  for(const [group,values] of grouped)counts.set(group,countFacetOptions(model,group,values,selectedInventory.count===null?selectedInventory:null));
  inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=key==='rating'&&ratingCount!==undefined?ratingCount:counts.get(key)?.get(key==='stars'?Number(input.value):input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars(counts.get('stars'));syncAvailableFilterGroups();renderFilterNavigation();settleFilterRoots($('#filters'));return selectedInventory.count;}
