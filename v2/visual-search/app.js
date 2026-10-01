@@ -558,10 +558,13 @@ function applyFacetSearch(host){
  const group=host.dataset.facetOptions,q=normalizeSearch(facetQueries.get(group)||''),rows=[...host.querySelectorAll('.check-row')].map(row=>({row,input:row.querySelector('input'),label:row.querySelector('span').textContent,count:Number(row.querySelector('small').textContent)})),more=host.querySelector('details'),focused=document.activeElement;
  rows.forEach(({row},i)=>{if(row.dataset.facetOrder===undefined)row.dataset.facetOrder=String(i)});
  rows.sort((a,b)=>group==='meals'?Number(a.row.dataset.facetOrder)-Number(b.row.dataset.facetOrder):['resorts','operators'].includes(group)?b.count-a.count||a.label.localeCompare(b.label,'ru'):Number(b.input.checked)-Number(a.input.checked)||Number(b.row.dataset.available==='true')-Number(a.row.dataset.available==='true')||Number(a.row.dataset.facetOrder)-Number(b.row.dataset.facetOrder));
- let found=0,availableCount=0;
+ let found=0,availableCount=0;const primaryRows=[],moreRowsToPlace=[];
  for(const {row,input,label} of rows){const available=row.dataset.available==='true'||input.checked,matches=available&&(!q||normalizeSearch(label).includes(q));row.hidden=!matches;if(matches)found++;
-  if(available&&availableCount++<7)host.insertBefore(row,more);else more.append(row);
+  (available&&availableCount++<7?primaryRows:moreRowsToPlace).push(row);
  }
+ // Reconcile the same row suffixes, preserving any unowned prefix nodes.
+ const place=(parent,ordered,before=null)=>{for(let i=ordered.length-1;i>=0;i--){const row=ordered[i];if(row.parentNode!==parent||row.nextSibling!==before)parent.insertBefore(row,before);before=row;}};
+ place(host,primaryRows,more);place(more,moreRowsToPlace);
  if(focused?.isConnected&&rows.some(({row})=>row.contains(focused))&&document.activeElement!==focused)focused.focus({preventScroll:true});
  const searchBox=host.querySelector('.facet-search');searchBox.hidden=availableCount<=7&&!q&&!searchBox.contains(focused);
  host.classList.toggle('facet-searching',!!q);
