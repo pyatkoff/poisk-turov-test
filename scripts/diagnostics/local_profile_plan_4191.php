@@ -6,7 +6,7 @@
 declare(strict_types=1);
 
 const LPP_BATCH = 'local4191-20260930';
-const LPP_OPERATION = 'int-andromeda-local-profile-plan-4191-20261001-v1';
+const LPP_OPERATION = 'int-andromeda-local-profile-plan-4191-20261001-v2';
 const LPP_D1_SOURCE = 'a1968cb819c126be8e7d287f9176acb2647e6f67';
 const LPP_IDS = '5227,4930,5251,5116,5077,5221,5455,5185,6191,5904,5222,5197,5483,4941,5557,4991,4922,5200,5352,5451,5229,4925,5038,11756,6185,5464,4868,5154,5250,5173,5021,4996,11344,13190,4850,6223,7478,5655,5126,4919,4975,4946,5306,4970,4891,7032,5460,4853,5353,4932,15772,7452,5554,5106,5073,6078,6829,9838,5144,4939,6232,13687,5467,4972,5048,4947,4971,7252,4914,6153,5167,4465,5461,13628,5480,5184,4642,11032,5023,5971,7472,4456,11348,4496,5927,5062,6004,5145,4897,4968,5149,4887,13969,13048,4911,4864,5213,5153,5015,5014,4886,5262,4881,13878,6156,5349,9852,4901,6105,4917,14075,5685,6200,5772,5449,12278,12277,7561,5268,5039,9880,9888,4865,5117,11331,5929,14284,5181,5051,12124,5264,4903,5432,4900,4928,4870,13138,5027,4943,5450,10794,4869,4973,4473,12368,4463,7473,9854,5551,5183,5033,4988,6030,4885,5640,5290,4876,5678,4944,4937,4852,5459,10825,4452,5232,13378,5102,5235,13957,6809,4989,4915,5730,10833,4916,4912,4974,5076,5162,5156,5350,6264,6297,5209,12740,4474,5252,5367,13225,6349,4861,5567,4933,6113,5180,5573,4896,4909,4439,4976,4908,4918,6545,5155,9640,6149,5112,4978,13846,5075,4998,4990,4874,4924,5576,9821,14762,4905,7567,5243,4910,4883,13246,5462,4884,4432,15641,12385,5078,5122,5007,13040,11610,4906,5571,4927,13633,4948,4437,5188,6141,5018,5178,6124,5295,5582,4440,5139,5030,5440,9837,5001,5273,5560,5476,6221,5841,5159,4894,6216,6998,5458,4940,4871,5566,5050,4879,7213,5187,5190,5677,13627,5276,14904,5207,7109,15824,11332,14417,5277,7262,7107,7048,15809,7188,14518,7136,5310,15325,14681,7257,4995,5082,6088,7167,5304,6146,7193,7068,15964,5152,5308,7058,5302,7201,5245,7287,7303,5869,7298,5248,5642,7259,9866,15019,6621,15769,13877,7157,7053,15557,7185,7031,15447,7163,7174,5309,4878,14884,5074,11809,4234,4310,4297,4195,4105,4178,4229,4173,4167,4298,4117,4125,4296,4127,4303,4135,4200,4194,4131,4157,4124,4226,4107,4158,4111,4179,4165,4184,4187,4259,4183,4266,4164,4170,4156';
 const LPP_FIELDS = [
@@ -161,7 +161,7 @@ function lpp_current_rows(PDO $db): array {
 
 /** A callback lets contract tests prove every exclusion occurs before owner plan(). */
 function lpp_classify(array $byId, array $d1, callable $plan): array {
-    $rows = []; $counts = []; $profiles = $aliases = $prepared = 0;
+    $rows = []; $counts = []; $profiles = $aliases = $prepared = 0; $eligible = [];
     foreach (lpp_ids() as $own) {
         $current = $byId[$own] ?? [];
         $out = ['anytourHotelId'=>$own,'state'=>'PROFILE_UNAVAILABLE','safeToApply'=>false];
@@ -183,49 +183,73 @@ function lpp_classify(array $byId, array $d1, callable $plan): array {
                 } elseif (in_array($own, $d1['ownIds'], true) || in_array($local, $d1['legacyIds'], true)) {
                     $out['state'] = 'D1_OVERLAP_HELD';
                 } else {
-                    // The existing owner revalidates accepted identity, raw card,
-                    // imported/manual origin and freshness. It alone creates the patch.
-                    $scope = [['anytourHotelId'=>$own,'localHotelId'=>$local,'fields'=>LPP_FIELDS]];
-                    try {
-                        $candidate = $plan($scope);
-                        lpp_need(($candidate['status'] ?? null) === 'prepared_read_only'
-                            && ($candidate['writes'] ?? null) === 0 && ($candidate['supplierCalls'] ?? null) === 0
-                            && ($candidate['limit'] ?? null) === 1 && ($candidate['activeProfiles'] ?? null) === 1
-                            && ($candidate['scannedProfiles'] ?? null) === 1
-                            && ($candidate['contentPolicy'] ?? null) === 'sync_imported_retained_tv_v1'
-                            && is_array($candidate['selected'] ?? null) && count($candidate['selected']) <= 1,
-                            'owner_plan_contract');
-                        ++$prepared;
-                        $out['ownerPlan'] = $candidate;
-                        $selected = $candidate['selected'][0] ?? null;
-                        if ($selected !== null) {
-                            lpp_need(($selected['anytourHotelId'] ?? null) === $own
-                                && ($selected['localHotelId'] ?? null) === $local, 'owner_plan_identity');
-                            if (($selected['expectedRevision'] ?? null) !== $out['expectedRevision']
-                                || ($selected['expectedProfileSha256'] ?? null) !== $out['expectedProfileSha256']
-                                || ($selected['expectedAliasSha256'] ?? null) !== $out['expectedAliasSha256']) {
-                                $out['state'] = 'CURRENT_DRIFT_HELD';
-                            } else $out['state'] = 'RETAINED_DELTA_PREPARED';
-                        } else {
-                            $held = $candidate['held'][$own] ?? [];
-                            $reasons = array_values($held);
-                            $out['state'] = $held === [] ? 'RETAINED_NO_DELTA'
-                                : ((in_array('SYNC_FULL_CARD_UNAVAILABLE', $reasons, true)
-                                    || in_array('SYNC_SAVED_PROFILE_UNAVAILABLE', $reasons, true)
-                                    || (count(array_unique($reasons)) === 1 && $reasons[0] === 'source_missing_preserved'))
-                                    ? 'SOURCE_MISSING' : 'SOURCE_PROVENANCE_HELD');
-                        }
-                    } catch (Throwable $e) {
-                        $out['state'] = 'SOURCE_PROVENANCE_HELD';
-                        $message = $e->getMessage();
-                        $out['holdReason'] = preg_match('/^(?:ANYTOUR_|SYNC_)[A-Z0-9_]+$/D', $message) === 1
-                            ? $message : 'owner_plan_failed_private_review';
-                    }
+                    $out['state'] = 'OWNER_PLAN_PENDING_PRIVATE';
+                    $eligible[$own] = ['rowIndex'=>count($rows),'scope'=>[
+                        'anytourHotelId'=>$own,'localHotelId'=>$local,'fields'=>LPP_FIELDS,
+                    ]];
                 }
             }
         }
-        $counts[$out['state']] = ($counts[$out['state']] ?? 0) + 1;
         $rows[] = $out;
+    }
+    foreach (array_chunk($eligible, AnyTourProfileEnrichmentV1::MAX_BATCH, true) as $chunk) {
+        $scope = array_column($chunk, 'scope');
+        usort($scope, static fn(array $a, array $b): int => $a['anytourHotelId'] <=> $b['anytourHotelId']);
+        try {
+            $candidate = $plan($scope);
+            lpp_need(($candidate['status'] ?? null) === 'prepared_read_only'
+                && ($candidate['writes'] ?? null) === 0 && ($candidate['supplierCalls'] ?? null) === 0
+                && ($candidate['limit'] ?? null) === count($scope)
+                && ($candidate['activeProfiles'] ?? null) === count($scope)
+                && ($candidate['scannedProfiles'] ?? null) === count($scope)
+                && ($candidate['contentPolicy'] ?? null) === 'sync_imported_retained_tv_v1'
+                && is_array($candidate['selected'] ?? null) && count($candidate['selected']) <= count($scope)
+                && is_array($candidate['held'] ?? null),
+                'owner_plan_contract');
+            $prepared += count($scope);
+            $selected = [];
+            foreach ($candidate['selected'] as $item) {
+                $own = $item['anytourHotelId'] ?? null;
+                lpp_need(is_int($own) && isset($chunk[$own]) && !isset($selected[$own]), 'owner_plan_identity');
+                $selected[$own] = $item;
+            }
+            foreach ($chunk as $own=>$entry) {
+                $index = $entry['rowIndex']; $out = $rows[$index]; $item = $selected[$own] ?? null;
+                if ($item !== null) {
+                    lpp_need(($item['localHotelId'] ?? null) === $out['localHotelId'], 'owner_plan_identity');
+                    $out['ownerPlan'] = ['selected'=>$item];
+                    if (($item['expectedRevision'] ?? null) !== $out['expectedRevision']
+                        || ($item['expectedProfileSha256'] ?? null) !== $out['expectedProfileSha256']
+                        || ($item['expectedAliasSha256'] ?? null) !== $out['expectedAliasSha256']) {
+                        $out['state'] = 'CURRENT_DRIFT_HELD';
+                    } else $out['state'] = 'RETAINED_DELTA_PREPARED';
+                } else {
+                    $held = $candidate['held'][$own] ?? [];
+                    lpp_need(is_array($held), 'owner_plan_held');
+                    $out['ownerPlan'] = ['held'=>$held];
+                    $reasons = array_values($held);
+                    $out['state'] = $held === [] ? 'RETAINED_NO_DELTA'
+                        : ((in_array('SYNC_FULL_CARD_UNAVAILABLE', $reasons, true)
+                            || in_array('SYNC_SAVED_PROFILE_UNAVAILABLE', $reasons, true)
+                            || (count(array_unique($reasons)) === 1 && $reasons[0] === 'source_missing_preserved'))
+                            ? 'SOURCE_MISSING' : 'SOURCE_PROVENANCE_HELD');
+                }
+                $rows[$index] = $out;
+            }
+        } catch (Throwable $e) {
+            $message = $e->getMessage();
+            $reason = preg_match('/^(?:ANYTOUR_|SYNC_)[A-Z0-9_]+$/D', $message) === 1
+                ? $message : 'owner_plan_failed_private_review';
+            foreach ($chunk as $entry) {
+                $index = $entry['rowIndex'];
+                $rows[$index]['state'] = 'SOURCE_PROVENANCE_HELD';
+                $rows[$index]['holdReason'] = $reason;
+            }
+        }
+    }
+    foreach ($rows as $out) {
+        lpp_need($out['state'] !== 'OWNER_PLAN_PENDING_PRIVATE', 'owner_plan_pending');
+        $counts[$out['state']] = ($counts[$out['state']] ?? 0) + 1;
     }
     ksort($counts);
     return ['rows'=>$rows,'profiles_read'=>$profiles,'aliases_validated'=>$aliases,
@@ -265,7 +289,7 @@ function lpp_main(array $argv): int {
     $current = lpp_current_rows($db);
     $through = gmdate('Y-m-d H:i:s');
     $owner = new AnyTourProfileEnrichmentV1($db);
-    $audit = lpp_classify($current, $d1, static fn(array $scope): array => $owner->plan(1, $through, $scope, true));
+    $audit = lpp_classify($current, $d1, static fn(array $scope): array => $owner->plan(count($scope), $through, $scope, true));
     $private = ['schema_version'=>1,'batch'=>LPP_BATCH,'operation_id'=>LPP_OPERATION,'source_sha'=>$head,
         'control_source_sha'=>$control,
         'demand_through'=>$through,'d1_exclusion'=>$d1,'safe_to_apply'=>false] + $audit;
