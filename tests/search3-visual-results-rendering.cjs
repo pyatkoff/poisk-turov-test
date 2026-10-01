@@ -112,10 +112,65 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace("offerView.mode==='compare'||!offerView.departure", "false||!offerView.departure")),'comparison date scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+const {JSDOM}=require('jsdom');
+
+// Progressive calendar updates keep exact full-render markup, but unchanged
+// date roots must survive provider/status refreshes. Live-only edits still
+// invalidate the generated-markup binding and are repaired on the next pass.
+function calendarDOM(code=source){
+ const dom=new JSDOM('<p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
+ let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
+ const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
+ const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,
+  state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
+  $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
+  calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
+  loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
+ vm.createContext(ctx);vm.runInContext(owner(code,'calendar'),ctx);
+ const observer=new dom.window.MutationObserver(()=>{});observer.observe(strip,{childList:true});
+ return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
+  setPrice:(index,value)=>{prices[index]=value;},setPrices:value=>{prices=value.slice();},markup:()=>vm.runInContext('calendarStripHTML(resultCalendarModel())',ctx),
+  close:()=>{observer.disconnect();dom.window.close();}};
+}
+const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].filter(node=>node.matches?.('.date-price')).length,0);
+{
+ const current=calendarDOM(),legacy=calendarDOM(source.replace('paintCalendarStrip(strip,calendarStripEntries(model));','strip.innerHTML=calendarStripHTML(model);'));
+ try{
+  current.render();legacy.render();let removed=0,inserted=0,legacyRemoved=0,legacyInserted=0;
+  const original=[...current.strip.children],focused=original[5];focused.focus();
+  for(let i=0;i<10;i++){
+   const records=current.render(),legacyRecords=legacy.render();
+   removed+=calendarRoots(records,'removedNodes');inserted+=calendarRoots(records,'addedNodes');legacyRemoved+=calendarRoots(legacyRecords,'removedNodes');legacyInserted+=calendarRoots(legacyRecords,'addedNodes');
+  }
+  assert.equal(legacyRemoved,210,'legacy ten-refresh baseline removes every date root');assert.equal(legacyInserted,210,'legacy ten-refresh baseline inserts every date root');
+  assert.equal(removed,0,'ten unchanged refreshes remove no date roots');assert.equal(inserted,0,'ten unchanged refreshes insert no date roots');assert.equal(current.parsed(),0,'unchanged refreshes parse no date roots');
+  original.forEach((node,index)=>assert.strictEqual(current.strip.children[index],node));assert.strictEqual(current.ctx.document.activeElement,focused,'unchanged focused date survives');
+  current.setPrice(10,110500);legacy.setPrice(10,110500);const changed=current.render();legacy.render();
+  assert.equal(calendarRoots(changed,'removedNodes'),1,'one non-extreme price change removes one date');assert.equal(calendarRoots(changed,'addedNodes'),1,'one non-extreme price change inserts one date');assert.equal(current.parsed(),1,'one non-extreme price change parses one date');
+  assert.equal(current.strip.innerHTML,legacy.strip.innerHTML,'changed-price markup matches a full render');
+  current.ctx.state.selectedDate='2026-10-06';legacy.ctx.state.selectedDate='2026-10-06';current.render();legacy.render();
+  assert.equal(current.strip.innerHTML,legacy.strip.innerHTML,'selected date markup/aria matches a full render');assert.equal(current.strip.querySelector('[data-date="2026-10-06"]').getAttribute('aria-pressed'),'true');
+  current.strip.querySelector('[data-date="2026-10-12"] strong').textContent='stale';current.render();
+  assert.notEqual(current.strip.querySelector('[data-date="2026-10-12"] strong').textContent,'stale','live-only date mutation is repaired');
+  console.log('PASS progressive calendar: 10 unchanged 21-day updates remove/insert 210→0 roots; one non-extreme price change parses/replaces 1; exact markup, focus, selection and stale-DOM repair retained');
+ }finally{current.close();legacy.close();}
+}
+{
+ const current=calendarDOM(),reference=new JSDOM('<div id="price-strip"></div>'),expected=reference.window.document.querySelector('#price-strip');let seed=97531;
+ const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+ try{
+  for(let round=0;round<90;round++){
+   const length=1+Math.floor(random()*31),prices=Array.from({length},()=>random()<.2?null:Math.floor(random()*20)*1000+.5);
+   current.ctx.state.search.to=new Date(Date.parse('2026-10-01T00:00:00Z')+(length-1)*86400000).toISOString().slice(0,10);current.ctx.state.selectedDate=random()<.5?null:'2026-10-'+String(1+Math.floor(random()*length)).padStart(2,'0');current.ctx.resultCalendar.phase=['loading','error','partial','complete'][round%4];current.setPrices(prices);
+   const before=JSON.stringify(prices);current.render();expected.innerHTML=current.markup();assert.equal(current.strip.innerHTML,expected.innerHTML,'progressive calendar DOM equals uncached full markup');assert.equal(JSON.stringify(prices),before,'calendar rendering preserves price inputs');
+  }
+ }finally{current.close();reference.window.close();}
+ console.log('PASS calendar DOM parity: 90 ranges/price-null/minimum/selection/phase sequences; raw price order unchanged; supplier/lead HTTP 0');
+}
 
 // Progressive updates must keep current markup while retaining unchanged live
 // articles and photos. Compare against the old full-innerHTML DOM independently.
-const {JSDOM}=require('jsdom');
 function cardDOM(code=source){
  const dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards');let parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
