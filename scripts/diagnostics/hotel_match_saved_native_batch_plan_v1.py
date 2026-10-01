@@ -212,6 +212,15 @@ def plan(samo: list[dict], tv: list[dict], global_sources: dict | None = None) -
     # Check collisions over the entire input, including held/occupied sources.
     # Never let projection, priority or batch caps hide a competing catalog ID.
     target_sources = defaultdict(set)
+    if global_sources is not None:
+        # A competing source may use a different operator/native than the
+        # selected source while still pointing to the same TV target. Include
+        # it before projecting the frontier, not just in same-native checks.
+        for lane, native_sources in source_index.items():
+            for native, catalogs in native_sources.items():
+                key = '102' + native if lane == 'bg' else native
+                for target in target_index[lane].get(key, set()):
+                    target_sources[target].update(catalogs)
     for row in out:
         for target in row["candidate_tv_ids"]:
             target_sources[target].add(row["samo_catalog_id"])
