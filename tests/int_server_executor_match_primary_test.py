@@ -314,6 +314,14 @@ class Native110RegistrationTest(unittest.TestCase):
                     +[dict(catalog_id='2000086118',state='protected_not_examined',safe_to_write_now=False,
                     holds=[],catalog_digest_matches_saved=False,evidence_digest_matches_saved=False,
                     source_history_id_matches=False,native_checks=[],operator_checks=[],targets=[],tv_checks=[])])
+        first=data['review_rows'][0]
+        first['native_checks']=[dict(namespace='operator_315',native_id='849821',global_saved_unique=True,raw_verified=True,failures=[])]
+        first['operator_checks']=[dict(namespace='operator_315',native_id='849821',current_identity_count=1,current_local_hotel_ids=[42903])]
+        first['targets']=[dict(kind='tv_candidate',id=42903,tv_live30_observed=True,holds=[]),
+                          dict(kind='independent_local_anchor',id=56551,tv_live30_observed=False,holds=[])]
+        first['tv_checks']=[dict(tv_hotel_id=42903,operator='funsun',native_id='849821',tv_native_id='849821',
+            state='saved_producers_reviewed',producers=[dict(source_operation='hotel-match-fixture',
+                source_result_sha256='a'*64,state='saved_tv_proof_verified',failures=[])])]
         if mutate:mutate(data)
         (child/'native110-current-summary.json').write_text(json.dumps(data))
         return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
