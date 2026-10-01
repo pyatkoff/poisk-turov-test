@@ -12,6 +12,9 @@ on:
       - 'tests/hotel_match_native110_bg_evidence_v1_test.php'
       - 'scripts/diagnostics/hotel_match_shams_guarded_v1.php'
       - 'tests/hotel_match_shams_guarded_v1_test.php'
+      - 'scripts/diagnostics/hotel_match_source3_native_current_v1.php'
+      - 'scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json'
+      - 'tests/hotel_match_source3_native_current_v1_test.php'
       - 'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php'
       - 'tests/hotel_match_tv_live30_target_catalog_v1_test.php'
       - 'scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php'
@@ -41,6 +44,9 @@ jobs:
           php -l scripts/diagnostics/hotel_match_shams_guarded_v1.php
           php -l tests/hotel_match_shams_guarded_v1_test.php
           php tests/hotel_match_shams_guarded_v1_test.php
+          php -l scripts/diagnostics/hotel_match_source3_native_current_v1.php
+          php -l tests/hotel_match_source3_native_current_v1_test.php
+          php tests/hotel_match_source3_native_current_v1_test.php
   guarded-transactions:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
