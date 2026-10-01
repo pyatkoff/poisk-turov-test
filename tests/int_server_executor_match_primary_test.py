@@ -997,4 +997,64 @@ class Live30TargetPreflightRegistrationTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_preflight_readback'](stage)
                 call.assert_not_called()
 
+class Live30TargetCatalogV2RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.TARGET_V2_MODE+' '+registration.TARGET_V2_OPERATION+' '+registration.TARGET_V2_BATCH
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.TARGET_V2_OPERATION
+        ns['payload']=dict(batch=registration.TARGET_V2_BATCH,maximum_writes=0,provider_http_calls=0)
+        runner=stage/'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v2.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_TARGET_V2_HANDLER,ns);return ns,stage,root
+
+    def response(self,kwargs,mutate=None):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR'])
+        data=dict(state='completed_tv_live30_target_catalog_v2',operation=registration.TARGET_V2_OPERATION,source_sha=SOURCE,
+            batch=registration.TARGET_V2_BATCH,captured_at_utc='2026-10-01T12:00:00Z',cohort_count=2,row_count=1,held_count=1,
+            provider_http_calls=0,database_reads=1,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True,
+            rows=[dict(id=420,name='SHAMS ALAM RESORT',country_id='5',country_name='Египет',region_name='Марса Алам',
+                subregion_name=None,category='4',is_active=True,latitude=24.6907006,longitude=35.0835745,
+                accepted_samo_ids=['9501'],manual_hold=False,exclusion_hold=False)],
+            held=[dict(id=999,reasons=['invalid_coordinates'])])
+        if mutate:mutate(data)
+        raw=json.dumps(data);(child/'result.json').write_text(raw)
+        receipt={k:v for k,v in data.items() if k not in ('rows','held')}
+        receipt['result_sha256']=hashlib.sha256(raw.encode()).hexdigest();(child/'receipt.json').write_text(json.dumps(receipt))
+        return types.SimpleNamespace(returncode=0,stdout=raw,stderr='')
+
+    def test_fixed_scope_collector_bypass_and_source_inventory(self):
+        parsed=self.core.parse_command(self.body);self.assertEqual(parsed['maximum_writes'],0)
+        for body in (self.body+' retry',self.body.replace(registration.TARGET_V2_BATCH,registration.TARGET_BATCH),
+                     self.body.replace(registration.TARGET_V2_OPERATION,registration.TARGET_V2_OPERATION+'-retry')):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,parsed)
+        self.assertTrue(set(registration.TARGET_V2_SOURCE_FILES).issubset(self.core.FIXED))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        entry=load('target_v2_stock_entry','scripts/deploy/int_server_executor_anex_secret_transport.py')
+        self.assertNotIn(registration.TARGET_V2_MODE,entry.DIRECT_ANEX_MODES);self.assertNotIn(registration.TARGET_V2_MODE,entry.SUPPLIER_SLOT_MODES)
+
+    def test_complete_partition_strict_hold_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw)) as call:
+                out=ns['run_match_tv_live30_target_catalog_v2'](stage)
+                self.assertEqual(out['summary']['cohort_count'],2);self.assertEqual(out['summary']['held'][0]['reasons'],['invalid_coordinates'])
+                self.assertFalse(out['summary']['safe_to_write_now']);self.assertEqual(out['summary']['database_reads'],1)
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog_v2'](stage)
+                self.assertEqual(call.call_count,1);self.assertNotIn('ANEX',str(call.call_args.kwargs['env']))
+
+    def test_rejects_widened_projection_partition_and_hold(self):
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(no_replay=1),lambda d:d.update(safe_to_write_now=0),
+            lambda d:d.update(database_reads=2),lambda d:d.update(cohort_count=3),lambda d:d.update(extra='unsafe'),
+            lambda d:d['held'][0].update(reasons=[]),lambda d:d['held'][0].update(reasons=['geo_review']),
+            lambda d:d['held'][0].update(id=420),lambda d:d['rows'][0].update(latitude=91),
+            lambda d:d['rows'][0].update(name='https://secret.example/')]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog_v2'](stage)
+
 if __name__=='__main__':unittest.main()
