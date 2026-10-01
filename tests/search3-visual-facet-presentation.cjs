@@ -61,7 +61,7 @@ if(source.includes('function filterCheckRowHTML(')){
  assert.notDeepEqual(facet(source.replace('count>0||selected','count>0&&selected'),scenario),facet(source,scenario),'availability mutation detected');
  assert.notDeepEqual(facet(source.replace('row.hidden=!matches','row.hidden=false'),scenario),facet(source,scenario),'facet query mutation detected');
  const current=facet(source,{...scenario,work:true});assert.equal(current.reads,120,'three row DOM reads per item per refresh');
- if(i>=0){const baseline=fs.readFileSync(process.argv[i+1],'utf8');const old=facet(baseline,{...scenario,work:true});assert(current.reads<old.reads);const oldDestination=destination(baseline,{query:'hotel',status:'complete',ready:true});assert(oldDestination.calls>25);console.log(`WORK facet row reads ${old.reads}→${current.reads}; destination normalization ${oldDestination.calls}→25`);}
+ if(i>=0){const baseline=fs.readFileSync(process.argv[i+1],'utf8');const old=facet(baseline,{...scenario,work:true});assert.equal(current.reads,old.reads,'dynamic row reads remain fresh');const oldDestination=destination(baseline,{query:'hotel',status:'complete',ready:true});assert.equal(oldDestination.calls,25);console.log(`WORK facet row reads ${old.reads}→${current.reads}; destination normalization unchanged25`);}
  const preference={query:'hotel 1',status:'complete',ready:true};assert.notDeepEqual(destination(source.replace('Number(nameMatches(b))-Number(nameMatches(a))','Number(nameMatches(a))-Number(nameMatches(b))'),preference).result,destination(source,preference).result,'name ranking mutation detected');
  const work=destination(source,{query:'hotel',status:'complete',ready:true});assert.equal(work.calls,25,'one query normalization plus one per distinct hotel');
 }
@@ -100,3 +100,51 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  console.log(`WORK facet identity reads ${previous.reads}→${current.reads}; five batch sections and observable rows preserved`);
 }
 console.log('PASS facet DOM callers: batch zero/checked availability, scalar amenities/rating, any-meal/null-draft and selected-star counts');
+
+function facetOrderEnvironment(code,group,n){
+ const c=environment('<div id="host"></div>'),filters={resorts:[],operators:[],meals:[],amenities:[]};
+ Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>Number(model.filters[group][0]?.slice(1))%4||0,facetQueries:new Map(),expandedFacets:new Set(),amenityNames:new Map()});
+ c.countFacetOptions=(model,key,values)=>new Map(values.map(value=>[value,c.countMatchingHotels({...model,filters:{...filters,[key]:[value]}})]));
+ vm.createContext(c);vm.runInContext(functions(code,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch']),c);
+ c.$('#host').innerHTML=c.checkRows(group,Array.from({length:n},(_,j)=>['v'+j,'Вариант '+j]));
+ const host=c.$('.facet-options'),more=host.querySelector('details');c.applyFacetSearch(host);
+ const work={reads:0,moves:0};
+ const query=c.dom.window.Element.prototype.querySelector;c.dom.window.Element.prototype.querySelector=function(selector){if(this.matches('.check-row'))work.reads++;return query.call(this,selector);};
+ for(const node of [host,more]){const insert=node.insertBefore;node.insertBefore=function(row,before){if(row.matches?.('.check-row'))work.moves++;return insert.call(this,row,before);};}
+ const append=more.append;more.append=function(...nodes){work.moves+=nodes.filter(row=>row.matches?.('.check-row')).length;return append.apply(this,nodes);};
+ const snapshot=()=>({html:c.$('#host').innerHTML,focus:c.document.activeElement===c.document.body?'BODY':c.document.activeElement.outerHTML,checked:[...host.querySelectorAll('.check-row input')].map(input=>[input.value,input.checked])});
+ return {c,filters,host,more,work,snapshot};
+}
+function facetOrderRecords(code){
+ const out=[];
+ for(const group of ['meals','resorts','operators'])for(const n of [8,20])for(const expanded of [false,true]){
+  const {c,filters,host,more,snapshot}=facetOrderEnvironment(code,group,n),refresh=()=>{c.applyFacetSearch(host);out.push(snapshot());},rows=[...host.querySelectorAll('.check-row')];
+  c.expandedFacets[expanded?'add':'delete'](group);rows[0].querySelector('input').focus();refresh();refresh();
+  c.facetQueries.set(group,'вариант 1');refresh();
+  rows.forEach((row,j)=>{row.querySelector('small').textContent=String((n-j)%5);row.dataset.available=String(j%3!==0);});refresh();
+  rows.forEach((row,j)=>row.querySelector('input').checked=j%4===0);filters[group]=rows.filter(row=>row.querySelector('input').checked).map(row=>row.querySelector('input').value);refresh();
+  rows.forEach((row,j)=>row.querySelector('span').textContent='Ёлка <& '+j);c.facetQueries.set(group,'елка');refresh();
+  host.append(rows.at(-1));more.insertBefore(rows[0],more.firstChild);refresh();
+  const added=rows[1].cloneNode(true);added.querySelector('input').value='added';added.querySelector('input').checked=true;added.dataset.available='false';more.append(added);filters[group].push('added');refresh();
+  more.append(c.document.createTextNode('unowned tail'));host.insertBefore(c.document.createElement('hr'),more);refresh();
+  rows[2].innerHTML='<input type="checkbox" value="replaced" checked><span>Новый &lt;&amp; ярлык</span><small>0</small>';rows[2].dataset.available='false';filters[group].push('replaced');c.facetQueries.set(group,'новый');refresh();
+  rows[3].remove();c.facetQueries.delete(group);host.querySelector('[data-facet-search]').focus();refresh();
+  c.expandedFacets[expanded?'delete':'add'](group);refresh();c.dom.window.close();
+ }
+ return out;
+}
+const orderRecords=facetOrderRecords(source),orderDigest=crypto.createHash('sha256').update(JSON.stringify(orderRecords)).digest('hex');
+if(process.argv.includes('--capture'))console.log('CAPTURE facet order digest',orderDigest);
+else assert.equal(orderDigest,'2c3369db65ee06032e5721f4e70b2c27d39b19982eca5278697b8457bb00db0f','original dynamic rows, child-node repair, labels, availability, order and focus');
+if(i>=0)assert.deepEqual(orderRecords,facetOrderRecords(fs.readFileSync(process.argv[i+1],'utf8')),'original/candidate live row reconciliation');
+for(const [original,replacement]of [['row.nextSibling!==before','false'],['row.parentNode!==parent||','']]){
+ let changed;try{changed=JSON.stringify(facetOrderRecords(source.replace(original,replacement)))!==JSON.stringify(orderRecords);}catch(error){assert.equal(error.name,'NotFoundError');changed=true;}
+ assert(changed,'row suffix/parent mutation detected');
+}
+for(const n of [20,1000]){
+ const current=facetOrderEnvironment(source,'operators',n);current.work.reads=current.work.moves=0;current.c.applyFacetSearch(current.host);
+ assert.equal(current.work.reads,n*3,'dynamic row descriptors reread on every refresh');assert.equal(current.work.moves,0,'settled order needs no physical row move');
+ if(i>=0){const old=facetOrderEnvironment(fs.readFileSync(process.argv[i+1],'utf8'),'operators',n);old.work.reads=old.work.moves=0;old.c.applyFacetSearch(old.host);assert.equal(old.work.moves,n);assert.deepEqual(current.snapshot(),old.snapshot());console.log('WORK settled facet rows',JSON.stringify({n,before:old.work,after:current.work}));old.c.dom.window.close();}
+ current.c.dom.window.close();
+}
+console.log(`PASS facet row reconciliation: ${orderRecords.length} original dynamic DOM/focus states (${orderDigest}); live counts/labels/checked reads retained; settled moves20/1000→0; supplier/lead HTTP0`);
