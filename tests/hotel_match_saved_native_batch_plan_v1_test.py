@@ -220,5 +220,76 @@ class RetainedFrontierTest(unittest.TestCase):
         self.assertNotIn('additional_saved_candidate_current_review',r['retained_frontier_counts'])
         self.assertIn('source_decision_protected_or_unknown',r['rows'][0]['reasons'])
 
+class SupportingNameReviewTest(unittest.TestCase):
+    def summary(self, rows):
+        return dict(state='completed_tv_live30_target_catalog_v2',
+            operation='int-andromeda-match-live30-target-catalog-v2-20261001-v1',
+            no_replay=True, safe_to_write_now=False, provider_http_calls=0,
+            database_writes=0, mapping_writes=0, row_count=len(rows), rows=rows,
+            captured_at_utc='2026-10-01T12:46:00Z')
+
+    def row(self, identity, name, **changes):
+        return dict(id=identity, name=name, accepted_samo_ids=[], is_active=True,
+                    manual_hold=False, exclusion_hold=False, **changes)
+
+    def test_name_signals_do_not_mutate_or_promote_native_plan(self):
+        native = batch.plan([dict(source(native='11'), hotel_names_seen='Apella Hotel')], [target(native='22')])
+        before = copy.deepcopy(native)
+        review = batch.supporting_name_review(native['rows'], self.summary([
+            self.row(60766, 'APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)')]))
+        self.assertEqual(native, before)
+        self.assertEqual(native['rows'][0]['candidate_tv_ids'], [])
+        self.assertEqual(review['rows'][0]['name_review_candidates'][0]['tv_hotel_id'], '60766')
+        self.assertFalse(review['safe_to_write_now'])
+        self.assertFalse(review['acquisition_authorized'])
+        self.assertFalse(review['acceptance_policy_defined'])
+
+    def test_all_ambiguous_and_held_targets_survive_without_first_wins(self):
+        src = [dict(samo_catalog_id='1', source_names='Delphin Palace', reasons=[])]
+        rows = [self.row(2, 'DELPHIN PALACE'), self.row(3, 'DELPHIN OTHER')]
+        rows[1].update(accepted_samo_ids=['99'], manual_hold=True, exclusion_hold=True, is_active=False)
+        result = batch.supporting_name_review(src, self.summary(rows))
+        candidates = result['rows'][0]['name_review_candidates']
+        self.assertEqual([r['tv_hotel_id'] for r in candidates], ['2', '3'])
+        self.assertEqual(len(candidates[1]['holds']), 4)
+        rows.reverse()
+        self.assertEqual(batch.supporting_name_review(src, self.summary(rows)), result)
+
+    def test_generic_words_and_common_tokens_are_not_identity_signals(self):
+        src = [dict(samo_catalog_id='1', source_names='Golden Palace Hotel Unique', reasons=[])]
+        rows = [self.row(i, 'Golden Palace Unique Hotel') for i in range(1, 10)]
+        self.assertEqual(batch.supporting_name_review(src, self.summary(rows))['name_signal_source_rows'], 0)
+
+    def test_protected_and_source_holds_remain_visible(self):
+        src = [dict(samo_catalog_id='2000086118', source_names='Raimond', reasons=[]),
+               dict(samo_catalog_id='2', source_names='Raimond', reasons=['source_already_mapped'])]
+        result = batch.supporting_name_review(src, self.summary([self.row(7, 'RAIMOND HOTEL')]))
+        self.assertEqual(result['rows'][0]['source_holds'], ['source_already_mapped'])
+        self.assertEqual(result['rows'][1]['source_holds'], ['protected_catalog_id'])
+        self.assertTrue(all(not r['safe_to_write_now'] for r in result['rows']))
+
+    def test_former_name_tokens_are_preserved_without_claiming_same_property(self):
+        src = [dict(samo_catalog_id='1', source_names='Seven Seasons', reasons=[])]
+        result = batch.supporting_name_review(src, self.summary([
+            self.row(7, 'APELLA HOTEL (EX. SEVEN SEASONS)')]))
+        candidate = result['rows'][0]['name_review_candidates'][0]
+        self.assertEqual(candidate['shared_rare_tokens'], ['seasons', 'seven'])
+        self.assertEqual(candidate['signal'], 'name_only')
+        self.assertFalse(result['rows'][0]['source_country_verified'])
+
+    def test_invalid_receipts_and_namespace_shapes_fail_closed(self):
+        src = [dict(samo_catalog_id='1', source_names='Raimond', reasons=[])]
+        original = self.summary([self.row(7, 'RAIMOND HOTEL')])
+        for key, value in [('provider_http_calls', 1), ('no_replay', False),
+                           ('row_count', 2), ('state', 'running'), ('mapping_writes', False)]:
+            bad = copy.deepcopy(original); bad[key] = value
+            with self.assertRaises(ValueError): batch.supporting_name_review(src, bad)
+        for changes in [dict(id='7'), dict(accepted_samo_ids=['007']), dict(manual_hold='False')]:
+            bad = copy.deepcopy(original); bad['rows'][0].update(changes)
+            with self.assertRaises(ValueError): batch.supporting_name_review(src, bad)
+        duplicate = self.summary([self.row(7, 'RAIMOND'), self.row(7, 'RAIMOND')])
+        with self.assertRaises(ValueError): batch.supporting_name_review(src, duplicate)
+
+
 if __name__ == "__main__":
     unittest.main()

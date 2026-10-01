@@ -1,0 +1,4021 @@
+{
+  "schema": "hotel-match-supporting-name-review/1",
+  "state": "completed_supporting_name_review",
+  "rows": [
+    {
+      "samo_catalog_id": "1045",
+      "source_names": "Romance Beach Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "75689",
+          "target_name": "ROMANCE REGENCY CLUB ADULTS ONLY 16+",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Набк Бей",
+          "shared_rare_tokens": [
+            "romance"
+          ],
+          "accepted_samo_ids": [
+            "2000067680"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "113978",
+          "target_name": "SUN SIYAM OLHUVELI ROMANCE",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "romance"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "3888",
+      "source_names": "Romance Istanbul Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "75689",
+          "target_name": "ROMANCE REGENCY CLUB ADULTS ONLY 16+",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Набк Бей",
+          "shared_rare_tokens": [
+            "romance"
+          ],
+          "accepted_samo_ids": [
+            "2000067680"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "113978",
+          "target_name": "SUN SIYAM OLHUVELI ROMANCE",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "romance"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "5906",
+      "source_names": "Britannia Hotel & Villas",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1063",
+          "target_name": "BRITANNIA HOTEL & VILLAS",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Кемер - центр",
+          "shared_rare_tokens": [
+            "britannia"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "11820",
+          "target_name": "BRITANNIA HOTEL",
+          "country_name": "Сейшелы",
+          "region_name": "Праслин о.",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "britannia"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "7660",
+      "source_names": "Kemper Wassermann Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1584",
+          "target_name": "WASSERMANN HOTEL",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Кемер - центр",
+          "shared_rare_tokens": [
+            "wassermann"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "61075",
+          "target_name": "KEMER STAR HOTEL (EX. KEMPER DINARA GARDEN)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Кемер - центр",
+          "shared_rare_tokens": [
+            "kemper"
+          ],
+          "accepted_samo_ids": [
+            "2000071987"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "8984",
+      "source_names": "Parkim Ayaz Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "9323",
+          "target_name": "PARKIM AYAZ",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "parkim"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "9180",
+      "source_names": "TUI AQI Pegasos Club",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "16944",
+          "target_name": "AQI PEGASOS WORLD",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Соргун",
+          "shared_rare_tokens": [
+            "pegasos"
+          ],
+          "accepted_samo_ids": [
+            "2000034238"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "35425",
+      "source_names": "Club Hotel Flora|Flora Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "788",
+          "target_name": "CHANALAI FLORA RESORT (EX. SERENE RESORT)",
+          "country_name": "Таиланд",
+          "region_name": "Пхукет",
+          "subregion_name": "Ката",
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "3894",
+            "528736"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1142",
+          "target_name": "CRYSTAL FLORA PEARL COLLECTION (EX. CRYSTAL FLORA BEACH RESORT)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "119229"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1189",
+          "target_name": "FLORA GARDEN BEACH ADULTS ONLY 16+",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Кызылот",
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "149632"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "8008",
+          "target_name": "LA FLORA RESORT & SPA KHAO LAK",
+          "country_name": "Таиланд",
+          "region_name": "Као Лак",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "323889"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9260",
+          "target_name": "FLORA GARDEN EPHESUS (EX. CLUB MERSIN BEACH)",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "2000032679"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "12189",
+          "target_name": "CASA DE LA FLORA",
+          "country_name": "Таиланд",
+          "region_name": "Као Лак",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "2000024968"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "17377",
+          "target_name": "FLORA HOTEL",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "43064",
+          "target_name": "FLORA AL BARSHA HOTEL",
+          "country_name": "ОАЭ",
+          "region_name": "Дубай",
+          "subregion_name": "Аль-Барша",
+          "shared_rare_tokens": [
+            "flora"
+          ],
+          "accepted_samo_ids": [
+            "2000030802"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "49144",
+      "source_names": "Palmea Hotel (ex. Club Palm)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "41073",
+          "target_name": "PALMEA HOTEL",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "palmea"
+          ],
+          "accepted_samo_ids": [
+            "2000026213"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "84071",
+      "source_names": "Katre Hotel Oludeniz (ex. Oz Katre Hotel)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "125393",
+      "source_names": "Anadolu Hotels Didim Club (ex. Palm Wings Didim Beach Resort)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1464",
+          "target_name": "ROYAL WINGS HOTEL",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Лара",
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000034210"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2230",
+          "target_name": "ANADOLU HOTELS DIDIM CLUB (EX. ADRINA BEACH RESORT)",
+          "country_name": "Турция",
+          "region_name": "Дидим",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "anadolu"
+          ],
+          "accepted_samo_ids": [
+            "2000060394",
+            "2000071516"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9343",
+          "target_name": "PALM WINGS EPHESUS BEACH RESORT (EX. SURMELI)",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "3839"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "17569",
+          "target_name": "PALM WINGS KUSADASI BEACH RESORT",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000086125"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "138836",
+          "target_name": "WINGS BY HAWKS HOTELS",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000113634"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "149710",
+      "source_names": "Phoenix Sun Hotel (ex. Palm Garden) ",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "17568",
+          "target_name": "PHOENIX SUN (EX. PALM GARDEN HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "phoenix"
+          ],
+          "accepted_samo_ids": [
+            "2000053957"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "41913",
+          "target_name": "PHOENIX ISLAND RESORT SANYA",
+          "country_name": "Китай",
+          "region_name": "Хайнань",
+          "subregion_name": "Санья",
+          "shared_rare_tokens": [
+            "phoenix"
+          ],
+          "accepted_samo_ids": [
+            "2000042196"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "55505",
+          "target_name": "PHOENIX GRAND HOTEL",
+          "country_name": "Таиланд",
+          "region_name": "Пхукет",
+          "subregion_name": "Патонг",
+          "shared_rare_tokens": [
+            "phoenix"
+          ],
+          "accepted_samo_ids": [
+            "2000037080"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "65151",
+          "target_name": "PHOENIX HOTEL KARON BEACH",
+          "country_name": "Таиланд",
+          "region_name": "Пхукет",
+          "subregion_name": "Карон",
+          "shared_rare_tokens": [
+            "phoenix"
+          ],
+          "accepted_samo_ids": [
+            "2000073610"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "150674",
+      "source_names": "Portofino Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "2240",
+          "target_name": "PORTOFINO HOTEL (EX. DORA PORTOFINO)",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": "Ичмелер",
+          "shared_rare_tokens": [
+            "portofino"
+          ],
+          "accepted_samo_ids": [
+            "2000099151"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "83105",
+          "target_name": "PICKALBATROS VITA RESORT PORTOFINO MARSA ALAM",
+          "country_name": "Египет",
+          "region_name": "Марса Алам",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "portofino"
+          ],
+          "accepted_samo_ids": [
+            "2000085413"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "83106",
+          "target_name": "PICKALBATROS VILLAGIO RESORT PORTOFINO MARSA ALAM",
+          "country_name": "Египет",
+          "region_name": "Марса Алам",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "portofino"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "150867",
+      "source_names": "Legacy Ottoman Hotel",
+      "source_holds": [
+        "source_decision_protected_or_unknown"
+      ],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "17507",
+          "target_name": "LEGACY OTTOMAN HOTEL",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Сиркеджи",
+          "shared_rare_tokens": [
+            "legacy",
+            "ottoman"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "17617",
+          "target_name": "SARNIC HOTEL (OTTOMAN MANSION)",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Султанахмет",
+          "shared_rare_tokens": [
+            "ottoman"
+          ],
+          "accepted_samo_ids": [
+            "2000060795"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "47842",
+          "target_name": "LEGACY HOI AN (EX. HOI AN ANCIENT HOUSE VILLAGE)",
+          "country_name": "Вьетнам",
+          "region_name": "Хой Ан",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "legacy"
+          ],
+          "accepted_samo_ids": [
+            "2000088769"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "59141",
+          "target_name": "OTTOMAN LUXURY",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Сиркеджи",
+          "shared_rare_tokens": [
+            "ottoman"
+          ],
+          "accepted_samo_ids": [
+            "2000040889"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "155330",
+      "source_names": "Smart Stay Beach Bodrum",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1500",
+          "target_name": "FUN&SUN SMART HANE SUN",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Чолаклы",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1522",
+          "target_name": "FUN&SUN SMART LUREA BEACH (EX. LARISSA SULTANS BEACH)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Чамьюва",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [
+            "2000121511"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "11833",
+          "target_name": "CORAL STRAND SMART CHOICE",
+          "country_name": "Сейшелы",
+          "region_name": "Маэ о.",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "17400",
+          "target_name": "SMART STAY BEACH BODRUM (EX. EKEN RESORT HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [
+            "2000084138"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "61628",
+          "target_name": "TUI BLUE NHA TRANG (EX. ARIYANA SMART CONDOTEL NHA TRANG)",
+          "country_name": "Вьетнам",
+          "region_name": "Нячанг",
+          "subregion_name": "Нячанг - центр",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [
+            "2000072417"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "104051",
+          "target_name": "BLUESOTEL SMART KRABI ADULTS ONLY",
+          "country_name": "Таиланд",
+          "region_name": "Краби",
+          "subregion_name": "Краби",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "144804",
+          "target_name": "FUN&SUN SMART AKMAN BEACH (EX. CLUB AKMAN PARK)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Чамьюва",
+          "shared_rare_tokens": [
+            "smart"
+          ],
+          "accepted_samo_ids": [
+            "2000096020"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "163887",
+      "source_names": "Club Hotel Sidelya",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1124",
+          "target_name": "CLUB HOTEL SIDELYA HV-2",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Чолаклы",
+          "shared_rare_tokens": [
+            "sidelya"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "182522",
+      "source_names": "Best Nobel Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "280064",
+      "source_names": "Omorfi Garden Resort Hotel ",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "3420",
+          "target_name": "THE NIX HOTEL KEMER (EX. OMORFI GARDEN)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Гойнюк",
+          "shared_rare_tokens": [
+            "omorfi"
+          ],
+          "accepted_samo_ids": [
+            "2000111406"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "283712",
+      "source_names": "Asteria Collection Side(EX Amara Family Resort)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "974",
+          "target_name": "GYPSOPHILA CLUB MARINE (EX. AMARA CLUB MARINE)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "amara"
+          ],
+          "accepted_samo_ids": [
+            "157311",
+            "2000069106"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1461",
+          "target_name": "AMARA COMFORT KEMER (EX. LOXIA COMFORT RESORT)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Гойнюк",
+          "shared_rare_tokens": [
+            "amara"
+          ],
+          "accepted_samo_ids": [
+            "2000079679"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "4219",
+          "target_name": "AHMARA A RECALL VALUE HOTEL (EX. AMARA APK RESORT & SPA)",
+          "country_name": "Таиланд",
+          "region_name": "Пхукет",
+          "subregion_name": "Патонг",
+          "shared_rare_tokens": [
+            "amara"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "21817",
+          "target_name": "ASTERIA COLLECTION SIDE (EX.AMARA FAMILY RESORT)",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Титренголь",
+          "shared_rare_tokens": [
+            "amara"
+          ],
+          "accepted_samo_ids": [
+            "2000098349"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "299499",
+      "source_names": "Orsmaris Boutique Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "17564",
+          "target_name": "ORSMARIS BOUTIQUE HOTEL",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "orsmaris"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "324106",
+      "source_names": "Liberty Lykia Family Hotels",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1321",
+          "target_name": "LIBERTY HOTELS LARA",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Кунду",
+          "shared_rare_tokens": [
+            "liberty"
+          ],
+          "accepted_samo_ids": [
+            "324463"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1345",
+          "target_name": "LYKIA WORLD & LINKS GOLF",
+          "country_name": "Турция",
+          "region_name": "Белек",
+          "subregion_name": "Богазкент",
+          "shared_rare_tokens": [
+            "lykia"
+          ],
+          "accepted_samo_ids": [
+            "235346"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1677",
+          "target_name": "LYKIA BOTANIKA BEACH (EX. MARVIDA FAMILY LYKIA BOTANIKA BEACH)",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "lykia"
+          ],
+          "accepted_samo_ids": [
+            "2000084440"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1694",
+          "target_name": "SUNDIA BY LIBERTY SUNCITY (EX. SUN CITY HOTEL & BEACH CLUB)",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": "Олюдениз",
+          "shared_rare_tokens": [
+            "liberty"
+          ],
+          "accepted_samo_ids": [
+            "2000060737",
+            "6513"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "3452",
+          "target_name": "LIBERTY HOTELS LYKIA",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": "Олюдениз",
+          "shared_rare_tokens": [
+            "liberty",
+            "lykia"
+          ],
+          "accepted_samo_ids": [
+            "2000024436"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "41495",
+          "target_name": "LIBERTY CENTRAL NHA TRANG HOTEL",
+          "country_name": "Вьетнам",
+          "region_name": "Нячанг",
+          "subregion_name": "Нячанг - центр",
+          "shared_rare_tokens": [
+            "liberty"
+          ],
+          "accepted_samo_ids": [
+            "2000029562"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "341022",
+      "source_names": "Sentinus Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "372134",
+      "source_names": "TUI AQI Pegasos Resort",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "16944",
+          "target_name": "AQI PEGASOS WORLD",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Соргун",
+          "shared_rare_tokens": [
+            "pegasos"
+          ],
+          "accepted_samo_ids": [
+            "2000034238"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "391481",
+      "source_names": "Marvida Family Lykia Botanica Beach (ex. Lykia Botanika Beach Fun Club)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1345",
+          "target_name": "LYKIA WORLD & LINKS GOLF",
+          "country_name": "Турция",
+          "region_name": "Белек",
+          "subregion_name": "Богазкент",
+          "shared_rare_tokens": [
+            "lykia"
+          ],
+          "accepted_samo_ids": [
+            "235346"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1404",
+          "target_name": "MARVIDA FAMILY ECO (EX. OTIUM FAMILY ECO CLUB)",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Титренголь",
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [
+            "2000061202"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1677",
+          "target_name": "LYKIA BOTANIKA BEACH (EX. MARVIDA FAMILY LYKIA BOTANIKA BEACH)",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "botanika",
+            "lykia",
+            "marvida"
+          ],
+          "accepted_samo_ids": [
+            "2000084440"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2270",
+          "target_name": "VERY CHIC BODRUM ADULTS ONLY (EX. MARVIDA SENSES VERY CHIC)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "3452",
+          "target_name": "LIBERTY HOTELS LYKIA",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": "Олюдениз",
+          "shared_rare_tokens": [
+            "lykia"
+          ],
+          "accepted_samo_ids": [
+            "2000024436"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "77355",
+          "target_name": "MARVIDA HOTEL HAPPY SUITES (EX. OTIUM BOUTIQUE HAPPY SUITES)",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "450092",
+      "source_names": "The Beach Front Hotel (only adults 16+)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "2068",
+          "target_name": "THE FRONT VILLAGE KARON",
+          "country_name": "Таиланд",
+          "region_name": "Пхукет",
+          "subregion_name": "Карон",
+          "shared_rare_tokens": [
+            "front"
+          ],
+          "accepted_samo_ids": [
+            "101536"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "32571",
+          "target_name": "CONCORDE EL SALAM FRONT AREA",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "front"
+          ],
+          "accepted_samo_ids": [
+            "2000052594"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000022017",
+      "source_names": "Soz Hotel (Adults Only +13)|Soz Hotel (ex. The Best Life Hotel Bodrum)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000025151",
+      "source_names": "Golmar Beach Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "33266",
+          "target_name": "ADABURNU GOLMAR",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "golmar"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "37513",
+          "target_name": "GOLMAR BEACH",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": "Ичмелер",
+          "shared_rare_tokens": [
+            "golmar"
+          ],
+          "accepted_samo_ids": [
+            "2000028210"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000027371",
+      "source_names": "Sun Bay Park Hotel|Sunbay Park Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000027381",
+      "source_names": "Notion Kesre Beach Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "37566",
+          "target_name": "NOTION KESRE BEACH HOTEL & SPA",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "kesre",
+            "notion"
+          ],
+          "accepted_samo_ids": [
+            "2000026593"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000029745",
+      "source_names": "Sunrise Juman Beach Resort Ex Coral Beach",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "159",
+          "target_name": "SUNRISE JUMAN HOTEL (EX. CORAL BEACH RESORT (MANAGED BY SUNRISE))",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "juman"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000034103",
+      "source_names": "Alexius Beach Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1039",
+          "target_name": "ALEXIUS BEACH HOTEL (EX. BELDIANA CLUB)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "alexius"
+          ],
+          "accepted_samo_ids": [
+            "2000072738"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000034121",
+      "source_names": "Delphin Palace",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1150",
+          "target_name": "DELPHIN DIVA PREMIERE",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Лара",
+          "shared_rare_tokens": [
+            "delphin"
+          ],
+          "accepted_samo_ids": [
+            "2000034119"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1151",
+          "target_name": "DELPHIN PALACE DELUXE COLLECTION",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Кунду",
+          "shared_rare_tokens": [
+            "delphin"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1451",
+          "target_name": "DELPHIN BE GRAND (EX. BOTANIK, RIXOS LARES)",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Лара",
+          "shared_rare_tokens": [
+            "delphin"
+          ],
+          "accepted_samo_ids": [
+            "2000030129"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1726",
+          "target_name": "DELPHIN EL HABIB (EX. DELPHIN RIBAT)",
+          "country_name": "Тунис",
+          "region_name": "Монастир",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "delphin"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9432",
+          "target_name": "DELPHIN IMPERIAL LARA",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Лара",
+          "shared_rare_tokens": [
+            "delphin"
+          ],
+          "accepted_samo_ids": [
+            "2000034120"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000034174",
+      "source_names": "Maya World Golf",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000034247",
+      "source_names": "Agaya Bodrum Adult Only",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "436",
+          "target_name": "AMPHORAS BLU RESORT ADULT ONLY (+16)",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Хадаба",
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "78907"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1632",
+          "target_name": "AGAYA BODRUM ADULTS ONLY (EX. PRIVE BODRUM HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "agaya"
+          ],
+          "accepted_samo_ids": [
+            "2000078273"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2412",
+          "target_name": "ADAARAN PRESTIGE VADOO (ADULT ONLY 18+)",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "2000030593"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9426",
+          "target_name": "AGAYA DIDIM RESORT (EX. PRIVE HOTEL DIDIM)",
+          "country_name": "Турция",
+          "region_name": "Дидим",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "agaya"
+          ],
+          "accepted_samo_ids": [
+            "277754"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "65808",
+          "target_name": "VOXX MARMARIS BEACH RESORT ADULT ONLY",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "2000050217"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "86765",
+          "target_name": "LURES HOTEL (EX. THE LURE) ADULT ONLY 16+",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Каш",
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000035221",
+      "source_names": "TUI BLUE Seno",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000037261",
+      "source_names": "Kimera Lounge Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "37445",
+          "target_name": "SUNPRIME C-LOUNGE ADULTS ONLY 16+",
+          "country_name": "Турция",
+          "region_name": "Аланья",
+          "subregion_name": "Обакой",
+          "shared_rare_tokens": [
+            "lounge"
+          ],
+          "accepted_samo_ids": [
+            "2000024437"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "59115",
+          "target_name": "KIMERA LOUNGE BOUTIQUE",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "kimera",
+            "lounge"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000037973",
+      "source_names": "Club Datca Holiday Village",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000038843",
+      "source_names": "Anjeliq Downtown",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "21644",
+          "target_name": "CLUB HOTEL ANJELIQ (EX. ANJELIQ RESORT HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Аланья",
+          "subregion_name": "Конаклы",
+          "shared_rare_tokens": [
+            "anjeliq"
+          ],
+          "accepted_samo_ids": [
+            "457503"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "65621",
+          "target_name": "ANJELIQ DOWNTOWN",
+          "country_name": "Турция",
+          "region_name": "Аланья",
+          "subregion_name": "Алания-центр",
+          "shared_rare_tokens": [
+            "anjeliq"
+          ],
+          "accepted_samo_ids": [
+            "2000044582"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "65776",
+          "target_name": "ANJELIQ HOUSE",
+          "country_name": "Турция",
+          "region_name": "Аланья",
+          "subregion_name": "Алания-центр",
+          "shared_rare_tokens": [
+            "anjeliq"
+          ],
+          "accepted_samo_ids": [
+            "2000041050"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000039701",
+      "source_names": "Ivy Cyrene Sharm|Ivy Cyrene Sharm (ex. Cyrene Sharm)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "445",
+          "target_name": "IVY CYRENE ISLAND AQUA PARK RESORT",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Рас Насрани",
+          "shared_rare_tokens": [
+            "cyrene"
+          ],
+          "accepted_samo_ids": [
+            "2000084551"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "446",
+          "target_name": "IVY CYRENE SHARM ADULTS ONLY 13+ (EX. AURORA SHARM RESORT, CRYSTAL SHARM, SOL SHARM)",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Рас Насрани",
+          "shared_rare_tokens": [
+            "cyrene"
+          ],
+          "accepted_samo_ids": [
+            "161655"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1971",
+          "target_name": "PICKALBATROS PALACE RESORT SHARM EL SHEIKH (EX. CYRENE GRAND)",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Рас Насрани",
+          "shared_rare_tokens": [
+            "cyrene"
+          ],
+          "accepted_samo_ids": [
+            "2000071533"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000039995",
+      "source_names": "Manzara Boutique Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "28716",
+          "target_name": "MANZARA BOUTIQUE ADULTS ONLY 12+ (EX. COMCA MANZARA)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Бодрум - центр",
+          "shared_rare_tokens": [
+            "manzara"
+          ],
+          "accepted_samo_ids": [
+            "2000074456"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000041289",
+      "source_names": "Sunrise Alora Aquapark Resort (ex. Caesar Palace Aquapark)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "299",
+          "target_name": "MIRAGE BAY RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000040717"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "474",
+          "target_name": "SUNNY DAYS MIRETTE FAMILY AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "593",
+          "target_name": "CAESAR PALACE",
+          "country_name": "Таиланд",
+          "region_name": "Паттайя",
+          "subregion_name": "Центральная Паттайя",
+          "shared_rare_tokens": [
+            "caesar"
+          ],
+          "accepted_samo_ids": [
+            "1965"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9419",
+          "target_name": "AQUA FANTASY AQUAPARK HOTEL & SPA",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "3835"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "32575",
+          "target_name": "SUNRISE ALORA AQUA PARK RESORT (EX. CAESAR PALACE)",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "alora",
+            "caesar"
+          ],
+          "accepted_samo_ids": [
+            "2000099864"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "68323",
+          "target_name": "SUNRISE SOLARA AQUA PARK RESORT (EX.CAESAR DREAMS RESORT BY SUNRISE)",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "caesar"
+          ],
+          "accepted_samo_ids": [
+            "2000099865"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "68907",
+          "target_name": "AMARINA ABU SOMA RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000054018"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "76327",
+          "target_name": "CAESAR BAY RESORT",
+          "country_name": "Египет",
+          "region_name": "Матрух",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "caesar"
+          ],
+          "accepted_samo_ids": [
+            "2000067929"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "97122",
+          "target_name": "AMARINA JANNAH RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Марса Алам",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000083734"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "127294",
+          "target_name": "MED IL CAESAR ADULTS ONLY",
+          "country_name": "Египет",
+          "region_name": "Матрух",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "caesar"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000044772",
+      "source_names": "Garden Park Beldibi",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1117",
+          "target_name": "ONKEL HOTELS BELDIBI RESORT",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "beldibi"
+          ],
+          "accepted_samo_ids": [
+            "236918"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1328",
+          "target_name": "GARDEN PARK BELDIBI HOTEL (EX. LARISSA GARDEN)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "beldibi"
+          ],
+          "accepted_samo_ids": [
+            "2000071984"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1563",
+          "target_name": "RIXOS BELDIBI ADULTS ONLY 16+ (EX. TUI MAGIC LIFE RIXOS BELDIBI)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "beldibi"
+          ],
+          "accepted_samo_ids": [
+            "2000097057"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1572",
+          "target_name": "BELDIBI BEACH HOTEL",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "beldibi"
+          ],
+          "accepted_samo_ids": [
+            "2000068332"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "59532",
+          "target_name": "AYPARS BELDIBI HOTELS",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": "Бельдиби",
+          "shared_rare_tokens": [
+            "beldibi"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000048736",
+      "source_names": "Morione Hotel Karakoy & SPA Center Boutique",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "44756",
+          "target_name": "THE BANK HOTEL ISTANBUL (EX. VAULT KARAKOY THE HOUSE HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Бейоглу",
+          "shared_rare_tokens": [
+            "karakoy"
+          ],
+          "accepted_samo_ids": [
+            "2000064884"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000049502",
+      "source_names": "A11 Hotel Obakoy ",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1546",
+          "target_name": "A11 HOTEL OBAKOY (EX.TAKSIM INTERNATIONAL OBAKOY)",
+          "country_name": "Турция",
+          "region_name": "Аланья",
+          "subregion_name": "Обакой",
+          "shared_rare_tokens": [
+            "obakoy"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000049855",
+      "source_names": "Matiat Holel Istanbul|Matiat Hotel Istanbul",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000052591",
+      "source_names": "Arabia Azur Resort Hurghada",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "128",
+          "target_name": "ARABIA AZUR BEACH RESORT",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "arabia"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000055468",
+      "source_names": "Ramada Encore by Wyndham Istanbul Airport",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "60942",
+          "target_name": "RAMADA ENCORE BY WYNDHAM DOHA",
+          "country_name": "Катар",
+          "region_name": "Доха",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "encore"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "150952",
+          "target_name": "RAMADA ENCORE BY WYNDHAM BUKHARA",
+          "country_name": "Узбекистан",
+          "region_name": "Бухара",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "encore"
+          ],
+          "accepted_samo_ids": [
+            "2000119226"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000057636",
+      "source_names": "Bodrium Hotel & Spa|Bodrium Otel & You Spa",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "21679",
+          "target_name": "BODRIUM HOTEL & SPA BOUTIQUE",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Бодрум - центр",
+          "shared_rare_tokens": [
+            "bodrium"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000060100",
+      "source_names": "L Hotel Sarigerme",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1653",
+          "target_name": "HILTON DALAMAN SARIGERME RESORT & SPA",
+          "country_name": "Турция",
+          "region_name": "Даламан",
+          "subregion_name": "Сарыгерме",
+          "shared_rare_tokens": [
+            "sarigerme"
+          ],
+          "accepted_samo_ids": [
+            "153547"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "133458",
+          "target_name": "GREEN NATURE SARIGERME",
+          "country_name": "Турция",
+          "region_name": "Даламан",
+          "subregion_name": "Сарыгерме",
+          "shared_rare_tokens": [
+            "sarigerme"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000061716",
+      "source_names": "Le Meridien Bodrum Beach Resort",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000062084",
+      "source_names": "Raimond|Raimond Hotel|Raimond Hotel.",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "70943",
+          "target_name": "RAIMOND HOTEL KUMKAPI",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Султанахмет",
+          "shared_rare_tokens": [
+            "raimond"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000064940",
+      "source_names": "Cook's Club Adakoy",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000065268",
+      "source_names": "Jaz Soma Beach (ex. Sol Y Mar Soma Beach)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000068203",
+      "source_names": "My Dream Istanbul Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000069006",
+      "source_names": "Quadas Hotel (ex.Fantasia Hotel Marmaris) (only adults 16+)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "9434",
+          "target_name": "FANTASIA DE LUXE",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "fantasia"
+          ],
+          "accepted_samo_ids": [
+            "9909"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000070128",
+      "source_names": "Supreme Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "9312",
+          "target_name": "SUPREME BEACH (EX. MUNAMAR BEACH RESIDENCE) ADULTS ONLY",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": "Ичмелер",
+          "shared_rare_tokens": [
+            "supreme"
+          ],
+          "accepted_samo_ids": [
+            "2000021968",
+            "2000084143"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "21847",
+          "target_name": "VOGUE HOTEL SUPREME BODRUM",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Торба",
+          "shared_rare_tokens": [
+            "supreme"
+          ],
+          "accepted_samo_ids": [
+            "2000070238"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000071512",
+      "source_names": "Golden Gate",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000072249",
+      "source_names": "Badawia Sharm Resort",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "169",
+          "target_name": "NEW BADAWIA SHARM RESORT",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Хадаба",
+          "shared_rare_tokens": [
+            "badawia"
+          ],
+          "accepted_samo_ids": [
+            "2000087212",
+            "2000100127"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000073045",
+      "source_names": "Meraki Resort Sharm El Sheikh (Adult Only)|Sunrise Meraki Resort Sharm El Sheikh",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "436",
+          "target_name": "AMPHORAS BLU RESORT ADULT ONLY (+16)",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Хадаба",
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "78907"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2412",
+          "target_name": "ADAARAN PRESTIGE VADOO (ADULT ONLY 18+)",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "2000030593"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "64895",
+          "target_name": "MERAKI RESORT ADULTS ONLY 16+",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "meraki"
+          ],
+          "accepted_samo_ids": [
+            "2000113987"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "65808",
+          "target_name": "VOXX MARMARIS BEACH RESORT ADULT ONLY",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [
+            "2000050217"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "80964",
+          "target_name": "MERAKI RESORT SHARM EL SHEIKH ADULTS ONLY 16+",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "meraki"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "86765",
+          "target_name": "LURES HOTEL (EX. THE LURE) ADULT ONLY 16+",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Каш",
+          "shared_rare_tokens": [
+            "adult"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000073063",
+      "source_names": "Apella Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "60766",
+          "target_name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+          "country_name": "Турция",
+          "region_name": "Кемер",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "apella"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000073714",
+      "source_names": "Empire|Empire Beach Resort|Empire Hotel & Aquapark|Empire Hotel Aqua Park (Ex. Triton Empire Hotel Hurghada)",
+      "source_holds": [
+        "source_decision_protected_or_unknown"
+      ],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "299",
+          "target_name": "MIRAGE BAY RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000040717"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "474",
+          "target_name": "SUNNY DAYS MIRETTE FAMILY AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "501",
+          "target_name": "EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT)",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "empire"
+          ],
+          "accepted_samo_ids": [
+            "2000040705"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "502",
+          "target_name": "EMPIRE HOTEL AQUA PARK (EX. THE THREE CORNERS TRITON EMPIRE)",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": "Хургада",
+          "shared_rare_tokens": [
+            "empire",
+            "triton"
+          ],
+          "accepted_samo_ids": [
+            "3114"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9419",
+          "target_name": "AQUA FANTASY AQUAPARK HOTEL & SPA",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "3835"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "61591",
+          "target_name": "VINPEARL EMPIRE NHA TRANG AFFILIATED BY MELIA (EX. MELIA VINPEARL NHA TRANG EMPIRE)",
+          "country_name": "Вьетнам",
+          "region_name": "Нячанг",
+          "subregion_name": "Нячанг - центр",
+          "shared_rare_tokens": [
+            "empire"
+          ],
+          "accepted_samo_ids": [
+            "2000049645"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "67297",
+          "target_name": "TRITON BEACH HOTEL",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "triton"
+          ],
+          "accepted_samo_ids": [
+            "2000070506"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "68907",
+          "target_name": "AMARINA ABU SOMA RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000054018"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "76532",
+          "target_name": "TRITON PRESTIGE SEAVIEW",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "triton"
+          ],
+          "accepted_samo_ids": [
+            "2000070507"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "80970",
+          "target_name": "SILK ROAD EMPIRE",
+          "country_name": "Узбекистан",
+          "region_name": "Самарканд",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "empire"
+          ],
+          "accepted_samo_ids": [
+            "2000072843"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "97122",
+          "target_name": "AMARINA JANNAH RESORT & AQUAPARK",
+          "country_name": "Египет",
+          "region_name": "Марса Алам",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "aquapark"
+          ],
+          "accepted_samo_ids": [
+            "2000083734"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000088259",
+      "source_names": "4s Hotel Dahab",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "166",
+          "target_name": "DAHAB LAGOON CLUB AND RESORT (EX. TIRANA DAHAB)",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "1219"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "244",
+          "target_name": "SAFIR DAHAB RESORT (EX. DAHAB RESORT)",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "1327"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "295",
+          "target_name": "RETAC QUNAY RESORT & SPA (EX. LE MERIDIEN DAHAB RESORT)",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "135480"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "322",
+          "target_name": "ECOTEL DAHAB BAY VIEW RESORT",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "2000039702"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "485",
+          "target_name": "SWISS INN RESORT DAHAB",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "249235"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "512",
+          "target_name": "TROPITEL DAHAB OASIS",
+          "country_name": "Египет",
+          "region_name": "Дахаб",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "dahab"
+          ],
+          "accepted_samo_ids": [
+            "4012"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000090661",
+      "source_names": "Woxx Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000091587",
+      "source_names": "Hotel The Rose Bouquetes",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000092528",
+      "source_names": "Pyramids Gem Plaza Boutique",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000093823",
+      "source_names": "Blue Bay Style",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1706",
+          "target_name": "BLUE BAY STYLE (EX. SESIN)",
+          "country_name": "Турция",
+          "region_name": "Мармарис",
+          "subregion_name": "Ситилер",
+          "shared_rare_tokens": [
+            "style"
+          ],
+          "accepted_samo_ids": [
+            "2000096888",
+            "3078"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "66150",
+          "target_name": "STEIGENBERGER PURE LIFE STYLE ADULTS ONLY 16+",
+          "country_name": "Египет",
+          "region_name": "Хургада",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "style"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "118391",
+          "target_name": "HOLIDAY STYLE AONANG BEACH RESORT",
+          "country_name": "Таиланд",
+          "region_name": "Краби",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "style"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000095339",
+      "source_names": "Kaia Coracesium Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000098416",
+      "source_names": "Fifty Five Suite|Fifty Five Suite Hotel (ex. Marmaris Sea Center)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000101065",
+      "source_names": "Ahama Hotel (only adults 8+)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000103241",
+      "source_names": "Comfort Downtown Istanbul",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000103831",
+      "source_names": "Icon Hotel Bomonti Istanbul",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "44698",
+          "target_name": "MERCURE ISTANBUL BOMONTI (EX. IMPERIAL BUSINESS HOTEL BOMONTI)",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Шишли",
+          "shared_rare_tokens": [
+            "bomonti"
+          ],
+          "accepted_samo_ids": [
+            "2000050025"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "117189",
+          "target_name": "GLEAM BOMONTI HOTEL",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Шишли",
+          "shared_rare_tokens": [
+            "bomonti"
+          ],
+          "accepted_samo_ids": [
+            "2000088464"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000104596",
+      "source_names": "Marvida Senses Very Chic Bodrum (only adults 18+)",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1404",
+          "target_name": "MARVIDA FAMILY ECO (EX. OTIUM FAMILY ECO CLUB)",
+          "country_name": "Турция",
+          "region_name": "Сиде",
+          "subregion_name": "Титренголь",
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [
+            "2000061202"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "1677",
+          "target_name": "LYKIA BOTANIKA BEACH (EX. MARVIDA FAMILY LYKIA BOTANIKA BEACH)",
+          "country_name": "Турция",
+          "region_name": "Фетхие",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [
+            "2000084440"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2270",
+          "target_name": "VERY CHIC BODRUM ADULTS ONLY (EX. MARVIDA SENSES VERY CHIC)",
+          "country_name": "Турция",
+          "region_name": "Бодрум",
+          "subregion_name": "Гюмбет",
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "77355",
+          "target_name": "MARVIDA HOTEL HAPPY SUITES (EX. OTIUM BOUTIQUE HAPPY SUITES)",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "marvida"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000105435",
+      "source_names": "The Wings Hotels Karakoy",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "1464",
+          "target_name": "ROYAL WINGS HOTEL",
+          "country_name": "Турция",
+          "region_name": "Анталья",
+          "subregion_name": "Лара",
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000034210"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9343",
+          "target_name": "PALM WINGS EPHESUS BEACH RESORT (EX. SURMELI)",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "3839"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "17569",
+          "target_name": "PALM WINGS KUSADASI BEACH RESORT",
+          "country_name": "Турция",
+          "region_name": "Кушадасы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000086125"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "44756",
+          "target_name": "THE BANK HOTEL ISTANBUL (EX. VAULT KARAKOY THE HOUSE HOTEL)",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Бейоглу",
+          "shared_rare_tokens": [
+            "karakoy"
+          ],
+          "accepted_samo_ids": [
+            "2000064884"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "138836",
+          "target_name": "WINGS BY HAWKS HOTELS",
+          "country_name": "Мальдивы",
+          "region_name": "Мальдивы",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "wings"
+          ],
+          "accepted_samo_ids": [
+            "2000113634"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000105597",
+      "source_names": "Altunizade Suites Istanbul, Curio Collection by Hilton",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "29368",
+          "target_name": "HAGIA SOFIA MANSIONS ISTANBUL CURIO COLLECTION BY HILTON",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Султанахмет",
+          "shared_rare_tokens": [
+            "curio"
+          ],
+          "accepted_samo_ids": [
+            "2000045138"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "50835",
+          "target_name": "V HOTEL CURIO COLLECTION BY HILTON",
+          "country_name": "ОАЭ",
+          "region_name": "Дубай",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "curio"
+          ],
+          "accepted_samo_ids": [
+            "2000049704"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "60981",
+          "target_name": "ALRAYYAN HOTEL DOHA, CURIO COLLECTION BY HILTON",
+          "country_name": "Катар",
+          "region_name": "Доха",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "curio"
+          ],
+          "accepted_samo_ids": [
+            "2000073858"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "112107",
+          "target_name": "LA FESTA PHU QUOC CURIO COLLECTION BY HILTON",
+          "country_name": "Вьетнам",
+          "region_name": "Фукуок",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "curio"
+          ],
+          "accepted_samo_ids": [
+            "2000088369"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000108645",
+      "source_names": "Sunrise Arabian Beach Resort - Grand Select",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "2515",
+          "target_name": "ARABIAN COURTYARD HOTEL & SPA",
+          "country_name": "ОАЭ",
+          "region_name": "Дубай",
+          "subregion_name": "Бур-Дубаи",
+          "shared_rare_tokens": [
+            "arabian"
+          ],
+          "accepted_samo_ids": [
+            "148509"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "2516",
+          "target_name": "ARABIAN PARK EDGE BY ROTANA",
+          "country_name": "ОАЭ",
+          "region_name": "Дубай",
+          "subregion_name": "Бур-Дубаи",
+          "shared_rare_tokens": [
+            "arabian"
+          ],
+          "accepted_samo_ids": [
+            "72890"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "9374",
+          "target_name": "SUNRISE ARABIAN BEACH RESORT",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": "Шаркс Бей",
+          "shared_rare_tokens": [
+            "arabian"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "66290",
+          "target_name": "STUDIO M ARABIAN PLAZA HOTEL & APT",
+          "country_name": "ОАЭ",
+          "region_name": "Дубай",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "arabian"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        },
+        {
+          "tv_hotel_id": "131024",
+          "target_name": "POSH CLUB SUNRISE ARABIAN BEACH RESORT",
+          "country_name": "Египет",
+          "region_name": "Шарм-эль-Шейх",
+          "subregion_name": null,
+          "shared_rare_tokens": [
+            "arabian"
+          ],
+          "accepted_samo_ids": [
+            "2000051422"
+          ],
+          "holds": [
+            "target_occupied_in_retained_catalog"
+          ],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000109036",
+      "source_names": "Dodo Hotel Old City Istanbul",
+      "source_holds": [
+        "source_decision_protected_or_unknown",
+        "source_digest_missing_or_invalid"
+      ],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000109038",
+      "source_names": "Grand Bagoz Hotel Istanbul",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [
+        {
+          "tv_hotel_id": "109380",
+          "target_name": "GRAND BAGOZ HOTEL",
+          "country_name": "Турция",
+          "region_name": "Стамбул",
+          "subregion_name": "Лалели",
+          "shared_rare_tokens": [
+            "bagoz"
+          ],
+          "accepted_samo_ids": [],
+          "holds": [],
+          "signal": "name_only",
+          "safe_to_write_now": false
+        }
+      ],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000112070",
+      "source_names": "Rays Hotel Bakirkoy",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000121312",
+      "source_names": "Amon Hotels Only Gentleman",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000121380",
+      "source_names": "FUN&SUN FAMILY Sea Beach",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000121381",
+      "source_names": "FUN&SUN FAMILY Sultan Gardens",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000121504",
+      "source_names": "Blueway Hotel Bakirkoy",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000121515",
+      "source_names": "Istanbul Old City Beyazid Belmond Hotel",
+      "source_holds": [],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000123445",
+      "source_names": "Garner Hotel Istanbul - Airport Arnavutkoy By Ihg",
+      "source_holds": [
+        "source_decision_protected_or_unknown",
+        "source_digest_missing_or_invalid"
+      ],
+      "source_country_verified": false,
+      "name_review_candidates": [],
+      "safe_to_write_now": false
+    }
+  ],
+  "target_observed_at_utc": "2026-10-01T12:46:00Z",
+  "source_rows": 83,
+  "target_rows": 4285,
+  "name_signal_source_rows": 54,
+  "provider_http_calls": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "fresh_current_census": false,
+  "acceptance_policy_defined": false,
+  "acquisition_authorized": false,
+  "safe_to_write_now": false,
+  "inputs": {
+    "AnyTour_MATCH_mass_plan_2026-10-01.json": {
+      "sha256": "13d8cc4afb36b58be92c38adae61e4cf92db3eba70a20f3b3bc33fb1a40c7088",
+      "bytes": 131342
+    },
+    "AnyTour_MATCH_native110_CURRENT_readback_2026-10-01.json": {
+      "sha256": "415d6f47303eb35b8ce1515a7cc4e8fffc5598b4f39db8be442392f92cac4819",
+      "bytes": 106320
+    },
+    "result.json": {
+      "sha256": "96c5abd8cca79af2d9ba2125ee80a6fe13a47b1e1f5c7d3a92bde3eb5137084c",
+      "bytes": 2454825
+    },
+    "retained-request-ledger-v93.zip": {
+      "sha256": "fcf30359d2dadd31ffee0398fac6ce8b20c84e2ab2c31746105bfaa2dcbecd28",
+      "bytes": 171921,
+      "result_sha256": "8da64bc3ac54d707d335b8808b171f46a02ba0464536681bc40b741136df935c"
+    }
+  },
+  "target_private_result_sha256": "724af5102c39d7ea25513f3d7698586fb13a3309d010237145552421c159351e",
+  "source_scope": "83 previously covered no-target rows within saved110; no extra unique sources",
+  "novelty": "rare-token name review against retained terminal target-v2; not repeat native1895 join or CURRENT census",
+  "previous_committed_links_not_counted": true,
+  "historical_ledger_only": true,
+  "current_quota_verified": false,
+  "namespace_correction": "Eight prior accepted-local alias targets are local IDs; TV namespace compatibility was not established.",
+  "additional_name_candidates": [
+    {
+      "samo_catalog_id": "2000073063",
+      "tv_hotel_id": "60766",
+      "source_names": "Apella Hotel",
+      "target_observation": {
+        "accepted_samo_ids": [],
+        "category": "0",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 60766,
+        "is_active": true,
+        "latitude": 36.4174291,
+        "longitude": 30.4749822,
+        "manual_hold": false,
+        "name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+        "region_name": "Кемер",
+        "subregion_name": null
+      },
+      "source_observation": {
+        "catalog_digest_matches_saved": true,
+        "catalog_id": "2000073063",
+        "evidence_digest_matches_saved": true,
+        "holds": [],
+        "native_checks": [],
+        "operator_checks": [],
+        "safe_to_write_now": false,
+        "source_history_id_matches": true,
+        "state": "current_review_observed",
+        "targets": [],
+        "tv_checks": []
+      },
+      "name_signal": {
+        "tv_hotel_id": "60766",
+        "target_name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+        "country_name": "Турция",
+        "region_name": "Кемер",
+        "subregion_name": null,
+        "shared_rare_tokens": [
+          "apella"
+        ],
+        "accepted_samo_ids": [],
+        "holds": [],
+        "signal": "name_only",
+        "safe_to_write_now": false
+      },
+      "historical_ledger": {
+        "tv_hotel_id": 60766,
+        "hotel_name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+        "country": "Турция",
+        "gap_bucket": "anex_only",
+        "lanes": {
+          "13": {
+            "retained_exact": [],
+            "known_exact": true,
+            "request_contexts": 1
+          },
+          "18": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 1
+          },
+          "25": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 1
+          },
+          "43": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 1
+          }
+        },
+        "missing_operator_ids": [
+          18,
+          25,
+          43
+        ],
+        "planned": true,
+        "actual_request": true,
+        "unknown_charged_operations": [],
+        "query_authorized": false
+      },
+      "historical_request_count": 1,
+      "missing_evidence": "Source has no retained native fact; target native proof alone cannot close identity.",
+      "safe_to_write_now": false,
+      "acquisition_authorized": false
+    },
+    {
+      "samo_catalog_id": "2000034121",
+      "tv_hotel_id": "1151",
+      "source_names": "Delphin Palace",
+      "target_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 1151,
+        "is_active": true,
+        "latitude": 36.8554887,
+        "longitude": 30.8758655,
+        "manual_hold": false,
+        "name": "DELPHIN PALACE DELUXE COLLECTION",
+        "region_name": "Анталья",
+        "subregion_name": "Кунду"
+      },
+      "source_observation": {
+        "catalog_digest_matches_saved": true,
+        "catalog_id": "2000034121",
+        "evidence_digest_matches_saved": true,
+        "holds": [],
+        "native_checks": [
+          {
+            "failures": [],
+            "global_saved_unique": true,
+            "namespace": "operator_342",
+            "native_id": "549",
+            "raw_verified": true
+          }
+        ],
+        "operator_checks": [
+          {
+            "current_identity_count": 1,
+            "current_local_hotel_ids": [],
+            "namespace": "operator_342",
+            "native_id": "549"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_history_id_matches": true,
+        "state": "current_review_observed",
+        "targets": [],
+        "tv_checks": []
+      },
+      "name_signal": {
+        "tv_hotel_id": "1151",
+        "target_name": "DELPHIN PALACE DELUXE COLLECTION",
+        "country_name": "Турция",
+        "region_name": "Анталья",
+        "subregion_name": "Кунду",
+        "shared_rare_tokens": [
+          "delphin"
+        ],
+        "accepted_samo_ids": [],
+        "holds": [],
+        "signal": "name_only",
+        "safe_to_write_now": false
+      },
+      "historical_ledger": {
+        "tv_hotel_id": 1151,
+        "hotel_name": "DELPHIN PALACE DELUXE COLLECTION",
+        "country": "Турция",
+        "gap_bucket": "neither",
+        "lanes": {
+          "13": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "18": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "25": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "43": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          }
+        },
+        "missing_operator_ids": [
+          13,
+          18,
+          25,
+          43
+        ],
+        "planned": true,
+        "actual_request": true,
+        "unknown_charged_operations": [],
+        "query_authorized": false
+      },
+      "historical_request_count": 2,
+      "missing_evidence": "Source INT549 raw verified; independent target INT selector/link is still missing.",
+      "safe_to_write_now": false,
+      "acquisition_authorized": false
+    },
+    {
+      "samo_catalog_id": "2000057636",
+      "tv_hotel_id": "21679",
+      "source_names": "Bodrium Hotel & Spa|Bodrium Otel & You Spa",
+      "target_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 21679,
+        "is_active": true,
+        "latitude": 37.0367737,
+        "longitude": 27.411871,
+        "manual_hold": false,
+        "name": "BODRIUM HOTEL & SPA BOUTIQUE",
+        "region_name": "Бодрум",
+        "subregion_name": "Бодрум - центр"
+      },
+      "source_observation": {
+        "catalog_digest_matches_saved": true,
+        "catalog_id": "2000057636",
+        "evidence_digest_matches_saved": true,
+        "holds": [],
+        "native_checks": [
+          {
+            "failures": [],
+            "global_saved_unique": true,
+            "namespace": "operator_115",
+            "native_id": "625076132",
+            "raw_verified": true
+          }
+        ],
+        "operator_checks": [
+          {
+            "current_identity_count": 0,
+            "current_local_hotel_ids": [],
+            "namespace": "operator_115",
+            "native_id": "625076132"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_history_id_matches": true,
+        "state": "current_review_observed",
+        "targets": [],
+        "tv_checks": []
+      },
+      "name_signal": {
+        "tv_hotel_id": "21679",
+        "target_name": "BODRIUM HOTEL & SPA BOUTIQUE",
+        "country_name": "Турция",
+        "region_name": "Бодрум",
+        "subregion_name": "Бодрум - центр",
+        "shared_rare_tokens": [
+          "bodrium"
+        ],
+        "accepted_samo_ids": [],
+        "holds": [],
+        "signal": "name_only",
+        "safe_to_write_now": false
+      },
+      "historical_ledger": {
+        "tv_hotel_id": 21679,
+        "hotel_name": "BODRIUM HOTEL & SPA BOUTIQUE",
+        "country": "Турция",
+        "gap_bucket": "anex_only",
+        "lanes": {
+          "13": {
+            "retained_exact": [],
+            "known_exact": true,
+            "request_contexts": 2
+          },
+          "18": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "25": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "43": {
+            "retained_exact": [
+              24891
+            ],
+            "known_exact": true,
+            "request_contexts": 2
+          }
+        },
+        "missing_operator_ids": [
+          18,
+          25
+        ],
+        "planned": true,
+        "actual_request": true,
+        "unknown_charged_operations": [],
+        "query_authorized": false
+      },
+      "historical_request_count": 2,
+      "missing_evidence": "Source BG625076132; retained target INT24891 is a different namespace; retained BG detail404 must not be replayed.",
+      "safe_to_write_now": false,
+      "acquisition_authorized": false
+    },
+    {
+      "samo_catalog_id": "2000062084",
+      "tv_hotel_id": "70943",
+      "source_names": "Raimond|Raimond Hotel|Raimond Hotel.",
+      "target_observation": {
+        "accepted_samo_ids": [],
+        "category": "3",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 70943,
+        "is_active": true,
+        "latitude": 41.0048919,
+        "longitude": 28.9653666,
+        "manual_hold": false,
+        "name": "RAIMOND HOTEL KUMKAPI",
+        "region_name": "Стамбул",
+        "subregion_name": "Султанахмет"
+      },
+      "source_observation": {
+        "catalog_digest_matches_saved": true,
+        "catalog_id": "2000062084",
+        "evidence_digest_matches_saved": true,
+        "holds": [],
+        "native_checks": [
+          {
+            "failures": [],
+            "global_saved_unique": true,
+            "namespace": "operator_5",
+            "native_id": "32745",
+            "raw_verified": true
+          },
+          {
+            "failures": [],
+            "global_saved_unique": true,
+            "namespace": "operator_315",
+            "native_id": "780677",
+            "raw_verified": true
+          },
+          {
+            "failures": [],
+            "global_saved_unique": true,
+            "namespace": "operator_342",
+            "native_id": "18273",
+            "raw_verified": true
+          }
+        ],
+        "operator_checks": [
+          {
+            "current_identity_count": 1,
+            "current_local_hotel_ids": [],
+            "namespace": "operator_5",
+            "native_id": "32745"
+          },
+          {
+            "current_identity_count": 1,
+            "current_local_hotel_ids": [],
+            "namespace": "operator_315",
+            "native_id": "780677"
+          },
+          {
+            "current_identity_count": 1,
+            "current_local_hotel_ids": [],
+            "namespace": "operator_342",
+            "native_id": "18273"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_history_id_matches": true,
+        "state": "current_review_observed",
+        "targets": [],
+        "tv_checks": []
+      },
+      "name_signal": {
+        "tv_hotel_id": "70943",
+        "target_name": "RAIMOND HOTEL KUMKAPI",
+        "country_name": "Турция",
+        "region_name": "Стамбул",
+        "subregion_name": "Султанахмет",
+        "shared_rare_tokens": [
+          "raimond"
+        ],
+        "accepted_samo_ids": [],
+        "holds": [],
+        "signal": "name_only",
+        "safe_to_write_now": false
+      },
+      "historical_ledger": {
+        "tv_hotel_id": 70943,
+        "hotel_name": "RAIMOND HOTEL KUMKAPI",
+        "country": "Турция",
+        "gap_bucket": "neither",
+        "lanes": {
+          "13": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "18": {
+            "retained_exact": [
+              102610105438
+            ],
+            "known_exact": true,
+            "request_contexts": 2
+          },
+          "25": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          },
+          "43": {
+            "retained_exact": [],
+            "known_exact": false,
+            "request_contexts": 2
+          }
+        },
+        "missing_operator_ids": [
+          13,
+          25,
+          43
+        ],
+        "planned": true,
+        "actual_request": true,
+        "unknown_charged_operations": [],
+        "query_authorized": false
+      },
+      "historical_request_count": 2,
+      "missing_evidence": "Source ANEX32745/FUNSUN780677/INT18273; retained target BG102610105438 has no source BG fact.",
+      "safe_to_write_now": false,
+      "acquisition_authorized": false
+    }
+  ],
+  "additional_name_candidate_count": 4,
+  "required_next": [
+    "Fresh claims and all later negative/UNKNOWN/quota receipts before any acquisition",
+    "Independent same-operator identity and property/geography proof; preserve every conflicting selector",
+    "New immutable roster and specifically reviewed CURRENT/acquisition/intake scope; no reuse of consumed scopes",
+    "Current uniqueness/ownership/manual/exclusion/source/history/geo guards and guarded transaction/readback before acceptance"
+  ]
+}
