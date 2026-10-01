@@ -566,8 +566,9 @@ function hotelHighlights(h){
 
 
 function syncAvailableFilterGroups(){$$('#filters .filter-group').forEach(group=>{const rows=[...group.querySelectorAll('.check-row')];if(rows.length)group.hidden=rows.every(row=>row.dataset.available!=='true'&&!row.querySelector('input')?.checked);});syncFilterSections();}
-function updateFacetCounts(){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map();
- for(const input of inputs){const group=input.dataset.filter;if(group&&group!=='amenities'&&!counts.has(group))counts.set(group,countFacetOptions(model,group,inputs.filter(row=>row.dataset.filter===group).map(row=>row.value)));}
+function updateFacetCounts(){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map(),grouped=new Map();
+ for(const input of inputs){const group=input.dataset.filter;if(!group||group==='amenities')continue;if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(input.value);}
+ for(const [group,values] of grouped)counts.set(group,countFacetOptions(model,group,values));
  inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}
 function budgetScale(f){
  let high=Math.max(1000,f.min,f.max??0);

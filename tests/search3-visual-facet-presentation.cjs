@@ -39,6 +39,19 @@ function destination(source,s){
  vm.createContext(c);vm.runInContext(functions(source,['destinationNameMatches','renderDestination']),c);c.renderDestination();
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
+function facetRefresh(source,legacy=false){
+ let reads=0,scalarCalls=0;const inputs=[],batchCalls=[],tails=[];
+ const fake=(dataset,value,index)=>{const tracked=new Proxy(dataset,{get(target,key){if(key==='filter')reads++;return target[key];}}),label={textContent:'',ariaLabel:'',setAttribute(name,value){if(name==='aria-label')this.ariaLabel=value;}},row={dataset:{},hidden:false,querySelector:()=>label,closest:()=>null};return {dataset:tracked,value,checked:index%17===0,closest:()=>row,row,label};};
+ let index=0;for(const group of ['meals','operators','flight','resorts','stars'])for(let i=0;i<20;i++)inputs.push(fake({filter:group},group+i,index++));
+ for(let i=0;i<5;i++)inputs.push(fake({filter:'amenities'},'amenity'+i,index++));
+ for(let i=0;i<4;i++)inputs.push(fake({filterBool:'boolean'+i},'',index++));
+ const model={filters:{amenities:[]}},c={editingFilterModel:()=>model,$$:selector=>selector==='[data-filter],[data-filter-bool]'?inputs:[],countFacetOptions:(current,group,values)=>{batchCalls.push([group,[...values]]);return new Map(values.map((value,i)=>[value,i%4]));},countMatchingHotels:()=>{scalarCalls++;return 2;},hotelCountText:n=>n+' отелей',applyFacetSearch:()=>tails.push('facet'),updateFilterStars:()=>tails.push('stars'),syncAvailableFilterGroups:()=>tails.push('groups'),renderFilterNavigation:()=>tails.push('nav')};
+ const previous=`function updateFacetCounts(){const model=editingFilterModel(),inputs=\$\$('[data-filter],[data-filter-bool]'),counts=new Map();
+ for(const input of inputs){const group=input.dataset.filter;if(group&&group!=='amenities'&&!counts.has(group))counts.set(group,countFacetOptions(model,group,inputs.filter(row=>row.dataset.filter===group).map(row=>row.value)));}
+ inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});\$\$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}`;
+ vm.createContext(c);vm.runInContext(legacy?previous:functions(source,['updateFacetCounts']),c);c.updateFacetCounts();
+ return {reads,scalarCalls,batchCalls,rows:inputs.map(input=>[input.label.textContent,input.label.ariaLabel,input.row.dataset.available,input.row.hidden]),tails};
+}
 function observations(source){const records=[];for(const group of ['resorts','operators','meals'])for(const n of [0,1,7,8,20])for(const query of ['', 'Вариант 1','елка','несуществующий'])for(const selected of [false,true])for(const expanded of [false,true])for(const focus of ['first','last','search'])records.push(facet(source,{group,n,query,selected,expanded,focus}));for(const selected of [false,true])records.push(amenities(source,selected));for(const query of ['', 'h','hotel','hot el','Ёлка'])for(const status of ['idle','loading','error','complete'])for(const ready of [false,true])for(const hotel of [false,true])for(const resorts of [false,true])for(const resolved of [false,true])records.push(destination(source,{query,status,ready,hotel,resorts,resolved,error:status==='error'}).result);return records;}
 const actual=observations(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 if(!process.argv.includes('--capture'))assert.equal(digest,'7a16a4b0b373fe30821b8a2ba4299344b84dfab1df6b59388079b6535656dc9f','original filter/destination HTML, availability, ordering, selection and focus');
@@ -78,5 +91,12 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  vm.createContext(c);vm.runInContext(functions(source,['filterStarButtons']),c);c.$('#host').innerHTML=c.filterStarButtons(model);
  assert.deepEqual(c.$$('button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','5'],['4','true','0']],'selected unavailable star stays visible');
  c.dom.window.close();
+}
+{
+ const current=facetRefresh(source),previous=facetRefresh(source,true);
+ assert.deepEqual({...current,reads:0},{...previous,reads:0},'one-pass grouping preserves batch inputs, scalar fallbacks, counts, availability and final refresh calls');
+ assert.equal(previous.reads,867,'previous grouping rescans the whole input list for each facet section');
+ assert.equal(current.reads,322,'current grouping reads each filter identity once before rendering counts');
+ console.log(`WORK facet identity reads ${previous.reads}→${current.reads}; five batch sections and observable rows preserved`);
 }
 console.log('PASS facet DOM callers: batch zero/checked availability, scalar amenities/rating, any-meal/null-draft and selected-star counts');
