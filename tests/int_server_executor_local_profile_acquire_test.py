@@ -12,6 +12,8 @@ class AcquireContract(unittest.TestCase):
   c=Core();self.m.register_parser(c);sha='a'*40;cmd=c.parse_command(f'{c.PREFIX}{sha} {self.m.MODE} {self.m.OPERATION} {self.m.BATCH}')
   self.assertEqual(cmd['maximum_hotel_http_calls'],320);self.assertEqual(cmd['maximum_profile_writes'],0)
   with self.assertRaises(ValueError):c.parse_command(f'{c.PREFIX}{sha} {self.m.MODE} {self.m.OPERATION.replace("-v1","-v2")} {self.m.BATCH}')
+  rb=c.parse_command(f'{c.PREFIX}{sha} {self.m.READBACK_MODE} {self.m.READBACK_OPERATION} {self.m.READBACK_BATCH}')
+  self.assertEqual(rb['maximum_hotel_http_calls'],0);self.assertEqual(rb['maximum_profile_writes'],0)
  def test_remote_contract(self):
   c=Core();self.m.register_parser(c);cmd={'source_sha':'a'*40,'mode':self.m.MODE,'operation_id':self.m.OPERATION,'batch':self.m.BATCH,'maximum_hotel_http_calls':320,'maximum_profile_writes':0};self.m.activate(c,cmd)
   self.assertIn("local-profile-acquire-4191",c.REMOTE);self.assertIn("rate_interval_ms",self.m.REMOTE_HANDLER)
