@@ -180,8 +180,10 @@ function facetCountRecords(candidate,checkReference=true){
  for(const filters of variants)for(const live of [false,true])for(const selectedDate of [null,day(2)])for(const onlyFavorites of [false,true]){
   ctx.data.live=live;const model={filters:{...defaultFilters(),...filters},selectedDate,onlyFavorites};
   for(const [group,options]of Object.entries(values)){
-   const actual=ctx.facetCounts(model,group,options);
+   const selectedInventory={count:null},actual=ctx.facetCounts(model,group,options,selectedInventory);
    const expected=options.map(value=>hs.filter(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,[group]:[value]},firstOnly:true}).length).length);
+   const selectedExpected=hs.filter(h=>ctx.hotelOffers(h,{...model,firstOnly:true}).length).length;
+   if(checkReference)assert.equal(selectedInventory.count,selectedExpected,'selected facet inventory: '+group);
    const counts=options.map(value=>actual.get(value));if(checkReference)assert.deepEqual(counts,expected,'scalar facet counts: '+group);rows.push(counts);
   }
  }
@@ -198,7 +200,7 @@ function facetCountRecords(candidate,checkReference=true){
 {
  const rows=facetCountRecords(source),hash=crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
  assert.equal(hash,'2029aef32f0a35ffeac388a0db3df79d1e1ae2fb31a01cf436c1b80c91de2b52','original scalar facet-count sequences');
- for(const [from,to]of [['remaining.delete(key);',''],['!remaining.has(key)||!matches(o)','!remaining.has(key)'],['if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;','']]){
+ for(const [from,to]of [['remaining.delete(key);',''],['if(!matches(o))continue;',''],['if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;','']]){
   assert(source.includes(from),'actual facet mutation boundary');
   assert.notDeepEqual(facetCountRecords(source.replace(from,to),false),rows,'facet predicate/deduplication mutation detected');
  }
@@ -213,13 +215,15 @@ function facetCountRecords(candidate,checkReference=true){
  // Deterministic work budget; this is not whole-page or production timing.
  const hs=Array.from({length:100},(_,i)=>{const h=fixture()[1];return {...h,id:i+1,offers:Array.from({length:1000},(_,j)=>({...h.offers[2],key:i+':'+j,operator:'OP'+(j%40),total:100000+j}))};});
  const work=make(source,hs),values=Array.from({length:40},(_,i)=>'OP'+i),scope={filters:defaultFilters(),selectedDate:null,onlyFavorites:false};
- vm.runInContext(section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',work);
+ vm.runInContext(source.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\n'+section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.matchingCount=countMatchingHotels;globalThis.facetCounts=countFacetOptions;globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',work);
  const original=values.map(value=>hs.filter(h=>work.hotelOffers(h,{...scope,filters:{...scope.filters,operators:[value]},firstOnly:true}).length).length),before=work.ageCalls;
- work.ageCalls=0;const batched=work.facetCounts(scope,'operators',values),after=work.ageCalls;
+ work.ageCalls=0;for(let i=0;i<12;i++)assert.equal(work.matchingCount(scope),100);const redundant=work.ageCalls;
+ work.ageCalls=0;const selectedInventory={count:null},batched=work.facetCounts(scope,'operators',values,selectedInventory),after=work.ageCalls;
  assert.deepEqual(values.map(value=>batched.get(value)),original);assert.equal(before,86000);assert.equal(after,4001);
+ assert.equal(selectedInventory.count,100,'batched inventory exposes the exact selected-model count');assert.equal(redundant,1212,'twelve redundant scalar counts serialize party ages once per pass and match');
  work.ageCalls=0;const missing=work.facetCounts(scope,'operators',[...values,'missing']);assert.equal(missing.get('missing'),0);assert.equal(work.ageCalls,4001,'already-counted identities do not repeat predicate work');
  vm.runInContext('const originalFacetPredicate=hotelOfferPredicate;hotelOfferPredicate=function(...args){globalThis.facetPredicateCalls++;return originalFacetPredicate(...args)};',work);work.facetPredicateCalls=0;
  for(const [group,options]of Object.entries({meals:['AI','BB'],operators:['A','B'],flight:['regular','charter']}))work.facetCounts(scope,group,options);
  assert.equal(work.facetPredicateCalls,3,'one invariant offer predicate per non-hotel facet pass');
- console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication guards; age serializations ${before}->${after}; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);
+ console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication/selected-count guards; age serializations ${before}->${after}, redundant selected-count ${redundant}->0; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);
 }
