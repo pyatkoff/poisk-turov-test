@@ -417,7 +417,7 @@ function updateNav(){
 let filterDraft=null,emptySuggestions=[],drawerSuggestions=[],filterBudgetEdit=null;
 const appliedFilterModel=()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate});
 const editingFilterModel=()=>filterDraft||appliedFilterModel();
-const countMatchingHotels=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);
+const countMatchingHotels=model=>{const s=model.search||state.search,f=model.filters||state.filters,selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to),matches=hotelOfferPredicate(s,f,from,to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;return hotels.reduce((count,h)=>count+Number(hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined),0);};
 // Facet counts are per hotel, so stop after each requested identity is found.
 // Keep the inventory local to this pass: later responses and edits recalculate it.
 function countFacetOptions(model,group,values){
