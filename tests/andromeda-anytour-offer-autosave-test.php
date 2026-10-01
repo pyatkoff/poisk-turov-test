@@ -571,3 +571,155 @@ foreach ($invalid as $case => $fact) {
 }
 echo "ANDROMEDA_ESTIMATE_RETENTION_OK shapes=3 invalid=6 full_price_guard_unchanged=1 receipt_counts=1 supplier=0 live_db=0\n";
 echo "andromeda-anytour-offer-autosave-test: OK\n";
+
+// Repeat-search regression exercises the actual cached controller and actual
+// search/store/autosave/producer. Only params, projection and HTTP/SQL boundaries
+// are injected; retaining a session must not require another supplier search.
+require_once dirname(__DIR__) . '/app/integrations/andromeda-search.php';
+$cachedEndpoint = file_get_contents(dirname(__DIR__) . '/v2/api-andromeda-search3-preview.php');
+$cachedStart = strpos($cachedEndpoint, 'function anytour_andromeda_search3_run(');
+$cachedEnd = strpos($cachedEndpoint, '/** Only explicitly installed country catalogs', $cachedStart);
+aassert($cachedStart !== false && $cachedEnd !== false, 'cached controller fixture missing');
+$cachedController = substr($cachedEndpoint, $cachedStart, $cachedEnd - $cachedStart);
+eval(strtr($cachedController, [
+    'function anytour_andromeda_search3_run(' => 'function cached_generation_run(',
+    'anytour_andromeda_search3_params(' => 'cached_generation_params(',
+    'anytour_andromeda_search3_project(' => 'cached_generation_project(',
+    'anytour_andromeda_search3_save(' => 'cached_generation_save(',
+    'anytour_andromeda_anytour_offer_autosave_runtime(' => 'cached_generation_autosave(',
+    'AnyTourAndromedaHotelObservations::record(' => 'cached_generation_record(',
+]));
+final class CachedGenerationPDO extends PDO {
+    public function __construct() {}
+    public function prepare(string $query, array $options = []): PDOStatement|false {
+        throw new RuntimeException('CACHE_MISS_MUST_NOT_START_SUPPLIER_SEARCH');
+    }
+}
+function cached_generation_params(array $request, PDO $pdo, array $saved): array {
+    return array_replace($GLOBALS['cachedCriteria'], ['PAGE' => $request['page'] ?? 1]);
+}
+function cached_generation_save(string $path, array $next): bool {
+    ++$GLOBALS['cachedSearchWrites'];
+    throw new RuntimeException('CACHE_RESUME_MUST_NOT_REWRITE_SEARCH_STATE');
+}
+function cached_generation_record(PDO $pdo, array $page, array $saved): void {}
+function cached_generation_project(array $request, PDO $pdo, array $page, array $saved, array $private): array {
+    return ['generation' => $request['generation'], 'source_generation' => $page['generation'],
+        'search_ref' => $page['search_ref'], 'page' => $page['page'], 'status' => $page['status'],
+        'offer_refs' => array_column($page['offers'], 'offer_ref'), 'created_at' => $private['created_at']];
+}
+function cached_generation_autosave(
+    array $request, PDO $pdo, array $saved, string $directory, string $ref, int $generation
+): array {
+    global $cachedCalls, $cachedReceipts, $cachedFailures, $cachedCallbacks;
+    $cachedCalls[] = ['request' => $request, 'generation' => $generation];
+    try {
+        $receipt = AnyTourAndromedaOfferAutosaveV1::consume($request, $directory, $ref, $generation,
+            new DateTimeImmutable('now', new DateTimeZone('UTC')),
+            $cachedCallbacks[0], $cachedCallbacks[1], $cachedCallbacks[2],
+            $cachedCallbacks[3], $cachedCallbacks[4], $request['page'] ?? 1);
+        $cachedReceipts[] = $receipt;
+        return $receipt;
+    } catch (Throwable $error) {
+        $cachedFailures[] = $error->getMessage();
+        throw $error;
+    }
+}
+
+$dir = temp_searches();
+try {
+    $session = 'cached-generation-test-session';
+    $cachedCriteria = array_replace(AnyTourAndromedaClient::priceProbeParams(), [
+        'CHECKIN_BEG' => '20261010', 'CHECKIN_END' => '20261010', 'NIGHTS_FROM' => 7,
+        'NIGHTS_TILL' => 7, 'CHILD' => 1, 'AGES' => '7', 'PAGE' => 1,
+    ]);
+    $base = $cachedCriteria; unset($base['PAGE']);
+    $ref = hash('sha256', 'paged-v1' . $session . json_encode($base));
+    $created = time() - 60;
+    $offer = normalized_offer('cached-generation') + ['hotel' => 'Cached hotel'];
+    $first = state($ref, 1, 1, 2, $created, [$offer]);
+    $first['version'] = 1; $first['criteria'] = $cachedCriteria;
+    $first['store']['criteria'] = $cachedCriteria;
+    write_state($dir, $ref, $created, 1, $first);
+    $firstPath = $dir . '/' . $ref . '-1.json';
+    $originalBytes = file_get_contents($firstPath);
+    $ingests = []; $cachedCallbacks = callbacks($ingests);
+    $cachedCalls = []; $cachedReceipts = []; $cachedFailures = []; $cachedSearchWrites = 0;
+    $request = search_request(9);
+    $requestBefore = $request;
+    $db = new CachedGenerationPDO();
+    $saved = ['local_country_name' => 'Egypt'];
+    $config = ['catalog_path' => dirname($dir) . '/catalog.json'];
+    $response = cached_generation_run($request, $db, $saved, $config, $session);
+    aassert($cachedFailures === [] && count($ingests) === 1,
+        'CACHED_GENERATION_AUTOSAVE_REJECTED: ' . implode(',', $cachedFailures));
+    aassert($cachedCalls[0]['generation'] === 1 && $cachedCalls[0]['request']['generation'] === 1,
+        'autosave did not use the retained source generation');
+    $expectedRequest = $request; $expectedRequest['generation'] = 1;
+    aassert($cachedCalls[0]['request'] === $expectedRequest && $request === $requestBefore,
+        'persistence changed criteria or caller generation');
+    aassert($response['generation'] === 9 && $response['source_generation'] === 1
+        && $response['offer_refs'] === [$offer['offer_ref']] && $response['status'] === 'partial',
+        'browser generation, raw offer context or partial status changed');
+    aassert($cachedReceipts[0]['snapshotMode'] === 'partial_additive'
+        && $cachedReceipts[0]['receivedPage'] === 1 && !is_file($dir . '/' . $ref . '-' . $created . '-2.json'),
+        'first received page required or fetched the next page');
+    $dto = $ingests[0]['rows'][0]['dto'];
+    assert_confirmation_dto($dto);
+    aassert($dto['context']['generation'] === 1 && $dto['context']['issued_at'] === $created
+        && $dto['context']['expires_at'] === $created + 900
+        && $dto['tour']['observed_at'] === gmdate('Y-m-d\TH:i:s\Z', $created),
+        'cached observation was given a new generation or lifetime');
+    $checkpoint = $dir . '/' . $ref . '-' . $created . '-page-1-anytour-offer-autosave-v1.json';
+    $checkpointBytes = file_get_contents($checkpoint);
+    $request['generation'] = 10;
+    $again = cached_generation_run($request, $db, $saved, $config, $session);
+    aassert($again['generation'] === 10 && $cachedReceipts[1]['reason'] === 'already_published'
+        && count($ingests) === 1 && file_get_contents($checkpoint) === $checkpointBytes,
+        'repeat cached search republished or renewed the observation');
+    aassert(file_get_contents($firstPath) === $originalBytes && $cachedSearchWrites === 0,
+        'cache resume rewrote retained search state');
+
+    // Continue reuses the same retained generation and appends only its own page.
+    $secondOffer = normalized_offer('cached-generation-page-two', 'FUN&SUN', 102, '200')
+        + ['hotel' => 'Second cached hotel'];
+    $second = state($ref, 1, 2, 2, $created + 20, [$secondOffer]);
+    $second['version'] = 1; $second['criteria'] = array_replace($cachedCriteria, ['PAGE' => 2]);
+    $second['store']['criteria'] = $second['criteria'];
+    write_state($dir, $ref, $created, 2, $second);
+    $request['page'] = 2;
+    $continued = cached_generation_run($request, $db, $saved, $config, $session);
+    aassert($cachedFailures === [] && count($ingests) === 2
+        && $cachedCalls[2]['generation'] === 1 && $cachedCalls[2]['request']['generation'] === 1
+        && $cachedReceipts[2]['receivedPage'] === 2 && $continued['offer_refs'] === [$secondOffer['offer_ref']],
+        'Continue dropped the cached page or mixed browser/source generations');
+    aassert($ingests[1]['rows'][0]['dto']['context']['issued_at'] === $created + 20
+        && file_get_contents($checkpoint) === $checkpointBytes,
+        'Continue renewed or republished page one');
+
+    // Strict cohort validation stays unchanged; cross-generation state remains invalid.
+    $invalid = $second; $invalid['store']['generation'] = 2;
+    write_state($dir, $ref, $created, 2, $invalid);
+    $countBefore = count($ingests);
+    $refused = false;
+    try {
+        $trustedRequest = $request; $trustedRequest['generation'] = 1;
+        AnyTourAndromedaOfferAutosaveV1::consume($trustedRequest, $dir, $ref, 1,
+            new DateTimeImmutable('now', new DateTimeZone('UTC')),
+            $cachedCallbacks[0], $cachedCallbacks[1], $cachedCallbacks[2],
+            $cachedCallbacks[3], $cachedCallbacks[4], 2);
+    } catch (DomainException $error) {
+        $refused = $error->getMessage() === 'ANDROMEDA_ANYTOUR_COHORT_INVALID';
+    }
+    aassert($refused && count($ingests) === $countBefore, 'strict stored-generation validation was relaxed');
+    $pending = $first; $pending['status'] = 'pending';
+    write_state($dir, $ref, $created, 1, $pending);
+    $callsBefore = count($cachedCalls);
+    $refused = false;
+    try { cached_generation_run(search_request(11), $db, $saved, $config, $session); }
+    catch (RuntimeException $error) { $refused = $error->getMessage() === 'supplier_unavailable'; }
+    aassert($refused && count($cachedCalls) === $callsBefore && count($ingests) === $countBefore
+        && $cachedSearchWrites === 0, 'pending reservation was replayed or persisted');
+    echo "ANDROMEDA_CACHED_GENERATION_OK first_page=1 repeated_intakes=0 continue_page=2"
+        . " strict_cohort_guard=1 pending_no_replay=1 supplier=0 live_db=0\n";
+} finally { cleanup_dir($dir); }
