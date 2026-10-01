@@ -160,7 +160,7 @@ class HandlerTest(unittest.TestCase):
           'control_source_sha':CONTROL,'plan_source_sha':'a54255507643501abdeca150aeae19b84cb586f6',
           'private_plan_sha256':m.MASS2_PLAN_SHA,'requested_profiles':130,'state':'committed_verified',
           'profiles_verified':130,'fields_verified':1312,'field_counts':counts,'batches_verified':3,'profile_writes':130,
-          'provenance_writes':130,'readback_verified':True,'unknown_batch':None,'supplier_calls':0,'provider_http_calls':0,
+          'provenance_writes':130,'readback_verified':True,'unknown_batch':None,'sample_own_ids':[500001,500002,500003],'supplier_calls':0,'provider_http_calls':0,
           'mapping_writes':0,'legacy_writes':0,'schema_writes':0}
         (root/'local-mass2-apply-receipt.json').write_text(json.dumps(data))
         process=types.SimpleNamespace(returncode=0,stdout='',stderr='');calls=[]
@@ -183,7 +183,7 @@ class HandlerTest(unittest.TestCase):
     def test_hold_and_unknown_contracts(self):
         with tempfile.TemporaryDirectory() as tmp:
             root,stage,data,p,calls,ns=self.fixture(tmp);data.update(state='held_before_write',profiles_verified=0,fields_verified=0,
-             field_counts=[],batches_verified=0,profile_writes=0,provenance_writes=0,readback_verified=False);p.returncode=2
+             field_counts=[],batches_verified=0,profile_writes=0,provenance_writes=0,readback_verified=False,sample_own_ids=[]);p.returncode=2
             (root/'local-mass2-apply-receipt.json').write_text(json.dumps(data));got=ns['run_local_profile_mass_apply130_phase2'](stage)
             self.assertEqual({},got['field_counts']);self.assertEqual(0,got['profile_writes'])
         with tempfile.TemporaryDirectory() as tmp:
