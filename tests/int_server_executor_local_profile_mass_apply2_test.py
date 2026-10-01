@@ -90,11 +90,11 @@ function fixture(){
  $counts=['D1_OVERLAP_HELD'=>70,'HISTORICAL_366_HELD'=>366,'PLAN_BOUND_DEFERRED'=>9142,'PREDECESSOR_2000_HELD'=>2000,
  'PRIOR_OR_EDITORIAL_HELD'=>714,'RETAINED_DELTA_PREPARED'=>130,'SCREENED_FIELDS_PRESENT'=>1707,'SOURCE_MISSING'=>1868,
  'SOURCE_PROVENANCE_HELD'=>2];
- $rows=[];$files=[];$meta=[];$counter=0;
+ $rows=[];$files=[];$meta=[];$counter=0;$fields=LPP_FIELDS;
  foreach([44,43,43] as $bi=>$n){$scope=[];$selected=[];
   for($j=0;$j<$n;$j++){++$counter;$own=500000+$counter;$local=600000+$counter;$r=rawRow($own,$local);$rows[]=$r;
    $scope[]=['anytourHotelId'=>$own,'localHotelId'=>$local,'fields'=>$r['missingFields']];
-   $patchFields=array_slice(FIELDS,0,$counter<=12?11:10);$patch=[];foreach($patchFields as $field)$patch[$field]='saved-'.$field;
+   $patchFields=array_slice($fields,0,$counter<=12?11:10);$patch=[];foreach($patchFields as $field)$patch[$field]='saved-'.$field;
    $selected[]=['anytourHotelId'=>$own,'localHotelId'=>$local,'expectedRevision'=>1,
     'expectedProfileSha256'=>$r['expectedProfileSha256'],'expectedAliasSha256'=>$r['expectedAliasSha256'],
     'beforeProfileJson'=>$r['before'],'patch'=>$patch];
@@ -129,13 +129,13 @@ function goodApply($p){$counts=[];foreach($p['selected'] as $s)foreach($s['patch
         function($p)use($kind){if($kind==='drift')$p['planSha256']=str_repeat('0',64);return $p;},
         function($p)use(&$calls){++$calls;return goodApply($p);},
         function()use($kind){if($kind==='consume')throw new RuntimeException('exists');},fn()=>null);
-        ok($calls===0);ok($r['state']==='held_before_write');ok($r['profile_writes']===0);}}""")
+        ok($calls===0);ok($r['state']==='held_before_write');ok($r['profile_writes']===0);}""")
     def test_partial_or_checkpoint_failure_is_unknown_no_replay(self):
         self.php("""foreach(['apply','checkpoint'] as $kind){$calls=0;$checks=0;$r=lpma2_execute(batches(),fn($p)=>$p,
         function($p)use($kind,&$calls){++$calls;if($kind==='apply'&&$calls===2)throw new RuntimeException('unknown');return goodApply($p);},
         fn()=>null,function()use($kind,&$checks){++$checks;if($kind==='checkpoint')throw new RuntimeException('disk');});
         ok($r['state']==='unknown_no_replay');ok($r['profile_writes']==='unknown');ok($r['readback_verified']===false);
-        ok($r['unknown_batch']===($kind==='apply'?2:1));}}""")
+        ok($r['unknown_batch']===($kind==='apply'?2:1));}""")
     def test_predecessor_and_d1_namespaces_cannot_enter_batch(self):
         self.php("""foreach([['own'=>[500001=>true],'local'=>[]],['own'=>[],'local'=>[600001=>true]]] as $protected){
         [$i,$f]=fixture();try{lpma2_batches($i,$protected,predecessor(),fn($p)=>$f[$p]);throw new LogicException('accepted');}
