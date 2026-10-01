@@ -23,8 +23,38 @@ for(const file of scripts){
   const canonical=w.AnyTourPrototypeData;
   w.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{quote:{value:async(...args)=>{const control=quoteControl,tour=await canonical.quote(...args);if(control){control.started=true;await control.pending;if(control.error)throw control.error;}return tour;}},verifyAndromeda:{value:(...args)=>{lastSamoOffer=args[0];return canonical.verifyAndromeda(...args);}}}));
  }
- w.eval(source(file));
+ let code=source(file);
+ if(file==='visual-search/app.js'){
+  const marker=`function offerFromKey(key){\n for(let i=0,length=hotels.length;i<length;i++){\n  if(!(i in hotels))continue;\n  const offers=hotels[i].offers||[];\n  for(let j=0,count=offers.length;j<count;j++)if(j in offers&&offers[j].key===key)return offers[j];\n }\n return null;\n}`;
+  assert.equal(code.split(marker).length,2,'one actual offer-key lookup owner');
+  code=code.replace(marker,marker+`\nwindow.__offerLookupProbe={find:offerFromKey,swap(value){const previous=hotels;hotels=value;return previous;}};`);
+ }
+ w.eval(code);
 }
+function offerLookupWork(){
+ const probe=w.__offerLookupProbe;assert(probe);delete w.__offerLookupProbe;
+ const make=()=>{
+  const work={hotelOfferReads:0,keyReads:0},offers=[];
+  const rows=Array.from({length:500},(_,i)=>{
+   const hotelOffers=Array.from({length:10},(_,j)=>{const offer={id:i+'-'+j};Object.defineProperty(offer,'key',{configurable:true,get(){work.keyReads++;return i+'-'+j;}});offers.push(offer);return offer;});
+   return Object.defineProperty({id:i},'offers',{get(){work.hotelOfferReads++;return hotelOffers;}});
+  });
+  return {work,offers,rows};
+ };
+ const previous=(rows,key)=>{const flat=rows.flatMap(h=>h.offers||[]);return {value:flat.find(o=>o.key===key)||null,flattened:flat.length};};
+ const cases=[['0-0',{hotelOfferReads:1,keyReads:1}],['250-0',{hotelOfferReads:251,keyReads:2501}],['missing',{hotelOfferReads:500,keyReads:5000}]];
+ const results=[];
+ for(const [key,expected] of cases){
+  const before=make(),old=previous(before.rows,key),after=make(),restore=probe.swap(after.rows),value=probe.find(key);probe.swap(restore);
+  assert.strictEqual(value,key==='missing'?null:after.offers.find(o=>o.id===key));assert.deepEqual(after.work,expected);
+  assert.equal(old.flattened,5000);assert.deepEqual(before.work,{hotelOfferReads:500,keyReads:expected.keyReads});
+  results.push({key,previous:{...before.work,flattened:old.flattened},current:{...after.work,flattened:0}});
+ }
+ const duplicate=make(),first=duplicate.rows[0].offers[0],second=duplicate.rows[1].offers[0];Object.defineProperty(first,'key',{value:'duplicate'});Object.defineProperty(second,'key',{value:'duplicate'});
+ const restore=probe.swap(duplicate.rows);assert.strictEqual(probe.find('duplicate'),first,'first duplicate-key offer identity is retained');probe.swap(restore);
+ return results;
+}
+const offerLookupEvidence=offerLookupWork();
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
 const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
 const continueToFlights=async()=>{
@@ -571,6 +601,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('[data-action="close-modal"]');await settle();transport.state.samoRoom='SAMO STANDARD';
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
+ console.log('PASS offer-key lookup work '+JSON.stringify(offerLookupEvidence));
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
  dom.window.close();
 })().catch(e=>{console.error(e);console.error(transport.calls.slice(-8));dom.window.close();process.exitCode=1;});
