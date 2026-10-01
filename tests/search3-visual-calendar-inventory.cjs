@@ -116,13 +116,33 @@ function membership(source){
  assert.equal(hash,'bea2e770dcfadef635f51c7f05e9359a5edc74e42f964e008c3596e8d2f10e11','pinned original hotel membership');
  if(compare>=0)assert.deepEqual(rows,membership(fs.readFileSync(process.argv[compare+1],'utf8')),'original/candidate hotel membership');
  assert.notDeepEqual(rows,membership(source.replace('!f.resorts.length||f.resorts.some','true||f.resorts.some')),'resort predicate mutation detected');
+ assert(source.includes("(h.offers||[]).find(matches)!==undefined"),'scalar counts use native existence membership');
+ assert.throws(()=>membership(source.replace("(h.offers||[]).find(matches)!==undefined",'false')),/scalar count matches membership/,'offer-existence mutation detected');
  const hs=Array.from({length:1047},(_,i)=>({...fixture()[1],id:i+1})),ctx=make(source,hs);
  vm.runInContext('globalThis.placeCalls=0;const RealSet=Set;globalThis.Set=class extends RealSet{constructor(...args){super(...args);placeCalls++;}};',ctx);
  for(let i=0;i<30;i++)for(const h of hs)ctx.hotelOffers(h,{onlyFavorites:false,firstOnly:true});
  assert.equal(ctx.placeCalls,0,'empty resort filter allocates no place inventories');
  ctx.hotelOffers(hs[0],{onlyFavorites:false,filters:{...defaultFilters(),resorts:['missing','Кемер']},firstOnly:true});
  assert.equal(ctx.placeCalls,1,'multi-resort predicate computes places once per hotel');
- console.log(`PASS hotel membership: ${rows.length} model cases; digest ${hash}; 31410 unused resort inventories -> 0; one inventory for multi-resort match`);
+
+ // Scalar counts need only membership. Compile the invariant predicate once
+ // and do not allocate a singleton offer array for every matching hotel.
+ const base=fixture()[1].offers[2],perfHotels=Array.from({length:100},(_,i)=>({...fixture()[1],id:i+1,offers:Array.from({length:100},(_,j)=>({...base,key:i+':'+j}))})),perf=make(source,perfHotels),model={filters:defaultFilters(),selectedDate:null,onlyFavorites:false};
+ vm.runInContext(source.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\nglobalThis.matchingCount=countMatchingHotels;globalThis.referenceCount=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);globalThis.offerCalls=0;const baseOffers=hotelOffers;hotelOffers=(...args)=>{offerCalls++;return baseOffers(...args)};globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',perf);
+ let beforeCount=0;for(let i=0;i<12;i++)beforeCount+=perf.referenceCount(model);const beforeAges=perf.ageCalls,beforeCalls=perf.offerCalls;
+ perf.ageCalls=0;perf.offerCalls=0;let afterCount=0;for(let i=0;i<12;i++)afterCount+=perf.matchingCount(model);const afterAges=perf.ageCalls,afterCalls=perf.offerCalls;
+ assert.equal(afterCount,beforeCount);assert.deepEqual({beforeAges,afterAges,beforeCalls,afterCalls},{beforeAges:2400,afterAges:1212,beforeCalls:1200,afterCalls:0});
+ const rawOrder=perfHotels.map(h=>h.offers),rawOffers=perfHotels.map(h=>h.offers[0]);perf.matchingCount(model);perfHotels.forEach((h,i)=>{assert.strictEqual(h.offers,rawOrder[i]);assert.strictEqual(h.offers[0],rawOffers[i]);});
+
+ // Recalculate every invocation and retain native find semantics for unusual
+ // arrays instead of adding a persistent or normalized cache.
+ const live=make(source,[{...fixture()[1],offers:[base]}]);vm.runInContext(source.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\nglobalThis.matchingCount=countMatchingHotels;globalThis.referenceCount=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);',live);
+ const compareCount=()=>assert.equal(live.matchingCount(model),live.referenceCount(model));compareCount();live.hotels[0].offers[0].search.origin='Казань';compareCount();live.hotels[0].offers[0].search.origin='Москва';live.state.search.origin='Казань';compareCount();live.state.search.origin='Москва';
+ const inherited=[];Object.setPrototypeOf(inherited,Object.assign(Object.create(Array.prototype),{0:base}));inherited.length=1;live.hotels[0].offers=inherited;compareCount();
+ const sparse=new Array(2);live.hotels[0].offers=sparse;const observe=fn=>{try{return {value:fn()}}catch(error){return {name:error.name,message:error.message}}};assert.deepEqual(observe(()=>live.matchingCount(model)),observe(()=>live.referenceCount(model)),'sparse-array error semantics');
+ const makeGrowing=()=>{const appended={...base,key:'appended',search:{...base.search}},growing=[{...base,key:'first',search:{...base.search}}];let pushed=false;Object.defineProperty(growing[0].search,'origin',{get(){if(!pushed){pushed=true;growing.push(appended)}return 'Казань'}});return growing;};
+ const actualGrowing=makeGrowing();live.hotels[0].offers=actualGrowing;const actualFirst=live.matchingCount(model);assert.equal(actualGrowing.length,2);const referenceGrowing=makeGrowing();live.hotels[0].offers=referenceGrowing;const referenceFirst=live.referenceCount(model);assert.equal(referenceGrowing.length,2);assert.equal(actualFirst,referenceFirst,'find captures initial array length');live.hotels[0].offers=actualGrowing;compareCount();
+ console.log(`PASS hotel membership: ${rows.length} model cases; digest ${hash}; 31410 unused resort inventories -> 0; scalar ages ${beforeAges}->${afterAges}, hotelOffers/singleton arrays ${beforeCalls}->${afterCalls}; live/sparse/inherited/initial-length and raw identity/order retained`);
 }
 
 function expandedCalendar(source){
