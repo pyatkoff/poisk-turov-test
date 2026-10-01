@@ -13,6 +13,9 @@ READBACK_MODE = 'match-primary-proof-readback'
 NATIVE_MODE = 'match-native110-current'
 NATIVE_OPERATION = 'int-andromeda-match-native-current-20261001-v1'
 NATIVE_BATCH = 'native110-20260928'
+GUARDED_MODE = 'match-native110-write'
+GUARDED_OPERATION = 'int-andromeda-match-native110-write-20261001-v1'
+GUARDED_INPUT_SHA = '59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
 BATCH = 'samo3-20260929'
 OPERATION_RE = re.compile(r'\Aint-andromeda-match-primary-[a-z0-9-]{8,48}-v[1-9][0-9]*\Z')
 SOURCE_FILES = (
@@ -25,6 +28,7 @@ NATIVE_SOURCE_FILES = PROOF_SOURCE_FILES + (
     'scripts/diagnostics/hotel_match_native110_current_v1.php',
     'scripts/diagnostics/fixtures/hotel_match_native110_current_v1.json',
 )
+GUARDED_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native110_guarded_v1.php',)
 
 
 def register_parser(core) -> None:
@@ -35,11 +39,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == GUARDED_MODE:
+            core.need(operation == GUARDED_OPERATION and batch == NATIVE_BATCH, 'guarded_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NATIVE_BATCH,
+                    'maximum_writes': 4, 'provider_http_calls': 0, 'input_sha256': GUARDED_INPUT_SHA}
         if mode == NATIVE_MODE:
             core.need(operation == NATIVE_OPERATION and batch == NATIVE_BATCH, 'native110_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -375,7 +383,106 @@ REMOTE_NATIVE_DISPATCH = r'''    if mode=='match-native110-current':
 '''
 
 
-def remote_with_primary(core, proof: bool = False, native: bool = False) -> str:
+REMOTE_GUARDED_HANDLER = r'''
+def run_match_native110_write(stage):
+    input_sha='59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
+    if (operation!='int-andromeda-match-native110-write-20261001-v1' or payload.get('batch')!='native110-20260928'
+            or payload.get('maximum_writes')!=4 or payload.get('provider_http_calls')!=0
+            or payload.get('input_sha256')!=input_sha): fail('guarded_fixed_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root: fail('guarded_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('guarded_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'native110-20260928','input_sha256':input_sha,
+                 'maximum_writes':4,'provider_http_calls':0,'state':'reserved_before_db','reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+    # A new name cannot consume the same checked raw/CURRENT intake twice.
+    exclusive(root.parent/('native110-input-'+input_sha+'-consumed.json'),reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    runner=stage/'scripts/diagnostics/hotel_match_native110_guarded_v1.php'
+    if not safe_file(runner,2*1024*1024): fail('guarded_runner_missing_no_replay')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','disable_functions='+disabled,str(runner),'--execute'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=240)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,262144) or not safe_file(receipt_path,65536) or run.stderr.strip()
+            or len(run.stdout.encode())>262144): fail('guarded_terminal_missing_no_replay')
+    data=safe_json(result_path,262144);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if (json.loads(run.stdout)!=data or any(data.get(k)!=v or receipt.get(k)!=v for k,v in
+            {'operation':operation,'source_sha':source,'batch':'native110-20260928','input_sha256':input_sha,
+             'provider_http_calls':0,'no_replay':True}.items())
+            or receipt.get('state')!=data.get('state') or receipt.get('result_sha256')!=digest): fail('guarded_terminal_binding')
+    base={'state','current_candidates_evaluated','rows','held','database_writes','mapping_writes','readback_verified',
+          'operation','source_sha','batch','input_sha256','provider_http_calls','no_replay'}
+    optional={'reason','commit_attempted','commit_completed','effective_resolver_verified','prior_evidence_preserved',
+              'unrelated_identities_unchanged','coverage_before','coverage_after','new_full_triples'}
+    if not base.issubset(data) or set(data)-base-optional: fail('guarded_terminal_projection')
+    if (any(type(v.get('provider_http_calls')) is not int or v['provider_http_calls']!=0 or v.get('no_replay') is not True for v in (data,receipt))
+            or type(data['current_candidates_evaluated']) is not int or not 0<=data['current_candidates_evaluated']<=4): fail('guarded_terminal_counts')
+    count=data['mapping_writes']
+    if count is not None and (type(count) is not int or not 0<=count<=4): fail('guarded_write_count')
+    if (data['database_writes']!=count or receipt.get('database_writes')!=count or receipt.get('mapping_writes')!=count
+            or type(data['readback_verified']) is not bool or receipt.get('readback_verified')!=data['readback_verified']): fail('guarded_terminal_count_binding')
+    expected={'3126':42903,'9501':420,'475947':28529,'2000034238':16944};seen=set()
+    for key in ('rows','held'):
+        rows=data[key]
+        if not isinstance(rows,list) or len(rows)>4: fail('guarded_row_shape')
+        for row in rows:
+            fields={'catalog_id','local_hotel_id','status','reasons'} if key=='held' else {'catalog_id','local_hotel_id','name','catalog_sha256','evidence_sha256','prior_evidence_sha256','proof_operator_count'}
+            if not isinstance(row,dict) or set(row)!=fields: fail('guarded_row_shape')
+            cat=row['catalog_id']
+            if cat not in expected or cat in seen or type(row['local_hotel_id']) is not int or row['local_hotel_id']!=expected[cat]: fail('guarded_row_scope')
+            seen.add(cat)
+            if key=='held':
+                if row['status']!='hold' or not isinstance(row['reasons'],list) or len(row['reasons'])>100 or any(not isinstance(r,str) or not re.fullmatch(r'[a-z_][a-z0-9_]{0,99}',r) for r in row['reasons']): fail('guarded_hold_projection')
+            else:
+                if (not isinstance(row['name'],str) or len(row['name'])>1000 or type(row['proof_operator_count']) is not int
+                        or not 1<=row['proof_operator_count']<=4 or any(not isinstance(row[k],str) or not re.fullmatch(r'[a-f0-9]{64}',row[k]) for k in ('catalog_sha256','evidence_sha256','prior_evidence_sha256'))): fail('guarded_written_projection')
+    for key in ('commit_attempted','commit_completed','effective_resolver_verified','prior_evidence_preserved','unrelated_identities_unchanged'):
+        if key in data and type(data[key]) is not bool: fail('guarded_terminal_bool')
+    if 'reason' in data and (not isinstance(data['reason'],str) or not re.fullmatch(r'[a-z_]{1,100}',data['reason'])): fail('guarded_reason')
+    for key in ('coverage_before','coverage_after'):
+        if key in data:
+            c=data[key]
+            if not isinstance(c,dict) or set(c)!={'tv_total','full_triple','samo_only','anex_only','neither'} or any(type(v) is not int or not 0<=v<=50000 for v in c.values()): fail('guarded_coverage_projection')
+    if 'new_full_triples' in data and (type(data['new_full_triples']) is not int or not -4<=data['new_full_triples']<=4): fail('guarded_coverage_projection')
+    successful=data['state'] in ('committed_readback_verified','completed_no_new_writes')
+    if successful:
+        if (run.returncode!=0 or type(count) is not int or data['readback_verified'] is not True
+                or type(data['current_candidates_evaluated']) is not int or data['current_candidates_evaluated']!=4
+                or set(expected)!=seen or len(data['rows'])!=count): fail('guarded_success_contract')
+        if data['state']=='committed_readback_verified' and (count<1 or any(data.get(k) is not True for k in
+                ('commit_completed','commit_attempted','effective_resolver_verified','prior_evidence_preserved','unrelated_identities_unchanged'))): fail('guarded_commit_contract')
+        if data['state']=='completed_no_new_writes' and count!=0: fail('guarded_zero_contract')
+    elif data['state'] not in ('failed_before_writer','rolled_back_no_writes','commit_outcome_unknown_no_replay',
+                             'committed_readback_unconfirmed','write_outcome_unknown_no_replay') or data['readback_verified']:
+        fail('guarded_false_verification')
+    return {'successful':successful,'exit_code':run.returncode,'result_sha256':digest,'summary':data}
+
+'''
+
+REMOTE_GUARDED_DISPATCH = r'''    if mode=='match-native110-write':
+        guarded=run_match_native110_write(stage)
+        result['match_native110_write']=guarded
+        result['supplier_calls']=0
+        result['database_writes']=guarded['summary']['database_writes']
+        result['mapping_writes']=guarded['summary']['mapping_writes']
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if guarded['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+
+def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -387,6 +494,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False) -> str:
     selected_mode = READBACK_MODE if proof else MODE
     if native:
         handler, mode_dispatch, selected_mode = REMOTE_NATIVE_HANDLER, REMOTE_NATIVE_DISPATCH, NATIVE_MODE
+    if guarded:
+        handler, mode_dispatch, selected_mode = REMOTE_GUARDED_HANDLER, REMOTE_GUARDED_DISPATCH, GUARDED_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -395,7 +504,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False) -> str:
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -404,9 +513,10 @@ def activate(core, command: dict) -> None:
     core.need(command == expected, 'primary_authorized_command_shape')
     proof = command['mode'] == READBACK_MODE
     native = command['mode'] == NATIVE_MODE
-    remote = remote_with_primary(core, proof, native)
+    guarded = command['mode'] == GUARDED_MODE
+    remote = remote_with_primary(core, proof, native, guarded)
     files = list(core.FIXED)
-    for path in NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES):
+    for path in GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)):
         if path not in files:
             files.append(path)
     core.FIXED = files
