@@ -52,12 +52,12 @@ function refinementCounts(code,all,view,options){
  return {counts,work};
 }
 function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual[field]],[...expected[field]],field+' option counts');}
-function inventory(code,rows,view){
- const start=code.indexOf('function offerListInventory(){'),end=code.indexOf('function renderOfferList(',start);
+function inventory(code,rows,view,group=true){
+ const start=code.indexOf('function offerListInventory('),end=code.indexOf('function renderOfferList(',start);
  assert(start>=0&&end>start);
  let keyCalls=0;const h={id:1,rows},ctx={hotels:[h],hotelOffers:hotel=>hotel?.rows||[],offerView:view,offerGroupKey:o=>{keyCalls++;return key(o);}};
  vm.createContext(ctx);vm.runInContext(code.slice(start,end),ctx);
- return {value:ctx.offerListInventory(),keyCalls,h};
+ return {value:ctx.offerListInventory(group),keyCalls,h};
 }
 function sameReferences(actual,expected){
  assert.strictEqual(actual.h,expected.h);assert.strictEqual(actual.all,expected.all);
@@ -86,6 +86,33 @@ for(const special of [Object.freeze([]),Object.freeze([offer(0)]),sparse,Object.
 const measured=inventory(source,rows,baseView());let beforeCalls=0;
 referenceInventory([measured.h],h=>h.rows,baseView(),o=>{beforeCalls++;return key(o);});
 assert.equal(beforeCalls,51000);assert.equal(measured.keyCalls,1000);
+const comparePredicate=(view,o)=>(view.mode==='compare'||!view.departure||o.day===view.departure)&&(!view.flight||o.flight===view.flight)&&(!view.room||o.room===view.room)&&(!view.meal||o.meal===view.meal);
+function sameUngrouped(actual,all,view){
+ assert.strictEqual(actual.all,all);assert.equal(actual.groups.length,0);
+ const expected=all.filter(o=>comparePredicate(view,o));assert.equal(actual.filtered.length,expected.length);
+ actual.filtered.forEach((o,i)=>assert.strictEqual(o,expected[i]));
+}
+let compareInventoryCases=0,seed=78231;
+const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+for(let round=0;round<500;round++){
+ const all=[];all.length=round%121;
+ for(let i=0;i<all.length;i++)if(random()>.21)all[i]=offer(round*127+i,(round+i)%50);
+ if(round%7===0&&all.length>3){const proto=Object.create(Array.prototype);proto[1]=offer(round*127+999,49);Object.setPrototypeOf(all,proto);}
+ const view={...baseView(),mode:'compare',departure:round%3?'missing':'',flight:round%4?'':'charter',room:round%5?'':'room-3',meal:round%6?'':'AI'};
+ const actual=inventory(source,all,view,false);sameUngrouped(actual.value,all,view);assert.equal(actual.keyCalls,0);compareInventoryCases++;
+}
+{
+ const first=offer(10001),appended=offer(10002),all=[];Object.defineProperty(all,0,{configurable:true,get(){all.push(appended);return first;}});all.length=1;
+ const view={...baseView(),mode:'compare'},actual=inventory(source,all,view,false);
+ assert.equal(all.length,2,'fixture appends during native filter');assert.equal(actual.value.filtered.length,1,'native initial length is retained');assert.strictEqual(actual.value.filtered[0],first);assert.equal(actual.keyCalls,0);compareInventoryCases++;
+}
+function measuredComparisonInventory(group){
+ let totalReads=0,localSeed=1;const all=Array.from({length:1000},(_,i)=>{localSeed=(localSeed*1664525+1013904223)>>>0;const total=localSeed%100000;return {key:'compare-'+i,variant:i,room:'room-'+i%50,meal:'meal-'+i%3,day:'2026-10-'+String(10+i%10).padStart(2,'0'),returnDay:'2026-10-20',nights:7+i%4,flight:i%2?'charter':'regular',operator:'fixture',placement:'2',note:'same',get total(){totalReads++;return total;}};});
+ const result=inventory(source,all,{...baseView(),mode:'compare'},group);return {...result,totalReads};
+}
+const groupedComparison=measuredComparisonInventory(true),ungroupedComparison=measuredComparisonInventory(false);
+assert(groupedComparison.totalReads>10000);assert.equal(groupedComparison.keyCalls,1000);assert.equal(groupedComparison.value.groups.length,150);
+assert.equal(ungroupedComparison.totalReads,0);assert.equal(ungroupedComparison.keyCalls,0);assert.equal(ungroupedComparison.value.groups.length,0);
 const dayCases=[
  ['2026-10-12'],
  ['2026-10-12','2026-10-11'],
@@ -136,24 +163,28 @@ const legacyRenderer=legacyCounts.replace('${offerGroupScope(offers)}</small>','
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
 function render(code,all,view,shortlist=false,reset=false){
- const dom=new Map(),events=[];let noteCalls=0,noteVisits=0;
+ const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0;
  const node=name=>{if(!dom.has(name)){
   let html='';const classes=new Set(),style={},label={hidden:false},n={hidden:false,open:false,textContent:'',value:'',options:[{value:'',textContent:'Any',dataset:{}}],classList:{contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)},style:{setProperty:(k,v)=>{style[k]=v;}},closest:()=>label};
   Object.defineProperty(n,'innerHTML',{get:()=>html,set:v=>{html=v;if(name.startsWith('#offer-'))n.options=[...v.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m=>({value:unesc(m[1]),textContent:unesc(m[2]),dataset:{}}));}});
   n.snapshot=()=>({html,hidden:n.hidden,open:n.open,text:n.textContent,value:n.value,options:n.options,classes:[...classes],style,label});dom.set(name,n);
  }return dom.get(name);};
- const context={$:node,$$:()=>[],hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>all,offerGroupKey:key,offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
+ const context={$:node,$$:()=>[],hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>all,offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
   sharedOfferNote:input=>{assert.strictEqual(input,all,'shared note uses all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
   mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>'',offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
  const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(code,sandbox);
  const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset);
- return {snapshot:JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView})),noteCalls,noteVisits};
+ return {snapshot:JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView})),noteCalls,noteVisits,keyCalls};
 }
 let renders=0;
+const fullComparisonInventory=source.replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');assert.notEqual(fullComparisonInventory,source);
 for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i)=>({...o,note:i%2?'different':'same'}))])for(const mode of ['list','compare'])for(const sort of ['price','date'])for(const departure of ['','missing'])for(const reset of [false,true]){
  const view={...baseView(),mode,sort,departure},before=render(legacyRenderer,all,view,true,reset),after=render(source,all,view,true,reset);
  assert.deepEqual(after.snapshot,before.snapshot,'render output and view state unchanged');
  assert.equal(after.noteCalls,before.noteCalls?1:0,'one same-render note, zero for empty/comparison');renders++;
+ const full=render(fullComparisonInventory,all,view,true,reset);assert.deepEqual(after.snapshot,full.snapshot,'comparison no-group path preserves exact rendering and state');
+ if(mode==='compare'&&!reset){assert.equal(after.keyCalls,0,'comparison refresh skips discarded groups');assert.equal(full.keyCalls,all.length,'original comparison refresh groups every filtered offer');}
+ else assert.equal(after.keyCalls,full.keyCalls,'list and comparison reset keep full grouping path');
 }
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
@@ -167,4 +198,6 @@ assert.throws(()=>sameReferences(reversedResult.value,referenceInventory([revers
 const copied=source.replace('group.offers.push(offer)','group.offers.push({...offer})');assert.notEqual(copied,source);
 const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading and ${refinementCases} refinement reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+const skippedResetGrouping=source.replace("offerView.mode!=='compare'||reset","offerView.mode!=='compare'");assert.notEqual(skippedResetGrouping,source);
+assert.notDeepEqual(render(skippedResetGrouping,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,render(source,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,'comparison reset grouping mutation detected');
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);

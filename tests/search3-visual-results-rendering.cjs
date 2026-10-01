@@ -3,7 +3,7 @@
 // No application bootstrap, supplier transport, quote or lead submission executes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const cold=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/offer-list-v1.js'),'utf8');
-const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(){','function mountOfferList(){');
+const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(','function mountOfferList(){');
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
@@ -11,7 +11,7 @@ function generatedRootOwner(source){return source.includes('const generatedRootB
 function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
  if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
- const first=source.includes('function offerListInventory(){')?'function offerListInventory(){':'function renderOfferList(reset=false){';
+ const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('let verifiedOffer=null;',start);return end<0?source.slice(start):source.slice(start,end);
 }
 function observe(source,s){
@@ -93,14 +93,15 @@ assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
 const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
 let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
  .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n",'')
- .replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
+ .replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice')
+ .replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');
 const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function renderOfferList(',scopeStart);
 if(scopeStart>=0){
  assert(scopeEnd>scopeStart,'current heading scope boundary');
  oldCold=(oldCold.slice(0,scopeStart)+oldCold.slice(scopeEnd))
   .replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
 }
-const baseline=records(source.replace(section(cold,'function offerListInventory(){','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(){','function mountOfferList(){')));
+const baseline=records(source.replace(section(cold,'function offerListInventory(','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(','function mountOfferList(){')));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 if(!process.argv.includes('--capture'))assert.equal(baselineDigest,'e76ff50796b381c820621e698dcf69152c710c1486516a02e2b12886d5d4e744','pinned original observations');
 const visibleRecords=rows=>rows.map((row,index)=>scenarios[index].kind==='offers'?{...row,result:{...row.result,trace:row.result.trace.filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote')}}:row);

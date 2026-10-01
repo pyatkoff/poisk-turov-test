@@ -75,8 +75,9 @@ function offerRefinementRecovery(all){
  const choices=offerRefinementFields.filter(field=>offerView[field]).map(field=>({field,count:all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:''})).length})).filter(choice=>choice.count);
  return choices.length?`<p>Можно убрать одно условие, сохранив остальные:</p><div class="offer-recovery-actions">${choices.map(({field,count})=>`<button type="button" class="secondary" data-action="remove-offer-filter" data-field="${field}">${offerRefinementAny[field]} · ${offerCountText(count)}</button>`).join('')}</div>`:'<p>Измените условия выбора тура. Даты поездки и туристы в основном поиске сохранятся.</p>';
 }
-function offerListInventory(){
+function offerListInventory(group=true){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
+ if(!group)return {h,all,filtered,groups:[]};
  const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
  const groups=[],byKey=new Map();
  for(const offer of sorted){
@@ -98,7 +99,7 @@ function offerGroupScope(offers){
 }
 function renderOfferList(reset=false){
  if(!optionalShortlistEnabled)offerView.mode='list';
- const {h,all,filtered,groups}=offerListInventory();
+ const {h,all,filtered,groups}=offerListInventory(offerView.mode!=='compare'||reset);
  for(const field of offerRefinementFields){
   const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];
   if(offerView[field]&&!values.includes(offerView[field]))values.push(offerView[field]);
