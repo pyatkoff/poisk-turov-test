@@ -21,3 +21,35 @@ if(!process.argv.includes('--capture'))assert.equal(digest,'d2debd3022a456ffcb18
 assert.notDeepEqual(records(source.replace('rows.slice(0,2)','rows.slice(0,1)')),actual,'lost visible room choice detected');
 assert.notDeepEqual(records(source.replace('o.meal===meal','o.meal!==meal')),actual,'wrong meal selection detected');
 console.log('PASS hotel presentation '+actual.length+' observations: original HTML/footer/rooms/meal/price/escaping and two mutations; '+digest);
+
+// Execute the inventory inside the actual renderer, independently of the DOM.
+// The original Set + strict-equality filters remain the test-only reference.
+const inventoryStart=source.indexOf(' const offers=allOffers.filter('),inventoryEnd=source.indexOf(" $('#hotel-room-count').textContent",inventoryStart);
+assert(inventoryStart>=0&&inventoryEnd>inventoryStart,'actual room inventory boundaries');
+const inventory=vm.runInNewContext('(allOffers,meal)=>{'+source.slice(inventoryStart,inventoryEnd)+'return {offers,rooms};}',{Map,Set});
+const originalInventory=(allOffers,meal)=>{const offers=allOffers.filter(o=>!meal||o.meal===meal);return {offers,rooms:[...new Set(offers.map(o=>o.room))].map(room=>({room,offers:offers.filter(o=>o.room===room)}))};};
+let inventoryCases=0;
+function checkInventory(allOffers,meal){
+ const expected=originalInventory(allOffers,meal),actual=inventory(allOffers,meal);
+ assert.equal(actual.offers.length,expected.offers.length);actual.offers.forEach((offer,index)=>assert.strictEqual(offer,expected.offers[index],'filtered raw offer identity/order'));
+ assert.equal(actual.rooms.length,expected.rooms.length,'first-seen group count');
+ actual.rooms.forEach((group,index)=>{
+  const old=expected.rooms[index];assert(Object.is(group.room,old.room),'Set room order, zero normalization and NaN identity');assert.equal(group.offers.length,old.offers.length,'strict-equality group membership');
+  group.offers.forEach((offer,i)=>assert.strictEqual(offer,old.offers[i],'raw grouped offer identity/order'));
+ });inventoryCases++;
+}
+const objectRoom={},otherObjectRoom={},symbolRoom=Symbol('room'),roomValues=['R<&','Family','',undefined,null,NaN,-0,0,false,objectRoom,otherObjectRoom,symbolRoom];let seed=57913;
+const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+for(let round=0;round<500;round++){
+ const rows=Array.from({length:Math.floor(random()*65)},(_,i)=>({key:round+':'+i,room:roomValues[Math.floor(random()*roomValues.length)],meal:['AI','BB',''][Math.floor(random()*3)]}));
+ if(round%7===0&&rows.length>2){delete rows[1];const prototype=Object.create(Array.prototype);prototype[1]={key:'inherited',room:'Inherited',meal:'BB'};Object.setPrototypeOf(rows,prototype);}
+ if(round%11===0&&rows.length>4)delete rows[3];
+ const before=rows.slice(),keys=Object.keys(rows);checkInventory(rows,['','AI','BB','missing',null][round%5]);assert.deepEqual(Object.keys(rows),keys,'native input slots retained');before.forEach((row,index)=>assert.strictEqual(rows[index],row,'raw input references retained'));
+}
+checkInventory([{room:-0,meal:'AI'},{room:0,meal:'BB'},{room:NaN,meal:'AI'},{room:NaN,meal:'BB'},{room:undefined,meal:'BB'}],'');
+// The meal filter keeps native initial-length semantics before grouping.
+function growingInput(){const rows=[{room:'First',get meal(){rows.push({room:'Late',meal:'AI'});return 'AI';}},{room:'Second',meal:'AI'}];return rows;}
+const grown=inventory(growingInput(),'AI'),oldGrown=originalInventory(growingInput(),'AI');assert.deepEqual(Array.from(grown.rooms,group=>group.room),oldGrown.rooms.map(group=>group.room));assert.equal(grown.offers.length,2);
+let reads=0;const work=Array.from({length:1000},(_,index)=>({key:'work:'+index,meal:'AI',get room(){reads++;return 'Room '+index%50;}}));
+originalInventory(work,'');const oldReads=reads;reads=0;const current=inventory(work,'');assert.equal(oldReads,51000);assert.equal(reads,1000);assert.equal(current.rooms.length,50);assert.equal(current.rooms.reduce((sum,group)=>sum+group.offers.length,0),1000);
+console.log('PASS hotel room inventory: '+inventoryCases+' original grouping cases; native sparse/inherited/initial-length, zero/NaN and raw identity/order; room reads '+oldReads+'→'+reads+'; supplier/lead HTTP 0');
