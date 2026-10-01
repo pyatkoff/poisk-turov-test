@@ -1,0 +1,49 @@
+{
+  "schema": "match-source3-native-current/1",
+  "batch": "source3-native-20261001",
+  "request": {
+    "townfrominc": 1,
+    "stateinc": 5,
+    "checkin_beg": "20261008",
+    "checkin_end": "20261029",
+    "nights": 7,
+    "adults": 2,
+    "children": 0,
+    "currencyinc": 643,
+    "packettype": 0,
+    "group_by": 32,
+    "page": 1
+  },
+  "rows": [
+    {
+      "catalog_id": "163887",
+      "operator_id": 5,
+      "supplier_namespace": "operator_5",
+      "target_tv_hotel_id": 1124,
+      "target_native_id_for_comparison": "8319",
+      "expected_country_id": "4",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "68805396c525fbbebfc77f5de1c9264625c96e2149bf4089c741a70c6051fa46"
+    },
+    {
+      "catalog_id": "2000057636",
+      "operator_id": 342,
+      "supplier_namespace": "operator_342",
+      "target_tv_hotel_id": 21679,
+      "target_native_id_for_comparison": "24891",
+      "expected_country_id": "4",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7f19e9a7087358ed130d9a29ab814e9217c6eff4e2461086c34a072d2cf273a9"
+    },
+    {
+      "catalog_id": "2000073063",
+      "operator_id": 5,
+      "supplier_namespace": "operator_5",
+      "target_tv_hotel_id": 60766,
+      "target_native_id_for_comparison": null,
+      "expected_country_id": "4",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0f8a5e6d4314d386f50706bf98be6fb363380d9906853298bbbb8ca033c5e67a"
+    }
+  ]
+}
