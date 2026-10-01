@@ -2,7 +2,6 @@
 /** Phase3 retained-first successor: skip exact source-planned4000, plan next CURRENT cohort. */
 declare(strict_types=1);
 require_once __DIR__.'/local_profile_mass_plan2_4191.php';
-require_once __DIR__.'/local_profile_mass_apply2_4191.php';
 
 const LPM3_OPERATION='int-andromeda-local-profile-mass-plan3-4191-20261002-v1';
 const LPM3_BATCH='local4191-mass-retained3-20261002';
