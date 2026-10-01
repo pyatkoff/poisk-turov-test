@@ -264,9 +264,9 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
 .flight-picker-dialog #modal-footer button{min-height:48px;font-size:14px;max-width:none}
 .saved-flight-choice{display:block;font-size:14px;font-weight:400;color:var(--muted);line-height:1.7;margin-top:6px}
 @media(min-width:761px){
- 
- 
- 
+
+
+
 }
 @media(max-width:760px){
  .search-section>.wrap{padding:9px 12px 12px}
@@ -283,13 +283,13 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
  .search-actions{margin-top:10px}
  .demo-note{font-size:11px;margin-top:9px}
  .compare-photo-button{width:44px;height:44px;right:64px;top:12px}
- 
- 
+
+
  .minimum-stay{gap:2px 10px}
- 
- 
- 
- 
+
+
+
+
  .flight-timeline{grid-template-columns:minmax(0,1fr) 96px minmax(0,1fr);gap:7px}
  .flight-timeline strong{font-size:25px}
  .flight-summary-action{align-items:stretch}
@@ -316,8 +316,8 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
  .flight-picker-dialog #modal-footer button{width:100%;font-size:14px;padding:10px 8px}
 }
 @media(max-width:374px){
- 
- 
+
+
  .flight-option{padding:14px 11px}
  .flight-option-heading strong{font-size:13px}
  .flight-pair-delta{font-size:13px}
@@ -649,7 +649,7 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 .offer-delta,.offer-lowest{line-height:1.5;white-space:normal}
 @media(max-width:760px){
  .offer-group-heading{gap:12px;align-items:start}.offer-group-heading>span:first-child{flex:1}.offer-group-min{flex-shrink:0}
- 
+
 }
 @media(max-width:374px){
  .offer-group-heading{flex-wrap:wrap}.offer-group-heading>span:first-child{flex-basis:100%}.offer-group-min{display:flex;justify-content:space-between;width:100%;align-items:center}
@@ -789,15 +789,15 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 /* v46: put mobile offer price next to the hotel identity, keep full photos. */
 
 @media(max-width:760px){
- 
- 
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
+
+
 }
 
 /* v48: compact, searchable meal picker; provider labels remain unchanged. */
@@ -1071,8 +1071,8 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 /* v67: price and actual tour conditions precede generic hotel amenities. */
 @media(max-width:760px){
- 
- 
+
+
 }
 
 /* v68: word-based hotel lookup with a visible, reachable clear action. */
@@ -1098,11 +1098,11 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 /* v70: keep long hotel identities from pushing the offer out of reach. */
 @media(max-width:760px){
- 
- 
- 
- 
- 
+
+
+
+
+
 }
 
 /* v71: remove one conflicting condition without restarting tour selection. */
@@ -1120,20 +1120,20 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 /* v73: give tablet cards room for photos and an unbroken price/offer column. */
 @media(min-width:761px) and (max-width:1000px){
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
 
 /* v74: all supported trip durations, with selection always beside Apply. */
@@ -1165,12 +1165,12 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 /* v87: missing-photo cards fill their existing media column on tablet/desktop. */
 @media(min-width:761px){
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
 }
 
 /* v89: keep complete flight legs readable inside the narrower tablet tour column. */
@@ -1259,12 +1259,12 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .results-heading{margin-bottom:12px}
  .results-heading h2{font-size:23px;line-height:1.25;letter-spacing:-.5px}
  .results-heading p{font-size:14px;line-height:1.5;margin-top:6px}
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
  .selection-availability{padding:9px 12px;margin:10px 0 14px;font-size:13px}
  .selection-availability>summary{min-height:34px}
  .selection-availability strong{font-size:14px}
@@ -1298,9 +1298,9 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
  .mobile-bottom .mobile-nav-label{white-space:nowrap}
 }
 @media(min-width:761px){
- 
- 
- 
+
+
+
 }
 
 /* v98: readable child ages and a stable party-selection action. */
@@ -1360,28 +1360,28 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 
 @media(min-width:761px){
- 
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
+
 }
 @media(min-width:761px) and (max-width:1000px){
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
 }
 @media(max-width:760px){
- 
- 
- 
- 
+
+
+
+
 }
 /* v113: trip facts form one overview; verification belongs beside the price. */
 .tour-itinerary{background:#f7f9fc;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:22px}
@@ -1759,17 +1759,17 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 .chosen-flight-allowances{color:var(--muted)}
 .hotel-data-note{background:#f5f7fa;border-color:transparent}
 @media(min-width:1001px){
- 
- 
- 
- 
+
+
+
+
 }
 @media(max-width:760px){
  .applied-extras button:last-child{background:#f0f3fa;border-color:transparent}
  .results-heading{margin-bottom:16px}
  .results-heading h2{font-size:24px;line-height:1.25}
- 
- 
+
+
  .hotel-section-nav{gap:14px}
  .hotel-section-nav button{font-size:13px;line-height:1.35;flex:1 1 auto;padding:14px 0}
  .modal-header h2{font-size:23px}
@@ -1842,9 +1842,9 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
  #price-calendar .calendar-heading .text-button{min-height:36px}
  #price-calendar .calendar-caption{font-size:12px;margin:0 0 6px}
  #price-calendar .calendar-foot{font-size:11px}
- 
- 
- 
+
+
+
 }
 
 /* Keep the selected month below the calendar context when async notices grow. */
@@ -2081,11 +2081,11 @@ dialog.tour-dialog #modal-footer .primary,
  .hotel-photos.photo-unavailable .hotel-image-wrap {min-height:64px;justify-content:flex-start;padding:10px 16px}
  .hotel-facts {order:2;padding:10px 16px 0}
  .card-minimum-offer {order:3;margin:10px 16px 0;padding-top:10px;gap:3px}
- .hotel-price {order:4;display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,140px);gap:6px 12px;align-items:center;margin:0;padding:12px 16px;border:0}
- .hotel-price>.starting-price {grid-column:1;grid-row:1}
- .starting-price>strong {font-size:1.625rem;line-height:1.25}
- .hotel-price>.primary {grid-column:2;grid-row:1;margin:0;max-width:none;font-size:.9375rem}
- .hotel-price>.fuel-note {grid-column:1/-1;grid-row:2}
+ .hotel-price {order:4;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:0;padding:12px 16px;border:0}
+ .hotel-price>.starting-price {order:0;flex:1 0 auto;min-width:0;max-width:100%}
+ .starting-price>strong {font-size:1.625rem;line-height:1.25;white-space:nowrap}
+ .hotel-price>.primary {order:1;flex:1 0 140px;width:auto;margin:0;max-width:none;font-size:.9375rem}
+ .hotel-price>.fuel-note {order:2;flex:0 0 100%}
  .hotel-more {order:5;padding:0 16px;gap:4px 12px}
  .hotel-more .text-button {flex:1;min-width:0;justify-content:flex-start}
  .compact-search>.wrap {min-height:66px;gap:10px;padding:8px 14px}
@@ -2098,6 +2098,6 @@ dialog.tour-dialog #modal-footer .primary,
  .compact-search>.wrap {padding-left:12px;padding-right:12px;gap:8px}
  .compact-brand img {width:68px}
  .compact-search .secondary {width:94px;min-width:94px}
- .hotel-price {grid-template-columns:minmax(0,1fr) 122px;gap:6px 10px}
- .hotel-price>.primary {padding-left:8px;padding-right:8px;font-size:.875rem}
+ .hotel-price {gap:6px 10px}
+ .hotel-price>.primary {flex-basis:122px;padding-left:8px;padding-right:8px;font-size:.875rem}
 }

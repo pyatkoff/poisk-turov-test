@@ -11,13 +11,17 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
   for(const mobileWidth of [360,390,430]){
    await page.setViewportSize({width:mobileWidth,height:900});
    const boxes=await card.evaluate(el=>{
-    const panel=el.querySelector('.hotel-price'),rect=node=>{const b=node.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width};};
-    return{panel:rect(panel),price:rect(panel.querySelector('.starting-price strong')),total:rect(panel.querySelector('.starting-price')),status:rect(panel.querySelector('.fuel-note')),action:rect(panel.querySelector('.primary')),nowrap:getComputedStyle(panel.querySelector('.starting-price strong')).whiteSpace};
+    const panel=el.querySelector('.hotel-price'),rect=node=>{const b=node.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
+    return{card:rect(el),photo:rect(el.querySelector('.hotel-image-wrap')),identity:rect(el.querySelector('.hotel-info-top')),arrows:[...el.querySelectorAll('.card-photo-arrow')].map(rect),panel:rect(panel),price:rect(panel.querySelector('.starting-price strong')),total:rect(panel.querySelector('.starting-price')),status:rect(panel.querySelector('.fuel-note')),action:rect(panel.querySelector('.primary')),nowrap:getComputedStyle(panel.querySelector('.starting-price strong')).whiteSpace};
    });
    assert.equal(boxes.nowrap,'nowrap');
    assert(boxes.price.x>=boxes.panel.x&&boxes.price.right<=boxes.panel.right,'whole seven-digit price fits at '+mobileWidth);
-   assert(boxes.status.y>=boxes.total.bottom&&boxes.action.y>=boxes.status.bottom,'price, status and action stay in vertical order at '+mobileWidth);
-   assert(Math.abs(boxes.action.x-boxes.total.x)<1&&Math.abs(boxes.action.width-boxes.total.width)<1,'mobile action fills the price row at '+mobileWidth);
+   assert(boxes.status.y>=Math.max(boxes.total.bottom,boxes.action.bottom)-1,'price status follows the complete amount and action at '+mobileWidth);
+   assert(boxes.action.x>=boxes.total.right-1||boxes.action.y>=boxes.total.bottom-1,'price and action never overlap at '+mobileWidth);
+   assert(boxes.action.x>=boxes.panel.x&&boxes.action.right<=boxes.panel.right&&boxes.action.height>=48,'price action stays inside the card with a 48px target at '+mobileWidth);
+   assert(boxes.photo.width>boxes.card.width*.9&&boxes.photo.height>=150,'hotel photo spans the mobile card at '+mobileWidth);
+   assert(boxes.photo.y>=boxes.identity.bottom-1,'hotel identity precedes its large photo at '+mobileWidth);
+   assert(boxes.arrows.every(b=>b.width>=44&&b.height>=44),'gallery arrows remain touch targets at '+mobileWidth);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
    fs.writeFileSync(path.join(evidence,'card-price-'+mobileWidth+'.json'),JSON.stringify(boxes,null,2));
