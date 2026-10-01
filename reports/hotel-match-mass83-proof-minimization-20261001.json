@@ -1,0 +1,205 @@
+{
+  "schema": "hotel-match-mass83-proof-minimization/1",
+  "state": "checked_retained_evidence_only",
+  "created_at_utc": "2026-10-01T15:15:00Z",
+  "source_feature_sha": "05166bb5776adeac1b79c4a75cd19fa735d4e5a6",
+  "scope": {
+    "kind": "existing_mass83_twelve_candidate_roster_only",
+    "candidate_count": 12,
+    "reran_mass83_name_pass": false,
+    "additional_unique_sources_claimed": 0,
+    "fresh_current_census": false
+  },
+  "inputs": {
+    "v77_result_sha256": "d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7",
+    "target_v2_wrapper_result_sha256": "96c5abd8cca79af2d9ba2125ee80a6fe13a47b1e1f5c7d3a92bde3eb5137084c",
+    "target_v2_inner_catalog_sha256": "724af5102c39d7ea25513f3d7698586fb13a3309d010237145552421c159351e",
+    "detail_v4_zip_sha256": "ed9bdce7f2372ef9ca4aeeec06d99719719abf8b004cdb834f72454518856c76",
+    "search30_v3_zip_sha256": "c0db6c087a71d84bb6f709c4e02c076dfb2d43b81e8b16991ed58389ab5db32c",
+    "v93_ledger_zip_sha256": "fcf30359d2dadd31ffee0398fac6ce8b20c84e2ab2c31746105bfaa2dcbecd28",
+    "canonical_roster_comment": "https://github.com/pyatkoff/poisk-turov-test/issues/1971#issuecomment-5929446108"
+  },
+  "counts": {
+    "candidate_pairs_examined": 12,
+    "sources_with_raw_verified_native_fact": 10,
+    "source_native_facts_examined": 12,
+    "targets_with_any_retained_edge": 6,
+    "retained_relevant_edge_records": 9,
+    "targets_with_single_native_target_edge": 4,
+    "unambiguous_same_operator_exact_native_matches": 0,
+    "bg_namespace_blocked_rows": 5,
+    "non_bg_target_lane_missing_rows": 5,
+    "ambiguous_target_disambiguation_rows": 1,
+    "both_sides_missing_non_bg_rows": 1
+  },
+  "rows": [
+    {
+      "source_catalog_id": "8984",
+      "target_tv_hotel_id": 9323,
+      "names": ["Parkim Ayaz Hotel", "PARKIM AYAZ"],
+      "source_context": {"namespace": "operator_115", "observed_offers": 6, "raw_native_fact": null},
+      "target_edges": [{"producer": "detail_v4", "file": "server/edge-0757.json", "operator_id": 18, "state": "stale_detail_404"}],
+      "classification": "bg_namespace_blocked_source_and_target_native_missing",
+      "next_proof": "Do not spend a TV request before an independent BG namespace bridge exists; afterwards acquire raw source hotelKey and a non-ambiguous target selector under a separately reviewed scope.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "163887",
+      "target_tv_hotel_id": 1124,
+      "names": ["Club Hotel Sidelya", "CLUB HOTEL SIDELYA HV-2"],
+      "source_context": {"namespace": "operator_5", "observed_offers": 4, "raw_native_fact": null},
+      "target_edges": [],
+      "classification": "both_sides_missing_non_bg_exact_identity",
+      "next_proof": "Acquire raw ANEX source hotelKey and target ANEX operatorLink for exact TV1124 only under a separately reviewed scope.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "5906",
+      "target_tv_hotel_id": 1063,
+      "names": ["Britannia Hotel & Villas", "BRITANNIA HOTEL & VILLAS"],
+      "source_native_facts": [{"namespace": "operator_115", "native_id": "625470455", "raw_verified": true}],
+      "target_edges": [{"producer": "detail_v4", "file": "server/edge-0356.json", "operator_id": 18, "state": "detail_identity_verified", "link_state": "captured_biblio_unproven", "raw_f4_tokens": ["102625470455", "102610289911"], "operator_link_sha256": "f669eb309cf933305f05a574404d423aa0a83da978e02f1547161cb78fc4428d"}],
+      "classification": "bg_namespace_blocked_and_target_selector_ambiguous",
+      "next_proof": "Preserve both F4 tokens; require an independent BG namespace bridge and independent selector disambiguation. Do not repeat the retained detail request.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "35425",
+      "target_tv_hotel_id": 17377,
+      "names": ["Club Hotel Flora", "Flora Hotel", "FLORA HOTEL"],
+      "source_native_facts": [{"namespace": "operator_115", "native_id": "625076162", "raw_verified": true}],
+      "target_edges": [],
+      "classification": "bg_namespace_blocked_target_selector_missing",
+      "next_proof": "Require an independent BG namespace bridge before any target acquisition; a name match or 102 arithmetic is insufficient.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "299499",
+      "target_tv_hotel_id": 17564,
+      "names": ["Orsmaris Boutique Hotel", "ORSMARIS BOUTIQUE HOTEL"],
+      "source_native_facts": [{"namespace": "operator_115", "native_id": "616043171", "raw_verified": true}],
+      "target_edges": [],
+      "classification": "bg_namespace_blocked_target_selector_missing",
+      "next_proof": "Require an independent BG namespace bridge before any target acquisition; a name match or 102 arithmetic is insufficient.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000029745",
+      "target_tv_hotel_id": 159,
+      "names": ["Sunrise Juman Hotel", "SUNRISE JUMAN HOTEL"],
+      "source_native_facts": [{"namespace": "operator_5", "native_id": "44562", "raw_verified": true}],
+      "target_edges": [
+        {"producer": "search30_v3", "file": "server/edge-00003.json", "operator_id": 13, "state": "detail_identity_verified", "link_state": "captured_ambiguous_native", "raw_hotellist_tokens": ["804", "44562"], "operator_link_sha256": "4eb71da8df3d61dfab5de9244150cd33dbd3bd1d8b4f263a175e0379ee0367ff"},
+        {"producer": "detail_v4", "file": "server/edge-0089.json", "operator_id": 18, "state": "detail_identity_verified", "link_state": "captured_biblio_unproven"},
+        {"producer": "detail_v4", "file": "server/edge-0832.json", "operator_id": 25, "state": "detail_identity_verified", "native_id": "859940"}
+      ],
+      "classification": "same_operator_token_present_but_target_selector_ambiguous",
+      "next_proof": "Use new independent ANEX selector disambiguation; do not discard HOTELLIST804 and do not repeat the detail request to reproduce the same multi-token link.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000037261",
+      "target_tv_hotel_id": 59115,
+      "names": ["Kimera Lounge Boutique", "KIMERA LOUNGE BOUTIQUE"],
+      "source_native_facts": [{"namespace": "operator_315", "native_id": "354014", "raw_verified": true}],
+      "target_edges": [{"producer": "search30_v3", "file": "server/edge-00109.json", "operator_id": 13, "state": "detail_identity_verified", "native_id": "18778"}],
+      "classification": "non_bg_target_same_operator_lane_missing",
+      "next_proof": "Acquire only the FUN&SUN target lane for exact TV59115 after ledger reservation and reviewed contract; the retained ANEX edge is cross-operator.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000052591",
+      "target_tv_hotel_id": 128,
+      "names": ["Arabia Azur Beach Resort", "ARABIA AZUR BEACH RESORT"],
+      "source_native_facts": [{"namespace": "operator_342", "native_id": "25728", "raw_verified": true}],
+      "target_edges": [
+        {"producer": "detail_v4", "file": "server/edge-0671.json", "operator_id": 18, "state": "stale_detail_404"},
+        {"producer": "detail_v4", "file": "server/edge-0964.json", "operator_id": 25, "state": "detail_identity_verified", "native_id": "802930"}
+      ],
+      "classification": "non_bg_target_same_operator_lane_missing",
+      "next_proof": "Acquire only the Intourist target lane for exact TV128 after ledger reservation and reviewed contract; the retained FUN&SUN edge is cross-operator.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000068203",
+      "target_tv_hotel_id": 70782,
+      "names": ["My Dream Hotel", "MY DREAM HOTEL"],
+      "source_native_facts": [
+        {"namespace": "operator_315", "native_id": "789636", "raw_verified": true},
+        {"namespace": "operator_342", "native_id": "17173", "raw_verified": true}
+      ],
+      "target_edges": [],
+      "classification": "non_bg_target_same_operator_lane_missing",
+      "next_proof": "Acquire one compatible target lane for exact TV70782, preserving multiple returned operator tokens; prefer a lane already proven on the source.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000073045",
+      "target_tv_hotel_id": 80964,
+      "names": ["Meraki Resort Sharm El Sheikh", "MERAKI RESORT SHARM EL SHEIKH ADULTS ONLY 16+"],
+      "source_native_facts": [
+        {"namespace": "operator_115", "native_id": "610201630", "raw_verified": true},
+        {"namespace": "operator_342", "native_id": "29363", "raw_verified": true}
+      ],
+      "target_edges": [{"producer": "detail_v4", "file": "server/edge-0979.json", "operator_id": 25, "state": "detail_identity_verified", "native_id": "839186"}],
+      "classification": "non_bg_target_same_operator_lane_missing",
+      "next_proof": "Acquire only the Intourist target lane for exact TV80964 after ledger reservation and reviewed contract; the retained FUN&SUN edge is cross-operator.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000104596",
+      "target_tv_hotel_id": 2270,
+      "names": ["Very Chic Bodrum", "VERY CHIC BODRUM ADULTS ONLY"],
+      "source_native_facts": [{"namespace": "operator_115", "native_id": "610189904", "raw_verified": true}],
+      "target_edges": [],
+      "classification": "bg_namespace_blocked_target_selector_missing",
+      "next_proof": "Require an independent BG namespace bridge before any target acquisition; a name match or 102 arithmetic is insufficient.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000109038",
+      "target_tv_hotel_id": 109380,
+      "names": ["Grand Bagoz Hotel Istanbul", "GRAND BAGOZ HOTEL"],
+      "source_native_facts": [{"namespace": "operator_5", "native_id": "43661", "raw_verified": true}],
+      "target_edges": [],
+      "classification": "non_bg_target_same_operator_lane_missing",
+      "next_proof": "Acquire only the ANEX target lane for exact TV109380 after ledger reservation and reviewed contract.",
+      "safe_to_write_now": false
+    }
+  ],
+  "minimal_missing_proof_scope": {
+    "defer_until_bg_namespace_bridge": [
+      {"source_catalog_id": "8984", "target_tv_hotel_id": 9323},
+      {"source_catalog_id": "5906", "target_tv_hotel_id": 1063},
+      {"source_catalog_id": "35425", "target_tv_hotel_id": 17377},
+      {"source_catalog_id": "299499", "target_tv_hotel_id": 17564},
+      {"source_catalog_id": "2000104596", "target_tv_hotel_id": 2270}
+    ],
+    "new_target_operator_lane_only": [
+      {"target_tv_hotel_id": 59115, "operator_id": 25},
+      {"target_tv_hotel_id": 128, "operator_id": 43},
+      {"target_tv_hotel_id": 70782, "operator_id": 25},
+      {"target_tv_hotel_id": 80964, "operator_id": 43},
+      {"target_tv_hotel_id": 109380, "operator_id": 13}
+    ],
+    "new_source_and_target_identity": [{"source_catalog_id": "163887", "source_operator_ref": 5, "target_tv_hotel_id": 1124, "target_operator_id": 13}],
+    "new_independent_disambiguation_without_repeating_retained_detail": [{"source_catalog_id": "2000029745", "target_tv_hotel_id": 159, "operator_id": 13, "preserve_tokens": [804, 44562]}],
+    "requires_fresh_daily_ledger_reservation": true,
+    "requires_separate_reviewed_operation": true,
+    "acquisition_authorized": false
+  },
+  "limitations": [
+    "All twelve rows were already counted in the MASS83 subset; this report claims no new source coverage.",
+    "The target-v2 catalog was captured earlier on 2026-10-01 and is not a fresh CURRENT registry read for acceptance.",
+    "A single-native target edge in a different operator namespace does not prove source-to-target identity.",
+    "BG F4 arithmetic, public property names, and names alone do not establish the SAMO operator_115 to BG namespace bridge.",
+    "The retained request ledger marks the twelve target IDs as previously requested; any future call needs exact negative/UNKNOWN reconciliation and a new reservation before HTTP."
+  ],
+  "provider_http_calls": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "accepted_links_added": 0,
+  "safe_to_write_now": false,
+  "acquisition_authorized": false
+}
