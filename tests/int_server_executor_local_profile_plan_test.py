@@ -289,7 +289,8 @@ class TerminalReceiptTest(unittest.TestCase):
         source = (ROOT / local.RUNNER).read_text()
         self.assertIn('SET SESSION TRANSACTION READ ONLY', source)
         self.assertIn('$owner->plan(count($scope), $through, $scope, true)', source)
-        self.assertIn('array_chunk($eligible, AnyTourProfileEnrichmentV1::MAX_BATCH, true)', source)
+        self.assertIn('array_chunk($eligible, LPP_OWNER_MAX_BATCH, true)', source)
+        self.assertIn("AnyTourProfileEnrichmentV1::MAX_BATCH === LPP_OWNER_MAX_BATCH", source)
         for forbidden in ('->apply(', 'curl_', 'INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'CREATE TABLE'):
             self.assertNotIn(forbidden, source)
         self.assertIn("basename($dir) === LPP_OPERATION", source)
