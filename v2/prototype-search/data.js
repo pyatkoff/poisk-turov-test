@@ -154,19 +154,20 @@
     regionRequests.set(key,request);return request;
   }
   function destinationScope(s,filters) {
-    const regionIds=[],subregionIds=[];
-    for(const name of filters.resorts||[]){
-      const found=(catalog.regions[String(s.country)]||[]).filter(row=>row.name===name);
-      if(found.length!==1)throw new Error('Выберите курорт из канонического справочника.');
-      const row=found[0],target=row.kind==='region'?regionIds:row.kind==='subregion'?subregionIds:null;
+    const regionIds=[],subregionIds=[],selected=filters.resorts||[],byName=new Map();
+    if(selected.length)(catalog.regions[String(s.country)]||[]).forEach(row=>{
+      const name=row.name;byName.set(name,byName.has(name)?null:row);
+    });
+    for(const name of selected){
+      const row=name===name&&byName.get(name);
+      if(!row)throw new Error('Выберите курорт из канонического справочника.');
+      const target=row.kind==='region'?regionIds:row.kind==='subregion'?subregionIds:null;
       if(!target)throw new Error('Некорректный тип направления.');
       target.push(...tourvisorIds(row));
     }
     const unique=ids=>[...new Set(ids)].sort((a,b)=>Number(a)-Number(b));
     return {regionIds:unique(regionIds),subregionIds:unique(subregionIds)};
   }
-  function regionIds(s,filters) {return destinationScope(s,filters).regionIds;}
-  function subregionIds(s,filters) {return destinationScope(s,filters).subregionIds;}
   function supplierScope(filters = {}, hotelIds = []) {
     const selectedMeal=filters.meals?.length===1?String(filters.meals[0]||'').trim():'';
     const selectedPlans=selectedMeal?catalog.mealPlans.filter(plan=>plan.nameRu===selectedMeal&&plan.nativeIds.length):[];
@@ -283,7 +284,17 @@
       mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
       operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
-  function project(list,s) { return list.map(rawHotel=>{const h=hotel(rawHotel,s);h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);return h;}).filter(h=>h.offers.length); }
+  function project(list,s) {
+    const result=[];
+    for(let i=0,length=list.length;i<length;i++)if(i in list){
+      const rawHotel=list[i],h=hotel(rawHotel,s),tours=rawHotel.tours||[],offers=[];
+      for(let j=0,count=tours.length;j<count;j++)if(j in tours){
+        const item=offer(tours[j],h,s,j);if(item)offers.push(item);
+      }
+      h.offers=offers;if(offers.length)result.push(h);
+    }
+    return result;
+  }
   function tourvisorInventory(){
     return {hotels:raw.length,offers:raw.reduce((sum,h)=>sum+(Array.isArray(h?.tours)?h.tours.length:0),0)};
   }

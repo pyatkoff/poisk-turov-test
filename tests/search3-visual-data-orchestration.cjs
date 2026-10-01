@@ -13,6 +13,25 @@ const eventSnapshot=event=>{
  if(Array.isArray(value.hotels))value.hotels=value.hotels.map(h=>({id:h.id,offers:h.offers.map(o=>({key:o.key,total:o.total,provider:o.provider,day:o.day,nights:o.nights,ages:o.ages}))}));
  return value;
 };
+// Original algorithms are test-only oracles; they call the real unchanged
+// validators/constructors, so request IDs, raw identity and variant are observed.
+const previousDestination=`function(s,filters){
+ const regionIds=[],subregionIds=[];
+ for(const name of filters.resorts||[]){
+  const found=(catalog.regions[String(s.country)]||[]).filter(row=>row.name===name);
+  if(found.length!==1)throw new Error('Выберите курорт из канонического справочника.');
+  const row=found[0],target=row.kind==='region'?regionIds:row.kind==='subregion'?subregionIds:null;
+  if(!target)throw new Error('Некорректный тип направления.');
+  target.push(...tourvisorIds(row));
+ }
+ const unique=ids=>[...new Set(ids)].sort((a,b)=>Number(a)-Number(b));
+ return {regionIds:unique(regionIds),subregionIds:unique(subregionIds)};
+}`;
+const previousProject=`function(list,s){return list.map(rawHotel=>{
+ const h=hotel(rawHotel,s);
+ h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);
+ return h;
+}).filter(h=>h.offers.length);}`;
 function harness(source,{providers=false}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
@@ -35,7 +54,7 @@ function harness(source,{providers=false}={}){
   clearTimeout(key){log.push(['clearTimer',key]);timers.delete(key);}});
  const marker='  root.AnyTourPrototypeData=Object.freeze(';
  assert.equal(source.split(marker).length,2,'one actual data-owner export');
- const probe=`  root.__test={run:()=>activeSearch,poll:run=>pollSearch(run),state:()=>({generation,searchId,context,searchParams,currentSupplierScope})};\n`;
+ const probe=`  root.__test={run:()=>activeSearch,poll:run=>pollSearch(run),state:()=>({generation,searchId,context,searchParams,currentSupplierScope}),destinationScope,previousDestination:${previousDestination},previousProject:${previousProject}};\n`;
  vm.runInContext(source.replace(marker,probe+marker),context,{filename:'prototype-search/data.js'});
  const api=window.AnyTourPrototypeData;
  api.catalog.departures=[{id:1,name:'Москва'}];api.catalog.countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
@@ -45,6 +64,68 @@ function harness(source,{providers=false}={}){
   tick:async()=>{const entry=timers.entries().next().value;assert(entry,'a timer is scheduled');timers.delete(entry[0]);await entry[1]();},
   advance:ms=>clock+=ms,
   capture(){const run=window.__test.run();return {log,events,calls,http,state:copy(window.__test.state()),run:run?copy({generation:run.generation,search:run.search,hotelIds:run.hotelIds,filters:run.filters,pending:run.pending,searchId:run.searchId,resumeOnly:run.resumeOnly,continued:run.continued,expired:run.expired,canContinue:run.canContinue,tvCanContinue:run.tvCanContinue,andromedaCanContinue:run.andromedaCanContinue,continueBaseline:run.continueBaseline,continueBaselineTourvisor:run.continueBaselineTourvisor,lastProgress:run.lastProgress,lastRead:run.lastRead,deadline:run.deadline,sourceCounts:run.sourceCounts,aborted:run.controller.signal.aborted}):null,timers:[...timers.keys()]};}};
+}
+function dataWorkOracles(source){
+ const h=harness(source),s=trip();let nameReads=0;
+ const regions=Array.from({length:80},(_,i)=>({get name(){nameReads++;return 'Resort '+i;},kind:i%2?'subregion':'region',tourvisorIds:[String(i+1)]}));
+ h.api.catalog.regions['4']=regions;
+ const observed=fn=>{try{return {value:copy(fn())};}catch(error){return {error:error.message};}};
+ const scope=selected=>{
+  const filters={resorts:selected};nameReads=0;
+  const before=observed(()=>h.probe.previousDestination(s,filters)),previousReads=nameReads;nameReads=0;
+  const after=observed(()=>h.probe.destinationScope(s,filters)),currentReads=nameReads;
+  assert.deepEqual(after,before,'destination scope/ambiguity/errors retain original semantics');
+  return {previousReads,currentReads};
+ };
+ const selected=Array.from({length:20},(_,i)=>'Resort '+i);
+ assert.deepEqual(scope(selected),{previousReads:1600,currentReads:80});
+ assert.deepEqual(scope([]),{previousReads:0,currentReads:0});
+ scope(['Resort 1','Resort 0','Resort 1']);scope(['missing']);
+ for(const items of [
+  [{name:'same',kind:'region',tourvisorIds:['1']},{name:'same',kind:'subregion',tourvisorIds:['2']}],
+  [{name:'same',kind:'country',tourvisorIds:['1']}],
+  [{name:'same',kind:'region',tourvisorIds:[]}],
+  [{name:'same',kind:'region',tourvisorIds:['01']}],
+  [{name:'same',kind:'region',tourvisorIds:['10','2','2']}],
+  Object.assign(new Array(3),{1:{name:'same',kind:'region',tourvisorIds:['1']}})
+ ]){h.api.catalog.regions['4']=items;scope(['same']);}
+ const mutable={name:'before',kind:'region',tourvisorIds:['1']};
+ h.api.catalog.regions['4']=[mutable];scope(['before']);mutable.name='after';mutable.tourvisorIds=['3'];scope(['after']);scope(['before']);
+ h.api.catalog.regions['4'].push({...mutable});scope(['after']);
+ h.api.catalog.regions['4']=[{name:NaN,kind:'region',tourvisorIds:['1']}];scope([NaN]);
+ h.api.catalog.regions['4']=[{name:'same',kind:'subregion',tourvisorIds:['4']}];scope(['same']);
+ h.api.catalog.regions={};scope(['same']);scope([]);
+
+ const work={map:0,filter:0,callbacks:0};
+ function counted(array){
+  Object.defineProperty(array,'map',{value(fn){work.map++;const result=Array.prototype.map.call(this,(...args)=>{work.callbacks++;return fn(...args);});
+   Object.defineProperty(result,'filter',{value(fn){work.filter++;return Array.prototype.filter.call(this,(...args)=>{work.callbacks++;return fn(...args);});}});return result;}});
+  return array;
+ }
+ const list=counted(Array.from({length:100},(_,i)=>({id:101+i,name:'Projection '+i,tours:counted(Array.from({length:10},(_,j)=>({id:i+'-'+j,price:i<90?120000:0,date:'2026-10-13',nights:7,meal:'AI'})))})));
+ const before=h.probe.previousProject(list,s),previousWork={...work};
+ Object.keys(work).forEach(key=>work[key]=0);
+ const after=h.api.project(list,s);assert.deepEqual(copy(after),copy(before));
+ assert.deepEqual(previousWork,{map:101,filter:101,callbacks:2200});
+ assert.deepEqual(work,{map:0,filter:0,callbacks:0});
+ const currentWork={...work};
+ function identities(input){
+  const expected=h.probe.previousProject(input,s),actual=h.api.project(input,s);
+  assert.deepEqual(copy(actual),copy(expected),'projection order, variant and observable fields match');
+  actual.forEach((hotel,i)=>{assert.strictEqual(hotel.raw,expected[i].raw);hotel.offers.forEach((offer,j)=>assert.strictEqual(offer.raw,expected[i].offers[j].raw));});
+ }
+ identities(list);identities([]);identities([{id:1,name:'No tours'},{id:2,tours:[]}]);
+ const sparse=new Array(5),tours=new Array(6);
+ tours[1]={id:'kept',price:100000,date:'2026-10-13',nights:7};tours[3]={id:'rejected',price:0,date:'2026-10-13',nights:7};tours[5]={...tours[1],id:'last'};
+ sparse[2]={id:1,tours};sparse[4]={id:2,tours:[]};identities(sparse);
+ assert.deepEqual(Array.from(h.api.project(sparse,s)[0].offers,o=>o.variant),[1,5]);
+ // map captures the length once and includes inherited occupied slots.
+ const inherited=[];Object.setPrototypeOf(inherited,Object.assign(Object.create(Array.prototype),{1:tours[1]}));inherited.length=3;
+ identities([{id:3,tours:inherited}]);
+ const changing=[{id:4,tours:[tours[1]]}];
+ Object.defineProperty(changing[0],'name',{get(){changing.push({id:5,tours:[tours[1]]});return 'append';}});
+ assert.equal(h.api.project(changing,s).length,1,'new outer slots past the initial length are not visited');
+ return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork},rawIdentity:'identical'};
 }
 async function characterize(source){
  const records=[];
@@ -161,7 +242,7 @@ async function characterize(source){
 }
 (async()=>{
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
- const records=await characterize(fs.readFileSync(sourcePath,'utf8'));
+ const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
  const digest=crypto.createHash('sha256').update(JSON.stringify(records)).digest('hex');
  // Pinned before the refactor on full data owner blob 931fb024951b6d69ce84e635e61ddd8112501623.
  assert.equal(digest,'f2a89681027398304bf0f9c4c55434e8447c01b591f0f1b07130eac0174f461a','observable orchestration trace changed from the characterized baseline');
@@ -169,5 +250,5 @@ async function characterize(source){
   assert(options[1],'--compare requires an original source file');const before=await characterize(fs.readFileSync(path.resolve(options[1]),'utf8'));
   assert.deepEqual(records,before,'original and refactored full data owner observable traces must match');
  }
- console.log(JSON.stringify({cases:records.length,digest,comparison:options[0]==='--compare'?'identical':'characterized',supplierHTTP:0,realLeads:0}));
+ console.log(JSON.stringify({cases:records.length,digest,comparison:options[0]==='--compare'?'identical':'characterized',work,supplierHTTP:0,realLeads:0}));
 })().catch(error=>{console.error(error);process.exitCode=1;});
