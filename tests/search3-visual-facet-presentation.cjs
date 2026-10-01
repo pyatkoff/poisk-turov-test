@@ -112,6 +112,18 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
 }
 console.log('PASS facet DOM callers: batch zero/checked availability, scalar amenities/rating, any-meal/null-draft and selected-star counts');
 
+// An in-drawer edit forwards the selected-model count observed by the first
+// existing facet pass instead of starting a separate scalar membership pass.
+{
+ const c=environment('<div id="filters"><label class="check-row"><input data-filter="operators" value="A"><small>0</small></label></div>'),model={filters:{operators:['A'],amenities:[],stars:[]}};
+ let observed=0;
+ Object.assign(c,{hotels:[],state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values,selection)=>{observed++;selection.count=7;return new Map(values.map(value=>[value,7]));},countMatchingHotels:()=>{throw Error('selected-count scalar fallback')},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
+ vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);assert.equal(c.updateFacetCounts(),7);assert.equal(observed,1);
+ let forwarded=null;Object.assign(c,{filterDraft:model,updateFacetCounts:()=>7,updateDrawerPreview:value=>{forwarded=value;},rememberUIRoute:()=>{},renderFilters:()=>{},syncFilters:()=>{},renderResults:()=>{},updateSearchUI:()=>{}});
+ vm.runInContext(functions(source,['filterEdited']),c);c.filterEdited();assert.equal(forwarded,7,'drawer preview receives batched selected count');c.dom.window.close();
+}
+console.log('PASS drawer selected-count reuse: one existing facet observation forwarded; scalar fallback not called');
+
 function facetOrderEnvironment(code,group,n){
  const c=environment('<div id="host"></div>'),filters={resorts:[],operators:[],meals:[],amenities:[]};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>Number(model.filters[group][0]?.slice(1))%4||0,facetQueries:new Map(),expandedFacets:new Set(),amenityNames:new Map()});
