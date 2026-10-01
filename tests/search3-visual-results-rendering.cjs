@@ -7,9 +7,10 @@ const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
+function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
- if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return section(source,first,'function syncFilters(){');}
- if(kind==='calendar')return section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
+ if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
+ if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(){')?'function offerListInventory(){':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('let verifiedOffer=null;',start);return end<0?source.slice(start):source.slice(start,end);
 }
@@ -32,7 +33,7 @@ function observe(source,s){
  }
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:[0,17]};
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
- ctx={Math,Number,String,Array,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
+ ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
   state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live'},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
@@ -113,6 +114,79 @@ assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;'
 assert(changed(source.replace("offerView.mode==='compare'||!offerView.departure", "false||!offerView.departure")),'comparison date scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
 const {JSDOM}=require('jsdom');
+
+// Compare the actual summary owner with uncached full replacement. The pinned
+// markup digest comes from the pre-O34 owner; DOM identity/work is checked apart
+// from the generated strings, including edits made outside the application.
+function summaryDOM({full=false,code=source}={}){
+ const dom=new JSDOM('<section id="search"><form id="search-form"></form><div class="intro"></div><div id="applied-search"></div></section>'),document=dom.window.document,summary=document.querySelector('#applied-search');let parsed=0;
+ const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,MutationObserver:dom.window.MutationObserver,esc,
+  $:selector=>document.querySelector(selector),icon:name=>`<i data-icon="${name}"></i>`,
+  state:{search:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},filters:{stars:[],meals:[],min:0,max:null}},
+  appliedDestination:()=>ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
+  departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
+  durationText:()=>ctx.state.search.minNights+'–'+ctx.state.search.maxNights+' ночей',guestsText:()=>ctx.state.search.adults+' взрослых · '+ctx.state.search.ages.join('/'),
+  budgetLabel:f=>f.min+'–'+(f.max??'любой'),filterCount:()=>ctx.state.filters.stars.length+ctx.state.filters.meals.length+(ctx.state.filters.min?1:0)+(ctx.state.filters.max===null?0:1)};
+ if(full)ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
+ vm.createContext(ctx);vm.runInContext((full?'':generatedRootOwner(code))+section(code,'function renderSummary(){','function editSearch(){'),ctx);
+ const observer=new dom.window.MutationObserver(()=>{});observer.observe(summary,{childList:true});
+ return {dom,ctx,summary,render:()=>{ctx.renderSummary();return observer.takeRecords();},parsed:()=>parsed,
+  close:()=>{observer.disconnect();dom.window.close();}};
+}
+const subtreeElements=(records,key)=>records.reduce((sum,record)=>sum+[...record[key]].reduce((n,node)=>n+(node.nodeType===1?1+node.querySelectorAll('*').length:0),0),0);
+const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
+{
+ const current=summaryDOM(),legacy=summaryDOM({full:true,code:summaryBaseline});
+ try{
+  current.render();legacy.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'original summary markup');
+  const roots=[...current.summary.children],focused=current.summary.querySelector('[data-action="edit-search"]');focused.focus();
+  const elements=current.summary.querySelectorAll('*').length;let removed=0,inserted=0,oldRemoved=0,oldInserted=0;
+  for(let round=0;round<10;round++){
+   const records=current.render(),oldRecords=legacy.render();removed+=subtreeElements(records,'removedNodes');inserted+=subtreeElements(records,'addedNodes');oldRemoved+=subtreeElements(oldRecords,'removedNodes');oldInserted+=subtreeElements(oldRecords,'addedNodes');
+  }
+  assert.equal(oldRemoved,elements*10);assert.equal(oldInserted,elements*10);assert.equal(removed,0);assert.equal(inserted,0);assert.equal(current.parsed(),0);
+  roots.forEach((node,index)=>assert.strictEqual(current.summary.children[index],node));
+  assert.strictEqual(current.ctx.document.activeElement,focused,'unchanged summary action focus survives');
+  current.ctx.state.filters.max=150000;legacy.ctx.state.filters.max=150000;const changed=current.render();legacy.render();
+  assert.equal(changed.flatMap(record=>[...record.removedNodes]).length,1,'budget change replaces only extras');assert.equal(current.parsed(),1);assert.strictEqual(current.summary.firstElementChild,roots[0]);assert.strictEqual(current.ctx.document.activeElement,focused);
+  assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'changed budget equals original full render');
+  current.summary.querySelector('[data-action="meals"] strong').firstChild.data='stale';current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'character-data edit is repaired');
+  current.summary.querySelector('[data-action="edit-search"]').setAttribute('aria-expanded','true');current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'live attribute edit is repaired');
+  current.summary.appendChild(current.ctx.document.createElement('aside'));current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'extra root is removed');
+  current.summary.querySelector('.applied-route').remove();current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'missing subtree is repaired');
+  current.ctx.collapseSearch();assert.equal(current.ctx.document.querySelector('#search-form').hidden,true);assert.equal(current.ctx.document.querySelector('.intro').hidden,true);assert.equal(current.summary.hidden,false);assert(current.ctx.document.querySelector('#search').classList.contains('search-collapsed'));
+  console.log(`PASS applied summary: ten unchanged refreshes remove/insert ${oldRemoved}→0/${oldInserted}→0 elements; budget change replaces one root; focus, collapse and live-DOM repair retained`);
+ }finally{current.close();legacy.close();}
+}
+{
+ const current=summaryDOM(),legacy=summaryDOM({full:true,code:summaryBaseline}),markup=[];let seed=34567;
+ const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+ try{
+  for(let round=0;round<100;round++){
+   const state={search:{origin:['Москва','Гранд <&"','A\nB','Αθήνα'][round%4],country:['4','1','9'][round%3],from:'2026-10-'+String(1+round%27).padStart(2,'0'),to:'2026-11-'+String(1+round%27).padStart(2,'0'),minNights:1+Math.floor(random()*14),maxNights:15+Math.floor(random()*7),adults:1+Math.floor(random()*5),ages:[[],[0],[2,17],[0,8,17]][round%4]},filters:{stars:[[],[5],[5,3],[4,5]][round%4].slice(),meals:[[],['AI'],['BB','UAI'],['Питание <&"']][round%4].slice(),min:round%2?50000+round:0,max:round%3?150000+round:null}};
+   current.ctx.state=state;legacy.ctx.state=structuredClone(state);const before=JSON.stringify(state);current.render();legacy.render();
+   assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'changed search/filter summary equals uncached rendering');assert.equal(JSON.stringify(state),before,'summary preserves raw search/filter values and order');
+   markup.push(legacy.summary.innerHTML);
+  }
+  const digest=crypto.createHash('sha256').update(JSON.stringify(markup)).digest('hex');
+  assert.equal(digest,'10983625dddcf3d14ce59ed7cadb185f3039f97e119fe585827bbf621a8b2731','pre-O34 summary markup for 100 search/filter states');
+  console.log('PASS summary parity: 100 original search/filter/escaping/party states; digest '+digest+'; raw input order preserved');
+ }finally{current.close();legacy.close();}
+}
+// Identical keys in independent containers must never share a dirty/markup
+// binding. Also prove that invalidation is needed, rather than testing a cache.
+{
+ const dom=new JSDOM('<div id="a"></div><div id="b"></div>'),document=dom.window.document,ctx={document,Map,WeakMap,WeakSet,MutationObserver:dom.window.MutationObserver};
+ vm.createContext(ctx);vm.runInContext(generatedRootOwner(source),ctx);
+ const a=document.querySelector('#a'),b=document.querySelector('#b'),entries=[{id:'same',markup:'<button id="same">Current</button>'}];
+ try{
+  ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);const other=b.firstChild;a.firstChild.textContent='stale';ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);
+  assert.equal(a.textContent,'Current');assert.strictEqual(b.firstChild,other,'container bindings are independent');
+ }finally{dom.window.close();}
+ const mutated=summaryDOM({code:source.replace('previous&&!dirty.has(previous)&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)','previous&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)')});
+ try{mutated.render();mutated.summary.querySelector('[data-action="budget"] strong').textContent='stale';mutated.render();assert.equal(mutated.summary.querySelector('[data-action="budget"] strong').textContent,'stale','missing mutation invalidation is detected');}finally{mutated.close();}
+}
 
 // Progressive calendar updates keep exact full-render markup, but unchanged
 // date roots must survive provider/status refreshes. Live-only edits still
@@ -222,7 +296,7 @@ const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].f
   const items=[entry(1),entry(2)];h.render(items);h.cards.querySelector('#hotel-1 strong').textContent='stale price';h.cards.querySelector('#hotel-2 img').src='/stale.jpg';h.render(items);
   assert.equal(h.cards.querySelector('#hotel-1 strong').textContent,'100001');assert.equal(h.cards.querySelector('#hotel-2 img').getAttribute('src'),'/photo-2.jpg');
  }finally{h.close();reference.window.close();}
- const mutated=cardDOM(source.replace('previous&&!dirtyResultCards.has(previous)&&resultCardMarkup.get(previous)===markup?previous:parseResultNode(markup)','previous||parseResultNode(markup)'));
+ const mutated=cardDOM(source.replace('previous&&!dirty.has(previous)&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)','previous||parseGeneratedRoot(markup)'));
  try{mutated.render([entry(1,100)]);mutated.render([entry(1,200)]);assert.notEqual(mutated.cards.querySelector('strong').textContent,'200','stale-node-reuse mutation is detected');}finally{mutated.close();}
  console.log('PASS actual DOM parity: 90 progressive sequences; duplicate IDs, escaping, empty/repopulation, stale DOM edits and equality mutation covered; supplier/lead HTTP 0');
 }

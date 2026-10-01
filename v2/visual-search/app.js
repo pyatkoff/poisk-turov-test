@@ -134,7 +134,34 @@ function restoreURL(){
 }
 let searchEditSession=null;
 function updateURL(){if(searchEditSession||!urlStateHydrated)return;const p=new URLSearchParams();p.set('scenario',data.scenario);for(const [k,v] of Object.entries(state.search))p.set(k,Array.isArray(v)?v.join(','):v);if(state.selectedDate)p.set('date',state.selectedDate);if(state.hasSearched)p.set('searched','1');if(state.onlyFavorites)p.set('favorites','1');const f=state.filters;for(const k of ['stars','meals','resorts','operators','flight','amenities'])if(f[k].length)p.set(k,f[k].join('|'));for(const k of ['beach','rating','family','spa'])if(f[k])p.set(k,'1');if(f.hotelId)p.set('hotel',f.hotelId);if(f.q)p.set('q',f.q);if(f.min)p.set('min',f.min);if(f.max!==null)p.set('max',f.max);if(state.sort!=='recommended')p.set('sort',state.sort);const query='?'+p.toString();if(location.search!==query||location.hash)history.replaceState(history.state,'',query);}
-function renderSummary(){const s=state.search,f=state.filters;$('#applied-search').innerHTML=`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить</button></div><div class="applied-extras"><button type="button" data-action="filters" aria-label="Звёзды: ${esc(f.stars.length?f.stars.join(', '):'любая категория')}. Открыть фильтры"><span class="applied-extra-label">Звёзды</span><strong>${esc(f.stars.length?[...f.stars].sort((a,b)=>a-b).map(n=>n+' ★').join(', '):'Любая')}</strong></button><button type="button" data-action="meals" aria-haspopup="dialog" title="${esc(f.meals.join(' · ')||'Любое питание')}" aria-label="Питание: ${esc(f.meals.join(', ')||'любое')}"><span class="applied-extra-label">Питание</span><strong>${esc(f.meals.length>1?f.meals.length+' варианта':f.meals[0]||'Любое')}</strong></button><button type="button" data-action="budget" aria-haspopup="dialog"><span class="applied-extra-label">Бюджет за всех</span><strong>${esc(budgetLabel(f))}</strong></button><button type="button" class="applied-all-filters" data-action="filters">${icon('sliders')} Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`;}
+const generatedRootBindings=new WeakMap();
+// Bind exact, freshly generated markup to each live root. One observer per
+// container invalidates only roots edited outside this painter.
+function parseGeneratedRoot(markup){const template=document.createElement('template');template.innerHTML=markup;return template.content.firstElementChild;}
+function paintGeneratedRoots(container,entries,sameScope=true,field='id'){
+ let binding=generatedRootBindings.get(container);
+ if(!binding){
+  const markup=new WeakMap(),dirty=new WeakSet();
+  const mark=records=>{for(const record of records){let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==container)root=root.parentElement;if(root&&root.parentNode===container)dirty.add(root);}};
+  const observer=new MutationObserver(mark);observer.observe(container,{subtree:true,childList:true,attributes:true,characterData:true});
+  binding={markup,dirty,mark,observer};generatedRootBindings.set(container,binding);
+ }else binding.mark(binding.observer.takeRecords());
+ const {markup:known,dirty,observer}=binding;
+ if(!sameScope||!container.childElementCount){container.innerHTML=entries.map(entry=>entry.markup).join('');[...container.children].forEach((node,index)=>known.set(node,entries[index]?.markup));observer.takeRecords();return;}
+ const keyed=new Map();for(const node of container.children){const key=field==='day'?node.dataset.date:node.id;if(key&&!keyed.has(key))keyed.set(key,node);}
+ let cursor=container.firstChild;
+ for(const entry of entries){
+  const key=entry[field],markup=entry.markup,previous=field==='day'||key?keyed.get(key):cursor;keyed.delete(key);
+  const node=previous&&!dirty.has(previous)&&known.get(previous)===markup?previous:parseGeneratedRoot(markup);
+  known.set(node,markup);dirty.delete(node);
+  if(node===cursor)cursor=cursor.nextSibling;
+  else if(cursor&&previous===cursor){container.replaceChild(node,cursor);cursor=node.nextSibling;}
+  else container.insertBefore(node,cursor);
+ }
+ while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+ observer.takeRecords();
+}
+function renderSummary(){const s=state.search,f=state.filters;paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить</button></div>`},{id:'',markup:`<div class="applied-extras"><button type="button" data-action="filters" aria-label="Звёзды: ${esc(f.stars.length?f.stars.join(', '):'любая категория')}. Открыть фильтры"><span class="applied-extra-label">Звёзды</span><strong>${esc(f.stars.length?[...f.stars].sort((a,b)=>a-b).map(n=>n+' ★').join(', '):'Любая')}</strong></button><button type="button" data-action="meals" aria-haspopup="dialog" title="${esc(f.meals.join(' · ')||'Любое питание')}" aria-label="Питание: ${esc(f.meals.join(', ')||'любое')}"><span class="applied-extra-label">Питание</span><strong>${esc(f.meals.length>1?f.meals.length+' варианта':f.meals[0]||'Любое')}</strong></button><button type="button" data-action="budget" aria-haspopup="dialog"><span class="applied-extra-label">Бюджет за всех</span><strong>${esc(budgetLabel(f))}</strong></button><button type="button" class="applied-all-filters" data-action="filters">${icon('sliders')} Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`}]);}
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing');}
 function editSearch(){
  if(searchResponse.pending||Object.values(searchResponse.providers||{}).includes('loading'))stopSearch();if(innerWidth<=1100)closeFilters();
@@ -680,32 +707,7 @@ function resultCalendarModel(){
 }
 function calendarStripEntries({days,prices,min,max}){return days.map((day,i)=>{const price=prices[i];return {day,markup:`<button class="date-price ${price!==null&&price===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${price!==null?', от '+money(price):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${price===null?'—':money(price)}</strong><span class="calendar-bar" style="--bar-height:${price===null?5:12+Math.round((price-min)/Math.max(1,max-min)*22)}px"></span></button>`};});}
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
-let calendarStripObserver=null;
-const calendarDateMarkup=new WeakMap(),dirtyCalendarDates=new WeakSet();
-function markCalendarStripMutations(records,strip){
- for(const record of records){let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==strip)root=root.parentElement;if(root&&root.parentNode===strip)dirtyCalendarDates.add(root);}
-}
-function observeCalendarStripMutations(strip){
- if(!calendarStripObserver){calendarStripObserver=new MutationObserver(records=>markCalendarStripMutations(records,strip));calendarStripObserver.observe(strip,{subtree:true,childList:true,attributes:true,characterData:true});}
- else markCalendarStripMutations(calendarStripObserver.takeRecords(),strip);
-}
-function parseCalendarDate(markup){const template=document.createElement('template');template.innerHTML=markup;return template.content.firstElementChild;}
-function paintCalendarStrip(strip,entries){
- const html=entries.map(entry=>entry.markup).join('');observeCalendarStripMutations(strip);
- if(!strip.childElementCount){strip.innerHTML=html;[...strip.children].forEach((node,index)=>calendarDateMarkup.set(node,entries[index]?.markup));calendarStripObserver.takeRecords();return;}
- const keyed=new Map();for(const node of strip.children)if(node.dataset.date&&!keyed.has(node.dataset.date))keyed.set(node.dataset.date,node);
- let cursor=strip.firstChild;
- for(const {day,markup} of entries){
-  const previous=keyed.get(day);keyed.delete(day);
-  const node=previous&&!dirtyCalendarDates.has(previous)&&calendarDateMarkup.get(previous)===markup?previous:parseCalendarDate(markup);
-  calendarDateMarkup.set(node,markup);dirtyCalendarDates.delete(node);
-  if(node===cursor)cursor=cursor.nextSibling;
-  else if(cursor&&previous===cursor){strip.replaceChild(node,cursor);cursor=node.nextSibling;}
-  else strip.insertBefore(node,cursor);
- }
- while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
- calendarStripObserver.takeRecords();
-}
+function paintCalendarStrip(strip,entries){paintGeneratedRoots(strip,entries,true,'day');}
 function renderCalendarStrip(){
  loadResultCalendar();
  const model=resultCalendarModel(),{s,source,scope}=model;
@@ -820,15 +822,7 @@ function renderHotelDetails(){
  loadHotelDetails().then(render).catch(()=>{if(current())$('#hotel-details-load').innerHTML='<div role="alert"><p>Не удалось загрузить подробности отеля.</p><button class="secondary" data-action="retry-hotel-details">Попробовать ещё раз</button></div>';});
 }
 
-let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;
-const resultCardMarkup=new WeakMap(),dirtyResultCards=new WeakSet();
-function markResultCardMutations(records,cards){
- for(const record of records){let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==cards)root=root.parentElement;if(root&&root.parentNode===cards)dirtyResultCards.add(root);}
-}
-function observeResultCardMutations(cards){
- if(!resultCardObserver){resultCardObserver=new MutationObserver(records=>markResultCardMutations(records,cards));resultCardObserver.observe(cards,{subtree:true,childList:true,attributes:true,characterData:true});}
- else markResultCardMutations(resultCardObserver.takeRecords(),cards);
-}
+let renderedCardLimit=24,renderedCardScope='';
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -847,27 +841,7 @@ function renderResultHeadings(items,total,pristine){
  $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
-function parseResultNode(markup){const template=document.createElement('template');template.innerHTML=markup;return template.content.firstElementChild;}
-function paintResultCards(cards,entries,sameScope){
- const html=entries.map(entry=>entry.markup).join('');
- observeResultCardMutations(cards);
- if(!sameScope||!cards.childElementCount){cards.innerHTML=html;[...cards.children].forEach((node,index)=>resultCardMarkup.set(node,entries[index]?.markup));resultCardObserver.takeRecords();return;}
- // Generated markup is recomputed every time. Parse only a changed root; the
- // observer invalidates an otherwise-equal root after any live DOM mutation.
- const keyed=new Map();for(const node of cards.children)if(node.id&&!keyed.has(node.id))keyed.set(node.id,node);
- let cursor=cards.firstChild;
- for(const {id,markup} of entries){
-  const previous=id?keyed.get(id):cursor;
-  if(id)keyed.delete(id);
-  const node=previous&&!dirtyResultCards.has(previous)&&resultCardMarkup.get(previous)===markup?previous:parseResultNode(markup);
-  resultCardMarkup.set(node,markup);dirtyResultCards.delete(node);
-  if(node===cursor)cursor=cursor.nextSibling;
-  else if(cursor&&previous===cursor){cards.replaceChild(node,cursor);cursor=node.nextSibling;}
-  else cards.insertBefore(node,cursor);
- }
- while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
- resultCardObserver.takeRecords();
-}
+function paintResultCards(cards,entries,sameScope){paintGeneratedRoots(cards,entries,sameScope);}
 function renderResultCards(items){
  const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
