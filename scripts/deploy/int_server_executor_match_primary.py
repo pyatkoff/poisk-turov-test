@@ -33,6 +33,8 @@ TARGET_READBACK_OPERATION = 'int-andromeda-match-live30-target-readback-20261001
 TARGET_PREFLIGHT_MODE = 'match-tv-live30-target-preflight'
 TARGET_PREFLIGHT_OPERATION = 'int-andromeda-match-live30-target-preflight-20261001-v1'
 TARGET_PREFLIGHT_BATCH = 'tv-live30-target-preflight-20261001'
+TARGET_PREFLIGHT_READBACK_MODE = 'match-tv-live30-target-preflight-readback'
+TARGET_PREFLIGHT_READBACK_OPERATION = 'int-andromeda-match-live30-target-preflight-readback-20261001-v1'
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -77,11 +79,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == TARGET_PREFLIGHT_READBACK_MODE:
+            core.need(operation == TARGET_PREFLIGHT_READBACK_OPERATION and batch == TARGET_PREFLIGHT_BATCH, 'target_preflight_readback_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_PREFLIGHT_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == TARGET_PREFLIGHT_MODE:
             core.need(operation == TARGET_PREFLIGHT_OPERATION and batch == TARGET_PREFLIGHT_BATCH, 'target_preflight_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_PREFLIGHT_BATCH,
@@ -1042,6 +1048,60 @@ REMOTE_TARGET_PREFLIGHT_DISPATCH = r'''    if mode=='match-tv-live30-target-pref
 '''
 
 
+REMOTE_TARGET_PREFLIGHT_READBACK_HANDLER = REMOTE_TARGET_PREFLIGHT_HANDLER + r'''
+def run_match_tv_live30_target_preflight_readback(stage):
+    original='int-andromeda-match-live30-target-preflight-20261001-v1'
+    original_source='12ee0d4961db14a0a1bcddcd41229e5c6dff9aa5'
+    if (operation!='int-andromeda-match-live30-target-preflight-readback-20261001-v1'
+            or payload.get('batch')!='tv-live30-target-preflight-20261001'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0): fail('target_preflight_readback_fixed_scope')
+    root=home/'.anytoour-match/operations';evidence=root/original
+    if (not root.is_dir() or root.is_symlink() or root.resolve()!=root or not evidence.is_dir()
+            or evidence.is_symlink() or evidence.resolve()!=evidence): fail('target_preflight_readback_private_root')
+    reservation=safe_json(evidence/'reservation.json',65536)
+    fixed={'operation':original,'source_sha':original_source,'batch':'tv-live30-target-preflight-20261001',
+           'maximum_writes':0,'provider_http_calls':0,'state':'reserved_before_db_read'}
+    if any(reservation.get(k)!=v for k,v in fixed.items()): fail('target_preflight_readback_reservation_binding')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('target_preflight_readback_exists_no_replay')
+    child.mkdir(mode=0o700)
+    def exclusive(path,data):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(data,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+    exclusive(child/'reservation.json',{'operation':operation,'source_sha':source,'evidence_operation':original,'no_replay':True})
+    observed={}
+    for name,cap in (('execution-started.json',65536),('result.json',262144),('receipt.json',65536)):
+        path=evidence/name;exists=path.exists() or path.is_symlink()
+        if exists and not safe_file(path,cap): fail('target_preflight_readback_file_shape')
+        observed[name]={'present':exists,'bytes':path.stat().st_size if exists else 0,
+                        'sha256':hashlib.sha256(path.read_bytes()).hexdigest() if exists else None}
+    terminal=observed['result.json']['present'] and observed['receipt.json']['present']
+    output={'state':'completed_saved_target_preflight_readback','operation':operation,'source_sha':source,
+            'batch':'tv-live30-target-preflight-20261001','evidence_operation':original,'evidence_source_sha':original_source,
+            'original_read_reexecuted':False,'provider_http_calls':0,'database_reads':0,'database_writes':0,
+            'mapping_writes':0,'safe_to_write_now':False,'no_replay':True,'terminal_verified':False,
+            'files':observed,'preflight':None}
+    if terminal:
+        data=safe_json(evidence/'result.json',262144);receipt=safe_json(evidence/'receipt.json',65536)
+        validate_match_tv_live30_target_preflight(data,receipt,observed['result.json']['sha256'],original,original_source)
+        output['terminal_verified']=True;output['preflight']=data
+    exclusive(child/'result.json',output);return output
+'''
+
+REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-preflight-readback':
+        result['match_tv_live30_target_preflight_readback']=run_match_tv_live30_target_preflight_readback(stage)
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
 REMOTE_TARGET_READBACK_HANDLER = REMOTE_TARGET_HANDLER + r'''
 def run_match_tv_live30_target_readback(stage):
     original='int-andromeda-match-live30-target-catalog-20261001-v1'
@@ -1098,7 +1158,7 @@ REMOTE_TARGET_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-readb
 def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False,
                         shams_geo: bool = False, shams_geo_readback: bool = False, shams_write: bool = False,
                         target_catalog: bool = False, target_readback: bool = False,
-                        target_preflight: bool = False) -> str:
+                        target_preflight: bool = False, target_preflight_readback: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1126,6 +1186,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_READBACK_HANDLER, REMOTE_TARGET_READBACK_DISPATCH, TARGET_READBACK_MODE
     if target_preflight:
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_HANDLER, REMOTE_TARGET_PREFLIGHT_DISPATCH, TARGET_PREFLIGHT_MODE
+    if target_preflight_readback:
+        handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_READBACK_HANDLER, REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH, TARGET_PREFLIGHT_READBACK_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1134,7 +1196,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1151,12 +1213,13 @@ def activate(core, command: dict) -> None:
     target_catalog = command['mode'] == TARGET_MODE
     target_readback = command['mode'] == TARGET_READBACK_MODE
     target_preflight = command['mode'] == TARGET_PREFLIGHT_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight)
+    target_preflight_readback = command['mode'] == TARGET_PREFLIGHT_READBACK_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback)
     files = list(core.FIXED)
     selected_files = SHAMS_WRITE_SOURCE_FILES if shams_write else (SHAMS_GEO_SOURCE_FILES if (shams_geo or shams_geo_readback) else (BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)))))
     if target_catalog or target_readback:
         selected_files = TARGET_SOURCE_FILES
-    if target_preflight:
+    if target_preflight or target_preflight_readback:
         selected_files = TARGET_PREFLIGHT_SOURCE_FILES
     for path in selected_files:
         if path not in files:
