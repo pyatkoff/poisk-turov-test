@@ -106,6 +106,8 @@ function parent2Fixture(){
         self.assertNotIn('->apply(',src)
         for bad in ('curl_','INSERT ','UPDATE ','DELETE ','ALTER ','CREATE TABLE'):self.assertNotIn(bad,src)
         self.assertIn('SET SESSION TRANSACTION READ ONLY',src)
+        self.assertIn("require_once __DIR__.'/local_profile_mass_plan2_4191.php';",src)
+        self.assertNotIn('local_profile_mass_apply2_4191.php',src)
 
 class HandlerTest(unittest.TestCase):
     def fixture(self,tmp):
