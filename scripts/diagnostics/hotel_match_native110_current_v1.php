@@ -198,6 +198,44 @@ function nc110_current(PDO $db,array $manifest): array {
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 
+/** Bounded per-source readback: identities and proof states, no raw values or history. */
+function nc110_review_rows(array $manifest,array $rows,array $saved): array {
+    $current=[];foreach($rows as $row)$current[$row['catalog_id']]=$row;
+    $out=[];
+    foreach($manifest['rows'] as $request){
+        $cat=$request['catalog_id'];$row=$current[$cat];
+        $r=['catalog_id'=>$cat,'state'=>$row['state'],'safe_to_write_now'=>false,
+            'holds'=>$row['holds']??[],
+            'catalog_digest_matches_saved'=>$row['source_catalog_digest_matches_saved']??false,
+            'evidence_digest_matches_saved'=>$row['source_evidence_digest_matches_saved']??false,
+            'source_history_id_matches'=>$row['source_history_catalog_id_matches']??false,
+            'native_checks'=>[],'operator_checks'=>[],'targets'=>[],'tv_checks'=>[]];
+        if($cat===NC110_PROTECTED){$out[]=$r;continue;}
+        foreach($saved['source_facts'][$cat]??[] as $f)$r['native_checks'][]=[
+            'namespace'=>$f['namespace'],'native_id'=>$f['native_id'],
+            'global_saved_unique'=>$f['unique_catalog_in_saved_union'],
+            'raw_verified'=>$f['raw']['raw_verified'],'failures'=>$f['raw']['failures']];
+        foreach($row['operator_rows'] as $o){
+            $ids=[];foreach($o['current_rows'] as $c)if($c['local_hotel_id']!==null)$ids[(int)$c['local_hotel_id']]=true;
+            $r['operator_checks'][]=['namespace'=>$o['namespace'],'native_id'=>$o['native_id'],
+                'current_identity_count'=>count($o['current_rows']),'current_local_hotel_ids'=>array_keys($ids)];
+        }
+        foreach($row['targets'] as $t)$r['targets'][]=[
+            'kind'=>$t['kind'],'id'=>$t['id'],'tv_live30_observed'=>$t['tv_live30_observed'],'holds'=>$t['holds']];
+        foreach($request['tv_candidates'] as $c){
+            $p=$saved['tv_proofs'][$cat.'|'.$c['operator'].'|'.$c['tv_hotel_id']];$proofs=[];
+            foreach($p['producers']??[] as $producer)$proofs[]=[
+                'source_operation'=>$producer['source_operation'],'source_result_sha256'=>$producer['source_result_sha256'],
+                'state'=>$producer['audit']['state'],'failures'=>$producer['audit']['failures']??[]];
+            $r['tv_checks'][]=['tv_hotel_id'=>$c['tv_hotel_id'],'operator'=>$c['operator'],
+                'native_id'=>$c['native_id'],'tv_native_id'=>$c['tv_native_id'],
+                'state'=>$p['state']??'saved_producers_reviewed','producers'=>$proofs];
+        }
+        $out[]=$r;
+    }
+    return $out;
+}
+
 function nc110_main(array $args): void {
     w76_need(count($args)===2&&$args[1]==='--current','native110_disabled');
     $root=(string)getenv('ANYTOUR_ROOT');$dir=(string)getenv('MATCH_OPERATION_DIR');$head=(string)getenv('MATCH_SOURCE_SHA');
@@ -217,12 +255,14 @@ function nc110_main(array $args): void {
     $rows=nc110_current(v2_data_db(),$manifest);
     $result=['schema'=>'native110-current-review/1','operation'=>NC110_OP,'source_sha'=>$head,'batch'=>NC110_BATCH,
         'captured_at_utc'=>gmdate('c'),'rows'=>$rows,'saved_evidence'=>$saved,'provider_http_calls'=>0,'database_writes'=>0,
-        'mapping_writes'=>0,'safe_to_write_now'=>false,'no_replay'=>true,'acceptance_policy_changed'=>false];
+        'mapping_writes'=>0,'safe_to_write_now'=>false,'no_replay'=>true,'acceptance_policy_changed'=>false,
+        'review_rows'=>nc110_review_rows($manifest,$rows,$saved)];
     $sha=w76_save($dir.'/native110-current-manifest.json',$result);
     $rawVerified=0;foreach($saved['source_facts'] as $facts)foreach($facts as $f)if($f['raw']['raw_verified'])++$rawVerified;
     $summary=['state'=>'completed_native110_current_review','operation'=>NC110_OP,'source_sha'=>$head,'batch'=>NC110_BATCH,
         'manifest_sha256'=>$sha,'sources_requested'=>110,'sources_examined'=>109,'protected_skipped'=>1,
-        'current_rows_returned'=>count($rows),'raw_verified_facts'=>$rawVerified,'raw_files_read'=>$saved['raw_files_read'],
+        'current_rows_returned'=>count($rows),'review_rows'=>$result['review_rows'],
+        'raw_verified_facts'=>$rawVerified,'raw_files_read'=>$saved['raw_files_read'],
         'raw_bytes_read'=>$saved['raw_bytes_read'],'native_facts_examined'=>3262,'provider_http_calls'=>0,'database_writes'=>0,
         'mapping_writes'=>0,'safe_to_write_now'=>false,'no_replay'=>true,'acceptance_policy_changed'=>false];
     w76_save($dir.'/native110-current-summary.json',$summary);echo w76_json($summary)."\n";

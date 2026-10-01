@@ -84,5 +84,20 @@ $request['local_anchor_ids']=[42903];
 $v=nc110_classify($request,['3126'=>[$row]],[],[],[],[],[42903=>$hotel],[]);
 check(count($v['targets'])===2&&$v['targets'][0]['kind']!==$v['targets'][1]['kind'],'tv_and_local_are_distinct');
 check(nc110_classify(['catalog_id'=>NC110_PROTECTED],[],[],[],[],[],[],[])['state']==='protected_not_examined','protected_short_circuit');
+$review=nc110_review_rows(['rows'=>[$request,['catalog_id'=>NC110_PROTECTED]]],
+    [$observed,nc110_classify(['catalog_id'=>NC110_PROTECTED],[],[],[],[],[],[],[])],
+    ['source_facts'=>['3126'=>[['namespace'=>'operator_315','native_id'=>'849821',
+        'unique_catalog_in_saved_union'=>true,'raw'=>['raw_verified'=>true,'failures'=>[],
+            'references'=>[['raw_secret'=>'fixture-secret']]]]]],
+     'tv_proofs'=>['3126|funsun|42903'=>['producers'=>[['source_operation'=>'hotel-match-fixture',
+        'source_result_sha256'=>str_repeat('a',64),'audit'=>['state'=>'saved_tv_proof_verified','failures'=>[],
+            'raw_secret'=>'fixture-secret']]]]]]);
+check(count($review)===2&&$review[0]['native_checks'][0]['raw_verified']
+    &&$review[0]['tv_checks'][0]['producers'][0]['state']==='saved_tv_proof_verified','per_source_evidence_readback');
+check(!str_contains(w76_json($review),'fixture-secret')&&!str_contains(w76_json($review),'unrelated display name'),
+    'review_excludes_raw_and_history');
+check($review[1]['native_checks']===[]&&$review[1]['targets']===[]&&$review[1]['tv_checks']===[],
+    'protected_review_has_no_evidence_or_targets');
+check($review[0]['safe_to_write_now']===false&&$review[1]['safe_to_write_now']===false,'readback_never_grants_authority');
 rejects(fn()=>nc110_main(['runner','--execute']),'no_write_entrypoint');
 echo 'native110 checks: '.$checks."\n";
