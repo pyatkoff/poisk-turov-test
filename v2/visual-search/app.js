@@ -678,13 +678,40 @@ function resultCalendarModel(){
  const scope=calendarScope({search:s,filters:state.filters});
  return {s,days,prices,min,max,source,scope};
 }
-function calendarStripHTML({days,prices,min,max}){return days.map((day,i)=>`<button class="date-price ${prices[i]!==null&&prices[i]===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${prices[i]!==null?', от '+money(prices[i]):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${prices[i]===null?'—':money(prices[i])}</strong><span class="calendar-bar" style="--bar-height:${prices[i]===null?5:12+Math.round((prices[i]-min)/Math.max(1,max-min)*22)}px"></span></button>`).join('');}
+function calendarStripEntries({days,prices,min,max}){return days.map((day,i)=>{const price=prices[i];return {day,markup:`<button class="date-price ${price!==null&&price===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${price!==null?', от '+money(price):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${price===null?'—':money(price)}</strong><span class="calendar-bar" style="--bar-height:${price===null?5:12+Math.round((price-min)/Math.max(1,max-min)*22)}px"></span></button>`};});}
+function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
+let calendarStripObserver=null;
+const calendarDateMarkup=new WeakMap(),dirtyCalendarDates=new WeakSet();
+function markCalendarStripMutations(records,strip){
+ for(const record of records){let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==strip)root=root.parentElement;if(root&&root.parentNode===strip)dirtyCalendarDates.add(root);}
+}
+function observeCalendarStripMutations(strip){
+ if(!calendarStripObserver){calendarStripObserver=new MutationObserver(records=>markCalendarStripMutations(records,strip));calendarStripObserver.observe(strip,{subtree:true,childList:true,attributes:true,characterData:true});}
+ else markCalendarStripMutations(calendarStripObserver.takeRecords(),strip);
+}
+function parseCalendarDate(markup){const template=document.createElement('template');template.innerHTML=markup;return template.content.firstElementChild;}
+function paintCalendarStrip(strip,entries){
+ const html=entries.map(entry=>entry.markup).join('');observeCalendarStripMutations(strip);
+ if(!strip.childElementCount){strip.innerHTML=html;[...strip.children].forEach((node,index)=>calendarDateMarkup.set(node,entries[index]?.markup));calendarStripObserver.takeRecords();return;}
+ const keyed=new Map();for(const node of strip.children)if(node.dataset.date&&!keyed.has(node.dataset.date))keyed.set(node.dataset.date,node);
+ let cursor=strip.firstChild;
+ for(const {day,markup} of entries){
+  const previous=keyed.get(day);keyed.delete(day);
+  const node=previous&&!dirtyCalendarDates.has(previous)&&calendarDateMarkup.get(previous)===markup?previous:parseCalendarDate(markup);
+  calendarDateMarkup.set(node,markup);dirtyCalendarDates.delete(node);
+  if(node===cursor)cursor=cursor.nextSibling;
+  else if(cursor&&previous===cursor){strip.replaceChild(node,cursor);cursor=node.nextSibling;}
+  else strip.insertBefore(node,cursor);
+ }
+ while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+ calendarStripObserver.takeRecords();
+}
 function renderCalendarStrip(){
  loadResultCalendar();
  const model=resultCalendarModel(),{s,source,scope}=model;
  $('#calendar-caption').textContent=source;$('#calendar-caption').title=`${scope.destination} · ${guestsText(s)} · ${durationText(s)}${scope.filters.length?' · с выбранными фильтрами':''}`;
- $('#price-strip').setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
- $('#price-strip').innerHTML=calendarStripHTML(model);
+ const strip=$('#price-strip');strip.setAttribute('aria-busy',String(resultCalendar.phase==='loading'));
+ paintCalendarStrip(strip,calendarStripEntries(model));
  $('#clear-date').hidden=!state.selectedDate;
  refreshEmptyCalendarContext();
 }
