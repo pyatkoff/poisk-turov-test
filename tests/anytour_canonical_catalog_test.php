@@ -50,6 +50,12 @@ foreach ([['id'=>7002],['id'=>7001.0],['common'=>['description'=>'']],['common'=
 $legacySparse=['id'=>41,'name'=>'Historical sparse hotel','description'=>null,'images'=>[]];
 check(AnyTourCanonicalCatalog::initialProfile($legacySparse)['description']===null, 'historical sparse projection remains available for provenance repair');
 check(AnyTourCanonicalCatalog::creationContentIssues($legacySparse,null)!==[], 'same sparse source cannot create a NEW hotel');
+$regional='https://static.tourvisor.ru/hotel_pics/reg-400/22.jpg';
+$real='https://static.tourvisor.ru/hotel_pics/4266/real.jpg';
+$projected=AnyTourCanonicalCatalog::publicProfile(['name'=>'AYSU TUNC HOTEL','primaryImage'=>$regional,'images'=>[$regional,$real]]);
+check($projected['primaryImage']===$real && $projected['images']===[$real], 'regional placeholder removed from public canonical projection');
+$editorial=AnyTourCanonicalCatalog::publicProfile(['primaryImage'=>'https://fixture.test/our.jpg','images'=>['https://fixture.test/our.jpg',$regional]]);
+check($editorial['primaryImage']==='https://fixture.test/our.jpg' && $editorial['images']===['https://fixture.test/our.jpg'], 'real canonical primary preserved while placeholder gallery entry is hidden');
 
 if (in_array('--unit-only', $argv, true)) {
     echo "ANYTOUR_CANONICAL_PURE_OK checks=$checks SQL_NOT_RUN=1\n"; exit;
@@ -144,6 +150,17 @@ $canonical=$catalog->read(array_values($targets));
 check($canonical['items'][0]['name']==='Saved hotel one', 'real canonical reader materializes content');
 check($canonical['items'][1]['description']==='Second saved description', 'new hotel contains real saved description');
 check($canonical['items'][0]['catalog']==='anytour', 'own catalogue provenance');
+$storedOriginal=$pdo->query('SELECT profile_json FROM anytour_hotels WHERE id='.(int)$targets[7001])->fetchColumn();
+$placeholderProfile=$canonical['items'][0];unset($placeholderProfile['id'],$placeholderProfile['catalog'],$placeholderProfile['revision']);
+$placeholderProfile['primaryImage']=$regional;$placeholderProfile['images']=[$regional,'https://fixture.test/a.jpg'];
+$placeholderJson=AnyTourCanonicalCatalog::json($placeholderProfile);
+$placeholderWrite=$pdo->prepare('UPDATE anytour_hotels SET profile_json=?,profile_sha256=? WHERE id=?');
+$placeholderWrite->execute([$placeholderJson,hash('sha256',$placeholderJson),$targets[7001]]);
+$placeholderRead=$catalog->read([$targets[7001]])['items'][0];
+check($placeholderRead['primaryImage']==='https://fixture.test/a.jpg' && $placeholderRead['images']===['https://fixture.test/a.jpg'], 'real canonical read hides regional placeholder');
+$storedPlaceholder=$pdo->query('SELECT profile_json FROM anytour_hotels WHERE id='.(int)$targets[7001])->fetchColumn();
+check($storedPlaceholder===$placeholderJson, 'read projection never rewrites stored canonical profile');
+$placeholderWrite->execute([$storedOriginal,hash('sha256',$storedOriginal),$targets[7001]]);
 check(!isset($canonical['items'][0]['country']['id']), 'source geography IDs stay out of own profile');
 check(legacyDigest($pdo)===$legacyBefore, 'seed preserves all original catalogues and matches');
 $repeat=$catalog->seed($ids,$plan['source_sha256']);
