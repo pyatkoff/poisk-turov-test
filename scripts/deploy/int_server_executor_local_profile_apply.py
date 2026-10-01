@@ -225,7 +225,7 @@ MASS_DISPATCH=r"""    if mode=='local-profile-apply-4191' and operation=='int-an
 def remote_with_apply(core):
     r=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(r.count(definition)==1 and r.count(dispatch)==1 and r.count(collector)==2 and r.count(manifest)==1,'local_profile_apply_registration_source_drift')
-    old_dispatch=REMOTE_DISPATCH.replace("    if mode=='local-profile-apply-4191':", "    if mode=='local-profile-apply-4191' and operation not in ("+repr(MASS_OPERATION)+","+repr(MASS2_OPERATION)+"):",1)
+    old_dispatch=REMOTE_DISPATCH.replace("    if mode=='local-profile-apply-4191':", "    if mode=='local-profile-apply-4191' and operation!="+repr(MASS_OPERATION)+" and operation!="+repr(MASS2_OPERATION)+":",1)
     old_mass_dispatch=MASS_DISPATCH.replace("    if mode=='local-profile-apply-4191' and operation=='int-andromeda-local-profile-mass-apply71-4191-20261002-v1':", "    if mode=='local-profile-apply-4191' and operation=="+repr(MASS_OPERATION)+":",1)
     r=r.replace(definition,MASS2_HANDLER+MASS_HANDLER+REMOTE_HANDLER+definition,1).replace(dispatch,MASS2_DISPATCH+old_mass_dispatch+old_dispatch+dispatch,1).replace(collector,"    if mode not in ('"+MODE+"','reconcile',")
     literal='{'+', '.join(repr(v) for v in sorted(BUNDLE_FILES))+'}';replacement="    if mode=='"+MODE+"':\n        if not isinstance(files,dict) or set(files)!="+literal+": fail('local_profile_apply_manifest')\n    elif not isinstance(files,dict) or len(files)<20: fail('manifest')"
