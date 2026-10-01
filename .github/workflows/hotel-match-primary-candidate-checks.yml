@@ -8,6 +8,8 @@ on:
       - 'scripts/diagnostics/hotel_match_pending8_transition_v76.php'
       - 'scripts/diagnostics/hotel_match_raw_native_pending11_v78.php'
       - 'tests/hotel_match_primary_candidate_v1_test.php'
+      - 'scripts/diagnostics/hotel_match_shams_geography_saved_v1.php'
+      - 'tests/hotel_match_shams_geography_saved_v1_test.php'
       - '.github/workflows/hotel-match-primary-candidate-checks.yml'
 
 permissions:
@@ -49,3 +51,9 @@ jobs:
           php -l scripts/diagnostics/hotel_match_primary_candidate_v1.php
           php -l tests/hotel_match_primary_candidate_v1_test.php
           php tests/hotel_match_primary_candidate_v1_test.php
+      - name: Validate saved SHAMS geography evidence without provider or DB access
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_shams_geography_saved_v1.php
+          php -l tests/hotel_match_shams_geography_saved_v1_test.php
+          php tests/hotel_match_shams_geography_saved_v1_test.php
