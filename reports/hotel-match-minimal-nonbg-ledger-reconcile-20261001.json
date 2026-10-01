@@ -1,0 +1,241 @@
+{
+  "schema": "hotel-match-minimal-nonbg-ledger-reconcile/1",
+  "state": "checked_retained_request_ledger_only",
+  "created_at_utc": "2026-10-01T15:57:14Z",
+  "source_feature_sha": "a561bf8513c3ac66a77ac29714346f4789cce190",
+  "scope": {
+    "kind": "exact_non_bg_targets_from_four_candidate_and_mass83_reports",
+    "target_count": 11,
+    "target_tv_hotel_ids": [1151, 60766, 70943, 21679, 59115, 128, 70782, 80964, 109380, 1124, 159],
+    "fresh_current_census": false,
+    "provider_acquisition_performed": false,
+    "acceptance_evaluated": false
+  },
+  "inputs": {
+    "four_candidate_report_sha256": "88526ec892556883cdf2950dcad4c1d21ab59ab93216b9b5f3369e222dce4269",
+    "mass83_proof_minimization_report_sha256": "30094e7eb2bfaac57ff057d45b8b313d93e66c705b9cbb71bfaedbd69b2f81ae",
+    "v93_ledger_zip_sha256": "fcf30359d2dadd31ffee0398fac6ce8b20c84e2ab2c31746105bfaa2dcbecd28",
+    "v93_ledger_result_sha256": "8da64bc3ac54d707d335b8808b171f46a02ba0464536681bc40b741136df935c",
+    "v93_ledger_state": "completed_read_only_request_ledger"
+  },
+  "counts": {
+    "targets_examined": 11,
+    "targets_with_actual_request": 11,
+    "physical_request_receipts": 18,
+    "unique_prior_operations": 9,
+    "targets_touching_terminal_no_replay_operation": 7,
+    "targets_with_completed_read_only_operations_only": 4,
+    "targets_with_unknown_charged_operations": 0,
+    "targets_query_authorized_by_v93": 0,
+    "new_provider_http_scope_authorized": 0,
+    "accepted_links_added": 0
+  },
+  "operator_ids": {
+    "13": "ANEX",
+    "18": "Biblio-Globus",
+    "25": "FUN&SUN",
+    "43": "Intourist"
+  },
+  "rows": [
+    {
+      "tv_hotel_id": 1151,
+      "hotel_name": "DELPHIN PALACE DELUXE COLLECTION",
+      "source_candidate_id": "2000034121",
+      "required_lane": 43,
+      "ledger_missing_operator_ids": [13, 18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-current100-common4-acquire-1971-20260927-v80", "file": "tv-request-0048.json", "sha256": "bb48c775bcf2579bed10e7d1ba085224a8589ad77501bad9ccb2f33ff97f0133", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-acquire-1971-20260923-o100-n100-v1", "file": "tv-request-0113.json", "sha256": "c7c97db12e9f13f4e198de432b48c1d9fe58303c7d13b3f70aa1851adfec7a57", "state": "completed_read_only"}
+      ],
+      "classification": "target_lane_absent_after_two_completed_requests",
+      "do_not_repeat": "Do not repeat either retained common4 request or rename it as a new acquisition.",
+      "next_evidence": "Independent retained or newly reviewed Intourist identity evidence under a genuinely new context; the existing source raw Intourist 549 is not enough alone.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 60766,
+      "hotel_name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+      "source_candidate_id": "2000073063",
+      "required_lane": 13,
+      "ledger_known_lane_without_retained_exact_id": 13,
+      "ledger_missing_operator_ids": [18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1", "file": "tv-request-0822.json", "sha256": "e637b769667631d48e98f8fed0937f72afd44f9d42ceeba3df7d5b816c1425c6", "state": "terminal_wrapper_timeout_salvaged_no_replay"}
+      ],
+      "classification": "source_anex_raw_missing_and_prior_target_request_terminal_no_replay",
+      "do_not_repeat": "Do not replay the salvaged terminal request.",
+      "next_evidence": "Acquire the missing raw ANEX source hotelKey for source 2000073063 through a separately reviewed source-side operation before considering any new target context.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 70943,
+      "hotel_name": "RAIMOND HOTEL KUMKAPI",
+      "source_candidate_id": "2000062084",
+      "required_lane": 43,
+      "ledger_retained_exact": {"18": [102610105438]},
+      "ledger_missing_operator_ids": [13, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-current100-dedicated-account-acquire-1971-20260927-v82", "file": "tv-request-0093.json", "sha256": "979d3a457a16c36c1d397f3d6f27a5ba1b263051ea8d2cfa7800fcb5d2ae4bf7", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1", "file": "tv-request-0013.json", "sha256": "64bcb893ed4067c7931a522694ff0ce088b462995863ed17ebdf2290a2af210b", "state": "terminal_wrapper_timeout_salvaged_no_replay"}
+      ],
+      "classification": "required_intourist_lane_absent_after_completed_and_terminal_requests",
+      "do_not_repeat": "Do not replay the salvaged terminal request or the completed dedicated-account request.",
+      "next_evidence": "Independent Intourist target identity evidence for source native 18273; the retained Biblio-Globus token is cross-operator.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 21679,
+      "hotel_name": "BODRIUM HOTEL & SPA BOUTIQUE",
+      "source_candidate_id": "2000057636",
+      "required_lane": 43,
+      "ledger_retained_exact": {"43": [24891]},
+      "ledger_missing_operator_ids": [18, 25],
+      "requests": [
+        {"operation": "hotel-match-current100-common4-acquire-1971-20260927-v81", "file": "tv-request-0062.json", "sha256": "6dc5c08382f8b4edd8a5009c67d0181beea5d94a675d9682bb0467da32caf777", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1", "file": "tv-request-0035.json", "sha256": "caf6919add8231ae4a133bc244e18ab6cadf8ef3dcbf04aee2233ec89be56607", "state": "terminal_wrapper_timeout_salvaged_no_replay"}
+      ],
+      "classification": "target_intourist_proof_retained_source_intourist_hotelkey_missing",
+      "do_not_repeat": "No new Tourvisor target request is needed; do not replay either retained operation.",
+      "next_evidence": "Acquire the missing raw Intourist source hotelKey for source 2000057636 through a separately reviewed source-side operation.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 59115,
+      "hotel_name": "KIMERA LOUNGE BOUTIQUE",
+      "source_candidate_id": "2000037261",
+      "required_lane": 25,
+      "ledger_retained_exact": {"13": [18778]},
+      "ledger_missing_operator_ids": [18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1", "file": "tv-request-0001.json", "sha256": "f14b1d2d5456794dd3813170b8c4ed108cfbeb8ec32352c68dad31481cdc9fbf", "state": "terminal_wrapper_timeout_salvaged_no_replay"}
+      ],
+      "classification": "required_funsun_lane_absent_after_terminal_request",
+      "do_not_repeat": "Do not replay the salvaged terminal request.",
+      "next_evidence": "Independent FUN&SUN target identity evidence under a genuinely new reviewed context; retained ANEX 18778 is cross-operator.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 128,
+      "hotel_name": "ARABIA AZUR BEACH RESORT",
+      "source_candidate_id": "2000052591",
+      "required_lane": 43,
+      "ledger_retained_exact": {"13": [1328], "18": [102632874168], "25": [802930]},
+      "ledger_missing_operator_ids": [43],
+      "requests": [
+        {"operation": "hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1", "file": "tv-request-0237.json", "sha256": "2a9d2b180ac7cac105d3e40ffc54d10224b5fbd1cc6ca15fe8808de841bc665b", "state": "completed_read_only"}
+      ],
+      "classification": "required_intourist_lane_absent_after_completed_request",
+      "do_not_repeat": "Do not repeat the completed common4 request.",
+      "next_evidence": "Independent Intourist target identity evidence under a genuinely new reviewed context; other retained operator IDs are cross-operator.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 70782,
+      "hotel_name": "MY DREAM HOTEL",
+      "source_candidate_id": "2000068203",
+      "required_lane": 25,
+      "ledger_missing_operator_ids": [13, 18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-current100-dedicated-account-acquire-1971-20260927-v82", "file": "tv-request-0068.json", "sha256": "4963b19376cf0e2b893675b11d8fcbe1737a8bdc85136931084abe39a66599da", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r1-n899-v1", "file": "tv-request-0721.json", "sha256": "0cbd0747fa00a7c66730dc6ef3487ff1cbcd094d3d5ce38bb7532debdb9e3c7b", "state": "terminal_wrapper_timeout_salvaged_no_replay"}
+      ],
+      "classification": "required_funsun_lane_absent_after_completed_and_terminal_requests",
+      "do_not_repeat": "Do not replay either retained request.",
+      "next_evidence": "Independent FUN&SUN target identity evidence under a genuinely new reviewed context; preserve the source Intourist fact separately.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 80964,
+      "hotel_name": "MERAKI RESORT SHARM EL SHEIKH ADULTS ONLY 16+",
+      "source_candidate_id": "2000073045",
+      "required_lane": 43,
+      "ledger_retained_exact": {"25": [839186]},
+      "ledger_known_lane_without_retained_exact_id": 13,
+      "ledger_missing_operator_ids": [18, 43],
+      "requests": [
+        {"operation": "hotel-match-live234-tv-secondary-1971-20260923-o156-n78-v1", "file": "tv-request-0063.json", "sha256": "0476b7996a13a81fcb91000d2f90bd6c21848e79ef5b544f0776c12c49dbbb37", "state": "terminal_failed_no_replay"},
+        {"operation": "hotel-match-live30-common4-continuation-resume-1971-20260924-r2-n138-v1", "file": "tv-request-0205.json", "sha256": "c613287458547662d83474790d51e7eaf3e348b072e02c278333e2231a85eb69", "state": "completed_read_only"}
+      ],
+      "classification": "required_intourist_lane_absent_after_failed_terminal_and_completed_requests",
+      "do_not_repeat": "Do not replay the terminal_failed operation or repeat the completed continuation request.",
+      "next_evidence": "Independent Intourist target identity evidence under a genuinely new reviewed context; FUN&SUN 839186 is cross-operator.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 109380,
+      "hotel_name": "GRAND BAGOZ HOTEL",
+      "source_candidate_id": "2000109038",
+      "required_lane": 13,
+      "ledger_missing_operator_ids": [13, 18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-current100-dedicated-account-acquire-1971-20260927-v82", "file": "tv-request-0143.json", "sha256": "257cce17320d55b1dfbef302557fc2a6a6dc29e4f2c5d652aa9d7ab6b4ea8253", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-continuation-acquire-1971-20260923-c135-n1214-v1", "file": "tv-request-0211.json", "sha256": "56686ee8fe668c004d0d0c6048c46c3a4784bcc0b36874b14bf240d3f5bc4049", "state": "terminal_day_changed_no_replay"}
+      ],
+      "classification": "required_anex_lane_absent_after_completed_and_terminal_requests",
+      "do_not_repeat": "Do not replay the terminal day-changed operation or the completed dedicated-account request.",
+      "next_evidence": "Independent ANEX target identity evidence for source native 43661 under a genuinely new reviewed context.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 1124,
+      "hotel_name": "CLUB HOTEL SIDELYA HV-2",
+      "source_candidate_id": "163887",
+      "required_lane": 13,
+      "ledger_retained_exact": {"13": [8319]},
+      "ledger_missing_operator_ids": [18, 25, 43],
+      "requests": [
+        {"operation": "hotel-match-current100-common4-acquire-1971-20260927-v80", "file": "tv-request-0213.json", "sha256": "d4585e3f57237c35ca54a19a9ba614a4a0ec1a88c688e1ffcf3a29a55f579f8a", "state": "completed_read_only"},
+        {"operation": "hotel-match-live30-common4-acquire-1971-20260923-o100-n100-v1", "file": "tv-request-0239.json", "sha256": "64b920bd8414b427acdb6627a36bdab8da0fc8c3d6d5343a525215380bd0f452", "state": "completed_read_only"}
+      ],
+      "classification": "target_anex_proof_retained_source_anex_hotelkey_missing",
+      "do_not_repeat": "No new Tourvisor target request is needed; do not repeat either completed request.",
+      "next_evidence": "Acquire the missing raw ANEX source hotelKey for source 163887 through a separately reviewed source-side operation and compare it to target ANEX 8319.",
+      "safe_to_query_now": false
+    },
+    {
+      "tv_hotel_id": 159,
+      "hotel_name": "SUNRISE JUMAN HOTEL (EX. CORAL BEACH RESORT (MANAGED BY SUNRISE))",
+      "source_candidate_id": "2000029745",
+      "required_lane": 13,
+      "ledger_retained_exact": {"18": [102632942908], "25": [859940]},
+      "ledger_missing_operator_ids": [13, 43],
+      "preserved_anex_hotellist_tokens": [804, 44562],
+      "requests": [
+        {"operation": "hotel-match-live30-common4-acquire-1971-20260923-o0-n100-v1", "file": "tv-request-0001.json", "sha256": "b700d37753af24af07e5f9f289667ca71216d47db2fa770f2ce3f70f7423654e", "state": "completed_read_only"}
+      ],
+      "classification": "anex_selector_ambiguous_after_completed_request",
+      "do_not_repeat": "Do not repeat the completed common4/detail path to reproduce the same ambiguous multi-token selector.",
+      "next_evidence": "Independent ANEX selector disambiguation that preserves both 804 and 44562; name equality is insufficient.",
+      "safe_to_query_now": false
+    }
+  ],
+  "conclusion": {
+    "direct_replayable_target_ids": [],
+    "new_provider_http_scope_from_saved_evidence": [],
+    "source_side_raw_first": [
+      {"source_catalog_id": "2000057636", "operator": "Intourist", "target_tv_hotel_id": 21679},
+      {"source_catalog_id": "2000073063", "operator": "ANEX", "target_tv_hotel_id": 60766},
+      {"source_catalog_id": "163887", "operator": "ANEX", "target_tv_hotel_id": 1124}
+    ],
+    "independent_target_or_official_namespace_evidence_needed": [1151, 70943, 59115, 128, 70782, 80964, 109380, 159],
+    "same_context_replay_permitted": false,
+    "new_call_requires_genuinely_new_evidence_or_context": true,
+    "new_call_requires_fresh_daily_ledger_reservation": true,
+    "new_call_requires_separately_reviewed_exact_operation": true,
+    "acquisition_authorized": false
+  },
+  "limitations": [
+    "The v93 ledger is a retained 2026-09-27 request audit, not a fresh CURRENT target observation.",
+    "A prior request receipt proves the physical request occurred; it does not prove hotel identity or justify acceptance.",
+    "Terminal no-replay states remain terminal even when another completed operation also touched the same hotel.",
+    "Known registry lanes without retained exact native IDs are not promoted to raw operator proof.",
+    "This report does not authorize provider HTTP, a new execution contract, or any mapping write."
+  ],
+  "provider_http_calls": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "accepted_links_added": 0,
+  "safe_to_write_now": false,
+  "acquisition_authorized": false
+}
