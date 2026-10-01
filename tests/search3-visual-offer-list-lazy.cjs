@@ -39,3 +39,6 @@ function fixture(){
  assert(app.includes("case 'retry-offer-list':if(modalType==='all-offers')renderOfferList(true);"),'real event dispatcher exposes retry');
  console.log('PASS cold offer-list: zero bootstrap fetch; shared/warm request; newest view; close/replace cancellation; network/timeout/missing-owner retries; deferred history restore');
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+// Keep the same-owner inventory oracle on this existing lean/full CI entrypoint.
+require('./search3-visual-offer-list-inventory.cjs');
