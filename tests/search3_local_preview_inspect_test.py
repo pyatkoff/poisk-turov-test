@@ -37,7 +37,7 @@ class InspectContracts(unittest.TestCase):
         self.assertEqual(inspect.checked_request(self.event, self.env), {'run': 456})
 
     def test_old_or_pr_coordination_denied(self):
-        for issue in (2530, 996):
+        for issue in (3419, 2530, 996):
             event = copy.deepcopy(self.event)
             event['issue']['number'] = issue
             with self.subTest(issue=issue), self.assertRaises(ValueError):
