@@ -10,6 +10,7 @@ on:
       - 'scripts/deploy/int_server_executor_match_primary.py'
       - 'tests/int_server_executor_test.py'
       - 'tests/int_server_executor_anex_secret_transport_test.py'
+      - 'tests/int_server_executor_anex_secret_transport_test.py'
       - 'tests/int_server_executor_match_primary_test.py'
       - 'scripts/deploy/int_server_executor_local_profile_plan.py'
       - 'scripts/diagnostics/local_profile_plan_4191.php'
@@ -27,6 +28,8 @@ on:
       - 'tests/int_funsun_direction_store_server_readback_test.py'
       - 'scripts/diagnostics/local_profile_mass_plan_4191.php'
       - 'tests/int_server_executor_local_profile_mass_plan_test.py'
+      - 'scripts/diagnostics/local_profile_mass_apply_4191.php'
+      - 'tests/int_server_executor_local_profile_mass_apply_test.py'
   workflow_dispatch:
     inputs:
       owner_command:
@@ -69,6 +72,8 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_apply.py
           php -l scripts/diagnostics/local_profile_apply_4191.php
           python3 tests/int_server_executor_local_profile_apply_test.py -v
+          php -l scripts/diagnostics/local_profile_mass_apply_4191.php
+          python3 tests/int_server_executor_local_profile_mass_apply_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_acquire.py
           php -l scripts/diagnostics/local_profile_acquire_4191.php
           python3 tests/int_server_executor_local_profile_acquire_test.py -v
@@ -117,6 +122,8 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_apply.py
           php -l scripts/diagnostics/local_profile_apply_4191.php
           python3 tests/int_server_executor_local_profile_apply_test.py -v
+          php -l scripts/diagnostics/local_profile_mass_apply_4191.php
+          python3 tests/int_server_executor_local_profile_mass_apply_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_acquire.py
           php -l scripts/diagnostics/local_profile_acquire_4191.php
           python3 tests/int_server_executor_local_profile_acquire_test.py -v
