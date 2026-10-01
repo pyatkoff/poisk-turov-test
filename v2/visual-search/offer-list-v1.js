@@ -36,6 +36,21 @@ const offerRefinementLabels={departure:'Дата',flight:'Перелёт',room:'
 const offerRefinementAny={departure:'Любая дата',flight:'Любой перелёт',room:'Любой номер',meal:'Любое питание'};
 function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}
 function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?value:value;}
+function offerRefinementCounts(all,field,options){
+ const counts=new Map([...options].map(option=>[option.value,0])),length=all.length;
+ for(let i=0;i<length;i++){
+  if(!(i in all))continue;
+  const offer=all[i];let matches=true;
+  for(const current of offerRefinementFields){
+   if(current===field)continue;
+   const selected=offerView[current];if(selected&&(current==='departure'?offer.day:offer[current])!==selected){matches=false;break;}
+  }
+  if(!matches)continue;
+  counts.set('',counts.get('')+1);
+  const value=field==='departure'?offer.day:offer[field];if(value!==''&&counts.has(value))counts.set(value,counts.get(value)+1);
+ }
+ return counts;
+}
 function renderOfferRefinements(all,comparing){
  const host=$('#offer-local-selected');
  host.hidden=comparing||!offerRefinementFields.some(field=>offerView[field]);
@@ -46,10 +61,10 @@ function renderOfferRefinements(all,comparing){
   const hasChoice=new Set(all.map(o=>field==='departure'?o.day:o[field])).size>1;
   const visible=comparing?field!=='departure':hasChoice||!!offerView[field];
   select.closest('label').hidden=!visible;if(visible)visibleFields.push(field);
+  const counts=comparing?null:offerRefinementCounts(all,field,select.options);
   for(const option of select.options){
    if(!option.dataset.baseLabel)option.dataset.baseLabel=option.textContent;
-   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;
-   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(count)}`;
+   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;
   }
  }
  $('.offer-filter-disclosure').hidden=!comparing&&!visibleFields.length;
