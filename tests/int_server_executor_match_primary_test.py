@@ -764,4 +764,82 @@ class ShamsGuardedWriteRegistrationTest(unittest.TestCase):
                 with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate=mutate)):
                     with self.assertRaises(RuntimeError):ns['run_match_shams_write'](stage)
 
+class Live30TargetCatalogRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.TARGET_MODE+' '+registration.TARGET_OPERATION+' '+registration.TARGET_BATCH
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.TARGET_OPERATION
+        ns['payload']=dict(batch=registration.TARGET_BATCH,maximum_writes=0,provider_http_calls=0)
+        runner=stage/'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_TARGET_HANDLER,ns);return ns,stage,root
+
+    def response(self,kwargs,mutate=None):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR'])
+        data=dict(state='completed_tv_live30_target_catalog',operation=registration.TARGET_OPERATION,source_sha=SOURCE,
+            batch=registration.TARGET_BATCH,captured_at_utc='2026-10-01T12:00:00Z',row_count=1,
+            provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True,
+            rows=[dict(id=420,name='SHAMS ALAM RESORT',country_id='5',country_name='Египет',region_name='Марса Алам',
+                subregion_name=None,category='4',is_active=True,latitude=24.6907006,longitude=35.0835745,
+                accepted_samo_ids=['9501'],manual_hold=False,exclusion_hold=False)])
+        if mutate:mutate(data)
+        raw=json.dumps(data);(child/'result.json').write_text(raw)
+        receipt={k:v for k,v in data.items() if k!='rows'}
+        receipt['result_sha256']=hashlib.sha256(raw.encode()).hexdigest();(child/'receipt.json').write_text(json.dumps(receipt))
+        return types.SimpleNamespace(returncode=0,stdout=raw,stderr='')
+
+    def test_scope_collector_bypass_and_source_inventory(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed['maximum_writes'],0);self.assertEqual(parsed['provider_http_calls'],0)
+        for body in (self.body+' retry',self.body.replace(registration.TARGET_BATCH,registration.NATIVE_BATCH),
+                     self.body.replace(registration.TARGET_OPERATION,registration.TARGET_OPERATION+'-retry')):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        for key,value in (('maximum_writes',1),('provider_http_calls',1),('batch',registration.NATIVE_BATCH)):
+            with self.assertRaises(ValueError):registration.activate(self.core,parsed|{key:value})
+        registration.activate(self.core,parsed)
+        self.assertTrue(set(registration.TARGET_SOURCE_FILES).issubset(self.core.FIXED))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        for node in ast.walk(ast.parse(self.core.REMOTE)):
+            if (isinstance(node,ast.If) and isinstance(node.test,ast.Compare) and isinstance(node.test.left,ast.Name)
+                    and node.test.left.id=='mode' and isinstance(node.test.ops[0],ast.NotIn)):
+                self.assertFalse(eval(compile(ast.Expression(node.test),'<guard>','eval'),{},dict(mode=registration.TARGET_MODE)))
+        entry=load('target_catalog_stock_entry','scripts/deploy/int_server_executor_anex_secret_transport.py')
+        self.assertNotIn(registration.TARGET_MODE,entry.DIRECT_ANEX_MODES)
+        self.assertNotIn(registration.TARGET_MODE,entry.SUPPLIER_SLOT_MODES)
+
+    def test_bound_occupied_target_result_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw)) as call:
+                out=ns['run_match_tv_live30_target_catalog'](stage)
+                self.assertEqual(out['summary']['rows'][0]['accepted_samo_ids'],['9501'])
+                self.assertFalse(out['summary']['safe_to_write_now'])
+                self.assertEqual((root/registration.TARGET_OPERATION/'reservation.json').stat().st_mode&0o777,0o600)
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog'](stage)
+                self.assertEqual(call.call_count,1)
+                argv=call.call_args.args[0];self.assertIn('allow_url_fopen=0',argv)
+                self.assertNotIn('ANEX',str(call.call_args.kwargs['env']))
+
+    def test_untrusted_projection_cannot_become_authority(self):
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(no_replay=1),lambda d:d.update(safe_to_write_now=0),
+            lambda d:d.update(row_count=2),lambda d:d['rows'][0].update(latitude=91),
+            lambda d:d['rows'][0].update(raw_history='secret'),lambda d:d['rows'][0].update(name='https://secret.example/'),
+            lambda d:d['rows'][0].update(accepted_samo_ids=['native:9501']),
+            lambda d:d.update(rows=d['rows']*2,row_count=2)]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog'](stage)
+
+    def test_unknown_read_outcome_stays_consumed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('php',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_tv_live30_target_catalog'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog'](stage)
+                self.assertEqual(call.call_count,1)
+
 if __name__=='__main__':unittest.main()
