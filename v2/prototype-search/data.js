@@ -274,14 +274,22 @@
     const region=text(h.region).trim(),subRegion=text(h.subRegion).trim();
     return {id:own,legacyIds:(h.canonicalLegacyIds || []).map(String),name:text(h.name),country:String(s.country),region,subRegion,resort:subRegion||region,stars:Number(h.category)||0,rating:rating>0&&rating<=ratingScale?rating*5/ratingScale:null,beach:null,family:null,spa:null,pool:null,amenities:amenities(h),photos:[...new Set(photos)],note:text(h.description),tag:'',raw:h,offers:[]};
   }
+  function localStayName(t,h,kind){
+    const stay=t?.localStay,part=stay&&stay[kind];
+    if(!stay||stay.source!=='anytour-hotel-stay-v2'||!part||part.kind!==kind||part.hotelId!==h.id
+      ||!Number.isSafeInteger(part.id)||part.id<1||!Number.isSafeInteger(part.revision)||part.revision<1)return '';
+    const name=typeof part.nameRu==='string'&&part.nameRu.length<=255&&!/[\u0000-\u001f\u007f]/.test(part.nameRu)?part.nameRu.trim():'';
+    const key=typeof part.localKey==='string'&&part.localKey.length<=128&&!/[\u0000-\u001f\u007f]/.test(part.localKey)?part.localKey.trim():'';
+    return name&&key?name:'';
+  }
   function offer(t, h, s, index) {
     const price=amount(t.price), day=date(t.date), nights=Number(t.nights);
     if(!price || !day || !Number.isInteger(nights) || nights<1) return null;
     const provider=String(t.provider||'tourvisor').toLowerCase(),plan=mealPlan(t,provider);
     const rawMeal=[text(t.meal),text(t.meal?.fullName),text(t.meal?.russianName)].map(value=>value.trim()).find(Boolean)||'';
-    const displayMeal=meal(t.meal)||rawMeal;
-    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
-      mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
+    const displayMeal=meal(t.meal)||rawMeal,localMeal=localStayName(t,h,'meal'),localRoom=localStayName(t,h,'room');
+    return {key:encodeURIComponent(`${provider}:${String(t.id)}`),hotelId:h.id,day,nights,variant:index,total:price,returnDay:plus(day,nights),room:localRoom||text(t.roomType)||'Номер уточняется',placement:text(t.placement),adults:s.adults,ages:[...s.ages],origin:s.origin,
+      mealPlanId:plan?.id??null,mealPlanCode:plan?.code||'',mealFacet:plan?.nameRu||'',meal:localMeal||plan?.nameRu||displayMeal||'Питание уточняется',mealRaw:rawMeal,
       operator:operator(t.operator)||'Туроператор уточняется',flight:t.isCharter===true?'charter':t.isCharter===false?'regular':'unknown',cached:t.cachedListing===true,provider,raw:t,search:structuredClone(s),fuel:t.fuelCharge??null,flightChoiceId:null};
   }
   function project(list,s) {
