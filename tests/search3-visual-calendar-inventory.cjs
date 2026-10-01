@@ -178,7 +178,10 @@ function facetCountRecords(candidate,checkReference=true){
  vm.runInContext(section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;globalThis.ageCalls=0;const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',work);
  const original=values.map(value=>hs.filter(h=>work.hotelOffers(h,{...scope,filters:{...scope.filters,operators:[value]},firstOnly:true}).length).length),before=work.ageCalls;
  work.ageCalls=0;const batched=work.facetCounts(scope,'operators',values),after=work.ageCalls;
- assert.deepEqual(values.map(value=>batched.get(value)),original);assert.equal(before,86000);assert.equal(after,4100);
- work.ageCalls=0;const missing=work.facetCounts(scope,'operators',[...values,'missing']);assert.equal(missing.get('missing'),0);assert.equal(work.ageCalls,4100,'already-counted identities do not repeat predicate work');
- console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication guards; age serializations ${before}->${after}; supplier/lead HTTP 0`);
+ assert.deepEqual(values.map(value=>batched.get(value)),original);assert.equal(before,86000);assert.equal(after,4001);
+ work.ageCalls=0;const missing=work.facetCounts(scope,'operators',[...values,'missing']);assert.equal(missing.get('missing'),0);assert.equal(work.ageCalls,4001,'already-counted identities do not repeat predicate work');
+ vm.runInContext('const originalFacetPredicate=hotelOfferPredicate;hotelOfferPredicate=function(...args){globalThis.facetPredicateCalls++;return originalFacetPredicate(...args)};',work);work.facetPredicateCalls=0;
+ for(const [group,options]of Object.entries({meals:['AI','BB'],operators:['A','B'],flight:['regular','charter']}))work.facetCounts(scope,group,options);
+ assert.equal(work.facetPredicateCalls,3,'one invariant offer predicate per non-hotel facet pass');
+ console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication guards; age serializations ${before}->${after}; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);
 }
