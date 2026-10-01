@@ -1,9 +1,9 @@
 # poisk-turov-test — Autopilot Rules
 
-## Текущий журнал координации — 2026-09-22
+## Текущий журнал координации — 2026-10-01
 
-Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
-#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+Все новые claims, handoff, результаты и разрешённые команды: [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
+#3419, #2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
 При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
 Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
 Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
@@ -15,7 +15,7 @@ Read the [central development plan](https://github.com/pyatkoff/poisk-turov-test
 The inherited root AUTOPILOT_STATE and old Search3 next_action below are historical
 for this integration branch, not the current whole-site queue. Keep all existing
 owner/security/production gates. INT, temporary addon SEARCH, SITE and SEO have
-separate owners under #3419; do not copy this old base over the current release.
+separate owners under #4217; do not copy this old base over the current release.
 
 
 ## Product mission

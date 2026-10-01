@@ -1,9 +1,9 @@
 # poisk-turov-test — Autopilot Roadmap
 
-## Текущий журнал координации — 2026-09-22
+## Текущий журнал координации — 2026-10-01
 
-Все новые claims, handoff, результаты и разрешённые команды: [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419).
-#2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+Все новые claims, handoff, результаты и разрешённые команды: [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
+#3419, #2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
 При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
 Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
 Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
@@ -15,7 +15,7 @@ Read the [central development plan](https://github.com/pyatkoff/poisk-turov-test
 The inherited root AUTOPILOT_STATE and old Search3 next_action below are historical
 for this integration branch, not the current whole-site queue. Keep all existing
 owner/security/production gates. INT, temporary addon SEARCH, SITE and SEO have
-separate owners under #3419; do not copy this old base over the current release.
+separate owners under #4217; do not copy this old base over the current release.
 
 
 Updated: 2026-09-04
@@ -79,7 +79,7 @@ Search3 candidate `470474414a3930f1f6c095a8dbbc187075b253c0` is published in the
 
 Draft #1334 contains the production import, old-search route, client-facing copy, independent home night ranges/child ages, and date/night/party-preserving links from snapshot/month pages. These changes are prepared and checked, not published on the main site. The previous 7.3/10 score is historical; no new whole-product score has been assigned.
 
-Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419):
+Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217):
 
 1. Keep the published whole-site preview isolated and exact; source `47e54a02`, deploy `33942600148`, deployment record #1346.
 2. Complete physical iPhone/Safari acceptance. Desktop home → search → hotel → tour → flight → summary → lead form passed without sending a lead; deterministic Chromium also covers empty-flight retry, recovery and the fallback path to the lead form without invoking lead transport.
