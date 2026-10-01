@@ -4,8 +4,10 @@ import ast,hashlib,io,json,tarfile
 from pathlib import Path
 MODE='local-profile-acquire-4191';BATCH='local4191-source320-20261001'
 READBACK_MODE='local-profile-acquire-readback-4191';READBACK_BATCH='local4191-source320-readback-20261001'
+SALVAGE_MODE='local-profile-acquire-salvage-4191';SALVAGE_BATCH='local4191-source320-salvage-20261001'
 OPERATION='int-andromeda-local-profile-acquire-4191-source320-20261001-v1'
 READBACK_OPERATION='int-andromeda-local-profile-acquire-readback-4191-20261001-v1'
+SALVAGE_OPERATION='int-andromeda-local-profile-acquire-salvage-4191-source320-20261001-v1'
 RUNNER='scripts/diagnostics/local_profile_acquire_4191.php'
 SOURCE_FILES=('v2/data/db-v1.php','v2/data/tourvisor-client-v1.php','v2/data/hotel-details-v1.php')
 BUNDLE_FILES=SOURCE_FILES+(RUNNER,)
@@ -16,12 +18,15 @@ def register_parser(core):
     def parse(body):
         if not body.startswith(core.PREFIX):return original(body)
         parts=body[len(core.PREFIX):].split()
-        if len(parts)<2 or parts[1] not in (MODE,READBACK_MODE):return original(body)
+        if len(parts)<2 or parts[1] not in (MODE,READBACK_MODE,SALVAGE_MODE):return original(body)
         need(len(parts)==4,'local_profile_acquire_command_shape');source,mode,operation,batch=parts
         need(core.SHA_RE.fullmatch(source) is not None,'source_sha')
         if mode==READBACK_MODE:
             need(operation==READBACK_OPERATION,'local_profile_acquire_readback_operation');need(batch==READBACK_BATCH,'local_profile_acquire_readback_batch')
             return {'source_sha':source,'mode':mode,'operation_id':operation,'batch':READBACK_BATCH,'maximum_hotel_http_calls':0,'maximum_profile_writes':0}
+        if mode==SALVAGE_MODE:
+            need(operation==SALVAGE_OPERATION,'local_profile_acquire_salvage_operation');need(batch==SALVAGE_BATCH,'local_profile_acquire_salvage_batch')
+            return {'source_sha':source,'mode':mode,'operation_id':operation,'batch':SALVAGE_BATCH,'maximum_hotel_http_calls':0,'maximum_profile_writes':0}
         need(operation==OPERATION,'local_profile_acquire_operation');need(batch==BATCH,'local_profile_acquire_batch')
         return {'source_sha':source,'mode':mode,'operation_id':operation,'batch':BATCH,'maximum_hotel_http_calls':320,'maximum_profile_writes':0}
     core.parse_command=parse
@@ -54,6 +59,27 @@ def run_local_profile_acquire_4191(stage):
     if run.returncode!=0 or run.stderr.strip():fail('local_profile_acquire_terminal_nonzero_no_replay')
     return data
 """
+REMOTE_SALVAGE=r"""
+def run_local_profile_acquire_salvage_4191(stage):
+    if (operation!='int-andromeda-local-profile-acquire-salvage-4191-source320-20261001-v1' or payload.get('batch')!='local4191-source320-salvage-20261001' or payload.get('maximum_hotel_http_calls')!=0 or payload.get('maximum_profile_writes')!=0 or not isinstance(payload.get('local_profile_control_sha'),str)):fail('local_profile_acquire_salvage_scope')
+    runner=stage/'scripts/diagnostics/local_profile_acquire_4191.php'
+    if not safe_file(runner,2*1024*1024):fail('local_profile_acquire_salvage_runner')
+    env={k:os.environ[k] for k in ('PATH','HOME','LANG','LC_ALL') if k in os.environ};env.update({'ANYTOUR_ROOT':str(project),'LOCAL_PROFILE_ACQUIRE_DIR':str(op),'LOCAL_PROFILE_SOURCE_SHA':source,'LOCAL_PROFILE_CONTROL_SHA':payload['local_profile_control_sha']})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_connect,exec,shell_exec,system,passthru,popen,proc_open'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','disable_functions='+disabled,str(runner),'--salvage-source320'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    path=op/'local-acquire-salvage-receipt.json'
+    if not safe_file(path,65536):fail('local_profile_acquire_salvage_terminal_missing_no_replay')
+    data=safe_json(path,65536);expected={'schema_version','state','operation_id','source_sha','control_source_sha','batch','private_plan_sha256','requested_profiles','repaired_details','catalog_hotel_inserts','supplier_calls','provider_http_calls','profile_writes','mapping_writes','schema_writes','readback_verified'}
+    if (set(data)!=expected or data.get('state')!='salvaged_verified' or data.get('operation_id')!=operation or data.get('source_sha')!=source or data.get('requested_profiles')!=320 or data.get('repaired_details')!=320 or data.get('private_plan_sha256')!='a2306ab97e596b5df3d3eb54e85948c0e69a29237a9e96d697017db1cd902988' or any(data.get(k)!=0 for k in ('supplier_calls','provider_http_calls','profile_writes','mapping_writes','schema_writes')) or data.get('readback_verified') is not True):fail('local_profile_acquire_salvage_receipt_contract')
+    if run.returncode!=0 or run.stderr.strip():fail('local_profile_acquire_salvage_terminal_nonzero_no_replay')
+    return data
+"""
+REMOTE_SALVAGE_DISPATCH=r"""    if mode=='local-profile-acquire-salvage-4191':
+        result['local_profile_acquire_salvage']=run_local_profile_acquire_salvage_4191(stage);result['supplier_calls']=0;result['database_writes']=320+result['local_profile_acquire_salvage']['catalog_hotel_inserts'];result['profile_writes']=0;result['mapping_writes']=0;result['schema_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True;result['status']='complete'
+"""
 REMOTE_READBACK=r"""
 def run_local_profile_acquire_readback_4191():
     if (operation!='int-andromeda-local-profile-acquire-readback-4191-20261001-v1' or payload.get('batch')!='local4191-source320-readback-20261001'
@@ -83,10 +109,14 @@ def remote_with_acquire(core):
     literal='{'+', '.join(repr(v) for v in sorted(BUNDLE_FILES))+'}';replacement="    if mode=='"+MODE+"':\n        if not isinstance(files,dict) or set(files)!="+literal+": fail('local_profile_acquire_manifest')\n    elif not isinstance(files,dict) or len(files)<20: fail('manifest')";r=r.replace(manifest,replacement,1);ast.parse(r);return r
 def activate(core,command):
     mode=command.get('mode')
-    if mode not in (MODE,READBACK_MODE):return
+    if mode not in (MODE,READBACK_MODE,SALVAGE_MODE):return
     expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),mode,str(command.get('operation_id','')),str(command.get('batch',''))]));need(command==expected,'local_profile_acquire_authorized_shape')
     if mode==MODE:
         core.REMOTE=remote_with_acquire(core);core.bundle_source=bundle_source;return
+    if mode==SALVAGE_MODE:
+        r=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')";need(r.count(definition)==1 and r.count(dispatch)==1 and r.count(collector)==2 and r.count(manifest)==1,'local_profile_acquire_salvage_source_drift')
+        r=r.replace(definition,REMOTE_SALVAGE+definition,1).replace(dispatch,REMOTE_SALVAGE_DISPATCH+dispatch,1).replace(collector,"    if mode not in ('"+SALVAGE_MODE+"','reconcile',")
+        literal='{'+', '.join(repr(v) for v in sorted(BUNDLE_FILES))+'}';replacement="    if mode=='"+SALVAGE_MODE+"':\n        if not isinstance(files,dict) or set(files)!="+literal+": fail('local_profile_acquire_salvage_manifest')\n    elif not isinstance(files,dict) or len(files)<20: fail('manifest')";core.REMOTE=r.replace(manifest,replacement,1);ast.parse(core.REMOTE);core.bundle_source=bundle_source;return
     r=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')";need(r.count(definition)==1 and r.count(dispatch)==1 and r.count(manifest)==1,'local_profile_acquire_readback_source_drift')
     literal='{'+', '.join(repr(v) for v in sorted(BUNDLE_FILES))+'}'
     replacement="    if mode=='"+READBACK_MODE+"':\n        if not isinstance(files,dict) or set(files)!="+literal+": fail('local_profile_acquire_readback_manifest')\n    elif not isinstance(files,dict) or len(files)<20: fail('manifest')"

@@ -15,6 +15,7 @@ class AcquireContract(unittest.TestCase):
   rb=c.parse_command(f'{c.PREFIX}{sha} {self.m.READBACK_MODE} {self.m.READBACK_OPERATION} {self.m.READBACK_BATCH}')
   self.assertEqual(rb['maximum_hotel_http_calls'],0);self.assertEqual(rb['maximum_profile_writes'],0)
   self.m.activate(c,rb);self.assertIn('local-profile-acquire-readback-4191',c.REMOTE);self.assertEqual(c.bundle_source,self.m.bundle_source)
+  c2=Core();self.m.register_parser(c2);sv=c2.parse_command(f'{c2.PREFIX}{sha} {self.m.SALVAGE_MODE} {self.m.SALVAGE_OPERATION} {self.m.SALVAGE_BATCH}');self.assertEqual(sv['maximum_hotel_http_calls'],0);self.m.activate(c2,sv);self.assertIn('local-profile-acquire-salvage-4191',c2.REMOTE)
  def test_remote_contract(self):
   c=Core();self.m.register_parser(c);cmd={'source_sha':'a'*40,'mode':self.m.MODE,'operation_id':self.m.OPERATION,'batch':self.m.BATCH,'maximum_hotel_http_calls':320,'maximum_profile_writes':0};self.m.activate(c,cmd)
   self.assertIn("local-profile-acquire-4191",c.REMOTE);self.assertIn("rate_interval_ms",self.m.REMOTE_HANDLER)
