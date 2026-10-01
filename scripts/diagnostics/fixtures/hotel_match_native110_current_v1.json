@@ -1,0 +1,1956 @@
+{
+  "batch": "native110-20260928",
+  "protected_catalog_id": "2000086118",
+  "rows": [
+    {
+      "catalog_id": "3126",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "9e215d77516c7402c63103a2b032bac1103e2871a86172fbaef3e028b736fbc9",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "849821"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "849821",
+          "operator": "funsun",
+          "tv_hotel_id": 42903,
+          "tv_native_id": "849821"
+        }
+      ]
+    },
+    {
+      "catalog_id": "9501",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "ede2bff4e244dfbb5d0d6ac63169af85a031a3bb67385aa077104a8237b9d5a2",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "835"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "24402"
+        ]
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "24402",
+          "operator": "intourist",
+          "tv_hotel_id": 420,
+          "tv_native_id": "24402"
+        }
+      ]
+    },
+    {
+      "catalog_id": "13293",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "efed6bc3f6f3b0768dac1b8c1ba714a1cbd473373a5146d3d258b11388bdfc8d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "1655"
+        ],
+        "bg": [
+          "610184500"
+        ],
+        "funsun": [],
+        "intourist": [
+          "27079"
+        ]
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610184500",
+          "operator": "bg",
+          "tv_hotel_id": 367,
+          "tv_native_id": "102610184500"
+        }
+      ]
+    },
+    {
+      "catalog_id": "60328",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "34d5b423c7cb48d38e340e8cd82f122eadbf7eda10e83db836e87f051f75ac51",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625162113"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "625162113",
+          "operator": "bg",
+          "tv_hotel_id": 9242,
+          "tv_native_id": "102625162113"
+        }
+      ]
+    },
+    {
+      "catalog_id": "205729",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "3a14c5ac5a683bb68691b2e8b15c827882b0c07e68ecedc1744f20ed2fdb9938",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625414997"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "625414997",
+          "operator": "bg",
+          "tv_hotel_id": 9283,
+          "tv_native_id": "102625414997"
+        }
+      ]
+    },
+    {
+      "catalog_id": "475947",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "52ef77ed3c7df5f34f5bf1f6e1f1f7d66b0505ec174bd74559536dcc250c1078",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "751870"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "751870",
+          "operator": "funsun",
+          "tv_hotel_id": 28529,
+          "tv_native_id": "751870"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000034238",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7e5c4c6df9965bd5b39d383fad33c960409f466b65db871ac47ecadc5b1dac71",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "211585"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "211585",
+          "operator": "funsun",
+          "tv_hotel_id": 16944,
+          "tv_native_id": "211585"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000041008",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "b5e01e1200b9db97f0cdcc522da0ee66d7280c074e420bb7b0db96016a19621d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610121438"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610121438",
+          "operator": "bg",
+          "tv_hotel_id": 62868,
+          "tv_native_id": "102610121438"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000052316",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "74d6e71cf27927d4edd5ef9da290aa155ace394cac7b09ecf23063e91375389c",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610144591"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610144591",
+          "operator": "bg",
+          "tv_hotel_id": 70457,
+          "tv_native_id": "102610144591"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000059209",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "40231ac234d8fedebdba5a9d09e1a3013a5cb6174a1daada51d4d7aa2f02af43",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610155352"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610155352",
+          "operator": "bg",
+          "tv_hotel_id": 67000,
+          "tv_native_id": "102610155352"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000060910",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "a9dcf24b6839315e9fdef05ac65bc19eba094144353bd943b282cbfd683feaf4",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610175943"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610175943",
+          "operator": "bg",
+          "tv_hotel_id": 72889,
+          "tv_native_id": "102610175943"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000062548",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "62a68c78644e3f5fc0f5cdb8989257e32387bf4bb14fc62092704f90993bf4fd",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610149698"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610149698",
+          "operator": "bg",
+          "tv_hotel_id": 72865,
+          "tv_native_id": "102610149698"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000062557",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "ca8cde45a2b5b69700e891542289338fc7e03fd6ccf381d11a9493e36d887843",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610179507"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610179507",
+          "operator": "bg",
+          "tv_hotel_id": 75791,
+          "tv_native_id": "102610179507"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000071830",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "a07e46f8599d4634a6885e33e82a28dab72ede87a0b381108bd6d0939ee09139",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610210401"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610210401",
+          "operator": "bg",
+          "tv_hotel_id": 15902,
+          "tv_native_id": "102610210401"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000081107",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "07daafa72b2332aa82a55c0ffb40045242ded26dc2a2c4e1417b273e24040600",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610227700"
+        ],
+        "funsun": [],
+        "intourist": [
+          "32601"
+        ]
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610227700",
+          "operator": "bg",
+          "tv_hotel_id": 83106,
+          "tv_native_id": "102610227700"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000086021",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "b9a5cd19e6c1c37c357004ac2738a0ec46c5051791e83675d7fe9454206e60db",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "668981793"
+        ],
+        "funsun": [],
+        "intourist": [
+          "25796"
+        ]
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "668981793",
+          "operator": "bg",
+          "tv_hotel_id": 316,
+          "tv_native_id": "102668981793"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000086129",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "5a806f36c5793b5a4b6da5713b60f289082ac9d06146f77836c4bbaa942fbc26",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610160139"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610160139",
+          "operator": "bg",
+          "tv_hotel_id": 75538,
+          "tv_native_id": "102610160139"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000087863",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "fe3696db0f80437e2875f247a569b4fc92f86b6c754ac773cef7b23bb61db70e",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610222069"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "candidate_current_checks_required",
+      "tv_candidates": [
+        {
+          "native_id": "610222069",
+          "operator": "bg",
+          "tv_hotel_id": 99582,
+          "tv_native_id": "102610222069"
+        }
+      ]
+    },
+    {
+      "catalog_id": "1045",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "2bfaf40e3cc573fe82e3f62d1f110a71d3dbcabee9fd51bbde55b1c4be981d11",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "7660",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "537408e4768ce0913c16db7a5cda5cc0e97fe74d1bcc99eaa7daf63bdeb085f8",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "8984",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "c698a8de0b2e63f6cd13a07240254316268dee9761469674c997a1e212c1c2fe",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "125393",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "ceaeafa680b50d2c564f4913062a570341c84a1919344814d041e9f7092c2f48",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "149710",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "132a1daed25b740de3e44c39f8c88fc8f84f1da721d21270b991e500b9338c15",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "155330",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "69512f963d871a936e22c8293159a907b8bf185cffb5a27622da1c50ed4b4acd",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "163887",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "68805396c525fbbebfc77f5de1c9264625c96e2149bf4089c741a70c6051fa46",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000034174",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7cf739648c1b4d89f8fe82babc7a93ab1a5f841af5105324c3b158a47eb16d4d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000037973",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "e625279aa855f770f934962515ef93cb4d4a98781ce73dad59c0d3f08c9d0714",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000049502",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "89ae91295729d0ac855b0f8c256028c04a724a8f3ca0e7d27cbfd29419d72a1b",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000064940",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "aea341c14acf6bd41bbf99c81a2c4161f7797276ce50719658dad48cf53ca181",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000069006",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "bd9c09149a56b9aee67b595fa1e68aa275fc669813188c6389cac64f59b7e45d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000073063",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0f8a5e6d4314d386f50706bf98be6fb363380d9906853298bbbb8ca033c5e67a",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000095339",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "937b54647f322c15c0bc12fafb40a0c6d72e89736bc88eca1c4f9f0641385ad0",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000105435",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "d474205cc697eb960190f5b872e047260d3625172b03904bc76c9134d2c4b818",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000108645",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "035c827a8878738e686cdf4d026b7bad62e089cc7c83cdaf4ba184e75270a3f6",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000121312",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0e7f4901f287e2632c91b1ff1087c66d35bb30afbb971d510df48dc710cb5c7e",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000121380",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "82d5f26898755f40ec506f4fd342dec00035064804f0eee3c39fe9bf8865b24f",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000121381",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "c1f11db05d40f9b8306a66b553487e33f07d7743a93d99fe08ffb815b841b7a9",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "missing_native_id",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "3888",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "cc8c0e2090b4daf9b0fa7b4549c8ae331aee274217f8a1d2f026660beae761b0",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "698991"
+        ],
+        "intourist": [
+          "17345"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "5906",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "85acaf6792bacbb5241cdfb9feecd133bf9ab98b367430a520609e08747b37af",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625470455"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "9180",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "9f909ed04362dd1ea234ca97b40985c1844bc1b9175cb91b4fe91da28d2acd91",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "29619"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "35425",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "b931543862bdef0d43204509ea14d655f27040ddfa5f28f3fe5c6572a68af3c9",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076162"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "49144",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "3e81eb3384923b061cb5b88fbcc2366221628543487f6435c1ebe51b061d0141",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625265955"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "84071",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "1df00fbfd1fd4c6d8e4c72628c8b4a1e83d16f7b609991caf886853ffb1e7c5d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "616104496"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "150674",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "795c374f1b35e316cfb4cc8da05c84b15a6831553d95850918c61f9a46b2b443",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625162073"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "182522",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "9e9d80c2bcd3d752fc76308a1f8a1895c70d0df9db12e80137cb6baecab07589",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "787042"
+        ],
+        "intourist": [
+          "23547"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "280064",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "f85d1f31008ce507af815923a77d91d929bd4203ab3cad55dd0beb298b8ac48d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "626262642"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "283712",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "3f95ce85c470f04643a25ba4209e8529e50219ac1eb04c1e302b707e3770be8b",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "3541"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "299499",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0259a1934e4ad7da0eae5295e16652dbfea1b01858cfa5e8db877943b413ae42",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "616043171"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "324106",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "f6fcfc4c4b0ab9769bfdd29a091a49d6df08d5c861b0ea75da55e3fb0f857970",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625535984"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "341022",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "9b51ef0d08eb6ef0822d6017b1b7dac9834adc99362b651a673d1c27b26166c6",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625445455"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "372134",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "294121e0fa974e4eb9c15c60478217dad53c717bab6ef746654d40eb8fa4786c",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "29621"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "391481",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "e983f55a184a5093636f87039661924ab94f895896d4e81a2513a6dc0f815ff5",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610077917"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "450092",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "fa67e2b5a4ee991eace5579f7589832ebde7e21b67a587042315f8d1d653f8b0",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "761"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000022017",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0002fc42362819e476553c21a6ae8507d0c8ca259d6cde968698f984d956b0b8",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610166119"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000025151",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "1f6625df7a893e800bbf0dfa81f998986d8cc7ab2b5e75df24f279e189261286",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625916936"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000027371",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "aeb28e118cea2b8b11fc2b8c0aab7a3f7691333fab672360b60e4628da8be3c4",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "616664798"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000027381",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "5aa8b2bc2131c884de8836cccebb64d27b8003011ed0c1e204b298a3d31cc258",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "616567692"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000029745",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "85c427364a20c3b236ed726cc93bd8cb220cfcba64c6e9b4582ecd2adfb29e22",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "44562"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000034103",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "63f99180be88b65de73929cb39003ed00470f02e2d5a32529afa23a87745de78",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076456"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000034121",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "3ebb96a5d378c1f6c18168076ce3cc9341591542715472c5534ecb6079d1ea44",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "549"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000034247",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "37a080b45f6ce12eb58f546649370e55c78baf2df5419802e5143fa3cb55b6ec",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625162107"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000035221",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "2363346bc71688d02bdff4f1e61a109c4c9ad58f7b7fbe9ae3df49e5736eef33",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "31083"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000037261",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "c61cfe9168445f6354bb295b2f44bdddb200bd287cb796c56cac884dba40b00b",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "354014"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000038843",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "28b5749fa41a355e53d63ece730edcff32c963014d25f0712ae169b7a0450d11",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "626190968"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000039701",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "e63be3efda3c252b67f5036495757f0f6337b9b84f30ed855ef327dc2b94a2a4",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "12281"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000039995",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "ef7a8056294addf745cffc39b626ff7a6ac296e841180db95356a1a33743b9ab",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "573255"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000041289",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "6c4ad3f6ef26b03e144df3e551882a147109eecfc6b2bf20b0405b531cff906c",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610157167"
+        ],
+        "funsun": [],
+        "intourist": [
+          "12222"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000044772",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "5f7ba23587c1fd6866a1a58d6a3dc5468e78678b7679806f8ce410200ddb3bd6",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076464"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000048736",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "22375652939df2769b8ea03b6b682a1c74b6a2db0598420d6be85ee82a4b2697",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "785274"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000049855",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "82bf286222efe7f10099ff83db723aa75b1946a76f6f873c0505f20afd18a8aa",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "29255"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000052591",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "88c57cf9cb66cc6cdb239969f7807626636059250b5d942e94ca12d6f0811791",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "25728"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000055468",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7e69889dc03beee54c37a63c2f35742a7c04d3f04317b405e3ec818c57615ae0",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "852372"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000057636",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7f19e9a7087358ed130d9a29ab814e9217c6eff4e2461086c34a072d2cf273a9",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076132"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000060100",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "6faa2b5e3bde5bacad1de38b82f244ecbe4eb5f281e510a4273895859e904f31",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610091338"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000061716",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "b472fbf24d0c53d3b5b13f6b8c59ac5478cf6666ef0b978602e447079bea6fe6",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610176029"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000062084",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "b79176bb7246c82b669fcac70daf777f17c32693e8d6f2d8f1bc5083d718c549",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "32745"
+        ],
+        "bg": [],
+        "funsun": [
+          "780677"
+        ],
+        "intourist": [
+          "18273"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000065268",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "3076aa72170e48b6f8e1610761c7353d1186d587c7d87f6dbdb0ba0177f26f71",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610163311"
+        ],
+        "funsun": [],
+        "intourist": [
+          "24459"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000068203",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "7ef91c2657222304ab5ec30f575c29c70e03d38c91722510fe4a7c1f977846e1",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "789636"
+        ],
+        "intourist": [
+          "17173"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000070128",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "f1ee381fc3879aa19b06fe23f55f9b1a5ba6dfc8c037ab5253178c1c6c7ec014",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076834"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000071512",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "99f0e3b3c2e3a7103931e8391aca9566b25a7fffce5e0234c659089131fc29eb",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "28164"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000072249",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "1599f437b1e626355b889db6b44a05b020edf537403b0ff72cb33fc21cbb42d8",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "24278"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000073045",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "724f228dca86c15b0ec2c0a58b8fc18b2cb5761ef2fdd1309e1fa764a7e38399",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610201630"
+        ],
+        "funsun": [],
+        "intourist": [
+          "29363"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000088259",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "0f48c262d563f525ca895b9ee9f9aab266c7e4cdedd6a3de4c5cde64454939eb",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "51370"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000090661",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "581233c99ccd3364f62b3057d641c161db6db79c3f480c71de549e4ef66c8b8d",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "854061"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000091587",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "40d0ad828a46c7138ecfa15c33018fcce5585705fe7c82a0c69ee41751586e1e",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "44573"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000092528",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "c099f975d1ffa3a64f7d745c0ced9cbed3e7d569eb2c4e9860b1dbedf7301285",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "42435"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000093823",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "c5f36bd12ed2c11af34e9cbdf196f37d591cd4eed025513c65151a321328a68c",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "42812"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000098416",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "a8327bd706fe3feef0f2d54c22bca1f376e13f2ff167e99963597d22e1b78d5f",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610218608"
+        ],
+        "funsun": [],
+        "intourist": [
+          "651"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000101065",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "eced5b6f3d8257eb78be81a0e95d440ad4b26c110640493477476be1eb105422",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610262957"
+        ],
+        "funsun": [],
+        "intourist": [
+          "46873"
+        ]
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000103241",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "42a26d03297553c0934ac09f0767a9fb48eb2e0e664128f860403fc038843225",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "855774"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000103831",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "50101be01ae42bd1c4b0bf548ef03bb88dcdfa5fcc7776d54841291f73bdfcf8",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "855817"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000104596",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "9c3175852ff996acf896752cad98faa0b62a41142f3dbff2219efd6843842195",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610189904"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000105597",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "2e9430ff218ab66c7b395c1552f2bbd001745d30ae33d15b0466fadddb48d1f3",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "859365"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000109038",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "660924cb8361aafee16963c38c1efb54e805fad1b2bed5932ad972d8979bdf68",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "43661"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000112070",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "43f384fb4c02157bd6f8325e3ef664d75c7c80f7afb2bb43c0a4587c2852b1c7",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "857868"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000121504",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "89dec78dd09d5b8233e61c319401c6ddc120cf68b825f93688af2f3183ebfe8a",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "857872"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000121515",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "e823fc5d2ac0bb10c751abe0d3345376d360f85fabf4f9aff144ed2e3faa8857",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "857870"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "no_target_in_saved_slice",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "175606",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "e398c1dc1d78b84da20991c48abfe96910dbf231ba01160891902d59a13cc169",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": [
+          "12135"
+        ]
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "12135",
+          "operator": "intourist",
+          "tv_hotel_id": 358,
+          "tv_native_id": "12135"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000034214",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "d4315e4109fbf6d75d7855226f3354e1291416d272e4cbee49ede5e472c23fa7",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "29841"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "29841",
+          "operator": "funsun",
+          "tv_hotel_id": 3418,
+          "tv_native_id": "29841"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000041090",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "1c3c20d737d0d72c225b651a174bee4d87ab4aba87a9831fe663a6b4c0c0e8e1",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "625076488"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "625076488",
+          "operator": "bg",
+          "tv_hotel_id": 1572,
+          "tv_native_id": "102625076488"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000072753",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "ba4f91704ed033b450db86a376e613f3b837cc2b2853c23dd64854da19bf48ec",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610197738"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "610197738",
+          "operator": "bg",
+          "tv_hotel_id": 1267,
+          "tv_native_id": "102610197738"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000072804",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "0271d7392b1d93add1822ed777f87b2000927b3f3043273212263d99f510b0ef",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610175325"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "610175325",
+          "operator": "bg",
+          "tv_hotel_id": 65770,
+          "tv_native_id": "102610175325"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000079689",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "a2c4a2243558d5c190d7b578eb315818e03cfd2db00f356e4d5fefa588b9de91",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [
+          "610214047"
+        ],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "610214047",
+          "operator": "bg",
+          "tv_hotel_id": 1175,
+          "tv_native_id": "102610214047"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000117376",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "1ce2ee8d2ab8e430e1f5806a9021186440d19813834bac53898aac0bd1a2cdc6",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "784075"
+        ],
+        "intourist": [
+          "17471"
+        ]
+      },
+      "snapshot_state": "occupied_review",
+      "tv_candidates": [
+        {
+          "native_id": "784075",
+          "operator": "funsun",
+          "tv_hotel_id": 43461,
+          "tv_native_id": "784075"
+        },
+        {
+          "native_id": "17471",
+          "operator": "intourist",
+          "tv_hotel_id": 43461,
+          "tv_native_id": "17471"
+        }
+      ]
+    },
+    {
+      "catalog_id": "2000086118",
+      "catalog_sha256": "",
+      "evidence_sha256": "",
+      "local_anchor_ids": [
+        144804
+      ],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "858106"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "protected",
+      "tv_candidates": [
+        {
+          "native_id": "858106",
+          "operator": "funsun",
+          "tv_hotel_id": 144804,
+          "tv_native_id": "858106"
+        }
+      ]
+    },
+    {
+      "catalog_id": "118706",
+      "catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "evidence_sha256": "ff6e6630ef9e4424d83fc89f736c15bb6822e2f73059499581c21ab0b0d499b6",
+      "local_anchor_ids": [
+        56551
+      ],
+      "native_by_operator": {
+        "anex": [
+          "18819"
+        ],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "saved_local_anchor_current_checks_required",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "150867",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "5f6abf584a8f897bb62e7b4fb1d9ae5f80937fdd0b52b7a1af9b9cd5df77418a",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "30979"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "source_or_evidence_review",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000073714",
+      "catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "evidence_sha256": "19c5ff262f7d6fef2f8b7e4415d046499442e7d998df9e902c85d03ad99606c0",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [
+          "798"
+        ],
+        "bg": [
+          "610201634"
+        ],
+        "funsun": [],
+        "intourist": [
+          "12162"
+        ]
+      },
+      "snapshot_state": "source_or_evidence_review",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000109036",
+      "catalog_sha256": "",
+      "evidence_sha256": "",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [
+          "858334"
+        ],
+        "intourist": []
+      },
+      "snapshot_state": "source_or_evidence_review",
+      "tv_candidates": []
+    },
+    {
+      "catalog_id": "2000123445",
+      "catalog_sha256": "",
+      "evidence_sha256": "",
+      "local_anchor_ids": [],
+      "native_by_operator": {
+        "anex": [],
+        "bg": [],
+        "funsun": [],
+        "intourist": []
+      },
+      "snapshot_state": "source_or_evidence_review",
+      "tv_candidates": []
+    }
+  ],
+  "schema": "match-native110-review/1",
+  "source_plan_sha256": "13d8cc4afb36b58be92c38adae61e4cf92db3eba70a20f3b3bc33fb1a40c7088"
+}
