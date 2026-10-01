@@ -9,7 +9,7 @@ function s3reject(callable $fn,string $name):void{try{$fn();}catch(RuntimeExcept
 $fixture=dirname(__DIR__).'/scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json';
 s3t(hash_file('sha256',$fixture)===S3N_MANIFEST_SHA,'fixture_digest');
 $manifest=s3n_read($fixture);$scope=s3n_manifest($manifest);
-s3t(array_keys($scope['rows'])===['163887','2000057636','2000073063'],'fixture_membership');
+s3t(array_map('strval',array_keys($scope['rows']))===['163887','2000057636','2000073063'],'fixture_membership');
 s3t($scope['target_ids']===[1124,21679,60766],'target_membership');
 s3t($scope['request']['checkin_beg']==='20261008'&&$scope['request']['checkin_end']==='20261029','request_dates');
 
