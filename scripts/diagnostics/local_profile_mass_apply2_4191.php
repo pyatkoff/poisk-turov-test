@@ -153,6 +153,7 @@ function lpma2_main(array $argv): int {
     lpp_save($dir.'/mass2-apply-started.json',$identity);
     $result=['state'=>'held_before_write','profiles_verified'=>0,'fields_verified'=>0,'field_counts'=>[],
         'batches_verified'=>0,'profile_writes'=>0,'provenance_writes'=>0,'readback_verified'=>false,'unknown_batch'=>null];
+    $sampleOwn=[];
     try{
         $parent=$home.'/.anytoour-int-executor/'.LPMA2_PLAN_OPERATION;
         $bytes=lpp_file($parent.'/local-mass2-plan.json',32*1024*1024);
@@ -171,6 +172,8 @@ function lpma2_main(array $argv): int {
         $db=v2_data_db();lpp_need($db->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql','mysql_required');
         $protected=lpma_protected($db,lpp_d1($home));$predecessor=lpm2_parent($home);
         $batches=lpma2_batches($index,$protected,$predecessor,static fn(string $file):string=>lpp_file($parent.'/'.$file,32*1024*1024));
+        foreach($batches as $batch)foreach($batch['plan']['selected'] as $item){if(count($sampleOwn)>=3)break 2;$sampleOwn[]=$item['anytourHotelId'];}
+        lpp_need(count($sampleOwn)===3&&count(array_unique($sampleOwn))===3,'sample_ids');
         $owner=new AnyTourProfileEnrichmentV1($db);
         $result=lpma2_execute($batches,
             static fn(array $p):array=>$owner->plan($p['limit'],$p['demandThrough'],$p['contentScope'],true),
@@ -178,7 +181,7 @@ function lpma2_main(array $argv): int {
             static fn()=>lpp_save($parent.'/mass2-apply130-consumed.json',$identity),
             static fn(int $i,array $applied)=>lpp_save($dir.'/'.sprintf('mass2-apply-batch-%03d.json',$i),$identity+['owner_receipt'=>$applied]));
     }catch(Throwable){}
-    $receipt=$identity+$result+['supplier_calls'=>0,'provider_http_calls'=>0,'mapping_writes'=>0,'legacy_writes'=>0,'schema_writes'=>0];
+    $receipt=$identity+$result+['sample_own_ids'=>$sampleOwn,'supplier_calls'=>0,'provider_http_calls'=>0,'mapping_writes'=>0,'legacy_writes'=>0,'schema_writes'=>0];
     lpp_save($dir.'/local-mass2-apply-receipt.json',$receipt);echo lpp_json($receipt)."\n";
     return $result['state']==='committed_verified'?0:2;
 }
