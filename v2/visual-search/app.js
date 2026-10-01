@@ -184,7 +184,16 @@ function hotelOffers(h,options={}){
 }
 function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
-function results(){return hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filter(r=>r.offers.length).sort((a,b)=>state.sort==='price'?a.offers[0].total-b.offers[0].total:state.sort==='rating'?(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0):recommendedHotelScore(b.hotel)-recommendedHotelScore(a.hotel)||recommendedHotelRank(a.hotel)-recommendedHotelRank(b.hotel)||a.offers[0].total-b.offers[0].total);}
+function results(){
+ const items=hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filter(r=>r.offers.length);
+ if(items.length<2)return items;
+ if(state.sort==='price')return items.sort((a,b)=>a.offers[0].total-b.offers[0].total);
+ if(state.sort==='rating')return items.sort((a,b)=>(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0));
+ // Rank only this current inventory, so progressive prices/profiles stay fresh.
+ const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel),rank:recommendedHotelRank(row.hotel)}));
+ ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
+ return ranked.map(item=>item.row);
+}
 function calendarMinimums(days,options={},observations=[]){
  if(!days.length)return[];
  const s=options.search||state.search,f=options.filters||state.filters,span=[...days].sort(),requested=new Set(days),minimums=new Map(),saved=new Map();

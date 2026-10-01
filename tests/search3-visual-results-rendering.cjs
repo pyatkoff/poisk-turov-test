@@ -149,3 +149,64 @@ const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].f
  try{mutated.render([entry(1,100)]);mutated.render([entry(1,200)]);assert.notEqual(mutated.cards.querySelector('strong').textContent,'200','stale-node-reuse mutation is detected');}finally{mutated.close();}
  console.log('PASS actual DOM parity: 90 progressive sequences; duplicate IDs, escaping, empty/repopulation, stale DOM edits and equality mutation covered; supplier/lead HTTP 0');
 }
+
+// Run the actual ranking owner against the previous comparator independently.
+// Sort keys may be reused within one call, never across changing result data.
+const popularityCode=fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/hotel-popularity-v1.js'),'utf8');
+function rankingOwner(code=source){
+ const work={score:0,rank:0,offers:0};
+ const ctx={window:{AnyTourTopHotelLegacyIds:[5,2,9,5,0,'bad',7]},hotels:[],state:{sort:'recommended'},work,
+  hotelOffers:h=>{work.offers++;return h.offers||[];}};
+ vm.createContext(ctx);vm.runInContext(popularityCode,ctx);ctx.popularity=ctx.window.AnyTourHotelPopularityV1;
+ vm.runInContext(code.match(/^const ratingValue=[^\n]+/m)[0]+'\n'+section(code,'function recommendedHotelScore(','function calendarMinimums('),ctx);
+ vm.runInContext('const scoreOwner=recommendedHotelScore,rankOwner=recommendedHotelRank;recommendedHotelScore=h=>{work.score++;return scoreOwner(h);};recommendedHotelRank=h=>{work.rank++;return rankOwner(h);};',ctx);
+ return {ctx,work,run:()=>{work.score=work.rank=work.offers=0;return ctx.results();}};
+}
+function previousRanking(hotels,sort,popularity){
+ const rating=h=>Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;
+ const score=h=>(rating(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);
+ const rank=h=>{const value=popularity?.rank(h);return Number.isInteger(value)?value:Number.MAX_SAFE_INTEGER;};
+ return hotels.map(h=>({hotel:h,offers:h.offers||[]})).filter(r=>r.offers.length).sort((a,b)=>sort==='price'?a.offers[0].total-b.offers[0].total:sort==='rating'?(rating(b.hotel)??0)-(rating(a.hotel)??0):score(b.hotel)-score(a.hotel)||rank(a.hotel)-rank(b.hotel)||a.offers[0].total-b.offers[0].total);
+}
+const ranking=rankingOwner(),rankingRecords=[];
+function checkRanking(label,rows,sort){
+ const before=structuredClone(rows);ranking.ctx.hotels=rows;ranking.ctx.state.sort=sort;
+ const actual=ranking.run(),expected=previousRanking(rows,sort,ranking.ctx.popularity);
+ assert.equal(actual.length,expected.length,label+' membership');
+ actual.forEach((row,i)=>{assert.strictEqual(row.hotel,expected[i].hotel,label+' raw hotel/order');assert.strictEqual(row.offers,expected[i].offers,label+' raw offer array');});
+ assert.deepEqual(rows,before,label+' never sorts or decorates source objects');
+ assert.equal(ranking.work.offers,rows.length,label+' one current inventory read per hotel');
+ if(!process.argv.includes('--capture')){
+  const ranked=sort!=='price'&&sort!=='rating'&&actual.length>1;
+  assert.equal(ranking.work.score,ranked?actual.length:0,label+' bounded score work');
+  assert.equal(ranking.work.rank,ranked?actual.length:0,label+' bounded rank work');
+ }
+ rankingRecords.push([label,actual.map(r=>[r.hotel.id,r.offers[0].key])]);return actual;
+}
+const sortModes=['recommended','price','rating','unknown',''];
+let rankingSeed=24681357;
+const rankingRandom=()=>((rankingSeed=(rankingSeed*1664525+1013904223)>>>0)/4294967296);
+function rankingRows(n){
+ const rows=Array.from({length:n},(_,i)=>({id:i%11, rating:[null,NaN,-1,0,4.5,5,6,Infinity][i%8],beach:[null,0,150,151,undefined][i%5],
+  legacyIds:[[],[2,5,'9',0,-1],['bad'],[7],null,[99],[9,9]][i%7],
+  offers:i%9===0?[]:[{key:'tour-'+i,total:[100,.5,100,200,NaN,Infinity][i%6]}]}));
+ for(let i=rows.length-1;i>0;i--){const j=Math.floor(rankingRandom()*(i+1));[rows[i],rows[j]]=[rows[j],rows[i]];}return rows;
+}
+for(let round=0;round<12;round++)for(const n of [0,1,2,17,64])for(const sort of sortModes)checkRanking(round+':'+n+':'+sort,rankingRows(n),sort);
+const progressive=rankingRows(35);progressive.push(progressive[3]);
+for(let i=0;i<20;i++){
+ const row=progressive[i%progressive.length];row.rating=i%2?5:1;row.legacyIds=[i%2?5:2];row.offers=[{key:'current-'+i,total:i*100+.5}];
+ if(i%4===0)progressive.reverse();for(const sort of sortModes)checkRanking('progressive:'+i+':'+sort,progressive,sort);
+}
+const tied=Array.from({length:8},(_,i)=>({id:i,rating:4,beach:null,legacyIds:[],offers:[{key:'tie-'+i,total:100}]}));
+assert.deepEqual(Array.from(checkRanking('stable ties',tied,'recommended'),r=>r.hotel.id),tied.map(h=>h.id));
+const workRows=rankingRows(500).map((h,i)=>({...h,offers:[{key:'work-'+i,total:i%5*100+100}]}));
+const oldRanking=rankingOwner(source.replace(section(source,'function results(){','function calendarMinimums('),'function results(){return hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filter(r=>r.offers.length).sort((a,b)=>state.sort===\'price\'?a.offers[0].total-b.offers[0].total:state.sort===\'rating\'?(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0):recommendedHotelScore(b.hotel)-recommendedHotelScore(a.hotel)||recommendedHotelRank(a.hotel)-recommendedHotelRank(b.hotel)||a.offers[0].total-b.offers[0].total);}\n'));
+oldRanking.ctx.hotels=workRows;oldRanking.run();checkRanking('500-hotel work',workRows,'recommended');
+const rankingDigest=crypto.createHash('sha256').update(JSON.stringify(rankingRecords)).digest('hex');
+assert.equal(rankingDigest,'0caebd4a34f08845d2ac70a75d763440b218c0e74c18f7cca295fbf33193fd92','pre-optimization ranking digest');
+assert(oldRanking.work.score>ranking.work.score*10&&oldRanking.work.rank>ranking.work.rank*8,'bounded recommended-ranking work');
+const rankMutation=rankingOwner(source.replace('a.rank-b.rank','b.rank-a.rank'));
+rankMutation.ctx.hotels=[2,5].map(id=>({id,rating:4,beach:null,legacyIds:[id],offers:[{key:'rank-'+id,total:100}]}));
+assert.notDeepEqual(Array.from(rankMutation.run(),r=>r.hotel.id),previousRanking(rankMutation.ctx.hotels,'recommended',rankMutation.ctx.popularity).map(r=>r.hotel.id),'popularity tie-break mutation detected');
+console.log('PASS actual result ranking: '+rankingRecords.length+' independent order/reference/progressive observations; digest '+rankingDigest+'; score work '+oldRanking.work.score+' → '+ranking.work.score+', rank work '+oldRanking.work.rank+' → '+ranking.work.rank+'; supplier/lead HTTP 0');
