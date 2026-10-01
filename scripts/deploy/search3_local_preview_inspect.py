@@ -18,7 +18,7 @@ from search3_preview_publish import Github, command, http
 
 REPO = 'pyatkoff/poisk-turov-test'
 OWNER_ID = 226193297
-COORDINATION_ISSUE = 3419
+COORDINATION_ISSUE = 4217
 PREFIX = '/inspect-search3-local-preview'
 ROUTE = '/_preview/search3-local-candidate/'
 

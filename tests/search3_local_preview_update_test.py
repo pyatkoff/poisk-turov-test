@@ -20,7 +20,7 @@ class UpdateContracts(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.root=Path(self.tmp.name); self.source=self.root/'original'; source_fixture(self.source)
         q0, self.archive=base.derive(self.source,self.root/'derived',request(),'d'*64); self.q={**q0,'previous_source_sha':PREVIOUS,'operation':'update'}
-        self.event={'repository':{'full_name':base.REPO,'id':1345518271},'sender':{'login':'pyatkoff','id':226193297},'action':'created','issue':{'number':3419},'comment':{'user':{'id':226193297},'author_association':'OWNER','body':pub.PREFIX+'a'*40+' '+'b'*40+' 456 123 '+PREVIOUS}}
+        self.event={'repository':{'full_name':base.REPO,'id':1345518271},'sender':{'login':'pyatkoff','id':226193297},'action':'created','issue':{'number':4217},'comment':{'user':{'id':226193297},'author_association':'OWNER','body':pub.PREFIX+'a'*40+' '+'b'*40+' 456 123 '+PREVIOUS}}
         self.env={'GITHUB_REPOSITORY':base.REPO,'GITHUB_REF':'refs/heads/main','GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_ACTOR_ID':'226193297','GITHUB_RUN_ATTEMPT':'1','GITHUB_EVENT_NAME':'issue_comment','GITHUB_RUN_ID':'789'}
         site=self.root/'anytoour.ru'; (site/'_preview/search3-site-candidate').mkdir(parents=True); (site/'_preview/search3-site-candidate/keep').write_text('site-preview')
         for name in remote.REQUIRED:
@@ -35,7 +35,7 @@ class UpdateContracts(unittest.TestCase):
     def test_owner_command(self):
         q=pub.checked_request(self.event,self.env); self.assertEqual(q['previous_source_sha'],PREVIOUS); self.assertEqual(q['operation'],'update')
     def test_old_coordination_journals_cannot_authorize_updates(self):
-        for number in (2530, 996):
+        for number in (3419, 2530, 996):
             event=copy.deepcopy(self.event); event['issue']['number']=number
             with self.subTest(issue=number), self.assertRaisesRegex(ValueError, 'coordination_only'):
                 pub.checked_request(event,self.env)

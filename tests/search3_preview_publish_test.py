@@ -61,7 +61,7 @@ class Authorization(unittest.TestCase):
         self.env = dict(GITHUB_REPOSITORY=publish.REPO,GITHUB_REF='refs/heads/main',GITHUB_ACTOR='pyatkoff',
                         GITHUB_TRIGGERING_ACTOR='pyatkoff',GITHUB_ACTOR_ID='226193297',GITHUB_RUN_ATTEMPT='1',GITHUB_EVENT_NAME='issue_comment')
         self.event = dict(repository={'id':1345518271,'full_name':publish.REPO},sender={'id':226193297,'login':'pyatkoff'},
-                          action='created',issue={'number':3419},comment={'user':{'id':226193297},'author_association':'OWNER',
+                          action='created',issue={'number':4217},comment={'user':{'id':226193297},'author_association':'OWNER',
                           'body':f'/publish-search3-preview {SOURCE} {RELEASE} 456 123'})
 
     def test_owner_command(self):
@@ -69,18 +69,18 @@ class Authorization(unittest.TestCase):
 
     def test_publisher_and_recovery_accept_only_current_coordination_issue(self):
         repair_env = {**self.env, 'GITHUB_SHA': 'd' * 40}
-        for number in (3419, 2530, 996, 997, 1646):
+        for number in (4217, 3419, 2530, 996, 997, 1646):
             event = copy.deepcopy(self.event)
             event['issue']['number'] = number
             with self.subTest(issue=number, command='publish'):
-                if number == 3419:
+                if number == 4217:
                     self.assertEqual(publish.checked_command(event, self.env)['artifact_id'], 123)
                 else:
                     with self.assertRaisesRegex(ValueError, 'coordinator_command_only'):
                         publish.checked_command(event, self.env)
             event['comment']['body'] = repair.PREFIX + repair_env['GITHUB_SHA']
             with self.subTest(issue=number, command='recovery'):
-                if number == 3419:
+                if number == 4217:
                     self.assertEqual(repair.checked_repair(event, repair_env), repair_env['GITHUB_SHA'])
                 else:
                     with self.assertRaisesRegex(ValueError, 'coordinator_only'):
@@ -110,10 +110,16 @@ class Authorization(unittest.TestCase):
                         repair.checked_repair(event, env)
 
     def test_workflow_coordination_guards_match_shared_authorization(self):
-        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/deploy-search3-whole-site-preview.yml').read_text()
-        guards = re.findall(r'github\.event\.issue\.number == (\d+)', workflow)
-        self.assertEqual(guards, [str(publish.COORDINATION_ISSUE)] * 2)
-        self.assertEqual(publish.COORDINATION_ISSUE, 3419)
+        root = Path(__file__).resolve().parents[1] / '.github/workflows'
+        for name, count in (('deploy-search3-whole-site-preview.yml', 2),
+                            ('create-search3-local-preview.yml', 1),
+                            ('create-search3-v17-preview.yml', 1),
+                            ('update-search3-local-preview.yml', 1),
+                            ('inspect-search3-local-preview.yml', 1)):
+            with self.subTest(workflow=name):
+                guards = re.findall(r'github\.event\.issue\.number == (\d+)', (root / name).read_text())
+                self.assertEqual(guards, [str(publish.COORDINATION_ISSUE)] * count)
+        self.assertEqual(publish.COORDINATION_ISSUE, 4217)
 
     def test_manual(self):
         self.env['GITHUB_EVENT_NAME']='workflow_dispatch'
