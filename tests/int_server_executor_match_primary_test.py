@@ -695,4 +695,73 @@ class ShamsGeographyReadbackRegistrationTest(unittest.TestCase):
             (evidence/'reservation.json').write_text(json.dumps(reservation))
             with self.assertRaises(RuntimeError):ns['run_match_shams_geo_readback'](stage)
 
+class ShamsGuardedWriteRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.SHAMS_WRITE_MODE+' '+registration.SHAMS_WRITE_OPERATION+' '+registration.SHAMS_WRITE_BATCH
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.SHAMS_WRITE_OPERATION
+        ns['payload']=dict(batch=registration.SHAMS_WRITE_BATCH,maximum_writes=1,provider_http_calls=0,
+            input_sha256=registration.GUARDED_INPUT_SHA,geography_operation=registration.SHAMS_GEO_READBACK_OPERATION)
+        geo=root/registration.SHAMS_GEO_READBACK_OPERATION;geo.mkdir()
+        (geo/'result.json').write_text(json.dumps(dict(state='completed_saved_geography_readback',
+            operation=registration.SHAMS_GEO_READBACK_OPERATION,source_sha='12dc06dbdfd047c05caa346092cb9bd1c1dd0323',
+            input_sha256=registration.GUARDED_INPUT_SHA,no_replay=True,mapping_writes=0,provider_http_calls=0)))
+        runner=stage/'scripts/diagnostics/hotel_match_shams_guarded_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_SHAMS_WRITE_HANDLER,ns);return ns,stage,root,runner
+
+    def response(self,kwargs,state='committed_readback_verified',mutate=None):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR'])
+        common=dict(operation=registration.SHAMS_WRITE_OPERATION,source_sha=SOURCE,batch=registration.SHAMS_WRITE_BATCH,
+            input_sha256=registration.GUARDED_INPUT_SHA,geography_operation=registration.SHAMS_GEO_READBACK_OPERATION,
+            provider_http_calls=0,no_replay=True,current_candidates_evaluated=1)
+        if state=='committed_readback_verified':
+            data=common|dict(state=state,rows=[dict(catalog_id='9501',local_hotel_id=420,name='SHAMS SAFAGA',catalog_sha256='a'*64,
+                evidence_sha256='b'*64,prior_evidence_sha256='c'*64,proof_operator_count=1)],held=[],database_writes=1,mapping_writes=1,
+                readback_verified=True,commit_attempted=True,commit_completed=True,effective_resolver_verified=True,
+                prior_evidence_preserved=True,unrelated_identities_unchanged=True)
+        elif state=='completed_no_new_writes':
+            data=common|dict(state=state,rows=[],held=[dict(catalog_id='9501',local_hotel_id=420,status='hold',reasons=['target_catalog_occupied'])],
+                database_writes=0,mapping_writes=0,readback_verified=True)
+        else:
+            data=common|dict(state=state,rows=[],held=[],database_writes=None,mapping_writes=None,readback_verified=False,
+                reason='fixture_commit_loss',commit_attempted=True,commit_completed=False)
+        if mutate:mutate(data)
+        raw=json.dumps(data);(child/'result.json').write_text(raw)
+        receipt={k:data[k] for k in ('operation','source_sha','batch','input_sha256','geography_operation','provider_http_calls','no_replay','state','database_writes','mapping_writes','readback_verified')}
+        receipt['result_sha256']=hashlib.sha256(raw.encode()).hexdigest();(child/'receipt.json').write_text(json.dumps(receipt))
+        return types.SimpleNamespace(returncode=0 if state in ('committed_readback_verified','completed_no_new_writes') else 2,stdout=raw,stderr='')
+
+    def test_exact_one_row_contract_and_terminal_marker(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed['maximum_writes'],1);self.assertEqual(parsed['geography_operation'],registration.SHAMS_GEO_READBACK_OPERATION)
+        for body in (self.body+' retry',self.body.replace(registration.SHAMS_WRITE_BATCH,registration.NATIVE_BATCH),self.body.replace(registration.SHAMS_WRITE_OPERATION,registration.GUARDED_OPERATION)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,parsed);self.assertIn('def run_match_shams_write(stage):',self.core.REMOTE)
+        self.assertTrue(set(registration.SHAMS_WRITE_SOURCE_FILES).issubset(self.core.FIXED))
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw)) as call:
+                out=ns['run_match_shams_write'](stage);self.assertTrue(out['successful']);self.assertEqual(out['summary']['mapping_writes'],1)
+                marker=root.parent/'shams9501-geo-20261001-consumed.json';self.assertTrue(marker.is_file());self.assertEqual(marker.stat().st_mode&0o777,0o600)
+                with self.assertRaises(RuntimeError):ns['run_match_shams_write'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_hold_unknown_and_untrusted_scope(self):
+        for state in ('completed_no_new_writes','commit_outcome_unknown_no_replay'):
+            with self.subTest(state=state),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,state=state)):
+                    out=ns['run_match_shams_write'](stage)
+                self.assertEqual(out['successful'],state=='completed_no_new_writes')
+        changes=[lambda d:d.update(mapping_writes=2),lambda d:d.update(no_replay=1),lambda d:d['rows'][0].update(catalog_id='3126'),
+            lambda d:d['rows'][0].update(local_hotel_id=42903),lambda d:d.update(readback_verified=False)]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate=mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_shams_write'](stage)
+
 if __name__=='__main__':unittest.main()
