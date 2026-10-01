@@ -286,13 +286,11 @@
   }
   function project(list,s) {
     const result=[];
-    for(let i=0,length=list.length;i<length;i++)if(i in list){
-      const rawHotel=list[i],h=hotel(rawHotel,s),tours=rawHotel.tours||[],offers=[];
-      for(let j=0,count=tours.length;j<count;j++)if(j in tours){
-        const item=offer(tours[j],h,s,j);if(item)offers.push(item);
-      }
+    list.forEach(rawHotel=>{
+      const h=hotel(rawHotel,s),offers=[];
+      (rawHotel.tours||[]).forEach((t,i)=>{const item=offer(t,h,s,i);if(item)offers.push(item);});
       h.offers=offers;if(offers.length)result.push(h);
-    }
+    });
     return result;
   }
   function tourvisorInventory(){

@@ -394,6 +394,7 @@ function countFacetOptions(model,group,values){
   }
   if(!wanted.size)return counts;
  }
+ const matches=hotelFacet?null:hotelOfferPredicate(s,filters,from,to);
  for(const h of hotels){
   if(!h)continue;
   if(hotelFacet){
@@ -403,7 +404,7 @@ function countFacetOptions(model,group,values){
    continue;
   }
   if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;
-  const matches=hotelOfferPredicate(s,filters,from,to),remaining=new Set(wanted.keys());
+  const remaining=new Set(wanted.keys());
   for(const o of h.offers||[]){
    const key=group==='meals'?(data.live?o.mealPlanId:o.meal):group==='operators'?o.operator:o.flight;
    if(!remaining.has(key)||!matches(o))continue;

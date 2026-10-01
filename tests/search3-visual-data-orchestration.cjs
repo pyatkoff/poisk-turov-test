@@ -96,18 +96,19 @@ function dataWorkOracles(source){
  h.api.catalog.regions['4']=[{name:'same',kind:'subregion',tourvisorIds:['4']}];scope(['same']);
  h.api.catalog.regions={};scope(['same']);scope([]);
 
- const work={map:0,filter:0,callbacks:0};
+ const work={map:0,filter:0,forEach:0,callbacks:0};
  function counted(array){
   Object.defineProperty(array,'map',{value(fn){work.map++;const result=Array.prototype.map.call(this,(...args)=>{work.callbacks++;return fn(...args);});
    Object.defineProperty(result,'filter',{value(fn){work.filter++;return Array.prototype.filter.call(this,(...args)=>{work.callbacks++;return fn(...args);});}});return result;}});
+  Object.defineProperty(array,'forEach',{value(fn){work.forEach++;return Array.prototype.forEach.call(this,(...args)=>{work.callbacks++;return fn(...args);});}});
   return array;
  }
  const list=counted(Array.from({length:100},(_,i)=>({id:101+i,name:'Projection '+i,tours:counted(Array.from({length:10},(_,j)=>({id:i+'-'+j,price:i<90?120000:0,date:'2026-10-13',nights:7,meal:'AI'})))})));
  const before=h.probe.previousProject(list,s),previousWork={...work};
  Object.keys(work).forEach(key=>work[key]=0);
  const after=h.api.project(list,s);assert.deepEqual(copy(after),copy(before));
- assert.deepEqual(previousWork,{map:101,filter:101,callbacks:2200});
- assert.deepEqual(work,{map:0,filter:0,callbacks:0});
+ assert.deepEqual(previousWork,{map:101,filter:101,forEach:0,callbacks:2200});
+ assert.deepEqual(work,{map:0,filter:0,forEach:101,callbacks:1100});
  const currentWork={...work};
  function identities(input){
   const expected=h.probe.previousProject(input,s),actual=h.api.project(input,s);
@@ -115,6 +116,14 @@ function dataWorkOracles(source){
   actual.forEach((hotel,i)=>{assert.strictEqual(hotel.raw,expected[i].raw);hotel.offers.forEach((offer,j)=>assert.strictEqual(offer.raw,expected[i].offers[j].raw));});
  }
  identities(list);identities([]);identities([{id:1,name:'No tours'},{id:2,tours:[]}]);
+ for(const malformed of [{0:list[0],length:1},'not an array',null]){
+  assert.throws(()=>h.probe.previousProject(malformed,s),{name:'TypeError'});
+  assert.throws(()=>h.api.project(malformed,s),{name:'TypeError'});
+ }
+ for(const tours of ['invalid',{0:list[0].tours[0],length:1},true]){
+  assert.throws(()=>h.probe.previousProject([{id:1,tours}],s),{name:'TypeError'});
+  assert.throws(()=>h.api.project([{id:1,tours}],s),{name:'TypeError'});
+ }
  const sparse=new Array(5),tours=new Array(6);
  tours[1]={id:'kept',price:100000,date:'2026-10-13',nights:7};tours[3]={id:'rejected',price:0,date:'2026-10-13',nights:7};tours[5]={...tours[1],id:'last'};
  sparse[2]={id:1,tours};sparse[4]={id:2,tours:[]};identities(sparse);
@@ -125,7 +134,7 @@ function dataWorkOracles(source){
  const changing=[{id:4,tours:[tours[1]]}];
  Object.defineProperty(changing[0],'name',{get(){changing.push({id:5,tours:[tours[1]]});return 'append';}});
  assert.equal(h.api.project(changing,s).length,1,'new outer slots past the initial length are not visited');
- return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork},rawIdentity:'identical'};
+ return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork,temporaryArraysRemoved:101},rawIdentity:'identical'};
 }
 async function characterize(source){
  const records=[];
