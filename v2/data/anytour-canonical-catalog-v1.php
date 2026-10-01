@@ -343,6 +343,24 @@ final class AnyTourCanonicalCatalog
         }
     }
 
+    /** Public read projection only; stored canonical bytes/revision remain authoritative. */
+    public static function publicProfile(array $profile): array
+    {
+        $images = is_array($profile['images'] ?? null) ? $profile['images'] : [];
+        $filtered = [];
+        foreach ($images as $raw) {
+            $url = v2_hotel_detail_https_url($raw);
+            if ($url !== null && v2_hotel_detail_is_regional_placeholder_url($url)) continue;
+            $filtered[] = $raw;
+        }
+        if (array_key_exists('images', $profile)) $profile['images'] = $filtered;
+        $primary = v2_hotel_detail_https_url($profile['primaryImage'] ?? null);
+        if ($primary !== null && v2_hotel_detail_is_regional_placeholder_url($primary)) {
+            $profile['primaryImage'] = $filtered[0] ?? null;
+        }
+        return $profile;
+    }
+
     public function read(array $anytourIds): array
     {
         $ids = self::ids($anytourIds);
@@ -356,6 +374,7 @@ final class AnyTourCanonicalCatalog
             }
             $profile = json_decode($row['profile_json'], true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($profile)) throw new RuntimeException('Invalid canonical profile');
+            $profile = self::publicProfile($profile);
             $id = (int)$row['id'];
             $byId[$id] = array_merge($profile, ['id' => $id, 'catalog' => 'anytour', 'revision' => (int)$row['revision']]);
         }
