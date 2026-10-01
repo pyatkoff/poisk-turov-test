@@ -876,4 +876,89 @@ class Live30TargetCatalogRegistrationTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog'](stage)
                 self.assertEqual(call.call_count,1)
 
+class Live30TargetPreflightRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.TARGET_PREFLIGHT_MODE+' '+registration.TARGET_PREFLIGHT_OPERATION+' '+registration.TARGET_PREFLIGHT_BATCH
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.TARGET_PREFLIGHT_OPERATION
+        ns['payload']=dict(batch=registration.TARGET_PREFLIGHT_BATCH,maximum_writes=0,provider_http_calls=0)
+        runner=stage/'scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_TARGET_PREFLIGHT_HANDLER,ns);return ns,stage,root
+
+    def response(self,kwargs,mutate=None):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR'])
+        names=['cohort','invalid_coordinates','invalid_text','invalid_accepted_native','max_accepted_aliases','manual_targets','excluded_targets']
+        missing={name:[] for name in ('catalog_hotels','tour_operator_identity_observations','andromeda_hotel_identities','anex_hotel_decisions','anex_review_pair_exclusions')}
+        data=dict(state='completed_tv_live30_target_preflight',operation=registration.TARGET_PREFLIGHT_OPERATION,source_sha=SOURCE,
+            batch=registration.TARGET_PREFLIGHT_BATCH,captured_at_utc='2026-10-01T12:00:00Z',schema_complete=True,
+            missing_columns=missing,query_status={name:True for name in names},metrics={name:1 for name in names},
+            provider_http_calls=0,database_reads=1,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
+        if mutate:mutate(data)
+        raw=json.dumps(data);(child/'result.json').write_text(raw)
+        receipt={k:v for k,v in data.items() if k not in ('missing_columns','query_status','metrics')}
+        receipt['result_sha256']=hashlib.sha256(raw.encode()).hexdigest();(child/'receipt.json').write_text(json.dumps(receipt))
+        return types.SimpleNamespace(returncode=0,stdout=raw,stderr='')
+
+    def test_scope_collector_bypass_and_source_inventory(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed['maximum_writes'],0);self.assertEqual(parsed['provider_http_calls'],0)
+        for body in (self.body+' retry',self.body.replace(registration.TARGET_PREFLIGHT_BATCH,registration.TARGET_BATCH),
+                     self.body.replace(registration.TARGET_PREFLIGHT_OPERATION,registration.TARGET_PREFLIGHT_OPERATION+'-retry')):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,parsed)
+        self.assertTrue(set(registration.TARGET_PREFLIGHT_SOURCE_FILES).issubset(self.core.FIXED))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        for node in ast.walk(ast.parse(self.core.REMOTE)):
+            if (isinstance(node,ast.If) and isinstance(node.test,ast.Compare) and isinstance(node.test.left,ast.Name)
+                    and node.test.left.id=='mode' and isinstance(node.test.ops[0],ast.NotIn)):
+                self.assertFalse(eval(compile(ast.Expression(node.test),'<guard>','eval'),{},dict(mode=registration.TARGET_PREFLIGHT_MODE)))
+        entry=load('target_preflight_stock_entry','scripts/deploy/int_server_executor_anex_secret_transport.py')
+        self.assertNotIn(registration.TARGET_PREFLIGHT_MODE,entry.DIRECT_ANEX_MODES)
+        self.assertNotIn(registration.TARGET_PREFLIGHT_MODE,entry.SUPPLIER_SLOT_MODES)
+
+    def test_aggregate_result_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw)) as call:
+                out=ns['run_match_tv_live30_target_preflight'](stage)
+                self.assertTrue(out['summary']['schema_complete']);self.assertEqual(out['summary']['database_reads'],1)
+                self.assertFalse(out['summary']['safe_to_write_now'])
+                self.assertEqual((root/registration.TARGET_PREFLIGHT_OPERATION/'reservation.json').stat().st_mode&0o777,0o600)
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_preflight'](stage)
+                self.assertEqual(call.call_count,1);self.assertNotIn('ANEX',str(call.call_args.kwargs['env']))
+
+    def test_rejects_untrusted_or_inconsistent_aggregates(self):
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(no_replay=1),lambda d:d.update(safe_to_write_now=0),
+            lambda d:d.update(database_reads=2),lambda d:d.update(extra='unsafe'),
+            lambda d:d['missing_columns']['catalog_hotels'].append('password'),
+            lambda d:d['query_status'].update(cohort=1),lambda d:d['metrics'].update(cohort=-1),
+            lambda d:(d.update(schema_complete=False),d['missing_columns']['catalog_hotels'].append('id')),
+            lambda d:(d.update(schema_complete=False),d['missing_columns']['catalog_hotels'].append('id'),d['query_status'].update(cohort=True))]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_preflight'](stage)
+
+    def test_schema_incomplete_requires_all_queries_skipped(self):
+        def incomplete(data):
+            data['schema_complete']=False;data['missing_columns']['catalog_hotels']=['name']
+            data['query_status']={name:False for name in data['query_status']};data['metrics']={name:None for name in data['metrics']}
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,incomplete)):
+                out=ns['run_match_tv_live30_target_preflight'](stage)
+                self.assertFalse(out['summary']['schema_complete']);self.assertFalse(any(out['summary']['query_status'].values()))
+
+    def test_unknown_read_outcome_stays_consumed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('php',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_tv_live30_target_preflight'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_preflight'](stage)
+                self.assertEqual(call.call_count,1)
+
 if __name__=='__main__':unittest.main()
