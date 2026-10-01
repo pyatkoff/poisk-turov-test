@@ -4,6 +4,7 @@
   const clone = value => structuredClone(value);
   const text = value => typeof value === 'string' ? value : value?.name || value?.russianName || '';
   const amount = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : null;
+  const hotelPhoto = value => typeof value === 'string' && !/^https:\/\/static\.tourvisor\.ru\/hotel_pics\/reg-[0-9]+(?:\/|$)/i.test(value.trim());
   const rating = value => {const n=Number(String(value??'').replace(',','.'));return Number.isFinite(n)&&n>0&&n<=5?n:null;};
   // The offline graph keeps the captured wording in mealRaw, but projects the
   // same public Russian meal identities as the live adapter. This prevents a
@@ -31,7 +32,7 @@
     return raw.hotels.map(h => ({
       id: h.id, name: h.name, country: '4', resort: h.location.replace(/, Турция$/, ''), region: '', subRegion: '',
       stars: h.stars, rating: rating(h.rating),
-      photos: h.photos, amenities: [], legacyIds: [], beach: null, family: false, spa: false,
+      photos: Array.isArray(h.photos) ? h.photos.filter(hotelPhoto) : [], amenities: [], legacyIds: [], beach: null, family: false, spa: false,
       raw: {description: h.facts, arrival: h.location.replace(/, Турция$/, '')},
       offers: h.offers.map((o, i) => ({
         key: o.key, hotelId: h.id, variant: i, provider: decodeURIComponent(o.key).split(':')[0],
