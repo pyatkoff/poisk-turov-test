@@ -52,7 +52,7 @@ class PrimaryRegistrationTest(unittest.TestCase):
 
     def test_authorization_is_still_checked_event(self):
         body=command(self.core)
-        event={'issue':{'number':3419},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
+        event={'issue':{'number':self.core.ISSUE},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
         def api(path,token):
             if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
             if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
@@ -307,7 +307,13 @@ class Native110RegistrationTest(unittest.TestCase):
                   sources_requested=110,sources_examined=109,protected_skipped=1,current_rows_returned=110,
                   raw_verified_facts=107,raw_files_read=117,raw_bytes_read=100000,native_facts_examined=3262,
                   provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,
-                  no_replay=True,acceptance_policy_changed=False)
+                  no_replay=True,acceptance_policy_changed=False,
+                  review_rows=[dict(catalog_id=str(i),state='current_review_observed',safe_to_write_now=False,
+                    holds=[],catalog_digest_matches_saved=True,evidence_digest_matches_saved=True,
+                    source_history_id_matches=True,native_checks=[],operator_checks=[],targets=[],tv_checks=[]) for i in range(1,110)]
+                    +[dict(catalog_id='2000086118',state='protected_not_examined',safe_to_write_now=False,
+                    holds=[],catalog_digest_matches_saved=False,evidence_digest_matches_saved=False,
+                    source_history_id_matches=False,native_checks=[],operator_checks=[],targets=[],tv_checks=[])])
         if mutate:mutate(data)
         (child/'native110-current-summary.json').write_text(json.dumps(data))
         return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
@@ -335,6 +341,11 @@ class Native110RegistrationTest(unittest.TestCase):
                    lambda d:d.update(provider_http_calls=True),lambda d:d.update(sources_examined=110),
                    lambda d:d.update(raw_bytes_read=536870913),lambda d:d.update(source_sha='c'*40),
                    lambda d:d.update(safe_to_write_now=True),lambda d:d.update(acceptance_policy_changed=True),
+                   lambda d:d['review_rows'][0].update(raw='fixture-secret'),
+                   lambda d:d['review_rows'][0].update(catalog_id='2000086118'),
+                   lambda d:d['review_rows'][-1].update(native_checks=[{'raw':'fixture-secret'}]),
+                   lambda d:d['review_rows'][0].update(targets=[{'id':42,'kind':'tv_candidate','tv_live30_observed':True,'holds':[],'raw':'fixture-secret'}]),
+                   lambda d:d['review_rows'][0].update(holds=['https://fixture-secret']),
                    lambda d:d.update(manifest_sha256='a'*64)]
         for mutate in mutations:
             with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:

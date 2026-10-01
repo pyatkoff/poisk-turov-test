@@ -283,13 +283,13 @@ def run_match_native110_current(stage):
     run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
                         '-d','disable_functions='+disabled,str(runner),'--current'],cwd=project,env=env,
                        capture_output=True,text=True,timeout=240)
-    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>65536:
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>262144:
         fail('native110_read_failed_no_replay')
     data=json.loads(run.stdout)
     fields={'state','operation','source_sha','batch','manifest_sha256','sources_requested','sources_examined',
             'protected_skipped','current_rows_returned','raw_verified_facts','raw_files_read','raw_bytes_read',
             'native_facts_examined','provider_http_calls','database_writes','mapping_writes','safe_to_write_now',
-            'no_replay','acceptance_policy_changed'}
+            'no_replay','acceptance_policy_changed','review_rows'}
     if (not isinstance(data,dict) or set(data)!=fields
             or data['state']!='completed_native110_current_review' or data['operation']!=operation
             or data['source_sha']!=source or data['batch']!='native110-20260928'
@@ -301,12 +301,64 @@ def run_match_native110_current(stage):
     if any(type(data[k]) is not int or data[k]!=v for k,v in fixed.items()): fail('native110_summary_counts')
     for k,cap in (('raw_verified_facts',3262),('raw_files_read',1000),('raw_bytes_read',536870912)):
         if type(data[k]) is not int or not 0<=data[k]<=cap: fail('native110_summary_bounds')
+    def shape(value,keys):
+        if not isinstance(value,dict) or set(value)!=set(keys.split()): fail('native110_review_projection')
+    def identity(value):
+        if not isinstance(value,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',value): fail('native110_review_identity')
+    def count(value,cap=50000):
+        if type(value) is not int or not 0<=value<=cap: fail('native110_review_count')
+    def codes(value):
+        if not isinstance(value,list) or len(value)>100 or any(not isinstance(v,str) or not re.fullmatch(r'[a-z_]{1,100}',v) for v in value): fail('native110_review_codes')
+    def items(value,cap=128):
+        if not isinstance(value,list) or len(value)>cap: fail('native110_review_items')
+        return value
+    namespaces={'operator_5','operator_115','operator_315','operator_342'}
+    def native(value):
+        identity(value.get('native_id'))
+        if value.get('namespace') not in namespaces: fail('native110_review_namespace')
+    reviews=data['review_rows'];items(reviews,110)
+    if len(reviews)!=110: fail('native110_review_membership')
+    seen=set()
+    for row in reviews:
+        shape(row,'catalog_id state safe_to_write_now holds catalog_digest_matches_saved evidence_digest_matches_saved source_history_id_matches native_checks operator_checks targets tv_checks')
+        identity(row['catalog_id'])
+        if row['catalog_id'] in seen or row['safe_to_write_now'] is not False: fail('native110_review_authority')
+        seen.add(row['catalog_id']);codes(row['holds'])
+        for key in ('catalog_digest_matches_saved','evidence_digest_matches_saved','source_history_id_matches'):
+            if type(row[key]) is not bool: fail('native110_review_bool')
+        if row['catalog_id']=='2000086118':
+            if (row['state']!='protected_not_examined' or row['holds']
+                    or any(row[k] for k in ('native_checks','operator_checks','targets','tv_checks',
+                                           'catalog_digest_matches_saved','evidence_digest_matches_saved','source_history_id_matches'))): fail('native110_protected_readback')
+            continue
+        if row['state']!='current_review_observed': fail('native110_review_state')
+        for f in items(row['native_checks']):
+            shape(f,'namespace native_id global_saved_unique raw_verified failures');native(f);codes(f['failures'])
+            if type(f['global_saved_unique']) is not bool or type(f['raw_verified']) is not bool: fail('native110_review_bool')
+        for o in items(row['operator_checks']):
+            shape(o,'namespace native_id current_identity_count current_local_hotel_ids');native(o);count(o['current_identity_count'])
+            for id in items(o['current_local_hotel_ids'],50000):
+                count(id,9223372036854775807)
+                if id==0: fail('native110_review_identity')
+        for t in items(row['targets'],200):
+            shape(t,'kind id tv_live30_observed holds');count(t['id'],9223372036854775807);codes(t['holds'])
+            if t['id']==0 or t['kind'] not in ('tv_candidate','independent_local_anchor') or type(t['tv_live30_observed']) is not bool: fail('native110_review_target')
+        for c in items(row['tv_checks'],100):
+            shape(c,'tv_hotel_id operator native_id tv_native_id state producers');count(c['tv_hotel_id'],9223372036854775807)
+            identity(c['native_id']);identity(c['tv_native_id'])
+            if c['tv_hotel_id']==0 or c['operator'] not in ('anex','bg','funsun','intourist') or c['state'] not in ('namespace_bridge_review_required','saved_producers_reviewed'): fail('native110_review_tv')
+            for p in items(c['producers'],2):
+                shape(p,'source_operation source_result_sha256 state failures');codes(p['failures'])
+                if (not isinstance(p['source_operation'],str) or not re.fullmatch(r'hotel-match-[a-zA-Z0-9_-]{1,180}',p['source_operation'])
+                        or not isinstance(p['source_result_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',p['source_result_sha256'])
+                        or p['state'] not in ('producer_unavailable','proof_hold','saved_tv_proof_verified')): fail('native110_review_producer')
+    if '2000086118' not in seen: fail('native110_review_membership')
     manifest_path=child/'native110-current-manifest.json'
     summary_path=child/'native110-current-summary.json'
     if (not isinstance(data['manifest_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',data['manifest_sha256'])
-            or not safe_file(manifest_path,64*1024*1024) or not safe_file(summary_path,65536)
+            or not safe_file(manifest_path,64*1024*1024) or not safe_file(summary_path,262144)
             or hashlib.sha256(manifest_path.read_bytes()).hexdigest()!=data['manifest_sha256']
-            or safe_json(summary_path,65536)!=data): fail('native110_private_result_binding')
+            or safe_json(summary_path,262144)!=data): fail('native110_private_result_binding')
     return data
 
 '''
