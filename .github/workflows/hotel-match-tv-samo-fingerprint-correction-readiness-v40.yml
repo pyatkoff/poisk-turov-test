@@ -1,0 +1,144 @@
+name: MATCH TV-SAMO fingerprint correction readiness v40
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php
+      - tests/hotel_match_tv_samo_fingerprint_correction_readiness_v40_test.php
+      - .github/workflows/hotel-match-tv-samo-fingerprint-correction-readiness-v40.yml
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-tv-samo-fingerprint-correction-readiness-v40
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5838213966'
+  V39_OP: hotel-match-tv-samo-single-fingerprint-conflict-audit-1971-20260925-v39
+  V37_OP: hotel-match-tv-samo-common4-fingerprint-join-1971-20260925-v37
+
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-fingerprint-correction-readiness-v40-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: php -l scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php
+      - run: php scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php --self-test
+      - run: php tests/hotel_match_tv_samo_fingerprint_correction_readiness_v40_test.php
+      - run: |
+          ! grep -E 'curl_|file_get_contents\(.*https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php
+
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/tv-samo-fingerprint-correction-readiness-v40-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate v40 authority and Security
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          expected=".github/workflows/hotel-match-tv-samo-fingerprint-correction-readiness-v40.yml scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php tests/hotel_match_tv_samo_fingerprint_correction_readiness_v40_test.php "
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = "$expected"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'exact four','correction_ready','duplicate_local_hold','HTTP0','safe_to_write_now=false']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda z:z['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+
+      - name: Execute correction-readiness audit
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP";v39=".anytoour-match/operations/$V39_OP";v37=".anytoour-match/operations/$V37_OP"
+
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";test -f \"\$HOME/$v39/result.json\";test -f \"\$HOME/$v39/receipt.json\";test -f \"\$HOME/$v37/result.json\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php "$remote:$op/payload/scripts/diagnostics/"
+
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_V39_RESULT=\"\$HOME/$v39/result.json\" MATCH_V39_RECEIPT=\"\$HOME/$v39/receipt.json\" MATCH_V37_RESULT=\"\$HOME/$v37/result.json\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_tv_samo_fingerprint_correction_readiness_v40.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          rc=$?
+          set -e
+
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/result.json\"" >terminal/result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$op/receipt.json\"" >terminal/receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert r['operation']=='hotel-match-tv-samo-fingerprint-correction-readiness-1971-20260925-v40b'
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert q['readback_verified'] is True
+          if r['state']=='completed_read_only_fingerprint_correction_readiness':
+              assert r['input_count']==4 and sum(r['status_counts'].values())==4
+              assert r['safe_to_write_now'] is False
+              for k in ['provider_http_calls','tourvisor_calls','samo_calls','anex_calls','andromeda_calls','database_writes','mapping_writes']:
+                  assert r[k]==0,(k,r[k])
+              print(json.dumps({'status_counts':r['status_counts'],'correction_ready_count':r['correction_ready_count'],'rows':r['rows']},ensure_ascii=False,sort_keys=True))
+          else: print(json.dumps(r,ensure_ascii=False,sort_keys=True))
+          PY
+          test "$rc" -eq 0
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-tv-samo-fingerprint-correction-readiness-v40-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
