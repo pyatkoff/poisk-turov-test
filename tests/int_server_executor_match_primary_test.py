@@ -476,4 +476,81 @@ class GuardedNative110RegistrationTest(unittest.TestCase):
                 self.assertEqual(call.call_count,1)
             self.assertTrue((root.parent/('native110-input-'+registration.GUARDED_INPUT_SHA+'-consumed.json')).is_file())
 
+class BGOriginalEvidenceRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.BG_MODE+' '+registration.BG_OPERATION+' '+registration.NATIVE_BATCH
+
+    def test_bound_to_exact_missing_evidence_task(self):
+        p=self.core.parse_command(self.body);self.assertEqual(p['maximum_writes'],0)
+        self.assertEqual(p['input_sha256'],registration.GUARDED_INPUT_SHA)
+        for body in (self.body+' 18',self.body.replace(registration.BG_OPERATION,registration.NATIVE_OPERATION),self.body.replace(registration.NATIVE_BATCH,registration.BATCH)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,p)
+        self.assertIn('def run_match_native110_bg_evidence(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_native110_current(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_native110_write(stage):',self.core.REMOTE)
+        self.assertTrue(set(registration.BG_SOURCE_FILES).issubset(self.core.FIXED))
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+            and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.BG_MODE)))
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.BG_OPERATION;ns['payload']=dict(batch=registration.NATIVE_BATCH,maximum_writes=0,provider_http_calls=0,input_sha256=registration.GUARDED_INPUT_SHA)
+        runner=stage/'scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_BG_HANDLER,ns);return ns,stage,root,runner
+
+    def response(self,kwargs,mutate=None):
+        rows=[dict(catalog_id=c,tv_hotel_id=v[0],samo_native_id=v[1],tv_native_id=v[2],raw_references_examined=2,
+            top_fields=['hotelKey','original'],original_fields=['hotelKey','hotelUrl'],
+            location_fields=[dict(source_field='original.country',value='Турция')],
+            bg_links=[dict(source_field='original.hotelUrl',host='www.bgoperator.ru',url_sha256='b'*64,signed_parameters_present=True,
+                hotel_selectors=[dict(parameter='tid',positive_tokens=[v[2]],opaque_tokens=0,value_sha256='a'*64)])],
+            failures=[],safe_to_write_now=False) for c,v in registration.BG_EXPECTED.items()]
+        data=dict(state='completed_bg_original_fields_review',operation=registration.BG_OPERATION,source_sha=SOURCE,batch=registration.NATIVE_BATCH,
+            input_sha256=registration.GUARDED_INPUT_SHA,rows=rows,raw_files_read=1,raw_bytes_read=1000,
+            provider_http_calls=0,database_reads=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
+        if mutate:mutate(data)
+        (Path(kwargs['env']['MATCH_OPERATION_DIR'])/'result.json').write_text(json.dumps(data))
+        return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
+
+    def test_whole18_read_without_db_or_supplier_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            def call(argv,**kw):
+                self.assertEqual(argv[-2:],[str(runner),'--read-saved']);self.assertIn('allow_url_fopen=0',argv)
+                self.assertEqual(set(kw['env'])-{'PATH','HOME','LANG','LC_ALL'},{'MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+                r=json.loads((Path(kw['env']['MATCH_OPERATION_DIR'])/'reservation.json').read_text())
+                self.assertEqual(r['maximum_writes'],0);self.assertEqual(r['state'],'reserved_before_saved_read')
+                return self.response(kw)
+            with patch.object(subprocess,'run',side_effect=call) as call:
+                out=ns['run_match_native110_bg_evidence'](stage)
+                self.assertEqual(len(out['rows']),18);self.assertEqual(out['database_reads'],0)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_bg_evidence'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_untrusted_fields_authority_scope_and_raw_values_are_rejected(self):
+        changes=[lambda d:d.update(database_reads=1),lambda d:d.update(mapping_writes=1),lambda d:d.update(safe_to_write_now=True),
+            lambda d:d.update(raw='fixture-secret'),lambda d:d['rows'][0].update(catalog_id='2000086118'),
+            lambda d:d['rows'][0].update(samo_native_id=d['rows'][0]['tv_native_id']),lambda d:d['rows'][0].update(raw='fixture-secret'),
+            lambda d:d['rows'][0]['location_fields'][0].update(source_field='original.api_token',value='fixture-secret'),
+            lambda d:d['rows'][0]['bg_links'][0].update(url='https://www.bgoperator.ru/?token=fixture-secret'),
+            lambda d:d['rows'][0]['bg_links'][0].update(host='www.bgoperator.ru.evil.test'),
+            lambda d:d['rows'][0]['bg_links'][0]['hotel_selectors'][0].update(positive_tokens=['signed-fixture-secret'])]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_native110_bg_evidence'](stage)
+
+    def test_timeout_is_terminal_not_replayed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_native110_bg_evidence'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_bg_evidence'](stage)
+                self.assertEqual(call.call_count,1)
+
 if __name__=='__main__':unittest.main()

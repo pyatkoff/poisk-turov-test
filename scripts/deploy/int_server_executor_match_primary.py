@@ -1,7 +1,7 @@
 """Bounded MATCH registration for the existing stock executor entrypoint.
 
 No new transport or credential mechanism: checked_event and execute stay in core.
-All old modes delegate unchanged. Native110 is a review-only contract proposal.
+All old modes delegate unchanged. Native110 stages have fixed intake scopes.
 """
 from __future__ import annotations
 
@@ -16,6 +16,17 @@ NATIVE_BATCH = 'native110-20260928'
 GUARDED_MODE = 'match-native110-write'
 GUARDED_OPERATION = 'int-andromeda-match-native110-write-20261001-v1'
 GUARDED_INPUT_SHA = '59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
+BG_MODE = 'match-native110-bg-evidence'
+BG_OPERATION = 'int-andromeda-match-native110-bg-evidence-20261001-v1'
+BG_EXPECTED = {'13293': (367, '610184500', '102610184500'), '60328': (9242, '625162113', '102625162113'),
+    '205729': (9283, '625414997', '102625414997'), '2000041008': (62868, '610121438', '102610121438'),
+    '2000052316': (70457, '610144591', '102610144591'), '2000059209': (67000, '610155352', '102610155352'),
+    '2000060910': (72889, '610175943', '102610175943'), '2000062548': (72865, '610149698', '102610149698'),
+    '2000062557': (75791, '610179507', '102610179507'), '2000071830': (15902, '610210401', '102610210401'),
+    '2000081107': (83106, '610227700', '102610227700'), '2000086021': (316, '668981793', '102668981793'),
+    '2000086129': (75538, '610160139', '102610160139'), '2000087863': (99582, '610222069', '102610222069'),
+    '2000041090': (1572, '625076488', '102625076488'), '2000072753': (1267, '610197738', '102610197738'),
+    '2000072804': (65770, '610175325', '102610175325'), '2000079689': (1175, '610214047', '102610214047')}
 BATCH = 'samo3-20260929'
 OPERATION_RE = re.compile(r'\Aint-andromeda-match-primary-[a-z0-9-]{8,48}-v[1-9][0-9]*\Z')
 SOURCE_FILES = (
@@ -29,6 +40,7 @@ NATIVE_SOURCE_FILES = PROOF_SOURCE_FILES + (
     'scripts/diagnostics/fixtures/hotel_match_native110_current_v1.json',
 )
 GUARDED_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native110_guarded_v1.php',)
+BG_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php',)
 
 
 def register_parser(core) -> None:
@@ -39,11 +51,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == BG_MODE:
+            core.need(operation == BG_OPERATION and batch == NATIVE_BATCH, 'bg_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NATIVE_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0, 'input_sha256': GUARDED_INPUT_SHA}
         if mode == GUARDED_MODE:
             core.need(operation == GUARDED_OPERATION and batch == NATIVE_BATCH, 'guarded_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NATIVE_BATCH,
@@ -482,7 +498,100 @@ REMOTE_GUARDED_DISPATCH = r'''    if mode=='match-native110-write':
 '''
 
 
-def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False) -> str:
+REMOTE_BG_HANDLER = r'''
+def run_match_native110_bg_evidence(stage):
+    input_sha='59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
+    if (operation!='int-andromeda-match-native110-bg-evidence-20261001-v1' or payload.get('batch')!='native110-20260928'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0
+            or payload.get('input_sha256')!=input_sha): fail('bg_fixed_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root: fail('bg_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('bg_exists_no_replay')
+    child.mkdir(mode=0o700)
+    reservation={'operation':operation,'source_sha':source,'batch':'native110-20260928','input_sha256':input_sha,
+                 'maximum_writes':0,'provider_http_calls':0,'state':'reserved_before_saved_read','reserved_at':int(time.time())}
+    fd=os.open(child/'reservation.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'wb') as stream:
+        stream.write(json.dumps(reservation,sort_keys=True,separators=(',',':')).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+    runner=stage/'scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php'
+    if not safe_file(runner,2*1024*1024): fail('bg_runner_missing_no_replay')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','disable_functions='+disabled,
+                        str(runner),'--read-saved'],cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    path=child/'result.json'
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>262144 or not safe_file(path,262144): fail('bg_read_failed_no_replay')
+    data=json.loads(run.stdout)
+    fields={'state','operation','source_sha','batch','input_sha256','rows','raw_files_read','raw_bytes_read','provider_http_calls',
+            'database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=fields or safe_json(path,262144)!=data
+            or data['state']!='completed_bg_original_fields_review' or data['operation']!=operation or data['source_sha']!=source
+            or data['batch']!='native110-20260928' or data['input_sha256']!=input_sha
+            or data['safe_to_write_now'] is not False or data['no_replay'] is not True): fail('bg_output_binding')
+    for key,cap in [('provider_http_calls',0),('database_reads',0),('database_writes',0),('mapping_writes',0),('raw_files_read',1000),('raw_bytes_read',536870912)]:
+        if type(data[key]) is not int or not 0<=data[key]<=cap: fail('bg_output_counts')
+    expected=__BG_EXPECTED__
+    rows=data['rows']
+    if not isinstance(rows,list) or len(rows)!=18: fail('bg_output_rows')
+    seen=set()
+    def shape(value,fields):
+        if not isinstance(value,dict) or set(value)!=set(fields.split()): fail('bg_projection')
+    def items(value,cap):
+        if not isinstance(value,list) or len(value)>cap: fail('bg_projection')
+        return value
+    def source_field(value):
+        if not isinstance(value,str) or not re.fullmatch(r'(?:row|original)\.[a-zA-Z_][a-zA-Z0-9_.-]{0,79}',value): fail('bg_field')
+    def sha(value):
+        if not isinstance(value,str) or not re.fullmatch(r'[a-f0-9]{64}',value): fail('bg_digest')
+    for row in rows:
+        shape(row,'catalog_id tv_hotel_id samo_native_id tv_native_id raw_references_examined top_fields original_fields location_fields bg_links failures safe_to_write_now')
+        cat=row['catalog_id']
+        if (cat not in expected or cat in seen or type(row['tv_hotel_id']) is not int
+                or tuple(row[k] for k in ('tv_hotel_id','samo_native_id','tv_native_id'))!=expected[cat]
+                or row['safe_to_write_now'] is not False or type(row['raw_references_examined']) is not int
+                or not 0<=row['raw_references_examined']<=1000): fail('bg_row_scope')
+        seen.add(cat)
+        for key in ('top_fields','original_fields'):
+            for value in items(row[key],256):
+                if not isinstance(value,str) or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_.-]{0,79}',value): fail('bg_field_inventory')
+        for failure in items(row['failures'],10):
+            if failure not in ('raw_file_unavailable','raw_reference_changed','raw_evidence_reference_missing'): fail('bg_failure')
+        for geo in items(row['location_fields'],128):
+            shape(geo,'source_field value');source_field(geo['source_field']);value=geo['value']
+            if not re.fullmatch(r'(?:town|city|state|country|latitude|longitude|lat|lng|lon|townkey|townname|hotelLat|hotelLng|hotelLatitude|hotelLongitude|hotelTown|hotelCountry)',geo['source_field'].split('.',1)[1],re.I): fail('bg_location_field')
+            if value is not None and (type(value) not in (str,int,float) or (type(value) is str and not re.fullmatch(r"[\w\s.,+'’()/_-]{1,180}",value)) or (type(value) in (int,float) and not (value==value and abs(value)<=10**15))): fail('bg_location_projection')
+        for link in items(row['bg_links'],128):
+            shape(link,'source_field host url_sha256 signed_parameters_present hotel_selectors');source_field(link['source_field']);sha(link['url_sha256'])
+            if not re.fullmatch(r'(?:(?:hotel|object).*(?:url|link)|url|link)',link['source_field'].split('.',1)[1],re.I): fail('bg_link_field')
+            if (not isinstance(link['host'],str) or not re.fullmatch(r'(?:[a-z0-9-]+\.)*bgoperator\.ru',link['host'])
+                    or type(link['signed_parameters_present']) is not bool): fail('bg_link_projection')
+            for selector in items(link['hotel_selectors'],32):
+                shape(selector,'parameter positive_tokens opaque_tokens value_sha256');sha(selector['value_sha256'])
+                if (not isinstance(selector['parameter'],str) or not re.fullmatch(r'(?:id|tid|hotel|hotelid|hotel_id|hotels|hotels\[\]|hotellist|i1hotelinc)',selector['parameter'],re.I)
+                        or type(selector['opaque_tokens']) is not int or not 0<=selector['opaque_tokens']<=128): fail('bg_selector_projection')
+                for token in items(selector['positive_tokens'],128):
+                    if not isinstance(token,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',token): fail('bg_selector_projection')
+    return data
+
+'''
+
+REMOTE_BG_DISPATCH = r'''    if mode=='match-native110-bg-evidence':
+        result['match_native110_bg_evidence']=run_match_native110_bg_evidence(stage)
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+REMOTE_BG_HANDLER = REMOTE_BG_HANDLER.replace('__BG_EXPECTED__',repr(BG_EXPECTED))
+
+
+def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -496,6 +605,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_NATIVE_HANDLER, REMOTE_NATIVE_DISPATCH, NATIVE_MODE
     if guarded:
         handler, mode_dispatch, selected_mode = REMOTE_GUARDED_HANDLER, REMOTE_GUARDED_DISPATCH, GUARDED_MODE
+    if bg:
+        handler, mode_dispatch, selected_mode = REMOTE_BG_HANDLER, REMOTE_BG_DISPATCH, BG_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -504,7 +615,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -514,9 +625,10 @@ def activate(core, command: dict) -> None:
     proof = command['mode'] == READBACK_MODE
     native = command['mode'] == NATIVE_MODE
     guarded = command['mode'] == GUARDED_MODE
-    remote = remote_with_primary(core, proof, native, guarded)
+    bg = command['mode'] == BG_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg)
     files = list(core.FIXED)
-    for path in GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)):
+    for path in BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES))):
         if path not in files:
             files.append(path)
     core.FIXED = files
