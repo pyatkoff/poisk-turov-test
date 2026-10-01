@@ -50,6 +50,29 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  w.AnyTourPrototypeData.catalog.regions['4']=[...regions,{id:'121',kind:'subregion',parentId:'21',country:'4',name:'Кадрие',tourvisorIds:['121']}];
  click('#search-form [data-action="destination"]');
  assert(q('.destination-region details [data-action="destination-resort"][data-value="Кадрие"]'),'subresort stays under the LOCAL region');
+ const hierarchyRows=[];
+ for(let i=0;i<40;i++){
+  const suffix=String(i).padStart(2,'0');
+  hierarchyRows.push({id:'perf-'+i,kind:'region',country:'4',name:'Группа '+suffix,tourvisorIds:[]});
+  hierarchyRows.push({id:'perf-child-'+i,kind:'subregion',parentId:'perf-'+i,country:'4',name:'Курорт '+suffix,tourvisorIds:[]});
+ }
+ const previousHierarchy=hierarchyRows.filter(r=>r.kind!=='subregion').map(parent=>({
+  parent,
+  children:hierarchyRows.filter(r=>r.kind==='subregion'&&r.country===parent.country&&String(r.parentId)===String(parent.id))
+ })).filter(group=>group.parent.country==='4').sort((a,b)=>a.parent.name.localeCompare(b.parent.name,'ru'));
+ let hierarchyKindReads=0;
+ const observedHierarchy=hierarchyRows.map(row=>new Proxy(row,{get(target,key,receiver){if(key==='kind')hierarchyKindReads++;return Reflect.get(target,key,receiver);}}));
+ w.AnyTourPrototypeData.catalog.regions['4']=observedHierarchy;
+ click('[data-action="destination-country"][data-value="4"]');hierarchyKindReads=0;click('[data-action="toggle-destination-resorts"]');
+ const renderedHierarchy=[...d.querySelectorAll('.destination-region')].map(group=>({
+  parent:group.querySelector('[data-action="destination-resort"] strong').textContent,
+  children:[...group.querySelectorAll('.destination-subregions [data-action="destination-resort"] strong')].map(el=>el.textContent)
+ }));
+ const expectedHierarchy=previousHierarchy.map(group=>({parent:group.parent.name,children:group.children.map(row=>row.name).sort((a,b)=>a.localeCompare(b,'ru'))}));
+ assert.deepEqual(renderedHierarchy,expectedHierarchy,'one-pass hierarchy preserves the previous region and child order');
+ assert.equal(hierarchyKindReads,hierarchyRows.length,'one destination render classifies every region row once');
+ const previousKindReads=hierarchyRows.length+previousHierarchy.length*hierarchyRows.length;
+ console.log('PASS destination hierarchy: '+hierarchyRows.length+' rows, kind reads '+previousKindReads+' → '+hierarchyKindReads+', previous rendered order preserved');
  click('[data-action="close-modal"]');await settle();w.AnyTourPrototypeData.catalog.regions['4']=regions;
  assert.equal(starts(),0,'city/meal/destination pickers never start suppliers');
  w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));

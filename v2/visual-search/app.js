@@ -309,8 +309,15 @@ document.addEventListener('input',event=>{if(event.target.id==='departure-query'
 const primaryDestinations=['Турция','Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Абхазия','Россия'];
 const destinationOrder=(a,b)=>{const rank=name=>{const i=primaryDestinations.indexOf(name);return i<0?100:i;};return rank(a)-rank(b)||a.localeCompare(b,'ru');};
 function resortGroups(query,country){
- const rows=Object.values(data.catalog.regions).flat(),parents=rows.filter(r=>r.kind!=='subregion');
- return parents.map(parent=>({parent,children:rows.filter(r=>r.kind==='subregion'&&r.country===parent.country&&String(r.parentId)===String(parent.id))}))
+ const parents=[],childrenByCountry=new Map();
+ for(const row of Object.values(data.catalog.regions).flat()){
+  if(row.kind!=='subregion'){parents.push(row);continue;}
+  let childrenByParent=childrenByCountry.get(row.country);
+  if(!childrenByParent){childrenByParent=new Map();childrenByCountry.set(row.country,childrenByParent);}
+  const parentId=String(row.parentId),children=childrenByParent.get(parentId);
+  if(children)children.push(row);else childrenByParent.set(parentId,[row]);
+ }
+ return parents.map(parent=>({parent,children:childrenByCountry.get(parent.country)?.get(String(parent.id))||[]}))
  .filter(group=>query?[group.parent,...group.children].some(r=>normalizeSearch(r.name+' '+countryNames[r.country]).includes(query)):group.parent.country===country)
  .sort((a,b)=>a.parent.name.localeCompare(b.parent.name,'ru'));
 }
