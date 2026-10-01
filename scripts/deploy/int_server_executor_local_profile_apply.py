@@ -95,7 +95,7 @@ def run_local_profile_mass_apply130_phase2(stage):
     expected={'schema_version','operation_id','batch','source_sha','control_source_sha','plan_source_sha',
               'private_plan_sha256','requested_profiles','state','profiles_verified','fields_verified',
               'field_counts','batches_verified','profile_writes','provenance_writes','readback_verified',
-              'unknown_batch','supplier_calls','provider_http_calls','mapping_writes','legacy_writes','schema_writes'}
+              'unknown_batch','sample_own_ids','supplier_calls','provider_http_calls','mapping_writes','legacy_writes','schema_writes'}
     if (set(data)!=expected or data.get('schema_version')!=1 or data.get('operation_id')!=operation
             or data.get('batch')!='local4191-mass-retained130-phase2-20261002' or data.get('source_sha')!=source
             or data.get('control_source_sha')!=payload['local_profile_control_sha']
@@ -114,12 +114,15 @@ def run_local_profile_mass_apply130_phase2(stage):
     if (not isinstance(counts,dict) or set(counts)-allowed
             or any(type(v) is not int or not 1<=v<=130 for v in counts.values())
             or sum(counts.values())!=data['fields_verified']): fail('mass2_apply_fields')
+    samples=data['sample_own_ids']
+    if (not isinstance(samples,list) or len(samples)>3 or len(samples)!=len(set(samples))
+            or any(type(v) is not int or v<=0 for v in samples)): fail('mass2_apply_samples')
     state=data['state']
     if state=='committed_verified':
         if (data['profiles_verified']!=130 or data['fields_verified']!=1312 or data['batches_verified']!=3
                 or type(data['profile_writes']) is not int or data['profile_writes']!=130
                 or type(data['provenance_writes']) is not int or data['provenance_writes']!=130
-                or data['readback_verified'] is not True or data['unknown_batch'] is not None
+                or data['readback_verified'] is not True or data['unknown_batch'] is not None or len(samples)!=3
                 or run.returncode!=0 or run.stderr.strip()): fail('mass2_apply_false_complete')
     elif state=='held_before_write':
         if (any(type(data[k]) is not int or data[k]!=0 for k in
