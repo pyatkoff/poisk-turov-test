@@ -14,6 +14,8 @@ on:
       - 'tests/hotel_match_shams_guarded_v1_test.php'
       - 'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php'
       - 'tests/hotel_match_tv_live30_target_catalog_v1_test.php'
+      - 'scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php'
+      - 'tests/hotel_match_tv_live30_target_preflight_v1_test.php'
       - '.github/workflows/hotel-match-native110-current-checks.yml'
 permissions:
   contents: read
@@ -67,6 +69,7 @@ jobs:
           MATCH_NATIVE110_MYSQL_TEST: '1'
           MATCH_SHAMS_MYSQL_TEST: '1'
           MATCH_TV_TARGET_MYSQL_TEST: '1'
+          MATCH_TV_PREFLIGHT_MYSQL_TEST: '1'
         run: |
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_native110_guarded_v1.php
@@ -78,3 +81,6 @@ jobs:
           php -l scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php
           php -l tests/hotel_match_tv_live30_target_catalog_v1_test.php
           php tests/hotel_match_tv_live30_target_catalog_v1_test.php
+          php -l scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php
+          php -l tests/hotel_match_tv_live30_target_preflight_v1_test.php
+          php tests/hotel_match_tv_live30_target_preflight_v1_test.php
