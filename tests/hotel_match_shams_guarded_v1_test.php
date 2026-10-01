@@ -34,3 +34,33 @@ $entryCoordinates=$entry;$entryCoordinates['prior']['evidence_sha256']=$r['evide
 shgcheck(in_array('coordinate_conflict_over_5km',shg_classify($entryCoordinates,$c)['reasons'],true),'over_5km_never_removed');
 shgcheck(SHG_OP!==(defined('NG110_OP')?NG110_OP:''),'new_operation_not_old_writer');
 echo 'SHAMS_GUARDED_PURE_PASS '.$checks."\n";
+if(getenv('MATCH_SHAMS_MYSQL_TEST')!=='1')exit(0);
+
+$db=new PDO('mysql:host=127.0.0.1;port=33306;dbname=match_primary_fixture;charset=utf8mb4','root','match-fixture-only',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+shgcheck($db->query('SELECT DATABASE()')->fetchColumn()==='match_primary_fixture','fixture_database_only');
+function shgreset(PDO $db,array $row,array $hotel): void {
+    foreach(['andromeda_hotel_identities','catalog_hotels','tour_operator_identity_observations','anex_hotel_search_mappings','anex_hotel_decisions','anex_review_pair_exclusions'] as $t)$db->exec('DROP TABLE IF EXISTS '.$t);
+    $db->exec('CREATE TABLE andromeda_hotel_identities (supplier_namespace VARCHAR(64) NOT NULL,external_hotel_id VARCHAR(64) NOT NULL,local_hotel_id BIGINT NULL,decision_status VARCHAR(32) NOT NULL,catalog_sha256 CHAR(64) NOT NULL,evidence_sha256 CHAR(64) NOT NULL,evidence_json LONGTEXT NOT NULL,PRIMARY KEY(supplier_namespace,external_hotel_id)) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE catalog_hotels (id BIGINT PRIMARY KEY,name VARCHAR(255),country_id INT,country_name VARCHAR(100),region_name VARCHAR(100),subregion_name VARCHAR(100),category INT,is_active INT,latitude DOUBLE NULL,longitude DOUBLE NULL) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE tour_operator_identity_observations (hotel_id BIGINT PRIMARY KEY,last_seen_at DATETIME) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE anex_hotel_search_mappings (anex_hotel_id INT PRIMARY KEY,catalog_hotel_id BIGINT,match_class VARCHAR(64),scope VARCHAR(20),approval_policy VARCHAR(100),enabled INT,source_row_digest CHAR(64),mapping_digest CHAR(64)) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE anex_hotel_decisions (anex_hotel_id INT PRIMARY KEY,catalog_hotel_id BIGINT NULL,decision_status VARCHAR(30)) ENGINE=InnoDB');
+    $db->exec('CREATE TABLE anex_review_pair_exclusions (anex_hotel_id INT,catalog_hotel_id BIGINT,PRIMARY KEY(anex_hotel_id,catalog_hotel_id)) ENGINE=InnoDB');
+    $db->prepare('INSERT INTO andromeda_hotel_identities VALUES (?,?,?,?,?,?,?)')->execute(array_values($row));
+    $db->prepare('INSERT INTO catalog_hotels VALUES (?,?,?,?,?,?,?,?,?,?)')->execute(array_values($hotel));
+    $db->prepare('INSERT INTO tour_operator_identity_observations VALUES (?,UTC_TIMESTAMP())')->execute([$hotel['id']]);
+}
+function shgrun(PDO $db,array $entry): array {
+    $dir=sys_get_temp_dir().'/shams-write-'.bin2hex(random_bytes(8));mkdir($dir,0700);
+    try{return shg_write($db,[420=>$entry],str_repeat('a',40),$dir);}
+    finally{foreach(new DirectoryIterator($dir) as $f)if(!$f->isDot())unlink($f->getPathname());rmdir($dir);}
+}
+shgreset($db,$row,$hotel);$out=shgrun($db,$entry);
+shgcheck($out['state']==='committed_readback_verified'&&$out['mapping_writes']===1&&count($out['rows'])===1,'one_real_commit');
+shgcheck($out['effective_resolver_verified']&&$out['prior_evidence_preserved']&&$out['unrelated_identities_unchanged'],'post_commit_guards');
+$out=shgrun($db,$entry);shgcheck($out['state']==='completed_no_new_writes'&&$out['mapping_writes']===0,'accepted_not_replaced_mysql');
+shgreset($db,$row,$hotel);$other=$row;$other['external_hotel_id']='other';$other['local_hotel_id']=420;$other['decision_status']='accepted';
+$db->prepare('INSERT INTO andromeda_hotel_identities VALUES (?,?,?,?,?,?,?)')->execute(array_values($other));
+$out=shgrun($db,$entry);shgcheck($out['state']==='completed_no_new_writes'&&$out['mapping_writes']===0
+    &&in_array('target_catalog_occupied',$out['held'][0]['reasons'],true),'occupied_target_not_replaced_mysql');
+echo 'SHAMS_GUARDED_MYSQL_PASS '.$checks."\n";

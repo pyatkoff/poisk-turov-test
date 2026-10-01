@@ -63,8 +63,12 @@ jobs:
       - name: Verify guarded native110 intake and real MySQL outcomes
         env:
           MATCH_NATIVE110_MYSQL_TEST: '1'
+          MATCH_SHAMS_MYSQL_TEST: '1'
         run: |
           set -euo pipefail
           php -l scripts/diagnostics/hotel_match_native110_guarded_v1.php
           php -l tests/hotel_match_native110_guarded_v1_test.php
           php tests/hotel_match_native110_guarded_v1_test.php
+          php -l scripts/diagnostics/hotel_match_shams_guarded_v1.php
+          php -l tests/hotel_match_shams_guarded_v1_test.php
+          php tests/hotel_match_shams_guarded_v1_test.php
