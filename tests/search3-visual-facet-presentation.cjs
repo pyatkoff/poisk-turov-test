@@ -93,10 +93,13 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  c.dom.window.close();
 }
 {
- const c=environment('<div id="filters"><div class="filter-group"><div class="star-options"></div></div></div>'),model={filters:{stars:[5],amenities:[]}};let inventories=0;
- Object.assign(c,{hotels:[{country:'4',stars:2},{country:'4',stars:3}],state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values)=>{inventories++;assert.equal(group,'stars');return new Map(values.map(value=>[value,value===2?3:0]));},countMatchingHotels:()=>{throw Error('star scalar fallback')},applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
+ const c=environment('<div id="filters"><div class="filter-group"><div class="star-options"></div></div></div>'),model={filters:{stars:[5],amenities:[]}};let inventories=0,countryReads=0,starReads=0;
+ const hotels=Array.from({length:100},(_,i)=>({get country(){countryReads++;return '4'},get stars(){starReads++;return i%2?3:2}}));
+ Object.assign(c,{hotels,state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values)=>{inventories++;assert.equal(group,'stars');return new Map(values.map(value=>[value,value===2?3:0]));},countMatchingHotels:()=>{throw Error('star scalar fallback')},applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
  vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons','updateFilterStars','updateFacetCounts']),c);c.updateFacetCounts();
  assert.equal(inventories,1,'one complete star inventory per filter refresh');
+ assert.equal(countryReads,100,'one canonical star option country pass per filter refresh');
+ assert.equal(starReads,100,'one canonical star option value pass per filter refresh');
  assert.deepEqual(c.$$('.star-options button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','3'],['5','true','0']],'batched star inventory retains available and selected-unavailable buttons');
  c.dom.window.close();
 }
