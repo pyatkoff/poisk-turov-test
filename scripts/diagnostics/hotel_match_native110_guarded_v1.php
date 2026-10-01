@@ -104,7 +104,7 @@ function ng110_classify(array $entry,array $context): array {
 
 function ng110_write(PDO $db,array $entries,string $head,string $dir): array {
     w76_need(array_map(fn($e)=>$e['catalog_id'],$entries)===NG110_PAIRS&&!$db->inTransaction(),'guarded_write_scope');
-    $attempt=false;$committed=false;$sql=false;$rollback=false;$planned=[];$held=[];$beforeCoverage=null;
+    $attempt=false;$committed=false;$sql=false;$rollback=false;$planned=[];$held=[];$beforeCoverage=null;$examined=0;
     try{
         foreach(['andromeda_hotel_identities','catalog_hotels','tour_operator_identity_observations','anex_hotel_search_mappings','anex_hotel_decisions','anex_review_pair_exclusions'] as $t){
             $engine=w76_q($db,'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$t]);
@@ -122,6 +122,7 @@ function ng110_write(PDO $db,array $entries,string $head,string $dir): array {
         $anexBefore=w76_q($db,'SELECT * FROM anex_hotel_search_mappings ORDER BY anex_hotel_id LIMIT 50001 FOR UPDATE');
         $beforeCoverage=w76_census($db);
         foreach($entries as $id=>$entry){
+            ++$examined;
             $decision=ng110_classify($entry,$context);
             if($decision['status']!=='ready'){$held[]=['catalog_id'=>$entry['catalog_id'],'local_hotel_id'=>$id]+$decision;continue;}
             $old=$context['sources'][$entry['catalog_id']][0];$history=json_decode($old['evidence_json'],true);
@@ -161,7 +162,7 @@ function ng110_write(PDO $db,array $entries,string $head,string $dir): array {
         $count=$committed?count($planned):(($attempt||($sql&&!$rollback))?null:0);
         return ['state'=>$committed?'committed_readback_unconfirmed':($attempt?'commit_outcome_unknown_no_replay':($count===0?'rolled_back_no_writes':'write_outcome_unknown_no_replay')),
             'reason'=>preg_match('/^[a-z_]+$/D',$e->getMessage())?$e->getMessage():'guarded_writer_failed',
-            'commit_attempted'=>$attempt,'commit_completed'=>$committed,'current_candidates_evaluated'=>4,'rows'=>[],'held'=>$held,
+            'commit_attempted'=>$attempt,'commit_completed'=>$committed,'current_candidates_evaluated'=>$examined,'rows'=>[],'held'=>$held,
             'database_writes'=>$count,'mapping_writes'=>$count,'readback_verified'=>false];
     }
 }
