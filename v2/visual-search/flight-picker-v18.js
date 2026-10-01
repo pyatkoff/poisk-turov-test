@@ -84,6 +84,19 @@
     const pageSize=matchMedia('(max-width:760px)').matches?4:6;let visibleLimit=pageSize;
     const normalize=value=>String(value).toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();
     const resetFilters=()=>{container.querySelectorAll('[data-flight-filter]').forEach(x=>x.checked=false);container.querySelectorAll('[data-flight-time]').forEach(x=>x.value='');query.value='';};
+    const orderKeys=rows.map(row=>({row}));let ordered=[],lastSort;
+    function orderRows(sort){
+      let changed=sort!==lastSort;
+      for(const key of orderKeys){
+        const index=key.row.dataset.flightIndex,price=sort==='price'?key.row.dataset.flightPrice:null;
+        if(index!==key.index||price!==key.price){key.index=index;key.price=price;changed=true;}
+      }
+      if(changed){
+        // Start from the bind inventory to retain stable ties after a key change.
+        ordered=[...orderKeys].sort((a,b)=>sort==='price'?((Number(a.price)||Infinity)-(Number(b.price)||Infinity))||Number(a.index)-Number(b.index):Number(a.index)-Number(b.index)).map(key=>key.row);lastSort=sort;
+      }
+      return ordered;
+    }
     function update(resetLimit=false){
       if(resetLimit)visibleLimit=pageSize;
       const direct=container.querySelector('[data-flight-filter="direct"]').checked,baggage=container.querySelector('[data-flight-filter="baggage"]').checked;
@@ -92,9 +105,12 @@
       const timeCount=Number(!!forward)+Number(!!backward);container.querySelector('[data-flight-time-count]').textContent=timeCount?'· '+timeCount+(timeCount===1?' условие':' условия'):'';
       const filterCount=Number(direct)+Number(baggage)+Number(!!terms.length)+timeCount;
       const filterBadge=container.querySelector('[data-flight-filter-count]');filterBadge.textContent=filterCount?'· '+filterCount:'';filterBadge.setAttribute('aria-label',filterCount?'Активных фильтров: '+filterCount:'');
-      const ordered=[...rows].sort((a,b)=>sort==='price'?((Number(a.dataset.flightPrice)||Infinity)-(Number(b.dataset.flightPrice)||Infinity))||Number(a.dataset.flightIndex)-Number(b.dataset.flightIndex):Number(a.dataset.flightIndex)-Number(b.dataset.flightIndex));
+      const ordered=orderRows(sort);
       const matching=[];let hiddenSelection=false,selectedBeyondLimit=false;
-      for(const row of ordered){const search=terms.length?normalize(row.dataset.flightSearch):'';const match=terms.every(term=>search.includes(term))&&(!direct||row.dataset.flightDirect==='true')&&(!baggage||row.dataset.flightBaggage==='true')&&(!forward||row.dataset.flightForwardTime===forward)&&(!backward||row.dataset.flightBackwardTime===backward);row.dataset.flightMatch=String(match);if(match)matching.push(row);else if(row.querySelector('input:checked'))hiddenSelection=true;list.append(row);}
+      for(const row of ordered){const search=terms.length?normalize(row.dataset.flightSearch):'';const match=terms.every(term=>search.includes(term))&&(!direct||row.dataset.flightDirect==='true')&&(!baggage||row.dataset.flightBaggage==='true')&&(!forward||row.dataset.flightForwardTime===forward)&&(!backward||row.dataset.flightBackwardTime===backward);row.dataset.flightMatch=String(match);if(match)matching.push(row);else if(row.querySelector('input:checked'))hiddenSelection=true;}
+      // Inspect actual child nodes, including text and unowned nodes, before reuse.
+      const nodes=list.childNodes,offset=nodes.length-ordered.length;
+      if(ordered.some((row,index)=>nodes[offset+index]!==row))ordered.forEach(row=>list.append(row));
       matching.forEach((row,index)=>{row.hidden=index>=visibleLimit;if(row.hidden&&row.querySelector('input:checked'))selectedBeyondLimit=true;});
       ordered.filter(row=>row.dataset.flightMatch!=='true').forEach(row=>row.hidden=true);
       const shown=Math.min(visibleLimit,matching.length),remaining=Math.max(0,matching.length-shown);
