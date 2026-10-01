@@ -1,0 +1,110 @@
+{
+  "schema": "match_current_frontier_partition_v1",
+  "generated_from": {
+    "run": 36277520493,
+    "artifact": 10917671953,
+    "result_sha256": "411596e321ba5f128335a29d10181688dacd5e34eee5e7cefdd4436b26d468b2",
+    "generated_at_utc": "2026-09-26T22:50:27+00:00"
+  },
+  "counts": {
+    "total": 1674,
+    "missing_samo_only": 220,
+    "missing_anex_only": 728,
+    "missing_both": 726
+  },
+  "priority_geographies": {
+    "missing_samo_only": [
+      [
+        "Вьетнам",
+        "Нячанг",
+        16
+      ],
+      [
+        "Турция",
+        "Сиде",
+        12
+      ],
+      [
+        "Индия",
+        "Север Гоа",
+        10
+      ],
+      [
+        "Тунис",
+        "Хаммамет",
+        9
+      ],
+      [
+        "Танзания",
+        "Занзибар",
+        9
+      ]
+    ],
+    "missing_anex_only": [
+      [
+        "Таиланд",
+        "Пхукет",
+        66
+      ],
+      [
+        "Турция",
+        "Аланья",
+        66
+      ],
+      [
+        "ОАЭ",
+        "Дубай",
+        51
+      ],
+      [
+        "Мальдивы",
+        "Мальдивы",
+        49
+      ],
+      [
+        "Таиланд",
+        "Паттайя",
+        44
+      ]
+    ],
+    "missing_both": [
+      [
+        "Китай",
+        "Хайнань",
+        74
+      ],
+      [
+        "Катар",
+        "Доха",
+        40
+      ],
+      [
+        "Танзания",
+        "Занзибар",
+        31
+      ],
+      [
+        "Турция",
+        "Анталья",
+        29
+      ],
+      [
+        "Турция",
+        "Аланья",
+        28
+      ],
+      [
+        "Китай",
+        "Пекин",
+        28
+      ]
+    ]
+  },
+  "retained_evidence_closed": [
+    "TV942",
+    "SAMO waves1-5",
+    "SAMO broad recovery",
+    "retained801"
+  ],
+  "execution_boundary": "partition only; no new supplier calls or DB writes; fresh CURRENT required before acceptance"
+}
