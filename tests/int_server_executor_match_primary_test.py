@@ -553,4 +553,90 @@ class BGOriginalEvidenceRegistrationTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError):ns['run_match_native110_bg_evidence'](stage)
                 self.assertEqual(call.call_count,1)
 
+class ShamsGeographyEvidenceRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.SHAMS_GEO_MODE+' '+registration.SHAMS_GEO_OPERATION+' '+registration.NATIVE_BATCH
+
+    def test_bound_to_exact_saved_geography_task(self):
+        p=self.core.parse_command(self.body);self.assertEqual(p['maximum_writes'],0)
+        self.assertEqual(p['input_sha256'],registration.GUARDED_INPUT_SHA)
+        for body in (self.body+' 9501',self.body.replace(registration.SHAMS_GEO_OPERATION,registration.BG_OPERATION),
+                     self.body.replace(registration.NATIVE_BATCH,registration.BATCH)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,p)
+        self.assertIn('def run_match_shams_geo_evidence(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_native110_bg_evidence(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_native110_write(stage):',self.core.REMOTE)
+        self.assertTrue(set(registration.SHAMS_GEO_SOURCE_FILES).issubset(self.core.FIXED))
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+            and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.SHAMS_GEO_MODE)))
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.SHAMS_GEO_OPERATION
+        ns['payload']=dict(batch=registration.NATIVE_BATCH,maximum_writes=0,provider_http_calls=0,input_sha256=registration.GUARDED_INPUT_SHA)
+        runner=stage/'scripts/diagnostics/hotel_match_shams_geography_saved_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_SHAMS_GEO_HANDLER,ns);return ns,stage,root,runner
+
+    def response(self,kwargs,mutate=None):
+        refs=[]
+        for namespace,native in (('operator_5','835'),('operator_342','24402')):
+            refs.append(dict(namespace=namespace,native_id=native,page_sha256='a'*64,json_pointer='/PRICES/0',
+                field_names=['hotelKey','original','town'],original_field_names=['hotelKey','townName'],
+                location_fields=[dict(source_field='row.town',value='Marsa Alam'),dict(source_field='original.townName',value='Марса-Алам')],
+                raw_verified=True,failures=[]))
+        data=dict(schema='match-shams-saved-geography/1',state='completed_saved_geography_evidence',
+            operation=registration.SHAMS_GEO_OPERATION,batch=registration.NATIVE_BATCH,source_sha=SOURCE,
+            input_sha256=registration.GUARDED_INPUT_SHA,no_replay=True,catalog_id='9501',tv_hotel_id=420,
+            snapshot_captured_at_utc='2026-10-01T07:50:00Z',
+            saved_target_geography=[dict(source_field='saved_target.country_name',value='Египет')],
+            source_history_geography_exported=False,raw_files_read=1,raw_bytes_read=1000,references_examined=2,references=refs,
+            database_reads=0,provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False)
+        if mutate:mutate(data)
+        (Path(kwargs['env']['MATCH_OPERATION_DIR'])/'result.json').write_text(json.dumps(data))
+        return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
+
+    def test_exact_pair_read_without_db_or_supplier_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            def call(argv,**kw):
+                self.assertEqual(argv[-2:],[str(runner),'--read-saved']);self.assertIn('allow_url_fopen=0',argv)
+                self.assertEqual(set(kw['env'])-{'PATH','HOME','LANG','LC_ALL'},{'MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+                reservation=json.loads((Path(kw['env']['MATCH_OPERATION_DIR'])/'reservation.json').read_text())
+                self.assertEqual(reservation['maximum_writes'],0);self.assertEqual(reservation['state'],'reserved_before_saved_read')
+                return self.response(kw)
+            with patch.object(subprocess,'run',side_effect=call) as call:
+                out=ns['run_match_shams_geo_evidence'](stage)
+                self.assertEqual({(r['namespace'],r['native_id']) for r in out['references']},{('operator_5','835'),('operator_342','24402')})
+                self.assertEqual(out['database_reads'],0)
+                with self.assertRaises(RuntimeError):ns['run_match_shams_geo_evidence'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_untrusted_fields_authority_and_exact_pair_are_rejected(self):
+        changes=[lambda d:d.update(database_reads=1),lambda d:d.update(mapping_writes=1),lambda d:d.update(safe_to_write_now=True),
+            lambda d:d.update(raw='fixture-secret'),lambda d:d.update(catalog_id='9502'),lambda d:d.update(tv_hotel_id=421),
+            lambda d:d.update(source_history_geography_exported=True),lambda d:d['references'][0].update(namespace='operator_115'),
+            lambda d:d['references'][0].update(native_id='9501'),lambda d:d['references'][0].update(raw='fixture-secret'),
+            lambda d:d['references'][0]['location_fields'][0].update(source_field='row.api_token',value='fixture-secret'),
+            lambda d:d['saved_target_geography'][0].update(source_field='saved_target.api_token',value='fixture-secret'),
+            lambda d:(d['references'].pop(),d.update(references_examined=1)),
+            lambda d:d['references'][0].update(raw_verified=False),
+            lambda d:d['references'][0].update(failures=['unexpected_failure'])]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_shams_geo_evidence'](stage)
+
+    def test_timeout_is_terminal_not_replayed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_shams_geo_evidence'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_shams_geo_evidence'](stage)
+                self.assertEqual(call.call_count,1)
+
 if __name__=='__main__':unittest.main()

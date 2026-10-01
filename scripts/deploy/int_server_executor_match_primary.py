@@ -18,6 +18,8 @@ GUARDED_OPERATION = 'int-andromeda-match-native110-write-20261001-v1'
 GUARDED_INPUT_SHA = '59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
 BG_MODE = 'match-native110-bg-evidence'
 BG_OPERATION = 'int-andromeda-match-native110-bg-evidence-20261001-v1'
+SHAMS_GEO_MODE = 'match-shams-geo-evidence'
+SHAMS_GEO_OPERATION = 'int-andromeda-match-shams-geo-evidence-20261001-v1'
 BG_EXPECTED = {'13293': (367, '610184500', '102610184500'), '60328': (9242, '625162113', '102625162113'),
     '205729': (9283, '625414997', '102625414997'), '2000041008': (62868, '610121438', '102610121438'),
     '2000052316': (70457, '610144591', '102610144591'), '2000059209': (67000, '610155352', '102610155352'),
@@ -41,6 +43,7 @@ NATIVE_SOURCE_FILES = PROOF_SOURCE_FILES + (
 )
 GUARDED_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native110_guarded_v1.php',)
 BG_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php',)
+SHAMS_GEO_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_shams_geography_saved_v1.php',)
 
 
 def register_parser(core) -> None:
@@ -51,11 +54,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == SHAMS_GEO_MODE:
+            core.need(operation == SHAMS_GEO_OPERATION and batch == NATIVE_BATCH, 'shams_geo_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NATIVE_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0, 'input_sha256': GUARDED_INPUT_SHA}
         if mode == BG_MODE:
             core.need(operation == BG_OPERATION and batch == NATIVE_BATCH, 'bg_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NATIVE_BATCH,
@@ -591,7 +598,103 @@ REMOTE_BG_DISPATCH = r'''    if mode=='match-native110-bg-evidence':
 REMOTE_BG_HANDLER = REMOTE_BG_HANDLER.replace('__BG_EXPECTED__',repr(BG_EXPECTED))
 
 
-def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False) -> str:
+REMOTE_SHAMS_GEO_HANDLER = r'''
+def run_match_shams_geo_evidence(stage):
+    input_sha='59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e'
+    if (operation!='int-andromeda-match-shams-geo-evidence-20261001-v1' or payload.get('batch')!='native110-20260928'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0
+            or payload.get('input_sha256')!=input_sha): fail('shams_geo_fixed_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root: fail('shams_geo_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('shams_geo_exists_no_replay')
+    child.mkdir(mode=0o700)
+    reservation={'operation':operation,'source_sha':source,'batch':'native110-20260928','input_sha256':input_sha,
+                 'maximum_writes':0,'provider_http_calls':0,'state':'reserved_before_saved_read','reserved_at':int(time.time())}
+    fd=os.open(child/'reservation.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'wb') as stream:
+        stream.write(json.dumps(reservation,sort_keys=True,separators=(',',':')).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+    runner=stage/'scripts/diagnostics/hotel_match_shams_geography_saved_v1.php'
+    if not safe_file(runner,2*1024*1024): fail('shams_geo_runner_missing_no_replay')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','disable_functions='+disabled,
+                        str(runner),'--read-saved'],cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    path=child/'result.json'
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>524288 or not safe_file(path,524288): fail('shams_geo_read_failed_no_replay')
+    data=json.loads(run.stdout)
+    fields={'schema','state','operation','batch','source_sha','input_sha256','no_replay','catalog_id','tv_hotel_id',
+            'snapshot_captured_at_utc','saved_target_geography','source_history_geography_exported','raw_files_read','raw_bytes_read',
+            'references_examined','references','database_reads','provider_http_calls','database_writes','mapping_writes','safe_to_write_now'}
+    if (not isinstance(data,dict) or set(data)!=fields or safe_json(path,524288)!=data
+            or data['schema']!='match-shams-saved-geography/1' or data['state']!='completed_saved_geography_evidence'
+            or data['operation']!=operation or data['source_sha']!=source or data['batch']!='native110-20260928'
+            or data['input_sha256']!=input_sha or data['catalog_id']!='9501' or data['tv_hotel_id']!=420
+            or data['source_history_geography_exported'] is not False or data['safe_to_write_now'] is not False
+            or data['no_replay'] is not True): fail('shams_geo_output_binding')
+    for key,cap in [('provider_http_calls',0),('database_reads',0),('database_writes',0),('mapping_writes',0),
+                    ('raw_files_read',8),('raw_bytes_read',67108864),('references_examined',128)]:
+        if type(data[key]) is not int or not 0<=data[key]<=cap: fail('shams_geo_output_counts')
+    if not isinstance(data['snapshot_captured_at_utc'],str) or not re.fullmatch(r'20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',data['snapshot_captured_at_utc']): fail('shams_geo_snapshot')
+    def shape(value,fields):
+        if not isinstance(value,dict) or set(value)!=set(fields.split()): fail('shams_geo_projection')
+    def items(value,cap):
+        if not isinstance(value,list) or len(value)>cap: fail('shams_geo_projection')
+        return value
+    def field_name(value):
+        if not isinstance(value,str) or not re.fullmatch(r'[a-zA-Z_][a-zA-Z0-9_.-]{0,79}',value): fail('shams_geo_field')
+    def geo_value(value):
+        if value is not None and (type(value) not in (str,int,float)
+                or (type(value) is str and not re.fullmatch(r"[\w\s.,+'’()/_-]{1,180}",value))
+                or (type(value) in (int,float) and not (value==value and abs(value)<=10**15))): fail('shams_geo_value')
+    target_fields={'country_name','region_name','subregion_name','latitude','longitude'}
+    for geo in items(data['saved_target_geography'],64):
+        shape(geo,'source_field value')
+        if not isinstance(geo['source_field'],str) or not geo['source_field'].startswith('saved_target.') or geo['source_field'].split('.',1)[1] not in target_fields: fail('shams_target_geo_field')
+        geo_value(geo['value'])
+    refs=items(data['references'],128)
+    if data['references_examined']!=len(refs) or not refs: fail('shams_geo_reference_count')
+    seen=set()
+    allowed={('operator_5','835'),('operator_342','24402')}
+    geo_fields={'town','city','state','country','country_name','region_name','subregion_name','latitude','longitude','lat','lng','lon',
+                'townKey','townName','stateName','countryName','cityName','hotelLat','hotelLng','hotelLatitude','hotelLongitude','hotelTown','hotelCountry'}
+    for ref in refs:
+        shape(ref,'namespace native_id page_sha256 json_pointer field_names original_field_names location_fields raw_verified failures')
+        pair=(ref['namespace'],ref['native_id'])
+        if (pair not in allowed or not isinstance(ref['page_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',ref['page_sha256'])
+                or not isinstance(ref['json_pointer'],str) or not re.fullmatch(r'/(?:PRICES|prices)/[0-9]{1,8}',ref['json_pointer'])
+                or type(ref['raw_verified']) is not bool): fail('shams_geo_reference_scope')
+        seen.add(pair)
+        for key in ('field_names','original_field_names'):
+            for value in items(ref[key],256): field_name(value)
+        for failure in items(ref['failures'],1):
+            if failure!='saved_geo_reference_unverified': fail('shams_geo_failure')
+        if ref['raw_verified']!=(not ref['failures']): fail('shams_geo_verification_state')
+        for geo in items(ref['location_fields'],64):
+            shape(geo,'source_field value')
+            if (not isinstance(geo['source_field'],str) or not re.fullmatch(r'(?:row|original)\.[a-zA-Z_][a-zA-Z0-9_.-]{0,79}',geo['source_field'])
+                    or geo['source_field'].split('.',1)[1] not in geo_fields): fail('shams_source_geo_field')
+            geo_value(geo['value'])
+    if seen!=allowed: fail('shams_geo_native_coverage')
+    return data
+
+'''
+
+REMOTE_SHAMS_GEO_DISPATCH = r'''    if mode=='match-shams-geo-evidence':
+        result['match_shams_geo_evidence']=run_match_shams_geo_evidence(stage)
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False, shams_geo: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -607,6 +710,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_GUARDED_HANDLER, REMOTE_GUARDED_DISPATCH, GUARDED_MODE
     if bg:
         handler, mode_dispatch, selected_mode = REMOTE_BG_HANDLER, REMOTE_BG_DISPATCH, BG_MODE
+    if shams_geo:
+        handler, mode_dispatch, selected_mode = REMOTE_SHAMS_GEO_HANDLER, REMOTE_SHAMS_GEO_DISPATCH, SHAMS_GEO_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -615,7 +720,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -626,9 +731,10 @@ def activate(core, command: dict) -> None:
     native = command['mode'] == NATIVE_MODE
     guarded = command['mode'] == GUARDED_MODE
     bg = command['mode'] == BG_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg)
+    shams_geo = command['mode'] == SHAMS_GEO_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo)
     files = list(core.FIXED)
-    for path in BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES))):
+    for path in SHAMS_GEO_SOURCE_FILES if shams_geo else (BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)))):
         if path not in files:
             files.append(path)
     core.FIXED = files
