@@ -253,4 +253,121 @@ class PrimaryRegistrationTest(unittest.TestCase):
                 with patch.object(subprocess,'run',return_value=types.SimpleNamespace(returncode=0,stdout=json.dumps(bad),stderr='')):
                     with self.assertRaises(RuntimeError):ns['run_match_primary_proof_readback'](stage)
 
+class Native110RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.original_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.NATIVE_MODE+' '+registration.NATIVE_OPERATION+' '+registration.NATIVE_BATCH
+
+    def test_fixed_manifest_command_rejects_generic_scope(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed,dict(source_sha=SOURCE,mode=registration.NATIVE_MODE,operation_id=registration.NATIVE_OPERATION,
+                                     batch=registration.NATIVE_BATCH,maximum_writes=0,provider_http_calls=0))
+        for body in (self.body+' 1',self.body.replace(registration.NATIVE_BATCH,registration.BATCH),
+                     self.body.replace(registration.NATIVE_OPERATION,registration.NATIVE_OPERATION+'-retry'),
+                     self.body.replace(SOURCE,'bad')):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        for field,value in [('maximum_writes',1),('provider_http_calls',1),('batch',registration.BATCH)]:
+            bad=copy.deepcopy(parsed);bad[field]=value
+            with self.assertRaises(ValueError):registration.activate(self.core,bad)
+
+    def test_existing_collectors_and_writer_are_not_called(self):
+        registration.activate(self.core,self.core.parse_command(self.body))
+        tree=ast.parse(self.core.REMOTE)
+        guards=[n.test for n in ast.walk(tree) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+                and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:
+            self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.NATIVE_MODE)))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        self.assertNotIn('primary-batch-samo3-20260929.json',self.core.REMOTE)
+        self.assertTrue(set(registration.NATIVE_SOURCE_FILES).issubset(self.core.FIXED))
+        entry=load('native110_stock_entry','scripts/deploy/int_server_executor_anex_secret_transport.py')
+        self.assertNotIn(registration.NATIVE_MODE,entry.DIRECT_ANEX_MODES)
+        self.assertNotIn(registration.NATIVE_MODE,entry.SUPPLIER_SLOT_MODES)
+
+    def namespace(self,tmp):
+        home=Path(tmp);root=home/'.anytoour-match/operations';root.mkdir(parents=True)
+        project=home/'www/anytoour.ru';project.mkdir(parents=True)
+        stage=home/'stage';runner=stage/'scripts/diagnostics/hotel_match_native110_current_v1.php'
+        runner.parent.mkdir(parents=True);runner.write_text('<?php // fixture only')
+        ns=dict(home=home,project=project,operation=registration.NATIVE_OPERATION,source=SOURCE,
+                payload=dict(batch=registration.NATIVE_BATCH,maximum_writes=0,provider_http_calls=0),
+                os=os,re=re,json=json,hashlib=hashlib,time=time,subprocess=subprocess)
+        helpers=[n for n in ast.parse(self.original_remote).body if isinstance(n,ast.FunctionDef) and n.name in ('fail','safe_file','safe_json')]
+        exec(compile(ast.Module(body=helpers,type_ignores=[]),'<stock_helpers>','exec'),ns)
+        exec(registration.REMOTE_NATIVE_HANDLER,ns)
+        return ns,stage,root,runner
+
+    def response(self,kwargs,mutate=None):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR']);manifest=b'{"fixture":"private full review"}\n'
+        (child/'native110-current-manifest.json').write_bytes(manifest)
+        data=dict(state='completed_native110_current_review',operation=registration.NATIVE_OPERATION,source_sha=SOURCE,
+                  batch=registration.NATIVE_BATCH,manifest_sha256=hashlib.sha256(manifest).hexdigest(),
+                  sources_requested=110,sources_examined=109,protected_skipped=1,current_rows_returned=110,
+                  raw_verified_facts=107,raw_files_read=117,raw_bytes_read=100000,native_facts_examined=3262,
+                  provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,
+                  no_replay=True,acceptance_policy_changed=False,
+                  review_rows=[dict(catalog_id=str(i),state='current_review_observed',safe_to_write_now=False,
+                    holds=[],catalog_digest_matches_saved=True,evidence_digest_matches_saved=True,
+                    source_history_id_matches=True,native_checks=[],operator_checks=[],targets=[],tv_checks=[]) for i in range(1,110)]
+                    +[dict(catalog_id='2000086118',state='protected_not_examined',safe_to_write_now=False,
+                    holds=[],catalog_digest_matches_saved=False,evidence_digest_matches_saved=False,
+                    source_history_id_matches=False,native_checks=[],operator_checks=[],targets=[],tv_checks=[])])
+        first=data['review_rows'][0]
+        first['native_checks']=[dict(namespace='operator_315',native_id='849821',global_saved_unique=True,raw_verified=True,failures=[])]
+        first['operator_checks']=[dict(namespace='operator_315',native_id='849821',current_identity_count=1,current_local_hotel_ids=[42903])]
+        first['targets']=[dict(kind='tv_candidate',id=42903,tv_live30_observed=True,holds=[]),
+                          dict(kind='independent_local_anchor',id=56551,tv_live30_observed=False,holds=[])]
+        first['tv_checks']=[dict(tv_hotel_id=42903,operator='funsun',native_id='849821',tv_native_id='849821',
+            state='saved_producers_reviewed',producers=[dict(source_operation='hotel-match-fixture',
+                source_result_sha256='a'*64,state='saved_tv_proof_verified',failures=[])])]
+        if mutate:mutate(data)
+        (child/'native110-current-summary.json').write_text(json.dumps(data))
+        return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
+
+    def test_reserved_private_read_and_network_disabled_php(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            def call(argv,**kwargs):
+                self.assertEqual(argv[-2:],[str(runner),'--current'])
+                self.assertIn('allow_url_fopen=0',argv)
+                self.assertTrue(any(a.startswith('disable_functions=') and 'curl_exec' in a and 'proc_open' in a for a in argv))
+                self.assertEqual(set(kwargs['env'])-{'PATH','HOME','LANG','LC_ALL'},{'ANYTOUR_ROOT','MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+                child=Path(kwargs['env']['MATCH_OPERATION_DIR']);reservation=json.loads((child/'reservation.json').read_text())
+                self.assertEqual(reservation['maximum_writes'],0)
+                self.assertEqual(reservation['state'],'reserved_before_db_read')
+                self.assertEqual((child/'reservation.json').stat().st_mode&0o777,0o600)
+                return self.response(kwargs)
+            with patch.object(subprocess,'run',side_effect=call) as run:
+                self.assertEqual(ns['run_match_native110_current'](stage)['sources_examined'],109)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_current'](stage)
+                self.assertEqual(run.call_count,1)
+
+    def test_untrusted_summary_fields_counts_and_authority_rejected(self):
+        mutations=[lambda d:d.update(raw='fixture-secret'),lambda d:d.update(mapping_writes=1),
+                   lambda d:d.update(provider_http_calls=True),lambda d:d.update(sources_examined=110),
+                   lambda d:d.update(raw_bytes_read=536870913),lambda d:d.update(source_sha='c'*40),
+                   lambda d:d.update(safe_to_write_now=True),lambda d:d.update(acceptance_policy_changed=True),
+                   lambda d:d['review_rows'][0].update(raw='fixture-secret'),
+                   lambda d:d['review_rows'][0].update(catalog_id='2000086118'),
+                   lambda d:d['review_rows'][-1].update(native_checks=[{'raw':'fixture-secret'}]),
+                   lambda d:d['review_rows'][0].update(targets=[{'id':42,'kind':'tv_candidate','tv_live30_observed':True,'holds':[],'raw':'fixture-secret'}]),
+                   lambda d:d['review_rows'][0].update(holds=['https://fixture-secret']),
+                   lambda d:d.update(manifest_sha256='a'*64)]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_native110_current'](stage)
+
+    def test_failed_or_unknown_read_is_not_replayed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_native110_current'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_current'](stage)
+                self.assertEqual(call.call_count,1)
+            self.assertTrue((root/registration.NATIVE_OPERATION/'reservation.json').is_file())
+
 if __name__=='__main__':unittest.main()
