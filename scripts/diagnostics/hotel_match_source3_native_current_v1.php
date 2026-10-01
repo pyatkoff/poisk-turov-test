@@ -68,11 +68,11 @@ function s3n_preflight(array $scope,array $sources,array $targetOwners,array $ho
         $holds=[];$matches=$sources[$cat]??[];$source=count($matches)===1?$matches[0]:null;
         if($source===null)$holds[]='current_source_not_unique';
         else{
-            if(($source['supplier_namespace']??null)!=='andromeda_catalog'||(string)($source['external_hotel_id']??'')!==$cat
+            if(($source['supplier_namespace']??null)!=='andromeda_catalog'||(string)($source['external_hotel_id']??'')!==(string)$cat
                     ||($source['decision_status']??null)!=='pending'||($source['local_hotel_id']??null)!==null)$holds[]='current_source_not_pending_null';
             if(($source['catalog_sha256']??null)!==$request['catalog_sha256']||($source['evidence_sha256']??null)!==$request['evidence_sha256'])$holds[]='current_source_revision_differs';
             $history=json_decode((string)($source['evidence_json']??''),true);
-            if(!is_array($history)||!is_array($history['source']??null)||(string)($history['source']['id']??'')!==$cat)$holds[]='current_source_history_review';
+            if(!is_array($history)||!is_array($history['source']??null)||(string)($history['source']['id']??'')!==(string)$cat)$holds[]='current_source_history_review';
         }
         $target=(int)$request['target_tv_hotel_id'];$hotel=$hotels[$target]??null;
         if(!is_array($hotel)||(int)($hotel['is_active']??0)!==1)$holds[]='target_missing_or_inactive';
