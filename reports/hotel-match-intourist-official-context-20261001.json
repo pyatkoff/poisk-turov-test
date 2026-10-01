@@ -1,0 +1,118 @@
+{
+  "schema": "hotel-match-intourist-official-context/1",
+  "state": "supporting_evidence_only",
+  "captured_at_utc": "2026-10-01T17:35:00Z",
+  "scope": "existing_non_bg_intourist_target_gaps",
+  "inputs": {
+    "four_candidate_missing_proof": {
+      "path": "reports/hotel-match-four-candidate-missing-proof-20261001.json",
+      "sha256": "88526ec892556883cdf2950dcad4c1d21ab59ab93216b9b5f3369e222dce4269"
+    },
+    "mass83_proof_minimization": {
+      "path": "reports/hotel-match-mass83-proof-minimization-20261001.json",
+      "sha256": "30094e7eb2bfaac57ff057d45b8b313d93e66c705b9cbb71bfaedbd69b2f81ae"
+    },
+    "minimal_nonbg_ledger": {
+      "path": "reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json",
+      "sha256": "9f72b3d70349428f6004067576bb10a82a7d388b95917e838ee3d97e15c909b3"
+    }
+  },
+  "counts": {
+    "candidate_pairs_examined": 4,
+    "raw_verified_source_intourist_ids": 4,
+    "official_intourist_property_pages_observed": 4,
+    "official_pages_exposing_numeric_native_selector": 0,
+    "same_operator_exact_native_matches": 0,
+    "newly_accepted_links": 0
+  },
+  "rows": [
+    {
+      "source_catalog_id": "2000034121",
+      "source_intourist_native_id": "549",
+      "source_native_raw_verified": true,
+      "target_tv_hotel_id": 1151,
+      "target_name": "DELPHIN PALACE DELUXE COLLECTION",
+      "official_property": {
+        "url": "https://intourist.ru/info/turkey/antaliya/lara/hotel/delphin-palace",
+        "title": "Отель Delphin Palace 5*",
+        "country": "Турция",
+        "region": "Анталия",
+        "locality": "Лара",
+        "observed_from_official_public_index": true,
+        "numeric_native_selector_observed": false
+      },
+      "classification": "official_property_context_only_target_native_missing",
+      "remaining_proof": "Independent exact Intourist selector/operatorLink for TV1151; the official property page does not expose native ID 549.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000062084",
+      "source_intourist_native_id": "18273",
+      "source_native_raw_verified": true,
+      "target_tv_hotel_id": 70943,
+      "target_name": "RAIMOND HOTEL KUMKAPI",
+      "official_property": {
+        "url": "https://intourist.ru/info/turkey/stambul/kumkapi/hotel/raimond-hotel-kumkapi-beyazit",
+        "title": "Raimond Hotel 3*",
+        "country": "Турция",
+        "region": "Стамбул",
+        "locality": "Кумкапы",
+        "observed_from_official_public_index": true,
+        "numeric_native_selector_observed": false
+      },
+      "classification": "official_property_context_only_target_native_missing",
+      "remaining_proof": "Independent exact Intourist selector/operatorLink for TV70943; the official property page does not expose native ID 18273.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000052591",
+      "source_intourist_native_id": "25728",
+      "source_native_raw_verified": true,
+      "target_tv_hotel_id": 128,
+      "target_name": "ARABIA AZUR BEACH RESORT",
+      "official_property": {
+        "url": "https://intourist.ru/info/egypt/hurgada/hurgada/hotel/arabia-azur-resort",
+        "title": "Отель Arabia Azur Hurgada 3*",
+        "country": "Египет",
+        "region": "Хургада",
+        "locality": "Хургада",
+        "observed_from_official_public_index": true,
+        "numeric_native_selector_observed": false
+      },
+      "classification": "official_property_context_only_target_native_missing",
+      "remaining_proof": "Independent exact Intourist selector/operatorLink for TV128; the official property page does not expose native ID 25728.",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000073045",
+      "source_intourist_native_id": "29363",
+      "source_native_raw_verified": true,
+      "target_tv_hotel_id": 80964,
+      "target_name": "MERAKI RESORT SHARM EL SHEIKH ADULTS ONLY 16+",
+      "official_property": {
+        "url": "https://intourist.ru/info/egypt/sharm-elj-shejh/sharm-elj-shejh/hotel/sunrise-meraki-resort",
+        "title": "Sunrise Meraki Resort Sharm El Sheikh 5*",
+        "country": "Египет",
+        "region": "Южный Синай",
+        "locality": "Шарм-эль-Шейх",
+        "observed_from_official_public_index": true,
+        "numeric_native_selector_observed": false
+      },
+      "classification": "official_property_context_only_target_native_missing",
+      "remaining_proof": "Independent exact Intourist selector/operatorLink for TV80964; the official property page does not expose native ID 29363.",
+      "safe_to_write_now": false
+    }
+  ],
+  "guards": {
+    "official_property_page_is_identity_acceptance": false,
+    "name_or_geography_is_identity_acceptance": false,
+    "fresh_current_source_target_verified": false,
+    "provider_api_http_calls": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "mapping_writes": 0,
+    "terminal_operation_replayed": false,
+    "safe_to_write_now": false
+  },
+  "next_step": "Use these official property URLs only as supporting context in a genuinely new reviewed exact-selector scope. Re-read CURRENT ownership/manual/exclusions/history before any provider call or write."
+}
