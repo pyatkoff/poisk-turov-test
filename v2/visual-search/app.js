@@ -204,10 +204,11 @@ function hotelOffers(h,options={}){
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
  const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
  if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
- const matches=hotelOfferPredicate(s,f,from,to);
+ const matches=hotelOfferPredicate(s,f,from,to),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
+ if(options.minimumOnly){let offer=null;const rows=h.offers||[];for(let index=0,length=rows.length;index<length;index++){if(!(index in rows))continue;const row=rows[index];if(matches(row)&&(!offer||compare(row,offer)<0))offer=row;}return offer?[offer]:[];}
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
  const offers=(h.offers||[]).filter(matches);
- return options.sort===false?offers:offers.sort((a,b)=>a.total-b.total||a.day.localeCompare(b.day));
+ return options.sort===false?offers:offers.sort(compare);
 }
 function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
@@ -469,7 +470,7 @@ function removeModelFilter(model,key,value){const f=model.filters;if(key==='date
 function recoverySuggestions(model){
  const f=model.filters,candidates=[];
  const add=(key,title,change,description='Остальные условия сохранятся')=>{const next=structuredClone(model);change(next);const count=countMatchingHotels(next);if(count)candidates.push({key,title,description,count,model:next});};
- if(f.max!==null){const wider={...model,filters:{...f,max:null}},offers=hotels.map(h=>hotelOffers(h,wider)[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;add('budget',`Бюджет до ${money(ceiling)}`,m=>m.filters.max=ceiling);}}
+ if(f.max!==null){const wider={...model,filters:{...f,max:null},minimumOnly:true},offers=hotels.map(h=>hotelOffers(h,wider)[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;add('budget',`Бюджет до ${money(ceiling)}`,m=>m.filters.max=ceiling);}}
  if(f.min>0)add('minimum',`Убрать бюджет «от ${money(f.min)}»`,m=>m.filters.min=0);
  if(f.q)add('q','Убрать поиск по названию',m=>m.filters.q='');
  for(const [key,title] of [['meals','Любое питание'],['stars','Любая категория отеля'],['flight','Любой тип перелёта'],['operators','Любой туроператор'],['beach','Без условия «Первая линия»'],['rating','Без ограничения по рейтингу'],['family','Без условия «Детский клуб»'],['spa','Без условия «Спа-центр»'],['resorts','Все курорты направления'],['hotelId','Другие отели в направлении']])if(Array.isArray(f[key])?f[key].length:f[key])add(key,title,m=>m.filters[key]=Array.isArray(f[key])?[]:key==='hotelId'?0:false);
@@ -1218,7 +1219,7 @@ function updateBudgetPreview(){
  const model={...appliedFilterModel(),filters:{...state.filters,min,max}},count=countMatchingHotels(model),complete=responseFor(state.search).phase==='complete';
  preview.textContent=count?`${hotelCountText(count)} в этом бюджете · по загруженной выдаче`:complete?'В этом бюджете нет отелей с выбранными условиями.':'В загруженной части выдачи пока нет отелей в этом бюджете.';
  if(count)apply.textContent=`Применить · ${hotelCountText(count)}`;
- if(!count&&complete&&max!==null){const offers=hotels.map(h=>hotelOffers(h,{...model,filters:{...model.filters,max:null}})[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;
+ if(!count&&complete&&max!==null){const offers=hotels.map(h=>hotelOffers(h,{...model,filters:{...model.filters,max:null},minimumOnly:true})[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;
   if(minimum!==null&&minimum>max){const ceiling=Math.ceil(minimum/1000)*1000;recovery.dataset.value=ceiling;recovery.textContent=`Увеличить бюджет до ${money(ceiling)}`;recovery.hidden=false;}
  }
 }

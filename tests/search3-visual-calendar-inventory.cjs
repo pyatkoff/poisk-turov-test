@@ -81,6 +81,24 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  console.log('PASS filter existence: 720 hotel/filter/date/shortlist cases; first-only age calls 2000->2, full 2000->1001; raw references and sorted output retained');
 }
 
+// Budget recovery needs the sorted comparator minimum, without materializing or
+// sorting every matching offer. Keep native filter length/hole/inheritance facts.
+{
+ assert.equal((source.match(/minimumOnly:true/g)||[]).length,2,'both budget-recovery consumers request a comparator minimum');
+ let seed=7,reads=0;const random=()=>((seed=seed*48271%2147483647)/2147483647),hs=[];
+ for(let hotel=0;hotel<10;hotel++){
+  const h=fixture()[1],base=h.offers[2];h.id=hotel+1;h.offers=Array.from({length:100},(_,index)=>{const row={...base,key:hotel+':'+index},total=Math.floor(random()*100000)+index,date=day(index%7);Object.defineProperty(row,'total',{enumerable:true,get(){reads++;return total}});Object.defineProperty(row,'day',{enumerable:true,get(){reads++;return date}});return row;});hs.push(h);
+ }
+ const ctx=make(source,hs),options={selectedDate:null,onlyFavorites:false},order=hs.map(h=>h.offers.map(o=>o.key).join(','));
+ reads=0;const sorted=hs.map(h=>ctx.hotelOffers(h,options)[0]),sortedReads=reads;reads=0;const minimum=hs.map(h=>ctx.hotelOffers(h,{...options,minimumOnly:true})[0]),minimumReads=reads;
+ const predicateReads=10*100*3,sortedKeyReads=sortedReads-predicateReads,minimumKeyReads=minimumReads-predicateReads;assert.deepEqual(minimum.map(o=>o.key),sorted.map(o=>o.key),'minimum-only keeps total/day comparator results');assert(minimum.every((o,index)=>hs[index].offers.includes(o)),'minimum-only returns raw offer references');assert.deepEqual(hs.map(h=>h.offers.map(o=>o.key).join(',')),order,'minimum-only preserves raw offer order');assert(minimumKeyReads<sortedKeyReads/3,'minimum scan removes repeated sort-key reads');
+ const base=fixture()[1].offers[2],tieFirst={...base,key:'tie-first',total:90000,day:day(2)},tieSecond={...base,key:'tie-second',total:90000,day:day(2)},earlier={...base,key:'earlier',total:90000,day:day(1)},high={...base,key:'high',total:120000,day:day(0)},h=fixture()[1];
+ h.offers=[high,tieFirst,tieSecond];const ties=make(source,[h]);assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],tieFirst,'exact ties keep first raw object');h.offers.push(earlier);assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],earlier,'equal price keeps earlier day');earlier.total=130000;assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],tieFirst,'same-array edits are recalculated');
+ const inherited={...base,key:'inherited',total:80000,day:day(2)},sparse=new Array(4),prototype=Object.create(Array.prototype);prototype[2]=inherited;sparse[0]=high;Object.setPrototypeOf(sparse,prototype);h.offers=sparse;assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],inherited,'sparse/inherited rows retain native filter membership');
+ const pushed={...base,key:'pushed',total:1,day:day(2)},initialA={...base,key:'initial-a',day:day(2)},initialB={...base,key:'initial-b',total:100000,day:day(2)},growing=[initialA,initialB];let appended=false;Object.defineProperty(initialA,'total',{enumerable:true,get(){if(!appended){appended=true;growing.push(pushed)}return 110000}});h.offers=growing;assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],initialB,'scan captures initial array length');assert.strictEqual(ties.hotelOffers(h,{...options,minimumOnly:true})[0],pushed,'next call observes appended row');
+ console.log(`PASS offer minimum inventory: 10x100 predicate reads ${predicateReads}->${predicateReads}; comparator keys ${sortedKeyReads}->${minimumKeyReads}; zero match arrays; tie/sparse/inherited/initial-length/edit guards; raw identity/order retained`);
+}
+
 // Exercise hotel membership with the actual query normalizer, not only prices.
 function membership(source){
  const hs=fixture(),ctx=make(source,hs),before=JSON.stringify(hs),rows=[];
