@@ -31,6 +31,8 @@ on:
       - 'tests/int_server_executor_local_profile_mass_plan2_test.py'
       - 'scripts/diagnostics/local_profile_mass_apply_4191.php'
       - 'tests/int_server_executor_local_profile_mass_apply_test.py'
+      - 'scripts/diagnostics/local_profile_mass_apply2_4191.php'
+      - 'tests/int_server_executor_local_profile_mass_apply2_test.py'
   workflow_dispatch:
     inputs:
       owner_command:
@@ -77,6 +79,8 @@ jobs:
           python3 tests/int_server_executor_local_profile_apply_test.py -v
           php -l scripts/diagnostics/local_profile_mass_apply_4191.php
           python3 tests/int_server_executor_local_profile_mass_apply_test.py -v
+          php -l scripts/diagnostics/local_profile_mass_apply2_4191.php
+          python3 tests/int_server_executor_local_profile_mass_apply2_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_acquire.py
           php -l scripts/diagnostics/local_profile_acquire_4191.php
           python3 tests/int_server_executor_local_profile_acquire_test.py -v
@@ -129,6 +133,8 @@ jobs:
           python3 tests/int_server_executor_local_profile_apply_test.py -v
           php -l scripts/diagnostics/local_profile_mass_apply_4191.php
           python3 tests/int_server_executor_local_profile_mass_apply_test.py -v
+          php -l scripts/diagnostics/local_profile_mass_apply2_4191.php
+          python3 tests/int_server_executor_local_profile_mass_apply2_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_acquire.py
           php -l scripts/diagnostics/local_profile_acquire_4191.php
           python3 tests/int_server_executor_local_profile_acquire_test.py -v
