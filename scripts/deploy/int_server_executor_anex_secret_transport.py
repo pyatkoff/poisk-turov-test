@@ -28,6 +28,14 @@ match_primary = importlib.util.module_from_spec(match_spec)
 match_spec.loader.exec_module(match_primary)
 match_primary.register_parser(core)
 
+LOCAL_PLAN_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_plan.py')
+local_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_plan', LOCAL_PLAN_SCRIPT)
+if local_spec is None or local_spec.loader is None:
+    raise RuntimeError('local_profile_plan_registration_import')
+local_profile_plan = importlib.util.module_from_spec(local_spec)
+local_spec.loader.exec_module(local_profile_plan)
+local_profile_plan.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -165,6 +173,7 @@ def main() -> None:
             print(f'{key}={value}')
         return
     match_primary.activate(core, command)
+    local_profile_plan.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES:
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
