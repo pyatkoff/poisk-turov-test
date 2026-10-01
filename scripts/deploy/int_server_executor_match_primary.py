@@ -35,6 +35,9 @@ TARGET_PREFLIGHT_OPERATION = 'int-andromeda-match-live30-target-preflight-202610
 TARGET_PREFLIGHT_BATCH = 'tv-live30-target-preflight-20261001'
 TARGET_PREFLIGHT_READBACK_MODE = 'match-tv-live30-target-preflight-readback'
 TARGET_PREFLIGHT_READBACK_OPERATION = 'int-andromeda-match-live30-target-preflight-readback-20261001-v1'
+TARGET_V2_MODE = 'match-tv-live30-target-catalog-v2'
+TARGET_V2_OPERATION = 'int-andromeda-match-live30-target-catalog-v2-20261001-v1'
+TARGET_V2_BATCH = 'tv-live30-targets-v2-20261001'
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -42,6 +45,11 @@ TARGET_SOURCE_FILES = (
 TARGET_PREFLIGHT_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_preflight_v1.php',
+)
+TARGET_V2_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
+    'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
+    'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v2.php',
 )
 BG_EXPECTED = {'13293': (367, '610184500', '102610184500'), '60328': (9242, '625162113', '102625162113'),
     '205729': (9283, '625414997', '102625414997'), '2000041008': (62868, '610121438', '102610121438'),
@@ -79,11 +87,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == TARGET_V2_MODE:
+            core.need(operation == TARGET_V2_OPERATION and batch == TARGET_V2_BATCH, 'target_catalog_v2_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_V2_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == TARGET_PREFLIGHT_READBACK_MODE:
             core.need(operation == TARGET_PREFLIGHT_READBACK_OPERATION and batch == TARGET_PREFLIGHT_BATCH, 'target_preflight_readback_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_PREFLIGHT_BATCH,
@@ -1102,6 +1114,94 @@ REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-ta
 '''
 
 
+REMOTE_TARGET_V2_HANDLER = r'''
+def run_match_tv_live30_target_catalog_v2(stage):
+    if (operation!='int-andromeda-match-live30-target-catalog-v2-20261001-v1'
+            or payload.get('batch')!='tv-live30-targets-v2-20261001'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0): fail('target_catalog_v2_fixed_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root: fail('target_catalog_v2_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('target_catalog_v2_exists_no_replay')
+    child.mkdir(mode=0o700)
+    reservation={'operation':operation,'source_sha':source,'batch':'tv-live30-targets-v2-20261001',
+                 'maximum_writes':0,'provider_http_calls':0,'state':'reserved_before_db_read','reserved_at':int(time.time())}
+    fd=os.open(child/'reservation.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'wb') as stream:
+        stream.write(json.dumps(reservation,sort_keys=True,separators=(',',':')).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+    runner=stage/'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v2.php'
+    if not safe_file(runner,2*1024*1024): fail('target_catalog_v2_runner_missing_no_replay')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','disable_functions='+disabled,
+                        str(runner),'--current-targets-v2'],cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>8388608: fail('target_catalog_v2_read_failed_no_replay')
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if not safe_file(result_path,8388608) or not safe_file(receipt_path,65536): fail('target_catalog_v2_terminal_missing_no_replay')
+    data=safe_json(result_path,8388608);receipt=safe_json(receipt_path,65536);digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    if json.loads(run.stdout)!=data: fail('target_catalog_v2_stdout_binding')
+    validate_match_tv_live30_target_catalog_v2(data,receipt,digest,operation,source)
+    return {'result_sha256':digest,'summary':data}
+
+def validate_match_tv_live30_target_catalog_v2(data,receipt,digest,expected_operation,expected_source):
+    fixed={'state':'completed_tv_live30_target_catalog_v2','operation':expected_operation,'source_sha':expected_source,
+           'batch':'tv-live30-targets-v2-20261001','provider_http_calls':0,'database_reads':1,'database_writes':0,
+           'mapping_writes':0,'safe_to_write_now':False,'no_replay':True}
+    fields=set(fixed)|{'captured_at_utc','cohort_count','row_count','held_count','rows','held'}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict) or set(data)!=fields
+            or set(receipt)!=(fields-{'rows','held'})|{'result_sha256'}
+            or any(data.get(k)!=v or receipt.get(k)!=v for k,v in fixed.items())
+            or receipt.get('result_sha256')!=digest): fail('target_catalog_v2_terminal_binding')
+    for value in (data,receipt):
+        if (value.get('safe_to_write_now') is not False or value.get('no_replay') is not True
+                or type(value.get('database_reads')) is not int or value['database_reads']!=1
+                or any(type(value[k]) is not int or value[k]!=0 for k in ('provider_http_calls','database_writes','mapping_writes'))): fail('target_catalog_v2_zero_authority')
+    if (not isinstance(data['captured_at_utc'],str) or not re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z',data['captured_at_utc'])
+            or receipt.get('captured_at_utc')!=data['captured_at_utc']): fail('target_catalog_v2_timestamp')
+    for name in ('cohort_count','row_count','held_count'):
+        if type(data[name]) is not int or not 0<=data[name]<=20000 or receipt.get(name)!=data[name]: fail('target_catalog_v2_count_binding')
+    if (data['row_count']+data['held_count']!=data['cohort_count'] or not isinstance(data['rows'],list)
+            or len(data['rows'])!=data['row_count'] or not isinstance(data['held'],list) or len(data['held'])!=data['held_count']): fail('target_catalog_v2_partition')
+    seen=set();row_fields={'id','name','country_id','country_name','region_name','subregion_name','category','is_active',
+                          'latitude','longitude','accepted_samo_ids','manual_hold','exclusion_hold'}
+    for row in data['rows']:
+        if (not isinstance(row,dict) or set(row)!=row_fields or type(row['id']) is not int or row['id']<=0
+                or row['id'] in seen or row['is_active'] is not True): fail('target_catalog_v2_row_identity')
+        seen.add(row['id'])
+        for key in ('name','country_id','country_name','region_name','subregion_name','category'):
+            value=row[key]
+            if value is not None and (not isinstance(value,str) or len(value.encode())>512 or re.search(r'[\x00-\x1f\x7f]|https?://',value,re.I)): fail('target_catalog_v2_row_text')
+        if not row['name']: fail('target_catalog_v2_row_name')
+        for key,bound in (('latitude',90),('longitude',180)):
+            value=row[key]
+            if value is not None and (type(value) not in (int,float) or not -bound<=value<=bound): fail('target_catalog_v2_row_coordinates')
+        if any(type(row[key]) is not bool for key in ('manual_hold','exclusion_hold')): fail('target_catalog_v2_row_bool')
+        occupants=row['accepted_samo_ids']
+        if (not isinstance(occupants,list) or len(occupants)>32 or occupants!=sorted(set(occupants))
+                or any(not isinstance(value,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',value) for value in occupants)): fail('target_catalog_v2_row_occupants')
+    allowed={'invalid_coordinates','invalid_text','invalid_accepted_native','accepted_alias_cap'}
+    for hold in data['held']:
+        if (not isinstance(hold,dict) or set(hold)!={'id','reasons'} or type(hold['id']) is not int or hold['id']<=0
+                or hold['id'] in seen or not isinstance(hold['reasons'],list) or not hold['reasons']
+                or hold['reasons']!=sorted(set(hold['reasons'])) or any(reason not in allowed for reason in hold['reasons'])): fail('target_catalog_v2_hold_shape')
+        seen.add(hold['id'])
+
+'''
+
+REMOTE_TARGET_V2_DISPATCH = r'''    if mode=='match-tv-live30-target-catalog-v2':
+        result['match_tv_live30_target_catalog_v2']=run_match_tv_live30_target_catalog_v2(stage)
+        result['supplier_calls']=0
+        result['database_reads']=1
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
 REMOTE_TARGET_READBACK_HANDLER = REMOTE_TARGET_HANDLER + r'''
 def run_match_tv_live30_target_readback(stage):
     original='int-andromeda-match-live30-target-catalog-20261001-v1'
@@ -1158,7 +1258,8 @@ REMOTE_TARGET_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-readb
 def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False,
                         shams_geo: bool = False, shams_geo_readback: bool = False, shams_write: bool = False,
                         target_catalog: bool = False, target_readback: bool = False,
-                        target_preflight: bool = False, target_preflight_readback: bool = False) -> str:
+                        target_preflight: bool = False, target_preflight_readback: bool = False,
+                        target_v2: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1188,6 +1289,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_HANDLER, REMOTE_TARGET_PREFLIGHT_DISPATCH, TARGET_PREFLIGHT_MODE
     if target_preflight_readback:
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_READBACK_HANDLER, REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH, TARGET_PREFLIGHT_READBACK_MODE
+    if target_v2:
+        handler, mode_dispatch, selected_mode = REMOTE_TARGET_V2_HANDLER, REMOTE_TARGET_V2_DISPATCH, TARGET_V2_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1196,7 +1299,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1214,13 +1317,16 @@ def activate(core, command: dict) -> None:
     target_readback = command['mode'] == TARGET_READBACK_MODE
     target_preflight = command['mode'] == TARGET_PREFLIGHT_MODE
     target_preflight_readback = command['mode'] == TARGET_PREFLIGHT_READBACK_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback)
+    target_v2 = command['mode'] == TARGET_V2_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2)
     files = list(core.FIXED)
     selected_files = SHAMS_WRITE_SOURCE_FILES if shams_write else (SHAMS_GEO_SOURCE_FILES if (shams_geo or shams_geo_readback) else (BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)))))
     if target_catalog or target_readback:
         selected_files = TARGET_SOURCE_FILES
     if target_preflight or target_preflight_readback:
         selected_files = TARGET_PREFLIGHT_SOURCE_FILES
+    if target_v2:
+        selected_files = TARGET_V2_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
