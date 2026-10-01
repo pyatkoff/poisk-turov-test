@@ -581,7 +581,7 @@ class ShamsGeographyEvidenceRegistrationTest(unittest.TestCase):
         runner=stage/'scripts/diagnostics/hotel_match_shams_geography_saved_v1.php';runner.write_text('<?php // fixture only')
         exec(registration.REMOTE_SHAMS_GEO_HANDLER,ns);return ns,stage,root,runner
 
-    def response(self,kwargs,mutate=None):
+    def result_data(self,mutate=None):
         refs=[]
         for namespace,native in (('operator_5','835'),('operator_342','24402')):
             refs.append(dict(namespace=namespace,native_id=native,page_sha256='a'*64,json_pointer='/PRICES/0',
@@ -591,11 +591,15 @@ class ShamsGeographyEvidenceRegistrationTest(unittest.TestCase):
         data=dict(schema='match-shams-saved-geography/1',state='completed_saved_geography_evidence',
             operation=registration.SHAMS_GEO_OPERATION,batch=registration.NATIVE_BATCH,source_sha=SOURCE,
             input_sha256=registration.GUARDED_INPUT_SHA,no_replay=True,catalog_id='9501',tv_hotel_id=420,
-            snapshot_captured_at_utc='2026-10-01T07:50:00Z',
+            snapshot_captured_at_utc='2026-10-01T07:50:00.123456+00:00',
             saved_target_geography=[dict(source_field='saved_target.country_name',value='Египет')],
             source_history_geography_exported=False,raw_files_read=1,raw_bytes_read=1000,references_examined=2,references=refs,
             database_reads=0,provider_http_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False)
         if mutate:mutate(data)
+        return data
+
+    def response(self,kwargs,mutate=None):
+        data=self.result_data(mutate)
         (Path(kwargs['env']['MATCH_OPERATION_DIR'])/'result.json').write_text(json.dumps(data))
         return types.SimpleNamespace(returncode=0,stdout=json.dumps(data),stderr='')
 
@@ -638,5 +642,57 @@ class ShamsGeographyEvidenceRegistrationTest(unittest.TestCase):
                 with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_shams_geo_evidence'](stage)
                 with self.assertRaises(RuntimeError):ns['run_match_shams_geo_evidence'](stage)
                 self.assertEqual(call.call_count,1)
+
+class ShamsGeographyReadbackRegistrationTest(unittest.TestCase):
+    EVIDENCE_SOURCE='12dc06dbdfd047c05caa346092cb9bd1c1dd0323'
+
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.SHAMS_GEO_READBACK_MODE+' '+registration.SHAMS_GEO_READBACK_OPERATION+' '+registration.NATIVE_BATCH
+
+    def namespace(self,tmp,mutate=None):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.SHAMS_GEO_READBACK_OPERATION
+        ns['payload']=dict(batch=registration.NATIVE_BATCH,maximum_writes=0,provider_http_calls=0,input_sha256=registration.GUARDED_INPUT_SHA)
+        evidence=root/registration.SHAMS_GEO_OPERATION;evidence.mkdir()
+        reservation=dict(operation=registration.SHAMS_GEO_OPERATION,source_sha=self.EVIDENCE_SOURCE,batch=registration.NATIVE_BATCH,
+            input_sha256=registration.GUARDED_INPUT_SHA,maximum_writes=0,provider_http_calls=0)
+        (evidence/'reservation.json').write_text(json.dumps(reservation))
+        helper=ShamsGeographyEvidenceRegistrationTest();data=helper.result_data(mutate);data['source_sha']=self.EVIDENCE_SOURCE
+        (evidence/'result.json').write_text(json.dumps(data))
+        exec(registration.REMOTE_SHAMS_GEO_READBACK_HANDLER,ns)
+        return ns,stage,root,evidence
+
+    def test_exact_terminal_readback_without_source_execution(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed['maximum_writes'],0);self.assertEqual(parsed['input_sha256'],registration.GUARDED_INPUT_SHA)
+        for body in (self.body+' retry',self.body.replace(registration.SHAMS_GEO_READBACK_OPERATION,registration.SHAMS_GEO_OPERATION),
+                     self.body.replace(registration.NATIVE_BATCH,registration.BATCH)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        registration.activate(self.core,parsed)
+        self.assertIn('def run_match_shams_geo_readback(stage):',self.core.REMOTE)
+        self.assertTrue(set(registration.SHAMS_GEO_SOURCE_FILES).issubset(self.core.FIXED))
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,evidence=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=AssertionError('source must not execute')) as run:
+                out=ns['run_match_shams_geo_readback'](stage)
+                self.assertEqual(out['state'],'completed_saved_geography_readback')
+                self.assertEqual(out['evidence']['snapshot_captured_at_utc'],'2026-10-01T07:50:00.123456+00:00')
+                self.assertEqual(out['provider_http_calls'],0);self.assertEqual(out['database_reads'],0)
+                self.assertEqual(run.call_count,0)
+                with self.assertRaises(RuntimeError):ns['run_match_shams_geo_readback'](stage)
+
+    def test_terminal_binding_and_inner_projection_are_rechecked(self):
+        mutations=[lambda d:d.update(snapshot_captured_at_utc='private timestamp'),lambda d:d.update(mapping_writes=1),
+                   lambda d:d['references'][0].update(native_id='9501'),lambda d:d.update(raw='fixture-secret')]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,evidence=self.namespace(tmp,mutate)
+                with self.assertRaises(RuntimeError):ns['run_match_shams_geo_readback'](stage)
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,evidence=self.namespace(tmp)
+            reservation=json.loads((evidence/'reservation.json').read_text());reservation['source_sha']='0'*40
+            (evidence/'reservation.json').write_text(json.dumps(reservation))
+            with self.assertRaises(RuntimeError):ns['run_match_shams_geo_readback'](stage)
 
 if __name__=='__main__':unittest.main()
