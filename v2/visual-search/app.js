@@ -420,17 +420,19 @@ const editingFilterModel=()=>filterDraft||appliedFilterModel();
 const countMatchingHotels=model=>{const s=model.search||state.search,f=model.filters||state.filters,selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to),matches=hotelOfferPredicate(s,f,from,to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;return hotels.reduce((count,h)=>count+Number(hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined),0);};
 // Facet counts are per hotel, so stop after each requested identity is found.
 // Keep the inventory local to this pass: later responses and edits recalculate it.
-function countFacetOptions(model,group,values){
+function countFacetOptions(model,group,values,selectedInventory=null){
  const counts=new Map(values.map(value=>[value,0]));if(!counts.size)return counts;
  if(!['meals','operators','flight','resorts','stars'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
- const filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=group==='resorts'||group==='stars',wanted=new Map();
- const selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate;
- const from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to);
+ const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=group==='resorts'||group==='stars',wanted=new Map(),selectedKeys=new Set();
+ if(selectedInventory)selectedInventory.count=0;
+ const selectedDate=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate;
+ const from=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.from),to=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.to);
  if(!hotelFacet){
   for(const value of counts.keys()){
    const key=group==='meals'&&data.live?mealNames[value]:value;if(group==='meals'&&data.live&&!Number.isSafeInteger(key))continue;
    if(!wanted.has(key))wanted.set(key,[]);wanted.get(key).push(value);
   }
+  for(const value of selectedValues){const key=group==='meals'&&data.live?mealNames[value]:value;if(group!=='meals'||!data.live||Number.isSafeInteger(key))selectedKeys.add(key);}
   if(!wanted.size)return counts;
  }
  const matches=hotelFacet?null:hotelOfferPredicate(s,filters,from,to);
@@ -439,16 +441,21 @@ function countFacetOptions(model,group,values){
   if(hotelFacet){
    if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)continue;
    const facts=group==='resorts'?hotelPlaces(h):[h.stars];
+   if(selectedInventory&&(!selectedValues.length||selectedValues.some(value=>facts.includes(value))))selectedInventory.count++;
    for(const value of new Set(facts))if(counts.has(value))counts.set(value,counts.get(value)+1);
    continue;
   }
   if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;
-  const remaining=new Set(wanted.keys());
+  const remaining=new Set(wanted.keys());let selectedMatch=false;
   for(const o of h.offers||[]){
    const key=group==='meals'?(data.live?o.mealPlanId:o.meal):group==='operators'?o.operator:o.flight;
-   if(!remaining.has(key)||!matches(o))continue;
+   const pendingCount=remaining.has(key),pendingSelection=selectedInventory&&!selectedMatch&&(!selectedValues.length||selectedKeys.has(key));
+   if(!pendingCount&&!pendingSelection)continue;
+   if(!matches(o))continue;
+   if(pendingSelection){selectedMatch=true;selectedInventory.count++;}
+   if(!pendingCount)continue;
    for(const value of wanted.get(key))counts.set(value,counts.get(value)+1);
-   remaining.delete(key);if(!remaining.size)break;
+   remaining.delete(key);if(!remaining.size&&(!selectedInventory||selectedMatch))break;
   }
  }
  return counts;
@@ -498,9 +505,9 @@ function refreshEmptyCalendarContext(){const node=$('[data-empty-calendar]');if(
 function emptyResultsHTML(){if(!state.hasSearched){if(!urlStateHydrated&&!catalogError)return `<div class="empty pristine-empty" role="status">${icon('search')}<h3>Готовим поиск…</h3><p>Загружаем направления и сохранённые параметры поездки.</p></div>`;const d=currentDraftDestination();if(d.hotelId&&!data.preview&&!destinationHotel(d.hotelId)?.legacyIds.length)return `<div class="empty pristine-empty" role="status">${icon('info')}<h3>${hotelRestorePending?'Восстанавливаем выбранный отель…':'Не удалось восстановить отель'}</h3><p>Параметры поездки сохранены.${hotelRestorePending?'':' Повторите загрузку или выберите отель заново.'}</p>${hotelRestorePending?'':`<div class="empty-actions"><button class="secondary" data-action="retry-hotel-restore">Повторить загрузку отеля</button><button class="text-button" data-action="destination">Выбрать другой отель</button></div>`}</div>`;return `<div class="empty pristine-empty">${icon('search')}<h3>Начните с параметров поездки</h3><p>Выберите направление, даты и туристов, затем нажмите «Найти туры».</p></div>`;}const model=appliedFilterModel(),chips=filterChipData(model),response=responseFor(state.search);if(response.phase==='error')return '';
  if(response.pending||response.phase!=='complete'){emptySuggestions=[];return `<div class="empty recovery-empty" role="status">${icon('search')}<h3>${response.pending?'Подбираем туры по вашим условиям':'Поиск пока не завершён'}</h3><p>${response.pending?'Предложения появятся здесь по мере загрузки.':'Отсутствие результатов пока не означает, что подходящих туров нет.'}</p><p class="empty-preserved">Даты, туристы и фильтры сохранены.</p>${response.pending?'':'<button class="secondary" data-action="retry-search">Повторить поиск</button>'}</div>`;}
  emptySuggestions=recoverySuggestions(model);const calendarContext=emptyCalendarContext();return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3><p>${emptySuggestions.length?'Вот какие изменения вернут отели в выдачу:':'Попробуйте другие даты или направление.'}</p><div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество рассчитано по уже загруженным предложениям. При изменении фильтров даты поездки и туристы сохранятся.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions"><button class="primary" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
-function updateDrawerPreview(){
+function updateDrawerPreview(knownCount){
  if(!filterDraft)return;
- const count=countMatchingHotels(filterDraft),chips=filterChipData(filterDraft),pristine=!state.hasSearched&&!state.onlyFavorites;
+ const count=knownCount??countMatchingHotels(filterDraft),chips=filterChipData(filterDraft),pristine=!state.hasSearched&&!state.onlyFavorites;
  syncFilterResetState(filterDraft);
  $('#filter-preview-count').textContent=pristine?'Условия для следующего поиска':count?`${hotelCountText(count)} по выбранным условиям`:'По выбранным условиям туров нет';
  $('#drawer-context').textContent=`${esc(countryNames[state.search.country]||'')} · ${departureScopeText()} · ${durationText()} · ${guestsText()}`;
@@ -517,7 +524,7 @@ function updateDrawerPreview(){
   if(!button.disabled)button.textContent='Сохранить условия';
  }
 }
-function filterEdited(rebuild=false){if(filterDraft){if(rebuild)renderFilters();else updateFacetCounts();updateDrawerPreview();rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));}
+function filterEdited(rebuild=false){if(filterDraft){if(rebuild){renderFilters();updateDrawerPreview()}else updateDrawerPreview(updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));}
 const expandedFacets=new Set(),facetQueries=new Map();let facetQueryScope='';
 const expandedFilterSections=new Set();
 function syncFilterSections(){
@@ -609,11 +616,11 @@ function hotelHighlights(h){
 
 
 function syncAvailableFilterGroups(){$$('#filters .filter-group').forEach(group=>{const rows=[...group.querySelectorAll('.check-row')];if(rows.length)group.hidden=rows.every(row=>row.dataset.available!=='true'&&!row.querySelector('input')?.checked);});syncFilterSections();}
-function updateFacetCounts(ratingCount){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map(),grouped=new Map();
+function updateFacetCounts(ratingCount){const model=editingFilterModel(),inputs=$$('[data-filter],[data-filter-bool]'),counts=new Map(),grouped=new Map(),selectedInventory={count:null};
  for(const input of inputs){const group=input.dataset.filter;if(!group||group==='amenities')continue;if(!grouped.has(group))grouped.set(group,[]);grouped.get(group).push(input.value);}
  const starOptions=filterStarOptions(model);if(starOptions.length)grouped.set('stars',starOptions);
- for(const [group,values] of grouped)counts.set(group,countFacetOptions(model,group,values));
- inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=key==='rating'&&ratingCount!==undefined?ratingCount:counts.get(key)?.get(key==='stars'?Number(input.value):input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars(counts.get('stars'));syncAvailableFilterGroups();renderFilterNavigation();settleFilterRoots($('#filters'));}
+ for(const [group,values] of grouped)counts.set(group,countFacetOptions(model,group,values,selectedInventory.count===null?selectedInventory:null));
+ inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=key==='rating'&&ratingCount!==undefined?ratingCount:counts.get(key)?.get(key==='stars'?Number(input.value):input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});$$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars(counts.get('stars'));syncAvailableFilterGroups();renderFilterNavigation();settleFilterRoots($('#filters'));return selectedInventory.count;}
 function budgetScale(f){
  let high=Math.max(1000,f.min,f.max??0);
  for(const h of hotels)for(const o of h.offers||[])if(Number.isFinite(o.total)&&o.total>high)high=o.total;
