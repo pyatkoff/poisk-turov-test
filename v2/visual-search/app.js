@@ -656,9 +656,9 @@ function settleFilterRoots(host){const binding=filterRootBindings.get(host);if(b
 function reconcileFilterRoots(host,fragment,binding,preserved=null){
  const fresh=[...fragment.childNodes],current=[...host.childNodes],desired=[];
  for(let index=0;index<fresh.length;index++){
- const generated=fresh[index],existing=current[index],keep=preserved?.index===index?preserved.node:existing,markup=filterRootMarkup(generated);
+ const generated=fresh[index],existing=current[index],keep=preserved?.index===index?preserved.node:existing,markup=preserved?.index===index&&preserved.markup||filterRootMarkup(generated);
   const active=preserved?.index===index&&keep===preserved.node;
-  const node=keep&&keep.parentNode===host&&(!binding.structureDirty||active)&&!binding.dirty.has(keep)&&(active||binding.markup.get(keep)===markup)?keep:generated.cloneNode(true);
+  const node=active&&preserved.transferred?keep:keep&&keep.parentNode===host&&(!binding.structureDirty||active)&&!binding.dirty.has(keep)&&(active||binding.markup.get(keep)===markup)?keep:generated.cloneNode(true);
   binding.markup.set(node,markup);binding.dirty.delete(node);desired.push(node);
  }
  let cursor=host.firstChild;
@@ -674,7 +674,6 @@ function paintFilters(markup,filters){
  const leased=!focusedEditor&&filterDraft&&filterEditorLease?.isConnected&&host.contains(filterEditorLease)?filterEditorLease:null,active=focusedEditor||leased,scope=searchKey(state.search);
  const facet=active?.dataset.facetSearch;
  const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
- let root=group;while(root&&root.parentNode!==host)root=root.parentElement;
  const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
  const sameScope=renderedFilterContext?.scope===scope,sameModel=renderedFilterContext?.filters===filters;
  if(renderedFilterContext&&(!sameScope||!sameModel&&!filterDraft))binding.structureDirty=true;
@@ -686,22 +685,16 @@ function paintFilters(markup,filters){
  if(group&&sameScope&&(sameModel||filterDraft)){
   const replacement=template.content.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
   if(replacement&&replacement.parentNode===template.content){
-   if(facet){
-    // Refresh choices/counts around the attached editor, including new sources.
-    const options=active.closest('.facet-options'),search=active.closest('.facet-search'),fresh=replacement.querySelector('.facet-options');
-    [...options.childNodes].forEach(node=>{if(node!==search)node.remove();});
-    search.after(...[...fresh.childNodes].filter(node=>!node.classList?.contains('facet-search')).map(node=>node.cloneNode(true)));
-   }
-   // Preserve active typing, native focus/caret and unfinished input as sources arrive.
-   preserved={node:root,index:[...template.content.childNodes].indexOf(replacement)};
+   const replacementEditor=replacement.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`),expected=filterRootMarkup(replacement);
+   if(replacementEditor){replacementEditor.replaceWith(active);preserved={node:replacement,index:[...template.content.childNodes].indexOf(replacement),markup:expected,transferred:true};}
   }
  }
  reconcileFilterRoots(host,template.content,binding,preserved);
- if(preserved&&root&&(leased||!host.contains(active))){
+ renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
+ if(preserved&&group&&(preserved.transferred||leased||!host.contains(active))){
   const restored=host.contains(active)?active:host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
   if(restored){restored.value=active.value;restored.focus({preventScroll:true});if(active.selectionStart!==null)try{restored.setSelectionRange(active.selectionStart,active.selectionEnd,active.selectionDirection)}catch{}}
  }
- renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
  // Dynamic facet/count presentation is owned by this painter, not an external disturbance.
  settleFilterRoots(host);
 }
