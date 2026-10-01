@@ -36,6 +36,14 @@ local_profile_plan = importlib.util.module_from_spec(local_spec)
 local_spec.loader.exec_module(local_profile_plan)
 local_profile_plan.register_parser(core)
 
+LOCAL_APPLY_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_apply.py')
+local_apply_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_apply', LOCAL_APPLY_SCRIPT)
+if local_apply_spec is None or local_apply_spec.loader is None:
+    raise RuntimeError('local_profile_apply_registration_import')
+local_profile_apply = importlib.util.module_from_spec(local_apply_spec)
+local_apply_spec.loader.exec_module(local_profile_apply)
+local_profile_apply.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -174,6 +182,7 @@ def main() -> None:
         return
     match_primary.activate(core, command)
     local_profile_plan.activate(core, command)
+    local_profile_apply.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES:
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
