@@ -153,9 +153,9 @@ function filterRootMarkup(groups=[334,333,333],changed=-1){return '\n '+groups.m
 function filterEditorMarkup(){return `\n <div class="filter-group"><h4>Название</h4><input id="hotel-query" type="search" value=""></div>\n <div class="filter-group"><h4>Операторы</h4><div class="facet-options" data-facet-options="operators"><div class="facet-search"><input type="search" data-facet-search="operators" value=""></div><label class="check-row" data-available="true"><input data-filter="operators" value="one"><span>Один</span><small>1</small></label></div></div>\n <div class="filter-group"><h4>Бюджет</h4><input id="min-price" value="0"><input id="max-price" value=""><input id="price-range" type="range" min="0" max="10" value="10"></div>\n`;}
 function filterPainter(code){
  const c=environment('<div id="filters"></div>'),filters={};
- Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,filterRootBindings:new WeakMap(),renderedFilterContext:null,state:{search:{country:'4'}},searchKey:()=> 'scope',editingFilterModel:()=>({filters}),applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{}});
+ Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,filterRootBindings:new WeakMap(),renderedFilterContext:null,filterDraft:null,state:{search:{country:'4'}},searchKey:()=> 'scope',editingFilterModel:()=>({filters}),applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{}});
  vm.createContext(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
- return {c,filters,host:c.$('#filters'),paint:markup=>c.paintFilters(markup,filters)};
+ return {c,filters,host:c.$('#filters'),paint:(markup,next=filters)=>c.paintFilters(markup,next)};
 }
 function paintIdentity(code,markup){
  const e=filterPainter(code);e.paint(markup);const roots=[...e.host.children],descendants=[...e.host.querySelectorAll('*')];e.paint(markup);
@@ -178,5 +178,10 @@ for(const selector of ['#hotel-query','[data-facet-search="operators"]','#min-pr
  if(rootBaseline)assert.deepEqual(editorPaintRecord(source,selector),editorPaintRecord(rootBaseline,selector),selector+' ordinary active-editor reference parity');
  const e=filterPainter(source),markup=filterEditorMarkup();e.paint(markup);const active=e.host.querySelector(selector),group=active.closest('.filter-group');active.focus();active.value='draft value';if(active.setSelectionRange)try{active.setSelectionRange(2,5)}catch{}group.querySelector('h4').textContent='Нарушено';e.paint(markup);
  const restored=e.host.querySelector(selector);assert.equal(e.c.document.activeElement,restored,selector+' focus restored after repair');assert.equal(restored.value,'draft value',selector+' unfinished value restored');assert.equal(restored.closest('.filter-group').querySelector('h4').textContent,selector==='[data-facet-search="operators"]'?'Операторы':selector==='#hotel-query'?'Название':'Бюджет',selector+' disturbed group repaired');if(restored.selectionStart!==null)assert.deepEqual([restored.selectionStart,restored.selectionEnd],[2,5],selector+' caret restored');e.c.dom.window.close();
+}
+{
+ const e=filterPainter(source),markup=filterEditorMarkup(),firstModel={},nextModel={};e.paint(markup,firstModel);const active=e.host.querySelector('[data-facet-search="operators"]'),group=active.closest('.filter-group');active.focus();active.value='draft value';active.setSelectionRange(2,5);e.c.filterDraft={filters:nextModel};e.paint(markup,nextModel);
+ assert.equal(e.host.querySelector('[data-facet-search="operators"]'),active,'progressive mobile draft wrapper replacement retains the editor');assert.equal(e.c.document.activeElement,active,'progressive mobile draft wrapper replacement retains focus');assert.deepEqual([active.selectionStart,active.selectionEnd],[2,5],'progressive mobile draft wrapper replacement retains the caret');
+ e.c.filterDraft=null;e.paint(markup,{});assert.notEqual(e.host.querySelector('[data-facet-search="operators"]'),active,'closing the drawer discards the previous draft editor');assert.equal(e.host.querySelector('[data-facet-search="operators"]').value,'','closing the drawer restores applied filter markup');e.c.dom.window.close();
 }
 console.log('PASS filter root reconciliation: unchanged roots/descendants retained; changed, disturbed and extra roots repaired; active query/facet/budget focus, value and caret restored; supplier/lead HTTP0');

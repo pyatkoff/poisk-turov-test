@@ -672,9 +672,14 @@ function paintFilters(markup,filters){
  const facet=active?.dataset.facetSearch;
  const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
  const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
+ const sameScope=renderedFilterContext?.scope===scope,sameModel=renderedFilterContext?.filters===filters;
+ if(renderedFilterContext&&(!sameScope||!sameModel&&!filterDraft))binding.structureDirty=true;
  const template=document.createElement('template');template.innerHTML=markup;
  let preserved=null;
- if(group&&renderedFilterContext?.filters===filters&&renderedFilterContext.scope===scope){
+ // A mobile draft wrapper may be refreshed while a progressive provider result
+ // is folded into the same search. Once the drawer closes, object identity again
+ // prevents a cancelled draft from leaking into the applied filter model.
+ if(group&&sameScope&&(sameModel||filterDraft)){
   const replacement=template.content.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
   if(replacement&&replacement.parentNode===template.content){
    if(facet){
