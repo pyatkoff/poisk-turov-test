@@ -193,7 +193,12 @@ function facetCountRecords(candidate,checkReference=true){
  const nil=make(candidate,[null,undefined]);vm.runInContext(section(candidate,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;',nil);
  assert.equal(nil.facetCounts(model,'operators',['A']).get('A'),0,'nullable entries retain hotelOffers semantics');
  assert.equal(ctx.facetCounts(model,'operators',['A','A']).size,1,'duplicate options do not multiply counts');
- assert.equal(ctx.facetCounts(model,'amenities',['pool']).get('pool'),hs.filter(h=>ctx.hotelOffers(h,{...model,filters:{...model.filters,amenities:['pool']},firstOnly:true}).length).length,'fallback keeps original scalar semantics');
+ for(const amenities of [[],['pool'],['pool','missing']]){
+  const amenityModel={...model,filters:{...model.filters,amenities}},options=['pool','missing'],selectedInventory={count:null},actual=ctx.facetCounts(amenityModel,'amenities',options,selectedInventory);
+  const expected=options.map(value=>hs.filter(h=>ctx.hotelOffers(h,{...amenityModel,filters:{...amenityModel.filters,amenities:[...new Set([...amenities,value])]},firstOnly:true}).length).length);
+  assert.deepEqual(options.map(value=>actual.get(value)),expected,'amenity AND selection keeps scalar counts');
+  assert.equal(selectedInventory.count,hs.filter(h=>ctx.hotelOffers(h,{...amenityModel,firstOnly:true}).length).length,'amenity selected-model inventory');
+ }
  ctx.data.live=true;assert.equal(ctx.facetCounts(model,'meals',['invalid']).get('invalid'),0,'numeric string is not a canonical meal identity');
  return rows;
 }
@@ -225,5 +230,17 @@ function facetCountRecords(candidate,checkReference=true){
  vm.runInContext('const originalFacetPredicate=hotelOfferPredicate;hotelOfferPredicate=function(...args){globalThis.facetPredicateCalls++;return originalFacetPredicate(...args)};',work);work.facetPredicateCalls=0;
  for(const [group,options]of Object.entries({meals:['AI','BB'],operators:['A','B'],flight:['regular','charter']}))work.facetCounts(scope,group,options);
  assert.equal(work.facetPredicateCalls,3,'one invariant offer predicate per non-hotel facet pass');
- console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication/selected-count guards; age serializations ${before}->${after}, redundant selected-count ${redundant}->0; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);
+
+ // Amenity options share one hotel/offer traversal while retaining the exact
+ // selected-amenity AND contract and native offer existence behavior.
+ const amenityValues=Array.from({length:20},(_,i)=>'amenity:'+i),amenityHotels=Array.from({length:100},(_,i)=>{const h=fixture()[1],base=h.offers[2];return {...h,id:i+1,amenities:amenityValues.map(key=>({key})),offers:Array.from({length:100},(_,j)=>({...base,key:i+':'+j}))};});
+ const amenities=make(source,amenityHotels),amenityScope={filters:{...defaultFilters(),amenities:amenityValues.slice(0,2)},selectedDate:null,onlyFavorites:false};
+ vm.runInContext(source.match(/^const countMatchingHotels=[^\n]+/m)[0]+'\n'+section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.matchingCount=countMatchingHotels;globalThis.facetCounts=countFacetOptions;globalThis.hotelVisits=0;globalThis.offerChecks=0;globalThis.ageCalls=0;const baseHotelMatch=hotelMatch;hotelMatch=(...args)=>{hotelVisits++;return baseHotelMatch(...args)};const basePredicate=hotelOfferPredicate;hotelOfferPredicate=(...args)=>{const predicate=basePredicate(...args);return offer=>{offerChecks++;return predicate(offer)}};const stringify=JSON.stringify;JSON.stringify=(...args)=>{ageCalls++;return stringify(...args)};',amenities);
+ const reference=amenityValues.map(value=>amenities.matchingCount({...amenityScope,filters:{...amenityScope.filters,amenities:[...new Set([...amenityScope.filters.amenities,value])]}})),scalarWork={hotelVisits:amenities.hotelVisits,offerChecks:amenities.offerChecks,ageCalls:amenities.ageCalls};
+ amenities.hotelVisits=0;amenities.offerChecks=0;amenities.ageCalls=0;const amenitySelection={count:null},inventory=amenities.facetCounts(amenityScope,'amenities',amenityValues,amenitySelection),inventoryWork={hotelVisits:amenities.hotelVisits,offerChecks:amenities.offerChecks,ageCalls:amenities.ageCalls};
+ assert.deepEqual(amenityValues.map(value=>inventory.get(value)),reference,'batched amenity counts match independent scalar membership');assert.equal(amenitySelection.count,100,'selected amenities expose exact selected-model count');
+ assert.deepEqual(scalarWork,{hotelVisits:2000,offerChecks:2000,ageCalls:2020});assert.deepEqual(inventoryWork,{hotelVisits:100,offerChecks:100,ageCalls:101});
+ const unusual=fixture()[1],inherited={key:'inherited'},sparse=new Array(2),prototype=Object.create(Array.prototype);prototype[1]=inherited;Object.setPrototypeOf(sparse,prototype);unusual.amenities=sparse;const odd=make(source,[unusual]);vm.runInContext(section(source,'function countFacetOptions(','const hotelCountText=')+'\nglobalThis.facetCounts=countFacetOptions;',odd);assert.equal(odd.facetCounts({...amenityScope,filters:{...amenityScope.filters,amenities:[]}},'amenities',['inherited']).get('inherited'),1,'inherited amenity membership retained');
+ const appended={key:'appended'},growing=[{key:'first'}];let pushed=false;Object.defineProperty(growing[0],'key',{get(){if(!pushed){pushed=true;growing.push(appended)}return 'first'}});unusual.amenities=growing;assert.equal(odd.facetCounts({...amenityScope,filters:{...amenityScope.filters,amenities:[]}},'amenities',['appended']).get('appended'),0,'amenity scan captures initial array length');assert.equal(odd.facetCounts({...amenityScope,filters:{...amenityScope.filters,amenities:[]}},'amenities',['appended']).get('appended'),1,'next amenity pass observes appended rows');
+ console.log(`PASS facet count inventory: 2160 scalar comparisons; digest ${hash}; incremental/filter/scope/alias/deduplication/selected-count guards; operator ages ${before}->${after}, redundant selected-count ${redundant}->0; amenity visits ${scalarWork.hotelVisits}->${inventoryWork.hotelVisits}, offer checks ${scalarWork.offerChecks}->${inventoryWork.offerChecks}, age serializations ${scalarWork.ageCalls}->${inventoryWork.ageCalls}; predicate constructions 300->${work.facetPredicateCalls}; supplier/lead HTTP 0`);
 }
