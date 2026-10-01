@@ -51,7 +51,7 @@ class AdmissionTest(unittest.TestCase):
             for path in local.SOURCE_FILES:
                 target=root/path; target.parent.mkdir(parents=True,exist_ok=True); target.write_text('<?php // fixture')
             data,hashes=local.bundle_source(root)
-            self.assertEqual(set(local.SOURCE_FILES)|{local.RUNNER,local.MASS_RUNNER},set(hashes))
+            self.assertEqual(set(local.SOURCE_FILES)|{local.RUNNER,local.MASS_RUNNER,local.MASS2_RUNNER},set(hashes))
             with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
                 self.assertEqual(set(hashes)|{'manifest.json'},set(archive.getnames()))
                 for name,digest in hashes.items():
