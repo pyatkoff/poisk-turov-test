@@ -161,6 +161,27 @@ class RetainedFrontierTest(unittest.TestCase):
         self.assertEqual(r['retained_frontier_counts'],{'prior_fixed_writer_terminal_review':1})
         self.assertTrue(r['rows'][0]['prior_fixed_writer_scope'])
 
+    def test_outside_frontier_cross_operator_target_collision(self):
+        d=self.document()
+        other=self.document('999','88','operator_342')['native_facts'][0]
+        d['native_facts'].append(other)
+        t=dict(target(),tv_intourist_native_ids='88')
+        r=batch.retained_plan(d,[t])
+        self.assertEqual(r['retained_frontier_counts'],{'conflict_review':1})
+        self.assertIn('target_multiple_samo_candidates_in_inputs',r['rows'][0]['reasons'])
+        self.assertFalse(r['rows'][0]['safe_to_write_now'])
+
+    def test_outside_frontier_bg_target_collision_is_candidate_only(self):
+        d=self.document()
+        d['native_facts'].append(self.document('999','88','operator_115')['native_facts'][0])
+        t=dict(target(),tv_bg_native_ids='10288')
+        r=batch.retained_plan(d,[t])
+        self.assertIn('target_multiple_samo_candidates_in_inputs',r['rows'][0]['reasons'])
+        self.assertEqual(r['retained_frontier_counts'],{'conflict_review':1})
+        self.assertFalse(r['rows'][0]['safe_to_write_now'])
+        d['native_facts'][1]['catalog_id']='1'
+        self.assertNotIn('target_multiple_samo_candidates_in_inputs',batch.retained_plan(d,[t])['rows'][0]['reasons'])
+
     def test_accepted_and_protected_preserve_ownership(self):
         d=self.document();d['current_identities'][0].update(decision_status='accepted',local_hotel_id=2)
         self.assertNotIn('additional_saved_candidate_current_review',batch.retained_plan(d,[target()])['retained_frontier_counts'])
