@@ -641,27 +641,55 @@ function editFilterBudget(){
  showFilterBudgetValidity(budget);syncFilterSections();syncFilterResetState();if(filterDraft)rememberUIRoute();return budget;
 }
 let renderedFilterContext=null;
+const filterRootBindings=new WeakMap();
+function filterRootBinding(host){
+ let binding=filterRootBindings.get(host);
+ if(binding)return binding;
+ binding={markup:new WeakMap(),dirty:new WeakSet(),structureDirty:false};
+ const mark=records=>{for(const record of records){if(record.target===host){binding.structureDirty=true;continue;}let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==host)root=root.parentElement;if(root&&root.parentNode===host)binding.dirty.add(root);}};
+ binding.observer=new MutationObserver(mark);binding.mark=mark;binding.observer.observe(host,{subtree:true,childList:true,attributes:true,characterData:true});filterRootBindings.set(host,binding);return binding;
+}
+function filterRootMarkup(node){return node.nodeType===1?node.outerHTML:`${node.nodeType}:${node.nodeValue}`;}
+function reconcileFilterRoots(host,fragment,binding,preserved=null){
+ const fresh=[...fragment.childNodes],current=[...host.childNodes],desired=[];
+ for(let index=0;index<fresh.length;index++){
+  const generated=fresh[index],existing=current[index],keep=preserved?.index===index?preserved.node:existing,markup=filterRootMarkup(generated);
+  const node=keep&&keep.parentNode===host&&!binding.structureDirty&&!binding.dirty.has(keep)&&binding.markup.get(keep)===markup?keep:generated.cloneNode(true);
+  binding.markup.set(node,markup);binding.dirty.delete(node);desired.push(node);
+ }
+ let cursor=host.firstChild;
+ for(const node of desired){if(node===cursor)cursor=cursor.nextSibling;else host.insertBefore(node,cursor);}
+ while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+ binding.structureDirty=false;return binding;
+}
 function paintFilters(markup,filters){
  const host=$('#filters'),active=document.activeElement,scope=searchKey(state.search);
  const facet=active?.dataset.facetSearch;
  const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
+ const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
+ const template=document.createElement('template');template.innerHTML=markup;
+ let preserved=null;
  if(group&&renderedFilterContext?.filters===filters&&renderedFilterContext.scope===scope){
-  const template=document.createElement('template');template.innerHTML=markup;
   const replacement=template.content.querySelector(facet?`[data-facet-search="${facet}"]`:active.id==='hotel-query'?'#hotel-query':'#min-price')?.closest('.filter-group');
   if(replacement&&replacement.parentNode===template.content){
    if(facet){
     // Refresh choices/counts around the attached editor, including new sources.
     const options=active.closest('.facet-options'),search=active.closest('.facet-search'),fresh=replacement.querySelector('.facet-options');
     [...options.childNodes].forEach(node=>{if(node!==search)node.remove();});
-    search.after(...[...fresh.childNodes].filter(node=>!node.classList?.contains('facet-search')));
+    search.after(...[...fresh.childNodes].filter(node=>!node.classList?.contains('facet-search')).map(node=>node.cloneNode(true)));
    }
    // Preserve active typing, native focus/caret and unfinished input as sources arrive.
-   const nodes=[...template.content.childNodes],index=nodes.indexOf(replacement);
-   [...host.childNodes].forEach(node=>{if(node!==group)node.remove();});
-   group.before(...nodes.slice(0,index));group.after(...nodes.slice(index+1));
-  }else host.innerHTML=markup;
- }else host.innerHTML=markup;
+   preserved={node:group,index:[...template.content.childNodes].indexOf(replacement)};
+  }
+ }
+ reconcileFilterRoots(host,template.content,binding,preserved);
+ if(group&&!host.contains(active)){
+  const restored=host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
+  if(restored){restored.value=active.value;restored.focus({preventScroll:true});if(active.selectionStart!==null)try{restored.setSelectionRange(active.selectionStart,active.selectionEnd,active.selectionDirection)}catch{}}
+ }
  renderedFilterContext={filters,scope};$$('[data-facet-options]').forEach(applyFacetSearch);syncAvailableFilterGroups();
+ // Dynamic facet/count presentation is owned by this painter, not an external disturbance.
+ binding.observer.takeRecords();binding.structureDirty=false;
 }
 function renderFilterNavigation(){
  const select=$('#filter-section-jump');
