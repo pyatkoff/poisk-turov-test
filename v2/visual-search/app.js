@@ -674,6 +674,7 @@ function paintFilters(markup,filters){
  const leased=!focusedEditor&&filterDraft&&filterEditorLease?.isConnected&&host.contains(filterEditorLease)?filterEditorLease:null,active=focusedEditor||leased,scope=searchKey(state.search);
  const facet=active?.dataset.facetSearch;
  const group=active&&host.contains(active)&&(facet||['hotel-query','min-price','max-price','price-range'].includes(active.id))?active.closest('.filter-group'):null;
+ let root=group;while(root&&root.parentNode!==host)root=root.parentElement;
  const binding=filterRootBinding(host);binding.mark(binding.observer.takeRecords());
  const sameScope=renderedFilterContext?.scope===scope,sameModel=renderedFilterContext?.filters===filters;
  if(renderedFilterContext&&(!sameScope||!sameModel&&!filterDraft))binding.structureDirty=true;
@@ -692,11 +693,11 @@ function paintFilters(markup,filters){
     search.after(...[...fresh.childNodes].filter(node=>!node.classList?.contains('facet-search')).map(node=>node.cloneNode(true)));
    }
    // Preserve active typing, native focus/caret and unfinished input as sources arrive.
-   preserved={node:group,index:[...template.content.childNodes].indexOf(replacement)};
+   preserved={node:root,index:[...template.content.childNodes].indexOf(replacement)};
   }
  }
  reconcileFilterRoots(host,template.content,binding,preserved);
- if(preserved&&group&&(leased||!host.contains(active))){
+ if(preserved&&root&&(leased||!host.contains(active))){
   const restored=host.contains(active)?active:host.querySelector(facet?`[data-facet-search="${facet}"]`:`#${active.id}`);
   if(restored){restored.value=active.value;restored.focus({preventScroll:true});if(active.selectionStart!==null)try{restored.setSelectionRange(active.selectionStart,active.selectionEnd,active.selectionDirection)}catch{}}
  }
