@@ -32,6 +32,43 @@ const previousProject=`function(list,s){return list.map(rawHotel=>{
  h.offers=(rawHotel.tours||[]).map((t,i)=>offer(t,h,s,i)).filter(Boolean);
  return h;
 }).filter(h=>h.offers.length);}`;
+const previousMeal=`function(value){
+ const label=text(value).trim(),record=catalog.meals.find(x=>value?.id&&String(x.id)===String(value.id)
+  ||text(x).trim().toLocaleLowerCase('ru-RU')===label.toLocaleLowerCase('ru-RU'));
+ const candidates=[label,text(value?.fullName),text(value?.russianName),text(record?.fullName),text(record?.russianName),text(record)]
+  .map(value=>value.trim()).filter(Boolean);
+ for(const candidate of candidates){
+  const normalized=candidate.toUpperCase().replace(/\\s+/g,' ');
+  if(mealAliases[normalized])return mealAliases[normalized];
+  const coded=normalized.match(/^(RO|BB|HB|FB|AI|UAI|ALL)\\s*(?:[-—:]\\s*|\\s+).+$/);
+  if(coded&&mealAliases[coded[1]])return mealAliases[coded[1]];
+ }
+ return candidates.find(candidate=>!(/^[A-Z]{1,7}\\+?$/.test(candidate)))||candidates[0]||'';
+}`;
+const previousSupplierMealNativeId=`function(value){
+ const direct=value&&typeof value==='object'?String(value.id??''):'';
+ if(/^[1-9][0-9]*$/.test(direct))return direct;
+ const candidates=[text(value),text(value?.fullName),text(value?.russianName)].map(v=>v.trim()).filter(Boolean);
+ if(!candidates.length)return '';
+ const matches=catalog.meals.filter(row=>{
+  const labels=[text(row),text(row?.fullName),text(row?.russianName)].map(v=>v.trim()).filter(Boolean);
+  return candidates.some(candidate=>labels.includes(candidate));
+ }).map(row=>String(row?.id??'')).filter(id=>/^[1-9][0-9]*$/.test(id));
+ return [...new Set(matches)].length===1?matches[0]:'';
+}`;
+const previousMealPlan=`function(t,provider=String(t?.provider||'tourvisor').toLowerCase()){
+ const explicit=t&&t.searchMealPlan;
+ if(explicit&&Number.isSafeInteger(explicit.id)&&explicit.id>0&&typeof explicit.code==='string'&&/^[a-z0-9][a-z0-9-]{0,63}$/.test(explicit.code)
+  &&typeof explicit.nameRu==='string'&&explicit.nameRu.trim()&&explicit.nameRu.length<=255){
+  const known=catalog.mealPlans.find(plan=>plan.id===explicit.id);
+  if(!known||known.code===explicit.code&&known.nameRu===explicit.nameRu.trim())return Object.freeze({id:explicit.id,code:explicit.code,nameRu:explicit.nameRu.trim()});
+  return null;
+ }
+ if(provider!=='tourvisor'||catalog.mealPlanAvailable!==true)return null;
+ const native=(${previousSupplierMealNativeId})(t?.meal);if(!native)return null;
+ const matches=catalog.mealPlans.filter(plan=>plan.nativeIds.includes(native));
+ return matches.length===1?Object.freeze({id:matches[0].id,code:matches[0].code,nameRu:matches[0].nameRu}):null;
+}`;
 function harness(source,{providers=false}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
@@ -54,7 +91,7 @@ function harness(source,{providers=false}={}){
   clearTimeout(key){log.push(['clearTimer',key]);timers.delete(key);}});
  const marker='  root.AnyTourPrototypeData=Object.freeze(';
  assert.equal(source.split(marker).length,2,'one actual data-owner export');
- const probe=`  root.__test={run:()=>activeSearch,poll:run=>pollSearch(run),state:()=>({generation,searchId,context,searchParams,currentSupplierScope}),destinationScope,previousDestination:${previousDestination},previousProject:${previousProject}};\n`;
+ const probe=`  root.__test={run:()=>activeSearch,poll:run=>pollSearch(run),state:()=>({generation,searchId,context,searchParams,currentSupplierScope}),destinationScope,previousDestination:${previousDestination},previousProject:${previousProject},previousMeal:${previousMeal},previousMealPlan:${previousMealPlan}};\n`;
  vm.runInContext(source.replace(marker,probe+marker),context,{filename:'prototype-search/data.js'});
  const api=window.AnyTourPrototypeData;
  api.catalog.departures=[{id:1,name:'Москва'}];api.catalog.countries=[{id:4,name:'Турция',tourvisorIds:['4']}];
@@ -136,6 +173,65 @@ function dataWorkOracles(source){
  const rawOffer=h.api.project([{id:401,tours:[rawOnly]}],s)[0].offers[0];
  assert.equal(rawOffer.meal,'Ультра всё включено');assert.equal(rawOffer.room,'DELUXE SEA VIEW');assert.strictEqual(rawOffer.raw,rawOnly);
 
+ const sameLookup=(actual,expected,message)=>actual.error||expected.error?assert.equal(Boolean(actual.error),Boolean(expected.error),message):assert.deepEqual(actual,expected,message);
+ const compareMeal=value=>sameLookup(observed(()=>h.api.meal(value)),observed(()=>h.probe.previousMeal(value)),'indexed meal keeps first ID/label resolution');
+ const comparePlan=(tour,provider)=>sameLookup(observed(()=>h.api.mealPlan(tour,provider)),observed(()=>h.probe.previousMealPlan(tour,provider)),'indexed plan keeps explicit/native ambiguity');
+ const catalogMeals=[
+  {id:1,name:'BB',fullName:'Breakfast'},
+  {id:2,name:'Target',fullName:'AI'},
+  {id:3,name:'same',russianName:'Первый'},
+  {id:4,name:'same',russianName:'Второй'},
+  {id:4,name:'duplicate id',fullName:'same-id'}
+ ];
+ const catalogPlans=[
+  {id:7,code:'breakfast',nameRu:'Завтраки',nativeIds:['1']},
+  {id:8,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['2']},
+  {id:9,code:'duplicate-a',nameRu:'Дубликат',nativeIds:['3']},
+  {id:10,code:'duplicate-b',nameRu:'Дубликат',nativeIds:['3']}
+ ];
+ h.api.catalog.meals=catalogMeals;h.api.catalog.mealPlans=catalogPlans;h.api.catalog.mealPlanAvailable=true;
+ for(const value of [{id:2,name:'BB'},{id:2,name:'missing'},{name:'same'},{name:'same-id'},'AI','unknown',null])compareMeal(value);
+ for(const tour of [
+  {provider:'tourvisor',meal:{id:1,name:'ignored'}},
+  {provider:'tourvisor',meal:{name:'Target'}},
+  {provider:'tourvisor',meal:{name:'same'}},
+  {provider:'andromeda',meal:{id:1}},
+  {searchMealPlan:{id:8,code:'all-inclusive',nameRu:'Всё включено'}},
+  {searchMealPlan:{id:8,code:'wrong',nameRu:'Всё включено'}},
+  {searchMealPlan:{id:777,code:'future',nameRu:'Будущее'}}
+ ])comparePlan(tour);
+ assert.throws(()=>h.api.supplierScope({meals:['Дубликат']}),/канонического справочника/);
+ assert.equal(h.api.supplierScope({meals:['Завтраки']}).meal,'1');
+ assert.equal(h.api.observationScopeSupported(s,{meals:['Завтраки']}),true);
+ assert.equal(h.api.observationScopeSupported(s,{meals:['Дубликат']}),false);
+
+ // Directly exposed catalog arrays remain live between owner calls: same-array
+ // edits, pushes, sparse rows and inherited slots rebuild the operation index.
+ catalogMeals[0].name='RO';catalogMeals[0].fullName='Room Only';compareMeal({id:1,name:'missing'});
+ catalogPlans[0].nameRu='Без питания';catalogPlans[0].code='room-only';comparePlan({searchMealPlan:{id:7,code:'room-only',nameRu:'Без питания'}});
+ catalogPlans.push({id:11,code:'second-room-only',nameRu:'Без питания',nativeIds:['1']});
+ assert.throws(()=>h.api.supplierScope({meals:['Без питания']}),/канонического справочника/);
+ assert.equal(h.api.observationScopeSupported(s,{meals:['Без питания']}),false);
+ const inheritedMeals=[];Object.setPrototypeOf(inheritedMeals,Object.assign(Object.create(Array.prototype),{1:{id:21,name:'Inherited AI'}}));inheritedMeals.length=3;
+ h.api.catalog.meals=inheritedMeals;compareMeal({id:21,name:'missing'});comparePlan({provider:'tourvisor',meal:{id:21}});
+ const sparsePlans=new Array(4);sparsePlans[3]={id:22,code:'sparse',nameRu:'Sparse',nativeIds:['21']};
+ h.api.catalog.mealPlans=sparsePlans;comparePlan({provider:'tourvisor',meal:{id:21}});
+
+ const mealReads={ids:0,labels:0,planIds:0},perf=harness(source),perfMeals=[],perfPlans=[];
+ for(let i=1;i<=100;i++){
+  const id=i;perfMeals.push({get id(){mealReads.ids++;return id;},get name(){mealReads.labels++;return id===100?'Tail meal':'Meal '+id;}});
+  perfPlans.push({get id(){mealReads.planIds++;return id;},code:'plan-'+id,nameRu:'Plan '+id,nativeIds:[String(id)]});
+ }
+ perf.api.catalog.meals=perfMeals;perf.api.catalog.mealPlans=perfPlans;perf.api.catalog.mealPlanAvailable=true;
+ const perfTour={id:'tail',provider:'tourvisor',price:120000,date:'2026-10-13',nights:7,meal:{id:100,name:'Tail meal'},searchMealPlan:{id:100,code:'plan-100',nameRu:'Plan 100'}};
+ for(let i=0;i<1000;i++){perf.probe.previousMeal(perfTour.meal);perf.probe.previousMealPlan(perfTour);}
+ const previousMealReads={...mealReads};Object.keys(mealReads).forEach(key=>mealReads[key]=0);
+ const perfTours=Array.from({length:1000},(_,i)=>({...perfTour,id:'tail-'+i})),projected=perf.api.project([{id:501,name:'Indexed',tours:perfTours}],s);
+ assert.equal(projected[0].offers.length,1000);assert.equal(projected[0].offers[999].meal,'Plan 100');
+ assert.deepEqual(previousMealReads,{ids:100000,labels:100000,planIds:100000});
+ assert.deepEqual(mealReads,{ids:100,labels:100,planIds:100});
+ const currentMealReads={...mealReads};
+
  const work={map:0,filter:0,forEach:0,callbacks:0};
  function counted(array){
   Object.defineProperty(array,'map',{value(fn){work.map++;const result=Array.prototype.map.call(this,(...args)=>{work.callbacks++;return fn(...args);});
@@ -174,7 +270,7 @@ function dataWorkOracles(source){
  const changing=[{id:4,tours:[tours[1]]}];
  Object.defineProperty(changing[0],'name',{get(){changing.push({id:5,tours:[tours[1]]});return 'append';}});
  assert.equal(h.api.project(changing,s).length,1,'new outer slots past the initial length are not visited');
- return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork,temporaryArraysRemoved:101},stayPresentation:{accepted:2,invalidRejected:invalidStayCases.length+invalidRoomCases.length,rawIdentity:'identical',mealFacet:'unchanged'},rawIdentity:'identical'};
+ return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],mealIndexReads:{previous:previousMealReads,current:currentMealReads,offers:1000},projection:{previous:previousWork,current:currentWork,temporaryArraysRemoved:101},stayPresentation:{accepted:2,invalidRejected:invalidStayCases.length+invalidRoomCases.length,rawIdentity:'identical',mealFacet:'unchanged'},rawIdentity:'identical'};
 }
 async function characterize(source){
  const records=[];
