@@ -1998,7 +1998,7 @@ dialog.tour-dialog #modal-footer .primary,
 .photo-count svg {display:none}
 .hotel-card .card-photo-arrow {position:absolute;z-index:2;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:44px;height:44px;min-width:44px;border-radius:50%;background:#fffffff2;color:var(--ink);box-shadow:0 1px 8px #10213e15;margin:0}
 .card-photo-arrow.prev {left:10px}.card-photo-arrow.next {right:10px}
-.card-thumbs {display:flex;gap:6px;min-width:0}
+.card-thumbs {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;min-width:0}
 .card-thumb,.card-more-photos {position:relative;flex:1;min-width:0;aspect-ratio:1.3;border:2px solid transparent;border-radius:7px;overflow:hidden;padding:0;background:#eef2f8}
 .card-thumb img {display:block;width:100%;height:100%;object-fit:cover}
 .card-thumb.active {border-color:var(--brand)}

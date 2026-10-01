@@ -4,7 +4,11 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require('playwright');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const mobileCardPriceLayout=async(page,width,evidence)=>{
- if(width!==390)return;
+ if(width!==390){
+  const boxes=await page.locator('.hotel-card').first().evaluate(el=>({photo:el.querySelector('.hotel-image-wrap').getBoundingClientRect().width,thumbs:[...el.querySelectorAll('.card-thumb')].map(t=>t.getBoundingClientRect().width)}));
+  assert(boxes.thumbs.every(w=>w<=boxes.photo*.3),'a single desktop thumbnail remains a preview, not a second full-size photo at '+width);
+  return;
+ }
  const card=page.locator('.hotel-card').first(),amount=card.locator('.starting-price strong'),original=await amount.textContent();
  try{
   await amount.evaluate(el=>{el.textContent='1\u00a0035\u00a0282 ₽';});
