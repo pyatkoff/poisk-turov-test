@@ -1,7 +1,7 @@
 {
   "schema": "hotel-match-mass83-proof-minimization/1",
   "state": "checked_retained_evidence_only",
-  "created_at_utc": "2026-10-01T15:25:00Z",
+  "created_at_utc": "2026-10-01T15:15:00Z",
   "source_feature_sha": "05166bb5776adeac1b79c4a75cd19fa735d4e5a6",
   "scope": {
     "kind": "existing_mass83_twelve_candidate_roster_only",
