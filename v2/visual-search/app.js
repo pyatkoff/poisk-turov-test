@@ -184,8 +184,7 @@ function hotelOffers(h,options={}){
 }
 function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
-function results(){
- const items=hotels.map(h=>({hotel:h,offers:hotelOffers(h)})).filter(r=>r.offers.length);
+function sortResultItems(items){
  if(items.length<2)return items;
  if(state.sort==='price')return items.sort((a,b)=>a.offers[0].total-b.offers[0].total);
  if(state.sort==='rating')return items.sort((a,b)=>(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0));
@@ -194,6 +193,18 @@ function results(){
  ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
  return ranked.map(item=>item.row);
 }
+function resultInventory(){
+ const rating=!!state.filters?.rating,options=rating?{filters:{...state.filters,rating:false}}:null;
+ const inventory=hotels.reduce((value,h)=>{
+  const rated=ratingValue(h)>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
+  if(!offers.length)return value;
+  value.ratingCounts.total++;if(rated)value.ratingCounts.rating++;
+  if(!rating||rated)value.items.push({hotel:h,offers});
+  return value;
+ },{items:[],ratingCounts:{total:0,rating:0}});
+ inventory.items=sortResultItems(inventory.items);return inventory;
+}
+function results(){return resultInventory().items;}
 function calendarMinimums(days,options={},observations=[]){
  if(!days.length)return[];
  const s=options.search||state.search,f=options.filters||state.filters,span=[...days].sort(),requested=new Set(days),minimums=new Map(),saved=new Map();
@@ -379,10 +390,6 @@ let filterDraft=null,emptySuggestions=[],drawerSuggestions=[],filterBudgetEdit=n
 const appliedFilterModel=()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate});
 const editingFilterModel=()=>filterDraft||appliedFilterModel();
 const countMatchingHotels=model=>hotels.reduce((count,h)=>count+Number(hotelOffers(h,{...model,firstOnly:true}).length>0),0);
-function ratingFacetCounts(model=appliedFilterModel()){
- const options={...model,filters:{...model.filters,rating:false},firstOnly:true};
- return hotels.reduce((counts,h)=>{if(!hotelOffers(h,options).length)return counts;counts.total++;if(ratingValue(h)>=4.5)counts.rating++;return counts;},{total:0,rating:0});
-}
 // Facet counts are per hotel, so stop after each requested identity is found.
 // Keep the inventory local to this pass: later responses and edits recalculate it.
 function countFacetOptions(model,group,values){
@@ -681,7 +688,7 @@ function renderCalendarStrip(){
  $('#clear-date').hidden=!state.selectedDate;
  refreshEmptyCalendarContext();
 }
-function renderActive(){const f=state.filters,chips=filterChipData(),ratingCounts=ratingFacetCounts();
+function renderActive(ratingCounts){const f=state.filters,chips=filterChipData();
  $('#sort').value=state.sort;$('#mobile-sort').value=state.sort;
  const sortLabel=state.sort==='price'?'Дешевле':state.sort==='rating'?'Рейтинг':'Сортировка';
  $('#mobile-sort-label').textContent=sortLabel;$('.mobile-sort').classList.toggle('active',state.sort!=='recommended');
@@ -842,11 +849,11 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
- const items=results(),total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
+ const inventory=resultInventory(),items=inventory.items,total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
- renderCalendarStrip();const ratingCounts=renderActive();updateNav();renderSummary();updateURL();refreshResultFilters(options,ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
+ renderCalendarStrip();renderActive(inventory.ratingCounts);updateNav();renderSummary();updateURL();refreshResultFilters(options,inventory.ratingCounts);renderSearchStatus(items,total);refreshResultPickerPreviews();
 }
 function syncFilters(){renderResults();updateSearchUI();}
 function applyQuickFilters(){

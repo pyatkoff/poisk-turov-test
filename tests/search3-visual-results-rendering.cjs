@@ -9,7 +9,7 @@ const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
 function owner(source,kind){
  if(kind==='results')return section(source,"let renderedCardLimit=24,renderedCardScope='';",'function syncFilters(){');
- if(kind==='calendar')return section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(){');
+ if(kind==='calendar')return section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(){')?'function offerListInventory(){':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('let verifiedOffer=null;',start);return end<0?source.slice(start):source.slice(start,end);
 }
@@ -37,7 +37,7 @@ function observe(source,s){
   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live'},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
-  searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),results:call('results',()=>items),
+  searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>({items,ratingCounts:undefined})),
   appliedDestination:call('appliedDestination',()=>({kind:'resort',id:9})),destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
   dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),
   responseFor:call('responseFor',()=>({phase:s.phase||'complete'})),hotelCountText:call('hotelCountText',n=>n+' отелей'),
@@ -52,6 +52,7 @@ function observe(source,s){
   offerRefinementFields:['departure','flight','room','meal'],mealNames:{AI:'Всё включено'},comparisonQuotes:[{key:'old'}]
  };
  for(const name of ['renderFilters','updateFacetCounts','syncFilterResetState','updateDrawerPreview','updateBudgetPreview','updateMealCounts','updateMealPicker','renderCalendarStrip','renderActive','updateNav','renderSummary','updateURL','renderSearchStatus','loadResultCalendar','refreshEmptyCalendarContext','renderOfferRefinements','renderTourComparison','rememberUIRoute'])ctx[name]=call(name);
+ ctx.renderActive=()=>record('renderActive');
  const offers=s.empty?[]:Array.from({length:8},(_,i)=>({key:'o'+i,day:i%2?'2026-10-15':'2026-10-14',returnDay:i%2?'2026-10-22':'2026-10-21',nights:i%2?7:8,total:i%3?100000+i:100000,room:i%2?'r2':'r1',meal:i%3?'AI':'BB',flight:i%2?'regular':'charter',operator:'Operator<&'}));
  ctx.hotelOffers=call('hotelOffers',()=>offers);
  ctx.offerGroupKey=call('offerGroupKey',o=>o.room+'-'+o.meal);
