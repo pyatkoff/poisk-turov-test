@@ -128,5 +128,76 @@ class BatchTest(unittest.TestCase):
         self.assertEqual(sorted(sources, key=lambda x: int(x["samo_catalog_id"])), sorted(before[0], key=lambda x: int(x["samo_catalog_id"])))
 
 
+class RetainedFrontierTest(unittest.TestCase):
+    def document(self, catalog='1', native='77', lane='operator_315'):
+        return dict(native_facts=[dict(catalog_id=catalog, supplier_namespace=lane, native_id=native,
+                                      evidence=[dict(source_file='operations/hotel-match-fixture/evidence-private/page.json',
+                                                     sha256='a'*64, json_pointer='/PRICES/0')])],
+                    current_identities=[dict(supplier_namespace='andromeda_catalog', external_hotel_id=catalog,
+                        decision_status='pending', local_hotel_id=None, catalog_sha256='a'*64,evidence_sha256='b'*64)],
+                    source_frontier=[dict(catalog_id=catalog,observed_offers=4,current_accepted_locals=[])])
+
+    def test_whole_retained_frontier_and_covered_scope_are_distinct(self):
+        d=self.document();d2=self.document('3','88')
+        for key in d:d[key]+=d2[key]
+        r=batch.retained_plan(d,[target(),target('4',native='88')],{'1'})
+        self.assertEqual(r['retained_frontier_counts'],{'additional_saved_candidate_current_review':1,'already_covered_saved110':1})
+        self.assertFalse(r['scope']['fresh_current_census'])
+        self.assertFalse(r['scope']['original_pages_verified'])
+        self.assertTrue(all(not x['safe_to_write_now'] for x in r['rows']))
+        self.assertEqual(r['rows'][0]['required_before_acceptance'],[])
+        self.assertIn('confirmed_owner_acceptance_policy',r['rows'][0]['required_before_current_review'])
+
+    def test_outside_frontier_collision_is_not_projected_away(self):
+        d=self.document();other=copy.deepcopy(d['native_facts'][0]);other['catalog_id']='999'
+        d['native_facts'].append(other)
+        r=batch.retained_plan(d,[target()])
+        self.assertEqual(r['retained_frontier_counts'],{'conflict_review':1})
+        self.assertIn('native_multiple_samo_sources_in_inputs',r['rows'][0]['reasons'])
+
+    def test_prior_writer_scope_never_becomes_fresh_batch(self):
+        d=self.document('269426')
+        r=batch.retained_plan(d,[target()])
+        self.assertEqual(r['retained_frontier_counts'],{'prior_fixed_writer_terminal_review':1})
+        self.assertTrue(r['rows'][0]['prior_fixed_writer_scope'])
+
+    def test_accepted_and_protected_preserve_ownership(self):
+        d=self.document();d['current_identities'][0].update(decision_status='accepted',local_hotel_id=2)
+        self.assertNotIn('additional_saved_candidate_current_review',batch.retained_plan(d,[target()])['retained_frontier_counts'])
+        d=self.document('2000086118')
+        r=batch.retained_plan(d,[target()],{'2000086118'})
+        self.assertEqual(r['retained_frontier_counts'],{'protected':1})
+
+    def test_namespace_and_original_page_status_are_explicit(self):
+        d=self.document(lane='operator_115')
+        r=batch.retained_plan(d,[target(lane='bg',native='10277')])
+        row=r['rows'][0]
+        self.assertEqual(row['native_matches'][0]['rule'],'owner_bg_102_prefix_candidate')
+        self.assertFalse(row['retained_native_evidence'][0]['original_pages_verified'])
+        d['native_facts'][0]['supplier_namespace']='operator_18'
+        with self.assertRaisesRegex(ValueError,'retained_native_namespace'):batch.retained_plan(d,[target()])
+
+    def test_pointer_and_numeric_identity_guards(self):
+        for mutate,reason in [
+            (lambda d:d['native_facts'][0].update(native_id=77.0),'retained_identity'),
+            (lambda d:d['native_facts'][0].update(native_id=True),'retained_identity'),
+            (lambda d:d['native_facts'][0]['evidence'][0].update(source_file='operations/../page.json'),'retained_evidence_pointer'),
+            (lambda d:d['native_facts'][0]['evidence'][0].update(json_pointer='/hotelKey'),'retained_evidence_pointer')]:
+            d=self.document();mutate(d)
+            with self.assertRaisesRegex(ValueError,reason):batch.retained_plan(d,[target()])
+
+    def test_retained_input_is_immutable_not_arbitrary_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'retained.json';path.write_text('{}')
+            with self.assertRaisesRegex(ValueError,'retained_digest'):batch.load_retained(path)
+            link=Path(tmp)/'link.json';link.symlink_to(path)
+            with self.assertRaisesRegex(ValueError,'retained_file_size_or_type'):batch.load_retained(link)
+
+    def test_duplicate_identity_metadata_is_not_silently_selected(self):
+        d=self.document();d['current_identities'].append(copy.deepcopy(d['current_identities'][0]))
+        r=batch.retained_plan(d,[target()])
+        self.assertNotIn('additional_saved_candidate_current_review',r['retained_frontier_counts'])
+        self.assertIn('source_decision_protected_or_unknown',r['rows'][0]['reasons'])
+
 if __name__ == "__main__":
     unittest.main()
