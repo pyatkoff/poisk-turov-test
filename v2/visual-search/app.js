@@ -1291,7 +1291,14 @@ function restoreProviderView(o){
  return true;
 }
 const flightPairFor=o=>o?.flightChoiceId==null||o.flightChoiceId===''?null:o.variants?.[Number(o.flightChoiceId)]||null;
-function offerFromKey(key){return hotels.flatMap(h=>h.offers||[]).find(o=>o.key===key)||null;}
+function offerFromKey(key){
+ for(let i=0,length=hotels.length;i<length;i++){
+  if(!(i in hotels))continue;
+  const offers=hotels[i].offers||[];
+  for(let j=0,count=offers.length;j<count;j++)if(j in offers&&offers[j].key===key)return offers[j];
+ }
+ return null;
+}
 function cardEntryOfferKey(button){
  const fallback=button.dataset.key;if(button.dataset.cardEntry!=='true')return fallback;
  const id=Number(button.closest('.hotel-card')?.dataset.hotelId),hotel=hotels.find(h=>h.id===id);
