@@ -834,6 +834,40 @@ class Live30TargetCatalogRegistrationTest(unittest.TestCase):
                 with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
                     with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog'](stage)
 
+    def test_saved_target_readback_never_executes_php_or_db(self):
+        for terminal in (False,True):
+            with self.subTest(terminal=terminal),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp)
+                ns['operation']=registration.TARGET_READBACK_OPERATION
+                evidence=root/registration.TARGET_OPERATION;evidence.mkdir()
+                original_source='6b49c5ac61ca21e7bb413d30d6badd9f29518cb4'
+                reservation=dict(operation=registration.TARGET_OPERATION,source_sha=original_source,batch=registration.TARGET_BATCH,
+                    maximum_writes=0,provider_http_calls=0,state='reserved_before_db_read')
+                (evidence/'reservation.json').write_text(json.dumps(reservation))
+                (evidence/'execution-started.json').write_text(json.dumps(dict(operation=registration.TARGET_OPERATION,source_sha=original_source)))
+                if terminal:self.response(dict(env={'MATCH_OPERATION_DIR':str(evidence)}),lambda d:d.update(source_sha=original_source))
+                exec(registration.REMOTE_TARGET_READBACK_HANDLER,ns)
+                body=self.core.PREFIX+SOURCE+' '+registration.TARGET_READBACK_MODE+' '+registration.TARGET_READBACK_OPERATION+' '+registration.TARGET_BATCH
+                core=fresh_core();registration.register_parser(core)
+                registration.activate(core,core.parse_command(body))
+                with patch.object(subprocess,'run',side_effect=AssertionError('no PHP or DB process')) as call:
+                    out=ns['run_match_tv_live30_target_readback'](stage)
+                    self.assertEqual(out['terminal_verified'],terminal);self.assertFalse(out['original_read_reexecuted'])
+                    self.assertEqual(out['database_reads'],0);self.assertEqual(out['database_writes'],0)
+                    self.assertEqual(out['catalog'] is not None,terminal)
+                    with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_readback'](stage)
+                    call.assert_not_called()
+
+    def test_saved_target_readback_rejects_wrong_producer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);ns['operation']=registration.TARGET_READBACK_OPERATION
+            evidence=root/registration.TARGET_OPERATION;evidence.mkdir()
+            (evidence/'reservation.json').write_text(json.dumps(dict(operation=registration.TARGET_OPERATION,source_sha=SOURCE)))
+            exec(registration.REMOTE_TARGET_READBACK_HANDLER,ns)
+            with patch.object(subprocess,'run',side_effect=AssertionError('no PHP or DB process')) as call:
+                with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_readback'](stage)
+                call.assert_not_called()
+
     def test_unknown_read_outcome_stays_consumed(self):
         with tempfile.TemporaryDirectory() as tmp:
             ns,stage,root=self.namespace(tmp)
