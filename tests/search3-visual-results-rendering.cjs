@@ -85,8 +85,20 @@ for(const comparing of [false,true])for(const shortlist of [false,true])for(cons
 add('empty offers',{kind:'offers',empty:true,reset:true});add('shared note mobile',{kind:'offers',shared:true,mobile:true});
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
-if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after result/calendar/offer-list observations');
-if(!process.argv.includes('--capture'))assert.equal(digest,'21632cf0ab0e31a6537ff66c09acc57bdcc2c14fc15f86dfcc96f770df25479d','pinned original observations');
+// O29 changes only two pure-work traces. Keep the original oracle and compare
+// every DOM/state write and every other collaborator, rather than re-pin a digest.
+const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold.indexOf('\n return {h,all,filtered,groups};',groupStart);
+assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
+const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
+const oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
+ .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n",'')
+ .replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
+const baseline=records(source.replace(section(cold,'function offerListInventory(){','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(){','function mountOfferList(){')));
+const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
+if(!process.argv.includes('--capture'))assert.equal(baselineDigest,'21632cf0ab0e31a6537ff66c09acc57bdcc2c14fc15f86dfcc96f770df25479d','pinned original observations');
+const visibleRecords=rows=>rows.map((row,index)=>scenarios[index].kind==='offers'?{...row,result:{...row.result,trace:row.result.trace.filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote')}}:row);
+assert.deepEqual(visibleRecords(actual),visibleRecords(baseline),'only bounded pure grouping/note work may change');
+if(i>=0)assert.deepEqual(visibleRecords(actual),visibleRecords(records(fs.readFileSync(process.argv[i+1],'utf8'))),'before/after result/calendar/offer-list observations');
 const original=actual.find(r=>r.name==='filter:true:false::false').result;
 assert(!original.trace.some(x=>['results','updateURL','cardHTML'].includes(x[0])),'editing form preserves cards and URL');
 const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
