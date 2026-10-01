@@ -96,6 +96,46 @@ function dataWorkOracles(source){
  h.api.catalog.regions['4']=[{name:'same',kind:'subregion',tourvisorIds:['4']}];scope(['same']);
  h.api.catalog.regions={};scope(['same']);scope([]);
 
+ const stayTour={id:'cached:andromeda:fixture',provider:'andromeda',price:150000,date:'2026-10-13',nights:7,
+  meal:{name:'Ultra All Inclusive'},roomType:'DELUXE SEA VIEW',placement:'2 ADL',
+  searchMealPlan:{id:7,code:'all-inclusive',nameRu:'Всё включено'},
+  localStay:{source:'anytour-hotel-stay-v2',
+   meal:{kind:'meal',id:901,hotelId:401,nameRu:'Премиальное питание',localKey:'meal-901',revision:3},
+   room:{kind:'room',id:701,hotelId:401,nameRu:'Делюкс с видом на море',localKey:'room-701',revision:4}}};
+ const stayOffer=h.api.project([{id:401,name:'Stay labels',tours:[stayTour]}],s)[0].offers[0];
+ assert.equal(stayOffer.meal,'Премиальное питание');assert.equal(stayOffer.room,'Делюкс с видом на море');
+ assert.deepEqual({id:stayOffer.mealPlanId,code:stayOffer.mealPlanCode,facet:stayOffer.mealFacet,raw:stayOffer.mealRaw},
+  {id:7,code:'all-inclusive',facet:'Всё включено',raw:'Ultra All Inclusive'},'local label cannot change the global meal facet');
+ assert.strictEqual(stayOffer.raw,stayTour);assert.equal(stayTour.meal.name,'Ultra All Inclusive');assert.equal(stayTour.roomType,'DELUXE SEA VIEW');
+ const supplierTour=structuredClone(stayTour);delete supplierTour.localStay;
+ const supplierOffer=h.api.project([{id:401,name:'Stay labels',tours:[supplierTour]}],s)[0].offers[0];
+ const nonPresentation=offer=>Object.fromEntries(Object.entries(copy(offer)).filter(([key])=>!['meal','room','raw'].includes(key)));
+ assert.deepEqual(nonPresentation(stayOffer),nonPresentation(supplierOffer),'local labels cannot change offer identity, price, scope or payload fields');
+ const invalidStayCases=[
+  stay=>{stay.source='foreign';},stay=>{stay.meal.kind='room';},stay=>{stay.meal.hotelId=402;},stay=>{stay.meal.id=0;},
+  stay=>{stay.meal.revision='3';},stay=>{stay.meal.nameRu='';},stay=>{stay.meal.nameRu='x'.repeat(256);},
+  stay=>{stay.meal.nameRu='bad\nname';},stay=>{stay.meal.localKey='';},stay=>{stay.meal.localKey='x'.repeat(129);},
+  stay=>{stay.meal.localKey='bad\u0000key';}
+ ];
+ for(const mutate of invalidStayCases){
+  const tour=structuredClone(stayTour);mutate(tour.localStay);
+  const projected=h.api.project([{id:401,tours:[tour]}],s)[0].offers[0];
+  assert.equal(projected.meal,'Всё включено','invalid local meal stays on the existing global presentation fallback');
+  assert.equal(projected.mealFacet,'Всё включено');assert.equal(projected.mealRaw,'Ultra All Inclusive');assert.strictEqual(projected.raw,tour);
+ }
+ const invalidRoomCases=[
+  stay=>{stay.room.kind='meal';},stay=>{stay.room.hotelId=402;},stay=>{stay.room.id=0;},stay=>{stay.room.revision=0;},
+  stay=>{stay.room.nameRu='bad\u007fname';},stay=>{stay.room.localKey='';}
+ ];
+ for(const mutate of invalidRoomCases){
+  const tour=structuredClone(stayTour);mutate(tour.localStay);
+  const projected=h.api.project([{id:401,tours:[tour]}],s)[0].offers[0];
+  assert.equal(projected.room,'DELUXE SEA VIEW');assert.equal(projected.meal,'Премиальное питание');assert.strictEqual(projected.raw,tour);
+ }
+ const rawOnly=structuredClone(stayTour);delete rawOnly.searchMealPlan;delete rawOnly.localStay;
+ const rawOffer=h.api.project([{id:401,tours:[rawOnly]}],s)[0].offers[0];
+ assert.equal(rawOffer.meal,'Ультра всё включено');assert.equal(rawOffer.room,'DELUXE SEA VIEW');assert.strictEqual(rawOffer.raw,rawOnly);
+
  const work={map:0,filter:0,forEach:0,callbacks:0};
  function counted(array){
   Object.defineProperty(array,'map',{value(fn){work.map++;const result=Array.prototype.map.call(this,(...args)=>{work.callbacks++;return fn(...args);});
@@ -134,7 +174,7 @@ function dataWorkOracles(source){
  const changing=[{id:4,tours:[tours[1]]}];
  Object.defineProperty(changing[0],'name',{get(){changing.push({id:5,tours:[tours[1]]});return 'append';}});
  assert.equal(h.api.project(changing,s).length,1,'new outer slots past the initial length are not visited');
- return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork,temporaryArraysRemoved:101},rawIdentity:'identical'};
+ return {destinationNameReads:[1600,80],emptySelectionReads:[0,0],projection:{previous:previousWork,current:currentWork,temporaryArraysRemoved:101},stayPresentation:{accepted:2,invalidRejected:invalidStayCases.length+invalidRoomCases.length,rawIdentity:'identical',mealFacet:'unchanged'},rawIdentity:'identical'};
 }
 async function characterize(source){
  const records=[];
