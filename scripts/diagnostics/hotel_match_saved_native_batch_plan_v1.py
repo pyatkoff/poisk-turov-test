@@ -20,6 +20,18 @@ LANES = ("anex", "bg", "funsun", "intourist")
 PROTECTED_CATALOG_IDS = frozenset({"2000086118"})
 MAX_BYTES = 64 * 1024 * 1024
 MAX_ROWS = 50_000
+RETAINED_OPERATION = 'hotel-match-live30-retained-native-union-1971-20260927-v77'
+RETAINED_SHA256 = 'd40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7'
+NAMESPACE_LANES = {'operator_5': 'anex', 'operator_115': 'bg',
+                   'operator_315': 'funsun', 'operator_342': 'intourist'}
+# Canonical fixed v76/v78/PM1 scopes are not fresh candidates from a stale v77.
+# Membership means terminal review is required, not that every member committed.
+PRIOR_FIXED_WRITER_SCOPE = frozenset({
+    '309768', '2000037585', '2000093384', '2000055490', '2000087342', '269426',
+    '2000103169', '2000090159', '650', '3060', '67775', '201859', '218356',
+    '240679', '2000023232', '2000050217', '2000065684', '2000067202', '2000073592',
+    '9501', '2000034238', '3126',
+})
 ID = re.compile(r"[1-9][0-9]{0,31}\Z")
 HASH = re.compile(r"[a-f0-9]{64}\Z")
 CURRENT_CHECKS = [
@@ -67,10 +79,18 @@ def load_csv(path: Path, role: str) -> tuple[list[dict], dict]:
                   "bytes": len(raw), "row_count": len(rows)}
 
 
-def plan(samo: list[dict], tv: list[dict]) -> dict:
+def plan(samo: list[dict], tv: list[dict], global_sources: dict | None = None) -> dict:
     # Each lane retains its own namespace. BG's owner-requested prefix rule
     # selects candidates only and never manufactures proof or write authority.
     source_index = {lane: defaultdict(set) for lane in LANES}
+    if global_sources is not None:
+        for lane, native_sources in global_sources.items():
+            if lane not in LANES:
+                raise ValueError('retained_global_namespace')
+            for native, catalogs in native_sources.items():
+                if not ID.fullmatch(native) or any(not ID.fullmatch(c) for c in catalogs):
+                    raise ValueError('retained_global_identity')
+                source_index[lane][native].update(catalogs)
     target_index = {lane: defaultdict(set) for lane in LANES}
     source_ids = Counter(r.get("samo_catalog_id", "") for r in samo)
     tv_rows = defaultdict(list)
@@ -233,16 +253,139 @@ def plan(samo: list[dict], tv: list[dict]) -> dict:
     }
 
 
+def load_retained(path: Path) -> tuple[dict, dict]:
+    if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= MAX_BYTES:
+        raise ValueError('retained_file_size_or_type')
+    raw = path.read_bytes()
+    if len(raw) > MAX_BYTES or hashlib.sha256(raw).hexdigest() != RETAINED_SHA256:
+        raise ValueError('retained_digest')
+    doc = json.loads(raw)
+    if (doc.get('operation') != RETAINED_OPERATION
+            or doc.get('state') != 'completed_retained_native_scan'
+            or any(type(doc.get(k)) is not int or doc[k] != 0 for k in ('database_writes', 'mapping_writes', 'provider_http_calls'))
+            or any(not isinstance(doc.get(k), list) or len(doc[k]) != n for k, n in (
+                ('native_facts', 3262), ('source_frontier', 1895), ('current_identities', 15042)))):
+        raise ValueError('retained_producer_contract')
+    return doc, {'name': path.name, 'sha256': RETAINED_SHA256, 'bytes': len(raw),
+                 'operation': RETAINED_OPERATION, 'original_pages_present': False}
+
+
+def retained_plan(doc: dict, tv: list[dict], covered_catalog_ids: set[str] | None = None) -> dict:
+    """Index the entire saved user-search frontier; never claim fresh CURRENT.
+
+    All native facts seed collision checks, including sources outside the selected
+    frontier. A source already covered by a prior report or fixed writer remains
+    visible and cannot be promoted to an additional available batch.
+    """
+    covered = covered_catalog_ids or set()
+    global_sources = {lane: defaultdict(set) for lane in LANES}
+    facts = defaultdict(list)
+    identities = defaultdict(list)
+    for key in ('native_facts', 'current_identities', 'source_frontier'):
+        if not isinstance(doc.get(key), list) or len(doc[key]) > MAX_ROWS:
+            raise ValueError('retained_inventory_shape')
+    def identifier(value):
+        if type(value) not in (str, int) or not ID.fullmatch(str(value)):
+            raise ValueError('retained_identity')
+        return str(value)
+    for fact in doc['native_facts']:
+        if not isinstance(fact, dict) or fact.get('supplier_namespace') not in NAMESPACE_LANES:
+            raise ValueError('retained_native_namespace')
+        cat, native = identifier(fact.get('catalog_id')), identifier(fact.get('native_id'))
+        lane = NAMESPACE_LANES[fact['supplier_namespace']]
+        global_sources[lane][native].add(cat)
+        if not isinstance(fact.get('evidence'), list) or len(fact['evidence']) > MAX_ROWS:
+            raise ValueError('retained_evidence_shape')
+        for ref in fact['evidence']:
+            if (not isinstance(ref, dict) or not HASH.fullmatch(str(ref.get('sha256', '')))
+                    or not isinstance(ref.get('source_file'), str)
+                    or not re.fullmatch(r'operations/hotel-match-[a-zA-Z0-9_-]+/(?:evidence-private/)?[a-zA-Z0-9_.-]+\.json', ref['source_file'])
+                    or not isinstance(ref.get('json_pointer'), str)
+                    or not re.fullmatch(r'/PRICES/[0-9]{1,8}', ref['json_pointer'])):
+                raise ValueError('retained_evidence_pointer')
+        facts[cat].append((lane, native, fact['evidence']))
+    for identity in doc['current_identities']:
+        if not isinstance(identity, dict):
+            raise ValueError('retained_identity_shape')
+        if identity.get('supplier_namespace') == 'andromeda_catalog':
+            identities[identifier(identity.get('external_hotel_id'))].append(identity)
+    sources = []
+    for frontier in doc['source_frontier']:
+        if not isinstance(frontier, dict):
+            raise ValueError('retained_frontier_shape')
+        cat = identifier(frontier.get('catalog_id'))
+        matches = identities[cat]
+        identity = matches[0] if len(matches) == 1 else {}
+        accepted = frontier.get('current_accepted_locals')
+        if not isinstance(accepted, list):
+            raise ValueError('retained_frontier_ownership')
+        row = {'samo_catalog_id': cat, 'source_decision_status_v77': identity.get('decision_status', 'unknown'),
+               'source_local_hotel_id_v77': '' if identity.get('local_hotel_id') is None else identifier(identity['local_hotel_id']),
+               'source_catalog_sha256': identity.get('catalog_sha256', ''),
+               'source_evidence_sha256': identity.get('evidence_sha256', ''),
+               'current_accepted_locals_in_frontier_v77': '|'.join(identifier(x) for x in accepted),
+               'observed_offers': str(frontier.get('observed_offers', ''))}
+        for lane in LANES:
+            row['samo_'+lane+'_native_ids'] = '|'.join(sorted({n for op, n, _ in facts[cat] if op == lane}, key=int))
+        sources.append(row)
+    result = plan(sources, tv, global_sources)
+    counts = Counter()
+    for row in result['rows']:
+        cat = row['samo_catalog_id']
+        row['source_identity_snapshot'] = [{k: identity.get(k) for k in (
+            'supplier_namespace', 'external_hotel_id', 'local_hotel_id', 'decision_status',
+            'catalog_sha256', 'evidence_sha256')} for identity in identities[cat]]
+        row['retained_native_evidence'] = [dict(operator=lane, native_id=n, references=refs,
+                                              original_pages_verified=False) for lane, n, refs in facts[cat]]
+        row['covered_in_saved110'] = cat in covered
+        row['prior_fixed_writer_scope'] = cat in PRIOR_FIXED_WRITER_SCOPE
+        if cat in PROTECTED_CATALOG_IDS:
+            state = 'protected'
+        elif cat in covered:
+            state = 'already_covered_saved110'
+        elif cat in PRIOR_FIXED_WRITER_SCOPE:
+            state = 'prior_fixed_writer_terminal_review'
+        elif row['state'] == 'candidate_current_checks_required':
+            state = 'additional_saved_candidate_current_review'
+        else:
+            state = row['state']
+        row['retained_frontier_state'] = state
+        # A review plan does not define/expand the eventual acceptance policy.
+        row['required_before_acceptance'] = []
+        row['required_before_current_review'] = ['raw_samo_hash_pointer_original_hotelKey',
+            'independent_operator_evidence_and_namespace', 'fresh_authorized_current_contract',
+            'confirmed_owner_acceptance_policy', 'terminal_and_ownership_review']
+        counts[state] += 1
+    result.update(schema='hotel-match-retained-frontier-plan/1', state='completed_saved_retained_frontier_plan',
+                  retained_frontier_counts=dict(sorted(counts.items())), required_before_acceptance=[],
+                  retained_native_facts=len(doc['native_facts']), source_identity_metadata=len(doc['current_identities']),
+                  acceptance_policy_defined=False)
+    result['scope'].update(retained_operation=RETAINED_OPERATION, uniqueness='all_saved_union_native_facts_and_tv_slice',
+                           original_pages_verified=False, fresh_current_census=False)
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--samo-csv", type=Path, required=True)
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("--samo-csv", type=Path)
+    input_group.add_argument("--retained-native-json", type=Path)
+    parser.add_argument("--covered-samo-csv", type=Path)
     parser.add_argument("--tv-csv", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    samo, source = load_csv(args.samo_csv, "samo")
     tv, target = load_csv(args.tv_csv, "tv")
-    result = plan(samo, tv)
-    result["inputs"] = {"samo": source, "tv": target}
+    if args.retained_native_json:
+        doc, retained = load_retained(args.retained_native_json)
+        covered, provenance = load_csv(args.covered_samo_csv, 'samo') if args.covered_samo_csv else ([], None)
+        result = retained_plan(doc, tv, {r['samo_catalog_id'] for r in covered})
+        result['inputs'] = {'retained_native': retained, 'tv': target, 'previously_covered_samo': provenance}
+    else:
+        if args.covered_samo_csv:
+            parser.error('--covered-samo-csv requires --retained-native-json')
+        samo, source = load_csv(args.samo_csv, "samo")
+        result = plan(samo, tv)
+        result["inputs"] = {"samo": source, "tv": target}
     # Exclusive output never overwrites an earlier checkpoint or receipt.
     with args.output.open("x", encoding="utf-8") as handle:
         json.dump(result, handle, ensure_ascii=False, indent=2)
