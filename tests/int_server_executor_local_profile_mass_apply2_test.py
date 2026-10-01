@@ -155,7 +155,7 @@ function goodApply($p){$counts=[];foreach($p['selected'] as $s)foreach($s['patch
 class HandlerTest(unittest.TestCase):
     def fixture(self,tmp):
         root=Path(tmp);stage=root/'source';runner=stage/m.MASS2_RUNNER;runner.parent.mkdir(parents=True);runner.write_text('<?php')
-        counts={f:100 for f in FIELDS};counts['address']=112
+        counts={f:100 for f in FIELDS};counts['address']=128;counts['build']=128;counts['description']=128;counts['hotelInformation.infrastructure']=128
         data={'schema_version':1,'operation_id':m.MASS2_OPERATION,'batch':m.MASS2_BATCH,'source_sha':SHA,
           'control_source_sha':CONTROL,'plan_source_sha':'a54255507643501abdeca150aeae19b84cb586f6',
           'private_plan_sha256':m.MASS2_PLAN_SHA,'requested_profiles':130,'state':'committed_verified',
