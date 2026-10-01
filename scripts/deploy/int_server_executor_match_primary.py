@@ -1,7 +1,7 @@
 """Bounded MATCH registration for the existing stock executor entrypoint.
 
 No new transport or credential mechanism: checked_event and execute stay in core.
-All old modes delegate unchanged. Only the explicitly approved first batch exists.
+All old modes delegate unchanged. Native110 is a review-only contract proposal.
 """
 from __future__ import annotations
 
@@ -10,6 +10,9 @@ import re
 
 MODE = 'match-primary-candidate'
 READBACK_MODE = 'match-primary-proof-readback'
+NATIVE_MODE = 'match-native110-current'
+NATIVE_OPERATION = 'int-andromeda-match-native-current-20261001-v1'
+NATIVE_BATCH = 'native110-20260928'
 BATCH = 'samo3-20260929'
 OPERATION_RE = re.compile(r'\Aint-andromeda-match-primary-[a-z0-9-]{8,48}-v[1-9][0-9]*\Z')
 SOURCE_FILES = (
@@ -18,6 +21,10 @@ SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_primary_candidate_v1.php',
 )
 PROOF_SOURCE_FILES = SOURCE_FILES + ('scripts/diagnostics/hotel_match_primary_proof_audit_v1.php',)
+NATIVE_SOURCE_FILES = PROOF_SOURCE_FILES + (
+    'scripts/diagnostics/hotel_match_native110_current_v1.php',
+    'scripts/diagnostics/fixtures/hotel_match_native110_current_v1.json',
+)
 
 
 def register_parser(core) -> None:
@@ -28,11 +35,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == NATIVE_MODE:
+            core.need(operation == NATIVE_OPERATION and batch == NATIVE_BATCH, 'native110_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                    'batch': NATIVE_BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
         core.need(core.OP_RE.fullmatch(operation) is not None
                   and OPERATION_RE.fullmatch(operation) is not None, 'primary_operation')
         core.need(batch == BATCH, 'primary_batch')
@@ -245,7 +256,74 @@ REMOTE_PROOF_DISPATCH = r'''    if mode=='match-primary-proof-readback':
 '''
 
 
-def remote_with_primary(core, proof: bool = False) -> str:
+REMOTE_NATIVE_HANDLER = r'''
+def run_match_native110_current(stage):
+    if (operation!='int-andromeda-match-native-current-20261001-v1'
+            or payload.get('batch')!='native110-20260928'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0):
+        fail('native110_fixed_scope')
+    root=home/'.anytoour-match/operations'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root:
+        fail('native110_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('native110_exists_no_replay')
+    child.mkdir(mode=0o700)
+    reservation={'operation':operation,'source_sha':source,'batch':'native110-20260928',
+                 'maximum_writes':0,'provider_http_calls':0,'state':'reserved_before_db_read',
+                 'reserved_at':int(time.time())}
+    fd=os.open(child/'reservation.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+    with os.fdopen(fd,'wb') as stream:
+        stream.write(json.dumps(reservation,sort_keys=True,separators=(',',':')).encode()+b'\n')
+        stream.flush();os.fsync(stream.fileno())
+    runner=stage/'scripts/diagnostics/hotel_match_native110_current_v1.php'
+    if not safe_file(runner,2*1024*1024): fail('native110_runner_missing_no_replay')
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+                        '-d','disable_functions='+disabled,str(runner),'--current'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=240)
+    if run.returncode!=0 or run.stderr.strip() or len(run.stdout.encode())>65536:
+        fail('native110_read_failed_no_replay')
+    data=json.loads(run.stdout)
+    fields={'state','operation','source_sha','batch','manifest_sha256','sources_requested','sources_examined',
+            'protected_skipped','current_rows_returned','raw_verified_facts','raw_files_read','raw_bytes_read',
+            'native_facts_examined','provider_http_calls','database_writes','mapping_writes','safe_to_write_now',
+            'no_replay','acceptance_policy_changed'}
+    if (not isinstance(data,dict) or set(data)!=fields
+            or data['state']!='completed_native110_current_review' or data['operation']!=operation
+            or data['source_sha']!=source or data['batch']!='native110-20260928'
+            or data['safe_to_write_now'] is not False or data['acceptance_policy_changed'] is not False
+            or data['no_replay'] is not True): fail('native110_summary_contract')
+    fixed={'sources_requested':110,'sources_examined':109,'protected_skipped':1,
+           'current_rows_returned':110,'native_facts_examined':3262,
+           'provider_http_calls':0,'database_writes':0,'mapping_writes':0}
+    if any(type(data[k]) is not int or data[k]!=v for k,v in fixed.items()): fail('native110_summary_counts')
+    for k,cap in (('raw_verified_facts',3262),('raw_files_read',1000),('raw_bytes_read',536870912)):
+        if type(data[k]) is not int or not 0<=data[k]<=cap: fail('native110_summary_bounds')
+    manifest_path=child/'native110-current-manifest.json'
+    summary_path=child/'native110-current-summary.json'
+    if (not isinstance(data['manifest_sha256'],str) or not re.fullmatch(r'[a-f0-9]{64}',data['manifest_sha256'])
+            or not safe_file(manifest_path,64*1024*1024) or not safe_file(summary_path,65536)
+            or hashlib.sha256(manifest_path.read_bytes()).hexdigest()!=data['manifest_sha256']
+            or safe_json(summary_path,65536)!=data): fail('native110_private_result_binding')
+    return data
+
+'''
+
+REMOTE_NATIVE_DISPATCH = r'''    if mode=='match-native110-current':
+        result['match_native110_current']=run_match_native110_current(stage)
+        result['supplier_calls']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def remote_with_primary(core, proof: bool = False, native: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -255,6 +333,8 @@ def remote_with_primary(core, proof: bool = False) -> str:
     handler = REMOTE_PROOF_HANDLER if proof else REMOTE_HANDLER
     mode_dispatch = REMOTE_PROOF_DISPATCH if proof else REMOTE_DISPATCH
     selected_mode = READBACK_MODE if proof else MODE
+    if native:
+        handler, mode_dispatch, selected_mode = REMOTE_NATIVE_HANDLER, REMOTE_NATIVE_DISPATCH, NATIVE_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -263,7 +343,7 @@ def remote_with_primary(core, proof: bool = False) -> str:
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -271,9 +351,10 @@ def activate(core, command: dict) -> None:
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
     proof = command['mode'] == READBACK_MODE
-    remote = remote_with_primary(core, proof)
+    native = command['mode'] == NATIVE_MODE
+    remote = remote_with_primary(core, proof, native)
     files = list(core.FIXED)
-    for path in PROOF_SOURCE_FILES if proof else SOURCE_FILES:
+    for path in NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES):
         if path not in files:
             files.append(path)
     core.FIXED = files
