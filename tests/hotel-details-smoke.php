@@ -42,6 +42,13 @@ if ($detail['room_types'] !== 'Deluxe, Villa') throw new RuntimeException('hotel
 if (($detail['generic_product'] ?? true) !== false) throw new RuntimeException('concrete hotel misclassified as generic product');
 if (v2_hotel_detail_https_url('javascript:alert(1)') !== null) throw new RuntimeException('unsafe hotel image URL accepted');
 if (v2_hotel_detail_https_url('//cdn.example.test/hotel.jpg') !== 'https://cdn.example.test/hotel.jpg') throw new RuntimeException('Tourvisor scheme-relative hotel image lost');
+if (!v2_hotel_detail_is_regional_placeholder_url('https://static.tourvisor.ru/hotel_pics/reg-400/22.jpg')) throw new RuntimeException('Tourvisor regional placeholder not classified');
+if (v2_hotel_detail_is_regional_placeholder_url('https://static.tourvisor.ru/hotel_pics/400/22.jpg')) throw new RuntimeException('hotel-specific Tourvisor image misclassified');
+$withoutRegionalPlaceholder = v2_hotel_detail_images(['images'=>[
+    'https://static.tourvisor.ru/hotel_pics/reg-400/22.jpg',
+    'https://static.tourvisor.ru/hotel_pics/4266/real.jpg',
+]]);
+if ($withoutRegionalPlaceholder !== ['https://static.tourvisor.ru/hotel_pics/4266/real.jpg']) throw new RuntimeException('regional placeholder image retained');
 
 foreach ([
     '///cdn.example.test/hotel.jpg',
