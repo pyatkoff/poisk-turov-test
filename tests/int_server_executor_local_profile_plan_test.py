@@ -49,7 +49,8 @@ class LocalContractTest(unittest.TestCase):
     def test_rejects_arbitrary_scope_fields_apply_and_replay_names(self):
         bad = [
             COMMAND + ' --apply', COMMAND + ' 5227', COMMAND.replace(local.BATCH, 'all'),
-            COMMAND.replace(local.OPERATION, local.OPERATION.replace('-v1', '-v2')),
+            COMMAND.replace(local.OPERATION, local.OPERATION.replace('-v2', '-v1')),
+            COMMAND.replace(local.OPERATION, local.OPERATION.replace('-v2', '-v3')),
             COMMAND.replace(SHA, 'g' * 40),
             COMMAND.replace(local.MODE, 'local-profile-apply-4191'),
             COMMAND.replace(local.MODE, 'local-profile-plan'),
@@ -287,7 +288,9 @@ class TerminalReceiptTest(unittest.TestCase):
     def test_php_mode_has_no_supply_apply_or_mutating_sql_path(self):
         source = (ROOT / local.RUNNER).read_text()
         self.assertIn('SET SESSION TRANSACTION READ ONLY', source)
-        self.assertIn('$owner->plan(1, $through, $scope, true)', source)
+        self.assertIn('$owner->plan(count($scope), $through, $scope, true)', source)
+        self.assertIn('array_chunk($eligible, LPP_OWNER_MAX_BATCH, true)', source)
+        self.assertIn("AnyTourProfileEnrichmentV1::MAX_BATCH === LPP_OWNER_MAX_BATCH", source)
         for forbidden in ('->apply(', 'curl_', 'INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'CREATE TABLE'):
             self.assertNotIn(forbidden, source)
         self.assertIn("basename($dir) === LPP_OPERATION", source)
@@ -313,13 +316,17 @@ function currentRow($own,$local){
         'alias_acquired_via'=>'canonical_local_alias_v1','alias_source_json'=>$alias,
         'alias_source_sha256'=>hash('sha256',$alias)];
 }
-function prepared($scope,$row){
-    $s=$scope[0];
-    return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0,'limit'=>1,
-        'activeProfiles'=>1,'scannedProfiles'=>1,'contentPolicy'=>'sync_imported_retained_tv_v1',
-        'selected'=>[['anytourHotelId'=>$s['anytourHotelId'],'localHotelId'=>$s['localHotelId'],
+function prepared($scope,$rows){
+    $selected=[];
+    foreach($scope as $s){
+        $row=$rows[$s['anytourHotelId']][0];
+        $selected[]=['anytourHotelId'=>$s['anytourHotelId'],'localHotelId'=>$s['localHotelId'],
             'expectedRevision'=>1,'expectedProfileSha256'=>$row['profile_sha256'],
-            'expectedAliasSha256'=>$row['alias_source_sha256']]],'held'=>[]];
+            'expectedAliasSha256'=>$row['alias_source_sha256']];
+    }
+    return ['status'=>'prepared_read_only','writes'=>0,'supplierCalls'=>0,'limit'=>count($scope),
+        'activeProfiles'=>count($scope),'scannedProfiles'=>count($scope),'contentPolicy'=>'sync_imported_retained_tv_v1',
+        'selected'=>$selected,'held'=>[]];
 }
 """
 
@@ -336,14 +343,14 @@ ok($result['classification_counts']===['D1_MANIFEST_UNKNOWN_HELD'=>366]);
         self.php(self.fixtures() + r"""
 $ids=lpp_ids();$rows=[];foreach($ids as $id)$rows[$id]=[currentRow($id,$id+100000)];
 $d1=['state'=>'verified_terminal_manifest','ownIds'=>[$ids[0]],'legacyIds'=>[$ids[1]+100000]];
-$calls=0;
+$calls=[];
 $result=lpp_classify($rows,$d1,function($scope)use(&$calls,$rows,$ids){
-    ++$calls;ok($scope[0]['fields']===LPP_FIELDS);
-    $id=$scope[0]['anytourHotelId'];$plan=prepared($scope,$rows[$id][0]);
-    if($id===$ids[2])$plan['selected'][0]['expectedRevision']=2;
+    $calls[]=count($scope);foreach($scope as $s)ok($s['fields']===LPP_FIELDS);
+    $plan=prepared($scope,$rows);
+    foreach($plan['selected'] as &$item)if($item['anytourHotelId']===$ids[2])$item['expectedRevision']=2;unset($item);
     return $plan;
 });
-ok($calls===364 && $result['classification_counts']['D1_OVERLAP_HELD']===2);
+ok($calls===[250,114] && $result['source_plans_prepared']===364 && $result['classification_counts']['D1_OVERLAP_HELD']===2);
 ok($result['classification_counts']['CURRENT_DRIFT_HELD']===1);
 ok($result['classification_counts']['RETAINED_DELTA_PREPARED']===363);
 foreach($result['rows'] as $row)ok($row['safeToApply']===false);
@@ -367,9 +374,12 @@ ok($result['classification_counts']['PROFILE_UNAVAILABLE']===363);
 $ids=lpp_ids();$rows=[];foreach(array_slice($ids,0,3) as $id)$rows[$id]=[currentRow($id,$id+100000)];
 $result=lpp_classify($rows,['state'=>'verified_terminal_manifest','ownIds'=>[],'legacyIds'=>[]],
     function($scope)use($rows,$ids){
-        $id=$scope[0]['anytourHotelId'];$plan=prepared($scope,$rows[$id][0]);$plan['selected']=[];
-        if($id===$ids[0])$plan['held']=[$id=>['description'=>'source_missing_preserved']];
-        if($id===$ids[1])$plan['held']=[$id=>['profile'=>'SYNC_UNPROVEN_OR_MANUAL_PROFILE']];
+        $plan=prepared($scope,$rows);$plan['selected']=[];
+        foreach($scope as $s){
+            $id=$s['anytourHotelId'];
+            if($id===$ids[0])$plan['held'][$id]=['description'=>'source_missing_preserved'];
+            elseif($id===$ids[1])$plan['held'][$id]=['profile'=>'SYNC_UNPROVEN_OR_MANUAL_PROFILE'];
+        }
         return $plan;
     });
 ok($result['classification_counts']['SOURCE_MISSING']===1);

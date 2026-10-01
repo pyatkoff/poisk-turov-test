@@ -15,7 +15,7 @@ import tarfile
 
 MODE = 'local-profile-plan-4191'
 BATCH = 'local4191-20260930'
-OPERATION = 'int-andromeda-local-profile-plan-4191-20261001-v1'
+OPERATION = 'int-andromeda-local-profile-plan-4191-20261001-v2'
 RUNNER = 'scripts/diagnostics/local_profile_plan_4191.php'
 SOURCE_FILES = (
     'v2/data/anytour-profile-enrichment-v1.php',
@@ -86,7 +86,7 @@ def bundle_source(source_root: Path) -> tuple[bytes, dict[str, str]]:
 
 REMOTE_HANDLER = r'''
 def run_local_profile_plan_4191(stage):
-    if (operation!='int-andromeda-local-profile-plan-4191-20261001-v1'
+    if (operation!='int-andromeda-local-profile-plan-4191-20261001-v2'
             or payload.get('batch')!='local4191-20260930'
             or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
             or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0
