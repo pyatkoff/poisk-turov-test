@@ -11,7 +11,7 @@ import urllib.request
 REPO = "pyatkoff/poisk-turov-test"
 FEATURE = "feature/anex-search-adapter-20260907"
 OWNER_ID = 226193297
-ISSUE = 3419
+ISSUE = 4217
 PREFIX = "/run-int-direction-store-readback-v1 "
 SHA_RE = re.compile(r"\A[a-f0-9]{40}\Z")
 OP_RE = re.compile(r"\Aint-andromeda-funsun-direction-store-readback-[a-z0-9-]{8,96}-v[1-9][0-9]*\Z")

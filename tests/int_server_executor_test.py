@@ -436,9 +436,9 @@ class CoordinatorTest(unittest.TestCase):
             '/git/ref/heads/'+m.FEATURE:{'object':{'sha':SHA}},
         }
         with patch.object(m,'api_get',side_effect=lambda path,token:replies[path]) as api:
-            event={'issue':{'number':3419},'comment':comment}
+            event={'issue':{'number':4217},'comment':comment}
             self.assertEqual(m.checked_event('fixture',event,'a'*40)['source_sha'],SHA)
-            for number in (2530,996,1646):
+            for number in (3419,2530,996,1646):
                 api.reset_mock()
                 event={'issue':{'number':number},'comment':comment}
                 with self.subTest(issue=number),self.assertRaisesRegex(ValueError,'issue'):
@@ -447,8 +447,12 @@ class CoordinatorTest(unittest.TestCase):
 
     def test_workflow_uses_the_same_current_journal(self):
         text=(SCRIPT.parents[2]/'.github/workflows/int-server-executor.yml').read_text()
-        self.assertIn('github.event.issue.number == 3419',text)
-        self.assertNotIn('github.event.issue.number == 2530',text)
+        self.assertEqual(text.count('github.event.issue.number == 4217'),2)
+        for number in (3419,2530,996):
+            self.assertNotIn(f'github.event.issue.number == {number}',text)
+        spec=importlib.util.spec_from_file_location('direction_journal',SCRIPT.parents[2]/'scripts/diagnostics/int_funsun_direction_store_server_readback.py')
+        direction=importlib.util.module_from_spec(spec);spec.loader.exec_module(direction)
+        self.assertEqual(direction.ISSUE,m.ISSUE)
 
 
 class BundleTest(unittest.TestCase):
@@ -619,7 +623,7 @@ class InstallRuntimeTest(unittest.TestCase):
 class ContractTest(unittest.TestCase):
     def test_control_boundaries(self):
         text=SCRIPT.read_text()
-        for x in ["ISSUE = 3419","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
+        for x in ["ISSUE = 4217","OWNER_ID = 226193297","FEATURE = 'feature/anex-search-adapter-20260907'",
                   "operation_exists_no_replay","StrictHostKeyChecking=yes","production_unchanged","remote_command_size","zlib.compress",
                   "install-runtime","install-anex-preview","install-andromeda-preview","install-andromeda-quote-preview","install-plan.json","anex-preview-install-plan.json","preview-install-plan.json","quote-preview-install-plan.json","install-state.json","rollback_install",
                   "app/integrations/anex-initial-week-gate.php","v2/api-anex-search3-preview.php","api-anex-search3-preview.php","v2/api-andromeda-search3-preview.php","api-andromeda-search3-preview.php","v2/api-andromeda-quote-preview.php","api-andromeda-quote-preview.php",

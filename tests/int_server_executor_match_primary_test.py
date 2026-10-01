@@ -52,7 +52,7 @@ class PrimaryRegistrationTest(unittest.TestCase):
 
     def test_authorization_is_still_checked_event(self):
         body=command(self.core)
-        event={'issue':{'number':3419},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
+        event={'issue':{'number':self.core.ISSUE},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
         def api(path,token):
             if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
             if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}

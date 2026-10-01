@@ -19,7 +19,7 @@ import zlib
 REPO = 'pyatkoff/poisk-turov-test'
 FEATURE = 'feature/anex-search-adapter-20260907'
 OWNER_ID = 226193297
-ISSUE = 3419
+ISSUE = 4217
 PREFIX = '/run-int-server-v1 '
 OP_RE = re.compile(r'\Aint-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*\Z')
 SHA_RE = re.compile(r'\A[a-f0-9]{40}\Z')
