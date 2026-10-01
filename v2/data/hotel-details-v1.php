@@ -75,13 +75,20 @@ function v2_hotel_detail_https_url(mixed $value): ?string
     return $url;
 }
 
+function v2_hotel_detail_is_regional_placeholder_url(string $url): bool
+{
+    $parts = parse_url($url);
+    if (!is_array($parts) || strtolower((string)($parts['host'] ?? '')) !== 'static.tourvisor.ru') return false;
+    return preg_match('#^/hotel_pics/reg-[0-9]+(?:/|$)#D', (string)($parts['path'] ?? '')) === 1;
+}
+
 function v2_hotel_detail_images(array $hotel, ?int $limit = 100): array
 {
     if ($limit !== null && $limit < 1) throw new InvalidArgumentException('Invalid image limit');
     $out = [];
     foreach ((array)($hotel['images'] ?? []) as $raw) {
         $url = v2_hotel_detail_https_url($raw);
-        if ($url === null) continue;
+        if ($url === null || v2_hotel_detail_is_regional_placeholder_url($url)) continue;
         $out[$url] = true;
         if ($limit !== null && count($out) >= $limit) break;
     }
