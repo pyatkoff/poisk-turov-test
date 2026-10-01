@@ -2,7 +2,7 @@
 
 ## Текущий журнал координации — 2026-10-01
 
-# Все новые claims, handoff, результаты и разрешённые команды: [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
+Все новые claims, handoff, результаты и разрешённые команды: [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
 #3419, #2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
 При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
 Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
