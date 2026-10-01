@@ -52,6 +52,14 @@ local_profile_acquire = importlib.util.module_from_spec(local_acquire_spec)
 local_acquire_spec.loader.exec_module(local_profile_acquire)
 local_profile_acquire.register_parser(core)
 
+LOCAL_SOURCE320_APPLY_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_apply_source320.py')
+local_source320_apply_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_apply_source320', LOCAL_SOURCE320_APPLY_SCRIPT)
+if local_source320_apply_spec is None or local_source320_apply_spec.loader is None:
+    raise RuntimeError('local_profile_apply_source320_registration_import')
+local_profile_apply_source320 = importlib.util.module_from_spec(local_source320_apply_spec)
+local_source320_apply_spec.loader.exec_module(local_profile_apply_source320)
+local_profile_apply_source320.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -192,6 +200,7 @@ def main() -> None:
     local_profile_plan.activate(core, command)
     local_profile_apply.activate(core, command)
     local_profile_acquire.activate(core, command)
+    local_profile_apply_source320.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES:
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
