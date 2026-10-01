@@ -1,0 +1,288 @@
+{
+  "schema": "hotel-match-four-candidate-missing-proof/1",
+  "state": "completed_offline_retained_evidence_reconciliation_not_accepted",
+  "created_at_utc": "2026-10-01T15:03:50Z",
+  "source_feature_sha": "8f048c314bc8589be64448efdc5e8ba8c962c9fe",
+  "safe_to_write_now": false,
+  "acquisition_authorized": false,
+  "fresh_current_census": false,
+  "provider_http_calls": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "accepted_links_added": 0,
+  "inputs": {
+    "v77_saved_native_result_sha256": "d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7",
+    "native110_current_readback_sha256": "415d6f47303eb35b8ce1515a7cc4e8fffc5598b4f39db8be442392f92cac4819",
+    "current_name_review_sha256": "980c6554dc811df1d6deeb5b4800b94f4244ddf4050a61189a162d2b0fa7c60b",
+    "target_catalog_v2_zip_sha256": "dde6ff21f07c4b12931283eceda4614ef58a07aae0391229b1e635dc61280d84",
+    "target_catalog_v2_inner_sha256": "724af5102c39d7ea25513f3d7698586fb13a3309d010237145552421c159351e",
+    "target_catalog_v2_captured_at_utc": "2026-10-01T12:46:00Z",
+    "detail_v4_zip_sha256": "ed9bdce7f2372ef9ca4aeeec06d99719719abf8b004cdb834f72454518856c76",
+    "detail_v4_operation": "hotel-match-residual2041-common4-nonanex-detail-1971-20260921-v4",
+    "detail_v4_edges": 1348,
+    "search30_v3_zip_sha256": "c0db6c087a71d84bb6f709c4e02c076dfb2d43b81e8b16991ed58389ab5db32c",
+    "search30_v3_operation": "hotel-match-residual2041-search30-common4-1971-20260921-v3",
+    "search30_v3_edges": 434,
+    "request_ledger_v93_zip_sha256": "fcf30359d2dadd31ffee0398fac6ce8b20c84e2ab2c31746105bfaa2dcbecd28"
+  },
+  "counts": {
+    "candidate_pairs_examined": 4,
+    "sources_with_raw_verified_native_fact": 3,
+    "source_native_facts_examined": 5,
+    "targets_with_retained_common4_edge": 1,
+    "targets_with_retained_common4_detail_identity": 1,
+    "same_operator_exact_native_matches": 0,
+    "target_only_exact_native_proofs": 1,
+    "source_only_exact_native_proofs": 2,
+    "both_sides_missing_exact_native_proof": 1,
+    "minimal_future_tv_target_ids": 3,
+    "minimal_future_andromeda_sources": 2
+  },
+  "proof_checks": {
+    "retained_archives_hash_verified": true,
+    "target_ids_are_tourvisor_ids": true,
+    "source_ids_are_andromeda_catalog_ids": true,
+    "names_used_only_for_candidate_selection": true,
+    "cross_operator_ids_not_promoted": true,
+    "terminal_operations_not_replayed": true
+  },
+  "minimal_missing_proof_scope": {
+    "tourvisor_target_ids": [
+      1151,
+      60766,
+      70943
+    ],
+    "andromeda_catalog_ids": [
+      "2000057636",
+      "2000073063"
+    ],
+    "explanation": "BODRIUM already has a retained exact TV Intourist edge, so another Tourvisor request would be redundant; DELPHIN and RAIMOND already have raw source native facts, so their missing side is Tourvisor; APELLA lacks both sides. This is evidence minimization only, not permission to call a supplier.",
+    "requires_separate_reviewed_operation": true,
+    "requires_fresh_daily_ledger_reservation": true,
+    "safe_to_execute_now": false
+  },
+  "rows": [
+    {
+      "source_catalog_id": "2000034121",
+      "source_names": [
+        "Delphin Palace"
+      ],
+      "target_tv_hotel_id": 1151,
+      "target_snapshot": {
+        "name": "DELPHIN PALACE DELUXE COLLECTION",
+        "country": "Турция",
+        "region": "Анталья",
+        "subregion": "Кунду",
+        "category": "5",
+        "latitude": 36.8554887,
+        "longitude": 30.8758655,
+        "is_active": true,
+        "accepted_samo_ids": [],
+        "manual_hold": false,
+        "exclusion_hold": false
+      },
+      "source_native_facts": [
+        {
+          "namespace": "operator_342",
+          "native_id": "549",
+          "raw_verified": true,
+          "globally_unique_in_saved_v77": true,
+          "references": [
+            {
+              "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-036-page-1.json",
+              "sha256": "f1b46ac55c2716781b6ba1f1b4997489226dbb5e05fccd690810d504d982e104",
+              "json_pointer": "/PRICES/4"
+            }
+          ]
+        }
+      ],
+      "retained_target_producer_evidence": [],
+      "classification": "source_native_verified_target_native_missing",
+      "same_operator_exact_native_match": false,
+      "missing_proof": "Tourvisor operator43 Intourist detail/operatorLink for TV1151 in a genuinely new compatible context",
+      "minimal_future_provider_side": "tourvisor_only",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000057636",
+      "source_names": [
+        "Bodrium Hotel & Spa",
+        "Bodrium Otel & You Spa"
+      ],
+      "target_tv_hotel_id": 21679,
+      "target_snapshot": {
+        "name": "BODRIUM HOTEL & SPA BOUTIQUE",
+        "country": "Турция",
+        "region": "Бодрум",
+        "subregion": "Бодрум - центр",
+        "category": "5",
+        "latitude": 37.0367737,
+        "longitude": 27.411871,
+        "is_active": true,
+        "accepted_samo_ids": [],
+        "manual_hold": false,
+        "exclusion_hold": false
+      },
+      "source_native_facts": [
+        {
+          "namespace": "operator_115",
+          "native_id": "625076132",
+          "raw_verified": true,
+          "globally_unique_in_saved_v77": true,
+          "references": [
+            {
+              "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-035-page-1.json",
+              "sha256": "b495312c950893f97c37b6983069cd02cc0c90bba084111acdc1973585e20b45",
+              "json_pointer": "/PRICES/2"
+            },
+            {
+              "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-14-page-4.json",
+              "sha256": "27ee381a9fcb04752f0f3a2daa9aad53f224c1a23096b3d6a3f4117a2f0e39bd",
+              "json_pointer": "/PRICES/9"
+            },
+            {
+              "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-4.json",
+              "sha256": "84cdf5e60932c0396325d75afa5a74916484f550031a7b2cbaa0dc4a44a1d721",
+              "json_pointer": "/PRICES/25"
+            }
+          ]
+        }
+      ],
+      "retained_target_producer_evidence": [
+        {
+          "producer": "search30_v3",
+          "edge_file": "server/edge-00092.json",
+          "response_file": "server/raw-response-0155.bin",
+          "state": "detail_identity_verified",
+          "operator_id": 43,
+          "namespace": "operator_342",
+          "native_id": "24891",
+          "identity_key": "HOTELS",
+          "operator_link_sha256": "3d9328f5b3116b54c19c914a30047f18191a74fe328a042399fa1a197dadde09",
+          "tour_id": "43282089234602",
+          "search_id": "13671929765"
+        },
+        {
+          "producer": "detail_v4",
+          "edge_file": "server/edge-0782.json",
+          "state": "stale_detail_404",
+          "operator_id": 18,
+          "namespace": "operator_115",
+          "native_id": null
+        }
+      ],
+      "retained_source_contexts": {
+        "operator_342_normalized_offer_contexts": 4,
+        "operator_115_normalized_offer_contexts": 2,
+        "original_operator_342_hotel_key_retained": false
+      },
+      "classification": "target_intourist_native_verified_source_intourist_native_missing",
+      "same_operator_exact_native_match": false,
+      "missing_proof": "raw Andromeda operator_342 original.hotelKey for source2000057636; the retained normalized cache does not preserve it",
+      "minimal_future_provider_side": "andromeda_only",
+      "do_not_repeat_tourvisor_target_request": true,
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000062084",
+      "source_names": [
+        "Raimond",
+        "Raimond Hotel"
+      ],
+      "target_tv_hotel_id": 70943,
+      "target_snapshot": {
+        "name": "RAIMOND HOTEL KUMKAPI",
+        "country": "Турция",
+        "region": "Стамбул",
+        "subregion": "Султанахмет",
+        "category": "3",
+        "latitude": 41.0048919,
+        "longitude": 28.9653666,
+        "is_active": true,
+        "accepted_samo_ids": [],
+        "manual_hold": false,
+        "exclusion_hold": false
+      },
+      "source_native_facts": [
+        {
+          "namespace": "operator_5",
+          "native_id": "32745",
+          "raw_verified": true,
+          "globally_unique_in_saved_v77": true
+        },
+        {
+          "namespace": "operator_315",
+          "native_id": "780677",
+          "raw_verified": true,
+          "globally_unique_in_saved_v77": true
+        },
+        {
+          "namespace": "operator_342",
+          "native_id": "18273",
+          "raw_verified": true,
+          "globally_unique_in_saved_v77": true
+        }
+      ],
+      "retained_target_producer_evidence": [
+        {
+          "producer": "search30_v3",
+          "response_file": "server/raw-response-0187.bin",
+          "state": "search_card_observed_without_common4_detail",
+          "observed_tour_operator_id": 12,
+          "observed_tour_operator": "Pegas Touristik"
+        }
+      ],
+      "classification": "three_source_native_lanes_verified_target_common4_native_missing",
+      "same_operator_exact_native_match": false,
+      "missing_proof": "Tourvisor detail/operatorLink for TV70943 from one relevant common4 operator, preserving any multi-token result",
+      "minimal_future_provider_side": "tourvisor_only",
+      "safe_to_write_now": false
+    },
+    {
+      "source_catalog_id": "2000073063",
+      "source_names": [
+        "Apella Hotel"
+      ],
+      "target_tv_hotel_id": 60766,
+      "target_snapshot": {
+        "name": "APELLA HOTEL BOUTIQUE (EX. SEVEN SEASONS)",
+        "country": "Турция",
+        "region": "Кемер",
+        "subregion": null,
+        "category": "0",
+        "latitude": 36.4174291,
+        "longitude": 30.4749822,
+        "is_active": true,
+        "accepted_samo_ids": [],
+        "manual_hold": false,
+        "exclusion_hold": false
+      },
+      "source_native_facts": [],
+      "retained_source_contexts": {
+        "operator_5_normalized_offer_contexts": 2,
+        "original_operator_5_hotel_key_retained": false
+      },
+      "retained_target_producer_evidence": [],
+      "classification": "both_source_and_target_exact_native_missing",
+      "same_operator_exact_native_match": false,
+      "missing_proof": "raw Andromeda operator_5 original.hotelKey plus a Tourvisor operator13 ANEX detail/operatorLink for TV60766",
+      "minimal_future_provider_side": "andromeda_and_tourvisor",
+      "safe_to_write_now": false
+    }
+  ],
+  "limitations": [
+    "The target snapshot is terminal and immutable but was captured at 2026-10-01T12:46:00Z; it is not a new CURRENT check.",
+    "The v77 normalized user_search cache proves operator/date/request context but not original PRICES.original.hotelKey when no raw native fact exists.",
+    "BODRIUM BG625076132 and TV Intourist24891 are different operator namespaces and cannot be joined by name.",
+    "Raimond's retained TV observation is Pegas-only and does not corroborate the three saved common4 source native IDs.",
+    "No supplier operation, CURRENT intake, acceptance predicate or writer was prepared or invoked by this report."
+  ],
+  "required_before_acceptance": [
+    "obtain only the missing same-operator raw proof in a genuinely new reviewed scope",
+    "reconcile the complete negative/UNKNOWN ledger and reserve every physical call before HTTP",
+    "bind the resulting raw evidence and exact roster into a separately reviewed CURRENT intake",
+    "re-read CURRENT source and target ownership, manual, exclusions, activity, country, concrete geography and global uniqueness",
+    "use durable reservation, guarded transaction, pre-COMMIT checkpoint and post-COMMIT per-row/digest/history/effective-resolver readback"
+  ]
+}
