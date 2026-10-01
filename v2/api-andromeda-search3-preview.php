@@ -473,7 +473,10 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
         catch(Throwable $ignored) {}
         if(function_exists('anytour_andromeda_anytour_offer_autosave_runtime')){
             try {
-                anytour_andromeda_anytour_offer_autosave_runtime($request,$pdo,$saved,$directory,$ref,$generation);
+                // Browser generations may advance while the criteria/session cache is reused.
+                // Persistence remains bound to the retained page and its original observation time.
+                $autosaveRequest=$request;$autosaveRequest['generation']=$page['generation'];
+                anytour_andromeda_anytour_offer_autosave_runtime($autosaveRequest,$pdo,$saved,$directory,$ref,$page['generation']);
             }
             catch(Throwable $ignored) {}
         }
