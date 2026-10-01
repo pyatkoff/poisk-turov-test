@@ -87,5 +87,7 @@ def activate(core,command):
     expected=core.parse_command(core.PREFIX+' '.join([str(command.get('source_sha','')),mode,str(command.get('operation_id','')),str(command.get('batch',''))]));need(command==expected,'local_profile_acquire_authorized_shape')
     if mode==MODE:
         core.REMOTE=remote_with_acquire(core);core.bundle_source=bundle_source;return
-    r=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";need(r.count(definition)==1 and r.count(dispatch)==1,'local_profile_acquire_readback_source_drift')
-    core.REMOTE=r.replace(definition,REMOTE_READBACK+definition,1).replace(dispatch,REMOTE_READBACK_DISPATCH+dispatch,1);ast.parse(core.REMOTE)
+    r=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')";need(r.count(definition)==1 and r.count(dispatch)==1 and r.count(manifest)==1,'local_profile_acquire_readback_source_drift')
+    literal='{'+', '.join(repr(v) for v in sorted(BUNDLE_FILES))+'}'
+    replacement="    if mode=='"+READBACK_MODE+"':\n        if not isinstance(files,dict) or set(files)!="+literal+": fail('local_profile_acquire_readback_manifest')\n    elif not isinstance(files,dict) or len(files)<20: fail('manifest')"
+    core.REMOTE=r.replace(definition,REMOTE_READBACK+definition,1).replace(dispatch,REMOTE_READBACK_DISPATCH+dispatch,1).replace(manifest,replacement,1);ast.parse(core.REMOTE);core.bundle_source=bundle_source
