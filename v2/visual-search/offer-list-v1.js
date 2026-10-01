@@ -63,7 +63,12 @@ function offerRefinementRecovery(all){
 function offerListInventory(){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
- const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));
+ const groups=[],byKey=new Map();
+ for(const offer of sorted){
+  const key=offerGroupKey(offer);let group=byKey.get(key);
+  if(!group){group={key,offers:[]};byKey.set(key,group);groups.push(group);}
+  group.offers.push(offer);
+ }
  return {h,all,filtered,groups};
 }
 function renderOfferList(reset=false){
@@ -83,9 +88,9 @@ function renderOfferList(reset=false){
  if(comparing){renderTourComparison(all,filtered);rememberUIRoute();return;}
  setComparisonQuotes([]);$('#modal-footer').hidden=true;$('#modal-footer').innerHTML='';rememberUIRoute();
  $('#offer-count').textContent=offerCountText(filtered.length);
+ const commonNote=groups.length?sharedOfferNote(all):'';
  $('#all-offers-list').innerHTML=groups.length?groups.map(({key,offers})=>{
   const first=offers[0],min=Math.min(...offers.map(o=>o.total)),open=offerView.open.includes(key),limit=offerView.limits[key]||4;
-  const commonNote=sharedOfferNote(all);
   const rows=offers.slice(0,limit).map(o=>`<div class="offer grouped-offer" data-offer-key="${o.key}"><div class="offer-departure"><strong>${dateText(o.day)} → ${dateText(o.returnDay)}</strong><small>${nightsText(o.nights)}</small></div><div class="offer-flight-details"><span class="flight-tag ${o.flight}">${flightLabel(o)}</span>${operatorBadge(o.operator)}${commonNote?'':`<small>${esc(offerMetaNote(o))}</small>`}</div><div class="offer-price"><strong aria-label="${esc(money(o.total))} за всех туристов">${money(o.total)}</strong><button class="primary" data-action="offer" data-key="${o.key}">${offerActionLabel(o)} ${icon('arrow')}</button>${optionalShortlistEnabled?`<button class="text-button compare-tour-link" data-action="compare-tour" data-key="${o.key}">Сравнить на эти даты</button>`:''}</div></div>`).join('');
   return `<section class="offer-group"><button class="offer-group-heading" data-action="offer-group" data-value="${key}" aria-expanded="${open}" aria-controls="group-${key}"><span><strong>${esc(first.room)}</strong><small>${esc(mealLabel(first))}</small><small class="offer-group-scope" ${open?'hidden':''}>${[...new Set(offers.map(o=>nightsText(o.nights)))].join(' / ')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):'Вылеты '+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small></span><span class="offer-group-min"><strong ${open?'hidden':''}>от ${money(min)}</strong><small>${offerCountText(offers.length)} <span class="rotate-arrow ${open?'up':''}">⌄</span></small></span></button><div id="group-${key}" class="offer-group-body" ${open?'':'hidden'}>${rows}${offers.length>limit?`<button class="text-button group-more" data-action="group-more" data-value="${key}">Ещё варианты (${offers.length-limit}) ${icon('arrow')}</button>`:''}</div></section>`;
  }).join(''):`<div class="destination-empty offer-recovery-empty"><h3>Нет такого сочетания</h3>${offerRefinementRecovery(all)}<button class="text-button" data-action="reset-offer-filters">Сбросить все условия выбора тура</button></div>`;
