@@ -1,0 +1,2420 @@
+{
+  "schema": "hotel-match-bg18-public-linked-supporting-review/1",
+  "state": "prepared_composite_supporting_evidence_not_accepted",
+  "created_at_utc": "2026-10-01",
+  "source_feature_sha": "ea05a93ce1bf1d605f501a5d07a8bd4b19cf6853",
+  "provider_http_calls": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "acquisition_authorized": false,
+  "acceptance_policy_defined": false,
+  "safe_to_write_now": false,
+  "fresh_current_census": false,
+  "novelty": "New official public property selector context joined to original retained TV response/request bytes; no old operational replay or extra unique source count.",
+  "inputs": {
+    "saved_native110_current_manifest_sha256": "59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e",
+    "native110_current_input_consumed_no_replay": true,
+    "bg18_terminal_result_sha256": "b0d9a916a25813fe58f8470048fec07fc1c4c39d2ecbaa2ab0c6a851ac245daf",
+    "bg18_zip_sha256": "fc8572c19b661cbd52d03dd23ea3dd35428760f7bd34c03fcb4f93b583176a0b",
+    "detail_v4_zip_sha256": "ed9bdce7f2372ef9ca4aeeec06d99719719abf8b004cdb834f72454518856c76",
+    "search_v3_zip_sha256": "c0db6c087a71d84bb6f709c4e02c076dfb2d43b81e8b16991ed58389ab5db32c",
+    "target_v2_wrapper_sha256": "96c5abd8cca79af2d9ba2125ee80a6fe13a47b1e1f5c7d3a92bde3eb5137084c",
+    "target_observed_at_utc": "2026-10-01T12:46:00Z",
+    "target_v2_terminal_no_replay": true
+  },
+  "counts": {
+    "raw_target_evidence_only": 4,
+    "official_property_context_only": 3,
+    "joint_target_evidence_unoccupied": 8,
+    "missing_target_and_official_context": 1,
+    "joint_target_evidence_occupied": 2
+  },
+  "proof_checks": [
+    "Original response hotel.id and operator.id18 match the retained requested hotel/operator",
+    "Original response tour.id matches edge and request path",
+    "Original operatorLink equals retained edge link; SHA256 matches and BG hostname/F4 is exact singleton",
+    "F4 target collision set includes all known BG edge tokens in the two pinned producers",
+    "TV response coordinates compared only to retained TV target coordinates; this is NOT source geography proof",
+    "Official BG code/property context is independently observed public cached material; no source normalization inferred"
+  ],
+  "limitations": [
+    "SAMO original.hotelKey to BG full selector normalization still unproved",
+    "Raw SAMO original source-page bytes are not contained in this report; prior terminal receipt binding only",
+    "Public indexed pages are not a live supplier/catalog snapshot",
+    "Retained ownership is not fresh CURRENT and may drift",
+    "No authoritative writer predicate or supplier-query authority is defined"
+  ],
+  "required_next": [
+    "Establish authoritative source namespace bridge, preserving raw/property/geography contradictions",
+    "New exact reviewed scope on this new immutable roster; do not reuse any consumed input/writer",
+    "Fresh global current uniqueness/source-target ownership/manual-exclusions/activity/country/concrete geography/history protections",
+    "If admitted, durable reservation and guarded transaction/pre-COMMIT/per-row-digest-history-resolver post-COMMIT readback"
+  ],
+  "rows": [
+    {
+      "samo_catalog_id": "13293",
+      "tv_candidate_id": "367",
+      "source_names": "Reef Oasis Suakin Resort & SPA|Swissotel Resort El Quseir|Swissotel Resort El Quseir (ex. Radisson Blu El Quesir)",
+      "samo_bg_native_ids": [
+        "610184500"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "13293",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Марса алам / MARSA ALAM"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 1,
+        "safe_to_write_now": false,
+        "samo_native_id": "610184500",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 367,
+        "tv_native_id": "102610184500"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "1",
+        "country_name": "Египет",
+        "exclusion_hold": false,
+        "id": 367,
+        "is_active": true,
+        "latitude": 26.1479647,
+        "longitude": 34.2577213,
+        "manual_hold": false,
+        "name": "SWISSOTEL RESORT EL QUSIER (EX. RADISSON BLU QUSIER)",
+        "region_name": "Марса Алам",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [],
+      "official_property_name": null,
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "public_lookup_missing_and_direct_candidate_read_internal_error",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "13293",
+          "tv": "367",
+          "producer": "detail",
+          "file": "server/edge-0072.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610184500"
+          ],
+          "expected": "102610184500",
+          "url_sha_matches": true,
+          "returned_tv": 367,
+          "returned_operator": 18,
+          "edge_sha256": "d25bd9465d8fed2a88956f62eb646411135e685b67b9193907ecd634429ac223",
+          "response_file": "server/response-0072.json",
+          "response_sha256": "498a7a7fed5c438f951756e07277453b4c1d62067a7e078295227a8bbd9a81e9",
+          "request_file": "server/request-0072.json",
+          "request_sha256": "3c9629a515c39768633a80de8729b6426ef4882ef7923d2f79ba0a3dec3bb74b",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "367"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000005
+        }
+      ],
+      "state": "raw_target_evidence_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "60328",
+      "tv_candidate_id": "9242",
+      "source_names": "Ambrosia Hotel",
+      "samo_bg_native_ids": [
+        "625162113"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "60328",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Бодрум / Bodrum"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "625162113",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 9242,
+        "tv_native_id": "102625162113"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 9242,
+        "is_active": true,
+        "latitude": 37.0268097,
+        "longitude": 27.3833599,
+        "manual_hold": false,
+        "name": "AMBROSIA HOTEL BEACH & SPA",
+        "region_name": "Бодрум",
+        "subregion_name": "Битез"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102625162113&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Ambrosia Hotel 5*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [],
+      "state": "official_property_context_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "205729",
+      "tv_candidate_id": "9283",
+      "source_names": "Grand Belish Beach Resort & Spa",
+      "samo_bg_native_ids": [
+        "625414997"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "205729",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кушадасы / Kusadasi"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "625414997",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 9283,
+        "tv_native_id": "102625414997"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 9283,
+        "is_active": true,
+        "latitude": 37.763985,
+        "longitude": 27.260817,
+        "manual_hold": false,
+        "name": "GRAND BELISH",
+        "region_name": "Кушадасы",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102625414997&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Grand Belish Beach Resort & Spa 5*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "205729",
+          "tv": "9283",
+          "producer": "detail",
+          "file": "server/edge-0468.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102625414997"
+          ],
+          "expected": "102625414997",
+          "url_sha_matches": true,
+          "returned_tv": 9283,
+          "returned_operator": 18,
+          "edge_sha256": "b764573349a9afdd428d61b95df6346efe330a1f1243cbd24d7dc385e80892ca",
+          "response_file": "server/response-0468.json",
+          "response_sha256": "ad98fd662513432aece04d133b456917dbe13a623f09f2cc9eee436f6d763fc5",
+          "request_file": "server/request-0468.json",
+          "request_sha256": "ef4a339965bce308091ea7ca35f8a565d700d2ae130ee6f11bef668101673d98",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "9283"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000041008",
+      "tv_candidate_id": "62868",
+      "source_names": "Amore Boutique Hotel",
+      "samo_bg_native_ids": [
+        "610121438"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000041008",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кириш-Чамьюва-Текирова-Демре / Kiris-Camyuva-Tekirova-Demre"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 2,
+        "safe_to_write_now": false,
+        "samo_native_id": "610121438",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 62868,
+        "tv_native_id": "102610121438"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "3",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 62868,
+        "is_active": true,
+        "latitude": 36.501755,
+        "longitude": 30.523203,
+        "manual_hold": false,
+        "name": "AMORE BOUTIQUE",
+        "region_name": "Кемер",
+        "subregion_name": "Текирова"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610121438&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Amore Boutique Hotel 3*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000041008",
+          "tv": "62868",
+          "producer": "detail",
+          "file": "server/edge-0401.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610121438"
+          ],
+          "expected": "102610121438",
+          "url_sha_matches": true,
+          "returned_tv": 62868,
+          "returned_operator": 18,
+          "edge_sha256": "638411276a732e09c1f72f75fb744a48ae9a69957031cf2d13119af0bc8b866d",
+          "response_file": "server/response-0401.json",
+          "response_sha256": "b0c9059f48743ee5e6e7c30bb5887234df0e85b41a71c57414f43e3331c62b2d",
+          "request_file": "server/request-0401.json",
+          "request_sha256": "a310ada8331d6da59b55f1326ec4fa480739c4b6536be29ffe86da5662abb0b5",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "62868"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000052316",
+      "tv_candidate_id": "70457",
+      "source_names": "Lykia Apart",
+      "samo_bg_native_ids": [
+        "610144591"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000052316",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кириш-Чамьюва-Текирова-Демре / Kiris-Camyuva-Tekirova-Demre"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 2,
+        "safe_to_write_now": false,
+        "samo_native_id": "610144591",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 70457,
+        "tv_native_id": "102610144591"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "3",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 70457,
+        "is_active": true,
+        "latitude": 36.5682439,
+        "longitude": 30.5561756,
+        "manual_hold": false,
+        "name": "LIKYA APART HOTEL",
+        "region_name": "Кемер",
+        "subregion_name": "Чамьюва"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610144591&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Lykia Apart 3*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000052316",
+          "tv": "70457",
+          "producer": "detail",
+          "file": "server/edge-0370.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610144591"
+          ],
+          "expected": "102610144591",
+          "url_sha_matches": true,
+          "returned_tv": 70457,
+          "returned_operator": 18,
+          "edge_sha256": "f1caea02b878a9baaca4675a94d89637e15217a684355066e32c8700641e1831",
+          "response_file": "server/response-0370.json",
+          "response_sha256": "d5bc9253f06707117e4276005ce5111de3ac58b6fe702bcbbd3c3911c2067575",
+          "request_file": "server/request-0370.json",
+          "request_sha256": "481666e34eac64523740d9e884385fa1c7c5fff5bb284c5e7671f0720ce6d967",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "70457"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000059209",
+      "tv_candidate_id": "67000",
+      "source_names": "Asel Hotel",
+      "samo_bg_native_ids": [
+        "610155352"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000059209",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Дидим / Didim"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "610155352",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 67000,
+        "tv_native_id": "102610155352"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 67000,
+        "is_active": true,
+        "latitude": 37.357055,
+        "longitude": 27.2796012,
+        "manual_hold": false,
+        "name": "TRYP BY WYNDHAM DIDIM (EX. ASEL HOTEL DIDIM)",
+        "region_name": "Дидим",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610155352&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Tryp by Wyndham Didim (Asel Hotel)",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000059209",
+          "tv": "67000",
+          "producer": "detail",
+          "file": "server/edge-0393.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610155352"
+          ],
+          "expected": "102610155352",
+          "url_sha_matches": true,
+          "returned_tv": 67000,
+          "returned_operator": 18,
+          "edge_sha256": "8341aafb85954b67513b69963b0817dfac000b516215c78253d98b103f0df43e",
+          "response_file": "server/response-0393.json",
+          "response_sha256": "43514a34ca9c46bf77c5499737ea10bc91c5581c3a6046e492b2f91569747b77",
+          "request_file": "server/request-0393.json",
+          "request_sha256": "69b90f36935c87a17512da90cbdbadd229eec68b3b97cdb0a6e423ba8de67627",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "67000"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000060910",
+      "tv_candidate_id": "72889",
+      "source_names": "Side Square Hotel (only adults 16+)",
+      "samo_bg_native_ids": [
+        "610175943"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000060910",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Сиде / Side"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 1,
+        "safe_to_write_now": false,
+        "samo_native_id": "610175943",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 72889,
+        "tv_native_id": "102610175943"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 72889,
+        "is_active": true,
+        "latitude": 36.7761179,
+        "longitude": 31.3965116,
+        "manual_hold": false,
+        "name": "SIDE SQUARE HOTEL ADULTS ONLY 16+",
+        "region_name": "Сиде",
+        "subregion_name": "Манавгат"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610175943&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Side Square Hotel (only adults 16+) 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000060910",
+          "tv": "72889",
+          "producer": "detail",
+          "file": "server/edge-0437.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610175943"
+          ],
+          "expected": "102610175943",
+          "url_sha_matches": true,
+          "returned_tv": 72889,
+          "returned_operator": 18,
+          "edge_sha256": "88f04b52731de64f8467f59784858b61e7d00533b1d50be53e8a38eb52564c36",
+          "response_file": "server/response-0437.json",
+          "response_sha256": "e8dffb6d4fa02ebcd01c93f2d6bf1018e3a125b95a4ca54b45676ceafd890b3c",
+          "request_file": "server/request-0437.json",
+          "request_sha256": "c70c90df905dcb090c2c8d625b7b8fae11be367b941cc1f6293e7f18b4b45794",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "72889"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000062548",
+      "tv_candidate_id": "72865",
+      "source_names": "Yaman Life Hotel",
+      "samo_bg_native_ids": [
+        "610149698"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000062548",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Аланья / Alanya"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "610149698",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 72865,
+        "tv_native_id": "102610149698"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "3",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 72865,
+        "is_active": true,
+        "latitude": 36.5396612,
+        "longitude": 32.0282035,
+        "manual_hold": false,
+        "name": "YAMANLIFE HOTEL",
+        "region_name": "Аланья",
+        "subregion_name": "Алания-центр"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610149698&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Yaman Life Hotel",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000062548",
+          "tv": "72865",
+          "producer": "detail",
+          "file": "server/edge-0371.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610149698"
+          ],
+          "expected": "102610149698",
+          "url_sha_matches": true,
+          "returned_tv": 72865,
+          "returned_operator": 18,
+          "edge_sha256": "3d5433d09ea64f5e892360ab51dd109af287713f6c4f4958680de7141153ba75",
+          "response_file": "server/response-0371.json",
+          "response_sha256": "4d849cf13e3d7bc34a1d0505b561642f0b842ee4ea24ccf48aa515952a46c829",
+          "request_file": "server/request-0371.json",
+          "request_sha256": "2a76ad993acb46d59b6f57bcbe40df6c14010dc82aaea07de3128d27d4dd64e8",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "72865"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000062557",
+      "tv_candidate_id": "75791",
+      "source_names": "Ipek Apart",
+      "samo_bg_native_ids": [
+        "610179507"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000062557",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Аланья / Alanya"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "610179507",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 75791,
+        "tv_native_id": "102610179507"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "0",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 75791,
+        "is_active": true,
+        "latitude": 36.5434558,
+        "longitude": 32.0188769,
+        "manual_hold": false,
+        "name": "IPEK APART HOTEL",
+        "region_name": "Аланья",
+        "subregion_name": "Алания-центр"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610179507&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Ipek Apart APARTMENT",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000062557",
+          "tv": "75791",
+          "producer": "detail",
+          "file": "server/edge-0374.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610179507"
+          ],
+          "expected": "102610179507",
+          "url_sha_matches": true,
+          "returned_tv": 75791,
+          "returned_operator": 18,
+          "edge_sha256": "9f194926496437d552c825519c6e7b3e355d6d7b0f32ba6a921d0d0c762c9ef1",
+          "response_file": "server/response-0374.json",
+          "response_sha256": "ba18f6db8ed7cd694d36f24bde7c4f93bba99d7d3fee692f56ab31081dfaf582",
+          "request_file": "server/request-0374.json",
+          "request_sha256": "8203ca6c829d3620a1697db032de14d35f5d3113dfbdc89713b067476743169e",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "75791"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000071830",
+      "tv_candidate_id": "15902",
+      "source_names": "Citys Hill Hotel (ex. Panorama Hill)",
+      "samo_bg_native_ids": [
+        "610210401"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000071830",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кушадасы / Kusadasi"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 2,
+        "safe_to_write_now": false,
+        "samo_native_id": "610210401",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 15902,
+        "tv_native_id": "102610210401"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 15902,
+        "is_active": true,
+        "latitude": 37.877743,
+        "longitude": 27.269632,
+        "manual_hold": false,
+        "name": "CITYS HILLS (EX. THE PANORAMA HILL)",
+        "region_name": "Кушадасы",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [],
+      "official_property_name": null,
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "public_lookup_missing_and_direct_candidate_read_internal_error",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000071830",
+          "tv": "15902",
+          "producer": "detail",
+          "file": "server/edge-0422.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610210401"
+          ],
+          "expected": "102610210401",
+          "url_sha_matches": true,
+          "returned_tv": 15902,
+          "returned_operator": 18,
+          "edge_sha256": "86d949087ba0fef7c33d78b7ab3fea34705e5b9e5e0ac91f90f388eb8bbbd646",
+          "response_file": "server/response-0422.json",
+          "response_sha256": "9bc5b998d8bb18112aff51d21d5cf2ce299dd5eedba45069b6f6b8960f4eb893",
+          "request_file": "server/request-0422.json",
+          "request_sha256": "a77478f7c65c9a3b5d3b13cf51bcdc1cc0f5e3f3a9f99259e09e66c85e536560",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "15902"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0
+        }
+      ],
+      "state": "raw_target_evidence_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000081107",
+      "tv_candidate_id": "83106",
+      "source_names": "Pickalbatros Villaggio Resort - Portofino Marsa Alam|Pickalbatros Villaggio Resort Portofino",
+      "samo_bg_native_ids": [
+        "610227700"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000081107",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Марса алам / MARSA ALAM"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 1,
+        "safe_to_write_now": false,
+        "samo_native_id": "610227700",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 83106,
+        "tv_native_id": "102610227700"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "4",
+        "country_id": "1",
+        "country_name": "Египет",
+        "exclusion_hold": false,
+        "id": 83106,
+        "is_active": true,
+        "latitude": 25.2521293,
+        "longitude": 34.7897481,
+        "manual_hold": false,
+        "name": "PICKALBATROS VILLAGIO RESORT PORTOFINO MARSA ALAM",
+        "region_name": "Марса Алам",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610227700&flt=100410000047&tid=26"
+      ],
+      "official_property_name": "PICKALBATROS VILLAGGIO RESORT - PORTOFINO 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000081107",
+          "tv": "83106",
+          "producer": "detail",
+          "file": "server/edge-0625.json",
+          "state": "stale_detail_404",
+          "link_state": null,
+          "F4": [],
+          "expected": "102610227700",
+          "url_sha_matches": false,
+          "returned_tv": null,
+          "returned_operator": null,
+          "edge_sha256": "76b27ec71a10f7be3eca62d3f71a144b5d56d99dd672eb0cf34aa44f3ae5c033",
+          "response_file": "server/response-0625.json",
+          "response_sha256": "33729028401a02f05157141ae2c33df4b3154e6cdd16c5a84ceac7c14573de3f",
+          "request_file": "server/request-0625.json",
+          "request_sha256": "25731dfd7e73149b9c0c752fce9d8149fdcda545056e1fc8c41bbae1c7214669",
+          "raw_tv_identity_and_link_verified": false,
+          "known_f4_tv_ids": [],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": null
+        }
+      ],
+      "state": "official_property_context_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000086021",
+      "tv_candidate_id": "316",
+      "source_names": "Naama Bay Promenade Mountain Side",
+      "samo_bg_native_ids": [
+        "668981793"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000086021",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Шарм-эль-шейх / SHARM EL SHEIKH"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 1,
+        "safe_to_write_now": false,
+        "samo_native_id": "668981793",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 316,
+        "tv_native_id": "102668981793"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "4",
+        "country_id": "1",
+        "country_name": "Египет",
+        "exclusion_hold": false,
+        "id": 316,
+        "is_active": true,
+        "latitude": 27.918555,
+        "longitude": 34.331345,
+        "manual_hold": false,
+        "name": "NAAMA BAY PROMENADE MOUNTAIN (EX. SHARM EL SHEIKH MARRIOTT RESORT MOUNTAIN)",
+        "region_name": "Шарм-эль-Шейх",
+        "subregion_name": "Наама Бей"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102668981793&flt=100410000047&page=info&tid=26"
+      ],
+      "official_property_name": "NAAMA BAY PROMENADE MOUNTAIN SIDE 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000086021",
+          "tv": "316",
+          "producer": "detail",
+          "file": "server/edge-0090.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102668981793"
+          ],
+          "expected": "102668981793",
+          "url_sha_matches": true,
+          "returned_tv": 316,
+          "returned_operator": 18,
+          "edge_sha256": "015a5858b339e73808879a4298dd44fbbb4a33dc7a60b204b3090879c53ec852",
+          "response_file": "server/response-0090.json",
+          "response_sha256": "76fc7f6e4ea1ae815b643a417f93a0a1baf65fc32d7e6c13070cd3397ce86a60",
+          "request_file": "server/request-0090.json",
+          "request_sha256": "0c9dc99fbcb9a858120c5799a9932a39c5e05d7660015af142bdf83f9a94e99b",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "316"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000007
+        }
+      ],
+      "state": "joint_target_evidence_unoccupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000086129",
+      "tv_candidate_id": "75538",
+      "source_names": "The Norm Collection Door",
+      "samo_bg_native_ids": [
+        "610160139"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000086129",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Бодрум / Bodrum"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 2,
+        "safe_to_write_now": false,
+        "samo_native_id": "610160139",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 75538,
+        "tv_native_id": "102610160139"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "5",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 75538,
+        "is_active": true,
+        "latitude": 37.0886522,
+        "longitude": 27.4790766,
+        "manual_hold": false,
+        "name": "THE NORM COLLECTION DOORA (EX. SELECTUM DOORA BODRUM)",
+        "region_name": "Бодрум",
+        "subregion_name": "Торба"
+      },
+      "official_public_selector_links": [],
+      "official_property_name": null,
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "public_lookup_missing_and_direct_candidate_read_internal_error",
+      "saved_tv_raw_proofs": [],
+      "state": "missing_target_and_official_context",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000087863",
+      "tv_candidate_id": "99582",
+      "source_names": "Soleil Hotel",
+      "samo_bg_native_ids": [
+        "610222069"
+      ],
+      "source_saved_plan_holds": [],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000087863",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кушадасы / Kusadasi"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 1,
+        "safe_to_write_now": false,
+        "samo_native_id": "610222069",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 99582,
+        "tv_native_id": "102610222069"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [],
+        "category": "2",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 99582,
+        "is_active": true,
+        "latitude": 37.8433495,
+        "longitude": 27.2468491,
+        "manual_hold": false,
+        "name": "SOLEIL OTEL",
+        "region_name": "Кушадасы",
+        "subregion_name": null
+      },
+      "official_public_selector_links": [],
+      "official_property_name": null,
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "public_lookup_missing_and_direct_candidate_read_internal_error",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000087863",
+          "tv": "99582",
+          "producer": "detail",
+          "file": "server/edge-0434.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610222069"
+          ],
+          "expected": "102610222069",
+          "url_sha_matches": true,
+          "returned_tv": 99582,
+          "returned_operator": 18,
+          "edge_sha256": "64583b3b2eb57253f6f1bb1bec3897f26a7bfc94b7d6cb1ded7cf79aca1d48ae",
+          "response_file": "server/response-0434.json",
+          "response_sha256": "39e33a081bce90019cbde869768576388c92bf802fcab6922917ca5dde2261a0",
+          "request_file": "server/request-0434.json",
+          "request_sha256": "6656d2a4327da8c3af3f8dfb69096e55bdca6eaa250967b14ee61fd6c321eede",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "99582"
+          ],
+          "retained_target_accepted_samo_ids": [],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000006
+        }
+      ],
+      "state": "raw_target_evidence_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000041090",
+      "tv_candidate_id": "1572",
+      "source_names": "Beldibi Beach Hotel ",
+      "samo_bg_native_ids": [
+        "625076488"
+      ],
+      "source_saved_plan_holds": [
+        "target_existing_samo_mapping"
+      ],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000041090",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кемер-Белдиби-Гойнюк / Kemer-Beldibi-Goynuk"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "625076488",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 1572,
+        "tv_native_id": "102625076488"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [
+          "2000068332"
+        ],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 1572,
+        "is_active": true,
+        "latitude": 36.7331611,
+        "longitude": 30.5630145,
+        "manual_hold": false,
+        "name": "BELDIBI BEACH HOTEL",
+        "region_name": "Кемер",
+        "subregion_name": "Бельдиби"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102625076488&flt=100411293179&tid=26",
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102625076488&flt=100411293179&page=review&tid=26"
+      ],
+      "official_property_name": "Beldibi Beach Hotel 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000041090",
+          "tv": "1572",
+          "producer": "detail",
+          "file": "server/edge-0003.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102625076488"
+          ],
+          "expected": "102625076488",
+          "url_sha_matches": true,
+          "returned_tv": 1572,
+          "returned_operator": 18,
+          "edge_sha256": "9b3a9585e4a91a17413d571d8e586366f92fff7ab27efa08430d226890e6bf4d",
+          "response_file": "server/response-0003.json",
+          "response_sha256": "4bbf1ed9e0d13c16235b1832f3b13dfa133424e5a12e907b7e900b15bbccbe48",
+          "request_file": "server/request-0003.json",
+          "request_sha256": "a75fb000a580d8e5d5707309e15917b9865e7ee97b49314c495d4c7a976a0c41",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "1572"
+          ],
+          "retained_target_accepted_samo_ids": [
+            "2000068332"
+          ],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000002
+        }
+      ],
+      "state": "joint_target_evidence_occupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000072753",
+      "tv_candidate_id": "1267",
+      "source_names": "Clover Magic Park Beach ",
+      "samo_bg_native_ids": [
+        "610197738"
+      ],
+      "source_saved_plan_holds": [
+        "target_existing_samo_mapping"
+      ],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000072753",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Аланья / Alanya"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "610197738",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 1267,
+        "tv_native_id": "102610197738"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [
+          "2000086102"
+        ],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 1267,
+        "is_active": true,
+        "latitude": 36.5894802,
+        "longitude": 31.8596816,
+        "manual_hold": false,
+        "name": "CLOVER MAGIC PARK BEACH (EX. CLOVER MAGIC GARDEN BEACH)",
+        "region_name": "Аланья",
+        "subregion_name": "Конаклы"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610197738&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Clover Magic Park Beach 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000072753",
+          "tv": "1267",
+          "producer": "detail",
+          "file": "server/edge-0045.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610197738"
+          ],
+          "expected": "102610197738",
+          "url_sha_matches": true,
+          "returned_tv": 1267,
+          "returned_operator": 18,
+          "edge_sha256": "4f26e3fe66f6df80fbc456b1df61e5a050f001b8932b786c3dc3f1aaf99f82e2",
+          "response_file": "server/response-0045.json",
+          "response_sha256": "33ce445dd0bbb0c3976df96aff872f369a3e846925d15a42a96bccb78a5f8996",
+          "request_file": "server/request-0045.json",
+          "request_sha256": "a5232c035c5099c0da4b4c2641d67f886920b322b786f12ac0cb2b675eee3e0d",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "1267"
+          ],
+          "retained_target_accepted_samo_ids": [
+            "2000086102"
+          ],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000006
+        }
+      ],
+      "state": "joint_target_evidence_occupied",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000072804",
+      "tv_candidate_id": "65770",
+      "source_names": "Royal Towers Hotel Lara (ex. Prado Family Lara)",
+      "samo_bg_native_ids": [
+        "610175325"
+      ],
+      "source_saved_plan_holds": [
+        "target_existing_samo_mapping"
+      ],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000072804",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Анталия (Лара-Кунду) / Antalya (Lara-Kundu)"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 3,
+        "safe_to_write_now": false,
+        "samo_native_id": "610175325",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 65770,
+        "tv_native_id": "102610175325"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [
+          "2000115107"
+        ],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 65770,
+        "is_active": true,
+        "latitude": 36.8639753,
+        "longitude": 30.8956516,
+        "manual_hold": false,
+        "name": "PALMORA LARA HOTEL (EX. JURA HOTELS LARA RESORT)",
+        "region_name": "Анталья",
+        "subregion_name": "Кунду"
+      },
+      "official_public_selector_links": [],
+      "official_property_name": null,
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "public_lookup_missing_and_direct_candidate_read_internal_error",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000072804",
+          "tv": "65770",
+          "producer": "detail",
+          "file": "server/edge-0008.json",
+          "state": "detail_identity_verified",
+          "link_state": "captured_biblio_unproven",
+          "F4": [
+            "102610175325"
+          ],
+          "expected": "102610175325",
+          "url_sha_matches": true,
+          "returned_tv": 65770,
+          "returned_operator": 18,
+          "edge_sha256": "b9a7eca0627daf7389c06f34dfcde18f1f6430105c23a878bb6616226feae415",
+          "response_file": "server/response-0008.json",
+          "response_sha256": "d8bcb87ffa8f266cc2ac075cc3de245e6afc1e29f532b760688d22a722427fd0",
+          "request_file": "server/request-0008.json",
+          "request_sha256": "2935c232c193d6895137ed5d9d804ec6fb7d25bc2b9d06d4ac113dc839d8373f",
+          "raw_tv_identity_and_link_verified": true,
+          "known_f4_tv_ids": [
+            "65770"
+          ],
+          "retained_target_accepted_samo_ids": [
+            "2000115107"
+          ],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": 0.000002
+        }
+      ],
+      "state": "raw_target_evidence_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    },
+    {
+      "samo_catalog_id": "2000079689",
+      "tv_candidate_id": "1175",
+      "source_names": "Nex Royal Beach Hotel (ex. Vogue Royal)",
+      "samo_bg_native_ids": [
+        "610214047"
+      ],
+      "source_saved_plan_holds": [
+        "target_existing_samo_mapping"
+      ],
+      "source_saved_bg_field_receipt": {
+        "bg_links": [],
+        "catalog_id": "2000079689",
+        "failures": [],
+        "location_fields": [
+          {
+            "source_field": "row.town",
+            "value": "Кемер-Белдиби-Гойнюк / Kemer-Beldibi-Goynuk"
+          },
+          {
+            "source_field": "row.townKey",
+            "value": "0"
+          }
+        ],
+        "original_fields": [
+          "hotel",
+          "hotelKey",
+          "tourKey"
+        ],
+        "raw_references_examined": 2,
+        "safe_to_write_now": false,
+        "samo_native_id": "610214047",
+        "top_fields": [
+          "checkIn",
+          "currency",
+          "currencyKey",
+          "discoCost",
+          "discountPercent",
+          "hotel",
+          "hotelImage",
+          "hotelKey",
+          "hotelUrl",
+          "htplace",
+          "htplaceKey",
+          "id",
+          "installmentId",
+          "installmentPrice",
+          "isOperatorHotelKey",
+          "meal",
+          "mealKey",
+          "momentConfirm",
+          "nights",
+          "noPlace",
+          "operator",
+          "operatorGuid",
+          "operatorImage",
+          "operatorKey",
+          "original",
+          "packetType",
+          "page",
+          "placeStatus",
+          "price",
+          "room",
+          "roomKey",
+          "samoTownKey",
+          "selected",
+          "star",
+          "starKey",
+          "stayNights",
+          "stopSale",
+          "supplement",
+          "tour",
+          "tourKey",
+          "tourNights",
+          "town",
+          "townKey",
+          "value"
+        ],
+        "tv_hotel_id": 1175,
+        "tv_native_id": "102610214047"
+      },
+      "target_retained_observation": {
+        "accepted_samo_ids": [
+          "2000086292"
+        ],
+        "category": "4",
+        "country_id": "4",
+        "country_name": "Турция",
+        "exclusion_hold": false,
+        "id": 1175,
+        "is_active": true,
+        "latitude": 36.7353017,
+        "longitude": 30.5629251,
+        "manual_hold": false,
+        "name": "NEX ROYAL BEACH HOTEL (EX. VOGUE ROYAL)",
+        "region_name": "Кемер",
+        "subregion_name": "Бельдиби"
+      },
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610214047&flt=100411293179&page=questions&tid=26",
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610214047&flt=100411293179&tid=26"
+      ],
+      "official_property_name": "Nex Royal Beach Hotel 4*",
+      "official_page_original_bytes_retained": false,
+      "web_public_read_state": "indexed_cached_property_page_observed",
+      "saved_tv_raw_proofs": [
+        {
+          "catalog": "2000079689",
+          "tv": "1175",
+          "producer": "detail",
+          "file": "server/edge-0738.json",
+          "state": "stale_detail_404",
+          "link_state": null,
+          "F4": [],
+          "expected": "102610214047",
+          "url_sha_matches": false,
+          "returned_tv": null,
+          "returned_operator": null,
+          "edge_sha256": "bddfec26dcc42a042a8fe34700669f571f5c99f38e5363f8e1d995393fdb61a9",
+          "response_file": "server/response-0738.json",
+          "response_sha256": "33729028401a02f05157141ae2c33df4b3154e6cdd16c5a84ceac7c14573de3f",
+          "request_file": "server/request-0738.json",
+          "request_sha256": "0ad81b44276f854672337ab1c27c166c81507f208506f8214988394f76607952",
+          "raw_tv_identity_and_link_verified": false,
+          "known_f4_tv_ids": [],
+          "retained_target_accepted_samo_ids": [
+            "2000086292"
+          ],
+          "safe_to_write_now": false,
+          "retained_tv_geo_distance_km": null
+        }
+      ],
+      "state": "official_property_context_only",
+      "source_namespace_bridge_verified": false,
+      "fresh_current_source_target_verified": false,
+      "safe_to_write_now": false
+    }
+  ]
+}
