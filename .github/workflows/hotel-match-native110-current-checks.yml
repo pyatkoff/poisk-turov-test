@@ -8,6 +8,8 @@ on:
       - 'tests/hotel_match_native110_current_v1_test.php'
       - 'scripts/diagnostics/hotel_match_native110_guarded_v1.php'
       - 'tests/hotel_match_native110_guarded_v1_test.php'
+      - 'scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php'
+      - 'tests/hotel_match_native110_bg_evidence_v1_test.php'
       - '.github/workflows/hotel-match-native110-current-checks.yml'
 permissions:
   contents: read
@@ -25,6 +27,9 @@ jobs:
           php -l scripts/diagnostics/hotel_match_native110_current_v1.php
           php -l tests/hotel_match_native110_current_v1_test.php
           php tests/hotel_match_native110_current_v1_test.php
+          php -l scripts/diagnostics/hotel_match_native110_bg_evidence_v1.php
+          php -l tests/hotel_match_native110_bg_evidence_v1_test.php
+          php tests/hotel_match_native110_bg_evidence_v1_test.php
   guarded-transactions:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
