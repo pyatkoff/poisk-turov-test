@@ -370,4 +370,110 @@ class Native110RegistrationTest(unittest.TestCase):
                 self.assertEqual(call.call_count,1)
             self.assertTrue((root/registration.NATIVE_OPERATION/'reservation.json').is_file())
 
+class GuardedNative110RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+        self.body=self.core.PREFIX+SOURCE+' '+registration.GUARDED_MODE+' '+registration.GUARDED_OPERATION+' '+registration.NATIVE_BATCH
+
+    def test_only_exact_new_intake_is_authorized(self):
+        parsed=self.core.parse_command(self.body)
+        self.assertEqual(parsed['maximum_writes'],4);self.assertEqual(parsed['input_sha256'],registration.GUARDED_INPUT_SHA)
+        for body in (self.body+' 1',self.body.replace(registration.NATIVE_BATCH,registration.BATCH),
+                     self.body.replace(registration.GUARDED_OPERATION,OP),self.body.replace(SOURCE,'bad')):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        for key,value in [('input_sha256','b'*64),('maximum_writes',5),('provider_http_calls',1)]:
+            bad=copy.deepcopy(parsed);bad[key]=value
+            with self.assertRaises(ValueError):registration.activate(self.core,bad)
+        registration.activate(self.core,parsed)
+        self.assertIn('def run_match_native110_write(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        self.assertNotIn('primary-batch-samo3-20260929.json',self.core.REMOTE)
+        self.assertTrue(set(registration.GUARDED_SOURCE_FILES).issubset(self.core.FIXED))
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+            and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.GUARDED_MODE)))
+
+    def namespace(self,tmp):
+        native=Native110RegistrationTest();native.setUp();ns,stage,root,_=native.namespace(tmp)
+        ns['operation']=registration.GUARDED_OPERATION
+        ns['payload']=dict(batch=registration.NATIVE_BATCH,maximum_writes=4,provider_http_calls=0,input_sha256=registration.GUARDED_INPUT_SHA)
+        runner=stage/'scripts/diagnostics/hotel_match_native110_guarded_v1.php';runner.write_text('<?php // fixture only')
+        exec(registration.REMOTE_GUARDED_HANDLER,ns);return ns,stage,root,runner
+
+    def response(self,kwargs,mutate=None,state='committed_readback_verified'):
+        child=Path(kwargs['env']['MATCH_OPERATION_DIR']);pairs={'3126':42903,'9501':420,'475947':28529,'2000034238':16944}
+        rows=[dict(catalog_id=c,local_hotel_id=i,name='Fixture Hotel',catalog_sha256='a'*64,
+            evidence_sha256='b'*64,prior_evidence_sha256='c'*64,proof_operator_count=1) for c,i in pairs.items()]
+        data=dict(operation=registration.GUARDED_OPERATION,source_sha=SOURCE,batch=registration.NATIVE_BATCH,
+            input_sha256=registration.GUARDED_INPUT_SHA,provider_http_calls=0,no_replay=True,state=state,
+            current_candidates_evaluated=4,rows=rows,held=[],database_writes=4,mapping_writes=4,readback_verified=True,
+            commit_attempted=True,commit_completed=True,effective_resolver_verified=True,
+            prior_evidence_preserved=True,unrelated_identities_unchanged=True,
+            coverage_before=dict(tv_total=4,full_triple=0,samo_only=0,anex_only=1,neither=3),
+            coverage_after=dict(tv_total=4,full_triple=1,samo_only=3,anex_only=0,neither=0),new_full_triples=1)
+        if state=='completed_no_new_writes':
+            data=dict(operation=registration.GUARDED_OPERATION,source_sha=SOURCE,batch=registration.NATIVE_BATCH,
+                input_sha256=registration.GUARDED_INPUT_SHA,provider_http_calls=0,no_replay=True,state=state,
+                current_candidates_evaluated=4,rows=[],held=[dict(catalog_id=c,local_hotel_id=i,status='hold',reasons=['coordinate_conflict_over_5km']) for c,i in pairs.items()],
+                database_writes=0,mapping_writes=0,readback_verified=True)
+        if state=='commit_outcome_unknown_no_replay':
+            data=dict(operation=registration.GUARDED_OPERATION,source_sha=SOURCE,batch=registration.NATIVE_BATCH,
+                input_sha256=registration.GUARDED_INPUT_SHA,provider_http_calls=0,no_replay=True,state=state,
+                current_candidates_evaluated=4,rows=[],held=[],database_writes=None,mapping_writes=None,
+                readback_verified=False,commit_attempted=True,commit_completed=False,reason='fixture_commit_response_loss')
+        if mutate:mutate(data)
+        raw=json.dumps(data);(child/'result.json').write_text(raw)
+        receipt={k:data[k] for k in ('operation','source_sha','batch','input_sha256','provider_http_calls','no_replay','state','database_writes','mapping_writes','readback_verified')}
+        receipt['result_sha256']=hashlib.sha256(raw.encode()).hexdigest();(child/'receipt.json').write_text(json.dumps(receipt))
+        return types.SimpleNamespace(returncode=0 if data['state'] in ('committed_readback_verified','completed_no_new_writes') else 2,stdout=raw,stderr='')
+
+    def test_reserved_network_disabled_write_and_input_consumption(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            def call(argv,**kwargs):
+                self.assertEqual(argv[-2:],[str(runner),'--execute']);self.assertIn('allow_url_fopen=0',argv)
+                self.assertEqual(set(kwargs['env'])-{'PATH','HOME','LANG','LC_ALL'},{'ANYTOUR_ROOT','MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+                child=Path(kwargs['env']['MATCH_OPERATION_DIR']);r=json.loads((child/'reservation.json').read_text())
+                self.assertEqual(r['input_sha256'],registration.GUARDED_INPUT_SHA)
+                marker=root.parent/('native110-input-'+registration.GUARDED_INPUT_SHA+'-consumed.json')
+                self.assertEqual(json.loads(marker.read_text()),r);self.assertEqual(marker.stat().st_mode&0o777,0o600)
+                return self.response(kwargs)
+            with patch.object(subprocess,'run',side_effect=call) as call:
+                self.assertTrue(ns['run_match_native110_write'](stage)['successful'])
+                with self.assertRaises(RuntimeError):ns['run_match_native110_write'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_held_and_unknown_outcomes_preserve_their_meaning(self):
+        for state in ('completed_no_new_writes','commit_outcome_unknown_no_replay'):
+            with self.subTest(state=state),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,state=state)):
+                    out=ns['run_match_native110_write'](stage)
+                self.assertEqual(out['successful'],state=='completed_no_new_writes')
+                self.assertEqual(out['summary']['mapping_writes'],0 if out['successful'] else None)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_write'](stage)
+
+    def test_untrusted_terminal_scope_fields_and_false_readback_rejected(self):
+        changes=[lambda d:d.update(raw='fixture-secret'),lambda d:d.update(input_sha256='f'*64),
+            lambda d:d.update(mapping_writes=5),lambda d:d.update(provider_http_calls=False),
+            lambda d:d.update(effective_resolver_verified=False),lambda d:d.update(readback_verified=False),
+            lambda d:d['rows'][0].update(catalog_id='2000086118'),lambda d:d['rows'][0].update(raw='fixture-secret'),
+            lambda d:d['rows'][0].update(local_hotel_id=144804),lambda d:d['rows'].pop(),
+            lambda d:d.update(no_replay=1),lambda d:d['coverage_after'].update(raw='fixture-secret')]
+        for mutate in changes:
+            with self.subTest(mutate=mutate),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root,runner=self.namespace(tmp)
+                with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
+                    with self.assertRaises(RuntimeError):ns['run_match_native110_write'](stage)
+
+    def test_timeout_cannot_replay_or_free_the_input_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root,runner=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_native110_write'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_native110_write'](stage)
+                self.assertEqual(call.call_count,1)
+            self.assertTrue((root.parent/('native110-input-'+registration.GUARDED_INPUT_SHA+'-consumed.json')).is_file())
+
 if __name__=='__main__':unittest.main()
