@@ -117,7 +117,7 @@ function parentFixture(){
         self.php("""foreach(['none','source']as $kind){$x=lpm2_prepare(snap(1),d1(),['state'=>'verified_terminal_predecessor','ownIds'=>[],'localIds'=>[]],
         function($q)use($kind){$p=goodPlan($q);$p['selected']=[];if($kind==='source')$p['held'][100001]=['description'=>'source_missing_preserved'];
         $core=$p;unset($core['status'],$core['writes'],$core['supplierCalls'],$core['planSha256']);$p['planSha256']=lpm_digest($core);return $p;},fn($i,$q)=>[]);
-        $state=$kind==='none'?'NO_DELTA_NOT_PROVEN_COMPLETE':'SOURCE_MISSING';ok(($x['classification_counts'][$state]??0)===1);}}""")
+        $state=$kind==='none'?'NO_DELTA_NOT_PROVEN_COMPLETE':'SOURCE_MISSING';ok(($x['classification_counts'][$state]??0)===1);}""")
     def test_phase2_source_has_no_http_or_write_path(self):
         source=(ROOT/'scripts/diagnostics/local_profile_mass_plan2_4191.php').read_text()
         self.assertNotIn('->apply(',source)
