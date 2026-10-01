@@ -793,7 +793,15 @@ function renderHotelDetails(){
  loadHotelDetails().then(render).catch(()=>{if(current())$('#hotel-details-load').innerHTML='<div role="alert"><p>Не удалось загрузить подробности отеля.</p><button class="secondary" data-action="retry-hotel-details">Попробовать ещё раз</button></div>';});
 }
 
-let renderedCardLimit=24,renderedCardScope='';
+let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;
+const resultCardMarkup=new WeakMap(),dirtyResultCards=new WeakSet();
+function markResultCardMutations(records,cards){
+ for(const record of records){let root=record.target.nodeType===1?record.target:record.target.parentElement;while(root&&root.parentNode!==cards)root=root.parentElement;if(root&&root.parentNode===cards)dirtyResultCards.add(root);}
+}
+function observeResultCardMutations(cards){
+ if(!resultCardObserver){resultCardObserver=new MutationObserver(records=>markResultCardMutations(records,cards));resultCardObserver.observe(cards,{subtree:true,childList:true,attributes:true,characterData:true});}
+ else markResultCardMutations(resultCardObserver.takeRecords(),cards);
+}
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -812,29 +820,35 @@ function renderResultHeadings(items,total,pristine){
  $('#results-summary').textContent=pristine?'Задайте направление, даты и состав туристов — предложения появятся после поиска.':failed?`Результаты не получены · ${durationText()} · ${guestsText()}`:`${hotelCountText(items.length)} · ${total} ${total%10===1&&total%100!==11?'вариант':total%10>=2&&total%10<=4&&(total%100<12||total%100>14)?'варианта':'вариантов'} тура`;
  const canSort=items.length>1;$('.sort-label').hidden=!canSort;$('.mobile-sort').hidden=!canSort;
 }
-function paintResultCards(cards,html,sameScope){
- if(!sameScope||!cards.childElementCount){cards.innerHTML=html;return;}
- // Parse the current markup in an inert template. Reuse only exactly equal
- // nodes from this render; no saved result/price inventory can become stale.
- const template=document.createElement('template');template.innerHTML=html;
+function parseResultNode(markup){const template=document.createElement('template');template.innerHTML=markup;return template.content.firstElementChild;}
+function paintResultCards(cards,entries,sameScope){
+ const html=entries.map(entry=>entry.markup).join('');
+ observeResultCardMutations(cards);
+ if(!sameScope||!cards.childElementCount){cards.innerHTML=html;[...cards.children].forEach((node,index)=>resultCardMarkup.set(node,entries[index]?.markup));resultCardObserver.takeRecords();return;}
+ // Generated markup is recomputed every time. Parse only a changed root; the
+ // observer invalidates an otherwise-equal root after any live DOM mutation.
  const keyed=new Map();for(const node of cards.children)if(node.id&&!keyed.has(node.id))keyed.set(node.id,node);
  let cursor=cards.firstChild;
- for(const next of [...template.content.childNodes]){
-  const previous=next.id?keyed.get(next.id):cursor;
-  if(next.id)keyed.delete(next.id);
-  const node=previous?.isEqualNode(next)?previous:next;
+ for(const {id,markup} of entries){
+  const previous=id?keyed.get(id):cursor;
+  if(id)keyed.delete(id);
+  const node=previous&&!dirtyResultCards.has(previous)&&resultCardMarkup.get(previous)===markup?previous:parseResultNode(markup);
+  resultCardMarkup.set(node,markup);dirtyResultCards.delete(node);
   if(node===cursor)cursor=cursor.nextSibling;
   else if(cursor&&previous===cursor){cards.replaceChild(node,cursor);cursor=node.nextSibling;}
   else cards.insertBefore(node,cursor);
  }
  while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
+ resultCardObserver.takeRecords();
 }
 function renderResultCards(items){
  const cards=$('#cards'),cardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]),sameCardScope=cardScope===renderedCardScope;
  const active=document.activeElement,activeInCards=sameCardScope&&cards.contains(active),focus=activeInCards?focusReference(active,cards):null,focusAction=activeInCards?active.dataset.action:null;
  const anchor=activeInCards?active.closest('.hotel-card'):null,anchorId=anchor?.id||'',anchorTop=anchor?.getBoundingClientRect().top,anchorScroll=scrollY;
  if(!sameCardScope){renderedCardScope=cardScope;renderedCardLimit=24;}
- paintResultCards(cards,items.length?items.slice(0,renderedCardLimit).map(cardHTML).join('')+(items.length>renderedCardLimit?`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`:''):emptyResultsHTML(),sameCardScope);
+ const entries=items.length?items.slice(0,renderedCardLimit).map(item=>({id:`hotel-${item.hotel.id}`,markup:cardHTML(item)})): [{id:'',markup:emptyResultsHTML()}];
+ if(items.length>renderedCardLimit)entries.push({id:'',markup:`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,items.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,items.length)} из ${items.length}</span></button>`});
+ paintResultCards(cards,entries,sameCardScope);
  if(focus){
   const nextAnchor=anchorId?document.getElementById(anchorId):null,fallback=nextAnchor?.querySelector(focusAction?`[data-action="${CSS.escape(focusAction)}"]`:'button')||nextAnchor?.querySelector('button')||cards.querySelector('[data-action="more-cards"]')||$('#results');
   restoreFocus(focus,fallback,cards);
