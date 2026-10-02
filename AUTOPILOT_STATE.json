@@ -1286,19 +1286,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: bounded structural pass F1/F2/F3 complete; cumulative release accepted",
-    "status": "STRUCTURAL_PASS_COMPLETE",
+    "title": "Search3 NEXT: CSS transfer reduction and retired My tour removal complete; favorites preserved",
+    "status": "SIZE_REDUCTION_PASS_COMPLETE",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4340,
+    "pr": 4342,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner 2026-10-02, последующее «давай делать»: завершить новый ограниченный F1/F2/F3 scope после закрытого refactor pass — одну компонентную границу app.js, структурный анализ data.js с конечным INT→SEARCH контрактом, измерение начального графа и одну накопленную NEXT-публикацию с приёмкой. Все три результата завершены; F2 runtime extraction явно deferred.",
-    "last_fully_checked_release_sha": "8f54d33c6279feba85b23f8b963d4aacf292a2a7",
-    "published_source_sha": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
-    "acceptance_status": "NEXT_STRUCTURAL_ACCEPTED_FIXTURE_SNAPSHOT_AND_DEMO_FLIGHTS_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "CURRENT STRUCTURAL PASS COMPLETE / STOP MICRO-OPTIMIZATION QUEUE. Source #4340 head59a216330fbd6bae28340cbb0c856a35f54b7d03 merged release8f54d33c6279feba85b23f8b963d4aacf292a2a7; Security36992108707/lead36992108690/build36992108697/focused+full browser36992108677 SUCCESS. F1:22 filter presentation functions separated with fresh host state/focus/history parity. F2:complete126244B/107-function data.js analysis and bounded future pure meal INT→SEARCH contract; runtime blobb3d5ae68f2246e3f1f6e22a216970ab628b4942e unchanged. F3:eager summaries/API and cold picker9847 compiled B/3737gzip, compiled request bootstrap0/cold1/warm0, guarded loading/retry/recovery. Initial LIVE439841→434984B/gzip133901→133360B; full467038→472028B/gzip143738→146934B. Five paired fresh contexts at390/1280 readiness175.8→179.1ms/180.6→180.2ms; no measured latency improvement claim. One command5949786598 → publisher36992900244 attempt1 SUCCESS, deployment11220331373 digest1b2a71ea531102534b60acfba7a5775258cf3df0c083d71d15fcf7f84199dfbc verified; hosted terminal5950090374/5950090783. All11 common browser receipts/geometry identical; hosted pristine/snapshot/filter/calendar/hotel/selected tour/cold+warm fictional flights accepted, page-origin errors0. noindex/lead403/LOCAL403/counter0/supplier0/real-leads0; production/sibling unchanged, rollback retained. Physical Safari/iPhone, real supplier search/flight/quote and real lead delivery remain UNVERIFIED separately. Future pure meal implementation requires single-executor INT→SEARCH handoff; other large app boundaries/profile only a new bounded owner scope. No automatic additional O/micro queue or historical operation replay. Source/integration/publisher claims RELEASED; final docs/current_task checkpoint only, then STOP.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-structural-final-20261002.md"
+    "owner_request": "Owner2026-10-02 «Избранное оставь пока; остальное можешь убирать»: implement bounded exact-AST CSS printing and remove confirmed retired My tour leftovers; retain favorites/coupled comparison and active selected tour/application. One accumulated NEXT release and acceptance completed.",
+    "last_fully_checked_release_sha": "3ba3d5a078b93f8a32d6ac806def6c09154c127b",
+    "published_source_sha": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+    "acceptance_status": "NEXT_SIZE_REDUCTION_ACCEPTED_FIXTURE_SNAPSHOT_DEMO_APPLICATION_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "CURRENT SIZE REDUCTION PASS COMPLETE / STOP. Source#4342 head75708ededc97f9d8c6f007ad55eea196b64ab142 merged release3ba3d5a078b93f8a32d6ac806def6c09154c127b; exact Security37006063957/lead37006063996/build37006158877/fullbrowser37006158679 SUCCESS. Favorites/comparison unchanged;14retired My tour functions removed, legacy storage untouched, active current tour/application/exact-refresh/Back preserved. App−7670raw/−5128served/−1627localgzip; CSS exact-AST derived packing−12367served/−5375localgzip; initial/full JS+CSS−17495B/−7002localgzip. One command5952369271→publisher37007122949 attempt1 SUCCESS, deployment11226480849 digest95f497069699040a897a0ab93f8a794c001d64777f5579795efb38c92ad8dc29 verified; terminal5952483159/5952483571. Hosted snapshot/filter/calendar/hotel/current tour/cold+warm demo flights/active application+Back/pristine LIVE passed; pageerrors0.11common JSON identical;96/146PNG exact, others inspected scroll/focus/transitions/no layout regression. Current-candidate eager/deferred probe5ctx/width205.1→208.5ms390,222.6→213.7ms1280 is NOT package before/after; no consistent acceleration claim. noindex/lead403/LOCAL403/counter0/supplier0/reallead0; production/sibling unchanged, rollback retained. Physical Safari/iPhone, real supplier/quote/flights and real lead delivery remain separately UNVERIFIED. Source/integration/publisher claims RELEASED; final docs/current_task checkpoint only then STOP. Earlier F1/F2/F3 audit retained; data.js/pure meal extraction still deferred under bounded INT→SEARCH handoff. No automatic further microqueue or historical replay.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-size-reduction-20261002.md"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
