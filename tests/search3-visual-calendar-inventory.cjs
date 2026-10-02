@@ -81,6 +81,43 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  console.log('PASS filter existence: 720 hotel/filter/date/shortlist cases; first-only age calls 2000->2, full 2000->1001; raw references and sorted output retained');
 }
 
+// Recovery renders at most three positive candidates. Once that visible result is
+// full, later scalar hotel counts cannot affect markup, order or recovery models.
+{
+ const active=()=>({filters:{...defaultFilters(),max:100000,min:50000,q:'Hotel',meals:['AI'],stars:[5],flight:['regular'],operators:['A'],beach:true,rating:true,family:true,spa:true,resorts:['Кемер'],hotelId:1,amenities:Array.from({length:20},(_,i)=>'amenity:'+i)},onlyFavorites:true,selectedDate:day(2)});
+ const run=(candidate,model,outcomes,verifyUntouched=true)=>{
+  let calls=0,hotelVisits=0,minimumScans=0;const amenityReads=[],inventory=Array.from({length:100},(_,id)=>({id}));
+  const context={structuredClone,countMatchingHotels:()=>{const result=outcomes[calls++]??0;for(const hotel of inventory){assert(hotel);hotelVisits++;}return result;},hotels:inventory,hotelOffers:()=>{minimumScans++;return[{total:200000}]},money:value=>value+' ₽',amenityNames:{get:key=>{amenityReads.push(key);return {label:String(key)}}},rangeText:()=>'',state:{search:{from:day(0),to:day(6)}},defaultFilters};
+  const recovery=new Function(...Object.keys(context),section(candidate,'function recoverySuggestions(','function recoveryHTML')+';return recoverySuggestions;')(...Object.values(context));
+  const before=verifyUntouched?structuredClone(model):null,rows=recovery(model);if(verifyUntouched)assert.deepEqual(model,before,'recovery keeps the caller model untouched');
+  return {rows,calls,hotelVisits,minimumScans,amenityReads};
+ };
+ const saturated=run(source,active(),Array(40).fill(1));
+ assert.deepEqual(saturated.rows.map(row=>row.key),['budget','minimum','q']);assert.deepEqual(saturated.rows.map(row=>row.count),[1,1,1]);
+ assert.equal(saturated.calls,3);assert.equal(saturated.hotelVisits,300);assert.equal(saturated.minimumScans,100,'budget minimum keeps its separate exact scan');
+ assert.equal(saturated.rows[0].model.filters.max,200000);assert.equal(saturated.rows[1].model.filters.min,0);assert.equal(saturated.rows[2].model.filters.q,'');
+
+ const partialOutcomes=Array(35).fill(0);partialOutcomes[1]=2;partialOutcomes[5]=4;
+ const partial=run(source,active(),partialOutcomes);
+ assert.deepEqual(partial.rows.map(row=>[row.key,row.count]),[['minimum',2],['flight',4]]);
+ assert.equal(partial.calls,35,'fewer than three positive candidates still inspect every applicable recovery');assert.equal(partial.hotelVisits,3500);
+ const laterThird=[...partialOutcomes];laterThird[8]=6;laterThird[12]=8;
+ const bounded=run(source,active(),laterThird);
+ assert.deepEqual(bounded.rows.map(row=>[row.key,row.count]),[['minimum',2],['flight',4],['rating',6]]);
+ assert.equal(bounded.calls,9,'the first three positive candidates retain priority and stop later scalar counts');assert.equal(bounded.rows[1].model.filters.flight.length,0);assert.equal(bounded.rows[2].model.filters.rating,false);
+
+ const reset=run(source,{filters:defaultFilters(),onlyFavorites:false,selectedDate:null},[7]);
+ assert.deepEqual(reset.rows.map(row=>row.key),['reset']);assert.equal(reset.calls,1);assert.deepEqual(reset.rows[0].model.filters,defaultFilters());
+
+ const inherited=new Array(2),prototype=Object.create(Array.prototype);prototype[1]='inherited';Object.setPrototypeOf(inherited,prototype);
+ const oddModel={filters:{...defaultFilters(),amenities:inherited},onlyFavorites:false,selectedDate:null},odd=run(source,oddModel,Array(4).fill(0));
+ assert.deepEqual(odd.amenityReads,[undefined,'inherited']);assert.strictEqual(oddModel.filters.amenities,inherited);assert.equal(1 in inherited,true);
+ const growing=['first'];let appended=false;Object.defineProperty(growing,0,{enumerable:true,get(){if(!appended){appended=true;growing.push('appended')}return 'first'}});
+ const grown=run(source,{filters:{...defaultFilters(),amenities:growing},onlyFavorites:false,selectedDate:null},Array(5).fill(0),false);
+ assert.deepEqual(grown.amenityReads,['first','appended']);assert.equal(growing.length,2,'live amenity growth remains visible to the same native iterator');
+ console.log(`PASS recovery candidate cap: visible 3/3; scalar calls 35->${saturated.calls}, hotel visits 3500->${saturated.hotelVisits}; partial/priority/reset/raw sparse/inherited/live-growth parity; budget minimum scan unchanged; supplier/lead HTTP 0`);
+}
+
 // Budget recovery needs the sorted comparator minimum, without materializing or
 // sorting every matching offer. Keep native filter length/hole/inheritance facts.
 {
