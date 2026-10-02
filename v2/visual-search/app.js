@@ -500,7 +500,7 @@ function syncFilterResetState(model=editingFilterModel()){
 function emptyCalendarContext(){
  if(data.scenario!=='live'||!data.observationScopeSupported(state.search,state.filters))return '';
  const from=state.selectedDate||state.search.from,to=state.selectedDate||state.search.to;
- const point=resultCalendar.observations.filter(p=>p.date>=from&&p.date<=to&&Number.isFinite(p.price)&&p.price>0).sort((a,b)=>a.price-b.price)[0];
+ const point=resultCalendar.observations.filter(p=>p.date>=from&&p.date<=to&&Number.isFinite(p.price)&&p.price>0).reduce((minimum,p)=>!minimum||p.price<minimum.price?p:minimum,null);
  if(!point)return '';
  const observed=/^\d{4}-\d{2}-\d{2}/.test(point.observedAt||'')?' · найдена '+dateText(point.observedAt.slice(0,10)):'';
  return `<strong>В календаре — от ${money(point.price)}${esc(observed)}</strong><p>Это ранее сохранённая цена. Предложений по ней в текущем поиске нет.</p>`;
