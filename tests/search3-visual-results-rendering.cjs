@@ -363,6 +363,43 @@ rankMutation.ctx.hotels=[2,5].map(id=>({id,rating:4,beach:null,legacyIds:[id],of
 assert.notDeepEqual(Array.from(rankMutation.run(),r=>r.hotel.id),previousRanking(rankMutation.ctx.hotels,'recommended',rankMutation.ctx.popularity).map(r=>r.hotel.id),'popularity tie-break mutation detected');
 console.log('PASS actual result ranking: '+rankingRecords.length+' independent order/reference/progressive observations; digest '+rankingDigest+'; score work '+oldRanking.work.score+' → '+ranking.work.score+', rank work '+oldRanking.work.rank+' → '+ranking.work.rank+'; supplier/lead HTTP 0');
 
+// Normalized child ages are at most three integers in 0..17. Keep the exact
+// legacy sorted-JSON fallback for any other iterable, but avoid allocating and
+// sorting normalized arrays once for the search and once per checked offer.
+const previousTouristAgesKey='function touristAgesKey(){return null;}\nconst touristAgesFallback=ages=>JSON.stringify([...ages].sort());\n';
+function agePredicateOwner(code=source){
+ const work={sorts:0},ctx={Array,JSON,Number,Object,String,work,matchesMeal:()=>true};
+ vm.createContext(ctx);
+ const owner=section(code,'function touristAgesKey(','function hotelOffers(').replace('const touristAgesFallback=ages=>JSON.stringify([...ages].sort());','const touristAgesFallback=ages=>{work.sorts++;return JSON.stringify([...ages].sort());};');
+ vm.runInContext(owner+'\nglobalThis.ageKey=ages=>touristAgesKey(ages)??touristAgesFallback(ages);globalThis.agePredicate=hotelOfferPredicate;',ctx);
+ const baseSearch={origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]};
+ const filters={meals:[],min:0,max:null,operators:[],flight:[]};
+ return {ctx,work,key:ages=>ctx.ageKey(ages),predicate:ages=>ctx.agePredicate({...baseSearch,ages},filters,baseSearch.from,baseSearch.to),run:(offers,ages)=>{work.sorts=0;const predicate=ctx.agePredicate({...baseSearch,ages},filters,baseSearch.from,baseSearch.to);const rows=offers.filter(predicate);return {rows,sorts:work.sorts};}};
+}
+const legacyAgeSource=source.replace(section(source,'function touristAgesKey(','function hotelOfferPredicate('),previousTouristAgesKey);
+const ageOwner=agePredicateOwner(),legacyAgeOwner=agePredicateOwner(legacyAgeSource);
+const ageOffer=ages=>({search:{origin:'Москва',country:'4'},adults:2,ages,day:'2026-10-14',nights:7,meal:'AI',total:100000,operator:'Operator',flight:'regular'});
+const normalizedAges=[[]];
+for(const first of [0,1,2,9,10,17])normalizedAges.push([first]);
+for(const first of [0,1,2,9,10,17])for(const second of [0,1,2,9,10,17])normalizedAges.push([first,second]);
+for(const first of [0,1,2,9,10,17])for(const second of [0,1,2,9,10,17])for(const third of [0,1,2,9,10,17])normalizedAges.push([first,second,third]);
+for(const left of normalizedAges)for(const right of normalizedAges)assert.equal(ageOwner.key(left)===ageOwner.key(right),legacyAgeOwner.key(left)===legacyAgeOwner.key(right),'normalized age-key equivalence '+JSON.stringify(left)+' / '+JSON.stringify(right));
+const fallbackAges=[[1.5],['1'],[0,1,2,3],[-1],[18],[NaN],[null],Array(1),new Uint8Array([0,17])];
+for(const searchAges of [...normalizedAges.slice(0,30),...fallbackAges]){
+ const offers=[...normalizedAges.slice(0,40),...fallbackAges].map(ageOffer),before=offers.map(offer=>Array.from(offer.ages));
+ const expected=legacyAgeOwner.run(offers,searchAges).rows,actual=ageOwner.run(offers,searchAges).rows;
+ assert.deepEqual(actual.map(offer=>offers.indexOf(offer)),expected.map(offer=>offers.indexOf(offer)),'age predicate reference parity '+JSON.stringify(Array.from(searchAges)));
+ actual.forEach((offer,index)=>assert.strictEqual(offer,expected[index],'raw offer identity '+index));
+ assert.deepEqual(offers.map(offer=>Array.from(offer.ages)),before,'age arrays remain unmodified');
+}
+const mutable=ageOffer([0,17]),currentPredicate=ageOwner.predicate([17,0]),legacyPredicate=legacyAgeOwner.predicate([17,0]);
+assert.equal(currentPredicate(mutable),legacyPredicate(mutable));mutable.ages[1]=16;assert.equal(currentPredicate(mutable),legacyPredicate(mutable));mutable.ages.reverse();assert.equal(currentPredicate(mutable),legacyPredicate(mutable));mutable.ages.splice(0,2,17,0);assert.equal(currentPredicate(mutable),legacyPredicate(mutable));
+const ageWork=Array.from({length:1000},()=>ageOffer([17,0]));
+const oldAgeWork=legacyAgeOwner.run(ageWork,[0,17]),newAgeWork=ageOwner.run(ageWork,[0,17]);
+assert.deepEqual(newAgeWork.rows,oldAgeWork.rows,'1000-offer normalized age membership retained');
+assert.deepEqual([oldAgeWork.sorts,newAgeWork.sorts],[1001,0],'normalized age sorts removed');
+console.log('PASS tourist age keys: '+normalizedAges.length+' normalized keys with pairwise legacy equivalence, '+fallbackAges.length+' fallback shapes and live mutation parity; age-array sorts '+oldAgeWork.sorts+' → '+newAgeWork.sorts+' for 1000 offers; raw offer/age identity retained');
+
 // Price/rating result sorts snapshot the active key once per retained row.
 // Compare the actual owner against its previous direct-comparator behavior so
 // ties, unusual numeric values and raw row identity/order stay independently guarded.
