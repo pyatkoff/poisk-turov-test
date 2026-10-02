@@ -1286,19 +1286,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: bounded refactor pass complete; cumulative release accepted",
-    "status": "REFACTOR_PASS_COMPLETE",
+    "title": "Search3 NEXT: bounded structural pass F1/F2/F3 complete; cumulative release accepted",
+    "status": "STRUCTURAL_PASS_COMPLETE",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4338,
+    "pr": 4340,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner 2026-10-02: завершить текущий проход ровно тремя содержательными этапами — уже измеренный mergeSearchResults остаток, итоговая сверка крупных скриптов с суммарными размерами и одинаковыми браузерными сценариями, один накопленный NEXT и приёмка. Перейти от количества O-пакетов к завершению; малозначительные улучшения отложить. Все три этапа выполнены.",
-    "last_fully_checked_release_sha": "4a88cdd02dd609ecf1eaf35cae2241c807d0a706",
-    "published_source_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
-    "acceptance_status": "NEXT_REFACTOR_ACCEPTED_FIXTURE_AND_SNAPSHOT_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "CURRENT PASS COMPLETE / STOP MICRO-OPTIMIZATION QUEUE. #4338 source1525640b410ab602960f9e6cf2e427b8ecc5293e checked and merged release4a88cdd02dd609ecf1eaf35cae2241c807d0a706. Final inventory reads2000→1000, flatMap intermediate1000→0. Security36982752970, lead36982753066, build36982753004, focused+full compiled browser36982752961 SUCCESS; exact retained build11215797301 reused. One cumulative NEXT command5948130210 → publisher36983822609 attempt1 SUCCESS; terminal5948222518/5948222721, deployment11216885537 SHA256a3c8b2816e3a0de068e2525f9e8738ccc872cd19b2fdde15419b3a13c2b6c35d verified. Search/filter/calendar/card/selected-tour accepted on identical compiled fixtures and hosted offline snapshot; noindex/lead403/counter0/supplier0/real-leads0, rollback and unchanged production/sibling fingerprints retained. Initial compiled JS439841B/gzip133901B; complete467038B/gzip143738B, cumulative +1540B/+589B vs published DESIGN. Same-scenario DOM/geometry unchanged; browser latency not measured. Physical Safari/iPhone, real supplier/quote and real lead delivery remain UNVERIFIED, separate from refactor completion. Finite F1 app responsibility boundary, F2 shared data.js via bounded INT→SEARCH handoff, F3 measured eager/lazy dependency graph are deferred to a separate bounded scope; do not automatically reopen this pass or implement another single-call package. Old historical queues and terminal publishers are not new work. No production approval is implied. Source/publisher claims RELEASED; final audit/state checkpoint only.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-refactor-final-20261002.md"
+    "owner_request": "Owner 2026-10-02, последующее «давай делать»: завершить новый ограниченный F1/F2/F3 scope после закрытого refactor pass — одну компонентную границу app.js, структурный анализ data.js с конечным INT→SEARCH контрактом, измерение начального графа и одну накопленную NEXT-публикацию с приёмкой. Все три результата завершены; F2 runtime extraction явно deferred.",
+    "last_fully_checked_release_sha": "8f54d33c6279feba85b23f8b963d4aacf292a2a7",
+    "published_source_sha": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "acceptance_status": "NEXT_STRUCTURAL_ACCEPTED_FIXTURE_SNAPSHOT_AND_DEMO_FLIGHTS_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "CURRENT STRUCTURAL PASS COMPLETE / STOP MICRO-OPTIMIZATION QUEUE. Source #4340 head59a216330fbd6bae28340cbb0c856a35f54b7d03 merged release8f54d33c6279feba85b23f8b963d4aacf292a2a7; Security36992108707/lead36992108690/build36992108697/focused+full browser36992108677 SUCCESS. F1:22 filter presentation functions separated with fresh host state/focus/history parity. F2:complete126244B/107-function data.js analysis and bounded future pure meal INT→SEARCH contract; runtime blobb3d5ae68f2246e3f1f6e22a216970ab628b4942e unchanged. F3:eager summaries/API and cold picker9847 compiled B/3737gzip, compiled request bootstrap0/cold1/warm0, guarded loading/retry/recovery. Initial LIVE439841→434984B/gzip133901→133360B; full467038→472028B/gzip143738→146934B. Five paired fresh contexts at390/1280 readiness175.8→179.1ms/180.6→180.2ms; no measured latency improvement claim. One command5949786598 → publisher36992900244 attempt1 SUCCESS, deployment11220331373 digest1b2a71ea531102534b60acfba7a5775258cf3df0c083d71d15fcf7f84199dfbc verified; hosted terminal5950090374/5950090783. All11 common browser receipts/geometry identical; hosted pristine/snapshot/filter/calendar/hotel/selected tour/cold+warm fictional flights accepted, page-origin errors0. noindex/lead403/LOCAL403/counter0/supplier0/real-leads0; production/sibling unchanged, rollback retained. Physical Safari/iPhone, real supplier search/flight/quote and real lead delivery remain UNVERIFIED separately. Future pure meal implementation requires single-executor INT→SEARCH handoff; other large app boundaries/profile only a new bounded owner scope. No automatic additional O/micro queue or historical operation replay. Source/integration/publisher claims RELEASED; final docs/current_task checkpoint only, then STOP.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-structural-final-20261002.md"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
