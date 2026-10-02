@@ -1,0 +1,1452 @@
+{
+  "schema": 1,
+  "package": "comparison removal and confirmed retired CSS",
+  "date": "2026-10-02",
+  "status": "COMPLETE_STOP",
+  "owner_correction": "Preserve ONLY favorites; remove hotel/tour comparison.",
+  "repository": "pyatkoff/poisk-turov-test",
+  "target_branch": "release/search3-production-ready-v1",
+  "source_pr": 4344,
+  "source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+  "source_tree": "1333630fa429d3f157d8d1c2eacf1584bbc4097c",
+  "merged_release_sha": "03fb11c4b69abac2efad96f3d42a9387c9c243ba",
+  "baseline_release_sha": "aa8c22a019e23634259104383a7259194eaa45ba",
+  "baseline_published_source_sha": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+  "main_unchanged": "d4ac6ee735d37bc2d24286f742abc9ce9be42e08",
+  "source_paths": [
+    "v2/visual-search/app.js",
+    "v2/visual-search/offer-list-v1.js",
+    "v2/visual-search/index.html",
+    "v2/visual-search/styles.css",
+    "v2/visual-search/mobile-controls-v1.css",
+    "tests/search3-visual-offer-list-inventory.cjs",
+    "tests/search3-visual-results-rendering.cjs",
+    "tests/search3-visual-offer-list-lazy.cjs",
+    "tests/search3-visual-event-dispatch.cjs",
+    "tests/search3-visual-modal-history.cjs",
+    "tests/search3-visual-v120-recorded-journey-tests.cjs",
+    "v2/visual-search/migration-manifest.json"
+  ],
+  "source_git_blob_proof": [
+    {
+      "path": "v2/visual-search/app.js",
+      "sha": "1da692e047f5dfc2ea81aebeaebb89fb1e68b34b"
+    },
+    {
+      "path": "v2/visual-search/offer-list-v1.js",
+      "sha": "d53a97a8c92aadce2b6104d7a83ac130008b2e8e"
+    },
+    {
+      "path": "v2/visual-search/index.html",
+      "sha": "488b9055716ea6e0829d7cedcd69bd34724d2618"
+    },
+    {
+      "path": "v2/visual-search/styles.css",
+      "sha": "827632ed5606ef1e2e486ee866f227bed65f8634"
+    },
+    {
+      "path": "v2/visual-search/mobile-controls-v1.css",
+      "sha": "a0a3699638472dd68f271b3ac97d5cbbc967f349"
+    },
+    {
+      "path": "tests/search3-visual-offer-list-inventory.cjs",
+      "sha": "651e08b3d025d27a23d3bb11053e6bbd7be8846c"
+    },
+    {
+      "path": "tests/search3-visual-results-rendering.cjs",
+      "sha": "b1ce7d1d93e4d93244952b64ba9a40e3cdb5b1a5"
+    },
+    {
+      "path": "tests/search3-visual-offer-list-lazy.cjs",
+      "sha": "e82031c605c8a6aaac5eead0c024215ef69a7d63"
+    },
+    {
+      "path": "tests/search3-visual-event-dispatch.cjs",
+      "sha": "8bfd022ec51d0ffffa0f6ed92cb0a243019ca220"
+    },
+    {
+      "path": "tests/search3-visual-modal-history.cjs",
+      "sha": "c9ea2b0be1be25371563a6e36bd6201088f2a06d"
+    },
+    {
+      "path": "tests/search3-visual-v120-recorded-journey-tests.cjs",
+      "sha": "bb79b43ec7f9a70ce59c83ef23ee777668d1539a"
+    },
+    {
+      "path": "v2/visual-search/migration-manifest.json",
+      "sha": "3d2f5da896f1ca68aa9def5559056bc70a11224a"
+    }
+  ],
+  "js_css_bytes": {
+    "live": {
+      "before": {
+        "raw": 811621,
+        "served": 664401,
+        "gzip_after": 172196
+      },
+      "after": {
+        "raw": 761145,
+        "served": 617108,
+        "gzip_after": 163454
+      },
+      "saving": {
+        "raw": 50476,
+        "served": 47293,
+        "gzip_after": 8742
+      }
+    },
+    "offline": {
+      "before": {
+        "raw": 607255,
+        "served": 519912,
+        "gzip_after": 130534
+      },
+      "after": {
+        "raw": 556779,
+        "served": 472619,
+        "gzip_after": 121792
+      },
+      "saving": {
+        "raw": 50476,
+        "served": 47293,
+        "gzip_after": 8742
+      }
+    },
+    "complete_live": {
+      "before": {
+        "raw": 857813,
+        "served": 701445,
+        "gzip_after": 185770
+      },
+      "after": {
+        "raw": 798507,
+        "served": 646903,
+        "gzip_after": 174822
+      },
+      "saving": {
+        "raw": 59306,
+        "served": 54542,
+        "gzip_after": 10948
+      }
+    },
+    "complete_offline": {
+      "before": {
+        "raw": 653447,
+        "served": 556956,
+        "gzip_after": 144108
+      },
+      "after": {
+        "raw": 594141,
+        "served": 502414,
+        "gzip_after": 133160
+      },
+      "saving": {
+        "raw": 59306,
+        "served": 54542,
+        "gzip_after": 10948
+      }
+    }
+  },
+  "measurement_definition": {
+    "raw": "source UTF-8 bytes",
+    "served": "deterministic compiled artifact bytes",
+    "gzip_after": "sum of separate local level-9 gzip streams; not measured HTTP",
+    "full": "initial plus all cold JS owners; CSS same in initial/full",
+    "latency_improvement_claimed": false
+  },
+  "js_graph_counts": {
+    "live_initial": 17,
+    "offline_initial": 8,
+    "cold": 3
+  },
+  "js_totals_before": {
+    "live": {
+      "raw": 564709,
+      "served": 429856,
+      "gzip_before": 157870,
+      "gzip_after": 131733
+    },
+    "offline": {
+      "raw": 360343,
+      "served": 285367,
+      "gzip_before": 105916,
+      "gzip_after": 90071
+    },
+    "ondemand": {
+      "raw": 46192,
+      "served": 37044,
+      "gzip_before": 15300,
+      "gzip_after": 13574
+    },
+    "complete_live": {
+      "raw": 610901,
+      "served": 466900,
+      "gzip_before": 173170,
+      "gzip_after": 145307
+    },
+    "complete_offline": {
+      "raw": 406535,
+      "served": 322411,
+      "gzip_before": 121216,
+      "gzip_after": 103645
+    }
+  },
+  "js_totals_after": {
+    "live": {
+      "raw": 550874,
+      "served": 417922,
+      "gzip_before": 154449,
+      "gzip_after": 128604
+    },
+    "offline": {
+      "raw": 346508,
+      "served": 273433,
+      "gzip_before": 102495,
+      "gzip_after": 86942
+    },
+    "ondemand": {
+      "raw": 37362,
+      "served": 29795,
+      "gzip_before": 12873,
+      "gzip_after": 11368
+    },
+    "complete_live": {
+      "raw": 588236,
+      "served": 447717,
+      "gzip_before": 167322,
+      "gzip_after": 139972
+    },
+    "complete_offline": {
+      "raw": 383870,
+      "served": 303228,
+      "gzip_before": 115368,
+      "gzip_after": 98310
+    }
+  },
+  "changed_asset_owners": [
+    {
+      "source": "visual-search/app.js",
+      "raw": 261638,
+      "served": 207420,
+      "gzip_after": 60840,
+      "source_sha256": "f38237af04b096fb62ee013b9aa119e6599bc0e328c386717a6c5b02252877c4",
+      "sha256": "8e2e8073acb18b9f4d326abc67d52ee3c589c34fb3daa8910680480b1503ad9f"
+    },
+    {
+      "source": "visual-search/offer-list-v1.js",
+      "raw": 11822,
+      "served": 9052,
+      "gzip_after": 3527,
+      "source_sha256": "f879e9ab2ea88bdbba1b9b5705f5718f1f485b86797b082fb3b7762e27c7776d",
+      "sha256": "5b7e21704b41a56aa827597cc9f13d1e2717059c07fdb24066ad8e85a1ccd751"
+    },
+    {
+      "source": "visual-search/styles.css",
+      "raw": 208262,
+      "served": 197662,
+      "gzip_after": 34189,
+      "source_sha256": "f0c0b17ac988749972eb31ef864152e4f26687aa7d50ee64fea6aecb1b8c3533",
+      "sha256": "2a4690417c4b3adbd39f38090428a1472982298b885fff0c8548a05bdc0b9a18"
+    },
+    {
+      "source": "visual-search/mobile-controls-v1.css",
+      "raw": 2009,
+      "served": 1524,
+      "gzip_after": 661,
+      "source_sha256": "26ab39aca1bd308d59f838fa0dcca1ebb4912042e6ba6e78f5c4199a6412fd56",
+      "sha256": "5baf1dc2cdb82f49635c6d442f3a64d4858beaa94635f240ad9a3038a0d647bb"
+    }
+  ],
+  "data_js_unchanged": {
+    "source_sha256": "4886784f5a5cf4f4f5b9f6395cd282caa085eeecffbf56d4b49e0a3f4c2fb35b",
+    "served_sha256": "c56324e713a0dcfa031a4ce01496dd5d0ad08528918a56be23edd028af553b14",
+    "raw": 126244,
+    "served": 87876,
+    "gzip_after": 24372
+  },
+  "js_removal_proof": {
+    "schema": 1,
+    "policy": "comparison-only product deletion; retained active/favorite/provider/price/fuel/lead functions checked against exact local 7a4e93b source",
+    "removedAppFunctions": [
+      "renderComparisonFooter",
+      "selectComparisonVariant",
+      "refreshTourComparison",
+      "toggleCompare",
+      "openCompare",
+      "renderCompare"
+    ],
+    "removedColdFunctions": [
+      "normalizeComparison",
+      "comparisonDecisionHTML",
+      "renderTourComparison"
+    ],
+    "removedColdBindings": [
+      "comparisonVariantLabel",
+      "comparisonFields"
+    ],
+    "retainedFunctions": [
+      {
+        "name": "toggleFavorite",
+        "sha256": "0e0cc5082d203c650d63904ce591e05fbf3ec5a3600d16c9db00f47b4b87793c",
+        "bytes": 803
+      },
+      {
+        "name": "openFavorites",
+        "sha256": "70bcc95bba28cdd82e217917ef5197fcb1103474dafd890e55ad6ac0dd61e5e6",
+        "bytes": 146
+      },
+      {
+        "name": "savedHotelPhoto",
+        "sha256": "5e25ddef33e192c2df5dbac1d3cf49fe4c88d43e9fbb37acc7a0eedea68877f4",
+        "bytes": 372
+      },
+      {
+        "name": "savedAvailability",
+        "sha256": "389dadd807e2b72f4e25c0ab058e56078521e270e725257d1861c94abf3479d9",
+        "bytes": 234
+      },
+      {
+        "name": "savedRecovery",
+        "sha256": "89879839e91ac15e03c1667fe2dc6c7c3c55982623ae42a0e9f54d0683b4e34f",
+        "bytes": 217
+      },
+      {
+        "name": "savedContext",
+        "sha256": "4f3da88d2de542ffe83a144ceccbb0bde998514cae5448c43aa7c705c66d2935",
+        "bytes": 952
+      },
+      {
+        "name": "hotelOfferPredicate",
+        "sha256": "bc541100fc07fda06e57084c466e4aaf4db92c8476130de9a5a6e2265f400873",
+        "bytes": 687
+      },
+      {
+        "name": "hotelOffers",
+        "sha256": "652321fe54397ceb606df8b042a58e594afe6da4744599fb928797fa8a45455d",
+        "bytes": 984
+      },
+      {
+        "name": "hotelMatch",
+        "sha256": "cc0f367b5159fb15310acab2feacf63b74ffa2d000f4bf9ba5dd48dc65a7c370",
+        "bytes": 635
+      },
+      {
+        "name": "resultInventory",
+        "sha256": "9dea792d87a914d0b956bf97839243ac35507415017f7435d5099131f2c7dcec",
+        "bytes": 689
+      },
+      {
+        "name": "sortResultItems",
+        "sha256": "9a4794f376920fa0d9f2418834f6966091df0a307b7e61d6f119a90618799d10",
+        "bytes": 779
+      },
+      {
+        "name": "selectedTourHotel",
+        "sha256": "e0172044cfd26b75e79211a1e4b5e88288b7ac7ce07e1ee906f7ff150a2bc673",
+        "bytes": 78
+      },
+      {
+        "name": "selectedTourOfferSnapshot",
+        "sha256": "a19d8ad819f235b6c442b5841cb7851cebf7043cd04d5d45a0e8a5b771a4c027",
+        "bytes": 1618
+      },
+      {
+        "name": "sameSelectedTourConditions",
+        "sha256": "d5eaccf82698317e984af9d019cdd6b2d26e75cb2697a34c553a6c6617b99dbf",
+        "bytes": 330
+      },
+      {
+        "name": "openLeadPreview",
+        "sha256": "3c08e5fd6758c3a1e093d6bc2715794d8f097f1968e266fcbd28d229d91da605",
+        "bytes": 1069
+      },
+      {
+        "name": "openOffer",
+        "sha256": "625d4f14eab47824dde3edbc8f05b3ccbc4620818803efb61dcf86bfa78dc9d2",
+        "bytes": 736
+      },
+      {
+        "name": "renderRealOffer",
+        "sha256": "f0158915e6909dfe4988e53483aed6dc937c81ef43703ed0d041ea30421116d8",
+        "bytes": 984
+      },
+      {
+        "name": "fuelAmount",
+        "sha256": "9044664e25274a2243aeacf93648ca2cac718eecfd2fb57ac29da3f9c27c1d2d",
+        "bytes": 274
+      },
+      {
+        "name": "fuelIncludedInPrice",
+        "sha256": "5afc35ed5a7b1797801a378b502fd51314aaf6a84bd92276f2e2ba2f47ccf917",
+        "bytes": 605
+      },
+      {
+        "name": "fuelText",
+        "sha256": "d4d9d83321e437ec17e3dfea3bebfc485842b4d33db49d2c0c03e06028e72182",
+        "bytes": 263
+      },
+      {
+        "name": "fuelDisclosureHTML",
+        "sha256": "6587f8e3f892f8ca7d1bc6018b1ca8bd465a4729c82ed55408ee3b038f2578c2",
+        "bytes": 744
+      },
+      {
+        "name": "withFlightPair",
+        "sha256": "460e6271272d44217fa44ae9f079dd369a55b15a2f8f63d7b3c0687fc3cc9c51",
+        "bytes": 182
+      },
+      {
+        "name": "openFlightPicker",
+        "sha256": "dfc5c6c2204aec275ce41e7503ee72d1dd9d1330f1a8faa2da84d211cae25e1e",
+        "bytes": 508
+      },
+      {
+        "name": "renderFlightPicker",
+        "sha256": "08aab1f7585f1ac8a7f8d392bbd8021e4987cd29646df1d3c32feeb5cbaf4a1a",
+        "bytes": 1916
+      },
+      {
+        "name": "applyFlightPair",
+        "sha256": "54608b28b93aa21f9796b6e13f528889686bcfda1f176634d7bb524978eab980",
+        "bytes": 274
+      },
+      {
+        "name": "refreshHotel",
+        "sha256": "d8a14aa531d0764dca2cdbdfb0c60fe51e6f23773e695e77941a1b9b10fca318",
+        "bytes": 1273
+      },
+      {
+        "name": "renderSearchStatus",
+        "sha256": "67723a5d72fadb3af18a90114947fe7ed29f557a3e1a98de9c709c677eb4c25d",
+        "bytes": 4555
+      },
+      {
+        "name": "openAndromedaFlightChoice",
+        "sha256": "943ca1bc5b91c2f317e04ce29dc841f3ef02b8b056afff95882a15ec146b712f",
+        "bytes": 2686
+      },
+      {
+        "name": "openAndromedaVerified",
+        "sha256": "6df3e41f3dd37c0a3620f77dc81f4093d273c070a6f29c7123cce14848ab43cd",
+        "bytes": 1610
+      },
+      {
+        "name": "openAndromedaApplicationPreview",
+        "sha256": "0ba1de02ac7cac4ce5afbd4636d9155ab2907fa9868b311665d1dd43e83266e5",
+        "bytes": 1326
+      },
+      {
+        "name": "openAnexPackageQuote",
+        "sha256": "cab34f8b927e6d748ab13842b94325d6fcbc7940ac4e81705d10fb0a2647e5b6",
+        "bytes": 3427
+      },
+      {
+        "name": "openAnexConcreteCurrent",
+        "sha256": "7a5db4d081b857556cf00a13b747cabce807ab195eca02b9e3b30e41871f7e0e",
+        "bytes": 1762
+      },
+      {
+        "name": "openAnexAdditionalEstimate",
+        "sha256": "51b647b930fa7f64abdac49d3ece88fce05e670f44b1971294238f49cc9fdb39",
+        "bytes": 2213
+      }
+    ],
+    "refreshLiveHotel": {
+      "sha256": "95c1f0581e20f085bd929381aec720da4e3a33390dcb1fa10ed672cb265c98ae",
+      "normalization": "only removed comparison fields in openAllOffers restoration"
+    },
+    "files": [
+      {
+        "name": "app.js",
+        "source": {
+          "before": 275473,
+          "after": 261638,
+          "sha256_before": "a5c2c5eb2366e101cc81e676311e1b9eb293dc52a1becddca5be31e0b4b0689e",
+          "sha256_after": "f38237af04b096fb62ee013b9aa119e6599bc0e328c386717a6c5b02252877c4"
+        },
+        "served": {
+          "before": 219354,
+          "after": 207420
+        },
+        "gzip": {
+          "before": 63969,
+          "after": 60840
+        }
+      },
+      {
+        "name": "offer-list-v1.js",
+        "source": {
+          "before": 20652,
+          "after": 11822,
+          "sha256_before": "3eb54098f95da08b3663a8de42da22ea5d9df98220c0952494e68e1935990038",
+          "sha256_after": "f879e9ab2ea88bdbba1b9b5705f5718f1f485b86797b082fb3b7762e27c7776d"
+        },
+        "served": {
+          "before": 16301,
+          "after": 9052
+        },
+        "gzip": {
+          "before": 5733,
+          "after": 3527
+        }
+      }
+    ]
+  },
+  "css_removal_proof": {
+    "schema": 1,
+    "css_tree": "3.2.1",
+    "gzip": "sum of separate local level-9 transfers; not measured HTTP",
+    "retired_owner_classes": [
+      "success-actions",
+      "saved-tour-dialog",
+      "saved-tour-hero",
+      "saved-tour-layout",
+      "saved-tour-facts",
+      "saved-quote",
+      "saved-tour-alternatives",
+      "saved-tour-bottom",
+      "saved-footer-note",
+      "saved-footer-quote",
+      "saved-flight-choice",
+      "tour-save-choice",
+      "tour-save-actions",
+      "saved-empty-actions",
+      "verification-state",
+      "verification-symbol",
+      "changed-price",
+      "verified-breakdown",
+      "verification-scenarios",
+      "verification-spinner",
+      "verification-dialog"
+    ],
+    "comparison_owner_classes": [
+      "compare-all-tours",
+      "compare-btn",
+      "compare-controls",
+      "compare-diff-empty",
+      "compare-exact-dates",
+      "compare-hotel",
+      "compare-hotel-card",
+      "compare-key",
+      "compare-name",
+      "compare-pair-controls",
+      "compare-photo",
+      "compare-photo-button",
+      "compare-price",
+      "compare-price-basis",
+      "compare-price-gap",
+      "compare-price-note",
+      "compare-remove",
+      "compare-scope-note",
+      "compare-stars",
+      "compare-tour-link",
+      "compare-tray",
+      "compare-tray-copy",
+      "compare-tray-photos",
+      "comparison",
+      "comparison-date-disclosure",
+      "comparison-date-fields",
+      "comparison-decision",
+      "comparison-dialog",
+      "comparison-difference",
+      "comparison-differences-switch",
+      "comparison-fixed-dates",
+      "comparison-focus-choice",
+      "comparison-footer-summary",
+      "comparison-footnote",
+      "comparison-hidden",
+      "comparison-option-actions",
+      "comparison-option-price",
+      "comparison-option-top",
+      "comparison-options-tools",
+      "comparison-pair-fields",
+      "comparison-price-status",
+      "comparison-room-view",
+      "comparison-scroll",
+      "comparison-selection-hint",
+      "comparison-tour-facts",
+      "comparison-visible-count",
+      "differences-toggle",
+      "metric-note",
+      "offer-comparison-dates",
+      "offer-view-switch",
+      "tour-comparison-dialog",
+      "tour-comparison-grid",
+      "tour-comparison-option"
+    ],
+    "files": [
+      {
+        "name": "styles.css",
+        "proof": "exact AST equality to baseline minus explicit retired owner selectors and newly empty media only",
+        "full_rules": 434,
+        "mixed_rules": 8,
+        "selector_branches": 454,
+        "new_empty_media": 14,
+        "before": {
+          "raw": 244221,
+          "served": 232619,
+          "gzip_before": 44821,
+          "gzip_after": 39703,
+          "source_sha256": "a3a1e084b0049bacc2c5cb1769f17c250eb6782105f328002403fd2a467827f0",
+          "sha256": "9518b87898dead19c596199c4781249a1b3fe09cf8f80aba8e59ccd69e004fa5"
+        },
+        "after": {
+          "raw": 208262,
+          "served": 197662,
+          "gzip_before": 38936,
+          "gzip_after": 34189,
+          "source_sha256": "f0c0b17ac988749972eb31ef864152e4f26687aa7d50ee64fea6aecb1b8c3533",
+          "sha256": "2a4690417c4b3adbd39f38090428a1472982298b885fff0c8548a05bdc0b9a18"
+        }
+      },
+      {
+        "name": "mobile-controls-v1.css",
+        "proof": "exact AST equality to baseline minus explicit retired owner selectors and newly empty media only",
+        "full_rules": 4,
+        "mixed_rules": 2,
+        "selector_branches": 8,
+        "new_empty_media": 0,
+        "before": {
+          "raw": 2691,
+          "served": 1926,
+          "gzip_before": 1017,
+          "gzip_after": 760,
+          "source_sha256": "b0450823552469f6c51530517d929e6ecf5858f373d35d6fc9453aa22a143b38",
+          "sha256": "56a5879c440ff893adccab2c8fec234ba44e805327f3f2b68d4d0f4e5b70e3c0"
+        },
+        "after": {
+          "raw": 2009,
+          "served": 1524,
+          "gzip_before": 793,
+          "gzip_after": 661,
+          "source_sha256": "26ab39aca1bd308d59f838fa0dcca1ebb4912042e6ba6e78f5c4199a6412fd56",
+          "sha256": "5baf1dc2cdb82f49635c6d442f3a64d4858beaa94635f240ad9a3038a0d647bb"
+        }
+      }
+    ],
+    "totals": {
+      "before": {
+        "raw": 246912,
+        "served": 234545,
+        "gzip_before": 45838,
+        "gzip_after": 40463
+      },
+      "after": {
+        "raw": 210271,
+        "served": 199186,
+        "gzip_before": 39729,
+        "gzip_after": 34850
+      }
+    }
+  },
+  "manifest_scope": "Only five adaptedFiles hashes updated; all sourceFiles/donor provenance and other metadata retained.",
+  "local_tests": [
+    {
+      "test": "tests/search3-visual-facet-presentation.cjs",
+      "exit_code": 0,
+      "seconds": 9.042
+    },
+    {
+      "test": "tests/search3-visual-ci-coverage.cjs",
+      "exit_code": 0,
+      "seconds": 0.07
+    },
+    {
+      "test": "tests/search3-visual-formatting.cjs",
+      "exit_code": 0,
+      "seconds": 0.113
+    },
+    {
+      "test": "tests/search3-visual-calendar-inventory.cjs",
+      "exit_code": 0,
+      "seconds": 1.551
+    },
+    {
+      "test": "tests/search3-visual-flight-filter-work.cjs",
+      "exit_code": 0,
+      "seconds": 1.332
+    },
+    {
+      "test": "tests/search3-visual-results-rendering.cjs",
+      "exit_code": 0,
+      "seconds": 3.109
+    },
+    {
+      "test": "tests/search3-visual-offer-list-lazy.cjs",
+      "exit_code": 0,
+      "seconds": 1.255
+    },
+    {
+      "test": "tests/search3-visual-hotel-details-lazy.cjs",
+      "exit_code": 0,
+      "seconds": 0.066
+    },
+    {
+      "test": "tests/search3-visual-hotel-content-text.cjs",
+      "exit_code": 0,
+      "seconds": 0.345
+    },
+    {
+      "test": "tests/search3-visual-passive-contexts.cjs",
+      "exit_code": 0,
+      "seconds": 0.689
+    },
+    {
+      "test": "tests/search3-visual-event-dispatch.cjs",
+      "exit_code": 0,
+      "seconds": 0.707
+    },
+    {
+      "test": "tests/search3-visual-lifecycle-scheduling.cjs",
+      "exit_code": 0,
+      "seconds": 0.071
+    },
+    {
+      "test": "tests/search3-visual-flight-rendering.cjs",
+      "exit_code": 0,
+      "seconds": 0.102
+    },
+    {
+      "test": "tests/search3-visual-data-orchestration.cjs",
+      "exit_code": 0,
+      "seconds": 0.521
+    },
+    {
+      "test": "tests/search3-visual-modal-history.cjs",
+      "exit_code": 0,
+      "seconds": 0.224
+    },
+    {
+      "test": "tests/search3-visual-hotel-details-rendering.cjs",
+      "exit_code": 0,
+      "seconds": 1.057
+    },
+    {
+      "test": "tests/search3-visual-offer-rendering.cjs",
+      "exit_code": 0,
+      "seconds": 33.102
+    },
+    {
+      "test": "tests/search3-visual-migration.cjs",
+      "exit_code": 0,
+      "seconds": 0.068
+    },
+    {
+      "test": "tests/search3-visual-live-bridge.cjs",
+      "exit_code": 0,
+      "seconds": 44.966
+    },
+    {
+      "test": "tests/search3-visual-anex-flight-continuation.cjs",
+      "exit_code": 0,
+      "seconds": 17.71
+    },
+    {
+      "test": "tests/search3-visual-v139-search-edit-tests.cjs",
+      "exit_code": 0,
+      "seconds": 10.882
+    }
+  ],
+  "local_php": "unavailable; PHP/cache/preview-isolation checks verified in source CI",
+  "retained_reference_characterization": {
+    "results": {
+      "observations": 134,
+      "digest": "eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9"
+    },
+    "events": {
+      "retained_observations": 153,
+      "comparison_retired_inert_cases": 9,
+      "digest": "7748f2f2c32ba13bf89d1a2e63ed8e4adea0b56f07e43862f04139a3f200d1e4"
+    },
+    "modal_history": {
+      "observations": 67,
+      "retired_comparison_back_cases": 2,
+      "digest": "7435274e334dade1e26fde71ca1c6af7a700e7babfcf7184b87258a2c57c232f"
+    },
+    "inventory": "32 actual list renders plus grouping/refinement/order/identity/work cases",
+    "policy": "Old reference derived observations; explicitly --compare against baseline app/cold owner; no blind new oracle."
+  },
+  "source_ci": {
+    "security": 37016052950,
+    "lead": 37016052668,
+    "build": 37016052777,
+    "full_visual": 37016052699,
+    "all_success": true
+  },
+  "ready_ci_detail": {
+    "security": 37016052950,
+    "lead": 37016052668,
+    "build": 37016052777,
+    "full_visual": 37016052699,
+    "all_success": true,
+    "focused_and_full_jobs_success": true
+  },
+  "build_proof": {
+    "zip_sha256": "c21289d2931d235bede4cc7dbe7274cc7bc6eefc36995611fdcb52fffab98da2",
+    "artifact_id": 11229219410,
+    "build_run": 37016052777,
+    "source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+    "source_tree": "1333630fa429d3f157d8d1c2eacf1584bbc4097c",
+    "files_verified": 838,
+    "asset_manifest_exact_local": true,
+    "archive_sha256": "fbd8833a82c2cb642878659a6230bb9760ee9365ee718921a25aab4f1da05b30",
+    "manifest_sha256": "08d77e8b283880e7648d899aadbd00cb4ea997346165e4190182ec3edc49a76b",
+    "invariants": {
+      "external_consultant_widget": false,
+      "preview_lead_path": "/_preview/search3-site-candidate/preview-lead-disabled.php",
+      "preview_metrika_counter": 0,
+      "production_api_path": "/api-v2.php",
+      "production_document_root_bootstrap": false,
+      "production_lead_delivery": false,
+      "production_metrika_changes": false
+    }
+  },
+  "payload_diff": {
+    "same_paths": 838,
+    "changed": [
+      {
+        "path": "visual-search/app.js",
+        "before": {
+          "path": "visual-search/app.js",
+          "sha256": "59daa1c530d448014313e26d702d439f22d9209ffc6cfd46229db1c98de83e08",
+          "size": 219354
+        },
+        "after": {
+          "path": "visual-search/app.js",
+          "sha256": "8e2e8073acb18b9f4d326abc67d52ee3c589c34fb3daa8910680480b1503ad9f",
+          "size": 207420
+        }
+      },
+      {
+        "path": "visual-search/asset-size.json",
+        "before": {
+          "path": "visual-search/asset-size.json",
+          "sha256": "b081a3937986d422281e5a699121447361f330f98d9f515fcb2018087f9803d5",
+          "size": 25682
+        },
+        "after": {
+          "path": "visual-search/asset-size.json",
+          "sha256": "ebd88ac56de80e40767b7e9f2c460f5349f9fee89aaa0d536f98f526e9ca8706",
+          "size": 25567
+        }
+      },
+      {
+        "path": "visual-search/index.html",
+        "before": {
+          "path": "visual-search/index.html",
+          "sha256": "9ff9e58754ddb211e0390c52f7e1b88ad8cdc8454e1f14bef98af729d725716e",
+          "size": 15027
+        },
+        "after": {
+          "path": "visual-search/index.html",
+          "sha256": "a522d9edc87893abcb3336e7c32ecc236bb14d4e3b094752c7db6b797aceb5cb",
+          "size": 14857
+        }
+      },
+      {
+        "path": "visual-search/migration-manifest.json",
+        "before": {
+          "path": "visual-search/migration-manifest.json",
+          "sha256": "6fd7748c6460df1f384cc5fd551e7d57e5589af2a41251efafaea70d0dea2031",
+          "size": 5487
+        },
+        "after": {
+          "path": "visual-search/migration-manifest.json",
+          "sha256": "d6ee721b41e54d6b670fae8d71a4fb59762b54b764d255593a5fb985871d63f6",
+          "size": 5487
+        }
+      },
+      {
+        "path": "visual-search/mobile-controls-v1.css",
+        "before": {
+          "path": "visual-search/mobile-controls-v1.css",
+          "sha256": "56a5879c440ff893adccab2c8fec234ba44e805327f3f2b68d4d0f4e5b70e3c0",
+          "size": 1926
+        },
+        "after": {
+          "path": "visual-search/mobile-controls-v1.css",
+          "sha256": "5baf1dc2cdb82f49635c6d442f3a64d4858beaa94635f240ad9a3038a0d647bb",
+          "size": 1524
+        }
+      },
+      {
+        "path": "visual-search/offer-list-v1.js",
+        "before": {
+          "path": "visual-search/offer-list-v1.js",
+          "sha256": "5fd412f15325fed88a47a081d900ee302d924cc6e3a03502cd59b5fd3c0633dc",
+          "size": 16301
+        },
+        "after": {
+          "path": "visual-search/offer-list-v1.js",
+          "sha256": "5b7e21704b41a56aa827597cc9f13d1e2717059c07fdb24066ad8e85a1ccd751",
+          "size": 9052
+        }
+      },
+      {
+        "path": "visual-search/styles.css",
+        "before": {
+          "path": "visual-search/styles.css",
+          "sha256": "9518b87898dead19c596199c4781249a1b3fe09cf8f80aba8e59ccd69e004fa5",
+          "size": 232619
+        },
+        "after": {
+          "path": "visual-search/styles.css",
+          "sha256": "2a4690417c4b3adbd39f38090428a1472982298b885fff0c8548a05bdc0b9a18",
+          "size": 197662
+        }
+      }
+    ],
+    "byte_hash_size_unchanged": 831
+  },
+  "browser_artifact_review": {
+    "schema": 1,
+    "source_pr": 4344,
+    "exact_head": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+    "ci_run": 37016052699,
+    "artifact": 11229074817,
+    "artifact_sha256": "f0d85be0907683d8b41507af472f42cae32580a7d7651fb65fc73ed61dedb127",
+    "baseline_published_source": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+    "before": "/workspace/scratch/db47f226022d/size-browser",
+    "after": "/workspace/scratch/db47f226022d/comparison-browser",
+    "summary": {
+      "common_json": 12,
+      "deterministic_json_exact": 11,
+      "deterministic_json_total": 11,
+      "initial_loading_exact": false,
+      "common_png": 146,
+      "png_byte_equal": 94,
+      "png_pixel_equal": 94,
+      "png_dimension_mismatches": 0
+    },
+    "missing": [],
+    "added": [],
+    "all_52_changed_png_regions_visually_inspected": true,
+    "retained_views": [
+      {
+        "path": "results-390.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "results-1280.png",
+        "byte_equal": false,
+        "changed_pixels": 1,
+        "max_channel_delta": 4,
+        "dimensions_equal": true
+      },
+      {
+        "path": "offer-list-lazy/offers-390.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "offer-list-lazy/offers-1280.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "hotel-details-lazy/hotel-390.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "hotel-details-lazy/hotel-1280.png",
+        "byte_equal": false,
+        "changed_pixels": 4,
+        "max_channel_delta": 1,
+        "dimensions_equal": true
+      },
+      {
+        "path": "progressive-hotel-390.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "progressive-hotel-1280.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/samo-flights-390.png",
+        "byte_equal": false,
+        "changed_pixels": 15,
+        "max_channel_delta": 2,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/samo-flights-1280.png",
+        "byte_equal": false,
+        "changed_pixels": 3731,
+        "max_channel_delta": 8,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/anex-application-390.png",
+        "byte_equal": false,
+        "changed_pixels": 51,
+        "max_channel_delta": 1,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/anex-application-1280.png",
+        "byte_equal": false,
+        "changed_pixels": 8976,
+        "max_channel_delta": 6,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/tourvisor-application-390.png",
+        "byte_equal": true,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "dimensions_equal": true
+      },
+      {
+        "path": "large-flight-choices/tourvisor-application-1280.png",
+        "byte_equal": false,
+        "changed_pixels": 10473,
+        "max_channel_delta": 22,
+        "dimensions_equal": true
+      }
+    ],
+    "inspection": [
+      {
+        "class": "large scroll differences",
+        "paths": [
+          "hotel-more-forward-1280.png",
+          "progressive-facet-1280.png",
+          "applied-summary-360.png"
+        ],
+        "observation": "Same room/offer/filter/card content at different capture scroll positions; sampled aligned regions have 12/384720 pixels maxdelta1 at159px,245/926250 maxdelta4 at15px,0/269250 at10px. These are region-only results, not complete PNG parity. CI separately asserts Forward restores the within-run disclosure scroll and position."
+      },
+      {
+        "class": "provider active foreground",
+        "paths": [
+          "anex-flights-1280.png",
+          "anex-application-forward-1280.png",
+          "anex-retained-application-1280.png"
+        ],
+        "observation": "600160-pixel foreground region is exact in each; other changed pixels are outside this active foreground. Larger bottom-right background difference visually resembles transient toast; inference supported by fixed22px right/24px bottom dark-blue toast CSS and3.6sec hide timer, not a timing experiment."
+      },
+      {
+        "class": "interactive transition states",
+        "observation": "Remaining changed areas show hover/pressed/button shade, radio border interpolation, caret/antialias, tiny edge pixels or blurred-background toast visibility. No missing/reflowed price, selected offer, room, application, flight or provider content identified in inspected regions."
+      }
+    ],
+    "region_checks": [
+      {
+        "path": "hotel-more-forward-1280.png",
+        "before_box": [
+          182,
+          420,
+          1098,
+          840
+        ],
+        "after_box": [
+          182,
+          261,
+          1098,
+          681
+        ],
+        "vertical_shift": 159,
+        "pixels": 384720,
+        "changed_pixels": 12,
+        "max_channel_delta": 1,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "progressive-facet-1280.png",
+        "before_box": [
+          20,
+          120,
+          1255,
+          870
+        ],
+        "after_box": [
+          20,
+          105,
+          1255,
+          855
+        ],
+        "vertical_shift": 15,
+        "pixels": 926250,
+        "changed_pixels": 245,
+        "max_channel_delta": 4,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "applied-summary-360.png",
+        "before_box": [
+          0,
+          100,
+          359,
+          850
+        ],
+        "after_box": [
+          0,
+          90,
+          359,
+          840
+        ],
+        "vertical_shift": 10,
+        "pixels": 269250,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "anex-flights-1280.png",
+        "before_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "after_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "vertical_shift": 0,
+        "pixels": 600160,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "anex-application-forward-1280.png",
+        "before_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "after_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "vertical_shift": 0,
+        "pixels": 600160,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "anex-retained-application-1280.png",
+        "before_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "after_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "vertical_shift": 0,
+        "pixels": 600160,
+        "changed_pixels": 0,
+        "max_channel_delta": 0,
+        "region_only_not_full_image_parity": true
+      },
+      {
+        "path": "anex-package-choices-1280.png",
+        "before_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "after_box": [
+          156,
+          165,
+          1124,
+          785
+        ],
+        "vertical_shift": 0,
+        "pixels": 600160,
+        "changed_pixels": 8399,
+        "max_channel_delta": 91,
+        "region_only_not_full_image_parity": true
+      }
+    ],
+    "initial_loading": {
+      "equal": false,
+      "interpretation": "Timing probe on current compiled candidate; not package before/after benchmark and not latency improvement evidence",
+      "before_summary": [
+        {
+          "width": 390,
+          "trials": 5,
+          "eager_initial_js": 439703,
+          "deferred_initial_js": 429856,
+          "removed_initial_js": 9847,
+          "eager_ready_median_ms": 205.10000000003492,
+          "deferred_ready_median_ms": 208.5
+        },
+        {
+          "width": 1280,
+          "trials": 5,
+          "eager_initial_js": 439703,
+          "deferred_initial_js": 429856,
+          "removed_initial_js": 9847,
+          "eager_ready_median_ms": 222.59999999997672,
+          "deferred_ready_median_ms": 213.69999999995343
+        }
+      ],
+      "after_summary": [
+        {
+          "width": 390,
+          "trials": 5,
+          "eager_initial_js": 427769,
+          "deferred_initial_js": 417922,
+          "removed_initial_js": 9847,
+          "eager_ready_median_ms": 211.29999999998836,
+          "deferred_ready_median_ms": 211.60000000003492
+        },
+        {
+          "width": 1280,
+          "trials": 5,
+          "eager_initial_js": 427769,
+          "deferred_initial_js": 417922,
+          "removed_initial_js": 9847,
+          "eager_ready_median_ms": 224,
+          "deferred_ready_median_ms": 218
+        }
+      ]
+    },
+    "conclusion": "11/11 deterministic receipts and geometry exact; 94/146 PNG byte/pixel exact; 52 differing regions inspected, no retained-layout regression identified. Hosted acceptance below is separate; no physical Safari/iPhone or real supplier/lead acceptance."
+  },
+  "publication": {
+    "publisher_run": 37017303205,
+    "attempt": 1,
+    "conclusion": "success",
+    "command_comment": 5954184154,
+    "command_replays": 0,
+    "derived_artifact_id": 11230099301,
+    "derived_artifact_downloaded": false,
+    "derived_artifact_zip_sha256": "b48e5817128d2000a3182488d756df26e330a40bab9812e43e5772df39367610",
+    "deployment_artifact_id": 11231010337,
+    "deployment_zip_sha256": "3aa530d472d6fbda3c7a003d548f97bce5511ddb1206163d967287eb8f863fbb",
+    "deployment_downloaded_digest_verified": true,
+    "receipt_assertions_passed": true,
+    "receipt": {
+      "LOCAL_only_data_HTTP": 403,
+      "activation": {
+        "files": 838,
+        "predecessor_retained": true,
+        "status": "activated"
+      },
+      "completion": {
+        "existing_preview_unchanged": true,
+        "previous_source_sha": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+        "production_unchanged": true,
+        "rollback_retained": true,
+        "route": "/_preview/search3-next-candidate/",
+        "source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+        "status": "published"
+      },
+      "counter": 0,
+      "derived_artifact": 11230099301,
+      "existing_preview_unchanged": true,
+      "lead_HTTP": 403,
+      "noindex": true,
+      "predecessor_retained": true,
+      "previous_source_sha": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+      "production_unchanged": true,
+      "real_leads": 0,
+      "release_sha": "03fb11c4b69abac2efad96f3d42a9387c9c243ba",
+      "route": "/_preview/search3-next-candidate/",
+      "routes_200": 9,
+      "source_artifact": 11229219410,
+      "source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+      "status": "published_update",
+      "supplier_searches": 0,
+      "visual_assets_verified": 41,
+      "visual_live_connected": true,
+      "visual_route_200": true
+    },
+    "local_only_contract_step": "skipped in NEXT publisher; not a passed local-only contract"
+  },
+  "hosted_acceptance": {
+    "runtime": "published NEXT in cloud Chrome, viewport 1363x936",
+    "snapshot_url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=snapshot&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-10-01&to=2026-10-07&minNights=7&maxNights=7&adults=2&ages=&searched=1",
+    "served_versions": {
+      "app": "8e2e8073acb1",
+      "styles": "2a4690417c4b",
+      "mobile_css": "5baf1dc2cdb8",
+      "offer_list": "5b7e21704b41"
+    },
+    "comparison_nodes": 0,
+    "results": {
+      "hotels": 1047,
+      "offers": 1453,
+      "cards": 24,
+      "calendar_days": 7,
+      "checkboxes": 97,
+      "first_three_dimensions_exact_predecessor": [
+        {
+          "id": 3678,
+          "width": 1024,
+          "height": 341.1875
+        },
+        {
+          "id": 5227,
+          "width": 1024,
+          "height": 298.4375
+        },
+        {
+          "id": 4999,
+          "width": 1024,
+          "height": 308.4375
+        }
+      ],
+      "scroll_width": 1348,
+      "viewport_width": 1363,
+      "overflow": false
+    },
+    "filters": {
+      "four_stars": {
+        "hotels": 395,
+        "offers": 522
+      },
+      "reset": {
+        "hotels": 1047,
+        "offers": 1453
+      }
+    },
+    "calendar_oct_5": {
+      "hotels": 974,
+      "offers": 1122
+    },
+    "hotel": {
+      "name": "RIA",
+      "photos": 4,
+      "supplied_highlights": true,
+      "rooms": "Standard",
+      "offers": 2,
+      "separate_services_heading_present": false,
+      "services_note": "Snapshot supplies highlights, no separate service section. Servicegroups before rooms covered by existing fixture CI."
+    },
+    "offer_list": {
+      "cold_owner_version": "5b7e21704b41",
+      "offers": 2,
+      "standard_breakfast": true,
+      "intourist_price": 96953,
+      "funsun_price": 99938,
+      "comparison_controls": 0
+    },
+    "snapshot_selected": {
+      "price": 96953,
+      "room": "Standard",
+      "meal": "breakfast",
+      "operator": "Intourist",
+      "fuel": "unknown",
+      "quote_flights_unconfirmed": true,
+      "application_unavailable": true
+    },
+    "pristine_live": {
+      "scripts": 17,
+      "search_enabled_after_bootstrap": true,
+      "cards": 0,
+      "comparison_nodes": 0,
+      "search_submitted": false
+    },
+    "demo_flights": {
+      "pairs": 24,
+      "visible": 6,
+      "initial_price": 186400,
+      "selected_variant_label": 2,
+      "selected_radio_value": 1,
+      "price_delta": 1300,
+      "applied_price": 187700,
+      "outbound_time": "06:05",
+      "inbound_time": "08:05",
+      "airport": "SVO",
+      "baggage_kg": 20,
+      "carry_on_kg": 5,
+      "fuel": "explicit zero",
+      "warm_selection_retained": true,
+      "details_back_price_conditions_retained": true,
+      "educational_application_opened": true,
+      "application_back_price_conditions_retained": true,
+      "contact_fields_filled": false,
+      "application_submitted": false
+    },
+    "page_origin_console_errors": [],
+    "favorites": {
+      "product_flag_enabled": false,
+      "flag_unchanged": true,
+      "functions_and_storage_retained": true,
+      "restore_persist_list_filter_remove_recover_verified": "test-only enablement, recorded journey; not enabled on hosted product"
+    },
+    "legacy_comparison_and_mytour_storage": {
+      "destructive_clear_migration": false,
+      "sentinel_write_remove_clear_calls": 0
+    },
+    "supplier_searches": 0,
+    "real_leads": 0
+  },
+  "screenshot": {
+    "file_id": "file_000000008438821099e0268c799cb2cf",
+    "library_file_id": "libfile_00588469adf08191bfc5034d63554d74",
+    "name": "anytour-next-without-comparison-1790950460210.jpg",
+    "size_bytes": 89456
+  },
+  "claims": {
+    "source": [
+      5953722161,
+      5953722448
+    ],
+    "manifest": [
+      5953767703,
+      5953767927
+    ],
+    "integration_publisher": [
+      5954176934,
+      5954177314
+    ],
+    "terminal": [
+      5954527329,
+      5954527593
+    ],
+    "final_docs": [
+      5954527923,
+      5954528243
+    ]
+  },
+  "separately_unverified": [
+    "physical Safari/iPhone",
+    "real supplier search/quote/flight scenarios",
+    "real lead delivery"
+  ],
+  "backlog_only": [
+    "Tiny helper/dedup candidates without meaningful measured effect",
+    "Pure meal data.js extraction under a separately bounded INT to SEARCH handoff",
+    "Immutable donor payload assets are not initial browser traffic"
+  ],
+  "stop": "Bounded source package and one NEXT completed. Only docs/state checkpoint; no new microqueue, second publication or historical replay.",
+  "previous_audit": "docs/project/search3-size-reduction-20261002.md",
+  "state_scope_proof": {
+    "outside_current_task_byte_equal": true,
+    "mask_marker": "<CURRENT_TASK>",
+    "outside_current_task_sha256": "0aff0719478881a6b7238cf8b398b45222cb2113908bdb96c845af00b60e90f9",
+    "baseline_git_blob_sha": "0661b3cd9433de6306ffb0a460dff8e48f9b4734"
+  }
+}
