@@ -195,9 +195,15 @@ function hotelMatch(h,f=state.filters,s=state.search,onlyFavorites=state.onlyFav
   &&(!f.rating||ratingValue(h)>=4.5)&&(!f.beach||h.beach!==null&&h.beach<=150)&&(!f.family||h.family)&&(!f.spa||h.spa)
   &&(!onlyFavorites||s.country!==state.search.country||state.favorites.includes(h.id));
 }
+function touristAgesKey(ages){
+ if(!Array.isArray(ages)||ages.length>3)return null;
+ let key=0;for(const age of ages){if(!Number.isInteger(age)||age<0||age>17)return null;key+=4**age;}return key;
+}
+const touristAgesFallback=ages=>JSON.stringify([...ages].sort());
 function hotelOfferPredicate(s,f,from,to){
- const ages=JSON.stringify([...s.ages].sort());
- return o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&JSON.stringify([...o.ages].sort())===ages&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
+ const ages=touristAgesKey(s.ages);let fallbackAges=ages===null?touristAgesFallback(s.ages):null;
+ const sameAges=o=>{const key=touristAgesKey(o.ages);if(ages!==null&&key!==null)return key===ages;fallbackAges??=touristAgesFallback(s.ages);return touristAgesFallback(o.ages)===fallbackAges;};
+ return o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&sameAges(o)&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
 }
 function hotelOffers(h,options={}){
  if(!h)return[];
