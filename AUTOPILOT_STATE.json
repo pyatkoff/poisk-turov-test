@@ -1286,19 +1286,49 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: retired inline offers and 145 CSS rules removed; bounded reduction complete",
-    "status": "SIZE_REDUCTION_PASS_COMPLETE",
+    "title": "Search3 NEXT: inventory+CSS package accepted; structural optimization continues",
+    "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4346,
+    "pr": 4348,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Continue reducing and optimizing; explicit authorization of exact patch, GitHub branch, CI and NEXT on 2026-10-03 00:12 Europe/Kaliningrad.",
-    "last_fully_checked_release_sha": "481d04a2effd381baf9f108f169ba60b534d3a4e",
-    "published_source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
-    "acceptance_status": "NEXT_RETIRED_OFFER_CLEANUP_ACCEPTED_FIXTURE_SNAPSHOT_DEMO_APPLICATION_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "CURRENT BOUNDED PASS COMPLETE / STOP. PR #4346 source 2bc09af35eb706178f58dd984e0cd2bb2af7cebb merged release 481d04a2effd381baf9f108f169ba60b534d3a4e with exact tree. All five source CI checks SUCCESS, full visual 37071617493; one command 5962424985 -> publisher 37072366374 attempt1 SUCCESS, deployment 11255795116 verified. Removed dead inline offers, write-only openHotel and empty verification residue plus 145 CSS rules; protected functions and retained CSS AST exact. Favorites/storage and existing disabled flag retained. Initial compiled JS+CSS 617108 -> 605992 B, complete 646903 -> 635787 B; each -11116 B and -1974 sum-local-gzip, no latency claim. Eleven deterministic receipts exact, 24 target screenshots inspected without identified regression. Hosted geometry/text/filter/calendar/hotel/current offer list/selected tour/demo flights/educational application+Back/pristine LIVE accepted; no real supplier searches or lead submission. Production/sibling unchanged, predecessor/rollback retained. Physical Safari/iPhone, real suppliers and real lead delivery separately UNVERIFIED. Source/integration/publisher claims RELEASED; final audit/current_task checkpoint only, no second publication, new microqueue or historical replay.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-retired-offer-cleanup-20261003.md"
+    "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
+    "last_fully_checked_release_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+    "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+    "acceptance_status": "NEXT_INVENTORY_CASCADE_ACCEPTED_SNAPSHOT_LIST_HISTORY_FILTER_PRISTINE_LIVE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue structural optimization from fresh release and current claims. Current4348 packet implemented/checked/merged/published/live-verified; onecommand5962942732/run37076627937 terminal/no-replay, newpublishedpredecessor 6ddeb4a88b9c05966f0e5682bc6418752fd5bf46. Initial598638/full628442, -7354/-7345compiled; direct offer-list3->1/history3->2, no latencyclaim. Existing NEXTRefactor scheduler is enabled hourly, first resumed backgroundrun notyetverified. Next finite hotel-details invocation-inventory candidate is read-onlyREADY: opening2->1 with fresh later renders,20raw+served+20updated-price evidence, compiled+55B compute tradeoff. Claim exact current paths, preserve assertions/protected contracts, existing narrow+mandatoryCI+compiledresponsive acceptance before merge; accumulate compatible work before one guarded NEXT publication. Current runtime source/integration/publisher claims RELEASED; final three-path audit/state rootclaim remains ACTIVE until docs terminal, then released. No production, second coordinator, byte-only PR, data.js/INT handoff shortcut or historical replay.",
+    "next_task": {
+      "id": "S3_NEXT_HOTEL_DETAILS_INVOCATION_INVENTORY",
+      "status": "READ_ONLY_READY_NOT_IMPLEMENTED",
+      "paths": [
+        "v2/visual-search/hotel-details-v1.js",
+        "tests/search3-visual-hotel-details-rendering.cjs",
+        "v2/visual-search/migration-manifest.json"
+      ],
+      "benefit": "Same synchronous opening computes matching/sorted offers and meal inventory twice; reuse within that invocation only. Later filters/results keep fresh computation.",
+      "evidence": "20 existing raw+served observations retain digest d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5, plus20 later-price states; actual1000-offer host direct/warm calls2->1, filter visits2000->1000, comparisons17066->8533; subsequent renders1->1.",
+      "cost": {
+        "source_delta": 75,
+        "compiled_delta": 55,
+        "local_gzip_delta": 30
+      },
+      "execution": "Read fresh release/current_task/claims; claim exact paths; implement bounded same-call optional inventory; preserve all assertions and fresh defaults. Existing rendering/lazy/newest/failure/history plus exact CI/compiled responsive checks before merge. Accumulate compatible work before one guarded NEXT publish; no replay or per-micro-change deploy.",
+      "protected": "No app.js/data.js/provider/price/fuel/lead/Metrika/prototype change; favorites current paused flag retained."
+    },
+    "scheduler_observation": {
+      "id": "6a936eb5226081919fb7ec372e05d2e0",
+      "title": "AnyTour NEXT Refactor",
+      "is_enabled": true,
+      "schedule": "BEGIN:VEVENT\nDTSTART:20261001T000000\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+      "timezone": "Europe/Kaliningrad",
+      "last_run_time": "2026-10-02T09:05:54.727834+00:00",
+      "updated_at": "2026-10-02T23:01:03.696520+00:00",
+      "first_background_run_after_resume_verified": false,
+      "prompt_unchanged": true,
+      "schedule_unchanged": true
+    },
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-inventory-cascade-20261003.md"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
