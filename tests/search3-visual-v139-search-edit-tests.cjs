@@ -71,7 +71,7 @@ w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=position=>scrolls.push(position.top);
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
 w.fetch=async url=>{requests.push(url);assert.equal(url,'./fixtures/live-search-2026-09-23.json');return{ok:true,json:async()=>JSON.parse(fs.readFileSync(path.join(root,url),'utf8'))}};
-for(const file of ['fixture-data.js','search-lifecycle-v1.js','flight-picker-v18.js','preview-lead.js','offer-list-v1.js','hotel-details-v1.js','app.js'])w.eval(fs.readFileSync(path.join(root,file),'utf8'));
+for(const file of ['fixture-data.js','search-lifecycle-v1.js','flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js','preview-lead.js','offer-list-v1.js','hotel-details-v1.js','app.js'])w.eval(fs.readFileSync(path.join(root,file),'utf8'));
 const q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 const input=(s,value)=>{q(s).value=value;q(s).dispatchEvent(new w.Event('input',{bubbles:true}));};
 const settle=()=>new Promise(resolve=>setTimeout(resolve,100));

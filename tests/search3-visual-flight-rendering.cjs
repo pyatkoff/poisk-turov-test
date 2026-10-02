@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
 const sourcePath = path.resolve(__dirname, '../v2/visual-search/flight-picker-v18.js');
-const source = fs.readFileSync(sourcePath, 'utf8');
+const source = fs.readFileSync(sourcePath, 'utf8')+'\n'+fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/flight-picker-ui-v1.js'),'utf8');
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const text = value => value == null ? '' : String(value);
 function freeze(value) {

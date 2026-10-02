@@ -3,15 +3,19 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
 const {JSDOM}=require('jsdom');
 const acorn=require('../scripts/build/search3-js/node_modules/acorn');
-const source=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8');
+const appSource=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8');
+const panelSource=fs.readFileSync(__dirname+'/../v2/visual-search/filter-panel-v1.js','utf8');
+const source=appSource+'\n'+panelSource;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function functions(source,names){const nodes=acorn.parse(source,{ecmaVersion:'latest'}).body[1].expression.callee.body.body;return nodes.filter(n=>n.type==='FunctionDeclaration'&&names.includes(n.id.name)).map(n=>source.slice(n.start,n.end)).join('\n');}
+const declarationCache=new Map();
+function functions(source,names){let declarations=declarationCache.get(source);if(!declarations){const selected=[];function walk(node){if(!node||typeof node!=='object')return;if(node.type==='FunctionDeclaration'&&node.id?.name)selected.push(node);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(walk);else if(value&&typeof value==='object')walk(value);}walk(acorn.parse(source,{ecmaVersion:'latest'}));declarations=selected;declarationCache.set(source,declarations);}return declarations.filter(n=>names.includes(n.id.name)).map(n=>source.slice(n.start,n.end)).join('\n');}
+function context(c){c.getHotels=()=>c.hotels;c.getFilterDraft=()=>c.filterDraft;c.getViewportWidth=()=>c.innerWidth;return vm.createContext(c);}
 function environment(html){const dom=new JSDOM(html);const document=dom.window.document;return {dom,document,$:s=>document.querySelector(s),$$:s=>[...document.querySelectorAll(s)],esc,icon:n=>`<i>${n}</i>`,hotelCountText:n=>`${n} отелей`,normalizeSearch:s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim()};}
 function facet(source,s){
  const c=environment('<div id="host"></div>'),selected=s.selected?[0,8,18].filter(v=>v<s.n).map(v=>'v'+v):[],filters={resorts:[],operators:[],meals:[],amenities:[],[s.group]:selected};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:m=>{const value=m.filters[s.group]?.[0];return value?Number(value.slice(1))%4:0;},facetQueries:new Map([[s.group,s.query]]),expandedFacets:new Set(s.expanded?[s.group]:[]),amenityNames:new Map()});
  c.countFacetOptions=(model,group,values)=>new Map(values.map(value=>[value,c.countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
- vm.createContext(c);vm.runInContext(functions(source,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch','amenityFilterGroups']),c);
+ context(c);vm.runInContext(functions(source,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch','amenityFilterGroups']),c);
  const options=Array.from({length:s.n},(_,i)=>['v'+i,'Вариант '+i+(i===8?' Ёлка <&':'')]);
  c.$('#host').innerHTML=c.checkRows(s.group,options);
  let reads=0;const originalQuery=c.dom.window.Element.prototype.querySelector;c.dom.window.Element.prototype.querySelector=function(selector){if(this.matches('.check-row'))reads++;return originalQuery.call(this,selector);};
@@ -27,7 +31,7 @@ function facet(source,s){
 function amenities(source,selected){
  const c=environment(''),filters={amenities:selected?['pool','retained']:[]};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>model.filters.amenities.includes('pool')?3:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value==='pool'||filters.amenities.includes('pool')?3:0])),amenityNames:new Map([['retained',{key:'retained',label:'Сохранённое <&',groupId:2,group:'Другие'}]])});
- vm.createContext(c);vm.runInContext(functions(source,['filterCheckRowHTML','amenityFilterGroups']),c);
+ context(c);vm.runInContext(functions(source,['filterCheckRowHTML','amenityFilterGroups']),c);
  const html=c.amenityFilterGroups([{amenities:[{key:'pool',label:'Бассейн <&',groupId:1,group:'Удобства'},{key:'hidden',label:'Нет данных',filterable:false}]}],filters);c.dom.window.close();return html;
 }
 function destination(source,s){
@@ -36,7 +40,7 @@ function destination(source,s){
  let calls=0;
  Object.assign(c,{destinationChoice:{country:'4',resorts:s.resorts?['Регион <&']:[],hotelId:s.hotel?2:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:s.ready,catalogError:s.error?'Ошибка <&':'',catalogDeparture:'Москва',destinationHotel:id=>rows.find(h=>h.id===id),recentDestinations:()=>[{country:'4',resorts:[],hotelId:0}],destinationLabel:()=> 'Турция <&',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[{parent:{country:'4',name:'Регион <&'},children:[]}],resortChoiceHTML:r=>'<button>'+esc(r.name)+'</button>',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:rows.slice(0,12),matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:s.status,rows:rows.slice(8)},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:s.resolved?s.query:'',photoUrl:h=>h.photos[0],rememberUIRoute:()=>{}});
  c.$('#destination-query').value=s.query;
- vm.createContext(c);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels','renderDestination']),c);c.renderDestination();
+ context(c);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels','renderDestination']),c);c.renderDestination();
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
 function facetRefresh(source,legacy=false){
@@ -49,7 +53,7 @@ function facetRefresh(source,legacy=false){
  const previous=`function updateFacetCounts(){const model=editingFilterModel(),inputs=\$\$('[data-filter],[data-filter-bool]'),counts=new Map();
  for(const input of inputs){const group=input.dataset.filter;if(group&&group!=='amenities'&&!counts.has(group))counts.set(group,countFacetOptions(model,group,inputs.filter(row=>row.dataset.filter===group).map(row=>row.value)));}
  inputs.forEach(input=>{const key=input.dataset.filter||input.dataset.filterBool,value=key==='amenities'?[...new Set([...(model.filters.amenities||[]),input.value])]:input.dataset.filter?[input.value]:true,count=counts.get(key)?.get(input.value)??countMatchingHotels({...model,filters:{...model.filters,[key]:value}}),row=input.closest('.check-row'),label=row?.querySelector('small'),available=count>0||input.checked;if(label){label.textContent=count;label.setAttribute('aria-label',hotelCountText(count))}if(row){row.dataset.available=String(available);if(!row.closest('.facet-options'))row.hidden=!available;}});\$\$('[data-facet-options]').forEach(applyFacetSearch);updateFilterStars();syncAvailableFilterGroups();renderFilterNavigation();}`;
- vm.createContext(c);vm.runInContext(legacy?previous:functions(source,['filterStarOptions','updateFacetCounts']),c);c.updateFacetCounts();
+ context(c);vm.runInContext(legacy?previous:functions(source,['filterStarOptions','updateFacetCounts']),c);c.updateFacetCounts();
  return {reads,scalarCalls,batchCalls,rows:inputs.map(input=>[input.label.textContent,input.label.ariaLabel,input.row.dataset.available,input.row.hidden]),tails};
 }
 function observations(source){const records=[];for(const group of ['resorts','operators','meals'])for(const n of [0,1,7,8,20])for(const query of ['', 'Вариант 1','елка','несуществующий'])for(const selected of [false,true])for(const expanded of [false,true])for(const focus of ['first','last','search'])records.push(facet(source,{group,n,query,selected,expanded,focus}));for(const selected of [false,true])records.push(amenities(source,selected));for(const query of ['', 'h','hotel','hot el','Ёлка'])for(const status of ['idle','loading','error','complete'])for(const ready of [false,true])for(const hotel of [false,true])for(const resorts of [false,true])for(const resolved of [false,true])records.push(destination(source,{query,status,ready,hotel,resorts,resolved,error:status==='error'}).result);return records;}
@@ -86,7 +90,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  const c=environment('<div id="host">'+['zero','yes','checked'].map(value=>'<label class="check-row"><input data-filter="operators" value="'+value+'" '+(value==='checked'?'checked':'')+'><small>99</small></label>').join('')+'<label class="check-row"><input data-filter="amenities" value="pool"><small>99</small></label><label class="check-row"><input data-filter-bool="rating"><small>99</small></label></div>');
  let scalarCalls=0,batchCalls=0;const filters={operators:[],amenities:[],stars:[],rating:false};
  Object.assign(c,{hotels:[],state:{search:{country:'4'}},editingFilterModel:()=>({filters}),countFacetOptions:(model,group,values)=>{batchCalls++;return new Map(values.map(value=>[value,value==='yes'?5:value==='pool'?3:0]));},countMatchingHotels:model=>{scalarCalls++;return model.filters.rating?2:99;},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
- vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);c.updateFacetCounts();
+ context(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);c.updateFacetCounts();
  assert.deepEqual(c.$$('.check-row').map(row=>[row.querySelector('small').textContent,row.dataset.available,row.hidden]),[['0','false',true],['5','true',false],['0','true',false],['3','true',false],['2','true',false]]);
  assert.equal(batchCalls,2,'one batch per scalar-independent section');assert.equal(scalarCalls,1,'only the boolean option uses scalar fallback');
  c.dom.window.close();
@@ -94,7 +98,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
 {
  const c=environment('<div id="host">'+['','AI','BB'].map(value=>'<label class="meal-option"><input value="'+value+'"><span class="meal-hotel-count">99</span></label>').join('')+'</div>');let current={filters:{meals:['AI']}};
  Object.assign(c,{mealPreviewModel:()=>current,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value==='AI'?3:0])),countMatchingHotels:model=>model.filters.meals.length?99:9});
- vm.createContext(c);vm.runInContext(functions(source,['updateMealCounts']),c);c.updateMealCounts();
+ context(c);vm.runInContext(functions(source,['updateMealCounts']),c);c.updateMealCounts();
  assert.deepEqual(c.$$('.meal-hotel-count').map(span=>span.textContent),['9','3','0'],'any/known/unavailable meal counts');
  current=null;c.updateMealCounts();assert.equal(c.$$('.meal-hotel-count').length,0,'new draft has no result counts');
  c.dom.window.close();
@@ -102,7 +106,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
 {
  const c=environment('<div id="host"></div>'),model={filters:{stars:[4]}};
  Object.assign(c,{hotels:[{country:'4',stars:2},{country:'4',stars:3}],state:{search:{country:'4'}},countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value===2?5:0]))});
- vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons']),c);c.$('#host').innerHTML=c.filterStarButtons(model);
+ context(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons']),c);c.$('#host').innerHTML=c.filterStarButtons(model);
  assert.deepEqual(c.$$('button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','5'],['4','true','0']],'selected unavailable star stays visible');
  c.dom.window.close();
 }
@@ -110,7 +114,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  const c=environment('<div id="filters"><div class="filter-group"><div class="star-options"></div></div></div>'),model={filters:{stars:[5],amenities:[]}};let inventories=0,countryReads=0,starReads=0;
  const hotels=Array.from({length:100},(_,i)=>({get country(){countryReads++;return '4'},get stars(){starReads++;return i%2?3:2}}));
  Object.assign(c,{hotels,state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values)=>{inventories++;assert.equal(group,'stars');return new Map(values.map(value=>[value,value===2?3:0]));},countMatchingHotels:()=>{throw Error('star scalar fallback')},applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
- vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons','updateFilterStars','updateFacetCounts']),c);c.updateFacetCounts();
+ context(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons','updateFilterStars','updateFacetCounts']),c);c.updateFacetCounts();
  assert.equal(inventories,1,'one complete star inventory per filter refresh');
  assert.equal(countryReads,100,'one canonical star option country pass per filter refresh');
  assert.equal(starReads,100,'one canonical star option value pass per filter refresh');
@@ -134,7 +138,7 @@ console.log('PASS facet DOM callers: batch zero/checked availability, batched am
  const c=environment('<div id="filters"><label class="check-row"><input data-filter="operators" value="A"><small>0</small></label></div>'),model={filters:{operators:['A'],amenities:[],stars:[]}};
  let observed=0;
  Object.assign(c,{hotels:[],state:{search:{country:'4'}},editingFilterModel:()=>model,countFacetOptions:(current,group,values,selection)=>{observed++;selection.count=7;return new Map(values.map(value=>[value,7]));},countMatchingHotels:()=>{throw Error('selected-count scalar fallback')},applyFacetSearch:()=>{},updateFilterStars:()=>{},syncAvailableFilterGroups:()=>{},renderFilterNavigation:()=>{},settleFilterRoots:()=>{}});
- vm.createContext(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);assert.equal(c.updateFacetCounts(),7);assert.equal(observed,1);
+ context(c);vm.runInContext(functions(source,['filterStarOptions','updateFacetCounts']),c);assert.equal(c.updateFacetCounts(),7);assert.equal(observed,1);
  let forwarded=null;Object.assign(c,{filterDraft:model,updateFacetCounts:()=>7,updateDrawerPreview:value=>{forwarded=value;},rememberUIRoute:()=>{},renderFilters:()=>{},syncFilters:()=>{},renderResults:()=>{},updateSearchUI:()=>{}});
  vm.runInContext(functions(source,['filterEdited']),c);c.filterEdited();assert.equal(forwarded,7,'drawer preview receives batched selected count');c.dom.window.close();
 }
@@ -144,7 +148,7 @@ function facetOrderEnvironment(code,group,n){
  const c=environment('<div id="host"></div>'),filters={resorts:[],operators:[],meals:[],amenities:[]};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>Number(model.filters[group][0]?.slice(1))%4||0,facetQueries:new Map(),expandedFacets:new Set(),amenityNames:new Map()});
  c.countFacetOptions=(model,key,values)=>new Map(values.map(value=>[value,c.countMatchingHotels({...model,filters:{...filters,[key]:[value]}})]));
- vm.createContext(c);vm.runInContext(functions(code,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch']),c);
+ context(c);vm.runInContext(functions(code,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch']),c);
  c.$('#host').innerHTML=c.checkRows(group,Array.from({length:n},(_,j)=>['v'+j,'Вариант '+j]));
  const host=c.$('.facet-options'),more=host.querySelector('details');c.applyFacetSearch(host);
  const work={reads:0,moves:0};
@@ -193,7 +197,7 @@ function filterEditorMarkup(){return `\n <div class="filter-group"><h4>Назв�
 function filterPainter(code){
  const c=environment('<div id="filters"></div>'),filters={};
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,filterRootBindings:new WeakMap(),renderedFilterContext:null,filterDraft:null,filterEditorLease:null,filterEditorSelector:'[data-facet-search],#hotel-query,#min-price,#max-price,#price-range',state:{search:{country:'4'}},searchKey:()=> 'scope',editingFilterModel:()=>({filters}),applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{}});
- vm.createContext(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
+ context(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
  return {c,filters,host:c.$('#filters'),paint:(markup,next=filters)=>c.paintFilters(markup,next)};
 }
 function paintIdentity(code,markup){
@@ -224,3 +228,23 @@ for(const selector of ['#hotel-query','[data-facet-search="operators"]','#min-pr
  e.c.filterDraft=null;e.paint(markup,{});assert.notEqual(e.host.querySelector('[data-facet-search="operators"]'),active,'closing the drawer discards the previous draft editor');assert.equal(e.host.querySelector('[data-facet-search="operators"]').value,'','closing the drawer restores applied filter markup');e.c.dom.window.close();
 }
 console.log('PASS filter root reconciliation: unchanged roots/descendants retained; changed, disturbed and extra roots repaired; active query/facet/budget focus, value and caret restored; supplier/lead HTTP0');
+
+// Exercise the real factory, including its listeners and host input boundary.
+// A retained component must observe replacement inventories and draft models.
+{
+ const c=environment('<aside id="filter-panel"><div class="filter-top"></div><select id="filter-section-jump"></select><div id="filters"></div></aside><span id="beach-chip"></span><span id="family-chip"></span>');
+ const filters={q:'',min:0,max:null,stars:[],meals:[],resorts:[],operators:[],amenities:[],rating:false};
+ Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:2}],filterDraft:null,innerWidth:390,
+  editingFilterModel:()=>c.filterDraft||{filters},currentFilterBudgetEdit:()=>null,readBudgetFields:()=>({valid:true}),budgetLabel:()=> 'Без лимита',countMatchingHotels:()=>1,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>100000,mealNames:{},ratingValue:()=>null,hotelPlaces:()=>[],operators:Array.from({length:8},(_,i)=>'Оператор '+i),syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{}});
+ context(c);vm.runInContext(panelSource,c);const panel=c.window.AnyTourFilterPanelV1.create(c);
+ panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['2']);
+ c.hotels=[{country:'4',stars:5}];panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['5'],'replacement hotel inventory is read by the retained owner');
+ c.filterDraft={filters:{...filters,q:'Новый запрос',stars:[5]}};panel.renderFilters();assert.equal(c.$('#hotel-query').value,'Новый запрос','replacement draft reaches presentation');
+ const input=c.$('[data-facet-search="operators"]');input.value='Оператор 7';input.dispatchEvent(new c.dom.window.Event('input',{bubbles:true}));assert.equal(panel.facetQueries.get('operators'),'Оператор 7','real owner input listener records the query');
+ assert.equal(c.$$('.facet-options .check-row:not([hidden])').length,1,'real owner input listener updates visible rows');
+ const heading=c.$('.star-options').closest('.filter-group').querySelector('h4');panel.jumpToFilterSection(heading.id);assert(panel.expandedFilterSections.has('Категория отеля'),'current narrow viewport expands the jumped group');
+ panel.setFilterSectionOpen(heading.closest('.filter-group'),false);c.innerWidth=1280;panel.jumpToFilterSection(heading.id);assert(!panel.expandedFilterSections.has('Категория отеля'),'replacement wide viewport is read at navigation time');
+ c.filterDraft=null;panel.renderFilters();assert.equal(c.$('#hotel-query').value,'','closing the draft restores the applied model');c.dom.window.close();
+ assert(!appSource.includes('function paintFilters(')&&!appSource.includes('function renderFilters('),'presentation has one owner');
+ console.log('PASS real filter factory: replacement hotel/draft/viewport inputs, delegated facet query and applied-model restore; supplier/lead HTTP0');
+}

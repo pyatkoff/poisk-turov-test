@@ -70,7 +70,7 @@ function inventory(root){
  const array=php.match(/\$scripts\s*=\s*\[([\s\S]*?)\];/);assert(array,'explicit LIVE script graph');
  const live=[...array[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
  const offline=[...html.matchAll(/<script src="([^"?]+\.js)"/g)].map(m=>m[1]);
- const ondemand=[...html.matchAll(/data-(?:offer-list|hotel-details)-src="([^"?]+\.js)"/g)].map(m=>m[1]);assert.equal(ondemand.length,2,'two explicit cold presentation owners');
+ const ondemand=[...html.matchAll(/data-(?:offer-list|hotel-details|flight-picker)-src="([^"?]+\.js)"/g)].map(m=>m[1]);assert.equal(ondemand.length,3,'three explicit cold presentation owners');
  const graphs={live,offline,ondemand};
  for(const src of [...live,...offline,...ondemand])assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
  return graphs;

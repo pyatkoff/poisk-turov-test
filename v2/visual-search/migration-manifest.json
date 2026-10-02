@@ -54,16 +54,19 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "published-bootstrap-calendar-verified",
   "adaptedFiles": {
-    "app.js": "cba264ec609ba55d865c8692726cf2eddafc98b344ec45c1d11c5e98d9f5f0d1",
+    "app.js": "238a5880e8ce604c2066257a5b78afdbf9d3a479f7b04229a1429586847b2687",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "9b44034378eee5bea456c2498386a1e73ab56665a6144db4c6b9a0108c9127c4",
+    "index.html": "9ff9e58754ddb211e0390c52f7e1b88ad8cdc8454e1f14bef98af729d725716e",
     "styles.css": "a3a1e084b0049bacc2c5cb1769f17c250eb6782105f328002403fd2a467827f0",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
-    "flight-picker-v18.js": "51d21c12cf7a5b63c704c003c2376255e2f8488c40d56c2a36bbf51fbb6b7b4f",
+    "flight-picker-v18.js": "fc495715806b068bbd76c01de9f72762b14716bb394e21222db8a84a6a7b05eb",
     "offer-list-v1.js": "3eb54098f95da08b3663a8de42da22ea5d9df98220c0952494e68e1935990038",
     "mobile-controls-v1.css": "b0450823552469f6c51530517d929e6ecf5858f373d35d6fc9453aa22a143b38",
-    "hotel-details-v1.js": "484f3e53f155ed7d25e18f5febbec8a6b01c033fab362aedd074bb4c323d292b"
+    "hotel-details-v1.js": "484f3e53f155ed7d25e18f5febbec8a6b01c033fab362aedd074bb4c323d292b",
+    "filter-panel-v1.js": "f491e9f31d7227c42c382ca464e39cdad16fded350dabe538e2009d4a65319c6",
+    "index.php": "32071e7acdaafe27055db00d1902e58c063526106813f13719b7e9e4b6e32d1b",
+    "flight-picker-ui-v1.js": "22fbf658eff9c5a9e974067cb6d118f5cc5d1a97606fade8051fef3f5f5329f2"
   },
   "publication": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",

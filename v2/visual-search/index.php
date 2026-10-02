@@ -19,7 +19,7 @@ if (!$offline) {
         '../prototype-search/calendar-exact-hotel-v1.js',
         '../prototype-search/source-receipt-v1.js', '../prototype-search/search-lifecycle-v1.js',
         '../prototype-search/lead.js', '../prototype-search/hotel-popularity-v1.js',
-        './live-bridge.js', './flight-picker-v18.js', './app.js'
+        './live-bridge.js', './flight-picker-v18.js', './filter-panel-v1.js', './app.js'
     ];
     $graph = implode("\n  ", array_map(fn($src) => '<script src="' . $src . '" defer></script>', $scripts));
     $html = preg_replace('/<script src="\.\/fixture-data\.js" defer><\/script>.*?<script src="\.\/app\.js" defer><\/script>/s', $graph, $html);
@@ -35,7 +35,7 @@ if (!$offline) {
         }
     }
 }
-echo preg_replace_callback('/\b(src|href|data-offer-list-src|data-hotel-details-src)="(\.\.?\/[^"?]+\.(?:js|css))"/', function ($match) {
+echo preg_replace_callback('/\b(src|href|data-offer-list-src|data-hotel-details-src|data-flight-picker-src)="(\.\.?\/[^"?]+\.(?:js|css))"/', function ($match) {
     $path = __DIR__ . '/' . $match[2];
     if (!is_file($path)) return $match[0];
     return $match[1] . '="' . $match[2] . '?v=' . substr(hash_file('sha256', $path), 0, 12) . '"';

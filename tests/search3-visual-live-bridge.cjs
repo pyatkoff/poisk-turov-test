@@ -9,6 +9,16 @@ scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-li
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+// Outside-only JSDOM does not fetch script elements. Service the real third
+// cold loader with a bounded local file, keeping transport fixture calls apart.
+const coldScripts=[],append=d.head.append.bind(d.head);
+d.head.append=(...nodes)=>{
+ append(...nodes);
+ for(const node of nodes)if(node.tagName==='SCRIPT'){
+  assert.equal(new URL(node.src).pathname,'/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js','only the declared cold flight owner is executable');coldScripts.push(node.src);
+  queueMicrotask(()=>{w.eval(source('visual-search/flight-picker-ui-v1.js'));node.onload();});
+ }
+};
 Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
 w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
 w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
@@ -67,6 +77,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ assert.equal(coldScripts.length,0,'catalogue bootstrap leaves the flight UI cold');
  // Form pickers preserve canonical values and spend no supplier searches.
  click('[data-action="departure"]');
  assert.deepEqual([...d.querySelectorAll('[data-action="choose-departure"]')].map(x=>x.dataset.value),['Москва','Екатеринбург','Казань']);
