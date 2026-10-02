@@ -125,7 +125,8 @@ const previousRatingValue='const ratingValue=h=>Number.isFinite(h.rating)&&h.rat
 const previousRatingText="const ratingText=h=>ratingValue(h)===null?'—':ratingFormatter.format(ratingValue(h));";
 function previousCardSource(code){
  const card=section(code,'function cardHTML(','function refreshOpenHotelRooms('),legacy=card
-  .replace(",rating=ratingValue(h),ratingLabel=rating===null?'—':ratingFormatter.format(rating)",'')
+  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers}){')
+  .replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating)",'')
   .replace('${rating!==null?', '${ratingValue(h)!==null?')
   .replaceAll('${ratingLabel}', '${ratingText(h)}')
   .replace('${rating>=4.5?', '${ratingValue(h)>=4.5?');
@@ -137,7 +138,7 @@ function cardRatingOwner(code){
   esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlights:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
  vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
- const render=(value,index=1)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});return ctx.cardHTML({hotel,offers:[{key:'tour-'+index,total:100000}]});};
+ const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  return {work,render};
 }
 const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
@@ -147,6 +148,25 @@ for(let index=0;index<1000;index++)assert.equal(currentCard.render(4.5,index),pr
 assert.deepEqual(previousCard.work,{evaluations:6000,reads:24000});assert.deepEqual(currentCard.work,{evaluations:1000,reads:1000});
 assert.notEqual(cardRatingOwner(source.replace('rating>=4.5','rating>4.5')).render(4.5),currentCard.render(4.5),'excellent threshold mutation detected');
 console.log('PASS card rating snapshot: 1000 exact markup references; ratingValue evaluations 6000 → 1000; raw rating reads 24000 → 1000; null/zero/out-of-range semantics retained');
+
+// Result rows already carry the rating snapshot used by filtering and sorting.
+// Rendering those same rows must reuse it, while direct card callers retain the
+// exact standalone normalization fallback characterized above.
+function previousInventoryCardSource(code){
+ const card=section(code,'function cardHTML(','function refreshOpenHotelRooms('),legacy=card
+  .replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers}){')
+  .replace(",ratingLabel=rating===null?'—':ratingFormatter.format(rating)",",rating=ratingValue(h),ratingLabel=rating===null?'—':ratingFormatter.format(rating)");
+ assert.notEqual(card,legacy,'previous inventory-to-card owner reconstructed');
+ return code.replace(card,legacy);
+}
+const previousInventoryCard=cardRatingOwner(previousInventoryCardSource(source)),inventoryCard=cardRatingOwner(source);
+for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(inventoryCard.render(value,1,true),previousInventoryCard.render(value,1,true),'inventory card rating markup '+String(value));
+previousInventoryCard.work.evaluations=previousInventoryCard.work.reads=inventoryCard.work.evaluations=inventoryCard.work.reads=0;
+for(let index=0;index<1000;index++)assert.equal(inventoryCard.render(4.5,index,true),previousInventoryCard.render(4.5,index,true),'inventory rated card markup '+index);
+assert.deepEqual(previousInventoryCard.work,{evaluations:1000,reads:1000});assert.deepEqual(inventoryCard.work,{evaluations:0,reads:0});
+assert(source.includes('markup:cardHTML(item)'),'result rendering passes the complete inventory row to the card owner');
+assert.notEqual(cardRatingOwner(source.replace('function cardHTML({hotel:h,offers,rating=ratingValue(h)}){','function cardHTML({hotel:h,offers,rating=null}){')).render(4.5),inventoryCard.render(4.5),'standalone rating fallback mutation detected');
+console.log('PASS inventory-to-card rating reuse: 1000 exact markup references; render-stage ratingValue evaluations/reads 1000 → 0; direct card fallback and unusual-rating semantics retained');
 const {JSDOM}=require('jsdom');
 
 // Compare the actual summary owner with uncached full replacement. The pinned
