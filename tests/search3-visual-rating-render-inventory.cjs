@@ -36,7 +36,7 @@ function measured(code=source,rating=false,validIndex=49,verify=true){
 const off=measured(source,false),on=measured(source,true);
 assert.deepEqual(off,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:200,offerChecks:10000},current:{hotelVisits:100,predicates:100,offerChecks:5000},items:100});
 assert.deepEqual(on,{counts:{total:100,rating:50},previous:{hotelVisits:200,predicates:150,offerChecks:7500},current:{hotelVisits:100,predicates:100,offerChecks:5000},items:50});
-assert.notDeepEqual(measured(source.replace('const rated=ratingValue(h)>=4.5','const rated=ratingValue(h)>4.5'),true,49,false).counts,on.counts,'4.5 threshold mutation detected');
+assert.notDeepEqual(measured(source.replace('const hotelRating=ratingValue(h),rated=hotelRating>=4.5','const hotelRating=ratingValue(h),rated=hotelRating>4.5'),true,49,false).counts,on.counts,'4.5 threshold mutation detected');
 assert.notDeepEqual(measured(source.replace('{filters:{...state.filters,rating:false}}','{filters:state.filters}'),true,49,false).counts,on.counts,'base-rating reset mutation detected');
 const early=measured(source,true,0);
 assert.equal(early.current.offerChecks,2550,'unrated hotels stop at their first eligible offer');
