@@ -72,6 +72,13 @@ function inventory(code,rows,view,group=true){
  vm.createContext(ctx);vm.runInContext(code.slice(start,end),ctx);
  return {value:ctx.offerListInventory(group),keyCalls,h};
 }
+function comparisonOptions(code,rows,view){
+ const start=code.indexOf(' let options=filtered.filter('),marker=' setComparisonQuotes(options);',end=code.indexOf(marker,start);
+ assert(start>=0&&end>start,'comparison option sort owner boundary');
+ const ctx={filtered:rows,offerView:view,result:null,setComparisonQuotes:value=>{ctx.result=value;}};
+ vm.createContext(ctx);vm.runInContext(code.slice(start,end+marker.length),ctx);return ctx.result;
+}
+const referenceComparisonOptions=(rows,view)=>rows.filter(o=>o.day===view.day&&o.nights===view.nights).sort((a,b)=>a.total-b.total);
 function sameReferences(actual,expected){
  assert.strictEqual(actual.h,expected.h);assert.strictEqual(actual.all,expected.all);
  assert.equal(actual.filtered.length,expected.filtered.length);
@@ -140,6 +147,20 @@ for(const sort of ['price','date']){
 {
  let reads=0;const single={id:1,key:'single',variant:1,room:'same',meal:'AI',flight:'regular',get total(){reads++;return 1},get day(){reads++;return '2026-10-01'}};inventory(source,[single],baseView());assert.equal(reads,0,'zero/one-row native sort still reads no sort keys');
 }
+let comparisonSortCases=0;
+for(let round=0;round<500;round++){
+ const all=[];all.length=round%121;
+ for(let i=0;i<all.length;i++)if(random()>.21)all[i]={id:round*127+i,day:'2026-10-'+String(10+i%3).padStart(2,'0'),nights:7+i%2,total:Math.floor(random()*25)};
+ if(round%7===0&&all.length>3){const proto=Object.create(Array.prototype);proto[1]={id:round*127+999,day:'2026-10-10',nights:7,total:4};Object.setPrototypeOf(all,proto);}
+ const view={day:'2026-10-'+String(10+round%3).padStart(2,'0'),nights:7+round%2},actual=comparisonOptions(source,all,view),expected=referenceComparisonOptions(all,view);
+ assert.equal(actual.length,expected.length);actual.forEach((offer,index)=>assert.strictEqual(offer,expected[index]));comparisonSortCases++;
+}
+let comparisonTotalReads=0,comparisonSeed=78231;const comparisonRandom=()=>((comparisonSeed=(comparisonSeed*1664525+1013904223)>>>0)/4294967296);
+const comparisonRows=Array.from({length:1000},(_,id)=>{const total=Math.floor(comparisonRandom()*100000);return {id,day:'2026-10-10',nights:7,get total(){comparisonTotalReads++;return total}};});
+const comparisonBefore=referenceComparisonOptions(comparisonRows,{day:'2026-10-10',nights:7}),comparisonBeforeReads=comparisonTotalReads;comparisonTotalReads=0;
+const comparisonAfter=comparisonOptions(source,comparisonRows,{day:'2026-10-10',nights:7}),comparisonAfterReads=comparisonTotalReads;
+assert.deepEqual(comparisonAfter.map(o=>o.id),comparisonBefore.map(o=>o.id));assert.equal(comparisonBeforeReads,17298);assert.equal(comparisonAfterReads,1000);
+for(const length of [0,1]){comparisonTotalReads=0;comparisonOptions(source,comparisonRows.slice(0,length),{day:'2026-10-10',nights:7});assert.equal(comparisonTotalReads,0,'zero/one comparison option reads no sort key');}
 const dayCases=[
  ['2026-10-12'],
  ['2026-10-12','2026-10-11'],
@@ -241,4 +262,4 @@ const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
 const skippedResetGrouping=source.replace("offerView.mode!=='compare'||reset","offerView.mode!=='compare'");assert.notEqual(skippedResetGrouping,source);
 assert.notDeepEqual(render(skippedResetGrouping,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,render(source,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,'comparison reset grouping mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; refinement value reads first ${firstRenderValueReads}→${currentValueReads}, repeated ${repeatedRenderValueReads}→${currentValueReads}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement, ${compareInventoryCases} ungrouped and ${comparisonSortCases} comparison-sort reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison sort total reads ${comparisonBeforeReads}→${comparisonAfterReads}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; refinement value reads first ${firstRenderValueReads}→${currentValueReads}, repeated ${repeatedRenderValueReads}→${currentValueReads}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
