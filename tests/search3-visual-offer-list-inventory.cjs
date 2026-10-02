@@ -51,6 +51,19 @@ function refinementCounts(code,all,view,options){
  const counts=Object.fromEntries(refinementFields.map(field=>[field,ctx.countOwner(all,field,options[field].map(value=>({value}))) ]));
  return {counts,work};
 }
+function refinementInventory(code,all){
+ const start=code.indexOf('function offerRefinementInventory('),end=code.indexOf('function offerGroupScope(',start);
+ assert(start>=0&&end>start,'refinement value inventory owner boundary');
+ const ctx={Map,Set,offerRefinementFields:refinementFields};
+ vm.createContext(ctx);vm.runInContext(code.slice(start,end)+'globalThis.inventoryOwner=offerRefinementInventory;',ctx);
+ return ctx.inventoryOwner(all);
+}
+function referenceRefinementInventory(all,repeats=1){
+ let inventory;
+ for(let pass=0;pass<repeats;pass++)inventory=new Map(refinementFields.map(field=>{const values=[...new Set(all.map(offer=>refinementValue(offer,field)))];return [field,{values,hasChoice:values.length>1}];}));
+ return inventory;
+}
+function sameRefinementInventory(actual,expected){for(const field of refinementFields){assert.deepEqual([...actual.get(field).values],[...expected.get(field).values],field+' ordered values');assert.equal(actual.get(field).hasChoice,expected.get(field).hasChoice,field+' visibility');}}
 function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual[field]],[...expected[field]],field+' option counts');}
 function inventory(code,rows,view,group=true){
  const start=code.indexOf('function offerListInventory('),end=code.indexOf('function renderOfferList(',start);
@@ -163,6 +176,14 @@ sameCounts(refinementCounts(source,refinementSparse,baseView(),refinementOptions
 const previousRefinements=referenceRefinementCounts(refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
 const currentRefinements=refinementCounts(source,refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
 sameCounts(currentRefinements.counts,previousRefinements.counts);assert.equal(previousRefinements.work.visits,56000);assert.equal(currentRefinements.work.visits,4000);assert.equal(previousRefinements.work.predicates,62670);assert.equal(currentRefinements.work.predicates,4780);
+for(const values of [refinementRows.slice(0,120),refinementSparse,[]])sameRefinementInventory(refinementInventory(source,values),referenceRefinementInventory(values));
+let refinementValueReads=0;
+const trackedRefinementRows=Array.from({length:1000},(_,i)=>{const day='2026-10-'+String(1+i%20).padStart(2,'0'),flight=i%2?'charter':'regular',room='room-'+i%25,meal=['RO','BB','HB','FB','AI'][i%5];return {get day(){refinementValueReads++;return day},get flight(){refinementValueReads++;return flight},get room(){refinementValueReads++;return room},get meal(){refinementValueReads++;return meal}};});
+referenceRefinementInventory(trackedRefinementRows,3);const firstRenderValueReads=refinementValueReads;refinementValueReads=0;
+referenceRefinementInventory(trackedRefinementRows,2);const repeatedRenderValueReads=refinementValueReads;refinementValueReads=0;
+sameRefinementInventory(refinementInventory(source,trackedRefinementRows),referenceRefinementInventory(refinementRows));const currentValueReads=refinementValueReads;
+assert.equal(firstRenderValueReads,12000);assert.equal(repeatedRenderValueReads,8000);assert.equal(currentValueReads,4000);
+assert(source.includes('<select id="offer-departure"><option value="">Все даты</option></select>'),'mount defers refinement enumeration to the render owner');
 // Render both actual owner variants against the same deterministic DOM boundary.
 // The reference restores the old repeated note, heading and refinement inventory work.
 const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
@@ -174,6 +195,11 @@ const legacyCounts=(legacyNotes.slice(0,countStart)+legacyNotes.slice(countEnd))
  .replace('  const counts=comparing?null:offerRefinementCounts(all,field,select.options);\n','')
  .replace('   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(count)}`;');
 const legacyRenderer=legacyCounts.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
+const valueInventoryStart=source.indexOf('function offerRefinementInventory('),valueInventoryEnd=source.indexOf('function offerGroupScope(',valueInventoryStart);
+const legacyValueRenderer=(source.slice(0,valueInventoryStart)+source.slice(valueInventoryEnd))
+ .replace('  const hasChoice=currentRefinementInventory.get(field).hasChoice;','  const hasChoice=new Set(all.map(o=>field===\'departure\'?o.day:o[field])).size>1;')
+ .replace(" currentRefinementInventory=offerRefinementInventory(all);\n for(const field of offerRefinementFields){\n  const select=$('#offer-'+field),values=[...currentRefinementInventory.get(field).values];"," for(const field of offerRefinementFields){\n  const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];");
+assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy boundary');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
 function render(code,all,view,shortlist=false,reset=false){
@@ -195,6 +221,7 @@ const fullComparisonInventory=source.replace("offerListInventory(offerView.mode!
 for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i)=>({...o,note:i%2?'different':'same'}))])for(const mode of ['list','compare'])for(const sort of ['price','date'])for(const departure of ['','missing'])for(const reset of [false,true]){
  const view={...baseView(),mode,sort,departure},before=render(legacyRenderer,all,view,true,reset),after=render(source,all,view,true,reset);
  assert.deepEqual(after.snapshot,before.snapshot,'render output and view state unchanged');
+ assert.deepEqual(after.snapshot,render(legacyValueRenderer,all,view,true,reset).snapshot,'single refinement inventory preserves full render output and view state');
  assert.equal(after.noteCalls,before.noteCalls?1:0,'one same-render note, zero for empty/comparison');renders++;
  const full=render(fullComparisonInventory,all,view,true,reset);assert.deepEqual(after.snapshot,full.snapshot,'comparison no-group path preserves exact rendering and state');
  if(mode==='compare'&&!reset){assert.equal(after.keyCalls,0,'comparison refresh skips discarded groups');assert.equal(full.keyCalls,all.length,'original comparison refresh groups every filtered offer');}
@@ -214,4 +241,4 @@ const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
 const skippedResetGrouping=source.replace("offerView.mode!=='compare'||reset","offerView.mode!=='compare'");assert.notEqual(skippedResetGrouping,source);
 assert.notDeepEqual(render(skippedResetGrouping,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,render(source,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,'comparison reset grouping mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; refinement value reads first ${firstRenderValueReads}→${currentValueReads}, repeated ${repeatedRenderValueReads}→${currentValueReads}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);

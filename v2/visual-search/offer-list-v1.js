@@ -34,6 +34,7 @@ function renderTourComparison(all,filtered){
 }
 const offerRefinementLabels={departure:'Дата',flight:'Перелёт',room:'Номер',meal:'Питание'};
 const offerRefinementAny={departure:'Любая дата',flight:'Любой перелёт',room:'Любой номер',meal:'Любое питание'};
+let currentRefinementInventory;
 function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}
 function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?value:value;}
 function offerRefinementCounts(all,field,options){
@@ -58,7 +59,7 @@ function renderOfferRefinements(all,comparing){
  const visibleFields=[];
  for(const field of offerRefinementFields){
   const select=$('#offer-'+field);
-  const hasChoice=new Set(all.map(o=>field==='departure'?o.day:o[field])).size>1;
+  const hasChoice=currentRefinementInventory.get(field).hasChoice;
   const visible=comparing?field!=='departure':hasChoice||!!offerView[field];
   select.closest('label').hidden=!visible;if(visible)visibleFields.push(field);
   const counts=comparing?null:offerRefinementCounts(all,field,select.options);
@@ -89,6 +90,14 @@ function offerListInventory(group=true){
  }
  return {h,all,filtered,groups};
 }
+function offerRefinementInventory(all){
+ const inventory=new Map();
+ for(const field of offerRefinementFields){
+  const values=[...new Set(all.map(offer=>field==='departure'?offer.day:offer[field]))];
+  inventory.set(field,{values,hasChoice:values.length>1});
+ }
+ return inventory;
+}
 function offerGroupScope(offers){
  const nights=[],seenNights=new Set(),firstDay=offers[0].day;let earliest=firstDay,latest=firstDay,sameDay=true;
  for(const offer of offers){
@@ -102,8 +111,9 @@ function offerGroupScope(offers){
 function renderOfferList(reset=false){
  if(!optionalShortlistEnabled)offerView.mode='list';
  const {h,all,filtered,groups}=offerListInventory(offerView.mode!=='compare'||reset);
+ currentRefinementInventory=offerRefinementInventory(all);
  for(const field of offerRefinementFields){
-  const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];
+  const select=$('#offer-'+field),values=[...currentRefinementInventory.get(field).values];
   if(offerView[field]&&!values.includes(offerView[field]))values.push(offerView[field]);
   if(field==='departure')values.sort();
   if(JSON.stringify([...select.options].map(o=>o.value))!==JSON.stringify(['',...values]))select.innerHTML=`<option value="">${field==='departure'?'Все даты':field==='meal'?'Любое':'Любой'}</option>`+values.map(value=>`<option value="${esc(value)}">${esc(offerRefinementLabel(field,value))}</option>`).join('');
@@ -125,7 +135,7 @@ function renderOfferList(reset=false){
 }
 function mountOfferList(){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h);
- $('#modal-body').innerHTML=`${all.some(o=>!needsRefresh(o))?selectionStepsHTML(0):''}<div class="offer-list-context"><p>${offerSearchContext()} · ${durationText()} · ${guestsText()}</p><span>${icon('info')} Все цены за всех туристов. ${esc(sharedOfferNote(all)||(all.every(needsRefresh)?'Цены и наличие требуют проверки':'Сборы уточняются при выборе'))}</span></div>${optionalShortlistEnabled?'<div class="offer-view-switch" role="group" aria-label="Как показать туры"><button data-action="offer-view" data-value="list" aria-pressed="true">Все туры</button><button data-action="offer-view" data-value="compare" aria-pressed="false">Сравнить на даты</button></div>':''}<div id="offer-comparison-dates" class="offer-comparison-dates" hidden></div><details class="offer-filter-disclosure" ${innerWidth>760?'open':''}><summary><span>Уточнить варианты <span id="offer-local-filter-count"></span></span><small id="offer-filter-summary"></small></summary><div class="offer-controls"><label class="offer-departure-filter">Дата вылета<select id="offer-departure"><option value="">Все даты</option>${[...new Set(all.map(o=>o.day))].sort().map(day=>`<option value="${day}">${dateText(day)}</option>`).join('')}</select></label><label>Перелёт<select id="offer-flight"><option value="">Любой</option>${[...new Set(all.map(o=>o.flight))].map(f=>`<option value="${f}">${flightLabel({flight:f})}</option>`).join('')}</select></label><label>Номер<select id="offer-room"><option value="">Любой</option>${[...new Set(all.map(o=>o.room))].map(room=>`<option value="${esc(room)}">${esc(room)}</option>`).join('')}</select></label><label>Питание<select id="offer-meal"><option value="">Любое</option>${[...new Set(all.map(o=>o.meal))].map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select></label></div></details><div id="offer-local-selected" class="offer-local-selected" aria-label="Условия выбора тура" hidden></div><div class="offer-list-toolbar"><span id="offer-count" aria-live="polite" tabindex="-1"></span><label id="offer-sort-label"><span class="sr-only">Сортировать туры</span><select id="offer-sort"><option value="price">Сначала дешевле</option><option value="date">По дате вылета</option></select></label></div><button class="text-button offer-reset" data-action="reset-offer-filters" hidden>Сбросить фильтры туров</button><div id="all-offers-list"></div>`;
+ $('#modal-body').innerHTML=`${all.some(o=>!needsRefresh(o))?selectionStepsHTML(0):''}<div class="offer-list-context"><p>${offerSearchContext()} · ${durationText()} · ${guestsText()}</p><span>${icon('info')} Все цены за всех туристов. ${esc(sharedOfferNote(all)||(all.every(needsRefresh)?'Цены и наличие требуют проверки':'Сборы уточняются при выборе'))}</span></div>${optionalShortlistEnabled?'<div class="offer-view-switch" role="group" aria-label="Как показать туры"><button data-action="offer-view" data-value="list" aria-pressed="true">Все туры</button><button data-action="offer-view" data-value="compare" aria-pressed="false">Сравнить на даты</button></div>':''}<div id="offer-comparison-dates" class="offer-comparison-dates" hidden></div><details class="offer-filter-disclosure" ${innerWidth>760?'open':''}><summary><span>Уточнить варианты <span id="offer-local-filter-count"></span></span><small id="offer-filter-summary"></small></summary><div class="offer-controls"><label class="offer-departure-filter">Дата вылета<select id="offer-departure"><option value="">Все даты</option></select></label><label>Перелёт<select id="offer-flight"><option value="">Любой</option></select></label><label>Номер<select id="offer-room"><option value="">Любой</option></select></label><label>Питание<select id="offer-meal"><option value="">Любое</option></select></label></div></details><div id="offer-local-selected" class="offer-local-selected" aria-label="Условия выбора тура" hidden></div><div class="offer-list-toolbar"><span id="offer-count" aria-live="polite" tabindex="-1"></span><label id="offer-sort-label"><span class="sr-only">Сортировать туры</span><select id="offer-sort"><option value="price">Сначала дешевле</option><option value="date">По дате вылета</option></select></label></div><button class="text-button offer-reset" data-action="reset-offer-filters" hidden>Сбросить фильтры туров</button><div id="all-offers-list"></div>`;
 }
  return {renderOfferList:reset=>{if(!$('#offer-count'))mountOfferList();renderOfferList(reset);}};
 }
