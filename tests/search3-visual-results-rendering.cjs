@@ -12,7 +12,7 @@ function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
  if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
- const start=source.indexOf(first),end=source.indexOf('let verifiedOffer=null;',start);return end<0?source.slice(start):source.slice(start,end);
+ const start=source.indexOf(first),end=source.indexOf('function confirmTour(){',start);return end<0?source.slice(start):source.slice(start,end);
 }
 function observe(source,s){
  const trace=[],nodes=new Map();let ctx;
