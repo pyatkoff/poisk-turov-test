@@ -4,6 +4,8 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto'),zlib=require('node:zlib');
 const terser=require('terser');
 const {parsed}=require('./compact.cjs');
+const {printCSS}=require('./compact-css.cjs');
+const cssTree=require('css-tree');
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 function syntax(node,rename=false,context=''){
  if(Array.isArray(node))return node.filter(n=>n?.type!=='EmptyStatement').map(n=>syntax(n,rename,context));
@@ -75,6 +77,17 @@ function inventory(root){
  for(const src of [...live,...offline,...ondemand])assert(/^\.\.?\/[\w./-]+\.js$/.test(src)&&!src.includes('/../'),'bounded visual script path');
  return graphs;
 }
+// Keep visual CSS separate from the existing JS graph/size contract. Only these
+// two entry stylesheets receive syntax-preserving printing in the artifact.
+const visualStyleOwners=['./styles.css','./mobile-controls-v1.css'];
+function stylesheetInventory(root){
+ const html=fs.readFileSync(path.join(root,'visual-search/index.html'),'utf8');
+ const initial=[...html.matchAll(/<link\b[^>]*>/g)]
+  .filter(match=>/\brel="stylesheet"/.test(match[0]))
+  .map(match=>match[0].match(/\bhref="([^"?]+\.css)"/)?.[1]);
+ assert.deepEqual(initial,visualStyleOwners,'explicit two-owner visual stylesheet graph');
+ return {initial};
+}
 // A bounded artifact allowlist, never a source/API edit. Other assets keep names.
 const privateBindingAssets=new Set(['visual-search/app.js','tour-controller-v4.js','prototype-search/data.js',
  'search3-local-db-provider-v1.js','visual-search/local-db-parser.js','visual-search/flight-picker-v18.js']);
@@ -92,8 +105,18 @@ async function build(root){
  }
  const completeGraphs={...graphs,complete_live:[...graphs.live,...graphs.ondemand],complete_offline:[...graphs.offline,...graphs.ondemand]};
  const totals={};for(const[name,graph]of Object.entries(completeGraphs))totals[name]=files.filter(f=>graph.includes(f.src)).reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0});
- const manifest={schema:1,tool:'terser@5.51.2',policy:'binding-renaming-only; no expression compression; globals/properties/classes/arity retained; names retained except proven direct-call-only private declarations in the bounded visual asset allowlist',graphs,totals,files};
+ const cssGraphs=stylesheetInventory(root),cssFiles=[];
+ for(const src of cssGraphs.initial){
+  const relative=path.posix.join('visual-search',src),input=path.resolve(root,relative);
+  assert(input.startsWith(root+path.sep),'stylesheet source stays inside payload');
+  const source=fs.readFileSync(input,'utf8'),code=printCSS(source);
+  fs.writeFileSync(input,code);
+  cssFiles.push({src,source:relative,target:relative,source_sha256:hash(source),sha256:hash(code),raw:Buffer.byteLength(source),served:Buffer.byteLength(code),gzip_before:zlib.gzipSync(source,{level:9}).length,gzip_after:zlib.gzipSync(code,{level:9}).length});
+ }
+ const cssTotals={initial:cssFiles.reduce((s,f)=>Object.fromEntries(Object.keys(s).map(k=>[k,s[k]+f[k]])),{raw:0,served:0,gzip_before:0,gzip_after:0})};
+ const css={schema:1,tool:'css-tree@'+cssTree.version,policy:'exact-AST printing only; selector, condition and declaration value slices and order retained; protected notes retained',graphs:cssGraphs,totals:cssTotals,files:cssFiles};
+ const manifest={schema:1,tool:'terser@5.51.2',policy:'binding-renaming-only; no expression compression; globals/properties/classes/arity retained; names retained except proven direct-call-only private declarations in the bounded visual asset allowlist',graphs,totals,files,css};
  fs.writeFileSync(path.join(root,'visual-search/asset-size.json'),JSON.stringify(manifest,null,2)+'\n');return manifest;
 }
-module.exports={compile,syntax,inventory,build,privateFunctionBindings};
+module.exports={compile,syntax,inventory,stylesheetInventory,build,privateFunctionBindings};
 if(require.main===module)build(process.argv[2]||'v2').then(m=>console.log('VISUAL_COMPILED_ASSETS '+JSON.stringify(m.totals))).catch(e=>{console.error(e);process.exitCode=1});

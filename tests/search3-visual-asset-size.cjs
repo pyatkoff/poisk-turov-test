@@ -1,7 +1,8 @@
 'use strict';
-const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm');
-const {compile,privateFunctionBindings}=require('../scripts/build/search3-js/visual-entry.cjs');
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm'),zlib=require('node:zlib');
+const {compile,privateFunctionBindings,stylesheetInventory}=require('../scripts/build/search3-js/visual-entry.cjs');
 const {parsed}=require('../scripts/build/search3-js/compact.cjs');
+const {printCSS,parsed:parsedCSS}=require('../scripts/build/search3-js/compact-css.cjs');
 const root=path.resolve(process.argv[2]||'v2'),manifest=JSON.parse(fs.readFileSync(path.join(root,'visual-search/asset-size.json')));
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 for(const file of manifest.files){
@@ -13,6 +14,48 @@ assert.deepEqual(manifest.graphs.live,require('../scripts/build/search3-js/visua
 assert.deepEqual(manifest.graphs.ondemand,['./offer-list-v1.js','./hotel-details-v1.js','./flight-picker-ui-v1.js']);
 for(const src of manifest.graphs.ondemand)assert(!manifest.graphs.live.includes(src)&&!manifest.graphs.offline.includes(src),'cold owner is absent from both initial graphs');
 for(const name of ['live','offline'])for(const key of ['raw','served','gzip_before','gzip_after'])assert.equal(manifest.totals['complete_'+name][key],manifest.totals[name][key]+manifest.totals.ondemand[key],'full-load bytes include the cold owner');
+// The existing JS graph remains unchanged; actual visual stylesheets have their
+// own exact byte/AST accounting, rather than being counted as executable files.
+assert.equal(manifest.css.schema,1);
+assert.match(manifest.css.policy,/exact-AST printing only/);
+assert.deepEqual(manifest.css.graphs,stylesheetInventory(root));
+assert.deepEqual(manifest.css.files.map(file=>file.src),['./styles.css','./mobile-controls-v1.css']);
+for(const file of manifest.css.files){
+ const readable=fs.readFileSync(path.resolve(__dirname,'../v2',file.source)),served=fs.readFileSync(path.join(root,file.target));
+ assert.equal(hash(readable),file.source_sha256,file.source+' exact readable owner');
+ assert.equal(hash(served),file.sha256,file.target+' exact served stylesheet');
+ assert.equal(readable.length,file.raw);assert.equal(served.length,file.served);
+ assert.equal(zlib.gzipSync(readable,{level:9}).length,file.gzip_before);
+ assert.equal(zlib.gzipSync(served,{level:9}).length,file.gzip_after);
+ assert(file.served<=file.raw,'no served stylesheet growth');
+ assert.deepEqual(parsedCSS(served.toString()),parsedCSS(readable.toString()),file.target+' retains every selector, condition, declaration and order');
+ const expected=printCSS(readable.toString());
+ assert.equal(served.toString(),expected,file.target+' uses only the exact-AST printer');
+ assert.equal(printCSS(readable.toString()),expected,'stylesheet printing deterministic');
+}
+for(const key of ['raw','served','gzip_before','gzip_after'])assert.equal(manifest.css.totals.initial[key],manifest.css.files.reduce((sum,file)=>sum+file[key],0),'initial CSS totals reflect the two separate transfers');
+assert(manifest.css.totals.initial.served<manifest.css.totals.initial.raw,'actual initial stylesheet bytes reduced');
+assert(manifest.css.totals.initial.gzip_after<manifest.css.totals.initial.gzip_before,'actual stylesheet local gzip reduced');
+// Escaped selectors, media conditions, calc/custom-property token spacing and
+// quoted punctuation must survive ordinary whitespace/comment removal.
+const cssProbe=String.raw`/*! @license AnyTour stylesheet probe */
+@media (max-width: 760px) {
+ .hotel\:title > [data-label="Два слова"] {
+  --tokens: red/**/blue;
+  width: calc(100% - 2px);
+  content: "a ; b { c }";
+ }
+}`;
+const printedCSSProbe=printCSS(cssProbe);
+assert.deepEqual(parsedCSS(printedCSSProbe),parsedCSS(cssProbe),'syntax-sensitive CSS tokens remain exact');
+assert(printedCSSProbe.includes('/*! @license AnyTour stylesheet probe */'),'protected bang notice retained');
+assert(printedCSSProbe.includes('--tokens: red/**/blue'),'raw custom-property token boundary retained');
+assert(printedCSSProbe.includes('calc(100% - 2px)'),'calc spacing retained');
+assert.equal(printCSS(cssProbe),printedCSSProbe,'CSS probe output deterministic');
+for(const notice of ['/* Copyright AnyTour */','/* @license AnyTour */','/*# sourceMappingURL=visual-search.css.map */']){
+ const protectedCSS=notice+'\n.x { color: red; }\n';
+ assert.equal(printCSS(protectedCSS),protectedCSS,'protected ordinary notice keeps its exact position and asset bytes');
+}
 // Exercise syntax-sensitive cases independently from the application fixtures:
 // global/API names, function.name/length, numeric and Unicode keys, __proto__,
 // side-effect order, signed zero, direct eval, labels and tagged template raw text.
@@ -120,5 +163,5 @@ var publicValue=7;var result;
  const dataCode=fs.readFileSync(path.join(root,'prototype-search/data.js'),'utf8');
  for(const name of ['andromedaPoint','normalizeAndromedaQuote'])assert(dataCode.includes('function '+name+'('),'canonical parser oracle retains observed '+name);
 
- console.log('PASS compiled visual assets: '+manifest.files.length+' exact files; public API/template/eval/arithmetic probes; '+JSON.stringify(manifest.totals));
+ console.log('PASS compiled visual assets: '+manifest.files.length+' exact JS files; public API/template/eval/arithmetic probes; '+JSON.stringify(manifest.totals)+'; CSS '+manifest.css.files.length+' exact AST files '+JSON.stringify(manifest.css.totals));
 })().catch(e=>{console.error(e);process.exitCode=1});

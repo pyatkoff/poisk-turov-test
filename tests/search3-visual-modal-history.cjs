@@ -59,10 +59,12 @@ add('hotel meal absent',{kind:'back',open:true,previous:'hotel-details',setup:(c
 add('hotel returning offer expands',{kind:'back',open:true,previous:'hotel-details',returningOffer:true});
 add('focus outside body',{kind:'back',open:true,previous:'gallery',setup:(c,n)=>n('#modal-body').contains=()=>false});
 for(const open of [false,true])for(const filterOpen of [false,true])for(const fromHistory of [false,true])add(`close:${open}:${filterOpen}:${fromHistory}`,{kind:'close',open,filterOpen,fromHistory});
-function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
+// The retired My tour painter had no active DOM effect. Ignore only its
+// intercepted callback so the original active modal observations remain pinned.
+function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>record[0]!=='refreshSavedTourControls');return {name:s.name,result};});}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
-if(!process.argv.includes('--capture'))assert.equal(digest,'93468ea9aabb678597d2ea8dbe5cc406f264a39c41e67df84744f645fae96254','pinned original modal observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,'b5ce3b79680f59e961ddff53c0d7fe71f74afb038f4ee1cca3220dc5bdee5ab3','pinned original active modal observations; only retired My tour callback excluded');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);
