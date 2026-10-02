@@ -31,19 +31,7 @@
     min-height:44px;
   }
 
-  .drawer-trigger,
-  .quick-chips .chip,
-  .active-filter,
-  .hotel-links .text-button,
-  .compare-btn,
-  .offer-price .primary,
-  .compare-tray > .primary,
-  .calendar-heading .text-button,
-  .calendar-foot .text-button,
-  .destination-selection button,
-  .flex-dates button,
-  .filter-panel .check-row,
-  .filter-top .text-button {
+  .drawer-trigger,.quick-chips .chip,.active-filter,.hotel-links .text-button,.offer-price .primary,.calendar-heading .text-button,.calendar-foot .text-button,.destination-selection button,.flex-dates button,.filter-panel .check-row,.filter-top .text-button {
     min-height:44px;
   }
 
@@ -53,14 +41,7 @@
     min-height:44px;
   }
 
-  .filter-top .mobile-close,
-  .favorite-button,
-  .compare-tray .icon-button,
-  .modal-header .icon-button,
-  #modal-back,
-  .counter button,
-  .favorite-item .icon-button,
-  .compare-hotel-card .compare-remove {
+  .filter-top .mobile-close,.favorite-button,.modal-header .icon-button,#modal-back,.counter button,.favorite-item .icon-button {
     width:44px;
     min-width:44px;
     height:44px;
@@ -79,17 +60,13 @@
     padding-top:calc(18px + env(safe-area-inset-top));
   }
 
-  .compare-tray {
-    bottom:calc(80px + env(safe-area-inset-bottom));
-  }
+
 
   .toast {
     bottom:calc(84px + env(safe-area-inset-bottom));
   }
 
-  body:has(.compare-tray:not([hidden])) .toast {
-    bottom:calc(155px + env(safe-area-inset-bottom));
-  }
+
 
 
   .hotel-detail-photos {
@@ -114,16 +91,4 @@
     white-space:nowrap;
     scroll-snap-align:start;
   }
-}
-
-/* The shared comparison toggle also emits a text label for saved-list buttons.
-   Photo overlays remain icon-only; their explicit accessible name and pressed
-   state are unchanged. Do not suppress labels on full-width .compare-btn. */
-.compare-photo-button {
-  font-size:0;
-  line-height:0;
-}
-
-.compare-photo-button svg {
-  flex-shrink:0;
 }

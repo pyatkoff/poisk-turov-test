@@ -1,5 +1,7 @@
 // Execute the actual modal owner with DOM/collaborator boundaries intercepted.
 // Baseline is P5's unchanged modal code, originally app blob db413a55.
+// The retained pin was recomputed from release 7a4e93b before removal,
+// excluding only the two comparison Back scenarios.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -16,7 +18,7 @@ function observe(source,s){
   showModal:()=>{n.open=true;record('showModal');},close:()=>{n.open=false;record('close');},
   classList:{contains:()=>!!s.filterOpen},style:{overflow:'initial'}
  };nodes.set(key,n);return n;}
- const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderCompare','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
+ const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
   modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
@@ -47,7 +49,7 @@ const scenarios=[];const add=(name,s)=>scenarios.push({name,...s});
 for(const open of [false,true])for(const next of ['offer','gallery','dates','all-offers','andromeda-flights'])for(const wide of [false,true])add(`show:${open}:${next}:${wide}`,{kind:'show',open,next,wide});
 add('show while restoring',{kind:'show',open:true,current:'hotel-details',next:'offer',restoring:true});
 add('trigger fallback',{kind:'show',open:true,next:'dates',setup:c=>c.actionTrigger=null});
-for(const previous of ['offer','all-offers','hotel-details','gallery','andromeda-flights','andromeda-verified','anex-current','anex-additional','anex-quote','provider-application','anex-application','compare','favorites','selected-tour','dates','about']){
+for(const previous of ['offer','all-offers','hotel-details','gallery','andromeda-flights','andromeda-verified','anex-current','anex-additional','anex-quote','provider-application','anex-application','favorites','selected-tour','dates','about']){
  add('back:'+previous,{kind:'back',open:true,current:'offer',previous});
  add('back hidden footer:'+previous,{kind:'back',open:true,current:'dates',previous,footerHidden:true,noFocusTop:true,className:''});
 }
@@ -64,7 +66,8 @@ for(const open of [false,true])for(const filterOpen of [false,true])for(const fr
 function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>record[0]!=='refreshSavedTourControls');return {name:s.name,result};});}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
-if(!process.argv.includes('--capture'))assert.equal(digest,'b5ce3b79680f59e961ddff53c0d7fe71f74afb038f4ee1cca3220dc5bdee5ab3','pinned original active modal observations; only retired My tour callback excluded');
+assert.equal(actual.length,67,'only two comparison Back scenarios retired from the original 69 cases');
+if(!process.argv.includes('--capture'))assert.equal(digest,'7435274e334dade1e26fde71ca1c6af7a700e7babfcf7184b87258a2c57c232f','pinned original active modal observations; comparison cases and retired My tour callback excluded');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);

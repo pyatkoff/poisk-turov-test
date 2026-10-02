@@ -3,11 +3,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('let verifiedOffer=null;',start);assert(start>=0&&end>start);
-const source=app.slice(start,end),dependencies=source.match(/owner.create\(\{([^}]+),setComparisonQuotes:/)[1].split(',');
+const source=app.slice(start,end),context=source.match(/owner.create\(\{([^}]+)\}\)\.renderOfferList\(reset\)/);assert(context,'real cold owner renderer context');
+const dependencies=context[1].split(',').map(name=>name.trim());assert(dependencies.every(name=>/^[$A-Z_a-z][$\w]*$/.test(name)),'cold renderer context contains named live dependencies');
 const flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(){
  const scripts=[],timers=new Map(),renders=[],list={innerHTML:'before'},modal={open:true},filters={open:false},body={scrollTop:0};let nextTimer=0,remembers=0;
- const ctx={window:{},Promise,Error,WeakMap,Number,modalType:'all-offers',offerView:{id:1},comparisonQuotes:[],
+ const ctx={window:{},Promise,Error,WeakMap,Number,modalType:'all-offers',offerView:{id:1},
   setTimeout:fn=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   document:{head:{dataset:{offerListSrc:'./offer-list-v1.js?v=exact'},append:script=>scripts.push(script)},createElement:()=>({removed:false,remove(){this.removed=true;}})},
   $:selector=>({'#all-offers-list':list,'#modal':modal,'.offer-filter-disclosure':filters,'#modal-body':body}[selector]),
