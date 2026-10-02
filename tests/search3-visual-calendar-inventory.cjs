@@ -118,6 +118,33 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  console.log(`PASS recovery candidate cap: visible 3/3; scalar calls 35->${saturated.calls}, hotel visits 3500->${saturated.hotelVisits}; partial/priority/reset/raw sparse/inherited/live-growth parity; budget minimum scan unchanged; supplier/lead HTTP 0`);
 }
 
+// Empty-calendar copy needs the first lowest positive in-range observation, not a
+// fully sorted copy. Keep native filter membership and the raw observation tie.
+{
+ const owner=candidate=>new Function('data','state','resultCalendar','money','esc','dateText',section(candidate,'function emptyCalendarContext(){','function refreshEmptyCalendarContext')+';return emptyCalendarContext;');
+ const run=(candidate,observations,{selectedDate=null,supported=true}={})=>{
+  const state={selectedDate,search:{from:day(0),to:day(6)},filters:defaultFilters()},data={scenario:'live',observationScopeSupported:()=>supported},resultCalendar={observations},selected=[];
+  const context={data,state,resultCalendar,money:value=>{selected.push(value);return value+' ₽'},esc:String,dateText:value=>'date:'+value};
+  const html=owner(candidate)(...Object.values(context))();return {html,selected};
+ };
+ const reference=(observations,{selectedDate=null,supported=true}={})=>{
+  if(!supported)return {html:'',selected:[]};const from=selectedDate||day(0),to=selectedDate||day(6),selected=[];
+  const point=observations.filter(p=>p.date>=from&&p.date<=to&&Number.isFinite(p.price)&&p.price>0).sort((a,b)=>a.price-b.price)[0];if(!point)return {html:'',selected};
+  const observed=/^\d{4}-\d{2}-\d{2}/.test(point.observedAt||'')?' · найдена date:'+point.observedAt.slice(0,10):'';selected.push(point.price);
+  return {html:`<strong>В календаре — от ${point.price} ₽${observed}</strong><p>Это ранее сохранённая цена. Предложений по ней в текущем поиске нет.</p>`,selected};
+ };
+ const cases=[[],[{date:day(0),price:0},{date:day(1),price:NaN},{date:day(2),price:Infinity}],[{date:day(-1),price:1},{date:day(7),price:2}],[{date:day(1),price:90000,observedAt:'bad'},{date:day(2),price:70000,observedAt:'2026-10-01T10:00:00Z'}],[{date:day(1),price:70000,observedAt:'2026-10-02'},{date:day(2),price:70000,observedAt:'2026-10-03'}]];
+ for(const observations of cases)for(const options of [{},{selectedDate:day(2)},{supported:false}])assert.deepEqual(run(source,observations,options),reference(observations,options),'empty calendar minimum/markup parity');
+ const inherited={date:day(2),price:3,observedAt:'2026-10-04'},sparse=new Array(3),prototype=Object.create(Array.prototype);prototype[1]=inherited;sparse[2]={date:day(2),price:4};Object.setPrototypeOf(sparse,prototype);
+ assert.deepEqual(run(source,sparse),reference(sparse),'sparse/inherited filter membership retained');assert.deepEqual(run(source,sparse).selected,[3],'minimum keeps inherited raw observation value');
+ const appended={date:day(2),price:1},growing=[{date:day(2),observedAt:'2026-10-05'}, {date:day(2),price:5}];let pushed=false;Object.defineProperty(growing[0],'price',{enumerable:true,get(){if(!pushed){pushed=true;growing.push(appended)}return 6}});
+ assert.deepEqual(run(source,growing).selected,[5],'filter captures initial observation length');assert.deepEqual(run(source,growing).selected,[1],'next call observes appended observation');
+ const inserted={date:day(2),price:2},live=new Array(2);live[0]={date:day(2),get price(){live[1]=inserted;return 7}};assert.deepEqual(run(source,live).selected,[2],'native filter observes a later index filled during iteration');
+ let seed=123456789,reads=0;const values=Array.from({length:1000},(_,i)=>i+1);for(let i=values.length-1;i>0;i--){seed=(seed*1664525+1013904223)>>>0;const j=seed%(i+1);[values[i],values[j]]=[values[j],values[i]];}
+ const measured=values.map((price,index)=>({date:day(index%7),observedAt:'2026-10-01',get price(){reads++;return price}}));reads=0;const expected=reference(measured),sortedReads=reads;reads=0;const actualMinimum=run(source,measured),minimumReads=reads;assert.deepEqual(actualMinimum,expected);assert.deepEqual(actualMinimum.selected,[1]);assert.equal(minimumReads,3999);assert.equal(sortedReads,19242);assert(minimumReads<sortedReads/4);
+ console.log(`PASS empty calendar minimum: 1000 observations price reads ${sortedReads}->${minimumReads}; exact markup/tie/date scope; sparse/inherited/initial-length/live-edit filter behavior retained`);
+}
+
 // Budget recovery needs the sorted comparator minimum, without materializing or
 // sorting every matching offer. Keep native filter length/hole/inheritance facts.
 {
