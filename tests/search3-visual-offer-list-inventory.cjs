@@ -193,19 +193,21 @@ const legacyValueRenderer=(source.slice(0,valueInventoryStart)+source.slice(valu
 assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy boundary');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
-function render(code,all,view,shortlist=false,reset=false){
- const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0;
- const node=name=>{if(!dom.has(name)){
+function render(code,all,view,shortlist=false,reset=false,mount=false){
+ const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0,hotelCalls=0,currentRows=all,mounted=!mount;
+ const node=name=>{if(name==='#offer-count'&&!mounted)return null;if(!dom.has(name)){
   let html='';const classes=new Set(),style={},label={hidden:false},n={hidden:false,open:false,textContent:'',value:'',options:[{value:'',textContent:'Any',dataset:{}}],classList:{contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)},style:{setProperty:(k,v)=>{style[k]=v;}},closest:()=>label};
-  Object.defineProperty(n,'innerHTML',{get:()=>html,set:v=>{html=v;if(name.startsWith('#offer-'))n.options=[...v.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m=>({value:unesc(m[1]),textContent:unesc(m[2]),dataset:{}}));}});
+  Object.defineProperty(n,'innerHTML',{get:()=>html,set:v=>{html=v;if(name==='#modal-body')mounted=true;if(name.startsWith('#offer-'))n.options=[...v.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m=>({value:unesc(m[1]),textContent:unesc(m[2]),dataset:{}}));}});
   n.snapshot=()=>({html,hidden:n.hidden,open:n.open,text:n.textContent,value:n.value,options:n.options,classes:[...classes],style,label});dom.set(name,n);
  }return dom.get(name);};
- const context={$:node,$$:()=>[],hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>all,offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
-  sharedOfferNote:input=>{assert.strictEqual(input,all,'shared note uses all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
+ const context={$:node,$$:()=>[],hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
+  sharedOfferNote:input=>{assert.strictEqual(input,currentRows,'shared note uses current all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
   mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>'',offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
  const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(code,sandbox);
  const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset);
- return {snapshot:JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView})),noteCalls,noteVisits,keyCalls};
+ const snapshot=()=>JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView}));
+ return {snapshot:snapshot(),noteCalls,noteVisits,keyCalls,hotelCalls,
+  rerender:(nextRows,changes={})=>{currentRows=nextRows;Object.assign(context.offerView,changes);const previousCalls=hotelCalls;api.renderOfferList(false);return {snapshot:snapshot(),hotelCalls:hotelCalls-previousCalls};}};
 }
 // Optional before/after proof uses the old owner only when explicitly supplied.
 // CI remains self-contained; its independent reference algorithms stay above.
@@ -229,6 +231,20 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);
+// Mount the actual public cold owner. A fresh render owns one inventory; later
+// prices and refinement changes must recalculate it instead of reusing old rows.
+let invocationCases=0;
+for(const all of [[],rows.slice(0,1),rows.slice(0,2),rows]){
+ const current=render(source,all,baseView(),false,false,true);
+ assert.equal(current.hotelCalls,1,'mount and list share this invocation inventory');
+ if(priorSource){const previous=render(priorSource,all,baseView(),false,false,true);assert.equal(previous.hotelCalls,2,'measured prior mount plus render');assert.deepEqual(current.snapshot,previous.snapshot,'public mount output and view unchanged');}
+ const updated=all.map(o=>({...o,total:o.total+765432}));
+ const next=current.rerender(updated,{flight:'regular'}),fresh=render(source,updated,{...baseView(),flight:'regular'},false,false,true);
+ assert.equal(next.hotelCalls,1,'refinement reads fresh normalized rows once');
+ for(const selector of ['#all-offers-list','#offer-count','#offer-flight'])assert.deepEqual(next.snapshot.dom.find(([key])=>key===selector),fresh.snapshot.dom.find(([key])=>key===selector),'later result/refinement matches fresh mount: '+selector);
+ invocationCases+=2;
+}
+console.log(`PASS cold list invocation: ${invocationCases} actual mount/refinement/fresh-result states; mount hotelOffers calls 2→1; raw current rows and updated prices retained`);
 const forbiddenRefinementInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("required list refinement inventory");');
 assert.throws(()=>render(forbiddenRefinementInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);

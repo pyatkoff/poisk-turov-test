@@ -3,7 +3,7 @@
 // No application bootstrap, supplier transport, quote or lead submission executes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const cold=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/offer-list-v1.js'),'utf8');
-const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(','function mountOfferList(){');
+const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(','function mountOfferList(');
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
@@ -117,14 +117,14 @@ function visibleRecords(rows){return rows.map((row,index)=>{
   .map(call=>call[0]==='renderOfferRefinements'?call.slice(0,2):call[0]==='write'&&call[1]==='#all-offers-list'&&call[2]==='innerHTML'?[...call.slice(0,3),stripComparisonAction(call[3])]:call)}};
  });}
 const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
-const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(','function mountOfferList(){'))));
+const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 if(process.argv.includes('--capture'))console.log('Retained historical reference digest: '+baselineDigest);
 else assert.equal(baselineDigest,'eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9','pinned original retained result/calendar/list observations');
 assert.deepEqual(actual,baseline,'only bounded pure grouping/note work and retired comparison observations may change');
 if(i>=0){
  const coldIndex=process.argv.indexOf('--compare-offer-list');
- const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList(){'):'');
+ const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList('):'');
  assert.deepEqual(actual,visibleRecords(records(reference)),'before/after retained result/calendar/offer-list observations');
 }
 const original=actual.find(r=>r.name==='filter:true:false::false').result;
