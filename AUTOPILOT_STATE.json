@@ -1286,19 +1286,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: hotel/tour comparison removed, favorites retained, bounded reduction pass complete",
+    "title": "Search3 NEXT: retired inline offers and 145 CSS rules removed; bounded reduction complete",
     "status": "SIZE_REDUCTION_PASS_COMPLETE",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4344,
+    "pr": 4346,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Owner2026-10-02 «Избранное оставь пока; остальное можешь убирать» and «Зачем сравнение оставляешь?»: preserve ONLY favorites; remove hotel/tour comparison, complete one bounded package and NEXT acceptance.",
-    "last_fully_checked_release_sha": "03fb11c4b69abac2efad96f3d42a9387c9c243ba",
-    "published_source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
-    "acceptance_status": "NEXT_COMPARISON_REMOVAL_ACCEPTED_FIXTURE_SNAPSHOT_DEMO_APPLICATION_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "CURRENT BOUNDED PASS COMPLETE / STOP. Source#4344 0f4563d5b40b8aaae0df81c789a6206ce7f176ae merged release03fb11c4b69abac2efad96f3d42a9387c9c243ba; exact Security37016052950/lead37016052668/build37016052777/focused+FULLbrowser37016052699 SUCCESS. ONLY favorites retained (existing flagfalse), comparison UI/state/routes/9functions/2bindings removed; legacy comparison/MyTour storage untouched. 33active/favorite/provider/price/fuel/lead functions exact; refreshLiveHotel only comparison restoration fields changed. CSS438whole rules/10mixed/14newempty media removed with exact residual AST. JS+CSS initial−47293servedB/−8742sum-localgzipB, full−54542servedB/−10948sum-localgzipB. One command5954184154→publisher37017303205 attempt1SUCCESS, deployment11231010337 ZIP3aa530d472d6fbda3c7a003d548f97bce5511ddb1206163d967287eb8f863fbb verified; terminal5954527329/5954527593. Hosted search/filter/calendar/hotel/2offer cold list/current tour/demo24flightpairs/warmreopen/educationalapplication+Back/pristine LIVE passed; comparisonNodes0/page-origin errors0; test-onlyfavorites restore/persist/list/filter/recovery PASS. SnapshotRIA has suppliedhighlights but no separate servicesheading; fixture servicesgroups verified.11/11deterministic JSON/geometry equal;94/146PNG exact,52regions inspected/no identified retained-layout regression; no allPNG/latency claim.838files/41assets/9routes/noindex/lead403/LOCAL403/counter0/supplier0/reallead0; production+sibling unchanged, predecessor+rollback retained. Physical Safari/iPhone, real supplier search/quote/flights and real lead delivery separately UNVERIFIED. Source/integration/publisher claims RELEASED; final3pathdocs/current_task checkpoint only, no secondpublication or new microqueue/historical replay. data.js/puremeal separate INT→SEARCH handoff and tinyhelper/dedup proposals BACKLOG only.",
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-comparison-removal-20261002.md"
+    "owner_request": "Continue reducing and optimizing; explicit authorization of exact patch, GitHub branch, CI and NEXT on 2026-10-03 00:12 Europe/Kaliningrad.",
+    "last_fully_checked_release_sha": "481d04a2effd381baf9f108f169ba60b534d3a4e",
+    "published_source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+    "acceptance_status": "NEXT_RETIRED_OFFER_CLEANUP_ACCEPTED_FIXTURE_SNAPSHOT_DEMO_APPLICATION_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "CURRENT BOUNDED PASS COMPLETE / STOP. PR #4346 source 2bc09af35eb706178f58dd984e0cd2bb2af7cebb merged release 481d04a2effd381baf9f108f169ba60b534d3a4e with exact tree. All five source CI checks SUCCESS, full visual 37071617493; one command 5962424985 -> publisher 37072366374 attempt1 SUCCESS, deployment 11255795116 verified. Removed dead inline offers, write-only openHotel and empty verification residue plus 145 CSS rules; protected functions and retained CSS AST exact. Favorites/storage and existing disabled flag retained. Initial compiled JS+CSS 617108 -> 605992 B, complete 646903 -> 635787 B; each -11116 B and -1974 sum-local-gzip, no latency claim. Eleven deterministic receipts exact, 24 target screenshots inspected without identified regression. Hosted geometry/text/filter/calendar/hotel/current offer list/selected tour/demo flights/educational application+Back/pristine LIVE accepted; no real supplier searches or lead submission. Production/sibling unchanged, predecessor/rollback retained. Physical Safari/iPhone, real suppliers and real lead delivery separately UNVERIFIED. Source/integration/publisher claims RELEASED; final audit/current_task checkpoint only, no second publication, new microqueue or historical replay.",
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-retired-offer-cleanup-20261003.md"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
