@@ -1,6 +1,6 @@
 // Characterize the actual exported bind owner. No renderer substitute or I/O.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
-const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/flight-picker-v18.js'),'utf8');
+const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/flight-picker-v18.js'),'utf8')+'\n'+fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/flight-picker-ui-v1.js'),'utf8');
 function model(code,{width=1280,count=24,selected=0,sort='default',uniform=false}={}){
  const trace=[],controls=new Map(),work={flightIndex:0,flightPrice:0,appends:0};
  function node(key){return {key,value:'',checked:false,hidden:false,textContent:'',children:[],handlers:{},setAttribute(k,v){this[k]=v;},addEventListener(k,fn){this.handlers[k]=fn;},focus(options){trace.push(['focus',key,options]);},scrollIntoView(options){trace.push(['scroll',key,options]);},append(...nodes){this.children.push(...nodes);},replaceChildren(...nodes){this.children=[...nodes];}};}
@@ -116,3 +116,5 @@ for(const sort of ['default','price']){
  if(baseline){const before=refreshWork(baseline,sort);assert.deepEqual(after.state,before.state);console.log('WORK second query /1000 rows',sort,JSON.stringify({before:before.counts,after:after.counts}));}
 }
 console.log(`PASS flight filter: ${actual.length} pinned bind states (${digest}), ${changed.length} dynamic/repair states, ${dom.length} real DOM states; unchanged normalization1001; no unchanged-order sorts/appends; provider/lead HTTP0`);
+
+require('./search3-visual-flight-picker-lazy.cjs');

@@ -136,13 +136,20 @@ const server=http.createServer((req,res)=>{
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
  const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
- if(file.endsWith('.php')){const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]);res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;}
+ if(file.endsWith('.php')){
+  let html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]).toString();
+  if(u.searchParams.get('loadingMode')==='eager'){
+   const cold=html.match(/data-flight-picker-src="([^"]+)"/);assert(cold,'explicit cold asset for controlled eager baseline');
+   const initial=html;html=html.replace(/(<script src="\.\/app\.js[^"\n]*" defer><\/script>)/,`<script src="${cold[1]}" defer></script>\n$1`);assert.notEqual(html,initial,'controlled eager baseline inserts before the host');
+  }
+  res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;
+ }
  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(fs.readFileSync(file));
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{for(const width of [390,768,1280]){
-  const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
   let releaseAnexQuote,markAnexQuotePending;const anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
@@ -296,8 +303,10 @@ const server=http.createServer((req,res)=>{
   await tvOffer.click();await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();
   assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
   assert.equal(transport.calls.length,quoteOnlyCalls,'return to the same actualized tour without flights adds no request');
+  assert.equal(flightDownloads.length,0,'catalogue, results and quote without flights leave the picker cold');
   await page.locator('#modal-back').click();await continueToFlights(page);await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
-  await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
+  assert.equal(flightDownloads.length,1,'first actual picker open downloads one UI owner');assert.match(new URL(flightDownloads[0]).search,/^\?v=[0-9a-f]{12}$/,'PHP binds the exact compiled picker hash');
+  await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();assert.equal(flightDownloads.length,1,'warm picker has no second download');
   assert((await page.locator('#detail-total').textContent()).replace(/\s/g,'').includes('133500'));
   await page.locator('[data-action="confirm-tour"]').click();
   assert.equal((await page.locator('.selection-steps li').nth(1).textContent()).trim(),'2Перелёт');
@@ -655,7 +664,9 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();transport.state.samoRoom='SAMO STANDARD';
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
- }}finally{await browser.close();server.close();}
+ }
+ await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+ }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
  await require('./search3-visual-large-flight-choices.cjs')();
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

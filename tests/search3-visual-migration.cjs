@@ -14,13 +14,13 @@ assert.match(html, /Живой поиск ещё не подключён/);
 assert.match(html, /noindex, nofollow, noarchive/);
 assert.doesNotMatch(html, /live-data\.js|href="\.\/(?:review\.html|v17\/)/);
 const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
-assert.deepEqual(scripts, ['./fixture-data.js', './local-db-parser.js', './recorded-data.js', './search-lifecycle-v1.js', './flight-picker-v18.js', './preview-lead.js', './app.js']);
+assert.deepEqual(scripts, ['./fixture-data.js', './local-db-parser.js', './recorded-data.js', './search-lifecycle-v1.js', './flight-picker-v18.js', './preview-lead.js', './filter-panel-v1.js', './app.js']);
 for (const link of [...html.matchAll(/(?:src|href)="(\.\/[^"?#]+)"/g)].map(m => m[1])) assert(fs.existsSync(path.join(root, link)), link);
 const bootstrap = fs.readFileSync(path.join(root, 'index.php'), 'utf8');
 assert.match(bootstrap, /\/\_preview\/search3-next-candidate\/visual-search\//);
 assert.match(bootstrap, /http_response_code\(403\)/);
 assert.match(bootstrap, /hash_file\('sha256'/);
-assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css','preview-lead.js','live-bridge.js','flight-picker-v18.js','offer-list-v1.js','mobile-controls-v1.css','hotel-details-v1.js']);
+assert.deepEqual(Object.keys(manifest.adaptedFiles),['app.js','fixture-data.js','index.html','styles.css','preview-lead.js','live-bridge.js','flight-picker-v18.js','offer-list-v1.js','mobile-controls-v1.css','hotel-details-v1.js','filter-panel-v1.js','index.php','flight-picker-ui-v1.js']);
 // Keep donor provenance immutable; the exact adapted file is verified below.
 assert.equal(manifest.sourceFiles['flight-picker-v18.js'], 'd6de6d2deb26c5f6fbce4bbbbc70bfafda61961b1d674d67c5fef7a70626d7a5');
 for(const [file,hash] of Object.entries(manifest.adaptedFiles))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,'adapted '+file);
