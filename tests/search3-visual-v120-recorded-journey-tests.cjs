@@ -3,6 +3,25 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {JSDOM, VirtualConsole} = require('jsdom');
 
+// Exact refresh still owns its cached target snapshot and matches all selected
+// conditions. These are active search helpers, independent of retired My tour.
+{
+ const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const actual=name=>{const start=source.indexOf('function '+name+'(');assert(start>=0,name);const tail=source.slice(start),line=tail.slice(0,tail.indexOf('\n'));return line.endsWith('}')?line:tail.slice(0,tail.indexOf('\n}')+2);};
+ const hotel={id:7,name:'Exact target'},offer={key:'target',hotelId:7,day:'2026-10-05',nights:7,adults:2,ages:[0,17],total:123450,room:'Standard',meal:'Завтраки',operator:'ANEX',flight:'charter',origin:'Москва',provider:'anex',search:{country:'4',origin:'Москва',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:10,adults:2,ages:[0,17]}};
+ const ctx={hotels:[hotel],Number,String,Array,JSON,addDays:(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),fuelAmount:()=>null,flightAllowanceText:()=> 'Уточняется',savedFlightTextPlain:()=> 'Рейс уточнит менеджер',savedFlightLegs:()=>[]};
+ vm.createContext(ctx);vm.runInContext(['selectedTourOfferSnapshot','selectedTourHotel','sameSelectedTourConditions'].map(actual).join('\n'),ctx);
+ const target=ctx.selectedTourOfferSnapshot(offer);
+ assert.equal(ctx.selectedTourHotel(offer),hotel,'Active provider UI keeps the current hotel identity');
+ assert.equal(ctx.selectedTourHotel({hotelId:99}),null,'Unknown hotel does not gain a retired saved fallback');
+ assert.equal(target.returnDay,'2026-10-12');assert.equal(target.total,offer.total);assert.equal(target.savedFuelAmount,null,'Unknown fuel is not invented');
+ assert.deepEqual([...target.ages],[0,17]);assert.notEqual(target.ages,offer.ages,'Refresh target keeps detached child ages');
+ assert.equal(target.raw.selectionEnabled,false,'Refresh snapshot cannot authorize a quote or application');
+ assert.equal(ctx.sameSelectedTourConditions(offer,target),true,'Exact target still matches its original conditions');
+ for(const [field,value]of Object.entries({hotelId:8,day:'2026-10-06',nights:8,adults:3,ages:[0,16],room:'Deluxe',meal:'Всё включено',operator:'SAMO',flight:'regular'}))assert.equal(ctx.sameSelectedTourConditions({...offer,[field]:value},target),false,'A changed '+field+' is only an alternative');
+ assert.equal(ctx.selectedTourOfferSnapshot({...offer,total:0}),null,'Invalid price cannot become an exact refresh target');
+}
+
 const root = path.resolve(__dirname, '../v2/visual-search');
 const errors = [], requests = [];
 const virtualConsole = new VirtualConsole();
@@ -12,7 +31,14 @@ const dom = new JSDOM(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), {
   runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole
 });
 const w = dom.window, d = w.document;
-const legacySave='existing local selection';w.localStorage.setItem('anytour.prototype.v18.selected-tour.v1',legacySave);
+const legacyKey='anytour.prototype.v18.selected-tour.v1';
+const legacySave=JSON.stringify({version:1,observedAt:Date.parse('2026-01-01T12:00:00Z'),offer:{key:'retired-selection',hotelId:1,total:12345},hotel:{id:1,name:'Legacy selection'}});
+w.localStorage.setItem(legacyKey,legacySave);
+const legacyStorageMutations=[];
+for(const method of ['setItem','removeItem','clear']){
+ const original=w.Storage.prototype[method];
+ w.Storage.prototype[method]=function(...args){if(method==='clear'||args[0]===legacyKey)legacyStorageMutations.push(method);return original.apply(this,args);};
+}
 w.innerWidth = 390;
 w.structuredClone = structuredClone;
 w.matchMedia = () => ({matches: true, addEventListener() {}, removeEventListener() {}});
@@ -32,6 +58,12 @@ for (const name of ['fixture-data.js', 'recorded-data.js', 'search-lifecycle-v1.
 }
 const settle = (delay = 70) => new Promise(resolve => setTimeout(resolve, delay));
 const click = selector => {const element = d.querySelector(selector); assert(element, selector); element.click();};
+const assertRetiredSelectionAbsent=()=>{
+ assert.equal(w.localStorage.getItem(legacyKey),legacySave,'Expired legacy My tour record remains untouched');
+ assert.deepEqual(legacyStorageMutations,[],'No retired selection write, removal or storage clear');
+ assert(!d.querySelector('#saved-tour-controls,[data-action="save-tour-for-later"],[data-action="selected-tour-details"],[data-action="selected-tour-alternatives"],[data-action="remove-selected-tour"],[data-action="undo-selected-tour"]'),'No retired selection controls');
+ assert([...d.querySelectorAll('[data-action="selected-tour"]')].every(e=>e.hidden),'Retired navigation stays hidden');
+};
 
 const continueToFlights=async()=>{
  if(!d.querySelector('[data-action="start-tour-flights"]'))return;
@@ -40,8 +72,18 @@ const continueToFlights=async()=>{
 };
 (async()=>{
  await settle(200);
+ assertRetiredSelectionAbsent();
+ const initialCards=d.querySelectorAll('.hotel-card').length;
+ for(const type of ['saved-tour','saved-details']){
+  const route={type,key:'retired-selection'},state={'anytour.prototype.v18.ui.v1':route};
+  w.history.replaceState(state,'',w.location.href);w.dispatchEvent(new w.PopStateEvent('popstate',{state}));await settle();
+  assert(!d.querySelector('#modal').open,'Retired history route does not reopen a selection');
+  assert.equal(w.history.state?.['anytour.prototype.v18.ui.v1'],undefined,'Retired route is dropped from history');
+  assert.equal(d.querySelectorAll('.hotel-card').length,initialCards,'Retired history keeps current results');
+  assertRetiredSelectionAbsent();
+ }
  const initialRequests=requests.length;
- const change=async value=>{const e=d.querySelector('#fixture-scenario');e.value=value;e.dispatchEvent(new w.Event('change',{bubbles:true}));await settle(180);assert.equal(w.AnyTourPrototypeData.scenario,value);};
+ const change=async value=>{const e=d.querySelector('#fixture-scenario');e.value=value;e.dispatchEvent(new w.Event('change',{bubbles:true}));await settle(180);assert.equal(w.AnyTourPrototypeData.scenario,value);assertRetiredSelectionAbsent();};
  for(const scenario of ['mixed','family','incomplete','price-change','flights']){
   await change(scenario);
   assert.equal(d.querySelectorAll('.hotel-card').length,scenario==='mixed'?5:1);
@@ -84,9 +126,13 @@ const continueToFlights=async()=>{
   assert(form.compareDocumentPosition(flightDetails)&w.Node.DOCUMENT_POSITION_FOLLOWING,scenario+' shows application before flight details');
   assert(flightDetails.querySelector('.saved-flight-summary'),scenario+' reveals both supplied flight legs');
   assert.equal(d.querySelector('#modal-title').textContent,'Заявка на тур');
+  const applicationRoute=w.history.state?.['anytour.prototype.v18.ui.v1'];
+  assert.equal(applicationRoute?.type,'selected-tour','Current application retains its active history route');
+  assert(applicationRoute.key,'Current application history identifies the exact chosen offer');
   assert(!d.querySelector('[data-copy-tour]'),'No separate summary/copy detour');
   assert(!d.querySelector('#saved-tour-controls'),'No My tour controls in application');
   assert.equal(w.localStorage.getItem('anytour.prototype.v18.selected-tour.v1'),legacySave,'Selection is not automatically saved or legacy record overwritten');
+  assertRetiredSelectionAbsent();
   assert([...d.querySelectorAll('[data-action="selected-tour"]')].every(e=>e.hidden),'My tour is not in navigation');
   assert.equal(d.querySelector('.summary-price strong').textContent,expected);
   if(scenario==='price-change')assert(d.querySelector('.quote-price-change'),'Changed price stays visible in summary');
@@ -99,6 +145,10 @@ const continueToFlights=async()=>{
   form.elements.phone.dispatchEvent(new w.Event('input',{bubbles:true}));assert(!form.dataset.checked,'Editing clears success');
   click('#modal-back');await settle();assert.equal(d.querySelector('#detail-total').textContent,expected,'Back retains the selected total');assert.match(d.querySelector('[data-action="confirm-tour"]').textContent,/К заявке/);
   assert(!d.querySelector('#saved-tour-controls'),'No My tour detour in exact-tour details');
+  const offerRoute=w.history.state?.['anytour.prototype.v18.ui.v1'];
+  assert.equal(offerRoute?.type,'offer','Back restores active exact-tour history');
+  assert.equal(offerRoute.key,applicationRoute.key,'Back retains the same chosen offer identity');
+  assertRetiredSelectionAbsent();
  }
  await change('mixed');
  let hotels;await w.AnyTourPrototypeData.search(w.AnyTourPrototypeData.initialSearch,e=>{if(e.type==='results')hotels=e.hotels;});
@@ -130,6 +180,7 @@ const continueToFlights=async()=>{
  const wrongParty={...record.search,ages:[]};let mismatch;await w.AnyTourPrototypeData.search(wrongParty,e=>{if(e.type==='results')mismatch=e.hotels;});assert.equal(mismatch.length,0,'No silently fabricated tours for another party');
  Object.defineProperty(input,'files',{configurable:true,value:[{size:1000,text:async()=>'{}'}]});input.dispatchEvent(new w.Event('change'));await settle();assert.match(d.querySelector('#recording-status').textContent,/не загружена/);assert.equal(w.AnyTourPrototypeData.scenario,'recorded','Invalid replacement retains current recording');
  await change('flights');assert.equal(d.querySelectorAll('.hotel-card').length,1);
+ assertRetiredSelectionAbsent();
  assert.equal(requests.length,initialRequests,'No provider, quote, contact or live API request');assert.deepEqual(errors,[]);
  console.log('PASS v132 direct application, no My tour persistence, services before rooms; v120 recorded import/identity/30-day/local-application guards plus v118: mixed/family/incomplete/reprice journeys to dry-run application, 48h stability, expired/unavailable/error guards, contact privacy, snapshot honesty and no external requests');dom.window.close();
 })().catch(e=>{console.error(e);dom.window.close();process.exitCode=1;});

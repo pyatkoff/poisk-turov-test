@@ -92,7 +92,6 @@ let resultCalendar={key:null,hotels:[],observations:[],phase:'idle',controller:n
 const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
 const getStored=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
 const saveStored=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{toast('Сохранение в браузере недоступно; выбор останется до перезагрузки.')}};
-const clearStored=key=>{try{localStorage.removeItem(key)}catch{}};
 const validIds=ids=>Array.isArray(ids)?[...new Set(ids.filter(id=>Number.isSafeInteger(id)&&id>0))].slice(0,20):[];
 const state={search:structuredClone(data.initialSearch),filters:defaultFilters(),selectedDate:null,sort:'recommended',openHotel:null,favorites:[],compare:[],onlyFavorites:false,hasSearched:false,photoIndexes:{}};
 const modalHistory=[];let restoringModal=false;
@@ -855,10 +854,10 @@ function uiRoute(){
  if(type==='destination')return {type,choice:{country:destinationChoice?.country,resorts:[...(destinationChoice?.resorts||[])],hotelId:destinationChoice?.hotelId||0},query:$('#destination-query')?.value||'',resolvedQuery:destinationResolvedQuery,expanded:destinationResortsExpanded,limit:destinationHotelLimit,scroll:$('#modal-body').scrollTop};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
  if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,phase:nightsDraft.phase===1?1:0}};
- if(type==='verification')return selectedOffer===savedSelection?{type:'saved-tour'}:{type:'offer',key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
- if(type==='flights'){const o=flightDraft?.base;return o?.isSavedSelection?{type:'saved-details'}:{type:'offer',key:o?.key,flightChoiceId:o?.flightChoiceId};}
+ if(type==='verification')return {type:'offer',key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
+ if(type==='flights'){const o=flightDraft?.base;return {type:'offer',key:o?.key,flightChoiceId:o?.flightChoiceId};}
  if(type==='selected-tour')return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop};
- if(type==='offer')return selectedOffer===savedSelection?{type:'saved-details'}:{type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
+ if(type==='offer')return {type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
  if(type==='all-offers')return {type,id:offerView?.id,mode:offerView?.mode,departure:offerView?.departure,day:offerView?.day,nights:offerView?.nights,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,pair:offerView?.pair,activeVariant:offerView?.activeVariant,differencesOnly:offerView?.differencesOnly,open:[...(offerView?.open||[])],limits:{...(offerView?.limits||{})},filtersOpen:$('.offer-filter-disclosure')?.open===true,scroll:$('#modal-body').scrollTop};
  if(type==='hotel-details'&&hotelDetailsView?.restored&&!$('#hotel-room-count'))return {...hotelDetailsView.restored,type,id:hotelDetailsView.id};
  if(type==='hotel-details')return {type,id:Number($('.hotel-section-nav')?.dataset.hotelId)||null,meal:$('#hotel-room-meal')?.value||'',rooms:$$('.room-overview[open]').map(el=>el.dataset.room),more:$$('#modal-body .hotel-room-more[open]').map(el=>el.closest('[data-room]').dataset.room),scroll:$('#modal-body').scrollTop};
@@ -908,7 +907,6 @@ function reopenUIRoute(route){
  case 'dates':openDates(route.source==='results'?'results':'form',route);if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
  case 'meals':openMeals(route);break;
  case 'budget':openBudget(route);break;
- case 'saved-tour':case 'saved-details':return false;
  case 'andromeda-flights':case 'andromeda-verified':case 'provider-application':case 'anex-current':case 'anex-additional':case 'anex-quote':case 'anex-application':{
   if(!restoreProviderHistoryRoute(route))return false;
   break;
@@ -960,7 +958,7 @@ addEventListener('popstate',e=>{
 });
 function updateModalBack(){
  const previous=modalHistory.at(-1),button=$('#modal-back');button.hidden=!previous;
- const labels={'hotel-details':'К отелю','all-offers':'К вариантам тура',offer:'К деталям тура',flights:'К перелётам',gallery:'К фотографиям',favorites:'В избранное',compare:'К сравнению','selected-tour':'К выбранному туру','saved-tour':'К выбранному туру'};
+ const labels={'hotel-details':'К отелю','all-offers':'К вариантам тура',offer:'К деталям тура',flights:'К перелётам',gallery:'К фотографиям',favorites:'В избранное',compare:'К сравнению','selected-tour':'К выбранному туру'};
  const label=labels[previous?.type]||'Назад';
  button.setAttribute('aria-label',label);button.title=previous?label+': '+previous.title:label;
  $('#modal-back-label').textContent=label;
@@ -1010,7 +1008,7 @@ function modalBack(){
   if(previous.type==='anex-application')openAnexApplicationPreview();
  }
  if(previous.type==='hotel-details')restoreHotelDetailStep(previous);
- restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);refreshSavedTourControls();
+ restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='compare')renderCompare();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);
  restoreModalStepFocus(previous);
  syncHotelSectionNavigation();rememberUIRoute();
 }
@@ -1838,40 +1836,14 @@ function renderOfferList(reset=false){
 let verifiedOffer=null;
 function cancelVerification(){}
 function confirmTour(){openLeadPreview();}
-const selectedTourKey='anytour.prototype.v18.selected-tour.v1',selectedTourTTL=24*60*60*1000;
-let savedSelection=null,savedSelectionHotel=null,savedSelectionObservedAt=0,removedSelectedTour=null,removedSelectedTourHotel=null,removedSelectedTourObservedAt=0,selectedTourExpiryTimer=null,savedSelectionPersistent=false;
-function selectedTourHotel(o=savedSelection){return hotels.find(h=>h.id===o?.hotelId)||(savedSelectionHotel?.id===o?.hotelId?savedSelectionHotel:null);}
+function selectedTourHotel(o){return hotels.find(h=>h.id===o?.hotelId)||null;}
 function selectedTourOfferSnapshot(o){
  const search=o?.search||{},day=String(o?.day||''),nights=Number(o?.nights),adults=Number(o?.adults),hotelId=Number(o?.hotelId),total=Number(o?.total);
  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isSafeInteger(hotelId)||hotelId<1||!Number.isInteger(nights)||nights<1||!Number.isInteger(adults)||adults<1||!Number.isFinite(total)||total<=0)return null;
  const ages=Array.isArray(o.ages)?o.ages.filter(age=>Number.isInteger(age)&&age>=0&&age<=17).slice(0,3):[];
  return {key:String(o.key||''),hotelId,day,nights,returnDay:addDays(day,nights),variant:Number.isInteger(o.variant)?o.variant:0,total,room:String(o.room||'Номер уточняется'),placement:String(o.placement||''),adults,ages,origin:String(o.origin||search.origin||''),meal:String(o.meal||'Питание уточняется'),operator:String(o.operator||'Туроператор уточняется'),flight:['regular','charter'].includes(o.flight)?o.flight:'unknown',cached:true,provider:String(o.provider||'local'),raw:{selectionEnabled:false},search:{origin:String(search.origin||o.origin||''),country:String(search.country||''),from:String(search.from||day),to:String(search.to||day),minNights:Number(search.minNights)||nights,maxNights:Number(search.maxNights)||nights,adults,ages:[...ages]},savedFuelAmount:fuelAmount(o),savedFlightAllowance:{baggage:flightAllowanceText(o,'baggage'),carryOn:flightAllowanceText(o,'carryOn')},flightChoiceId:null,tour:null,variants:[],savedFlightText:savedFlightTextPlain(o),savedFlightLegs:savedFlightLegs(o),loading:false,flightsLoading:false,pricePending:false};
 }
-function selectedTourHotelSnapshot(h){if(!h||!Number.isSafeInteger(Number(h.id)))return null;return {id:Number(h.id),name:String(h.name||'Выбранный отель'),resort:String(h.resort||''),country:String(h.country||''),stars:Number(h.stars)||0,rating:Number.isFinite(Number(h.rating))?Number(h.rating):null,photos:Array.isArray(h.photos)?h.photos.filter(x=>typeof x==='string').slice(0,8):[],legacyIds:Array.isArray(h.legacyIds)?h.legacyIds.filter(x=>Number.isSafeInteger(Number(x))&&Number(x)>0).map(Number):[],raw:{arrival:data.text(h.raw?.arrival)}};}
-function selectedTourRecord(){const offer=selectedTourOfferSnapshot(savedSelection),hotel=selectedTourHotelSnapshot(selectedTourHotel());return offer&&hotel&&savedSelectionObservedAt?{version:1,observedAt:savedSelectionObservedAt,offer,hotel}:null;}
-function scheduleSelectedTourExpiry(){clearTimeout(selectedTourExpiryTimer);if(!savedSelectionObservedAt)return;const delay=savedSelectionObservedAt+selectedTourTTL-Date.now();if(delay<=0){expireSelectedTour();return;}selectedTourExpiryTimer=setTimeout(()=>{expireSelectedTour();updateNav();refreshSavedTourControls();},delay+25);}
-function expireSelectedTour(){clearTimeout(selectedTourExpiryTimer);selectedTourExpiryTimer=null;savedSelection=null;savedSelectionHotel=null;savedSelectionObservedAt=0;clearStored(selectedTourKey);}
-function persistSelectedTour(){const record=selectedTourRecord();try{if(record)localStorage.setItem(selectedTourKey,JSON.stringify(record));else localStorage.removeItem(selectedTourKey);savedSelectionPersistent=!!record;}catch{savedSelectionPersistent=false;}scheduleSelectedTourExpiry();}
-function demoteSavedTour(){if(!readSelectedTour())return;savedSelection=selectedTourOfferSnapshot(savedSelection);persistSelectedTour();}
 function sameSelectedTourConditions(o,target){return !!o&&!!target&&o.hotelId===target.hotelId&&o.day===target.day&&o.nights===target.nights&&o.adults===target.adults&&JSON.stringify(o.ages||[])===JSON.stringify(target.ages||[])&&o.room===target.room&&o.meal===target.meal&&o.operator===target.operator&&o.flight===target.flight;}
-function readSelectedTour(){if(savedSelectionObservedAt&&Date.now()-savedSelectionObservedAt>=selectedTourTTL)expireSelectedTour();return savedSelection;}
-function savedTourControlsHTML(o,{showResults=true}={}){
- if(o?.provider==='recorded')return '<p class="saved-flight-notice">Загруженный тур доступен только в этой вкладке. Для повторной проверки после перезагрузки загрузите файл снова.</p>';
- const saved=readSelectedTour(),same=!!saved&&sameSelectedTourConditions(o,saved)&&o.key===saved.key&&o.total===saved.total&&savedFlightTextPlain(o)===savedFlightTextPlain(saved);
- const canSave=!o.loading&&!o.flightsLoading&&!o.pricePending&&Number.isFinite(o.total)&&o.total>0;
- const until=savedSelectionObservedAt?new Date(savedSelectionObservedAt+selectedTourTTL).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
- return `<section id="saved-tour-controls" class="tour-save-choice" aria-label="Сохранить выбранный тур">${same?`<strong>${icon('check')} В «Мой тур»</strong><p id="saved-tour-storage-status" role="status" tabindex="-1">${savedSelectionPersistent?'Сохранён в этом браузере до '+esc(until)+'.':'Браузер не разрешил сохранение. Тур доступен только до перезагрузки страницы.'} Цена и наличие требуют проверки.</p><div class="tour-save-actions">${showResults?'<button class="secondary" data-action="close-modal">К результатам</button>':''}<button class="text-button" data-action="remove-selected-tour">Удалить из «Мой тур»</button></div>`:`<button class="secondary" data-action="save-tour-for-later" ${canSave?'':'disabled'}>${icon('suitcase')} ${saved?'Заменить тур в «Мой тур»':'Сохранить в «Мой тур»'}</button><p id="saved-tour-storage-status" role="status" tabindex="-1">${saved?'Сейчас сохранён '+esc(selectedTourHotel(saved)?.name||'другой тур')+'. Новый выбор заменит его.':'Номер, питание, даты и цена сохранятся в этом браузере на 24 часа. Это не бронирование.'}</p>`}</section>`;
-}
-function refreshSavedTourControls(focus=false){const section=$('#saved-tour-controls');if(!section||!selectedOffer)return;section.outerHTML=savedTourControlsHTML(selectedOffer,{showResults:modalType!=='selected-tour'});if(focus)$('#saved-tour-storage-status').focus({preventScroll:true});}
-function openSelectedTour(){
- const saved=readSelectedTour();if(saved){selectedOffer=saved;renderRealOffer();return;}
- const canUndo=removedSelectedTour&&Date.now()-removedSelectedTourObservedAt<selectedTourTTL;
- showModal('saved-tour','Мой тур','ВАШ ВЫБОР',`<div class="saved-empty"><h3>${canUndo?'Тур удалён из «Мой тур»':'Тур пока не сохранён'}</h3><p>${canUndo?'Можно восстановить последний выбор.':'Откройте конкретное предложение и нажмите «Сохранить в “Мой тур”».'}</p><div class="saved-empty-actions">${canUndo?'<button class="primary" data-action="undo-selected-tour">Восстановить тур</button>':''}<button class="secondary" data-action="close-modal">К результатам</button></div></div>`);
-}
-function restoreSelectedSearch(){closeModal();editSearch();}
-function replaceSelectedTourView(){const previous=restoringModal;restoringModal=true;openSelectedTour();restoringModal=previous;}
-function removeSelectedTour(){if(!readSelectedTour())return;try{localStorage.removeItem(selectedTourKey);}catch{const status=$('#saved-tour-storage-status');if(status){status.textContent='Не удалось удалить тур из браузера. Он пока остаётся в «Мой тур»; попробуйте ещё раз.';status.focus({preventScroll:true});}return;}removedSelectedTour=savedSelection;removedSelectedTourHotel=savedSelectionHotel;removedSelectedTourObservedAt=savedSelectionObservedAt;expireSelectedTour();updateNav();replaceSelectedTourView();}
-function undoSelectedTour(){if(!removedSelectedTour||Date.now()-removedSelectedTourObservedAt>=selectedTourTTL)return; savedSelection=removedSelectedTour;savedSelectionHotel=removedSelectedTourHotel;savedSelectionObservedAt=removedSelectedTourObservedAt;removedSelectedTour=null;removedSelectedTourHotel=null;removedSelectedTourObservedAt=0;persistSelectedTour();updateNav();replaceSelectedTourView();}
 function completeTour(o){selectedOffer=o;openLeadPreview();}
 
 let compareView={onlyDifferences:false,pair:[]};
@@ -1940,7 +1912,7 @@ function renderSearchStatus(items,total){
 function prepareSearchRun(options={}){
  if(state.filters.hotelId&&!data.preview&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],phase:'idle',controller:null};
- selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;demoteSavedTour();removedSelectedTour=null;removedSelectedTourHotel=null;removedSelectedTourObservedAt=0;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
+ selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
  if(options.exactRefreshTarget)searchResponse.exactRefreshTarget=selectedTourOfferSnapshot(options.exactRefreshTarget);
  return {search:state.search,filters:structuredClone(state.filters),hotelIds:options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),response:searchResponse};
@@ -2096,12 +2068,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  switch(action){
  case 'choose-flight':openFlightPicker();break;case 'apply-flight':applyFlightPair();break;
  case 'retry-flight-picker':if(modalType==='flights')renderFlightPicker();break;
- case 'selected-tour':break;
- case 'save-tour-for-later':break;
- case 'selected-tour-details':{const saved=readSelectedTour();if(saved){selectedOffer=saved;renderRealOffer();}break;}
- case 'selected-tour-alternatives':restoreSelectedSearch();break;
- case 'remove-selected-tour':removeSelectedTour();break;
- case 'undo-selected-tour':undoSelectedTour();break;
  case 'retry-search':if(!searchResponse.pending)runSearch({retain:true,exactRefresh:searchResponse.exactRefresh});break;
  case 'continue-search':if(!searchResponse.pending&&searchResponse.canContinue)data.continueSearch();break;
  case 'stop-search':stopSearch();break;
