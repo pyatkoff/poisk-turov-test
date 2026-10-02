@@ -2,6 +2,8 @@
 // Baseline is P5's unchanged modal code, originally app blob db413a55.
 // The retained pin was recomputed from release 7a4e93b before removal,
 // excluding only the two comparison Back scenarios.
+// O51 additionally projects the empty cancellation callback and checks the
+// unchanged active observations against fresh release 6f6d4b9585.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -61,13 +63,14 @@ add('hotel meal absent',{kind:'back',open:true,previous:'hotel-details',setup:(c
 add('hotel returning offer expands',{kind:'back',open:true,previous:'hotel-details',returningOffer:true});
 add('focus outside body',{kind:'back',open:true,previous:'gallery',setup:(c,n)=>n('#modal-body').contains=()=>false});
 for(const open of [false,true])for(const filterOpen of [false,true])for(const fromHistory of [false,true])add(`close:${open}:${filterOpen}:${fromHistory}`,{kind:'close',open,filterOpen,fromHistory});
-// The retired My tour painter had no active DOM effect. Ignore only its
-// intercepted callback so the original active modal observations remain pinned.
-function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>record[0]!=='refreshSavedTourControls');return {name:s.name,result};});}
+// The retired My tour painter and empty verification cancellation had no active
+// DOM effect. Ignore only their intercepted callbacks, retaining every active
+// modal observation and original before/after comparison.
+function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
 assert.equal(actual.length,67,'only two comparison Back scenarios retired from the original 69 cases');
-if(!process.argv.includes('--capture'))assert.equal(digest,'7435274e334dade1e26fde71ca1c6af7a700e7babfcf7184b87258a2c57c232f','pinned original active modal observations; comparison cases and retired My tour callback excluded');
+if(!process.argv.includes('--capture'))assert.equal(digest,'2a6a798ab407600955aee035cf68c97a7ee50a3155176a636f07da08015d228f','pinned original active modal observations; comparison cases and retired no-op callbacks excluded');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);

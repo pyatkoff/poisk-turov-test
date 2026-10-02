@@ -2,7 +2,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
-const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('let verifiedOffer=null;',start);assert(start>=0&&end>start);
+const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('function confirmTour(){',start);assert(start>=0&&end>start);
 const source=app.slice(start,end),context=source.match(/owner.create\(\{([^}]+)\}\)\.renderOfferList\(reset\)/);assert(context,'real cold owner renderer context');
 const dependencies=context[1].split(',').map(name=>name.trim());assert(dependencies.every(name=>/^[$A-Z_a-z][$\w]*$/.test(name)),'cold renderer context contains named live dependencies');
 const flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};

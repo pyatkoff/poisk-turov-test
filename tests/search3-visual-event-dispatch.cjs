@@ -3,6 +3,8 @@
 // db413a559e1789057e82293d4cb4c1a7f7d89c8e before structural extraction.
 // The retained pin was recomputed from release 7a4e93b before removal, excluding
 // only eight comparison IDs and the comparison-focus change event.
+// O51 keeps those cases and projects only the discarded inline expansion field,
+// with direct before/after parity against the fresh 6f6d4b9585 source.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -153,12 +155,15 @@ add('star removed in drawer',{type:'click',action:'star',panel:true,filterDraft:
 add('recovery missing choice',{type:'click',action:'recover-filters',dataset:{value:'99'}});
 add('no draft filter',{type:'click',action:'remove-draft-filter'});
 add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setup:(c,t)=>t.closest=()=>null});
-function records(source){return scenarios.map(s=>({name:s.name,result:characterize(source,s)}));}
+// openHotel belonged to the retired inline result expansion. It never changed
+// connected markup. Project only that discarded field from each state snapshot;
+// all 153 retained actions, collaborator calls, DOM and ordering still compare.
+function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='7748f2f2c32ba13bf89d1a2e63ed8e4adea0b56f07e43862f04139a3f200d1e4';
+const BASELINE='8f417fcfcc78a2c25e1317c623aab8b95bda9fe5cd0684e055fe31a144b45543';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original retained event observations');
 const result=name=>actual.find(r=>r.name===name).result;
@@ -174,8 +179,10 @@ assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
 const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
 for(const id of ['tour-differences-only','comparison-pair-0','comparison-pair-1','compare-differences','compare-left','compare-right','compare-offer-day','compare-offer-nights'])assert.deepEqual(characterize(source,{type:'change',target:{id,value:'2',dataset:{id:'7'}}}),unknownChange,'retired comparison ID is inert: '+id);
 assert.deepEqual(characterize(source,{type:'change',target:{name:'comparison-focus',value:'2'}}),characterize(source,{type:'change',target:{name:'unknown',value:'2'}}),'retired comparison-focus is inert');
+const unknownClick=characterize(source,{type:'click',action:'unknown'});
+for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEqual(characterize(source,{type:'click',action}),unknownClick,'retired inline-offer/verification action is inert: '+action);
 // Prove these observations reject two plausible extraction regressions.
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
 assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
-console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes, original retained digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);
+console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, original retained digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);
