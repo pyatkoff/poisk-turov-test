@@ -111,8 +111,22 @@ function measuredComparisonInventory(group){
  const result=inventory(source,all,{...baseView(),mode:'compare'},group);return {...result,totalReads};
 }
 const groupedComparison=measuredComparisonInventory(true),ungroupedComparison=measuredComparisonInventory(false);
-assert(groupedComparison.totalReads>10000);assert.equal(groupedComparison.keyCalls,1000);assert.equal(groupedComparison.value.groups.length,150);
+assert.equal(groupedComparison.totalReads,1000);assert.equal(groupedComparison.keyCalls,1000);assert.equal(groupedComparison.value.groups.length,150);
 assert.equal(ungroupedComparison.totalReads,0);assert.equal(ungroupedComparison.keyCalls,0);assert.equal(ungroupedComparison.value.groups.length,0);
+const keyedSort=" const keyed=filtered.length<2?filtered.map(offer=>({offer})):filtered.map((offer,index)=>({offer,index,total:offer.total,day:offer.day}));\n keyed.sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total||a.index-b.index:a.total-b.total||a.day.localeCompare(b.day)||a.index-b.index);\n const sorted=keyed.map(item=>item.offer);";
+const legacySort=source.replace(keyedSort," const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));");assert.notEqual(legacySort,source,'cached sort-key owner boundary');
+function measuredSort(code,sort){
+ let seed=78231,totalReads=0,dayReads=0;const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
+ const all=Array.from({length:1000},(_,id)=>{const total=Math.floor(random()*100000),day='2026-10-'+String(1+id%20).padStart(2,'0');return {id,key:'sort-'+id,variant:id,room:'same',meal:'AI',flight:'regular',get total(){totalReads++;return total},get day(){dayReads++;return day}};});
+ const value=inventory(code,all,{...baseView(),sort}).value;return {totalReads,dayReads,order:Array.from(value.groups[0].offers,offer=>offer.id)};
+}
+const sortReads={};
+for(const sort of ['price','date']){
+ const before=measuredSort(legacySort,sort),after=measuredSort(source,sort);assert.deepEqual(after.order,before.order,sort+' cached keys retain exact stable raw order');assert.equal(after.totalReads,1000);assert.equal(after.dayReads,1000);assert(before.totalReads+before.dayReads>(after.totalReads+after.dayReads)*4);sortReads[sort]={before:[before.totalReads,before.dayReads],after:[after.totalReads,after.dayReads]};
+}
+{
+ let reads=0;const single={id:1,key:'single',variant:1,room:'same',meal:'AI',flight:'regular',get total(){reads++;return 1},get day(){reads++;return '2026-10-01'}};inventory(source,[single],baseView());assert.equal(reads,0,'zero/one-row native sort still reads no sort keys');
+}
 const dayCases=[
  ['2026-10-12'],
  ['2026-10-12','2026-10-11'],
@@ -200,4 +214,4 @@ const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
 const skippedResetGrouping=source.replace("offerView.mode!=='compare'||reset","offerView.mode!=='compare'");assert.notEqual(skippedResetGrouping,source);
 assert.notDeepEqual(render(skippedResetGrouping,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,render(source,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,'comparison reset grouping mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement and ${compareInventoryCases} ungrouped comparison reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
