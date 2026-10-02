@@ -114,6 +114,39 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace("offerView.mode==='compare'||!offerView.departure", "false||!offerView.departure")),'comparison date scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+
+// Result cards previously re-read a valid rating through six ratingValue calls;
+// the validator itself also observed the property four times per call. Compare
+// the actual card owner with that previous implementation, including markup and
+// unusual rating values, while counting getter reads independently.
+const currentRatingValue='const ratingValue=h=>{const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;};';
+const currentRatingText="const ratingText=h=>{const rating=ratingValue(h);return rating===null?'—':ratingFormatter.format(rating);};";
+const previousRatingValue='const ratingValue=h=>Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;';
+const previousRatingText="const ratingText=h=>ratingValue(h)===null?'—':ratingFormatter.format(ratingValue(h));";
+function previousCardSource(code){
+ const card=section(code,'function cardHTML(','function refreshOpenHotelRooms('),legacy=card
+  .replace(",rating=ratingValue(h),ratingLabel=rating===null?'—':ratingFormatter.format(rating)",'')
+  .replace('${rating!==null?', '${ratingValue(h)!==null?')
+  .replaceAll('${ratingLabel}', '${ratingText(h)}')
+  .replace('${rating>=4.5?', '${ratingValue(h)>=4.5?');
+ assert.notEqual(card,legacy,'previous card owner reconstructed');
+ return code.replace(currentRatingValue,previousRatingValue).replace(currentRatingText,previousRatingText).replace(card,legacy);
+}
+function cardRatingOwner(code){
+ const work={evaluations:0,reads:0},state={openHotel:null,photoIndexes:{},favorites:[],compare:[]},ctx={Number,Intl,work,state,optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingFormatter:new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}),
+  esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlights:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
+ const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
+ vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
+ const render=(value,index=1)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});return ctx.cardHTML({hotel,offers:[{key:'tour-'+index,total:100000}]});};
+ return {work,render};
+}
+const previousCard=cardRatingOwner(previousCardSource(source)),currentCard=cardRatingOwner(source);
+for(const value of [null,undefined,NaN,-1,0,4.49,4.5,5,5.1,Infinity])assert.equal(currentCard.render(value),previousCard.render(value),'card rating markup '+String(value));
+previousCard.work.evaluations=previousCard.work.reads=currentCard.work.evaluations=currentCard.work.reads=0;
+for(let index=0;index<1000;index++)assert.equal(currentCard.render(4.5,index),previousCard.render(4.5,index),'rated card markup '+index);
+assert.deepEqual(previousCard.work,{evaluations:6000,reads:24000});assert.deepEqual(currentCard.work,{evaluations:1000,reads:1000});
+assert.notEqual(cardRatingOwner(source.replace('rating>=4.5','rating>4.5')).render(4.5),currentCard.render(4.5),'excellent threshold mutation detected');
+console.log('PASS card rating snapshot: 1000 exact markup references; ratingValue evaluations 6000 → 1000; raw rating reads 24000 → 1000; null/zero/out-of-range semantics retained');
 const {JSDOM}=require('jsdom');
 
 // Compare the actual summary owner with uncached full replacement. The pinned
