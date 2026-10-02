@@ -236,11 +236,11 @@ function resultInventory(){
  const rating=!!state.filters?.rating,options=rating?{filters:{...state.filters,rating:false}}:null;
  const inventory=hotels.reduce((value,h)=>{
   const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
-  if(!offers.length)return value;
+  const offerCount=offers.length;if(!offerCount)return value;
   value.ratingCounts.total++;if(rated)value.ratingCounts.rating++;
-  if(!rating||rated)value.items.push({hotel:h,offers,rating:hotelRating});
+  if(!rating||rated){value.items.push({hotel:h,offers,rating:hotelRating});value.total+=offerCount;}
   return value;
- },{items:[],ratingCounts:{total:0,rating:0}});
+ },{items:[],total:0,ratingCounts:{total:0,rating:0}});
  inventory.items=sortResultItems(inventory.items);return inventory;
 }
 function results(){return resultInventory().items;}
@@ -934,7 +934,7 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
- const inventory=resultInventory(),items=inventory.items,total=items.reduce((s,r)=>s+r.offers.length,0),pristine=!state.hasSearched&&!state.onlyFavorites;
+ const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
