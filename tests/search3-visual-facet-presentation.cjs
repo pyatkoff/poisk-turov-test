@@ -36,7 +36,7 @@ function destination(source,s){
  let calls=0;
  Object.assign(c,{destinationChoice:{country:'4',resorts:s.resorts?['Регион <&']:[],hotelId:s.hotel?2:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:s.ready,catalogError:s.error?'Ошибка <&':'',catalogDeparture:'Москва',destinationHotel:id=>rows.find(h=>h.id===id),recentDestinations:()=>[{country:'4',resorts:[],hotelId:0}],destinationLabel:()=> 'Турция <&',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[{parent:{country:'4',name:'Регион <&'},children:[]}],resortChoiceHTML:r=>'<button>'+esc(r.name)+'</button>',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:rows.slice(0,12),matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:s.status,rows:rows.slice(8)},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:s.resolved?s.query:'',photoUrl:h=>h.photos[0],rememberUIRoute:()=>{}});
  c.$('#destination-query').value=s.query;
- vm.createContext(c);vm.runInContext(functions(source,['destinationNameMatches','renderDestination']),c);c.renderDestination();
+ vm.createContext(c);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels','renderDestination']),c);c.renderDestination();
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
 function facetRefresh(source,legacy=false){
@@ -62,8 +62,22 @@ if(source.includes('function filterCheckRowHTML(')){
  assert.notDeepEqual(facet(source.replace('row.hidden=!matches','row.hidden=false'),scenario),facet(source,scenario),'facet query mutation detected');
  const current=facet(source,{...scenario,work:true});assert.equal(current.reads,120,'three row DOM reads per item per refresh');
  if(i>=0){const baseline=fs.readFileSync(process.argv[i+1],'utf8');const old=facet(baseline,{...scenario,work:true});assert.equal(current.reads,old.reads,'dynamic row reads remain fresh');const oldDestination=destination(baseline,{query:'hotel',status:'complete',ready:true});assert.equal(oldDestination.calls,25);console.log(`WORK facet row reads ${old.reads}→${current.reads}; destination normalization unchanged25`);}
- const preference={query:'hotel 1',status:'complete',ready:true};assert.notDeepEqual(destination(source.replace('Number(nameMatches(b))-Number(nameMatches(a))','Number(nameMatches(a))-Number(nameMatches(b))'),preference).result,destination(source,preference).result,'name ranking mutation detected');
+ const preference={query:'hotel 1',status:'complete',ready:true};assert.notDeepEqual(destination(source.replace('Number(b.preferred)-Number(a.preferred)','Number(a.preferred)-Number(b.preferred)'),preference).result,destination(source,preference).result,'name ranking mutation detected');
  const work=destination(source,{query:'hotel',status:'complete',ready:true});assert.equal(work.calls,25,'one query normalization plus one per distinct hotel');
+}
+{
+ const normalize=value=>String(value).toLowerCase(),legacyMatch=(hotel,words)=>words.every(word=>normalize(hotel.name).includes(word));
+ const rank=(rows,words)=>{const context={normalizeHotelQuery:normalize,preferenceCalls:0};vm.createContext(context);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels'])+'\nconst baseDestinationNameMatches=destinationNameMatches;destinationNameMatches=(...args)=>{preferenceCalls++;return baseDestinationNameMatches(...args)};',context);const input=[...rows],output=context.rankDestinationHotels(input,words);assert.deepEqual(input,rows,'ranking keeps the candidate array untouched');return {output,calls:context.preferenceCalls};};
+ for(let seed=0;seed<500;seed++){
+  const words=seed%7===0?[]:seed%5===0?['hotel','preferred']:['preferred'],rows=Array.from({length:seed%31},(_,i)=>({id:seed*100+i,name:(i*17+seed)%4?'ordinary '+i:'preferred hotel '+i}));
+  const expected=[...rows].sort((a,b)=>Number(legacyMatch(b,words))-Number(legacyMatch(a,words))),actual=rank(rows,words).output;
+  assert.deepEqual(actual.map(row=>row.id),expected.map(row=>row.id),'destination rank reference '+seed);
+  actual.forEach((row,index)=>assert.strictEqual(row,expected[index],'destination rank identity '+seed+':'+index));
+ }
+ const rows=Array.from({length:1000},(_,i)=>({id:i,name:i%2?'ordinary':'preferred'})),words=['preferred'];let legacyCalls=0;
+ const previous=[...rows].sort((a,b)=>{legacyCalls+=2;return Number(legacyMatch(b,words))-Number(legacyMatch(a,words))}),current=rank(rows,words);
+ assert.deepEqual(current.output.map(row=>row.id),previous.map(row=>row.id));assert.equal(legacyCalls,9514);assert.equal(current.calls,1000);
+ console.log('PASS destination rank keys: 500 randomized/tie/empty-word reference cases; preference evaluations 9514 → 1000 for 1000 hotels; raw identities retained');
 }
 console.log(`PASS filter/destination presentation: ${actual.length} original DOM/focus observations; digest ${digest}; supplier/lead HTTP 0`);
 
