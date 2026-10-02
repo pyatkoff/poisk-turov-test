@@ -1757,7 +1757,7 @@ function restoredOfferLimits(value,offers){
 }
 const sharedOfferNote=offers=>{const notes=[...new Set(offers.map(offerMetaNote))];return notes.length===1?notes[0]:'';};
 function openAllOffers(id,restored=null){
- const h=hotels.find(h=>h.id===id),all=hotelOffers(h);
+ const h=hotels.find(h=>h.id===id),all=restored?hotelOffers(h):null;
  offerView={id,departure:'',flight:'',room:'',meal:'',sort:'price',open:[],limits:{}};
  if(restored)offerListRestores.set(offerView,restored);
  if(restored){for(const [name,values] of Object.entries({departure:['',...all.map(o=>o.day)],flight:['','regular','charter','unknown'],room:['',...all.map(o=>o.room)],meal:['',...all.map(o=>o.meal)],sort:['price','date']}))if(values.includes(restored[name]))offerView[name]=restored[name];}
