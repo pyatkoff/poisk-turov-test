@@ -1,0 +1,4157 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-02",
+  "status": "STRUCTURAL_PASS_COMPLETE",
+  "owner_scope": "Explicit owner continuation after the prior bounded pass: F1 component boundary, F2 data structure analysis, F3 measured initial graph; one cumulative NEXT.",
+  "deliverables": [
+    {
+      "id": "F1",
+      "status": "IMPLEMENTED_AND_ACCEPTED",
+      "result": "22 filter presentation functions moved into AnyTourFilterPanelV1.create; fresh host getters, focus/caret and section navigation preserved.",
+      "app_raw_before": 302809,
+      "app_raw_after": 283143,
+      "app_function_declarations_before": 299,
+      "app_function_declarations_after": 279,
+      "component_raw": 23308,
+      "component_functions": 23
+    },
+    {
+      "id": "F2",
+      "status": "ANALYSIS_COMPLETE_RUNTIME_UNCHANGED",
+      "result": "Complete byte/function inventory, provider/state boundaries and finite future single-executor INT→SEARCH meal contract.",
+      "document": "docs/project/search3-data-structure-20261002.md",
+      "data_blob": "b3d5ae68f2246e3f1f6e22a216970ab628b4942e",
+      "raw_bytes": 126244,
+      "functions": 107,
+      "served_bytes": 87876,
+      "gzip_bytes": 24372,
+      "int_plan_sha": "24699a22b7d4123b4e6ec387d7193c0c360e2d03"
+    },
+    {
+      "id": "F3",
+      "status": "MEASURED_IMPLEMENTED_AND_ACCEPTED",
+      "result": "Eager flight summaries/API retained, flight selection UI loaded on demand with guarded lifetime, timeout/retry and exact cache binding.",
+      "compiled_network_requests": {
+        "bootstrap": 0,
+        "first_picker": 1,
+        "warm_picker_additional": 0
+      },
+      "cold_ui_raw": 12767,
+      "cold_ui_served": 9847,
+      "cold_ui_gzip": 3737,
+      "measured_latency_improvement": false
+    }
+  ],
+  "source": {
+    "pr": 4340,
+    "sha": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "tree": "774f54fa0f608d354ccda0bad3877542a00ee37f",
+    "release_sha": "8f54d33c6279feba85b23f8b963d4aacf292a2a7",
+    "previous_published_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "source_files": 20
+  },
+  "provenance": {
+    "security_run": 36992108707,
+    "lead_run": 36992108690,
+    "build_run": 36992108697,
+    "build_artifact": 11219234614,
+    "build_sha256": "2c2c12c8b6f6689c370e25139fbfe83542fabf7810f8e7cb07b699ee240f7349",
+    "build_payload_files_verified": 838,
+    "browser_run": 36992108677,
+    "browser_artifact": 11219868889,
+    "browser_sha256": "5349f94eeba07a1c67bc4a4176f3d3f60f5b087f00c155468208f50126aab033",
+    "publisher_command": 5949786598,
+    "publisher_run": 36992900244,
+    "publisher_attempt": 1,
+    "publisher_ready_artifact": 11220836059,
+    "deployment_artifact": 11220331373,
+    "deployment_sha256": "1b2a71ea531102534b60acfba7a5775258cf3df0c083d71d15fcf7f84199dfbc",
+    "required_source_ci": "SUCCESS",
+    "publisher": "SUCCESS",
+    "verified_digests": true
+  },
+  "size_audit": {
+    "before_source": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "after_source": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "graphs": [
+      {
+        "graph": "live",
+        "before": {
+          "raw": 580847,
+          "served": 439841,
+          "gzip_before": 161481,
+          "gzip_after": 133901
+        },
+        "after": {
+          "raw": 572379,
+          "served": 434984,
+          "gzip_before": 159915,
+          "gzip_after": 133360
+        },
+        "delta": {
+          "raw": -8468,
+          "served": -4857,
+          "gzip_before": -1566,
+          "gzip_after": -541
+        }
+      },
+      {
+        "graph": "offline",
+        "before": {
+          "raw": 376481,
+          "served": 295352,
+          "gzip_before": 109527,
+          "gzip_after": 92239
+        },
+        "after": {
+          "raw": 368013,
+          "served": 290495,
+          "gzip_before": 107961,
+          "gzip_after": 91698
+        },
+        "delta": {
+          "raw": -8468,
+          "served": -4857,
+          "gzip_before": -1566,
+          "gzip_after": -541
+        }
+      },
+      {
+        "graph": "ondemand",
+        "before": {
+          "raw": 33425,
+          "served": 27197,
+          "gzip_before": 10884,
+          "gzip_after": 9837
+        },
+        "after": {
+          "raw": 46192,
+          "served": 37044,
+          "gzip_before": 15300,
+          "gzip_after": 13574
+        },
+        "delta": {
+          "raw": 12767,
+          "served": 9847,
+          "gzip_before": 4416,
+          "gzip_after": 3737
+        }
+      },
+      {
+        "graph": "complete_live",
+        "before": {
+          "raw": 614272,
+          "served": 467038,
+          "gzip_before": 172365,
+          "gzip_after": 143738
+        },
+        "after": {
+          "raw": 618571,
+          "served": 472028,
+          "gzip_before": 175215,
+          "gzip_after": 146934
+        },
+        "delta": {
+          "raw": 4299,
+          "served": 4990,
+          "gzip_before": 2850,
+          "gzip_after": 3196
+        }
+      },
+      {
+        "graph": "complete_offline",
+        "before": {
+          "raw": 409906,
+          "served": 322549,
+          "gzip_before": 120411,
+          "gzip_after": 102076
+        },
+        "after": {
+          "raw": 414205,
+          "served": 327539,
+          "gzip_before": 123261,
+          "gzip_after": 105272
+        },
+        "delta": {
+          "raw": 4299,
+          "served": 4990,
+          "gzip_before": 2850,
+          "gzip_after": 3196
+        }
+      }
+    ],
+    "before": {
+      "schema": 1,
+      "tool": "terser@5.51.2",
+      "policy": "binding-renaming-only; no expression compression; globals/properties/classes/arity retained; names retained except proven direct-call-only private declarations in the bounded visual asset allowlist",
+      "graphs": {
+        "live": [
+          "../prototype-search/config.js",
+          "../runtime-v3.js",
+          "../lead-search-context.js",
+          "../tour-controller-v4.js",
+          "../lead-form-guard-v1.js",
+          "../search3-canonical-profiles-v1.js",
+          "../search3-local-db-provider-v1.js",
+          "../prototype-search/data.js",
+          "../prototype-search/calendar-exact-hotel-v1.js",
+          "../prototype-search/source-receipt-v1.js",
+          "../prototype-search/search-lifecycle-v1.js",
+          "../prototype-search/lead.js",
+          "../prototype-search/hotel-popularity-v1.js",
+          "./live-bridge.js",
+          "./flight-picker-v18.js",
+          "./app.js"
+        ],
+        "offline": [
+          "./fixture-data.js",
+          "./local-db-parser.js",
+          "./recorded-data.js",
+          "./search-lifecycle-v1.js",
+          "./flight-picker-v18.js",
+          "./preview-lead.js",
+          "./app.js"
+        ],
+        "ondemand": [
+          "./offer-list-v1.js",
+          "./hotel-details-v1.js"
+        ]
+      },
+      "totals": {
+        "live": {
+          "raw": 580847,
+          "served": 439841,
+          "gzip_before": 161481,
+          "gzip_after": 133901
+        },
+        "offline": {
+          "raw": 376481,
+          "served": 295352,
+          "gzip_before": 109527,
+          "gzip_after": 92239
+        },
+        "ondemand": {
+          "raw": 33425,
+          "served": 27197,
+          "gzip_before": 10884,
+          "gzip_after": 9837
+        },
+        "complete_live": {
+          "raw": 614272,
+          "served": 467038,
+          "gzip_before": 172365,
+          "gzip_after": 143738
+        },
+        "complete_offline": {
+          "raw": 409906,
+          "served": 322549,
+          "gzip_before": 120411,
+          "gzip_after": 102076
+        }
+      },
+      "files": [
+        {
+          "src": "../prototype-search/config.js",
+          "source": "prototype-search/config.js",
+          "target": "prototype-search/config.js",
+          "private_function_bindings": [],
+          "source_sha256": "698d5cb3456ec102212286b373d6eb08ab7d83d0e50abda36a0503f20af92206",
+          "sha256": "c28185f6cd98cf02787f799560e6d7ed590d7b4f04aa9a17800fc567c9c873a7",
+          "raw": 330,
+          "served": 329,
+          "gzip_before": 171,
+          "gzip_after": 171
+        },
+        {
+          "src": "../runtime-v3.js",
+          "source": "runtime-v3.js",
+          "target": "runtime-v3.js",
+          "private_function_bindings": [],
+          "source_sha256": "67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92",
+          "sha256": "efb2cafb06d709343ee798cc409f22e3406f7976e3e8b58ba44120c9e3d5a08e",
+          "raw": 3810,
+          "served": 3062,
+          "gzip_before": 1628,
+          "gzip_after": 1414
+        },
+        {
+          "src": "../lead-search-context.js",
+          "source": "lead-search-context.js",
+          "target": "lead-search-context.js",
+          "private_function_bindings": [],
+          "source_sha256": "8d6eafbdf9fbb23aa5984edbe2c585b65c5647517492f7799c1dd732e710335f",
+          "sha256": "5f3779ae2cb2f51e28c88e03855d0ecb1a8fc0b62b44cd69eb0e4a6fb9b79adf",
+          "raw": 1709,
+          "served": 1485,
+          "gzip_before": 774,
+          "gzip_after": 706
+        },
+        {
+          "src": "../tour-controller-v4.js",
+          "source": "tour-controller-v4.js",
+          "target": "tour-controller-v4.js",
+          "private_function_bindings": [
+            "alternativesHtml",
+            "attribution",
+            "available",
+            "baggageText",
+            "canonicalSelectedHotel",
+            "clean",
+            "clearSelectedHistory",
+            "consentHtml",
+            "currentSource",
+            "decodeEntities",
+            "descriptionHtml",
+            "emit",
+            "esc",
+            "flightFuelText",
+            "flightLegText",
+            "focusAndReveal",
+            "historyTourId",
+            "keepLeadDraft",
+            "leadMetaFrom",
+            "leadPayload",
+            "leadSectionHtml",
+            "loadFlights",
+            "mealName",
+            "momentText",
+            "money",
+            "operatorDisplayName",
+            "operatorName",
+            "placeholderFlight",
+            "portText",
+            "providerMoment",
+            "providerPoint",
+            "providerReceipt",
+            "providerSegment",
+            "rememberSelectedHistory",
+            "rememberSource",
+            "renderFlightError",
+            "renderFlightLoading",
+            "renderFlights",
+            "restoreLeadDraft",
+            "restoreSelected",
+            "returnFromSelected",
+            "returnToResults",
+            "segmentHtml",
+            "selectFlight",
+            "selected",
+            "selectedFlightData",
+            "selectedHistoryState",
+            "sourceUsable",
+            "submitLead",
+            "tourHtml",
+            "usable"
+          ],
+          "source_sha256": "0e16a6bda3fdaeb765b4ea99c7c7a8ee66a4ceff416ffd5c821c7762733213e8",
+          "sha256": "88d973f5d111254dc2a527157a16aa207b8369971556cb890176597f8bf62654",
+          "raw": 33956,
+          "served": 26479,
+          "gzip_before": 10177,
+          "gzip_after": 8872
+        },
+        {
+          "src": "../lead-form-guard-v1.js",
+          "source": "lead-form-guard-v1.js",
+          "target": "lead-form-guard-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "4117df2bd9004cb79b9067c465d2d66e7dcdf76a581c49d1c5a877f803d04052",
+          "sha256": "8a9e71201b7b182401074a900cc9d452890564bd702b2d125667014de51b3f3c",
+          "raw": 16809,
+          "served": 15365,
+          "gzip_before": 4895,
+          "gzip_after": 4483
+        },
+        {
+          "src": "../search3-canonical-profiles-v1.js",
+          "source": "search3-canonical-profiles-v1.js",
+          "target": "search3-canonical-profiles-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "c68c585defb19bd9510310ebca633e23a4f1e747dabf60c3949be4d037477526",
+          "sha256": "d90089c94f82601d7b8ed322878769c58806c6b47ee72bdb98ee60fd1ff3a579",
+          "raw": 16810,
+          "served": 11466,
+          "gzip_before": 5319,
+          "gzip_after": 4038
+        },
+        {
+          "src": "../search3-local-db-provider-v1.js",
+          "source": "search3-local-db-provider-v1.js",
+          "target": "search3-local-db-provider-v1.js",
+          "private_function_bindings": [
+            "canonicalOwner",
+            "canonicalStay",
+            "digest",
+            "emit",
+            "listingOf",
+            "load",
+            "positiveId",
+            "priceState",
+            "rehydrationDescriptor",
+            "rehydrationParty",
+            "rehydrationStay",
+            "safeText",
+            "scopeDate",
+            "scopeInteger",
+            "scopeMoney",
+            "scopeSignature",
+            "scopeToken",
+            "scopeTrim"
+          ],
+          "source_sha256": "9db6d964b24d575fd8c0700a8abda7dec2f8db6d0d44cd27e311890ccba1242f",
+          "sha256": "1ce738c44477f4efd371e452cb936267d86c35433bef35e527a57d8c937776d0",
+          "raw": 15777,
+          "served": 11258,
+          "gzip_before": 5306,
+          "gzip_after": 4185
+        },
+        {
+          "src": "../prototype-search/data.js",
+          "source": "prototype-search/data.js",
+          "target": "prototype-search/data.js",
+          "private_function_bindings": [
+            "andromedaBranch",
+            "andromedaContext",
+            "andromedaContinuationAvailable",
+            "andromedaCoverageFailures",
+            "andromedaProviderStatus",
+            "andromedaQuoteCurrent",
+            "andromedaQuoteFailure",
+            "andromedaQuoteFlight",
+            "andromedaQuoteKey",
+            "andromedaQuoteRequest",
+            "andromedaSearchFailure",
+            "anexConcreteKey",
+            "anexContinuationAvailable",
+            "anexMoneyFact",
+            "anexPageContinuation",
+            "applyDirectAndromeda",
+            "applyDirectAnex",
+            "canonicalUnion",
+            "clearCalendarWindows",
+            "completeProviderRun",
+            "completeTourvisorRun",
+            "continueAnexPages",
+            "continueDirectAndromeda",
+            "countryRow",
+            "db",
+            "destinationCatalog",
+            "destinationScope",
+            "digestRef",
+            "directAndromedaOffer",
+            "directAnexOffer",
+            "directAnexWindows",
+            "directFirstWeekScopes",
+            "enrichAndromeda",
+            "enrichAnex",
+            "indexedMeal",
+            "installMealPlans",
+            "localStayName",
+            "mealIndexes",
+            "nativeEndpoint",
+            "normalizeAnexAdditional",
+            "normalizeAnexConcrete",
+            "normalizeAnexFlights",
+            "normalizeAnexPackage",
+            "observationBudget",
+            "observationMealPlans",
+            "pollSearch",
+            "prepareSearchRun",
+            "providerDestinationScopes",
+            "publish",
+            "rebuildDirectAndromeda",
+            "rebuildDirectAnex",
+            "reportAndromedaSearchFailure",
+            "reportAndromedaSearchPage",
+            "requestDirectAndromeda",
+            "requestDirectAnex",
+            "requestPlan",
+            "retainCalendarWindow",
+            "safeAnexIdentityMismatches",
+            "safeQuoteFailureReason",
+            "searchError",
+            "settleContinuedSources",
+            "settleInitialSources",
+            "supplierMealNativeId",
+            "tourvisorCountryId",
+            "tourvisorInventory"
+          ],
+          "source_sha256": "4886784f5a5cf4f4f5b9f6395cd282caa085eeecffbf56d4b49e0a3f4c2fb35b",
+          "sha256": "c56324e713a0dcfa031a4ce01496dd5d0ad08528918a56be23edd028af553b14",
+          "raw": 126244,
+          "served": 87876,
+          "gzip_before": 30896,
+          "gzip_after": 24372
+        },
+        {
+          "src": "../prototype-search/calendar-exact-hotel-v1.js",
+          "source": "prototype-search/calendar-exact-hotel-v1.js",
+          "target": "prototype-search/calendar-exact-hotel-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "a0079f28e2aa59372b90d35f763bba954d8d2ad53bf65bfff950a5fb511d4026",
+          "sha256": "e21904d726930118bff837ec5783123c5e45e0399751151c92f76a46bd4cb6ab",
+          "raw": 7709,
+          "served": 4758,
+          "gzip_before": 2510,
+          "gzip_after": 1892
+        },
+        {
+          "src": "../prototype-search/source-receipt-v1.js",
+          "source": "prototype-search/source-receipt-v1.js",
+          "target": "prototype-search/source-receipt-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "aa04fb5c8e92405aa5c2430b5d7736f994c5f2c7d9de2345238cd08dbccd0732",
+          "sha256": "78419f942a40e1e98968f553ab9b92ede08358ee0cd66833285e3458e28d8b0c",
+          "raw": 8112,
+          "served": 5055,
+          "gzip_before": 2161,
+          "gzip_after": 1712
+        },
+        {
+          "src": "../prototype-search/search-lifecycle-v1.js",
+          "source": "prototype-search/search-lifecycle-v1.js",
+          "target": "prototype-search/search-lifecycle-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "30d712b15e29cf8fed288d207fcce27091c64c87230bf6ce66e0ca80dffcc113",
+          "sha256": "b2e51ee9908491f60616686d937b9080c515e5bad32a3bfbe61c96c73ab13cf9",
+          "raw": 10384,
+          "served": 6293,
+          "gzip_before": 2796,
+          "gzip_after": 2222
+        },
+        {
+          "src": "../prototype-search/lead.js",
+          "source": "prototype-search/lead.js",
+          "target": "prototype-search/lead.js",
+          "private_function_bindings": [],
+          "source_sha256": "55b1e9a5e2f3cd0f59e62dd1ecab830198ea089d98bd4266bba94490a4ea83b2",
+          "sha256": "2e93eed4cd25df44bdbb8e1ad1a5ca6b692f7457dc7efa576ecc5290638c7bb0",
+          "raw": 15395,
+          "served": 12735,
+          "gzip_before": 4388,
+          "gzip_after": 4014
+        },
+        {
+          "src": "../prototype-search/hotel-popularity-v1.js",
+          "source": "prototype-search/hotel-popularity-v1.js",
+          "target": "prototype-search/hotel-popularity-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "dab93cbe75c181423256376e9d19e68fe26ade1e44e79f2c47e51f1855e4064f",
+          "sha256": "68c45e98d8c75e92f787e02f37ff369375576b0843ebccf84083e67448f8df43",
+          "raw": 1331,
+          "served": 907,
+          "gzip_before": 610,
+          "gzip_after": 523
+        },
+        {
+          "src": "./live-bridge.js",
+          "source": "visual-search/live-bridge.js",
+          "target": "visual-search/live-bridge.js",
+          "private_function_bindings": [],
+          "source_sha256": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
+          "sha256": "465d44c484021dcacb5321f6f999c9ac2f18790e70d913b1c474962722e81e63",
+          "raw": 1705,
+          "served": 1471,
+          "gzip_before": 1053,
+          "gzip_after": 931
+        },
+        {
+          "src": "./flight-picker-v18.js",
+          "source": "visual-search/flight-picker-v18.js",
+          "target": "visual-search/flight-picker-v18.js",
+          "private_function_bindings": [
+            "departureMinute",
+            "departurePeriod",
+            "pairAllowance",
+            "pairRoutes",
+            "priceDifference",
+            "route",
+            "shortDate",
+            "timeFilters"
+          ],
+          "source_sha256": "51d21c12cf7a5b63c704c003c2376255e2f8488c40d56c2a36bbf51fbb6b7b4f",
+          "sha256": "719cff08dcd435583dab426a7711d05c40977fbc67d9fee598b129affb5c915f",
+          "raw": 17957,
+          "served": 13448,
+          "gzip_before": 5831,
+          "gzip_after": 4866
+        },
+        {
+          "src": "./app.js",
+          "source": "visual-search/app.js",
+          "target": "visual-search/app.js",
+          "private_function_bindings": [
+            "amenityFilterGroups",
+            "andromedaApplicationReceipt",
+            "andromedaQuoteCurrent",
+            "anexApplicationReceipt",
+            "anexFlightInventoryHTML",
+            "appliedDestination",
+            "applyAndromedaFlightChoice",
+            "applyAnexAdditionalPrices",
+            "applyCatalog",
+            "applyFlightPair",
+            "applyQuickFilters",
+            "bootRealData",
+            "boundedHistoryStrings",
+            "budgetErrorText",
+            "budgetLabel",
+            "budgetScale",
+            "calendarMinimums",
+            "calendarPrice",
+            "calendarScope",
+            "calendarScopeHTML",
+            "calendarSelectionPhase",
+            "calendarStripEntries",
+            "cancelDestinationLookup",
+            "cancelSearchEdit",
+            "cancelVerification",
+            "captureModalStep",
+            "capturePageReturn",
+            "cardEntryOfferKey",
+            "cardHTML",
+            "checkRows",
+            "chosenStayHTML",
+            "clearSearchTimers",
+            "closeModal",
+            "collapseSearch",
+            "comparePopularFacetOptions",
+            "completeTour",
+            "confirmTour",
+            "countFacetOptions",
+            "createDateContext",
+            "currentDraftDestination",
+            "currentFilterBudgetEdit",
+            "dateRangeError",
+            "dateSelectionPriceHTML",
+            "dateSelectionPriceModel",
+            "demoteSavedTour",
+            "destinationLabel",
+            "destinationNameMatches",
+            "editFilterBudget",
+            "editSearch",
+            "emptyCalendarContext",
+            "emptyResultsHTML",
+            "enterUIHistory",
+            "expireSelectedTour",
+            "filterCheckRowHTML",
+            "filterChipData",
+            "filterCount",
+            "filterEdited",
+            "filterHistorySnapshot",
+            "filterRootBinding",
+            "filterRootMarkup",
+            "filterStarButtons",
+            "filterStarOptions",
+            "finalFlightDetailsHTML",
+            "finishPageReturn",
+            "flightAllowanceText",
+            "flightConnectionText",
+            "flightSummaryHTML",
+            "focusReference",
+            "fuelAmount",
+            "fuelDisclosureHTML",
+            "fuelIncludedInPrice",
+            "fullCheckRows",
+            "handleBudgetMealDestinationInput",
+            "handleOfferChoiceChange",
+            "handleOfferRefinementChange",
+            "handlePartyMealChange",
+            "handleResultFilterAction",
+            "handleResultFilterChange",
+            "handleResultFilterInput",
+            "handleSearchParameterAction",
+            "hotelContentText",
+            "hotelDetailsOwner",
+            "hotelHighlights",
+            "hotelMatch",
+            "hotelOfferPredicate",
+            "hotelStarsHTML",
+            "isCurrentOfferRequest",
+            "jumpToFilterSection",
+            "leadReadyOffer",
+            "leaveUIHistory",
+            "loadAnexFlightInventory",
+            "loadAnexPackageQuote",
+            "loadCalendarPrices",
+            "loadCountries",
+            "loadHotelDetails",
+            "loadOfferList",
+            "loadRealFlights",
+            "loadResorts",
+            "loadResultCalendar",
+            "lookupDestination",
+            "matchesHotelQuery",
+            "mealPreviewModel",
+            "minimumOfferSummary",
+            "modalBack",
+            "offerDetailBodyHTML",
+            "offerDetailFooterHTML",
+            "offerFromKey",
+            "offerHTML",
+            "offerPrimaryActionHTML",
+            "offerSelectionHint",
+            "openAllOffers",
+            "openAndromedaApplicationPreview",
+            "openAndromedaFlightChoice",
+            "openAndromedaVerified",
+            "openAnexAdditionalEstimate",
+            "openAnexApplicationPreview",
+            "openAnexConcreteCurrent",
+            "openAnexPackageQuote",
+            "openBudget",
+            "openCalendar",
+            "openCompare",
+            "openDates",
+            "openDeparture",
+            "openDestination",
+            "openFavorites",
+            "openFilters",
+            "openFlightPicker",
+            "openGallery",
+            "openGuests",
+            "openLeadPreview",
+            "openLeadWithQuote",
+            "openMeals",
+            "openNights",
+            "openOffer",
+            "openSelectedTour",
+            "paintCalendarStrip",
+            "paintFilters",
+            "paintGeneratedRoots",
+            "paintResultCards",
+            "parseBudgetAmount",
+            "parseGeneratedRoot",
+            "persistSelectedTour",
+            "prepareDatePicker",
+            "providerHistoryRoute",
+            "quotePriceChangeHTML",
+            "quoteSelectedOffer",
+            "rankDestinationHotels",
+            "readBudget",
+            "readBudgetFields",
+            "readSelectedTour",
+            "recentDestinations",
+            "recommendedHotelRank",
+            "recommendedHotelScore",
+            "reconcileFilterRoots",
+            "recoveryHTML",
+            "recoverySuggestions",
+            "refreshCalendarPriceCache",
+            "refreshCalendarPrices",
+            "refreshEmptyCalendarContext",
+            "refreshHotel",
+            "refreshLiveHotel",
+            "refreshOpenHotelRooms",
+            "refreshOpenOfferList",
+            "refreshResultFilters",
+            "refreshResultPickerPreviews",
+            "refreshSavedTourControls",
+            "refreshSavedView",
+            "refreshTourComparison",
+            "rememberAndromedaFlightChoice",
+            "rememberDestination",
+            "rememberProviderView",
+            "removeModelFilter",
+            "removeSelectedTour",
+            "renderActive",
+            "renderAnexFlightInventory",
+            "renderCalendarScope",
+            "renderCalendarStrip",
+            "renderCatalogError",
+            "renderCompare",
+            "renderDateCalendar",
+            "renderDateSelectionPrice",
+            "renderDepartures",
+            "renderDestination",
+            "renderFavorites",
+            "renderFilterNavigation",
+            "renderFilters",
+            "renderGallery",
+            "renderGuests",
+            "renderHotelDetails",
+            "renderNightSelection",
+            "renderRealOffer",
+            "renderResultCards",
+            "renderResultHeadings",
+            "renderResults",
+            "renderSearchStatus",
+            "renderSummary",
+            "reopenUIRoute",
+            "replaceSelectedTourView",
+            "resetFilters",
+            "resortChoiceHTML",
+            "resortGroups",
+            "restoreFilterHistoryModel",
+            "restoreFocus",
+            "restoreHistoryView",
+            "restoreHotelDetailStep",
+            "restoreModalStepFocus",
+            "restoreModalStepSnapshot",
+            "restorePageReturn",
+            "restoreProviderHistoryRoute",
+            "restoreProviderView",
+            "restoreSavedHotels",
+            "restoreSelectedSearch",
+            "restoreURL",
+            "restoreURLHotel",
+            "restoredDestinationChoice",
+            "restoredGuestDraft",
+            "restoredNightsDraft",
+            "restoredOfferLimits",
+            "resultCalendarModel",
+            "resultInventory",
+            "retainedProviderView",
+            "runSearch",
+            "sameSelectedTourConditions",
+            "savedContext",
+            "savedFlightSummaryHTML",
+            "savedFlightTextPlain",
+            "savedHotelPhoto",
+            "savedRecovery",
+            "savedTourControlsHTML",
+            "scheduleSelectedTourExpiry",
+            "selectComparisonVariant",
+            "selectDate",
+            "selectedPriceStatus",
+            "selectedTourHotel",
+            "selectedTourHotelSnapshot",
+            "selectedTourOfferSnapshot",
+            "selectedTourRecord",
+            "setFilterSectionOpen",
+            "settleFilterRoots",
+            "showAndromedaExpired",
+            "showFilterBudgetValidity",
+            "sortResultItems",
+            "stopSearch",
+            "switchFixture",
+            "syncAvailableFilterGroups",
+            "syncBudgetControls",
+            "syncFilterResetState",
+            "syncFilterSections",
+            "syncFilters",
+            "terminalizeSearchForVerification",
+            "toggleCompare",
+            "toggleFavorite",
+            "touristAgesKey",
+            "uiRoute",
+            "undoSelectedTour",
+            "updateBudgetPreview",
+            "updateDateSelection",
+            "updateDrawerPreview",
+            "updateFacetCounts",
+            "updateFilterStars",
+            "updateFlightPreview",
+            "updateGuestSelection",
+            "updateMealCounts",
+            "updateMealPicker",
+            "updateModalBack",
+            "updateNav",
+            "updateSearchUI",
+            "updateURL",
+            "withFlightPair"
+          ],
+          "source_sha256": "cba264ec609ba55d865c8692726cf2eddafc98b344ec45c1d11c5e98d9f5f0d1",
+          "sha256": "c07fb409d3f62936970c7a62278bf35d1cabe900e6eb817555ab718df71eae4c",
+          "raw": 302809,
+          "served": 237854,
+          "gzip_before": 82966,
+          "gzip_after": 69500
+        },
+        {
+          "src": "./fixture-data.js",
+          "source": "visual-search/fixture-data.js",
+          "target": "visual-search/fixture-data.js",
+          "private_function_bindings": [],
+          "source_sha256": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
+          "sha256": "774d818a8dc45a089fe0ae8a3cfea7ddea0b49a97c8b4f7718a10adfb59b8860",
+          "raw": 14808,
+          "served": 11806,
+          "gzip_before": 5712,
+          "gzip_after": 4932
+        },
+        {
+          "src": "./local-db-parser.js",
+          "source": "visual-search/local-db-parser.js",
+          "target": "visual-search/local-db-parser.js",
+          "private_function_bindings": [
+            "canonicalOwner",
+            "canonicalStay",
+            "digest",
+            "emit",
+            "listingOf",
+            "load",
+            "positiveId",
+            "priceState",
+            "safeText",
+            "scopeDate",
+            "scopeInteger",
+            "scopeMoney",
+            "scopeSignature",
+            "scopeToken",
+            "scopeTrim"
+          ],
+          "source_sha256": "98fd0db7582041d1fe131d43898f0583c1d9759adde449e53a5616347012c268",
+          "sha256": "f7167fc8e2be4860abe93100e98abc89bc9edad3f1c8078130b4a10aabc72151",
+          "raw": 13497,
+          "served": 9862,
+          "gzip_before": 4789,
+          "gzip_after": 3775
+        },
+        {
+          "src": "./recorded-data.js",
+          "source": "visual-search/recorded-data.js",
+          "target": "visual-search/recorded-data.js",
+          "private_function_bindings": [],
+          "source_sha256": "68ee7344d7132efbe608d02e6ffb7b896ab7a616ea8b18bba5bb9296c330b3c1",
+          "sha256": "b2af56bc9c67f3a533f39e22ba01763dac8f7e8fe6994c90607601f4718cd543",
+          "raw": 11702,
+          "served": 10280,
+          "gzip_before": 4620,
+          "gzip_after": 4223
+        },
+        {
+          "src": "./search-lifecycle-v1.js",
+          "source": "visual-search/search-lifecycle-v1.js",
+          "target": "visual-search/search-lifecycle-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "77a1d952263da2d50781bbbf92d176c0cada68a006bd0a62e169d32fe6acacc6",
+          "sha256": "8c07ccfcf6434c0788bc4acb632de23071c91fead417b26635113c90fdbd11f7",
+          "raw": 6350,
+          "served": 3938,
+          "gzip_before": 1763,
+          "gzip_after": 1491
+        },
+        {
+          "src": "./preview-lead.js",
+          "source": "visual-search/preview-lead.js",
+          "target": "visual-search/preview-lead.js",
+          "private_function_bindings": [],
+          "source_sha256": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
+          "sha256": "aab427e19d9a9329f38b77b94126af15b143b81b459c86f73f420f1ec2ec86cb",
+          "raw": 9358,
+          "served": 8164,
+          "gzip_before": 3846,
+          "gzip_after": 3452
+        },
+        {
+          "src": "./offer-list-v1.js",
+          "source": "visual-search/offer-list-v1.js",
+          "target": "visual-search/offer-list-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "3eb54098f95da08b3663a8de42da22ea5d9df98220c0952494e68e1935990038",
+          "sha256": "5fd412f15325fed88a47a081d900ee302d924cc6e3a03502cd59b5fd3c0633dc",
+          "raw": 20652,
+          "served": 16301,
+          "gzip_before": 6411,
+          "gzip_after": 5733
+        },
+        {
+          "src": "./hotel-details-v1.js",
+          "source": "visual-search/hotel-details-v1.js",
+          "target": "visual-search/hotel-details-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "484f3e53f155ed7d25e18f5febbec8a6b01c033fab362aedd074bb4c323d292b",
+          "sha256": "bc2476ac2651f20f5d0ba1d206b1e40c539ae0034d602301846851bba141a018",
+          "raw": 12773,
+          "served": 10896,
+          "gzip_before": 4473,
+          "gzip_after": 4104
+        }
+      ]
+    },
+    "after": {
+      "schema": 1,
+      "tool": "terser@5.51.2",
+      "policy": "binding-renaming-only; no expression compression; globals/properties/classes/arity retained; names retained except proven direct-call-only private declarations in the bounded visual asset allowlist",
+      "graphs": {
+        "live": [
+          "../prototype-search/config.js",
+          "../runtime-v3.js",
+          "../lead-search-context.js",
+          "../tour-controller-v4.js",
+          "../lead-form-guard-v1.js",
+          "../search3-canonical-profiles-v1.js",
+          "../search3-local-db-provider-v1.js",
+          "../prototype-search/data.js",
+          "../prototype-search/calendar-exact-hotel-v1.js",
+          "../prototype-search/source-receipt-v1.js",
+          "../prototype-search/search-lifecycle-v1.js",
+          "../prototype-search/lead.js",
+          "../prototype-search/hotel-popularity-v1.js",
+          "./live-bridge.js",
+          "./flight-picker-v18.js",
+          "./filter-panel-v1.js",
+          "./app.js"
+        ],
+        "offline": [
+          "./fixture-data.js",
+          "./local-db-parser.js",
+          "./recorded-data.js",
+          "./search-lifecycle-v1.js",
+          "./flight-picker-v18.js",
+          "./preview-lead.js",
+          "./filter-panel-v1.js",
+          "./app.js"
+        ],
+        "ondemand": [
+          "./offer-list-v1.js",
+          "./hotel-details-v1.js",
+          "./flight-picker-ui-v1.js"
+        ]
+      },
+      "totals": {
+        "live": {
+          "raw": 572379,
+          "served": 434984,
+          "gzip_before": 159915,
+          "gzip_after": 133360
+        },
+        "offline": {
+          "raw": 368013,
+          "served": 290495,
+          "gzip_before": 107961,
+          "gzip_after": 91698
+        },
+        "ondemand": {
+          "raw": 46192,
+          "served": 37044,
+          "gzip_before": 15300,
+          "gzip_after": 13574
+        },
+        "complete_live": {
+          "raw": 618571,
+          "served": 472028,
+          "gzip_before": 175215,
+          "gzip_after": 146934
+        },
+        "complete_offline": {
+          "raw": 414205,
+          "served": 327539,
+          "gzip_before": 123261,
+          "gzip_after": 105272
+        }
+      },
+      "files": [
+        {
+          "src": "../prototype-search/config.js",
+          "source": "prototype-search/config.js",
+          "target": "prototype-search/config.js",
+          "private_function_bindings": [],
+          "source_sha256": "698d5cb3456ec102212286b373d6eb08ab7d83d0e50abda36a0503f20af92206",
+          "sha256": "c28185f6cd98cf02787f799560e6d7ed590d7b4f04aa9a17800fc567c9c873a7",
+          "raw": 330,
+          "served": 329,
+          "gzip_before": 171,
+          "gzip_after": 171
+        },
+        {
+          "src": "../runtime-v3.js",
+          "source": "runtime-v3.js",
+          "target": "runtime-v3.js",
+          "private_function_bindings": [],
+          "source_sha256": "67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92",
+          "sha256": "efb2cafb06d709343ee798cc409f22e3406f7976e3e8b58ba44120c9e3d5a08e",
+          "raw": 3810,
+          "served": 3062,
+          "gzip_before": 1628,
+          "gzip_after": 1414
+        },
+        {
+          "src": "../lead-search-context.js",
+          "source": "lead-search-context.js",
+          "target": "lead-search-context.js",
+          "private_function_bindings": [],
+          "source_sha256": "8d6eafbdf9fbb23aa5984edbe2c585b65c5647517492f7799c1dd732e710335f",
+          "sha256": "5f3779ae2cb2f51e28c88e03855d0ecb1a8fc0b62b44cd69eb0e4a6fb9b79adf",
+          "raw": 1709,
+          "served": 1485,
+          "gzip_before": 774,
+          "gzip_after": 706
+        },
+        {
+          "src": "../tour-controller-v4.js",
+          "source": "tour-controller-v4.js",
+          "target": "tour-controller-v4.js",
+          "private_function_bindings": [
+            "alternativesHtml",
+            "attribution",
+            "available",
+            "baggageText",
+            "canonicalSelectedHotel",
+            "clean",
+            "clearSelectedHistory",
+            "consentHtml",
+            "currentSource",
+            "decodeEntities",
+            "descriptionHtml",
+            "emit",
+            "esc",
+            "flightFuelText",
+            "flightLegText",
+            "focusAndReveal",
+            "historyTourId",
+            "keepLeadDraft",
+            "leadMetaFrom",
+            "leadPayload",
+            "leadSectionHtml",
+            "loadFlights",
+            "mealName",
+            "momentText",
+            "money",
+            "operatorDisplayName",
+            "operatorName",
+            "placeholderFlight",
+            "portText",
+            "providerMoment",
+            "providerPoint",
+            "providerReceipt",
+            "providerSegment",
+            "rememberSelectedHistory",
+            "rememberSource",
+            "renderFlightError",
+            "renderFlightLoading",
+            "renderFlights",
+            "restoreLeadDraft",
+            "restoreSelected",
+            "returnFromSelected",
+            "returnToResults",
+            "segmentHtml",
+            "selectFlight",
+            "selected",
+            "selectedFlightData",
+            "selectedHistoryState",
+            "sourceUsable",
+            "submitLead",
+            "tourHtml",
+            "usable"
+          ],
+          "source_sha256": "0e16a6bda3fdaeb765b4ea99c7c7a8ee66a4ceff416ffd5c821c7762733213e8",
+          "sha256": "88d973f5d111254dc2a527157a16aa207b8369971556cb890176597f8bf62654",
+          "raw": 33956,
+          "served": 26479,
+          "gzip_before": 10177,
+          "gzip_after": 8872
+        },
+        {
+          "src": "../lead-form-guard-v1.js",
+          "source": "lead-form-guard-v1.js",
+          "target": "lead-form-guard-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "4117df2bd9004cb79b9067c465d2d66e7dcdf76a581c49d1c5a877f803d04052",
+          "sha256": "8a9e71201b7b182401074a900cc9d452890564bd702b2d125667014de51b3f3c",
+          "raw": 16809,
+          "served": 15365,
+          "gzip_before": 4895,
+          "gzip_after": 4483
+        },
+        {
+          "src": "../search3-canonical-profiles-v1.js",
+          "source": "search3-canonical-profiles-v1.js",
+          "target": "search3-canonical-profiles-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "c68c585defb19bd9510310ebca633e23a4f1e747dabf60c3949be4d037477526",
+          "sha256": "d90089c94f82601d7b8ed322878769c58806c6b47ee72bdb98ee60fd1ff3a579",
+          "raw": 16810,
+          "served": 11466,
+          "gzip_before": 5319,
+          "gzip_after": 4038
+        },
+        {
+          "src": "../search3-local-db-provider-v1.js",
+          "source": "search3-local-db-provider-v1.js",
+          "target": "search3-local-db-provider-v1.js",
+          "private_function_bindings": [
+            "canonicalOwner",
+            "canonicalStay",
+            "digest",
+            "emit",
+            "listingOf",
+            "load",
+            "positiveId",
+            "priceState",
+            "rehydrationDescriptor",
+            "rehydrationParty",
+            "rehydrationStay",
+            "safeText",
+            "scopeDate",
+            "scopeInteger",
+            "scopeMoney",
+            "scopeSignature",
+            "scopeToken",
+            "scopeTrim"
+          ],
+          "source_sha256": "9db6d964b24d575fd8c0700a8abda7dec2f8db6d0d44cd27e311890ccba1242f",
+          "sha256": "1ce738c44477f4efd371e452cb936267d86c35433bef35e527a57d8c937776d0",
+          "raw": 15777,
+          "served": 11258,
+          "gzip_before": 5306,
+          "gzip_after": 4185
+        },
+        {
+          "src": "../prototype-search/data.js",
+          "source": "prototype-search/data.js",
+          "target": "prototype-search/data.js",
+          "private_function_bindings": [
+            "andromedaBranch",
+            "andromedaContext",
+            "andromedaContinuationAvailable",
+            "andromedaCoverageFailures",
+            "andromedaProviderStatus",
+            "andromedaQuoteCurrent",
+            "andromedaQuoteFailure",
+            "andromedaQuoteFlight",
+            "andromedaQuoteKey",
+            "andromedaQuoteRequest",
+            "andromedaSearchFailure",
+            "anexConcreteKey",
+            "anexContinuationAvailable",
+            "anexMoneyFact",
+            "anexPageContinuation",
+            "applyDirectAndromeda",
+            "applyDirectAnex",
+            "canonicalUnion",
+            "clearCalendarWindows",
+            "completeProviderRun",
+            "completeTourvisorRun",
+            "continueAnexPages",
+            "continueDirectAndromeda",
+            "countryRow",
+            "db",
+            "destinationCatalog",
+            "destinationScope",
+            "digestRef",
+            "directAndromedaOffer",
+            "directAnexOffer",
+            "directAnexWindows",
+            "directFirstWeekScopes",
+            "enrichAndromeda",
+            "enrichAnex",
+            "indexedMeal",
+            "installMealPlans",
+            "localStayName",
+            "mealIndexes",
+            "nativeEndpoint",
+            "normalizeAnexAdditional",
+            "normalizeAnexConcrete",
+            "normalizeAnexFlights",
+            "normalizeAnexPackage",
+            "observationBudget",
+            "observationMealPlans",
+            "pollSearch",
+            "prepareSearchRun",
+            "providerDestinationScopes",
+            "publish",
+            "rebuildDirectAndromeda",
+            "rebuildDirectAnex",
+            "reportAndromedaSearchFailure",
+            "reportAndromedaSearchPage",
+            "requestDirectAndromeda",
+            "requestDirectAnex",
+            "requestPlan",
+            "retainCalendarWindow",
+            "safeAnexIdentityMismatches",
+            "safeQuoteFailureReason",
+            "searchError",
+            "settleContinuedSources",
+            "settleInitialSources",
+            "supplierMealNativeId",
+            "tourvisorCountryId",
+            "tourvisorInventory"
+          ],
+          "source_sha256": "4886784f5a5cf4f4f5b9f6395cd282caa085eeecffbf56d4b49e0a3f4c2fb35b",
+          "sha256": "c56324e713a0dcfa031a4ce01496dd5d0ad08528918a56be23edd028af553b14",
+          "raw": 126244,
+          "served": 87876,
+          "gzip_before": 30896,
+          "gzip_after": 24372
+        },
+        {
+          "src": "../prototype-search/calendar-exact-hotel-v1.js",
+          "source": "prototype-search/calendar-exact-hotel-v1.js",
+          "target": "prototype-search/calendar-exact-hotel-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "a0079f28e2aa59372b90d35f763bba954d8d2ad53bf65bfff950a5fb511d4026",
+          "sha256": "e21904d726930118bff837ec5783123c5e45e0399751151c92f76a46bd4cb6ab",
+          "raw": 7709,
+          "served": 4758,
+          "gzip_before": 2510,
+          "gzip_after": 1892
+        },
+        {
+          "src": "../prototype-search/source-receipt-v1.js",
+          "source": "prototype-search/source-receipt-v1.js",
+          "target": "prototype-search/source-receipt-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "aa04fb5c8e92405aa5c2430b5d7736f994c5f2c7d9de2345238cd08dbccd0732",
+          "sha256": "78419f942a40e1e98968f553ab9b92ede08358ee0cd66833285e3458e28d8b0c",
+          "raw": 8112,
+          "served": 5055,
+          "gzip_before": 2161,
+          "gzip_after": 1712
+        },
+        {
+          "src": "../prototype-search/search-lifecycle-v1.js",
+          "source": "prototype-search/search-lifecycle-v1.js",
+          "target": "prototype-search/search-lifecycle-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "30d712b15e29cf8fed288d207fcce27091c64c87230bf6ce66e0ca80dffcc113",
+          "sha256": "b2e51ee9908491f60616686d937b9080c515e5bad32a3bfbe61c96c73ab13cf9",
+          "raw": 10384,
+          "served": 6293,
+          "gzip_before": 2796,
+          "gzip_after": 2222
+        },
+        {
+          "src": "../prototype-search/lead.js",
+          "source": "prototype-search/lead.js",
+          "target": "prototype-search/lead.js",
+          "private_function_bindings": [],
+          "source_sha256": "55b1e9a5e2f3cd0f59e62dd1ecab830198ea089d98bd4266bba94490a4ea83b2",
+          "sha256": "2e93eed4cd25df44bdbb8e1ad1a5ca6b692f7457dc7efa576ecc5290638c7bb0",
+          "raw": 15395,
+          "served": 12735,
+          "gzip_before": 4388,
+          "gzip_after": 4014
+        },
+        {
+          "src": "../prototype-search/hotel-popularity-v1.js",
+          "source": "prototype-search/hotel-popularity-v1.js",
+          "target": "prototype-search/hotel-popularity-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "dab93cbe75c181423256376e9d19e68fe26ade1e44e79f2c47e51f1855e4064f",
+          "sha256": "68c45e98d8c75e92f787e02f37ff369375576b0843ebccf84083e67448f8df43",
+          "raw": 1331,
+          "served": 907,
+          "gzip_before": 610,
+          "gzip_after": 523
+        },
+        {
+          "src": "./live-bridge.js",
+          "source": "visual-search/live-bridge.js",
+          "target": "visual-search/live-bridge.js",
+          "private_function_bindings": [],
+          "source_sha256": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
+          "sha256": "465d44c484021dcacb5321f6f999c9ac2f18790e70d913b1c474962722e81e63",
+          "raw": 1705,
+          "served": 1471,
+          "gzip_before": 1053,
+          "gzip_after": 931
+        },
+        {
+          "src": "./flight-picker-v18.js",
+          "source": "visual-search/flight-picker-v18.js",
+          "target": "visual-search/flight-picker-v18.js",
+          "private_function_bindings": [
+            "route",
+            "shortDate"
+          ],
+          "source_sha256": "fc495715806b068bbd76c01de9f72762b14716bb394e21222db8a84a6a7b05eb",
+          "sha256": "cc81de4192e75dfd5322affcac89d8b7061d88abca1a29af184a585e998f90f6",
+          "raw": 5847,
+          "served": 4274,
+          "gzip_before": 2176,
+          "gzip_after": 1777
+        },
+        {
+          "src": "./filter-panel-v1.js",
+          "source": "visual-search/filter-panel-v1.js",
+          "target": "visual-search/filter-panel-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "f491e9f31d7227c42c382ca464e39cdad16fded350dabe538e2009d4a65319c6",
+          "sha256": "12e126b4ccfcb0c9c9592099515ae2f29875793718491001cda67f47240d33cd",
+          "raw": 23308,
+          "served": 17689,
+          "gzip_before": 7644,
+          "gzip_after": 6452
+        },
+        {
+          "src": "./app.js",
+          "source": "visual-search/app.js",
+          "target": "visual-search/app.js",
+          "private_function_bindings": [
+            "andromedaApplicationReceipt",
+            "andromedaQuoteCurrent",
+            "anexApplicationReceipt",
+            "anexFlightInventoryHTML",
+            "appliedDestination",
+            "applyAndromedaFlightChoice",
+            "applyAnexAdditionalPrices",
+            "applyCatalog",
+            "applyFlightPair",
+            "applyQuickFilters",
+            "bootRealData",
+            "boundedHistoryStrings",
+            "budgetErrorText",
+            "calendarMinimums",
+            "calendarPrice",
+            "calendarScope",
+            "calendarScopeHTML",
+            "calendarSelectionPhase",
+            "calendarStripEntries",
+            "cancelDestinationLookup",
+            "cancelSearchEdit",
+            "cancelVerification",
+            "captureModalStep",
+            "capturePageReturn",
+            "cardEntryOfferKey",
+            "cardHTML",
+            "chosenStayHTML",
+            "clearSearchTimers",
+            "closeModal",
+            "collapseSearch",
+            "completeTour",
+            "confirmTour",
+            "createDateContext",
+            "currentDraftDestination",
+            "dateRangeError",
+            "dateSelectionPriceHTML",
+            "dateSelectionPriceModel",
+            "demoteSavedTour",
+            "destinationLabel",
+            "destinationNameMatches",
+            "editFilterBudget",
+            "editSearch",
+            "emptyCalendarContext",
+            "emptyResultsHTML",
+            "enterUIHistory",
+            "expireSelectedTour",
+            "filterChipData",
+            "filterCount",
+            "filterEdited",
+            "filterHistorySnapshot",
+            "finalFlightDetailsHTML",
+            "finishPageReturn",
+            "flightAllowanceText",
+            "flightConnectionText",
+            "flightSummaryHTML",
+            "focusReference",
+            "fuelAmount",
+            "fuelDisclosureHTML",
+            "fuelIncludedInPrice",
+            "handleBudgetMealDestinationInput",
+            "handleOfferChoiceChange",
+            "handleOfferRefinementChange",
+            "handlePartyMealChange",
+            "handleResultFilterAction",
+            "handleResultFilterChange",
+            "handleResultFilterInput",
+            "handleSearchParameterAction",
+            "hotelContentText",
+            "hotelDetailsOwner",
+            "hotelHighlights",
+            "hotelMatch",
+            "hotelOfferPredicate",
+            "hotelStarsHTML",
+            "isCurrentOfferRequest",
+            "leadReadyOffer",
+            "leaveUIHistory",
+            "loadAnexFlightInventory",
+            "loadAnexPackageQuote",
+            "loadCalendarPrices",
+            "loadCountries",
+            "loadFlightPicker",
+            "loadHotelDetails",
+            "loadOfferList",
+            "loadRealFlights",
+            "loadResorts",
+            "loadResultCalendar",
+            "lookupDestination",
+            "matchesHotelQuery",
+            "mealPreviewModel",
+            "minimumOfferSummary",
+            "modalBack",
+            "offerDetailBodyHTML",
+            "offerDetailFooterHTML",
+            "offerFromKey",
+            "offerHTML",
+            "offerPrimaryActionHTML",
+            "offerSelectionHint",
+            "openAllOffers",
+            "openAndromedaApplicationPreview",
+            "openAndromedaFlightChoice",
+            "openAndromedaVerified",
+            "openAnexAdditionalEstimate",
+            "openAnexApplicationPreview",
+            "openAnexConcreteCurrent",
+            "openAnexPackageQuote",
+            "openBudget",
+            "openCalendar",
+            "openCompare",
+            "openDates",
+            "openDeparture",
+            "openDestination",
+            "openFavorites",
+            "openFilters",
+            "openFlightPicker",
+            "openGallery",
+            "openGuests",
+            "openLeadPreview",
+            "openLeadWithQuote",
+            "openMeals",
+            "openNights",
+            "openOffer",
+            "openSelectedTour",
+            "paintCalendarStrip",
+            "paintGeneratedRoots",
+            "paintResultCards",
+            "parseBudgetAmount",
+            "parseGeneratedRoot",
+            "persistSelectedTour",
+            "prepareDatePicker",
+            "providerHistoryRoute",
+            "quotePriceChangeHTML",
+            "quoteSelectedOffer",
+            "rankDestinationHotels",
+            "readBudget",
+            "readSelectedTour",
+            "recentDestinations",
+            "recommendedHotelRank",
+            "recommendedHotelScore",
+            "recoveryHTML",
+            "recoverySuggestions",
+            "refreshCalendarPriceCache",
+            "refreshCalendarPrices",
+            "refreshEmptyCalendarContext",
+            "refreshHotel",
+            "refreshLiveHotel",
+            "refreshOpenHotelRooms",
+            "refreshOpenOfferList",
+            "refreshResultFilters",
+            "refreshResultPickerPreviews",
+            "refreshSavedTourControls",
+            "refreshSavedView",
+            "refreshTourComparison",
+            "rememberAndromedaFlightChoice",
+            "rememberDestination",
+            "rememberProviderView",
+            "removeModelFilter",
+            "removeSelectedTour",
+            "renderActive",
+            "renderAnexFlightInventory",
+            "renderCalendarScope",
+            "renderCalendarStrip",
+            "renderCatalogError",
+            "renderCompare",
+            "renderDateCalendar",
+            "renderDateSelectionPrice",
+            "renderDepartures",
+            "renderDestination",
+            "renderFavorites",
+            "renderFlightPicker",
+            "renderGallery",
+            "renderGuests",
+            "renderHotelDetails",
+            "renderNightSelection",
+            "renderRealOffer",
+            "renderResultCards",
+            "renderResultHeadings",
+            "renderResults",
+            "renderSearchStatus",
+            "renderSummary",
+            "reopenUIRoute",
+            "replaceSelectedTourView",
+            "resetFilters",
+            "resortChoiceHTML",
+            "resortGroups",
+            "restoreFilterHistoryModel",
+            "restoreFocus",
+            "restoreHistoryView",
+            "restoreHotelDetailStep",
+            "restoreModalStepFocus",
+            "restoreModalStepSnapshot",
+            "restorePageReturn",
+            "restoreProviderHistoryRoute",
+            "restoreProviderView",
+            "restoreSavedHotels",
+            "restoreSelectedSearch",
+            "restoreURL",
+            "restoreURLHotel",
+            "restoredDestinationChoice",
+            "restoredGuestDraft",
+            "restoredNightsDraft",
+            "restoredOfferLimits",
+            "resultCalendarModel",
+            "resultInventory",
+            "retainedProviderView",
+            "runSearch",
+            "sameSelectedTourConditions",
+            "savedContext",
+            "savedFlightSummaryHTML",
+            "savedFlightTextPlain",
+            "savedHotelPhoto",
+            "savedRecovery",
+            "savedTourControlsHTML",
+            "scheduleSelectedTourExpiry",
+            "selectComparisonVariant",
+            "selectDate",
+            "selectedPriceStatus",
+            "selectedTourHotel",
+            "selectedTourHotelSnapshot",
+            "selectedTourOfferSnapshot",
+            "selectedTourRecord",
+            "showAndromedaExpired",
+            "sortResultItems",
+            "stopSearch",
+            "switchFixture",
+            "syncBudgetControls",
+            "syncFilters",
+            "terminalizeSearchForVerification",
+            "toggleCompare",
+            "toggleFavorite",
+            "touristAgesKey",
+            "uiRoute",
+            "undoSelectedTour",
+            "updateBudgetPreview",
+            "updateDateSelection",
+            "updateDrawerPreview",
+            "updateFlightPreview",
+            "updateGuestSelection",
+            "updateMealCounts",
+            "updateMealPicker",
+            "updateModalBack",
+            "updateNav",
+            "updateSearchUI",
+            "updateURL",
+            "withFlightPair"
+          ],
+          "source_sha256": "238a5880e8ce604c2066257a5b78afdbf9d3a479f7b04229a1429586847b2687",
+          "sha256": "2e32a351c4570c6ff05c398d7e2e8cfd05b48436175e62a25145f652fee42bef",
+          "raw": 283143,
+          "served": 224482,
+          "gzip_before": 77411,
+          "gzip_after": 65596
+        },
+        {
+          "src": "./fixture-data.js",
+          "source": "visual-search/fixture-data.js",
+          "target": "visual-search/fixture-data.js",
+          "private_function_bindings": [],
+          "source_sha256": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
+          "sha256": "774d818a8dc45a089fe0ae8a3cfea7ddea0b49a97c8b4f7718a10adfb59b8860",
+          "raw": 14808,
+          "served": 11806,
+          "gzip_before": 5712,
+          "gzip_after": 4932
+        },
+        {
+          "src": "./local-db-parser.js",
+          "source": "visual-search/local-db-parser.js",
+          "target": "visual-search/local-db-parser.js",
+          "private_function_bindings": [
+            "canonicalOwner",
+            "canonicalStay",
+            "digest",
+            "emit",
+            "listingOf",
+            "load",
+            "positiveId",
+            "priceState",
+            "safeText",
+            "scopeDate",
+            "scopeInteger",
+            "scopeMoney",
+            "scopeSignature",
+            "scopeToken",
+            "scopeTrim"
+          ],
+          "source_sha256": "98fd0db7582041d1fe131d43898f0583c1d9759adde449e53a5616347012c268",
+          "sha256": "f7167fc8e2be4860abe93100e98abc89bc9edad3f1c8078130b4a10aabc72151",
+          "raw": 13497,
+          "served": 9862,
+          "gzip_before": 4789,
+          "gzip_after": 3775
+        },
+        {
+          "src": "./recorded-data.js",
+          "source": "visual-search/recorded-data.js",
+          "target": "visual-search/recorded-data.js",
+          "private_function_bindings": [],
+          "source_sha256": "68ee7344d7132efbe608d02e6ffb7b896ab7a616ea8b18bba5bb9296c330b3c1",
+          "sha256": "b2af56bc9c67f3a533f39e22ba01763dac8f7e8fe6994c90607601f4718cd543",
+          "raw": 11702,
+          "served": 10280,
+          "gzip_before": 4620,
+          "gzip_after": 4223
+        },
+        {
+          "src": "./search-lifecycle-v1.js",
+          "source": "visual-search/search-lifecycle-v1.js",
+          "target": "visual-search/search-lifecycle-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "77a1d952263da2d50781bbbf92d176c0cada68a006bd0a62e169d32fe6acacc6",
+          "sha256": "8c07ccfcf6434c0788bc4acb632de23071c91fead417b26635113c90fdbd11f7",
+          "raw": 6350,
+          "served": 3938,
+          "gzip_before": 1763,
+          "gzip_after": 1491
+        },
+        {
+          "src": "./preview-lead.js",
+          "source": "visual-search/preview-lead.js",
+          "target": "visual-search/preview-lead.js",
+          "private_function_bindings": [],
+          "source_sha256": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
+          "sha256": "aab427e19d9a9329f38b77b94126af15b143b81b459c86f73f420f1ec2ec86cb",
+          "raw": 9358,
+          "served": 8164,
+          "gzip_before": 3846,
+          "gzip_after": 3452
+        },
+        {
+          "src": "./offer-list-v1.js",
+          "source": "visual-search/offer-list-v1.js",
+          "target": "visual-search/offer-list-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "3eb54098f95da08b3663a8de42da22ea5d9df98220c0952494e68e1935990038",
+          "sha256": "5fd412f15325fed88a47a081d900ee302d924cc6e3a03502cd59b5fd3c0633dc",
+          "raw": 20652,
+          "served": 16301,
+          "gzip_before": 6411,
+          "gzip_after": 5733
+        },
+        {
+          "src": "./hotel-details-v1.js",
+          "source": "visual-search/hotel-details-v1.js",
+          "target": "visual-search/hotel-details-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "484f3e53f155ed7d25e18f5febbec8a6b01c033fab362aedd074bb4c323d292b",
+          "sha256": "bc2476ac2651f20f5d0ba1d206b1e40c539ae0034d602301846851bba141a018",
+          "raw": 12773,
+          "served": 10896,
+          "gzip_before": 4473,
+          "gzip_after": 4104
+        },
+        {
+          "src": "./flight-picker-ui-v1.js",
+          "source": "visual-search/flight-picker-ui-v1.js",
+          "target": "visual-search/flight-picker-ui-v1.js",
+          "private_function_bindings": [],
+          "source_sha256": "22fbf658eff9c5a9e974067cb6d118f5cc5d1a97606fade8051fef3f5f5329f2",
+          "sha256": "d188d4cbec05736b03055f85862ab3df49b4c2b58d45800e7492c8c80e9148ec",
+          "raw": 12767,
+          "served": 9847,
+          "gzip_before": 4416,
+          "gzip_after": 3737
+        }
+      ]
+    }
+  },
+  "data_structure": [
+    {
+      "name": "Общие значения, питание и оператор",
+      "raw_bytes": 11056,
+      "functions": 8
+    },
+    {
+      "name": "Направления, scope и локальное чтение",
+      "raw_bytes": 10658,
+      "functions": 13
+    },
+    {
+      "name": "Общая проекция и состояние выдачи",
+      "raw_bytes": 7802,
+      "functions": 13
+    },
+    {
+      "name": "Прямой ANEX search/continuation",
+      "raw_bytes": 14054,
+      "functions": 10
+    },
+    {
+      "name": "Прямая Andromeda search/continuation",
+      "raw_bytes": 18362,
+      "functions": 14
+    },
+    {
+      "name": "Координация общей поисковой сессии",
+      "raw_bytes": 8410,
+      "functions": 8
+    },
+    {
+      "name": "Календарь, справочники и поиск отеля",
+      "raw_bytes": 14178,
+      "functions": 13
+    },
+    {
+      "name": "Актуализация ANEX/Andromeda/TV и lead guard",
+      "raw_bytes": 41724,
+      "functions": 28
+    }
+  ],
+  "initial_loading_measurements": {
+    "comparison": "same compiled candidate, eager versus deferred flight UI; alternating order, fresh contexts, identical fictional catalogue",
+    "engine": "Chromium",
+    "physical_device": false,
+    "latency_claim": false,
+    "summary": [
+      {
+        "width": 390,
+        "trials": 5,
+        "eager_initial_js": 444831,
+        "deferred_initial_js": 434984,
+        "removed_initial_js": 9847,
+        "eager_ready_median_ms": 175.79999999998836,
+        "deferred_ready_median_ms": 179.09999999997672
+      },
+      {
+        "width": 1280,
+        "trials": 5,
+        "eager_initial_js": 444831,
+        "deferred_initial_js": 434984,
+        "removed_initial_js": 9847,
+        "eager_ready_median_ms": 180.59999999997672,
+        "deferred_ready_median_ms": 180.20000000001164
+      }
+    ],
+    "records": [
+      {
+        "width": 390,
+        "trial": 0,
+        "mode": "eager",
+        "ready_ms": 176.5,
+        "dom_content_loaded_ms": 140,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 19.199999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 21.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 22.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 25.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 26.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 26.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 26.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 30.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 30.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 30.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 30.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 30.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 30.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 33.40000000002328
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 34
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 0,
+        "mode": "deferred",
+        "ready_ms": 179.09999999997672,
+        "dom_content_loaded_ms": 144.20000000001164,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 13.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 14
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 17
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 21.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 21.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 22.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 22.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 22.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 22.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 25.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 26.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 26.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 25.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 25.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 27.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 28.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 29.5
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 1,
+        "mode": "deferred",
+        "ready_ms": 180.10000000003492,
+        "dom_content_loaded_ms": 146,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 14.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 15.300000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 15.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 22.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 22.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 23.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 26.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 26.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 26.800000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 26.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 28.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 29.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 31.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 31.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 32.29999999998836
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 1,
+        "mode": "eager",
+        "ready_ms": 179.10000000003492,
+        "dom_content_loaded_ms": 150.90000000002328,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 17.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 18.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 21.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 21.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 22.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 24.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 24.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 24.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 26.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 26.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 26.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 29
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 29.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 29.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 29.300000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 29.599999999976717
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 2,
+        "mode": "eager",
+        "ready_ms": 173.5,
+        "dom_content_loaded_ms": 138.5,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 15.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 16.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 18.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 20.800000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 21.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 23.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 23.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 26.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 26.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 26.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 25.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 26.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 28.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 29.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 29.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 31
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 2,
+        "mode": "deferred",
+        "ready_ms": 174.70000000001164,
+        "dom_content_loaded_ms": 139.20000000001164,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 12.700000000011642
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 12.799999999988358
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 16.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 19.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 17.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 16.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 15.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 19.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 22.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 24.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 22.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 25.79999999998836
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 3,
+        "mode": "deferred",
+        "ready_ms": 175,
+        "dom_content_loaded_ms": 136.80000000004657,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 18.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 22
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 23.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 23.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 21.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 22.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 24.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 23.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 25.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 25.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 27.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 27.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 29.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 28.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 30
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 3,
+        "mode": "eager",
+        "ready_ms": 175.79999999998836,
+        "dom_content_loaded_ms": 139.79999999998836,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 16.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 17
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 17.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 19.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 20.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 21.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 21.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 21.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 24.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 24.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 24.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 23.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 24
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 24.699999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 26
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 26.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 27.400000000023283
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 4,
+        "mode": "eager",
+        "ready_ms": 174.29999999998836,
+        "dom_content_loaded_ms": 138.40000000002328,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13.700000000011642
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 17.699999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 18.199999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 16.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 20.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22.300000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 21.800000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 23.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 22.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 22.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 25.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 26.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 27.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 28.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 27.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 28.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 29.20000000001164
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 390,
+        "trial": 4,
+        "mode": "deferred",
+        "ready_ms": 179.20000000001164,
+        "dom_content_loaded_ms": 143.40000000002328,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 18.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 14.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 18.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 22.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 22.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 27.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 28.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 28.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 28.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 30.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 29.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 31.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 31.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 32.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 33.70000000001164
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 0,
+        "mode": "eager",
+        "ready_ms": 192.10000000003492,
+        "dom_content_loaded_ms": 154,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 10.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 13.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 17.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 18.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 18.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 18.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 25.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 26
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 23.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 25.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 25.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 26.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 28.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 28.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 28.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 28.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 31.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 31.800000000046566
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 0,
+        "mode": "deferred",
+        "ready_ms": 180.20000000001164,
+        "dom_content_loaded_ms": 139.60000000003492,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 12.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 15.799999999988358
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 16.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 18.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 18.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 18.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 18.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 20
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 19.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 22.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 23.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 23.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 22.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 24.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 25.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 27.79999999998836
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 1,
+        "mode": "deferred",
+        "ready_ms": 178.70000000001164,
+        "dom_content_loaded_ms": 138.70000000001164,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 11.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 12
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 16.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 16.699999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 17.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 18.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 19.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 21.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 21
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 21.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 21.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 23.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 26.199999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 25.699999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 26.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 27.20000000001164
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 1,
+        "mode": "eager",
+        "ready_ms": 177.79999999998836,
+        "dom_content_loaded_ms": 143.10000000003492,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 16.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 16.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 16.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 16.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 16.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 22.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 22.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 22.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 22.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 25.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 25.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 26.800000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 26.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 27.599999999976717
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 2,
+        "mode": "eager",
+        "ready_ms": 180.59999999997672,
+        "dom_content_loaded_ms": 141.20000000001164,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 13.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 17.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 19.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 19.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 19.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 21.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 19.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 21.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 21.699999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 22.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 22.300000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 22.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 22.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 23.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 28.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 27.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 29.20000000001164
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 2,
+        "mode": "deferred",
+        "ready_ms": 191.59999999997672,
+        "dom_content_loaded_ms": 154.39999999996508,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 24.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 27.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 27.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 31.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 33.09999999997672
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 34.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 34.90000000002328
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 34.90000000002328
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 34.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 34.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 36.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 39.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 38.90000000002328
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 39.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 39.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 39.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 40.600000000034925
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 3,
+        "mode": "deferred",
+        "ready_ms": 172.60000000003492,
+        "dom_content_loaded_ms": 134.5,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 12
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 15.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 17.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 17.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 17.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 19.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 20.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 22.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 22.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 22.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 22.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 25.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 25.300000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 25.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 26.400000000023283
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 3,
+        "mode": "eager",
+        "ready_ms": 186.79999999998836,
+        "dom_content_loaded_ms": 149.40000000002328,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 13.299999999988358
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 14.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 14.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 17.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 17.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 20.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 26.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 20.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 20.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 27.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 28.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 28.79999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 29
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 29.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 30.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 31.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 31.199999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 31.899999999965075
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 4,
+        "mode": "eager",
+        "ready_ms": 174.59999999997672,
+        "dom_content_loaded_ms": 136.5,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 17.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 19.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 11.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 20.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 11.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 17.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 20.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 21.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 21.099999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 21.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 24.400000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 24.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 26.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 26.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 27
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 27.399999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js",
+            "bytes": 9847,
+            "duration_ms": 28.20000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 29.29999999998836
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      },
+      {
+        "width": 1280,
+        "trial": 4,
+        "mode": "deferred",
+        "ready_ms": 185.10000000003492,
+        "dom_content_loaded_ms": 148.79999999998836,
+        "scripts": [
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/config.js",
+            "bytes": 329,
+            "duration_ms": 20.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/runtime-v3.js",
+            "bytes": 3062,
+            "duration_ms": 20.600000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-search-context.js",
+            "bytes": 1485,
+            "duration_ms": 21.100000000034925
+          },
+          {
+            "path": "/_preview/search3-next-candidate/tour-controller-v4.js",
+            "bytes": 26479,
+            "duration_ms": 21.899999999965075
+          },
+          {
+            "path": "/_preview/search3-next-candidate/lead-form-guard-v1.js",
+            "bytes": 15365,
+            "duration_ms": 22
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-canonical-profiles-v1.js",
+            "bytes": 11466,
+            "duration_ms": 22
+          },
+          {
+            "path": "/_preview/search3-next-candidate/search3-local-db-provider-v1.js",
+            "bytes": 11258,
+            "duration_ms": 25.29999999998836
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/calendar-exact-hotel-v1.js",
+            "bytes": 4758,
+            "duration_ms": 25.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/data.js",
+            "bytes": 87876,
+            "duration_ms": 26.199999999953434
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/search-lifecycle-v1.js",
+            "bytes": 6293,
+            "duration_ms": 25.599999999976717
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/source-receipt-v1.js",
+            "bytes": 5055,
+            "duration_ms": 25.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/lead.js",
+            "bytes": 12735,
+            "duration_ms": 25.900000000023283
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/live-bridge.js",
+            "bytes": 1471,
+            "duration_ms": 28.5
+          },
+          {
+            "path": "/_preview/search3-next-candidate/prototype-search/hotel-popularity-v1.js",
+            "bytes": 907,
+            "duration_ms": 28
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/flight-picker-v18.js",
+            "bytes": 4274,
+            "duration_ms": 29.70000000001164
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/filter-panel-v1.js",
+            "bytes": 17689,
+            "duration_ms": 29.800000000046566
+          },
+          {
+            "path": "/_preview/search3-next-candidate/visual-search/app.js",
+            "bytes": 224482,
+            "duration_ms": 30.20000000001164
+          }
+        ],
+        "pristine": true,
+        "overflow": false,
+        "supplier_requests": 0,
+        "real_leads": 0
+      }
+    ]
+  },
+  "browser_comparison": [
+    {
+      "path": "hotel-scroll-layout-768.json",
+      "equal": true
+    },
+    {
+      "path": "receipt.json",
+      "equal": true
+    },
+    {
+      "path": "hotel-scroll-layout-1280.json",
+      "equal": true
+    },
+    {
+      "path": "card-price-360.json",
+      "equal": true
+    },
+    {
+      "path": "card-price-390.json",
+      "equal": true
+    },
+    {
+      "path": "card-price-430.json",
+      "equal": true
+    },
+    {
+      "path": "hotel-scroll-layout-390.json",
+      "equal": true
+    },
+    {
+      "path": "large-flight-choices/receipt.json",
+      "equal": true
+    },
+    {
+      "path": "offer-list-lazy/receipt.json",
+      "equal": true
+    },
+    {
+      "path": "hotel-details-lazy/receipt.json",
+      "equal": true
+    },
+    {
+      "path": "terminal-offers/receipt.json",
+      "equal": true
+    }
+  ],
+  "compiled_fixture_receipt": {
+    "published": false,
+    "live_data": false,
+    "engine": "Chromium",
+    "physical_device": false,
+    "results": [
+      {
+        "width": 390,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": true,
+        "mobile_filter_resize_state": true,
+        "initial_invalid_budget_blocked": false,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      },
+      {
+        "width": 768,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": true,
+        "mobile_filter_resize_state": true,
+        "initial_invalid_budget_blocked": false,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      },
+      {
+        "width": 1280,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": false,
+        "mobile_filter_resize_state": false,
+        "initial_invalid_budget_blocked": true,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      }
+    ]
+  },
+  "hosted_acceptance": {
+    "engine": "cloud Chromium",
+    "physical_device": false,
+    "viewport": {
+      "width": 1363,
+      "height": 936
+    },
+    "previous_source": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "published_source": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "app_cache": "2e32a351c457",
+    "filter_cache": "12e126b4ccfc",
+    "flight_core_cache": "cc81de4192e7",
+    "flight_ui_cache": "d188d4cbec05",
+    "data_cache_unchanged": "c56324e713a0",
+    "pristine": {
+      "eager_scripts": 17,
+      "form_enabled_after_bootstrap": true,
+      "rendered_cards": 0,
+      "supplier_search_submitted": false,
+      "overflow": false
+    },
+    "snapshot": {
+      "hotels": 1047,
+      "offers": 1453,
+      "rendered_cards": 24,
+      "calendar_days": 7,
+      "checkboxes": 97,
+      "overflow": false,
+      "first_cards": [
+        {
+          "hotel_id": 3678,
+          "width": 1024,
+          "height": 341.1875,
+          "price_rub": 96953
+        },
+        {
+          "hotel_id": 5227,
+          "width": 1024,
+          "height": 298.4375,
+          "price_rub": 133353
+        },
+        {
+          "hotel_id": 4999,
+          "width": 1024,
+          "height": 308.4375,
+          "price_rub": 136582
+        }
+      ],
+      "identical_to_predecessor": true
+    },
+    "star_filter": {
+      "stars": 4,
+      "hotels": 395,
+      "offers": 522,
+      "reset_hotels": 1047,
+      "reset_offers": 1453
+    },
+    "date_filter": {
+      "date": "2026-10-05",
+      "hotels": 974,
+      "offers": 1122
+    },
+    "hotel": {
+      "photos": 4,
+      "rooms": 1,
+      "offers": 2,
+      "sections": [
+        "photos",
+        "about",
+        "rooms"
+      ],
+      "service_highlights_preserved": true
+    },
+    "snapshot_selected": {
+      "hotel": "RIA SUITES HOTEL",
+      "room": "Standard",
+      "meal": "Завтраки",
+      "operator": "Интурист",
+      "depart": "2026-10-05",
+      "return": "2026-10-12",
+      "price_rub": 96953,
+      "fuel": "unknown",
+      "application_blocked": true
+    },
+    "fictional_flights": {
+      "pairs": 24,
+      "visible_initially": 6,
+      "chosen_variant": 2,
+      "total_before_rub": 186400,
+      "total_after_rub": 187700,
+      "delta_rub": 1300,
+      "baggage_kg": 20,
+      "carryon_kg": 5,
+      "fuel": "explicit_zero",
+      "warm_choice_retained": true,
+      "tour_back_retained": true,
+      "network_request_count_source": "compiled CI instrumentation; not hosted DOM script counts"
+    },
+    "page_origin_console_errors": 0,
+    "terminal_comment": 5950090374,
+    "mirror_comment": 5950090783,
+    "screenshot_library_file": "libfile_19a952ce712c8191b44756a59e50902e",
+    "screenshot_file": "anytour-next-structural-1790935903933.jpg",
+    "verified_pristine_url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/"
+  },
+  "guarded_publication": {
+    "LOCAL_only_data_HTTP": 403,
+    "activation": {
+      "files": 838,
+      "predecessor_retained": true,
+      "status": "activated"
+    },
+    "completion": {
+      "existing_preview_unchanged": true,
+      "previous_source_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+      "production_unchanged": true,
+      "rollback_retained": true,
+      "route": "/_preview/search3-next-candidate/",
+      "source_sha": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+      "status": "published"
+    },
+    "counter": 0,
+    "derived_artifact": 11220836059,
+    "existing_preview_unchanged": true,
+    "lead_HTTP": 403,
+    "noindex": true,
+    "predecessor_retained": true,
+    "previous_source_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "production_unchanged": true,
+    "real_leads": 0,
+    "release_sha": "8f54d33c6279feba85b23f8b963d4aacf292a2a7",
+    "route": "/_preview/search3-next-candidate/",
+    "routes_200": 9,
+    "source_artifact": 11219234614,
+    "source_sha": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "status": "published_update",
+    "supplier_searches": 0,
+    "visual_assets_verified": 41,
+    "visual_live_connected": true,
+    "visual_route_200": true
+  },
+  "finite_backlog": [
+    {
+      "id": "D1",
+      "status": "DEFERRED_INT_TO_SEARCH_SINGLE_EXECUTOR_HANDOFF",
+      "scope": "Pure meal projection only: mealAliases + mealIndexes/indexedMeal/meal/supplierMealNativeId/mealPlan.",
+      "contract": "docs/project/search3-data-structure-20261002.md",
+      "runtime_data_implementation_in_this_pass": false
+    },
+    {
+      "id": "D2",
+      "status": "SEPARATE_DEVICE_AND_REAL_PROVIDER_ACCEPTANCE",
+      "scope": "Physical Safari/iPhone and real supplier search/flight/quote plus real lead delivery.",
+      "completed": false
+    },
+    {
+      "id": "D3",
+      "status": "OPTIONAL_FUTURE_OWNER_SCOPE_ONLY",
+      "scope": "Remaining app search/calendar/selected-tour/history boundaries and production-scale profiling.",
+      "automatic_continuation": false
+    }
+  ],
+  "unverified": [
+    "physical Safari/iPhone",
+    "real supplier search/flight/quote",
+    "real lead delivery",
+    "production-scale latency"
+  ],
+  "automatic_micro_optimization_queue": false
+}
