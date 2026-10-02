@@ -22,7 +22,9 @@ function comparisonDecisionHTML(visible){
 function renderTourComparison(all,filtered){
  const dates=[...new Set(all.map(o=>o.day))].sort();if(!dates.includes(offerView.day))offerView.day=dates[0]||state.search.from;
  const nights=[...new Set(all.filter(o=>o.day===offerView.day).map(o=>o.nights))].sort((a,b)=>a-b);if(!nights.includes(offerView.nights))offerView.nights=nights[0]||state.search.minNights;
- const options=filtered.filter(o=>o.day===offerView.day&&o.nights===offerView.nights).sort((a,b)=>a.total-b.total);setComparisonQuotes(options);
+ let options=filtered.filter(o=>o.day===offerView.day&&o.nights===offerView.nights);
+ if(options.length>1){const keyed=options.map((offer,index)=>({offer,index,total:offer.total}));keyed.sort((a,b)=>a.total-b.total||a.index-b.index);options=keyed.map(item=>item.offer);}
+ setComparisonQuotes(options);
  const visible=normalizeComparison(options),minPrice=visible.length?Math.min(...visible.map(o=>o.total)):null;
  const fact=(key,label,value)=>{const get=comparisonFields.find(([field])=>field===key)?.[2]||((o)=>o[key]);const different=new Set(visible.map(get)).size>1;return offerView.differencesOnly&&visible.length>1&&!different?'':`<div class="${different?'fact-different':''}"><dt>${label}</dt><dd>${esc(value)}</dd></div>`;};
  const datesExpanded=$('.comparison-date-disclosure')?.open===true;
