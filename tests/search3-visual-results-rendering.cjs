@@ -363,6 +363,53 @@ rankMutation.ctx.hotels=[2,5].map(id=>({id,rating:4,beach:null,legacyIds:[id],of
 assert.notDeepEqual(Array.from(rankMutation.run(),r=>r.hotel.id),previousRanking(rankMutation.ctx.hotels,'recommended',rankMutation.ctx.popularity).map(r=>r.hotel.id),'popularity tie-break mutation detected');
 console.log('PASS actual result ranking: '+rankingRecords.length+' independent order/reference/progressive observations; digest '+rankingDigest+'; score work '+oldRanking.work.score+' → '+ranking.work.score+', rank work '+oldRanking.work.rank+' → '+ranking.work.rank+'; supplier/lead HTTP 0');
 
+// Price/rating result sorts snapshot the active key once per retained row.
+// Compare the actual owner against its previous direct-comparator behavior so
+// ties, unusual numeric values and raw row identity/order stay independently guarded.
+const previousResultSort=`function sortResultItems(items){
+ if(items.length<2)return items;
+ if(state.sort==='price')return items.sort((a,b)=>a.offers[0].total-b.offers[0].total);
+ if(state.sort==='rating')return items.sort((a,b)=>(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0));
+ const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel),rank:recommendedHotelRank(row.hotel)}));
+ ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
+ return ranked.map(item=>item.row);
+}`;
+function resultSortOwner(code=source){
+ const work={total:0,rating:0},ctx={Array,Number,Object,state:{sort:'price'},work};
+ const ratingLine=code.match(/^const ratingValue=[^\n]+/m)[0].replace('const ratingValue=','const actualRatingValue=');
+ vm.createContext(ctx);vm.runInContext(ratingLine+'\nfunction ratingValue(h){work.rating++;return actualRatingValue(h)}\n'+section(code,'function sortResultItems(','function resultInventory(')+'\nglobalThis.sortOwner=sortResultItems;',ctx);
+ return {ctx,work,run:(items,sort)=>{work.total=work.rating=0;ctx.state.sort=sort;const actual=ctx.sortOwner(items);return {actual,work:{...work}};}};
+}
+const resultSort=resultSortOwner(),previousSort=resultSortOwner(source.replace(section(source,'function sortResultItems(','function resultInventory('),previousResultSort+'\n'));
+let resultSortSeed=20261002;
+const resultSortRandom=()=>((resultSortSeed=resultSortSeed*48271%2147483647)/2147483647);
+function resultSortRows(n,work,validRatings=false){
+ const rows=Array.from({length:n},(_,index)=>{
+  const value={total:Math.floor(resultSortRandom()*100000)+index%17,rating:(validRatings?[4.1,4.5,4.8,5,4.3]:[null,NaN,-1,0,4.5,5,6,Infinity])[index%(validRatings?5:8)]},offer={},hotel={id:index};
+  Object.defineProperty(offer,'total',{get(){work.total++;return value.total;}});
+  Object.defineProperty(hotel,'rating',{get(){return value.rating;}});
+  return {hotel,offers:[offer],value};
+ });
+ for(let index=rows.length-1;index>0;index--){const swap=Math.floor(resultSortRandom()*(index+1));[rows[index],rows[swap]]=[rows[swap],rows[index]];}return rows;
+}
+for(let round=0;round<100;round++)for(const length of [0,1,2,17,64])for(const sort of ['price','rating']){
+ const rows=resultSortRows(length,resultSort.work),legacyRows=rows.slice();
+ const expected=previousSort.run(legacyRows,sort).actual,actual=resultSort.run(rows,sort).actual;
+ assert.strictEqual(actual,rows,round+':'+length+':'+sort+' preserves the input array owner');
+ assert.strictEqual(expected,legacyRows,round+':'+length+':'+sort+' legacy comparison mutates its input array');
+ actual.forEach((row,index)=>assert.strictEqual(row,expected[index],round+':'+length+':'+sort+' raw row identity/order'));
+}
+resultSortSeed=20261002;const priceLegacy=resultSortRows(1000,previousSort.work),oldPriceResult=previousSort.run(priceLegacy,'price'),oldPrice=oldPriceResult.work;
+resultSortSeed=20261002;const priceRows=resultSortRows(1000,resultSort.work),newPriceResult=resultSort.run(priceRows,'price'),newPrice=newPriceResult.work;
+assert.deepEqual(Array.from(newPriceResult.actual,row=>row.hotel.id),Array.from(oldPriceResult.actual,row=>row.hotel.id),'1000-row price order retained');
+resultSortSeed=20261002;const ratingLegacy=resultSortRows(1000,previousSort.work,true),oldRatingResult=previousSort.run(ratingLegacy,'rating'),oldRating=oldRatingResult.work;
+resultSortSeed=20261002;const ratingRows=resultSortRows(1000,resultSort.work,true),newRatingResult=resultSort.run(ratingRows,'rating'),newRating=newRatingResult.work;
+assert.deepEqual(Array.from(newRatingResult.actual,row=>row.hotel.id),Array.from(oldRatingResult.actual,row=>row.hotel.id),'1000-row rating order retained');
+assert.deepEqual([oldPrice.total,newPrice.total],[17292,1000],'price total reads are one per retained row');
+assert.deepEqual([oldRating.rating,newRating.rating],[11656,1000],'ratingValue calls are one per retained row');
+assert.equal(newPrice.rating,0);assert.equal(newRating.total,0);
+console.log('PASS result price/rating sort keys: 1000 randomized/tie/sparse-number reference sorts; price total reads '+oldPrice.total+' → '+newPrice.total+', ratingValue calls '+oldRating.rating+' → '+newRating.rating+'; raw row/array identity and zero/one semantics retained');
+
 // Comparison cards already receive the sorted raw offer inventory from
 // savedAvailability(). Reusing it for the "all tours" count must not trigger a
 // second predicate/filter/sort pass per compared hotel.
