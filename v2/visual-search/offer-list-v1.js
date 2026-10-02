@@ -78,7 +78,9 @@ function offerRefinementRecovery(all){
 function offerListInventory(group=true){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  if(!group)return {h,all,filtered,groups:[]};
- const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
+ const keyed=filtered.length<2?filtered.map(offer=>({offer})):filtered.map((offer,index)=>({offer,index,total:offer.total,day:offer.day}));
+ keyed.sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total||a.index-b.index:a.total-b.total||a.day.localeCompare(b.day)||a.index-b.index);
+ const sorted=keyed.map(item=>item.offer);
  const groups=[],byKey=new Map();
  for(const offer of sorted){
   const key=offerGroupKey(offer);let group=byKey.get(key);
