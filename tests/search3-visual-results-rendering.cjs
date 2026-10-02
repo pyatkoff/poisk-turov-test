@@ -531,4 +531,62 @@ assert.deepEqual([previousComparison.predicateChecks,comparison.predicateChecks]
 for(let index=0;index<comparison.hotels.length;index++){assert.deepEqual(comparison.hotels[index].offers,comparison.order[index],'raw offer order unchanged');const entry=comparison.ctx.av(comparison.hotels[index]);entry.offers.forEach(offer=>assert(comparison.hotels[index].offers.includes(offer),'raw offer identity retained'));}
 assert.equal((section(source,'function renderCompare(){','function openFavorites(){').match(/hotelOffers\(/g)||[]).length,0,'renderCompare never re-reads the retained offer inventory');
 console.log('PASS comparison offer inventory: max 3x100 full passes 6→3, predicate checks 600→300, comparator-key reads 6408→3204; markup/count/raw identity/order retained');
+// Final facets consume normalized offers after duplicate hotel IDs overwrite.
+// Keep the pre-pass owner as a reference; source DTO getters must finish before
+// the final inventory begins. No transport or application bootstrap runs here.
+const previousMergeOwner=`function mergeSearchResults(event){
+ const incoming=new Map(event.hotels.map(h=>[h.id,{...h,offers:h.offers.map(o=>({...o,sourceMeal:o.sourceMeal??o.meal,meal:String(o.meal||'Питание уточняется')}))}]));
+ hotels=hotels.filter(h=>state.favorites.includes(h.id)||state.compare.includes(h.id)).map(h=>({...h,offers:[]}));
+ hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
+ operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
+ hotels.forEach(h=>h.offers.forEach(o=>{if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
+ refreshOpenOfferList();refreshOpenHotelRooms();
+}`;
+const currentMergeOwner=section(source,'function mergeSearchResults(event){','function commitSearchDraft(');
+function mergeFixture(sparse=false,mutating=false){
+ const trace=[],offer=(key,operator,meal,id,facet)=>({key,operator,meal,mealPlanId:id,mealFacet:facet,total:100000});
+ const offers=[offer('first','First','AI',1,'Всё включено'),offer('second','Second','BB',2,'Завтрак'),offer('conflict','First','UAI',3,'Всё включено'),offer('empty',undefined,'',0,''),offer('invalid',null,'RO',NaN,'Без питания')];
+ if(sparse){delete offers[1];const inherited=Object.create(Array.prototype);inherited[1]=offer('inherited','Inherited','BB',2,'Завтрак');Object.setPrototypeOf(offers,inherited);offers.length=8;}
+ if(mutating){
+  Object.defineProperty(offers[0],'operator',{enumerable:true,get(){trace.push('source operator first');offers[2].meal='changed while normalizing';delete offers[3];offers[6]=offer('filled','Filled','RO',4,'Без питания');offers.push(offer('appended','Appended','AI',1,'Всё включено'));return 'First';}});
+  Object.defineProperty(offers[2],'meal',{enumerable:true,configurable:true,get(){trace.push('source meal conflict');return 'changed while normalizing';},set(){}});
+ }
+ return {trace,initial:[{id:9,name:'removed',offers:[offer('old','Old','Old',99,'Старое')]},{id:2,name:'favorite',offers:[offer('saved','Saved','Saved',99,'Старое')]},{id:7,name:'compared',offers:[]}],event:{hotels:[{id:3,name:'superseded',offers:[offer('discarded','Discarded','Discarded',9,'Discarded')]},{id:2,name:'incoming favorite',offers:[]},{id:3,name:'final',offers}]} };
+}
+function observeMerge(code,{live=false,sparse=false,mutating=false,count=0}={}){
+ const fixture=mergeFixture(sparse,mutating),calls=[],work={elementReads:0,intermediate:0};
+ if(count)fixture.event.hotels=[{id:3,offers:Array.from({length:count},(_,i)=>({key:'o'+i,operator:'Operator '+i%3,meal:i%2?'AI':'BB',mealPlanId:i%2?1:2,mealFacet:i%2?'Всё включено':'Завтрак'}))}];
+ const ctx={hotels:fixture.initial,state:{favorites:[2],compare:[7]},data:{live},operators:['old'],mealNames:{'Из каталога':77},work,
+  refreshOpenOfferList:()=>calls.push('offers'),refreshOpenHotelRooms:()=>calls.push('rooms')};
+ const operatorsRef=ctx.operators,mealsRef=ctx.mealNames;vm.createContext(ctx);
+ vm.runInContext(`let mapCount=0;const NativeMap=Map;Map=class extends NativeMap{constructor(entries){super(entries);if(++mapCount===2)for(const hotel of this.values())hotel.offers=new Proxy(hotel.offers,{get(target,key,receiver){if(typeof key==='string'&&/^[0-9]+$/.test(key))work.elementReads++;return Reflect.get(target,key,receiver);}});}};
+ const nativeFlatMap=Array.prototype.flatMap;Array.prototype.flatMap=function(...args){const result=nativeFlatMap.apply(this,args);work.intermediate+=result.length;return result;};`,ctx);
+ vm.runInContext(code,ctx);ctx.mergeSearchResults(fixture.event);
+ const measured={...work};assert.strictEqual(ctx.operators,operatorsRef);assert.strictEqual(ctx.mealNames,mealsRef);
+ assert.deepEqual(calls,['offers','rooms'],'open views refresh after the completed final facets');
+ const snapshot=copy({hotels:ctx.hotels,operators:ctx.operators,meals:ctx.mealNames,trace:fixture.trace,calls});
+ const final=ctx.hotels.find(h=>h.id===3);
+ final?.offers.forEach(o=>assert(!fixture.event.hotels.some(h=>h.offers.includes(o)),'normalization retains its cloned offer ownership'));
+ return {snapshot,measured};
+}
+for(const live of [false,true])for(const sparse of [false,true])for(const mutating of [false,true]){
+ const options={live,sparse,mutating},actual=observeMerge(currentMergeOwner,options),previous=observeMerge(previousMergeOwner,options);
+ assert.deepEqual(actual.snapshot,previous.snapshot,JSON.stringify(options)+' normalized final values/order/source getter reads');
+ assert.deepEqual(actual.snapshot.hotels.map(h=>h.id),[2,7,3],'saved placeholders and duplicate hotel position retained');
+ assert(!actual.snapshot.operators.includes('Discarded')&&!actual.snapshot.operators.includes('Old')&&!actual.snapshot.operators.includes('Saved'),'only final offers supply operator facets');
+ assert(!Object.hasOwn(actual.snapshot.meals,'Discarded'),'superseded duplicate hotel never supplies meal facets');
+ if(live){assert.equal(actual.snapshot.meals['Всё включено'],1,'first accepted meal identity survives a conflicting ID');assert.equal(actual.snapshot.meals['Из каталога'],77);}
+}
+for(const live of [false,true]){
+ const options={live,count:1000},actual=observeMerge(currentMergeOwner,options),previous=observeMerge(previousMergeOwner,options);
+ assert.deepEqual(actual.snapshot,previous.snapshot,'1000 normalized offers retain complete final output');
+ assert.deepEqual([previous.measured.elementReads,actual.measured.elementReads],[2000,1000],'one final offer read per element');
+ assert.deepEqual([previous.measured.intermediate,actual.measured.intermediate],[1000,0],'flatMap offer intermediate removed');
+}
+for(const mutation of [
+ currentMergeOwner.replace('resultOperators.add(o.operator);',''),
+ currentMergeOwner.replace('previous===undefined||previous===o.mealPlanId','true'),
+ currentMergeOwner.replace('incoming.values()','event.hotels')
+])assert.throws(()=>assert.deepEqual(observeMerge(mutation,{live:true}).snapshot,observeMerge(previousMergeOwner,{live:true}).snapshot),'reference guard rejects changed operators, conflicting meals or raw duplicate input');
+console.log('PASS final merge inventory: normalized duplicate/saved/sparse/inherited/getter-mutation parity; 1000 offers read 2000→1000, flatMap intermediate 1000→0 in preview/live; no supplier/lead HTTP');
 require('./search3-visual-rating-render-inventory.cjs');
