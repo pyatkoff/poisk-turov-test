@@ -20,7 +20,7 @@ function observe(source,s){
  const call=(name,fn)=>(...args)=>{record(name,...args);return fn?.(...args);};
  function node(key){
   if(nodes.has(key))return nodes.get(key);
-  const classes=new Set(s.comparing?['tour-comparison-dialog']:[]);
+  const classes=new Set();
   const target={id:key==='#anchor'?'hotel-1':key,value:'old',textContent:'old',innerHTML:'<old>',hidden:false,title:'old',open:false,children:[],firstChild:null,childElementCount:0,options:s.optionsCurrent?[{value:''},{value:'2026-10-14'},{value:'2026-10-15'}]:[],dataset:{action:s.noAction?undefined:'offer'},
    contains:x=>!!s.focus&&x===node('#active'),
    closest:()=>s.noAnchor?null:node('#anchor'),
@@ -49,7 +49,7 @@ function observe(source,s){
   calendarMinimum:call('calendarMinimum',day=>s.prices?.[Number(day.slice(-2))-14]??null),
   calendarSourceLabel:call('calendarSourceLabel',()=> 'Найденные цены'),calendarScope:call('calendarScope',()=>({destination:'Кемер',filters:s.noFilters?[]:['meal']})),money:call('money',n=>n+' ₽'),
   optionalShortlistEnabled:!!s.shortlist,innerWidth:s.mobile?390:1280,
-  offerView:{id:1,mode:s.comparing?'compare':'list',departure:s.departure||'',flight:s.flight||'',room:s.room||'',meal:s.meal||'',sort:s.sort||'price',open:['r1-AI'],limits:{'r1-AI':1}},
+  offerView:{id:1,departure:s.departure||'',flight:s.flight||'',room:s.room||'',meal:s.meal||'',sort:s.sort||'price',open:['r1-AI'],limits:{'r1-AI':1}},
   offerRefinementFields:['departure','flight','room','meal'],mealNames:{AI:'Всё включено'},comparisonQuotes:[{key:'old'}]
  };
  for(const name of ['renderFilters','updateFacetCounts','syncFilterResetState','updateDrawerPreview','updateBudgetPreview','updateMealCounts','updateMealPicker','renderCalendarStrip','renderActive','updateNav','renderSummary','updateURL','renderSearchStatus','loadResultCalendar','refreshEmptyCalendarContext','renderOfferRefinements','renderTourComparison','rememberUIRoute'])ctx[name]=call(name);
@@ -66,7 +66,9 @@ function observe(source,s){
  // The real bulk algorithm is characterized in calendar-inventory.cjs.
  ctx.calendarMinimums=(days,options,observations)=>days.map(day=>ctx.calendarMinimum(day,options,observations));
  ctx.setComparisonQuotes=value=>{ctx.comparisonQuotes=value;};
- vm.createContext(ctx);vm.runInContext(owner(source,s.kind),ctx);
+ const observedOwner=owner(source,s.kind);
+ if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
+ vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
@@ -82,12 +84,13 @@ for(const sameScope of [false,true])for(const focus of [false,true])for(const va
 for(const total of [1,2,4,5,11,12,14,21,22,24,25])add('plural:'+total,{kind:'results',count:1,total});
 for(const phase of ['loading','error','partial','complete'])for(const prices of [[null,null,null],[100,100,100],[100,null,250]])for(const selected of [false,true])add(`calendar:${phase}:${prices}:${selected}`,{kind:'calendar',phase,prices,selected});
 add('one date no filters',{kind:'calendar',singleDay:true,noFilters:true,prices:[120]});
-for(const comparing of [false,true])for(const shortlist of [false,true])for(const sort of ['date','price'])for(const reset of [false,true])for(const filters of [{},{departure:'2026-10-14'},{flight:'regular',room:'r2',meal:'AI'},{departure:'missing',flight:'charter',room:'missing',meal:'BB'}])add(`offers:${comparing}:${shortlist}:${sort}:${reset}:${JSON.stringify(filters)}`,{kind:'offers',comparing,shortlist,sort,reset,...filters});
+for(const shortlist of [false,true])for(const sort of ['date','price'])for(const reset of [false,true])for(const filters of [{},{departure:'2026-10-14'},{flight:'regular',room:'r2',meal:'AI'},{departure:'missing',flight:'charter',room:'missing',meal:'BB'}])add(`offers:${shortlist}:${sort}:${reset}:${JSON.stringify(filters)}`,{kind:'offers',shortlist,sort,reset,...filters});
 add('empty offers',{kind:'offers',empty:true,reset:true});add('shared note mobile',{kind:'offers',shared:true,mobile:true});
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
-const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
+const i=process.argv.indexOf('--compare');
 // O29 changes only two pure-work traces. Keep the original oracle and compare
-// every DOM/state write and every other collaborator, rather than re-pin a digest.
+// every retained DOM/state write and every other collaborator. The comparison
+// removal below explicitly projects the verified historical oracle.
 const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold.indexOf('\n return {h,all,filtered,groups};',groupStart);
 assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
 const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
@@ -101,18 +104,35 @@ if(scopeStart>=0){
  oldCold=(oldCold.slice(0,scopeStart)+oldCold.slice(scopeEnd))
   .replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
 }
-const baseline=records(source.replace(section(cold,'function offerListInventory(','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(','function mountOfferList(){')));
+// Normalize only observations of the explicitly removed comparison feature.
+// The reduced historical digest below is derived from the verified 7a4e93b
+// baseline (which passed the original e76ff507 oracle), never from new output.
+const retiredNodes=new Set(['#modal','#offer-comparison-dates','[data-action="offer-view"]0','[data-action="offer-view"]1']);
+const stripComparisonAction=html=>html.replace(/<button class="text-button compare-tour-link" data-action="compare-tour" data-key="[^"]*">Сравнить на эти даты<\/button>/g,'');
+function visibleRecords(rows){return rows.map((row,index)=>{
+ if(scenarios[index].kind!=='offers')return row;
+ const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view;
+ return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(dom.innerHTML)}]),trace:result.trace
+  .filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote'&&!retiredNodes.has(call[1]))
+  .map(call=>call[0]==='renderOfferRefinements'?call.slice(0,2):call[0]==='write'&&call[1]==='#all-offers-list'&&call[2]==='innerHTML'?[...call.slice(0,3),stripComparisonAction(call[3])]:call)}};
+ });}
+const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList(){'),()=>section(oldCold,'function offerListInventory(','function mountOfferList(){'))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
-if(!process.argv.includes('--capture'))assert.equal(baselineDigest,'e76ff50796b381c820621e698dcf69152c710c1486516a02e2b12886d5d4e744','pinned original observations');
-const visibleRecords=rows=>rows.map((row,index)=>scenarios[index].kind==='offers'?{...row,result:{...row.result,trace:row.result.trace.filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote')}}:row);
-assert.deepEqual(visibleRecords(actual),visibleRecords(baseline),'only bounded pure grouping/note work may change');
-if(i>=0)assert.deepEqual(visibleRecords(actual),visibleRecords(records(fs.readFileSync(process.argv[i+1],'utf8'))),'before/after result/calendar/offer-list observations');
+if(process.argv.includes('--capture'))console.log('Retained historical reference digest: '+baselineDigest);
+else assert.equal(baselineDigest,'eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9','pinned original retained result/calendar/list observations');
+assert.deepEqual(actual,baseline,'only bounded pure grouping/note work and retired comparison observations may change');
+if(i>=0){
+ const coldIndex=process.argv.indexOf('--compare-offer-list');
+ const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList(){'):'');
+ assert.deepEqual(actual,visibleRecords(records(reference)),'before/after retained result/calendar/offer-list observations');
+}
 const original=actual.find(r=>r.name==='filter:true:false::false').result;
 assert(!original.trace.some(x=>['results','updateURL','cardHTML'].includes(x[0])),'editing form preserves cards and URL');
-const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
+const changed=mutated=>JSON.stringify(visibleRecords(records(mutated)))!==JSON.stringify(actual);
 assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditSession){')),'draft guard mutation detected');
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
-assert(changed(source.replace("offerView.mode==='compare'||!offerView.departure", "false||!offerView.departure")),'comparison date scope mutation detected');
+assert(changed(source.replace('!offerView.departure||o.day===offerView.departure', 'true||o.day===offerView.departure')),'list departure scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
 
 // Result cards previously re-read a valid rating through six ratingValue calls;
@@ -134,7 +154,7 @@ function previousCardSource(code){
  return code.replace(currentRatingValue,previousRatingValue).replace(currentRatingText,previousRatingText).replace(card,legacy);
 }
 function cardRatingOwner(code){
- const work={evaluations:0,reads:0},state={openHotel:null,photoIndexes:{},favorites:[],compare:[]},ctx={Number,Intl,work,state,optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingFormatter:new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}),
+ const work={evaluations:0,reads:0},state={openHotel:null,photoIndexes:{},favorites:[]},ctx={Number,Intl,work,state,optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingFormatter:new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}),
   esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlights:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
  vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
@@ -510,33 +530,14 @@ assert.deepEqual([oldRating.rating,newRating.rating],[11656,0],'rating sort reus
 assert.equal(newPrice.rating,0);assert.equal(newRating.total,0);
 console.log('PASS result price/rating sort keys: 1000 randomized/tie/sparse-number reference sorts; price total reads '+oldPrice.total+' → '+newPrice.total+', rating-sort ratingValue calls '+oldRating.rating+' → '+newRating.rating+'; raw row/array identity and zero/one semantics retained');
 
-// Comparison cards already receive the sorted raw offer inventory from
-// savedAvailability(). Reusing it for the "all tours" count must not trigger a
-// second predicate/filter/sort pass per compared hotel.
-function comparisonOwner(code){
- const body={innerHTML:'',insertAdjacentHTML(){throw Error('unexpected empty comparison body')}},modal={classList:{add(){}}},footer={hidden:false};let calls=0,predicateChecks=0,keyReads=0,seed=11;const random=()=>((seed=seed*48271%2147483647)/2147483647);
- const hotels=Array.from({length:3},(_,hotel)=>({id:hotel+1,name:'Hotel '+hotel,resort:'Кемер',stars:5,rating:4.8,country:'4',offers:Array.from({length:100},(_,index)=>({key:hotel+':'+index,total:Math.floor(random()*100000)+index,day:'2026-10-'+String(index%21+1).padStart(2,'0'),returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:'Room',meal:'AI',flight:'charter',operator:'Operator'}))}));
- const order=hotels.map(h=>h.offers.slice()),ctx={Math,Number,String,Array,Map,Set,JSON,innerWidth:1280,hotels,state:{compare:[1,2,3],search:{origin:'Москва',country:'4'},filters:{},onlyFavorites:false},compareView:{pair:[],onlyDifferences:false},countryNames:{'4':'Турция'},
-  $:selector=>selector==='#modal'?modal:selector==='#modal-footer'?footer:selector==='#modal-body'?body:selector==='.comparison tbody'?{children:[1]}:null,
-  hotelOffers:h=>{calls++;return h.offers.filter(()=>{predicateChecks++;return true}).sort((a,b)=>{keyReads+=2;const total=a.total-b.total;if(total)return total;keyReads+=2;return a.day.localeCompare(b.day)})},mealLabel:o=>o.meal,filterCount:()=>0,savedContext:()=>'',savedHotelPhoto:()=>'',esc:String,icon:()=>'',money:String,cardPriceNote:()=>'',ratingText:h=>String(h.rating),dateText:String,nightsText:String,flightLabel:o=>o.flight};
- vm.createContext(ctx);vm.runInContext(section(code,'function savedAvailability(','function savedRecovery(')+section(code,'function renderCompare(){','function openFavorites(){')+'globalThis.av=savedAvailability;',ctx);ctx.renderCompare();
- return {ctx,hotels,order,html:body.innerHTML,calls,predicateChecks,keyReads};
-}
-const comparisonSection=section(source,'function renderCompare(){','function openFavorites(){');
-const previousComparisonSource=source.replace(comparisonSection,comparisonSection.replace('entries.map(({hotel:h,offer:o,offers})','entries.map(({hotel:h,offer:o})').replace('${offers.length>1?', '${hotelOffers(h).length>1?'));
-const comparison=comparisonOwner(source),previousComparison=comparisonOwner(previousComparisonSource);
-assert.equal(comparison.html,previousComparison.html,'comparison markup and all-tour visibility retained');
-assert.equal(previousComparison.calls,6,'old comparison performs two full offer passes per hotel');assert.equal(comparison.calls,3,'comparison performs one full offer pass per hotel');
-assert.deepEqual([previousComparison.predicateChecks,comparison.predicateChecks],[600,300],'one predicate pass retained');assert.deepEqual([previousComparison.keyReads,comparison.keyReads],[6408,3204],'one total/day comparator pass retained');
-for(let index=0;index<comparison.hotels.length;index++){assert.deepEqual(comparison.hotels[index].offers,comparison.order[index],'raw offer order unchanged');const entry=comparison.ctx.av(comparison.hotels[index]);entry.offers.forEach(offer=>assert(comparison.hotels[index].offers.includes(offer),'raw offer identity retained'));}
-assert.equal((section(source,'function renderCompare(){','function openFavorites(){').match(/hotelOffers\(/g)||[]).length,0,'renderCompare never re-reads the retained offer inventory');
-console.log('PASS comparison offer inventory: max 3x100 full passes 6→3, predicate checks 600→300, comparator-key reads 6408→3204; markup/count/raw identity/order retained');
+// Hotel/tour comparison and its comparison-only render-work oracle are retired.
+// Favorite, result, calendar and offer-list inventories remain characterized.
 // Final facets consume normalized offers after duplicate hotel IDs overwrite.
 // Keep the pre-pass owner as a reference; source DTO getters must finish before
 // the final inventory begins. No transport or application bootstrap runs here.
 const previousMergeOwner=`function mergeSearchResults(event){
  const incoming=new Map(event.hotels.map(h=>[h.id,{...h,offers:h.offers.map(o=>({...o,sourceMeal:o.sourceMeal??o.meal,meal:String(o.meal||'Питание уточняется')}))}]));
- hotels=hotels.filter(h=>state.favorites.includes(h.id)||state.compare.includes(h.id)).map(h=>({...h,offers:[]}));
+ hotels=hotels.filter(h=>state.favorites.includes(h.id)).map(h=>({...h,offers:[]}));
  hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
  operators.splice(0,operators.length,...new Set(hotels.flatMap(h=>h.offers.map(o=>o.operator))));
  hotels.forEach(h=>h.offers.forEach(o=>{if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
@@ -551,12 +552,12 @@ function mergeFixture(sparse=false,mutating=false){
   Object.defineProperty(offers[0],'operator',{enumerable:true,get(){trace.push('source operator first');offers[2].meal='changed while normalizing';delete offers[3];offers[6]=offer('filled','Filled','RO',4,'Без питания');offers.push(offer('appended','Appended','AI',1,'Всё включено'));return 'First';}});
   Object.defineProperty(offers[2],'meal',{enumerable:true,configurable:true,get(){trace.push('source meal conflict');return 'changed while normalizing';},set(){}});
  }
- return {trace,initial:[{id:9,name:'removed',offers:[offer('old','Old','Old',99,'Старое')]},{id:2,name:'favorite',offers:[offer('saved','Saved','Saved',99,'Старое')]},{id:7,name:'compared',offers:[]}],event:{hotels:[{id:3,name:'superseded',offers:[offer('discarded','Discarded','Discarded',9,'Discarded')]},{id:2,name:'incoming favorite',offers:[]},{id:3,name:'final',offers}]} };
+ return {trace,initial:[{id:9,name:'removed',offers:[offer('old','Old','Old',99,'Старое')]},{id:2,name:'favorite',offers:[offer('saved','Saved','Saved',99,'Старое')]},{id:7,name:'retired comparison placeholder',offers:[]}],event:{hotels:[{id:3,name:'superseded',offers:[offer('discarded','Discarded','Discarded',9,'Discarded')]},{id:2,name:'incoming favorite',offers:[]},{id:3,name:'final',offers}]} };
 }
 function observeMerge(code,{live=false,sparse=false,mutating=false,count=0}={}){
  const fixture=mergeFixture(sparse,mutating),calls=[],work={elementReads:0,intermediate:0};
  if(count)fixture.event.hotels=[{id:3,offers:Array.from({length:count},(_,i)=>({key:'o'+i,operator:'Operator '+i%3,meal:i%2?'AI':'BB',mealPlanId:i%2?1:2,mealFacet:i%2?'Всё включено':'Завтрак'}))}];
- const ctx={hotels:fixture.initial,state:{favorites:[2],compare:[7]},data:{live},operators:['old'],mealNames:{'Из каталога':77},work,
+ const ctx={hotels:fixture.initial,state:{favorites:[2]},data:{live},operators:['old'],mealNames:{'Из каталога':77},work,
   refreshOpenOfferList:()=>calls.push('offers'),refreshOpenHotelRooms:()=>calls.push('rooms')};
  const operatorsRef=ctx.operators,mealsRef=ctx.mealNames;vm.createContext(ctx);
  vm.runInContext(`let mapCount=0;const NativeMap=Map;Map=class extends NativeMap{constructor(entries){super(entries);if(++mapCount===2)for(const hotel of this.values())hotel.offers=new Proxy(hotel.offers,{get(target,key,receiver){if(typeof key==='string'&&/^[0-9]+$/.test(key))work.elementReads++;return Reflect.get(target,key,receiver);}});}};
@@ -572,7 +573,7 @@ function observeMerge(code,{live=false,sparse=false,mutating=false,count=0}={}){
 for(const live of [false,true])for(const sparse of [false,true])for(const mutating of [false,true]){
  const options={live,sparse,mutating},actual=observeMerge(currentMergeOwner,options),previous=observeMerge(previousMergeOwner,options);
  assert.deepEqual(actual.snapshot,previous.snapshot,JSON.stringify(options)+' normalized final values/order/source getter reads');
- assert.deepEqual(actual.snapshot.hotels.map(h=>h.id),[2,7,3],'saved placeholders and duplicate hotel position retained');
+ assert.deepEqual(actual.snapshot.hotels.map(h=>h.id),[2,3],'favorite placeholder and duplicate hotel position retained; comparison-only placeholder is discarded');
  assert(!actual.snapshot.operators.includes('Discarded')&&!actual.snapshot.operators.includes('Old')&&!actual.snapshot.operators.includes('Saved'),'only final offers supply operator facets');
  assert(!Object.hasOwn(actual.snapshot.meals,'Discarded'),'superseded duplicate hotel never supplies meal facets');
  if(live){assert.equal(actual.snapshot.meals['Всё включено'],1,'first accepted meal identity survives a conflicting ID');assert.equal(actual.snapshot.meals['Из каталога'],77);}

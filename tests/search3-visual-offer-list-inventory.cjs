@@ -11,7 +11,7 @@ const helpers=vm.runInNewContext(keySource+noteSource+'({offerGroupKey,sharedOff
 const key=helpers.offerGroupKey;
 function referenceInventory(hotels,hotelOffers,offerView,offerGroupKey){
  const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h);
- const filtered=all.filter(o=>(offerView.mode==='compare'||!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
+ const filtered=all.filter(o=>(!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));
  const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));
  return {h,all,filtered,groups};
@@ -65,20 +65,13 @@ function referenceRefinementInventory(all,repeats=1){
 }
 function sameRefinementInventory(actual,expected){for(const field of refinementFields){assert.deepEqual([...actual.get(field).values],[...expected.get(field).values],field+' ordered values');assert.equal(actual.get(field).hasChoice,expected.get(field).hasChoice,field+' visibility');}}
 function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual[field]],[...expected[field]],field+' option counts');}
-function inventory(code,rows,view,group=true){
+function inventory(code,rows,view){
  const start=code.indexOf('function offerListInventory('),end=code.indexOf('function renderOfferList(',start);
  assert(start>=0&&end>start);
  let keyCalls=0;const h={id:1,rows},ctx={hotels:[h],hotelOffers:hotel=>hotel?.rows||[],offerView:view,offerGroupKey:o=>{keyCalls++;return key(o);}};
  vm.createContext(ctx);vm.runInContext(code.slice(start,end),ctx);
- return {value:ctx.offerListInventory(group),keyCalls,h};
+ return {value:ctx.offerListInventory(),keyCalls,h};
 }
-function comparisonOptions(code,rows,view){
- const start=code.indexOf(' let options=filtered.filter('),marker=' setComparisonQuotes(options);',end=code.indexOf(marker,start);
- assert(start>=0&&end>start,'comparison option sort owner boundary');
- const ctx={filtered:rows,offerView:view,result:null,setComparisonQuotes:value=>{ctx.result=value;}};
- vm.createContext(ctx);vm.runInContext(code.slice(start,end+marker.length),ctx);return ctx.result;
-}
-const referenceComparisonOptions=(rows,view)=>rows.filter(o=>o.day===view.day&&o.nights===view.nights).sort((a,b)=>a.total-b.total);
 function sameReferences(actual,expected){
  assert.strictEqual(actual.h,expected.h);assert.strictEqual(actual.all,expected.all);
  assert.equal(actual.filtered.length,expected.filtered.length);
@@ -86,12 +79,12 @@ function sameReferences(actual,expected){
  assert.equal(actual.groups.length,expected.groups.length);
  actual.groups.forEach((g,i)=>{assert.equal(g.key,expected.groups[i].key);assert.equal(g.offers.length,expected.groups[i].offers.length);g.offers.forEach((o,j)=>assert.strictEqual(o,expected.groups[i].offers[j]));});
 }
-const baseView=()=>({id:1,mode:'list',sort:'price',departure:'',flight:'',room:'',meal:'',open:[],limits:{},pair:[],activeVariant:null});
+const baseView=()=>({id:1,sort:'price',departure:'',flight:'',room:'',meal:'',open:[],limits:{}});
 const offer=(i,group=i%50)=>Object.freeze({key:'offer-'+i,variant:i,room:group===0?'__proto__':group===1?'Номер <&"':'room-'+group,meal:group%2?'AI':'BB',day:'2026-10-'+(10+i%3),returnDay:'2026-10-'+(17+i%3),total:100000+i%11,nights:7,flight:i%2?'charter':'regular',operator:'fixture',placement:'2',note:'same',raw:Object.freeze({id:i})});
 const rows=Object.freeze(Array.from({length:1000},(_,i)=>offer(i)));
 let cases=0;
-for(const mode of ['list','compare'])for(const sort of ['date','price'])for(const departure of ['','2026-10-11','missing'])for(const flight of ['','charter'])for(const room of ['','room-3'])for(const meal of ['','AI']){
- const view={...baseView(),mode,sort,departure,flight,room,meal};
+for(const sort of ['date','price'])for(const departure of ['','2026-10-11','missing'])for(const flight of ['','charter'])for(const room of ['','room-3'])for(const meal of ['','AI']){
+ const view={...baseView(),sort,departure,flight,room,meal};
  const actual=inventory(source,rows,view),expected=referenceInventory([actual.h],h=>h.rows,view,key);
  sameReferences(actual.value,expected);assert.equal(actual.keyCalls,expected.filtered.length,'exactly one key per retained offer');cases++;
 }
@@ -106,33 +99,22 @@ for(const special of [Object.freeze([]),Object.freeze([offer(0)]),sparse,Object.
 const measured=inventory(source,rows,baseView());let beforeCalls=0;
 referenceInventory([measured.h],h=>h.rows,baseView(),o=>{beforeCalls++;return key(o);});
 assert.equal(beforeCalls,51000);assert.equal(measured.keyCalls,1000);
-const comparePredicate=(view,o)=>(view.mode==='compare'||!view.departure||o.day===view.departure)&&(!view.flight||o.flight===view.flight)&&(!view.room||o.room===view.room)&&(!view.meal||o.meal===view.meal);
-function sameUngrouped(actual,all,view){
- assert.strictEqual(actual.all,all);assert.equal(actual.groups.length,0);
- const expected=all.filter(o=>comparePredicate(view,o));assert.equal(actual.filtered.length,expected.length);
- actual.filtered.forEach((o,i)=>assert.strictEqual(o,expected[i]));
-}
-let compareInventoryCases=0,seed=78231;
+// Native sparse/inherited/initial-length filtering remains a list contract.
+// The comparison-only ungrouped path and its discarded-work oracle are retired.
+let sparseCases=0,seed=78231;
 const random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);
 for(let round=0;round<500;round++){
  const all=[];all.length=round%121;
  for(let i=0;i<all.length;i++)if(random()>.21)all[i]=offer(round*127+i,(round+i)%50);
  if(round%7===0&&all.length>3){const proto=Object.create(Array.prototype);proto[1]=offer(round*127+999,49);Object.setPrototypeOf(all,proto);}
- const view={...baseView(),mode:'compare',departure:round%3?'missing':'',flight:round%4?'':'charter',room:round%5?'':'room-3',meal:round%6?'':'AI'};
- const actual=inventory(source,all,view,false);sameUngrouped(actual.value,all,view);assert.equal(actual.keyCalls,0);compareInventoryCases++;
+ const view={...baseView(),departure:round%3?'missing':'',flight:round%4?'':'charter',room:round%5?'':'room-3',meal:round%6?'':'AI'};
+ const actual=inventory(source,all,view);sameReferences(actual.value,referenceInventory([actual.h],h=>h.rows,view,key));assert.equal(actual.keyCalls,actual.value.filtered.length);sparseCases++;
 }
 {
  const first=offer(10001),appended=offer(10002),all=[];Object.defineProperty(all,0,{configurable:true,get(){all.push(appended);return first;}});all.length=1;
- const view={...baseView(),mode:'compare'},actual=inventory(source,all,view,false);
- assert.equal(all.length,2,'fixture appends during native filter');assert.equal(actual.value.filtered.length,1,'native initial length is retained');assert.strictEqual(actual.value.filtered[0],first);assert.equal(actual.keyCalls,0);compareInventoryCases++;
+ const view=baseView(),actual=inventory(source,all,view);
+ assert.equal(all.length,2,'fixture appends during native filter');assert.equal(actual.value.filtered.length,1,'native initial length is retained');assert.strictEqual(actual.value.filtered[0],first);assert.strictEqual(actual.value.groups[0].offers[0],first);assert.equal(actual.keyCalls,1);sparseCases++;
 }
-function measuredComparisonInventory(group){
- let totalReads=0,localSeed=1;const all=Array.from({length:1000},(_,i)=>{localSeed=(localSeed*1664525+1013904223)>>>0;const total=localSeed%100000;return {key:'compare-'+i,variant:i,room:'room-'+i%50,meal:'meal-'+i%3,day:'2026-10-'+String(10+i%10).padStart(2,'0'),returnDay:'2026-10-20',nights:7+i%4,flight:i%2?'charter':'regular',operator:'fixture',placement:'2',note:'same',get total(){totalReads++;return total;}};});
- const result=inventory(source,all,{...baseView(),mode:'compare'},group);return {...result,totalReads};
-}
-const groupedComparison=measuredComparisonInventory(true),ungroupedComparison=measuredComparisonInventory(false);
-assert.equal(groupedComparison.totalReads,1000);assert.equal(groupedComparison.keyCalls,1000);assert.equal(groupedComparison.value.groups.length,150);
-assert.equal(ungroupedComparison.totalReads,0);assert.equal(ungroupedComparison.keyCalls,0);assert.equal(ungroupedComparison.value.groups.length,0);
 const keyedSort=" const keyed=filtered.length<2?filtered.map(offer=>({offer})):filtered.map((offer,index)=>({offer,index,total:offer.total,day:offer.day}));\n keyed.sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total||a.index-b.index:a.total-b.total||a.day.localeCompare(b.day)||a.index-b.index);\n const sorted=keyed.map(item=>item.offer);";
 const legacySort=source.replace(keyedSort," const sorted=[...filtered].sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total:a.total-b.total||a.day.localeCompare(b.day));");assert.notEqual(legacySort,source,'cached sort-key owner boundary');
 function measuredSort(code,sort){
@@ -147,20 +129,6 @@ for(const sort of ['price','date']){
 {
  let reads=0;const single={id:1,key:'single',variant:1,room:'same',meal:'AI',flight:'regular',get total(){reads++;return 1},get day(){reads++;return '2026-10-01'}};inventory(source,[single],baseView());assert.equal(reads,0,'zero/one-row native sort still reads no sort keys');
 }
-let comparisonSortCases=0;
-for(let round=0;round<500;round++){
- const all=[];all.length=round%121;
- for(let i=0;i<all.length;i++)if(random()>.21)all[i]={id:round*127+i,day:'2026-10-'+String(10+i%3).padStart(2,'0'),nights:7+i%2,total:Math.floor(random()*25)};
- if(round%7===0&&all.length>3){const proto=Object.create(Array.prototype);proto[1]={id:round*127+999,day:'2026-10-10',nights:7,total:4};Object.setPrototypeOf(all,proto);}
- const view={day:'2026-10-'+String(10+round%3).padStart(2,'0'),nights:7+round%2},actual=comparisonOptions(source,all,view),expected=referenceComparisonOptions(all,view);
- assert.equal(actual.length,expected.length);actual.forEach((offer,index)=>assert.strictEqual(offer,expected[index]));comparisonSortCases++;
-}
-let comparisonTotalReads=0,comparisonSeed=78231;const comparisonRandom=()=>((comparisonSeed=(comparisonSeed*1664525+1013904223)>>>0)/4294967296);
-const comparisonRows=Array.from({length:1000},(_,id)=>{const total=Math.floor(comparisonRandom()*100000);return {id,day:'2026-10-10',nights:7,get total(){comparisonTotalReads++;return total}};});
-const comparisonBefore=referenceComparisonOptions(comparisonRows,{day:'2026-10-10',nights:7}),comparisonBeforeReads=comparisonTotalReads;comparisonTotalReads=0;
-const comparisonAfter=comparisonOptions(source,comparisonRows,{day:'2026-10-10',nights:7}),comparisonAfterReads=comparisonTotalReads;
-assert.deepEqual(comparisonAfter.map(o=>o.id),comparisonBefore.map(o=>o.id));assert.equal(comparisonBeforeReads,17298);assert.equal(comparisonAfterReads,1000);
-for(const length of [0,1]){comparisonTotalReads=0;comparisonOptions(source,comparisonRows.slice(0,length),{day:'2026-10-10',nights:7});assert.equal(comparisonTotalReads,0,'zero/one comparison option reads no sort key');}
 const dayCases=[
  ['2026-10-12'],
  ['2026-10-12','2026-10-11'],
@@ -213,7 +181,9 @@ const legacyNotes=source.replace(hoisted,'').replace('  const rows=offers.slice'
 const countStart=legacyNotes.indexOf('function offerRefinementCounts('),countEnd=legacyNotes.indexOf('function renderOfferRefinements(',countStart);
 assert(countStart>=0&&countEnd>countStart,'current refinement count boundary');
 const legacyCounts=(legacyNotes.slice(0,countStart)+legacyNotes.slice(countEnd))
+ .replace('  const counts=offerRefinementCounts(all,field,select.options);\n','')
  .replace('  const counts=comparing?null:offerRefinementCounts(all,field,select.options);\n','')
+ .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
  .replace('   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(count)}`;');
 const legacyRenderer=legacyCounts.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
 const valueInventoryStart=source.indexOf('function offerRefinementInventory('),valueInventoryEnd=source.indexOf('function offerGroupScope(',valueInventoryStart);
@@ -237,29 +207,34 @@ function render(code,all,view,shortlist=false,reset=false){
  const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset);
  return {snapshot:JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView})),noteCalls,noteVisits,keyCalls};
 }
+// Optional before/after proof uses the old owner only when explicitly supplied.
+// CI remains self-contained; its independent reference algorithms stay above.
+const compareIndex=process.argv.indexOf('--compare'),priorSource=compareIndex>=0?fs.readFileSync(process.argv[compareIndex+1],'utf8'):null;
+function retainedListSnapshot(snapshot){
+ const {mode,...view}=snapshot.view;
+ return {...snapshot,view,dom:snapshot.dom.filter(([key])=>key!=='#modal'&&key!=='#offer-comparison-dates').map(([key,node])=>[key,{...node,html:node.html.replace(/<button class="text-button compare-tour-link" data-action="compare-tour" data-key="[^"]*">Сравнить на эти даты<\/button>/g,'')}]),events:snapshot.events.filter(event=>!Array.isArray(event)||event[0]!=='quotes')};
+}
 let renders=0;
-const fullComparisonInventory=source.replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');assert.notEqual(fullComparisonInventory,source);
-for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i)=>({...o,note:i%2?'different':'same'}))])for(const mode of ['list','compare'])for(const sort of ['price','date'])for(const departure of ['','missing'])for(const reset of [false,true]){
- const view={...baseView(),mode,sort,departure},before=render(legacyRenderer,all,view,true,reset),after=render(source,all,view,true,reset);
+for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i)=>({...o,note:i%2?'different':'same'}))])for(const sort of ['price','date'])for(const departure of ['','missing'])for(const reset of [false,true]){
+ const view={...baseView(),sort,departure},before=render(legacyRenderer,all,view,true,reset),after=render(source,all,view,true,reset);
  assert.deepEqual(after.snapshot,before.snapshot,'render output and view state unchanged');
  assert.deepEqual(after.snapshot,render(legacyValueRenderer,all,view,true,reset).snapshot,'single refinement inventory preserves full render output and view state');
- assert.equal(after.noteCalls,before.noteCalls?1:0,'one same-render note, zero for empty/comparison');renders++;
- const full=render(fullComparisonInventory,all,view,true,reset);assert.deepEqual(after.snapshot,full.snapshot,'comparison no-group path preserves exact rendering and state');
- if(mode==='compare'&&!reset){assert.equal(after.keyCalls,0,'comparison refresh skips discarded groups');assert.equal(full.keyCalls,all.length,'original comparison refresh groups every filtered offer');}
- else assert.equal(after.keyCalls,full.keyCalls,'list and comparison reset keep full grouping path');
+ assert.equal(after.noteCalls,before.noteCalls?1:0,'one same-render note, zero for empty list');renders++;
+ if(priorSource){
+  const previous=render(priorSource,all,{...view,mode:'list'},true,reset);
+  assert.deepEqual(retainedListSnapshot(after.snapshot),retainedListSnapshot(previous.snapshot),'before/after list markup, refinements, state and route output');
+  assert.deepEqual([after.noteCalls,after.noteVisits,after.keyCalls],[previous.noteCalls,previous.noteVisits,previous.keyCalls],'retained same-render list work');
+ }
 }
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);
-const forbiddenComparisonInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("unused comparison inventory");');
-render(forbiddenComparisonInventory,rows,{...baseView(),mode:'compare'},true);
-assert.throws(()=>render(forbiddenComparisonInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
+const forbiddenRefinementInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("required list refinement inventory");');
+assert.throws(()=>render(forbiddenRefinementInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);
 const reversedResult=inventory(reversed,rows,baseView());
 assert.throws(()=>sameReferences(reversedResult.value,referenceInventory([reversedResult.h],h=>h.rows,baseView(),key)),'reversed group order mutation detected');
 const copied=source.replace('group.offers.push(offer)','group.offers.push({...offer})');assert.notEqual(copied,source);
 const copiedResult=inventory(copied,rows,baseView());
 assert.throws(()=>sameReferences(copiedResult.value,referenceInventory([copiedResult.h],h=>h.rows,baseView(),key)),'raw identity mutation detected');
-const skippedResetGrouping=source.replace("offerView.mode!=='compare'||reset","offerView.mode!=='compare'");assert.notEqual(skippedResetGrouping,source);
-assert.notDeepEqual(render(skippedResetGrouping,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,render(source,[offer(1)],{...baseView(),mode:'compare'},true,true).snapshot,'comparison reset grouping mutation detected');
-console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement, ${compareInventoryCases} ungrouped and ${comparisonSortCases} comparison-sort reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; comparison sort total reads ${comparisonBeforeReads}→${comparisonAfterReads}; comparison discarded sort/group work ${groupedComparison.totalReads} total reads/${groupedComparison.keyCalls} keys/${groupedComparison.value.groups.length} groups→${ungroupedComparison.totalReads}/${ungroupedComparison.keyCalls}/${ungroupedComparison.value.groups.length}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; refinement value reads first ${firstRenderValueReads}→${currentValueReads}, repeated ${repeatedRenderValueReads}→${currentValueReads}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);
+console.log(`PASS cold offer-list inventory: ${cases} grouping, ${scopeCases} heading, ${refinementCases} refinement, ${sparseCases} sparse/inherited/initial-length list reference cases; ${renders} render states; key calls ${beforeCalls}→${measured.keyCalls}; list sort total/day reads price ${sortReads.price.before.join('/')}→${sortReads.price.after.join('/')}, date ${sortReads.date.before.join('/')}→${sortReads.date.after.join('/')}; heading localeCompare ${previousScope.comparisons}→${currentScope.comparisons}; refinement visits ${previousRefinements.work.visits}→${currentRefinements.work.visits}, predicates ${previousRefinements.work.predicates}→${currentRefinements.work.predicates}; refinement value reads first ${firstRenderValueReads}→${currentValueReads}, repeated ${repeatedRenderValueReads}→${currentValueReads}; shared note calls ${before.noteCalls}→${after.noteCalls}, visits ${before.noteVisits}→${after.noteVisits}; supplier/lead HTTP 0`);

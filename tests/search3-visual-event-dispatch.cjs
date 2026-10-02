@@ -1,6 +1,8 @@
 // Characterize the real delegated event owner without starting the application,
 // supplier transport or lead delivery. Pinned observations come from app blob
 // db413a559e1789057e82293d4cb4c1a7f7d89c8e before structural extraction.
+// The retained pin was recomputed from release 7a4e93b before removal, excluding
+// only eight comparison IDs and the comparison-focus change event.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,7 +12,12 @@ const appPath = path.resolve(__dirname, '../v2/visual-search/app.js');
 const source = fs.readFileSync(appPath, 'utf8');
 function eventOwner(source) {
   const start = source.indexOf("searchLifecycle.bind();") + "searchLifecycle.bind();".length;
-  const end = source.indexOf("matchMedia('(max-width:760px)')", start);
+  // The original dispatcher ended before comparison media listeners; after
+  // their retirement the next live owner is keyboard handling. Keep the old
+  // delimiter for --compare so both versions execute the same three listeners.
+  const legacyEnd = source.indexOf("matchMedia('(max-width:760px)')", start);
+  const keyboardEnd = source.indexOf("document.addEventListener('keydown'", start);
+  const end = legacyEnd >= start && legacyEnd < keyboardEnd ? legacyEnd : keyboardEnd;
   assert(start > 0 && end > start, 'real event owner boundaries');
   return source.slice(start, end);
 }
@@ -96,8 +103,8 @@ function characterize(source, scenario) {
 }
 const scenarios=[];
 const add=(name,s)=>scenarios.push({name,...s});
-for(const id of ['origin','sort','mobile-sort','filter-section-jump','min-price','max-price','hotel-room-meal','tour-differences-only','comparison-pair-0','comparison-pair-1','compare-differences','compare-left','compare-right','offer-departure','offer-flight','offer-room','offer-meal','offer-sort','compare-offer-day','compare-offer-nights'])add('change:'+id,{type:'change',target:{id,value:['sort','mobile-sort'].includes(id)?'price':'2',dataset:{id:'7'}}});
-for(const name of ['andromeda-outbound','andromeda-return','flight-pair','comparison-focus','anex-package-choice'])add('change:'+name,{type:'change',target:{name,value:'2'}});
+for(const id of ['origin','sort','mobile-sort','filter-section-jump','min-price','max-price','hotel-room-meal','offer-departure','offer-flight','offer-room','offer-meal','offer-sort'])add('change:'+id,{type:'change',target:{id,value:['sort','mobile-sort'].includes(id)?'price':'2',dataset:{id:'7'}}});
+for(const name of ['andromeda-outbound','andromeda-return','flight-pair','anex-package-choice'])add('change:'+name,{type:'change',target:{name,value:'2'}});
 for(const checked of [true,false])for(const value of ['old','new'])add('facet:'+checked+':'+value,{type:'change',target:{checked,value,dataset:{filter:'resorts'}}});
 add('boolean filter',{type:'change',target:{dataset:{filterBool:'family'},checked:false}});
 add('invalid sort stops later attributes',{type:'change',target:{id:'sort',value:'bad',dataset:{filterBool:'family',childAge:'1'}},meal:true});
@@ -151,8 +158,9 @@ const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='a6496020851b3019f41d04b533f5b57dd75905cba37b468ca7af984860f07086';
-if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original event observations');
+const BASELINE='7748f2f2c32ba13bf89d1a2e63ed8e4adea0b56f07e43862f04139a3f200d1e4';
+assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
+if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original retained event observations');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
@@ -161,8 +169,13 @@ assert.deepEqual(result('jump stops later attributes').trace,[['jumpToFilterSect
 assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
+// Stale comparison controls are unknown change events; they cannot mutate the
+// retained favorites, selected tour, provider, filter or flight state.
+const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
+for(const id of ['tour-differences-only','comparison-pair-0','comparison-pair-1','compare-differences','compare-left','compare-right','compare-offer-day','compare-offer-nights'])assert.deepEqual(characterize(source,{type:'change',target:{id,value:'2',dataset:{id:'7'}}}),unknownChange,'retired comparison ID is inert: '+id);
+assert.deepEqual(characterize(source,{type:'change',target:{name:'comparison-focus',value:'2'}}),characterize(source,{type:'change',target:{name:'unknown',value:'2'}}),'retired comparison-focus is inert');
 // Prove these observations reject two plausible extraction regressions.
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
 assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
-console.log(`PASS event dispatch: ${actual.length} scenarios, original digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);
+console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes, original retained digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);

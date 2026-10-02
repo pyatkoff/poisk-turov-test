@@ -34,10 +34,16 @@ const w = dom.window, d = w.document;
 const legacyKey='anytour.prototype.v18.selected-tour.v1';
 const legacySave=JSON.stringify({version:1,observedAt:Date.parse('2026-01-01T12:00:00Z'),offer:{key:'retired-selection',hotelId:1,total:12345},hotel:{id:1,name:'Legacy selection'}});
 w.localStorage.setItem(legacyKey,legacySave);
+const comparisonKey='anytour.prototype.v18.compare.v1',comparisonSave=JSON.stringify([3678,5227]);
+w.localStorage.setItem(comparisonKey,comparisonSave);
+const favoriteKey='anytour.prototype.v18.favorites.v1';
+w.localStorage.setItem(favoriteKey,JSON.stringify([3678]));
+const storedComparison=()=>w.Storage.prototype.getItem.call(w.localStorage,comparisonKey);
+const comparisonStorageMutations=[];
 const legacyStorageMutations=[];
 for(const method of ['setItem','removeItem','clear']){
  const original=w.Storage.prototype[method];
- w.Storage.prototype[method]=function(...args){if(method==='clear'||args[0]===legacyKey)legacyStorageMutations.push(method);return original.apply(this,args);};
+ w.Storage.prototype[method]=function(...args){if(method==='clear'||args[0]===legacyKey)legacyStorageMutations.push(method);if(method==='clear'||args[0]===comparisonKey)comparisonStorageMutations.push(method);return original.apply(this,args);};
 }
 w.innerWidth = 390;
 w.structuredClone = structuredClone;
@@ -54,7 +60,10 @@ w.fetch = async url => {
   return {ok: true, json: async () => JSON.parse(fs.readFileSync(path.join(root, url), 'utf8'))};
 };
 for (const name of ['fixture-data.js', 'recorded-data.js', 'search-lifecycle-v1.js', 'flight-picker-v18.js', 'flight-picker-ui-v1.js', 'filter-panel-v1.js', 'preview-lead.js', 'offer-list-v1.js', 'hotel-details-v1.js', 'app.js']) {
-  w.eval(fs.readFileSync(path.join(root, name), 'utf8'));
+  const source=fs.readFileSync(path.join(root, name), 'utf8');
+  // Exercise the preserved favorites UI in this fixture only. The product's
+  // existing paused-shortlist flag is unchanged.
+  w.eval(name==='app.js'?source.replace('const optionalShortlistEnabled=false;','const optionalShortlistEnabled=true;'):source);
 }
 const settle = (delay = 70) => new Promise(resolve => setTimeout(resolve, delay));
 const click = selector => {const element = d.querySelector(selector); assert(element, selector); element.click();};
@@ -63,6 +72,9 @@ const assertRetiredSelectionAbsent=()=>{
  assert.deepEqual(legacyStorageMutations,[],'No retired selection write, removal or storage clear');
  assert(!d.querySelector('#saved-tour-controls,[data-action="save-tour-for-later"],[data-action="selected-tour-details"],[data-action="selected-tour-alternatives"],[data-action="remove-selected-tour"],[data-action="undo-selected-tour"]'),'No retired selection controls');
  assert([...d.querySelectorAll('[data-action="selected-tour"]')].every(e=>e.hidden),'Retired navigation stays hidden');
+ assert.equal(storedComparison(),comparisonSave,'Legacy comparison record remains untouched');
+ assert.deepEqual(comparisonStorageMutations,[],'No comparison write, removal or storage clear');
+ assert(!d.querySelector('#compare-nav,#compare-tray,[data-action="compare"],[data-action="toggle-compare"],[data-action="compare-tour"],[data-action="offer-view"],.comparison-dialog,.tour-comparison-dialog'),'Comparison controls are removed even with favorites enabled');
 };
 
 const continueToFlights=async()=>{
@@ -73,8 +85,29 @@ const continueToFlights=async()=>{
 (async()=>{
  await settle(200);
  assertRetiredSelectionAbsent();
+ const favoriteButton=d.querySelector('.hotel-card [data-action="favorite"]'),favoriteId=Number(favoriteButton.dataset.id);
+ assert.equal(favoriteId,3678,'Recorded favorite retains its hotel identity after bootstrap');
+ assert.equal(favoriteButton.getAttribute('aria-pressed'),'true','Existing favorite restores from its original storage key');
+ favoriteButton.click();await settle();
+ assert.equal(favoriteButton.getAttribute('aria-pressed'),'false','Restored favorite remains removable');
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(favoriteKey)),[],'Restored favorite removal persists');
+ favoriteButton.click();await settle();
+ assert.equal(favoriteButton.getAttribute('aria-pressed'),'true','Favorite toggle stays active');
+ assert.deepEqual(JSON.parse(w.localStorage.getItem('anytour.prototype.v18.favorites.v1')),[favoriteId],'Favorite hotel persists under its original key');
+ click('#favorites-nav');await settle();
+ assert(d.querySelector(`.favorite-item[data-saved-hotel="${favoriteId}"]`),'Saved favorite opens with its hotel identity');
+ assert(d.querySelector('.favorite-item [data-action="hotel-details"]'),'Favorite retains hotel details');
+ assert(d.querySelector('.favorite-item [data-action="all-offers"]'),'Favorite retains current tour choices');
+ assertRetiredSelectionAbsent();
+ click('[data-action="only-favorites"]');await settle();
+ assert.equal(d.querySelectorAll('.hotel-card').length,1,'Favorites-only result filtering remains available');
+ click('[data-action="favorite"]');await settle();
+ assert.deepEqual(JSON.parse(w.localStorage.getItem('anytour.prototype.v18.favorites.v1')),[],'Removing a favorite persists the original empty list');
+ assert.equal(d.querySelectorAll('.hotel-card').length,0,'Removing last favorite leaves the favorites-only view honestly empty');
+ click('[data-action="remove-filter"][data-key="favorites"]');await settle();
+ assert(d.querySelectorAll('.hotel-card').length>1,'Removing the favorites filter restores regular results');
  const initialCards=d.querySelectorAll('.hotel-card').length;
- for(const type of ['saved-tour','saved-details']){
+ for(const type of ['saved-tour','saved-details','compare']){
   const route={type,key:'retired-selection'},state={'anytour.prototype.v18.ui.v1':route};
   w.history.replaceState(state,'',w.location.href);w.dispatchEvent(new w.PopStateEvent('popstate',{state}));await settle();
   assert(!d.querySelector('#modal').open,'Retired history route does not reopen a selection');
@@ -182,5 +215,5 @@ const continueToFlights=async()=>{
  await change('flights');assert.equal(d.querySelectorAll('.hotel-card').length,1);
  assertRetiredSelectionAbsent();
  assert.equal(requests.length,initialRequests,'No provider, quote, contact or live API request');assert.deepEqual(errors,[]);
- console.log('PASS v132 direct application, no My tour persistence, services before rooms; v120 recorded import/identity/30-day/local-application guards plus v118: mixed/family/incomplete/reprice journeys to dry-run application, 48h stability, expired/unavailable/error guards, contact privacy, snapshot honesty and no external requests');dom.window.close();
+ console.log('PASS comparison removed, stale route rejected, legacy storage untouched; test-only enabled favorites: persist/open/details/all-offers/filter/remove/recover; v132 direct application, no My tour persistence, services before rooms; v120 recorded import/identity/30-day/local-application guards plus v118: mixed/family/incomplete/reprice journeys to dry-run application, 48h stability, expired/unavailable/error guards, contact privacy, snapshot honesty and no external requests');dom.window.close();
 })().catch(e=>{console.error(e);dom.window.close();process.exitCode=1;});
