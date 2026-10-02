@@ -216,29 +216,29 @@ function hotelOffers(h,options={}){
  const offers=(h.offers||[]).filter(matches);
  return options.sort===false?offers:offers.sort(compare);
 }
-function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
+function recommendedHotelScore(h,rating=ratingValue(h)){return (rating??0)+(h.beach!==null&&h.beach<=150?.2:0)+(popularity?.boost(h)||0);}
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
 function sortResultItems(items){
  if(items.length<2)return items;
  if(state.sort==='price'||state.sort==='rating'){
   const rating=state.sort==='rating',direction=rating?-1:1;
-  const ranked=items.map((row,index)=>({row,index,key:rating?(ratingValue(row.hotel)??0):row.offers[0].total}));
+  const ranked=items.map((row,index)=>({row,index,key:rating?(row.rating??0):row.offers[0].total}));
   ranked.sort((a,b)=>direction*(a.key-b.key)||a.index-b.index);
   for(let index=0;index<items.length;index++)items[index]=ranked[index].row;
   return items;
  }
  // Rank only this current inventory, so progressive prices/profiles stay fresh.
- const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel),rank:recommendedHotelRank(row.hotel)}));
+ const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel,row.rating),rank:recommendedHotelRank(row.hotel)}));
  ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
  return ranked.map(item=>item.row);
 }
 function resultInventory(){
  const rating=!!state.filters?.rating,options=rating?{filters:{...state.filters,rating:false}}:null;
  const inventory=hotels.reduce((value,h)=>{
-  const rated=ratingValue(h)>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
+  const hotelRating=ratingValue(h),rated=hotelRating>=4.5,offers=rating?hotelOffers(h,rated?options:{...options,firstOnly:true}):hotelOffers(h);
   if(!offers.length)return value;
   value.ratingCounts.total++;if(rated)value.ratingCounts.rating++;
-  if(!rating||rated)value.items.push({hotel:h,offers});
+  if(!rating||rated)value.items.push({hotel:h,offers,rating:hotelRating});
   return value;
  },{items:[],ratingCounts:{total:0,rating:0}});
  inventory.items=sortResultItems(inventory.items);return inventory;
