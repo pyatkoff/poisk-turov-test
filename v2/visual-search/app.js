@@ -214,8 +214,13 @@ function recommendedHotelScore(h){return (ratingValue(h)??0)+(h.beach!==null&&h.
 function recommendedHotelRank(h){const rank=popularity?.rank(h);return Number.isInteger(rank)?rank:Number.MAX_SAFE_INTEGER;}
 function sortResultItems(items){
  if(items.length<2)return items;
- if(state.sort==='price')return items.sort((a,b)=>a.offers[0].total-b.offers[0].total);
- if(state.sort==='rating')return items.sort((a,b)=>(ratingValue(b.hotel)??0)-(ratingValue(a.hotel)??0));
+ if(state.sort==='price'||state.sort==='rating'){
+  const rating=state.sort==='rating',direction=rating?-1:1;
+  const ranked=items.map((row,index)=>({row,index,key:rating?(ratingValue(row.hotel)??0):row.offers[0].total}));
+  ranked.sort((a,b)=>direction*(a.key-b.key)||a.index-b.index);
+  for(let index=0;index<items.length;index++)items[index]=ranked[index].row;
+  return items;
+ }
  // Rank only this current inventory, so progressive prices/profiles stay fresh.
  const ranked=items.map(row=>({row,score:recommendedHotelScore(row.hotel),rank:recommendedHotelRank(row.hotel)}));
  ranked.sort((a,b)=>b.score-a.score||a.rank-b.rank||a.row.offers[0].total-b.row.offers[0].total);
