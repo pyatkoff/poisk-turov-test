@@ -1,0 +1,380 @@
+{
+  "schema": 1,
+  "date": "2026-10-02",
+  "status": "SIZE_REDUCTION_PASS_COMPLETE",
+  "owner_request": "Избранное оставь пока; остальное можешь убирать",
+  "scope": [
+    "Existing exact-AST CSS printer for the two entry stylesheet owners, derived artifact only",
+    "Remove14retired My tour functions plus persistence/expiry/undo state, stale actions and history branches"
+  ],
+  "preserved": [
+    "Favorites and coupled comparison functions/handlers/state/storage",
+    "Active current selected tour/application, provider views and Back",
+    "Exact-refresh selectedTourOfferSnapshot/sameSelectedTourConditions",
+    "Legacy anytour.prototype.v18.selected-tour.v1 record contents; mutations0",
+    "Readable source CSS and JS script graphs; data.js unchanged"
+  ],
+  "source": {
+    "pr": 4342,
+    "base": "2d84236a3cfab9fe1049fe929ee25f51856a5233",
+    "sha": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+    "tree": "bf880df6318d90b850884ec53e19b553ddce94b4",
+    "release": "3ba3d5a078b93f8a32d6ac806def6c09154c127b",
+    "paths": [
+      "v2/visual-search/app.js",
+      "v2/visual-search/migration-manifest.json",
+      "scripts/build/search3-js/visual-entry.cjs",
+      "tests/search3-visual-asset-size.cjs",
+      "tests/search3-visual-v120-recorded-journey-tests.cjs",
+      "tests/search3-visual-modal-history.cjs"
+    ]
+  },
+  "metrics": {
+    "app": {
+      "before": {
+        "src": "./app.js",
+        "source": "visual-search/app.js",
+        "target": "visual-search/app.js",
+        "source_sha256": "238a5880e8ce604c2066257a5b78afdbf9d3a479f7b04229a1429586847b2687",
+        "sha256": "2e32a351c4570c6ff05c398d7e2e8cfd05b48436175e62a25145f652fee42bef",
+        "raw": 283143,
+        "served": 224482,
+        "gzip_before": 77411,
+        "gzip_after": 65596
+      },
+      "after": {
+        "src": "./app.js",
+        "source": "visual-search/app.js",
+        "target": "visual-search/app.js",
+        "source_sha256": "a5c2c5eb2366e101cc81e676311e1b9eb293dc52a1becddca5be31e0b4b0689e",
+        "sha256": "59daa1c530d448014313e26d702d439f22d9209ffc6cfd46229db1c98de83e08",
+        "raw": 275473,
+        "served": 219354,
+        "gzip_before": 75366,
+        "gzip_after": 63969
+      },
+      "saved": {
+        "raw": 7670,
+        "served": 5128,
+        "gzip": 1627
+      }
+    },
+    "css": {
+      "schema": 1,
+      "tool": "css-tree@3.2.1",
+      "policy": "exact-AST printing only; selector, condition and declaration value slices and order retained; protected notes retained",
+      "graphs": {
+        "initial": [
+          "./styles.css",
+          "./mobile-controls-v1.css"
+        ]
+      },
+      "totals": {
+        "initial": {
+          "raw": 246912,
+          "served": 234545,
+          "gzip_before": 45838,
+          "gzip_after": 40463
+        }
+      },
+      "files": [
+        {
+          "src": "./styles.css",
+          "source": "visual-search/styles.css",
+          "target": "visual-search/styles.css",
+          "source_sha256": "a3a1e084b0049bacc2c5cb1769f17c250eb6782105f328002403fd2a467827f0",
+          "sha256": "9518b87898dead19c596199c4781249a1b3fe09cf8f80aba8e59ccd69e004fa5",
+          "raw": 244221,
+          "served": 232619,
+          "gzip_before": 44821,
+          "gzip_after": 39703
+        },
+        {
+          "src": "./mobile-controls-v1.css",
+          "source": "visual-search/mobile-controls-v1.css",
+          "target": "visual-search/mobile-controls-v1.css",
+          "source_sha256": "b0450823552469f6c51530517d929e6ecf5858f373d35d6fc9453aa22a143b38",
+          "sha256": "56a5879c440ff893adccab2c8fec234ba44e805327f3f2b68d4d0f4e5b70e3c0",
+          "raw": 2691,
+          "served": 1926,
+          "gzip_before": 1017,
+          "gzip_after": 760
+        }
+      ]
+    },
+    "css_before": {
+      "served": 246912,
+      "gzip": 45838
+    },
+    "graphs": {
+      "live": {
+        "js_before": {
+          "raw": 572379,
+          "served": 434984,
+          "gzip_before": 159915,
+          "gzip_after": 133360
+        },
+        "js_after": {
+          "raw": 564709,
+          "served": 429856,
+          "gzip_before": 157870,
+          "gzip_after": 131733
+        },
+        "js_css": {
+          "served_before": 681896,
+          "served_after": 664401,
+          "served_saved": 17495,
+          "gzip_before": 179198,
+          "gzip_after": 172196,
+          "gzip_saved": 7002
+        }
+      },
+      "offline": {
+        "js_before": {
+          "raw": 368013,
+          "served": 290495,
+          "gzip_before": 107961,
+          "gzip_after": 91698
+        },
+        "js_after": {
+          "raw": 360343,
+          "served": 285367,
+          "gzip_before": 105916,
+          "gzip_after": 90071
+        },
+        "js_css": {
+          "served_before": 537407,
+          "served_after": 519912,
+          "served_saved": 17495,
+          "gzip_before": 137536,
+          "gzip_after": 130534,
+          "gzip_saved": 7002
+        }
+      },
+      "ondemand": {
+        "js_before": {
+          "raw": 46192,
+          "served": 37044,
+          "gzip_before": 15300,
+          "gzip_after": 13574
+        },
+        "js_after": {
+          "raw": 46192,
+          "served": 37044,
+          "gzip_before": 15300,
+          "gzip_after": 13574
+        }
+      },
+      "complete_live": {
+        "js_before": {
+          "raw": 618571,
+          "served": 472028,
+          "gzip_before": 175215,
+          "gzip_after": 146934
+        },
+        "js_after": {
+          "raw": 610901,
+          "served": 466900,
+          "gzip_before": 173170,
+          "gzip_after": 145307
+        },
+        "js_css": {
+          "served_before": 718940,
+          "served_after": 701445,
+          "served_saved": 17495,
+          "gzip_before": 192772,
+          "gzip_after": 185770,
+          "gzip_saved": 7002
+        }
+      },
+      "complete_offline": {
+        "js_before": {
+          "raw": 414205,
+          "served": 327539,
+          "gzip_before": 123261,
+          "gzip_after": 105272
+        },
+        "js_after": {
+          "raw": 406535,
+          "served": 322411,
+          "gzip_before": 121216,
+          "gzip_after": 103645
+        },
+        "js_css": {
+          "served_before": 574451,
+          "served_after": 556956,
+          "served_saved": 17495,
+          "gzip_before": 151110,
+          "gzip_after": 144108,
+          "gzip_saved": 7002
+        }
+      }
+    },
+    "interpretation": "UTF-8 bytes and sum of independently gzip(level9)-compressed asset files; not observed network wire bytes or before/after latency"
+  },
+  "validation": {
+    "local": [
+      "exact isolated build/asset-size/migration",
+      "recorded journey and search edit",
+      "live bridge",
+      "passive295/event162 unchanged digests",
+      "modal69 normalized original --compare + original mutation probes"
+    ],
+    "ci": {
+      "security": 37006063957,
+      "lead": 37006063996,
+      "build": 37006158877,
+      "full": 37006158679,
+      "result": "SUCCESS",
+      "build_artifact": {
+        "id": 11225981412,
+        "sha256": "8f639f2b60501b9c0f2227930dabb7c5954d74fd9181d128895d5d8c0e60fbfc",
+        "payload_files_verified": 838
+      },
+      "browser_artifact": {
+        "id": 11226036852,
+        "sha256": "58a1f8d52a1e4974c8035cea4ec7df3a40c5518d62af341ec7e1eff796137452"
+      }
+    },
+    "browser_comparison": {
+      "common_json_equal": 11,
+      "png_total": 146,
+      "png_byte_equal": 96,
+      "remaining_differences": "focus/caret/button transitions and viewport scroll; three larger inspected regions align exactly with -25/-10/-8px shifts; no identified layout regression; not146PNGpixelparity"
+    },
+    "initial_loading": {
+      "comparison": "Existing F3 eager-vs-deferred probe on this same compiled candidate; not package before/after",
+      "trials_per_width": 5,
+      "width390": {
+        "eager_ms": 205.1,
+        "deferred_ms": 208.5
+      },
+      "width1280": {
+        "eager_ms": 222.6,
+        "deferred_ms": 213.7
+      },
+      "latency_improvement_claimed": false
+    }
+  },
+  "publication": {
+    "command_comment": 5952369271,
+    "run": 37007122949,
+    "attempt": 1,
+    "status": "SUCCESS",
+    "artifact": 11226480849,
+    "sha256": "95f497069699040a897a0ab93f8a794c001d64777f5579795efb38c92ad8dc29",
+    "source": "75708ededc97f9d8c6f007ad55eea196b64ab142",
+    "release": "3ba3d5a078b93f8a32d6ac806def6c09154c127b",
+    "predecessor": "59a216330fbd6bae28340cbb0c856a35f54b7d03",
+    "route": "/_preview/search3-next-candidate/",
+    "activated_files": 838,
+    "visual_assets_verified": 41,
+    "routes_200": 9,
+    "noindex": true,
+    "lead_HTTP": 403,
+    "LOCAL_HTTP": 403,
+    "counter": 0,
+    "supplier_searches": 0,
+    "real_leads": 0,
+    "rollback_retained": true,
+    "production_unchanged": true,
+    "sibling_preview_unchanged": true,
+    "terminal_4217": 5952483159,
+    "terminal_1646": 5952483571
+  },
+  "hosted": {
+    "engine": "Chromium",
+    "physical_device": false,
+    "source_cache": {
+      "app": "59daa1c530d4",
+      "styles": "9518b87898de",
+      "mobile_css": "56a5879c440f",
+      "data_unchanged": "c56324e713a0"
+    },
+    "snapshot": {
+      "hotels": 1047,
+      "offers": 1453,
+      "cards": 24,
+      "days": 7,
+      "checkboxes": 97,
+      "first_card_heights": [
+        341.1875,
+        298.4375,
+        308.4375
+      ],
+      "first_card_width": 1024,
+      "first_ids": [
+        3678,
+        5227,
+        4999
+      ],
+      "predecessor_geometry_equal": true,
+      "overflow": false
+    },
+    "filters": {
+      "stars4": [
+        395,
+        522
+      ],
+      "reset": [
+        1047,
+        1453
+      ]
+    },
+    "calendar_oct5": [
+      974,
+      1122
+    ],
+    "hotel": {
+      "name": "RIA SUITES HOTEL",
+      "photos": 4,
+      "rooms": 1,
+      "offers": 2,
+      "services_present": true
+    },
+    "selected_snapshot": {
+      "room": "Standard",
+      "meal": "Завтраки",
+      "operator": "Интурист",
+      "total": 96953,
+      "fuel": "unknown",
+      "application_blocked": true
+    },
+    "fictional_flights": {
+      "pairs": 24,
+      "visible": 6,
+      "selected_variant": 2,
+      "total": 187700,
+      "delta": 1300,
+      "baggage_kg": 20,
+      "carry_on_kg": 5,
+      "fuel": 0,
+      "warm_selection_retained": true,
+      "application_opened": true,
+      "application_back_same_offer": true
+    },
+    "pristine_live": {
+      "initial_scripts": 17,
+      "form_ready": true,
+      "cards": 0,
+      "search_submitted": false,
+      "overflow": false
+    },
+    "page_origin_errors": 0,
+    "real_supplier_or_lead_requested": false
+  },
+  "unverified": [
+    "Physical Safari/iPhone",
+    "Real supplier search/quote/flight scenarios",
+    "Real lead delivery"
+  ],
+  "checkpoint": {
+    "state_base_blob": "14efee82b8406bdec373a88f2e23415c6b4a9cea",
+    "outside_current_task_sha256": "0aff0719478881a6b7238cf8b398b45222cb2113908bdb96c845af00b60e90f9",
+    "edit": "current_task only; all other bytes/history retained",
+    "final_claim_4217": 5952483916,
+    "final_claim_1646": 5952484129
+  },
+  "next": "STOP this bounded package; favorites remain. Deferred pure meal INT→SEARCH contract and other structural candidates stay backlog requiring new bounded scope."
+}
+
