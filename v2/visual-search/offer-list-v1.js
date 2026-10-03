@@ -48,8 +48,8 @@ function offerRefinementRecovery(all){
  const choices=offerRefinementFields.filter(field=>offerView[field]).map(field=>({field,count:all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:''})).length})).filter(choice=>choice.count);
  return choices.length?`<p>Можно убрать одно условие, сохранив остальные:</p><div class="offer-recovery-actions">${choices.map(({field,count})=>`<button type="button" class="secondary" data-action="remove-offer-filter" data-field="${field}">${offerRefinementAny[field]} · ${offerCountText(count)}</button>`).join('')}</div>`:'<p>Измените условия выбора тура. Даты поездки и туристы в основном поиске сохранятся.</p>';
 }
-function offerListInventory(){
- const h=hotels.find(h=>h.id===offerView.id),all=hotelOffers(h),filtered=all.filter(o=>(!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
+function offerListInventory(precomputed){
+ const h=hotels.find(h=>h.id===offerView.id),all=Array.isArray(precomputed)?precomputed:hotelOffers(h),filtered=all.filter(o=>(!offerView.departure||o.day===offerView.departure)&&(!offerView.flight||o.flight===offerView.flight)&&(!offerView.room||o.room===offerView.room)&&(!offerView.meal||o.meal===offerView.meal));
  const keyed=filtered.length<2?filtered.map(offer=>({offer})):filtered.map((offer,index)=>({offer,index,total:offer.total,day:offer.day}));
  keyed.sort((a,b)=>offerView.sort==='date'?a.day.localeCompare(b.day)||a.total-b.total||a.index-b.index:a.total-b.total||a.day.localeCompare(b.day)||a.index-b.index);
  const sorted=keyed.map(item=>item.offer);
@@ -123,7 +123,7 @@ function renderOfferGroup(key){
 function mountOfferList({h,all}){
  $('#modal-body').innerHTML=`${all.some(o=>!needsRefresh(o))?selectionStepsHTML(0):''}<div class="offer-list-context"><p>${offerSearchContext()} · ${durationText()} · ${guestsText()}</p><span>${icon('info')} Все цены за всех туристов. ${esc(sharedOfferNote(all)||(all.every(needsRefresh)?'Цены и наличие требуют проверки':'Сборы уточняются при выборе'))}</span></div><details class="offer-filter-disclosure" ${innerWidth>760?'open':''}><summary><span>Уточнить варианты <span id="offer-local-filter-count"></span></span><small id="offer-filter-summary"></small></summary><div class="offer-controls"><label class="offer-departure-filter">Дата вылета<select id="offer-departure"><option value="">Все даты</option></select></label><label>Перелёт<select id="offer-flight"><option value="">Любой</option></select></label><label>Номер<select id="offer-room"><option value="">Любой</option></select></label><label>Питание<select id="offer-meal"><option value="">Любое</option></select></label></div></details><div id="offer-local-selected" class="offer-local-selected" aria-label="Условия выбора тура" hidden></div><div class="offer-list-toolbar"><span id="offer-count" aria-live="polite" tabindex="-1"></span><label id="offer-sort-label"><span class="sr-only">Сортировать туры</span><select id="offer-sort"><option value="price">Сначала дешевле</option><option value="date">По дате вылета</option></select></label></div><button class="text-button offer-reset" data-action="reset-offer-filters" hidden>Сбросить фильтры туров</button><div id="all-offers-list"></div>`;
 }
- return {renderOfferList:reset=>{const inventory=offerListInventory();if(!$('#offer-count'))mountOfferList(inventory);renderOfferList(reset,inventory);},renderMoreGroup,renderOfferGroup};
+ return {renderOfferList:(reset,precomputed)=>{const inventory=offerListInventory(precomputed);if(!$('#offer-count'))mountOfferList(inventory);renderOfferList(reset,inventory);},renderMoreGroup,renderOfferGroup};
 }
 window.AnyTourOfferList={create};
 })();

@@ -1792,7 +1792,7 @@ function openAllOffers(id,restored=null){
  const restoredOpen=restored?boundedHistoryStrings(restored.open):null;
  if(restored){if(restoredOpen)offerView.open=restoredOpen.filter(key=>all.some(o=>offerGroupKey(o)===key));offerView.limits=restoredOfferLimits(restored.limits,all);}
  showModal('all-offers',h.name,'ВЫБЕРИТЕ КОНКРЕТНЫЙ ТУР','<div id="all-offers-list" aria-live="polite"></div>',true);
- $('#modal').classList.add('offers-dialog');renderOfferList(restoredOpen===null);
+ $('#modal').classList.add('offers-dialog');renderOfferList(restoredOpen===null,all);
 }
 const offerCountText=n=>`${n} ${n%10===1&&n%100!==11?'тур':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'тура':'туров'}`;
 const offerSearchContext=()=>state.selectedDate?`Вылет ${dateText(state.selectedDate)}`:state.search.from===state.search.to?`Вылет ${dateText(state.search.from)}`:`Период вылета: ${dateText(state.search.from)} — ${dateText(state.search.to)}`;
@@ -1831,17 +1831,17 @@ function loadOfferList(){
  });
  return offerListLoad;
 }
-function renderOfferList(reset=false){
+function renderOfferList(reset=false,initialAll=null){
  offerListPage=null;
  const view=offerView,request=++offerListRequest;
  const current=()=>offerView===view&&request===offerListRequest&&modalType==='all-offers'&&$('#modal').open;
- const render=owner=>{
+ const render=(owner,all=null)=>{
   if(!current())return;
   const api=owner.create({$,$$,appendGeneratedRoots,byId,cardPriceNote,dateText,durationText,esc,flightLabel,guestsText,hotelOffers,hotels,icon,innerWidth,mealLabel,mealNames,money,needsRefresh,nightsText,offerActionLabel,offerCountText,offerGroupKey,offerMetaNote,offerRefinementFields,offerSearchContext,offerView,operatorBadge,paintGeneratedRoots,rangeText,rememberUIRoute,sharedOfferNote,selectionStepsHTML});
-  api.renderOfferList(reset);offerListPage={view,api};
+  api.renderOfferList(reset,all);offerListPage={view,api};
   const restored=offerListRestores.get(view);if(restored){offerListRestores.delete(view);const filters=$('.offer-filter-disclosure');if(filters)filters.open=restored.filtersOpen===true;if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;rememberUIRoute();}
  };
- if(window.AnyTourOfferList?.create){render(window.AnyTourOfferList);return;}
+ if(window.AnyTourOfferList?.create){render(window.AnyTourOfferList,initialAll);return;}
  $('#all-offers-list').innerHTML='<p role="status">Загружаем варианты тура…</p>';
  loadOfferList().then(render).catch(()=>{if(current())$('#all-offers-list').innerHTML='<div role="alert"><p>Не удалось загрузить варианты тура.</p><button class="secondary" data-action="retry-offer-list">Попробовать ещё раз</button></div>';});
 }

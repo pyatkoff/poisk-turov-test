@@ -194,7 +194,7 @@ const legacyValueRenderer=(source.slice(0,valueInventoryStart)+source.slice(valu
 assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy boundary');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
-function render(code,all,view,shortlist=false,reset=false,mount=false){
+function render(code,all,view,shortlist=false,reset=false,mount=false,precomputed){
  const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0,hotelCalls=0,rowMarkupCalls=0,appendCalls=0,currentRows=all,mounted=!mount;
  const node=name=>{if(name==='#offer-count'&&!mounted)return null;if(!dom.has(name)){
   let html='',heading=null;const classes=new Set(),style={},label={hidden:false},n={hidden:false,open:false,textContent:'',value:'',options:[{value:'',textContent:'Any',dataset:{}}],classList:{contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)},style:{setProperty:(k,v)=>{style[k]=v;}},closest:()=>label};
@@ -207,7 +207,7 @@ function render(code,all,view,shortlist=false,reset=false,mount=false){
   sharedOfferNote:input=>{assert.strictEqual(input,currentRows,'shared note uses current all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
   mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>{rowMarkupCalls++;return '';},offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
  const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(code,sandbox);
- const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset);
+ const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset,precomputed);
  const snapshot=()=>JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView}));
  return {snapshot:snapshot(),noteCalls,noteVisits,keyCalls,hotelCalls,rowMarkupCalls,currentSnapshot:snapshot,
   paginate:(groupKey,count,incremental=true)=>{const before={hotelCalls,rowMarkupCalls},renderPage=shown=>incremental&&api.renderMoreGroup?api.renderMoreGroup(groupKey,shown,{}):api.renderOfferList(false);let shown=4;for(let limit=12;limit<count;limit+=8){context.offerView.limits[groupKey]=Math.min(count,limit);renderPage(shown);shown=limit;}if(count>4){context.offerView.limits[groupKey]=count;renderPage(shown);}return {hotelCalls:hotelCalls-before.hotelCalls,rowMarkupCalls:rowMarkupCalls-before.rowMarkupCalls};},
@@ -242,6 +242,7 @@ let invocationCases=0;
 for(const all of [[],rows.slice(0,1),rows.slice(0,2),rows]){
  const current=render(source,all,baseView(),false,false,true);
  assert.equal(current.hotelCalls,1,'mount and list share this invocation inventory');
+ const restored=render(source,all,baseView(),false,false,true,all);assert.equal(restored.hotelCalls,0,'warm restored rows skip the duplicate owner inventory');assert.deepEqual(restored.snapshot,current.snapshot,'warm restored inventory preserves exact public DOM/view/route output');
  if(priorSource){const previous=render(priorSource,all,baseView(),false,false,true);assert.equal(previous.hotelCalls,2,'measured prior mount plus render');assert.deepEqual(current.snapshot,previous.snapshot,'public mount output and view unchanged');}
  const updated=all.map(o=>({...o,total:o.total+765432}));
  const next=current.rerender(updated,{flight:'regular'}),fresh=render(source,updated,{...baseView(),flight:'regular'},false,false,true);
