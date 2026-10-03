@@ -160,11 +160,12 @@ function paintGeneratedRoots(container,entries,sameScope=true,field='id'){
  observer.takeRecords();
 }
 function appendGeneratedRoots(container,entries,remove){
- const binding=generatedRootBindings.get(container);if(binding)binding.mark(binding.observer.takeRecords());
- if(binding)for(const node of [...container.children])if(node!==remove&&binding.dirty.has(node)){const markup=binding.markup.get(node);if(markup){const fresh=parseGeneratedRoot(markup);binding.markup.set(fresh,markup);binding.dirty.delete(node);container.replaceChild(fresh,node);}}
+ const binding=generatedRootBindings.get(container);let settled=!!binding;if(binding)binding.mark(binding.observer.takeRecords());
+ if(binding)for(const node of [...container.children])if(node!==remove){const markup=binding.markup.get(node);if(!markup){settled=false;continue}if(binding.dirty.has(node)){const fresh=parseGeneratedRoot(markup);binding.markup.set(fresh,markup);binding.dirty.delete(node);container.replaceChild(fresh,node);}}
  if(remove){binding?.dirty.delete(remove);remove.remove();}
  for(const entry of entries){const node=parseGeneratedRoot(entry.markup);binding?.markup.set(node,entry.markup);container.append(node);}
  binding?.observer.takeRecords();
+ return settled;
 }
 function renderSummary(){const s=state.search,f=state.filters;paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить</button></div>`},{id:'',markup:`<div class="applied-extras"><button type="button" data-action="filters" aria-label="Звёзды: ${esc(f.stars.length?f.stars.join(', '):'любая категория')}. Открыть фильтры"><span class="applied-extra-label">Звёзды</span><strong>${esc(f.stars.length?[...f.stars].sort((a,b)=>a-b).map(n=>n+' ★').join(', '):'Любая')}</strong></button><button type="button" data-action="meals" aria-haspopup="dialog" title="${esc(f.meals.join(' · ')||'Любое питание')}" aria-label="Питание: ${esc(f.meals.join(', ')||'любое')}"><span class="applied-extra-label">Питание</span><strong>${esc(f.meals.length>1?f.meals.length+' варианта':f.meals[0]||'Любое')}</strong></button><button type="button" data-action="budget" aria-haspopup="dialog"><span class="applied-extra-label">Бюджет за всех</span><strong>${esc(budgetLabel(f))}</strong></button><button type="button" class="applied-all-filters" data-action="filters">${icon('sliders')} Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`}]);}
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing');}
@@ -1845,6 +1846,7 @@ function renderOfferList(reset=false){
  loadOfferList().then(render).catch(()=>{if(current())$('#all-offers-list').innerHTML='<div role="alert"><p>Не удалось загрузить варианты тура.</p><button class="secondary" data-action="retry-offer-list">Попробовать ещё раз</button></div>';});
 }
 function renderMoreOfferGroup(key,shown,remove){return offerListPage?.view===offerView&&offerListPage.api.renderMoreGroup?.(key,shown,remove)===true;}
+function renderOfferGroup(key){return offerListPage?.view===offerView&&offerListPage.api.renderOfferGroup?.(key)===true;}
 function confirmTour(){openLeadPreview();}
 function selectedTourHotel(o){return hotels.find(h=>h.id===o?.hotelId)||null;}
 function selectedTourOfferSnapshot(o){
@@ -2071,7 +2073,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'retry-hotel-details':if(modalType==='hotel-details')renderHotelDetails();break;
  case 'retry-offer-list':if(modalType==='all-offers')renderOfferList(true);break;
  case 'offer-flights':case 'start-tour-flights':openOffer(b.dataset.key,null,true);break;
- case 'offer-group':{const key=b.dataset.value;offerView.open=offerView.open.includes(key)?offerView.open.filter(x=>x!==key):[...offerView.open,key];renderOfferList();$(`[data-action="offer-group"][data-value="${key}"]`).focus({preventScroll:true});break}
+ case 'offer-group':{const key=b.dataset.value;offerView.open=offerView.open.includes(key)?offerView.open.filter(x=>x!==key):[...offerView.open,key];if(!renderOfferGroup(key))renderOfferList();byId('group-'+key)?.previousElementSibling?.focus({preventScroll:true});break}
  case 'group-more':{const key=b.dataset.value,body=$('#modal-body'),scroll=body.scrollTop,shown=b.parentElement.querySelectorAll('.grouped-offer').length;offerView.limits[key]=(offerView.limits[key]||4)+8;if(!renderMoreOfferGroup(key,shown,b))renderOfferList();body.scrollTop=scroll;const firstNew=document.getElementById('group-'+key)?.querySelectorAll('.grouped-offer')[shown];firstNew?.querySelector('[data-action="offer"]')?.focus({preventScroll:true});firstNew?.scrollIntoView({behavior:scrollBehavior(),block:'nearest'});break;}
  case 'remove-offer-filter':if(offerRefinementFields.includes(b.dataset.field)&&offerView){offerView[b.dataset.field]='';renderOfferList(true);$('#offer-count').focus();}break;
  case 'reset-offer-filters':offerView.departure='';offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
