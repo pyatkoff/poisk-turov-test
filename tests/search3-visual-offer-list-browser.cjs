@@ -29,13 +29,23 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="retry-offer-list"]').click();while(!pending)await page.waitForTimeout(20);assert.equal(requests,2);
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourOfferList?.create);
    assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late load does not reopen a closed modal');
+   await page.evaluate(()=>{const owner=window.AnyTourOfferList,create=owner.create;owner.create=context=>create({...context,hotelOffers:hotel=>{const rows=context.hotelOffers(hotel);if(!rows.length)return rows;const seed=rows[0],extra=Array.from({length:12},(_,i)=>({...seed,key:seed.key+'-o44-'+i,total:seed.total+i+1}));return [...rows,...extra];}});});
    await trigger.click();await page.locator('#offer-count').waitFor();await page.locator('.offer-group-heading').first().click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
+   let paginationIdentity=null,more=page.locator('[data-action="group-more"]').first();assert.equal(await more.count(),1,'controlled compiled fixture exposes a bounded group page');
+   if(await more.count()){
+    const key=await more.getAttribute('data-value'),group=page.locator(`[id="group-${key}"]`);if(await group.getAttribute('hidden')!==null)await page.locator(`[data-action="offer-group"][data-value="${key}"]`).click();
+    const before=await group.locator('.grouped-offer').count();assert(before>=2,'pagination group has retained rows to reconcile');
+    await group.evaluate(body=>{const rows=body.querySelectorAll('.grouped-offer');window.__o44CleanRow=rows[0];window.__o44DirtyRow=rows[1];rows[1].setAttribute('data-external-dirty','1');rows[1].querySelector('strong').textContent='DIRTY';});
+    await group.locator('[data-action="group-more"]').click();await page.waitForFunction(({key,before})=>document.getElementById('group-'+key).querySelectorAll('.grouped-offer').length>before,{key,before});
+    paginationIdentity=await group.evaluate((body,before)=>{const rows=body.querySelectorAll('.grouped-offer'),active=document.activeElement;return {before,after:rows.length,cleanRetained:rows[0]===window.__o44CleanRow,dirtyReplaced:rows[1]!==window.__o44DirtyRow,dirtyRestored:!rows[1].hasAttribute('data-external-dirty')&&!rows[1].textContent.includes('DIRTY'),focusedNew:active?.dataset.action==='offer'&&active.closest('.grouped-offer')===rows[before]};},before);
+    assert(paginationIdentity.after>before&&paginationIdentity.after<=before+8,'group-more appends only the next bounded page');assert.equal(paginationIdentity.cleanRetained,true);assert.equal(paginationIdentity.dirtyReplaced,true);assert.equal(paginationIdentity.dirtyRestored,true);assert.equal(paginationIdentity.focusedNew,true);
+   }
    if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    const room=page.locator('#offer-room');const choices=await room.locator('option').count();assert(choices>=3,'mixed fixture has two actual room choices');const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);
    assert.equal(await room.inputValue(),selected);assert(await page.locator('.grouped-offer').count()>0);
    await page.screenshot({path:path.join(evidence,`offers-${width}.png`)});
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await page.locator('#offer-room').waitFor();assert.equal(await room.inputValue(),selected,'Forward restores the same offer refinement');assert.equal(requests,2);
-   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,history_room_restored:true,supplier_requests:0,lead_requests:0});
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,group_pagination:paginationIdentity,history_room_restored:true,supplier_requests:0,lead_requests:0});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled cold offer-list browser',JSON.stringify(receipts));

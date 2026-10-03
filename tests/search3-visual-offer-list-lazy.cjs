@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('function confirmTour(){',start);assert(start>=0&&end>start);
-const source=app.slice(start,end),context=source.match(/owner.create\(\{([^}]+)\}\)\.renderOfferList\(reset\)/);assert(context,'real cold owner renderer context');
+const source=app.slice(start,end),context=source.match(/const api=owner.create\(\{([^}]+)\}\);/);assert(context,'real cold owner renderer context');
 const dependencies=context[1].split(',').map(name=>name.trim());assert(dependencies.every(name=>/^[$A-Z_a-z][$\w]*$/.test(name)),'cold renderer context contains named live dependencies');
 const flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(){
@@ -23,7 +23,7 @@ function fixture(){
  const f=fixture();assert.equal(f.scripts.length,0,'bootstrap does not fetch the cold owner');
  f.ctx.renderOfferList(true);f.ctx.renderOfferList(false);assert.equal(f.scripts.length,1,'overlapping opens share one request');assert.match(f.list.innerHTML,/role="status"/);
  assert.equal(f.scripts[0].src,'./offer-list-v1.js?v=exact','use the entry supplied exact asset version');
- f.ctx.window.AnyTourOfferList=f.owner;f.scripts[0].onload();await flush();assert.equal(f.renders.length,1);assert.equal(f.renders[0].reset,false,'only the latest render request applies');assert(f.scripts[0].removed);assert.equal(f.timers.size,0);
+ f.ctx.window.AnyTourOfferList=f.owner;f.scripts[0].onload();await flush();assert.equal(f.renders.length,1);assert.equal(f.renders[0].reset,false,'only the latest render request applies');assert.equal(vm.runInContext('offerListPage?.view===offerView',f.ctx),true,'latest full render retains its exact page API');assert(f.scripts[0].removed);assert.equal(f.timers.size,0);
  f.ctx.renderOfferList(true);assert.equal(f.renders.length,2,'warm rendering remains synchronous');assert.equal(f.scripts.length,1,'warm open has no additional download');
  for(const cancel of ['close','replace','view']){
   const g=fixture();g.ctx.renderOfferList();if(cancel==='close')g.modal.open=false;else if(cancel==='replace')g.ctx.modalType='gallery';else g.ctx.offerView={id:2};

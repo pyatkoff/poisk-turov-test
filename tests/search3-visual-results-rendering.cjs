@@ -60,6 +60,9 @@ function observe(source,s){
  ctx.offerRefinementLabel=call('offerRefinementLabel',(field,value)=>field+':'+value);
  for(const name of ['flightLabel','offerSearchContext','offerCountText','nightsText','operatorBadge','offerMetaNote','offerActionLabel','icon','mealLabel','offerRefinementRecovery'])ctx[name]=call(name,v=>name+':'+(v?.key??v?.operator??v?.meal??v??''));
  ctx.sharedOfferNote=call('sharedOfferNote',()=>s.shared?'Общее примечание':'');
+ ctx.byId=id=>node('#'+id);
+ ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
+ ctx.appendGeneratedRoots=(container,entries)=>{container.innerHTML+=entries.map(entry=>entry.markup).join('');};
  // DOM identities are represented as stable names in collaborator traces.
  for(const name of ['focusReference','restoreFocus'])ctx[name]=(...args)=>{record(name,...args.map(x=>x?.id||x));return name==='focusReference'?{selector:'#old',top:17}:undefined;};
  // The optimized bulk port supplies the same price sequence to this DOM owner.
@@ -103,10 +106,10 @@ const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold
 assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
 const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
 let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
- .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n",'')
- .replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice')
+ .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n"," const commonNote='';\n")
+ .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));')
  .replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');
-const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function renderOfferList(',scopeStart);
+const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function offerRowEntry(',scopeStart);
 if(scopeStart>=0){
  assert(scopeEnd>scopeStart,'current heading scope boundary');
  oldCold=(oldCold.slice(0,scopeStart)+oldCold.slice(scopeEnd))
@@ -119,10 +122,13 @@ const retiredNodes=new Set(['#modal','#offer-comparison-dates','[data-action="of
 const stripComparisonAction=html=>html.replace(/<button class="text-button compare-tour-link" data-action="compare-tour" data-key="[^"]*">Сравнить на эти даты<\/button>/g,'');
 function visibleRecords(rows){return rows.map((row,index)=>{
  if(scenarios[index].kind!=='offers')return {...row,result:{...row.result,trace:row.result.trace.map(call=>call[0]==='updateMealPicker'?call.slice(0,1):call)}};
- const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view;
- return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(dom.innerHTML)}]),trace:result.trace
-  .filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote'&&!retiredNodes.has(call[1]))
-  .map(call=>call[0]==='renderOfferRefinements'?call.slice(0,2):call[0]==='write'&&call[1]==='#all-offers-list'&&call[2]==='innerHTML'?[...call.slice(0,3),stripComparisonAction(call[3])]:call)}};
+ const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view,groups=result.dom.filter(([key])=>key.startsWith('#group-'));
+ const list=result.dom.find(([key])=>key==='#all-offers-list');let listHTML=list?.[1].innerHTML||'';
+ for(const [key,dom] of groups){const id=key.slice(1),needle=new RegExp(`(<div id="${id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}" class="offer-group-body"[^>]*>)(</div>)`);listHTML=listHTML.replace(needle,`$1${dom.innerHTML}$2`);}
+ const listWrite=result.trace.find(call=>call[0]==='write'&&call[1]==='#all-offers-list'&&call[2]==='innerHTML');
+ const trace=result.trace.filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote'&&!retiredNodes.has(call[1])&&!(call[0]==='write'&&(call[1]==='#all-offers-list'||String(call[1]).startsWith('#group-')))).map(call=>call[0]==='renderOfferRefinements'?call.slice(0,2):call);
+ if(listWrite)trace.push([...listWrite.slice(0,3),stripComparisonAction(listHTML)]);
+ return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)&&!key.startsWith('#group-')).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(key==='#all-offers-list'?listHTML:dom.innerHTML)}]),trace}};
  });}
 const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));

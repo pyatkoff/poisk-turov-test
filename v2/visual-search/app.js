@@ -146,7 +146,7 @@ function paintGeneratedRoots(container,entries,sameScope=true,field='id'){
  }else binding.mark(binding.observer.takeRecords());
  const {markup:known,dirty,observer}=binding;
  if(!sameScope||!container.childElementCount){container.innerHTML=entries.map(entry=>entry.markup).join('');[...container.children].forEach((node,index)=>known.set(node,entries[index]?.markup));observer.takeRecords();return;}
- const keyed=new Map();for(const node of container.children){const key=field==='day'?node.dataset.date:node.id;if(key&&!keyed.has(key))keyed.set(key,node);}
+ const keyed=new Map();for(const node of container.children){const key=field==='id'?node.id:field==='day'?node.dataset.date:node.dataset[field];if(key&&!keyed.has(key))keyed.set(key,node);}
  let cursor=container.firstChild;
  for(const entry of entries){
   const key=entry[field],markup=entry.markup,previous=field==='day'||key?keyed.get(key):cursor;keyed.delete(key);
@@ -1813,9 +1813,10 @@ function refreshOpenOfferList(){
 
 
 // Keep the modal shell/history synchronous; fetch only its cold list renderer.
-let offerListLoad=null,offerListRequest=0;
+let offerListLoad=null,offerListRequest=0,offerListPage=null;
 const offerListRestores=new WeakMap();
 const offerListAsset=document.head.dataset.offerListSrc;
+const byId=id=>document.getElementById(id);
 function loadOfferList(){
  if(window.AnyTourOfferList?.create)return Promise.resolve(window.AnyTourOfferList);
  if(offerListLoad)return offerListLoad;
@@ -1830,17 +1831,20 @@ function loadOfferList(){
  return offerListLoad;
 }
 function renderOfferList(reset=false){
+ offerListPage=null;
  const view=offerView,request=++offerListRequest;
  const current=()=>offerView===view&&request===offerListRequest&&modalType==='all-offers'&&$('#modal').open;
  const render=owner=>{
   if(!current())return;
-  owner.create({$,$$,cardPriceNote,dateText,durationText,esc,flightLabel,guestsText,hotelOffers,hotels,icon,innerWidth,mealLabel,mealNames,money,needsRefresh,nightsText,offerActionLabel,offerCountText,offerGroupKey,offerMetaNote,offerRefinementFields,offerSearchContext,offerView,operatorBadge ,rangeText,rememberUIRoute,sharedOfferNote,selectionStepsHTML}).renderOfferList(reset);
+  const api=owner.create({$,$$,appendGeneratedRoots,byId,cardPriceNote,dateText,durationText,esc,flightLabel,guestsText,hotelOffers,hotels,icon,innerWidth,mealLabel,mealNames,money,needsRefresh,nightsText,offerActionLabel,offerCountText,offerGroupKey,offerMetaNote,offerRefinementFields,offerSearchContext,offerView,operatorBadge,paintGeneratedRoots,rangeText,rememberUIRoute,sharedOfferNote,selectionStepsHTML});
+  api.renderOfferList(reset);offerListPage={view,api};
   const restored=offerListRestores.get(view);if(restored){offerListRestores.delete(view);const filters=$('.offer-filter-disclosure');if(filters)filters.open=restored.filtersOpen===true;if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;rememberUIRoute();}
  };
  if(window.AnyTourOfferList?.create){render(window.AnyTourOfferList);return;}
  $('#all-offers-list').innerHTML='<p role="status">Загружаем варианты тура…</p>';
  loadOfferList().then(render).catch(()=>{if(current())$('#all-offers-list').innerHTML='<div role="alert"><p>Не удалось загрузить варианты тура.</p><button class="secondary" data-action="retry-offer-list">Попробовать ещё раз</button></div>';});
 }
+function renderMoreOfferGroup(key,shown,remove){return offerListPage?.view===offerView&&offerListPage.api.renderMoreGroup?.(key,shown,remove)===true;}
 function confirmTour(){openLeadPreview();}
 function selectedTourHotel(o){return hotels.find(h=>h.id===o?.hotelId)||null;}
 function selectedTourOfferSnapshot(o){
@@ -2068,7 +2072,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'retry-offer-list':if(modalType==='all-offers')renderOfferList(true);break;
  case 'offer-flights':case 'start-tour-flights':openOffer(b.dataset.key,null,true);break;
  case 'offer-group':{const key=b.dataset.value;offerView.open=offerView.open.includes(key)?offerView.open.filter(x=>x!==key):[...offerView.open,key];renderOfferList();$(`[data-action="offer-group"][data-value="${key}"]`).focus({preventScroll:true});break}
- case 'group-more':{const key=b.dataset.value,body=$('#modal-body'),scroll=body.scrollTop,shown=b.parentElement.querySelectorAll('.grouped-offer').length;offerView.limits[key]=(offerView.limits[key]||4)+8;renderOfferList();body.scrollTop=scroll;const firstNew=document.getElementById('group-'+key)?.querySelectorAll('.grouped-offer')[shown];firstNew?.querySelector('[data-action="offer"]')?.focus({preventScroll:true});firstNew?.scrollIntoView({behavior:scrollBehavior(),block:'nearest'});break;}
+ case 'group-more':{const key=b.dataset.value,body=$('#modal-body'),scroll=body.scrollTop,shown=b.parentElement.querySelectorAll('.grouped-offer').length;offerView.limits[key]=(offerView.limits[key]||4)+8;if(!renderMoreOfferGroup(key,shown,b))renderOfferList();body.scrollTop=scroll;const firstNew=document.getElementById('group-'+key)?.querySelectorAll('.grouped-offer')[shown];firstNew?.querySelector('[data-action="offer"]')?.focus({preventScroll:true});firstNew?.scrollIntoView({behavior:scrollBehavior(),block:'nearest'});break;}
  case 'remove-offer-filter':if(offerRefinementFields.includes(b.dataset.field)&&offerView){offerView[b.dataset.field]='';renderOfferList(true);$('#offer-count').focus();}break;
  case 'reset-offer-filters':offerView.departure='';offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
  case 'offer':openOffer(cardEntryOfferKey(b));break;case 'start-lead':openLeadWithQuote(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'andromeda-application-preview':openAndromedaApplicationPreview();break;case 'anex-application-preview':openAnexApplicationPreview();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'anex-flights':loadAnexFlightInventory();break;case 'anex-package-quote':loadAnexPackageQuote();break;case 'anex-package-calculate':loadAnexPackageQuote(true);break;
