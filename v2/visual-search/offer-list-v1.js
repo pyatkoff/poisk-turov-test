@@ -9,21 +9,6 @@ let currentRefinementInventory;
 let currentInventory,currentCommonNote='';
 function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}
 function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?value:value;}
-function offerRefinementCounts(all,field,options){
- const counts=new Map([...options].map(option=>[option.value,0])),length=all.length;
- for(let i=0;i<length;i++){
-  if(!(i in all))continue;
-  const offer=all[i];let matches=true;
-  for(const current of offerRefinementFields){
-   if(current===field)continue;
-   const selected=offerView[current];if(selected&&(current==='departure'?offer.day:offer[current])!==selected){matches=false;break;}
-  }
-  if(!matches)continue;
-  counts.set('',counts.get('')+1);
-  const value=field==='departure'?offer.day:offer[field];if(value!==''&&counts.has(value))counts.set(value,counts.get(value)+1);
- }
- return counts;
-}
 function renderOfferRefinements(all){
  const host=$('#offer-local-selected');
  host.hidden=!offerRefinementFields.some(field=>offerView[field]);
@@ -34,10 +19,10 @@ function renderOfferRefinements(all){
   const hasChoice=currentRefinementInventory.get(field).hasChoice;
   const visible=hasChoice||!!offerView[field];
   select.closest('label').hidden=!visible;if(visible)visibleFields.push(field);
-  const counts=offerRefinementCounts(all,field,select.options);
+  const counts=currentRefinementInventory.get(field).counts;
   for(const option of select.options){
    if(!option.dataset.baseLabel)option.dataset.baseLabel=option.textContent;
-   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;
+   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value)||0)}`;
   }
  }
  $('.offer-filter-disclosure').hidden=!visibleFields.length;
@@ -62,11 +47,23 @@ function offerListInventory(precomputed){
  return {h,all,filtered,groups};
 }
 function offerRefinementInventory(all){
- const inventory=new Map();
- for(const field of offerRefinementFields){
-  const values=[...new Set(all.map(offer=>field==='departure'?offer.day:offer[field]))];
-  inventory.set(field,{values,hasChoice:values.length>1});
+ const inventory=new Map(offerRefinementFields.map(field=>[field,{values:[],seen:new Set(),counts:new Map([['',0]])}])),length=all.length;
+ for(let i=0;i<length;i++){
+  if(!(i in all)){for(const entry of inventory.values())if(!entry.seen.has(undefined)){entry.seen.add(undefined);entry.values.push(undefined);entry.counts.set(undefined,0);}continue;}
+  const offer=all[i],values=offerRefinementFields.map(field=>field==='departure'?offer.day:offer[field]);let mismatches=0,mismatch=-1;
+  for(let index=0;index<offerRefinementFields.length;index++){
+   const selected=offerView[offerRefinementFields[index]];if(selected&&values[index]!==selected){mismatches++;mismatch=index;}
+  }
+  for(let index=0;index<offerRefinementFields.length;index++){
+   const entry=inventory.get(offerRefinementFields[index]),value=values[index];
+   if(!entry.seen.has(value)){entry.seen.add(value);entry.values.push(value);if(value!==''&&!entry.counts.has(value))entry.counts.set(value,0);}
+   if(mismatches===0||(mismatches===1&&mismatch===index)){
+    entry.counts.set('',entry.counts.get('')+1);
+    if(value!=='')entry.counts.set(value,(entry.counts.get(value)||0)+1);
+   }
+  }
  }
+ for(const field of offerRefinementFields){const entry=inventory.get(field),selected=offerView[field];if(selected&&!entry.counts.has(selected))entry.counts.set(selected,0);entry.hasChoice=entry.values.length>1;delete entry.seen;}
  return inventory;
 }
 function offerGroupScope(offers){
