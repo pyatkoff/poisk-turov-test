@@ -32,7 +32,7 @@ function amenities(source,selected){
  const c=environment(''),filters={amenities:selected?['pool','retained']:[]};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>model.filters.amenities.includes('pool')?3:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value==='pool'||filters.amenities.includes('pool')?3:0])),amenityNames:new Map([['retained',{key:'retained',label:'Сохранённое <&',groupId:2,group:'Другие'}]])});
  context(c);vm.runInContext(functions(source,['filterCheckRowHTML','amenityFilterGroups']),c);
- const html=c.amenityFilterGroups([{amenities:[{key:'pool',label:'Бассейн <&',groupId:1,group:'Удобства'},{key:'hidden',label:'Нет данных',filterable:false}]}],filters);c.dom.window.close();return html;
+ const fact={key:'pool',label:'Бассейн <&',groupId:1,group:'Удобства'},input=source.includes('function filterPresentationInventory(')?new Map([['pool',fact]]):[{amenities:[fact,{key:'hidden',label:'Нет данных',filterable:false}]}],html=c.amenityFilterGroups(input,filters);c.dom.window.close();return html;
 }
 function destination(source,s){
  const c=environment('<input id="destination-query"><button data-action="clear-destination-query"></button><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
@@ -127,6 +127,16 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  assert.equal(starReads,100,'one canonical star option value pass per filter refresh');
  assert.deepEqual(c.$$('.star-options button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','3'],['5','true','0']],'batched star inventory retains available and selected-unavailable buttons');
  c.dom.window.close();
+}
+{
+ const filters={stars:[5],resorts:[],amenities:['retained']},amenityNames=new Map([['retained',{key:'retained',label:'Сохранённое',groupId:2,group:'Другие'}]]),rows=Array.from({length:1000},(_,i)=>({country:'4',stars:i%2?3:2,rating:i===999?4.8:null,places:i===999?['Курорт B']:[],amenities:i%2?[{key:'pool',label:'Бассейн',groupId:1,group:'Удобства'}]:[]}));
+ let visits=0;const observed=value=>new Proxy(value,{get(target,key,receiver){if(typeof key==='string'&&/^\d+$/.test(key))visits++;return Reflect.get(target,key,receiver);}}),ratingValue=h=>h.rating,hotelPlaces=h=>h.places;
+ const legacy=()=>{const hotels=observed(rows).filter(h=>h.country==='4'),starHotels=observed(rows).filter(h=>h.country==='4'),stars=[...new Set([...observed(starHotels).map(h=>h.stars).filter(n=>Number.isInteger(n)&&n>=1&&n<=5),...filters.stars])].sort((a,b)=>a-b),hasRating=filters.rating||observed(hotels).some(h=>ratingValue(h)!==null),hasResorts=filters.resorts.length||observed(hotels).some(h=>hotelPlaces(h).length),resorts=hasResorts?[...new Set([...filters.resorts,...observed(hotels).flatMap(h=>hotelPlaces(h))])]:[],amenities=new Map();observed(hotels).forEach(h=>(h.amenities||[]).forEach(a=>{if(a?.filterable!==false){amenities.set(a.key,a);amenityNames.set(a.key,a);}}));for(const key of filters.amenities)if(!amenities.has(key)&&amenityNames.has(key))amenities.set(key,amenityNames.get(key));return {stars,resorts,amenities:[...amenities],hasRating};};
+ const expected=legacy(),before=visits;visits=0;
+ const c={getHotels:()=>observed(rows),state:{search:{country:'4'}},ratingValue,hotelPlaces,amenityNames};vm.createContext(c);vm.runInContext(functions(source,['filterPresentationInventory']),c);const actual=c.filterPresentationInventory(filters),after=visits;
+ assert.equal(JSON.stringify({stars:[...actual.stars],resorts:[...actual.resorts],amenities:[...actual.amenities],hasRating:actual.hasRating}),JSON.stringify(expected),'single presentation inventory preserves star/resort/amenity order and rating presence');
+ assert.deepEqual([before,after],[7000,1000],'seven repeated full source/filtered-list passes become one fresh inventory pass');
+ console.log(`WORK filter presentation hotel visits ${before}→${after}; no cross-render cache`);
 }
 {
  const current=facetRefresh(source),previous=facetRefresh(source,true);
