@@ -212,12 +212,13 @@ function hotelOfferPredicate(s,f,from,to){
  return o=>o.search.origin===s.origin&&o.search.country===s.country&&o.adults===s.adults&&sameAges(o)&&o.day>=from&&o.day<=to&&o.nights>=s.minNights&&o.nights<=s.maxNights&&matchesMeal(o,f.meals)&&o.total>=f.min&&(f.max===null||o.total<=f.max)&&(!f.operators.length||f.operators.includes(o.operator))&&(!f.flight.length||f.flight.includes(o.flight));
 }
 function hotelOffers(h,options={}){
- if(!h)return[];
+ const rawMinimum=options.minimumOnly==='raw';
+ if(!h)return rawMinimum?null:[];
  const s=options.search||state.search,f=options.filters||state.filters,selected=Object.hasOwn(options,'selectedDate')?options.selectedDate:state.selectedDate;
  const from=options.day||(selected&&!options.ignoreDate?selected:s.from),to=options.day||(selected&&!options.ignoreDate?selected:s.to);
- if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return[];
+ if(!hotelMatch(h,f,s,options.onlyFavorites??state.onlyFavorites))return rawMinimum?null:[];
  const matches=hotelOfferPredicate(s,f,from,to),compare=(a,b)=>a.total-b.total||a.day.localeCompare(b.day);
- if(options.minimumOnly){let offer=null;const rows=h.offers||[];for(let index=0,length=rows.length;index<length;index++){if(!(index in rows))continue;const row=rows[index];if(matches(row)&&(!offer||compare(row,offer)<0))offer=row;}return offer?[offer]:[];}
+ if(options.minimumOnly){let offer=null;const rows=h.offers||[];for(let index=0,length=rows.length;index<length;index++){if(!(index in rows))continue;const row=rows[index];if(matches(row)&&(!offer||compare(row,offer)<0))offer=row;}return rawMinimum?offer:offer?[offer]:[];}
  if(options.firstOnly){const offer=(h.offers||[]).find(matches);return offer?[offer]:[];}
  const offers=(h.offers||[]).filter(matches);
  return options.sort===false?offers:offers.sort(compare);
@@ -535,11 +536,17 @@ function filterChipData(model=appliedFilterModel()){
  return chips;
 }
 function removeModelFilter(model,key,value){const f=model.filters;if(key==='date')model.selectedDate=null;else if(key==='favorites')model.onlyFavorites=false;else if(key==='price'){f.min=0;f.max=null}else if(Array.isArray(f[key]))f[key]=f[key].filter(x=>String(x)!==String(value));else f[key]=key==='q'?'':key==='hotelId'?0:false;}
+function minimumHotelOfferTotal(model){
+ const options={...model,filters:{...model.filters,max:null},minimumOnly:'raw'},offers=[];
+ for(let index=0,length=hotels.length;index<length;index++){if(!(index in hotels))continue;const offer=hotelOffers(hotels[index],options);if(offer)offers.push(offer);}
+ if(!offers.length)return null;
+ let minimum=Infinity;for(const offer of offers)minimum=Math.min(minimum,offer.total);return minimum;
+}
 function recoverySuggestions(model){
  const f=model.filters,candidates=[];
  const count=(specs)=>{if(!specs.length)return false;const models=specs.map(spec=>{const next=structuredClone(model);spec.change(next);return next;}),counts=countMatchingHotelGroups(models);for(let i=0;i<specs.length&&candidates.length<3;i++)if(counts[i]){const {key,title,description='Остальные условия сохранятся'}=specs[i];candidates.push({key,title,description,count:counts[i],model:models[i]});}return candidates.length===3;};
  const first=[];
- if(f.max!==null){const wider={...model,filters:{...f,max:null},minimumOnly:true},offers=hotels.map(h=>hotelOffers(h,wider)[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;first.push({key:'budget',title:`Бюджет до ${money(ceiling)}`,change:m=>m.filters.max=ceiling});}}
+ if(f.max!==null){const minimum=minimumHotelOfferTotal(model);if(minimum!==null&&minimum>f.max){const ceiling=Math.ceil(minimum/1000)*1000;first.push({key:'budget',title:`Бюджет до ${money(ceiling)}`,change:m=>m.filters.max=ceiling});}}
  if(f.min>0)first.push({key:'minimum',title:`Убрать бюджет «от ${money(f.min)}»`,change:m=>m.filters.min=0});
  if(f.q)first.push({key:'q',title:'Убрать поиск по названию',change:m=>m.filters.q=''});
  if(count(first))return candidates;
@@ -1155,7 +1162,7 @@ function updateBudgetPreview(){
  const model={...appliedFilterModel(),filters:{...state.filters,min,max}},count=countMatchingHotels(model),complete=responseFor(state.search).phase==='complete';
  preview.textContent=count?`${hotelCountText(count)} в этом бюджете · по загруженной выдаче`:complete?'В этом бюджете нет отелей с выбранными условиями.':'В загруженной части выдачи пока нет отелей в этом бюджете.';
  if(count)apply.textContent=`Применить · ${hotelCountText(count)}`;
- if(!count&&complete&&max!==null){const offers=hotels.map(h=>hotelOffers(h,{...model,filters:{...model.filters,max:null},minimumOnly:true})[0]).filter(Boolean),minimum=offers.length?Math.min(...offers.map(o=>o.total)):null;
+ if(!count&&complete&&max!==null){const minimum=minimumHotelOfferTotal(model);
   if(minimum!==null&&minimum>max){const ceiling=Math.ceil(minimum/1000)*1000;recovery.dataset.value=ceiling;recovery.textContent=`Увеличить бюджет до ${money(ceiling)}`;recovery.hidden=false;}
  }
 }
