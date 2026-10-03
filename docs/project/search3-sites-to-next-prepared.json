@@ -1,0 +1,50 @@
+{
+  "base_sha": "2bfc5a243b31f7637015f842adcd16a54d90ba9c",
+  "sites_source": "5e4c844977a9d237c4bad724f990f2b98182b17c",
+  "sites_version": 14,
+  "css_changed_selectors": 102,
+  "css_superseded_rules_removed": 54,
+  "files": [
+    {
+      "path": "v2/visual-search/app.js",
+      "before": "2002e4e91749f803413ffa5a89abfd93928d5408b9300bf5376c4521ca5e3ef3",
+      "after": "e0b020ce48c026094d55c350ad1d537c6a1955e69fbcc00b01ba05000959053c",
+      "bytes_before": 298801,
+      "bytes_after": 298771
+    },
+    {
+      "path": "v2/visual-search/index.html",
+      "before": "72f200f4b3452725c5ebcd32e789478cc3735f65a84daacf2d02e4640b8f9b94",
+      "after": "8198f61315153e5ae5d77abdeb6e425017c60ccc680fa719843ace8d78fe8d65",
+      "bytes_before": 14753,
+      "bytes_after": 14877
+    },
+    {
+      "path": "v2/visual-search/migration-manifest.json",
+      "before": "79f3111321415c7385bc63925c1e3d6bf7853225f3ee7454ff57ae6a30cdfb83",
+      "after": "ace5f8fbe6ec3b2d6feacd0e85580d6e3bc53fc9bcc7f62f7179e316b1298cc8",
+      "bytes_before": 5017,
+      "bytes_after": 5115
+    },
+    {
+      "path": "v2/visual-search/mobile-controls-v1.css",
+      "before": "8b5c50dd5e352ae95603801d0469a6f89d411365131fe1a4fdc44f20976f151c",
+      "after": "4163fcf0509ef266e09089f88dcb276e4be5b6f3c796dcdb89a2a6d033c9d904",
+      "bytes_before": 2859,
+      "bytes_after": 2771
+    },
+    {
+      "path": "v2/visual-search/styles.css",
+      "before": "ad51969e22c9a55b94001554ed56066c190e7a746a3d1caf7ceeb36dbd509a95",
+      "after": "38034cae86ba275778d61eca0cce12bd112fd53c5f4d642a388e6130752cae91",
+      "bytes_before": 253647,
+      "bytes_after": 258900
+    }
+  ],
+  "status": "prepared-not-installed",
+  "protected_files": [
+    "index.php",
+    "offer-list-v1.js",
+    "data/quote/flight/lead owners"
+  ]
+}
