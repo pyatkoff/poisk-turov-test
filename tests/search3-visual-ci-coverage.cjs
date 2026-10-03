@@ -6,6 +6,7 @@ const root=path.resolve(__dirname,'..');
 const bootstrap=fs.readFileSync(path.join(root,'v2/visual-search/index.php'),'utf8');
 const html=fs.readFileSync(path.join(root,'v2/visual-search/index.html'),'utf8');
 const workflow=fs.readFileSync(path.join(root,'.github/workflows/search3-visual-migration.yml'),'utf8');
+const leadSources=require('../scripts/build/search3-js/lead-runtime.cjs').owners.map(owner=>'v2/'+owner.file);
 function patterns(workflow){
  const section=workflow.slice(workflow.indexOf('    paths:'),workflow.indexOf('\npermissions:'));
  return [...section.matchAll(/^\s+- '([^']+)'\s*$/gm)].map(m=>m[1]);
@@ -24,7 +25,7 @@ function dependencies(bootstrap,html){
  const live=[...array[1].matchAll(/'([^']+\.js)'/g)].map(m=>m[1]);
  const offline=[...html.matchAll(/(?:src|href)="(\.\/?[^"?]+\.(?:js|css))(?:\?[^" ]*)?"/g)].map(m=>m[1]);
  const optional=[...bootstrap.matchAll(/dirname\(__DIR__\)\s*\.\s*'\/([^']+\.php)'/g)].map(m=>'../'+m[1]);
- return [...new Set([...live,...offline,...optional].map(src=>path.posix.normalize(path.posix.join('v2/visual-search',src))))];
+ return [...new Set([...live,...offline,...optional].map(src=>path.posix.normalize(path.posix.join('v2/visual-search',src))).concat(leadSources))];
 }
 function verify(workflow,bootstrap,html){
  const rules=patterns(workflow),deps=dependencies(bootstrap,html);
@@ -48,4 +49,6 @@ assert.throws(()=>verify(workflow,bootstrap.replace("'../prototype-search/data.j
 assert.throws(()=>verify(workflow.replace("      - 'tests/search3-prototype-*.cjs'\n",''),bootstrap,html),/characterization trigger/,'test-only change detected');
 assert.throws(()=>verify(workflow.replace('ready_for_review, ',''),bootstrap,html),/restores/,'missing ready restoration detected');
 assert.throws(()=>verify(workflow.replace('    # Drafts retain','    if: ${{ !github.event.pull_request.draft }}\n    # Drafts retain'),bootstrap,html),/every draft/,'disabled draft check detected');
-console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; draft focus/full ready restoration; six coverage mutations detected`);
+for(const file of leadSources)assert.throws(()=>verify(workflow.replace("      - '"+file+"'\n",''),bootstrap,html),/every entry dependency/,'generated projection retains canonical source coverage: '+file);
+console.log(`PASS visual CI dependency coverage: ${deps.length} actual dependencies; draft focus/full ready restoration; eight coverage mutations detected`);
+require('./search3-visual-lead-runtime.cjs');
