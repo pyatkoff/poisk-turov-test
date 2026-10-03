@@ -1286,18 +1286,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: filter presentation inventory merged; structural optimization continues",
+    "title": "Search3 NEXT: result pagination inventory merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4354,
+    "pr": 4356,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "ca1a811a3feef7e3b739f32418bc02b8edd11411",
+    "last_fully_checked_release_sha": "4fa21b9ed2ba7e76241f6412c027c67012a98ce0",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "FILTER_PRESENTATION_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4354 sourceac97df37bfed566f58265910d45e02e4aad99850/tree3e797266be3c2cb41eefc5eeea5b6f7c603d0da2 is checked and merged as releaseca1a811a3feef7e3b739f32418bc02b8edd11411: one fresh per-render filter presentation inventory replaces repeated hotel discovery for stars, rating presence, resorts and amenities; deterministic1000-hotel top-level visits7000->1000; no cross-render cache and facet counts remain fresh. Honest size source+614raw/+160local-gzip, compiled/full-LIVE+381served/+141gzip-after, operation-count only with no transfer/latency reduction claim. Security37085611433, build37085611459 and fullvisual/compiledChromium37085611458 SUCCESS; terminal5964083284. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a read-only audit of active large-script/reconciliation/rendering work and require a material measurable hotspot before a new exact-path claim; do not create a cosmetic byte-only/code-movement continuation. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "RESULT_PAGINATION_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4356 source52615a53b3df49c9079ae93b2d894b2a0c08107b is checked and merged as release4fa21b9ed2ba7e76241f6412c027c67012a98ce0: load-more reuses only the exact current full-render result array, reducing deterministic1000-item result-inventory visits1000->0 and repeated inventory/calendar/active/nav/summary/URL/status collaborators7->0 while preserving exact24->48 cards, raw identity/order, focus, search-edit freeze and fresh full replacement on every search/filter/sort/progressive render. Honest size source+136raw/+32gzip, compiled app and complete LIVE graph+31served/+27gzip-after; operation-count only with no transfer/latency reduction claim. Security37089007572, lead37089007584, build37089007600 and fullvisual/exact-compiled-Chromium37089007579 SUCCESS; terminal5964523952. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a new read-only audit of active large-script/reconciliation/rendering work and require another material reproducible hotspot before a new exact-path claim; reject cosmetic byte-only/code movement. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4354"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4356"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
