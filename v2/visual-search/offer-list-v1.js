@@ -114,10 +114,16 @@ function renderMoreGroup(key,shown,remove){
  const limit=Math.min(group.offers.length,offerView.limits[key]||4),more=offerMoreEntry(key,group.offers.length,limit);
  appendGeneratedRoots(body,[...group.offers.slice(shown,limit).map(o=>offerRowEntry(o,currentCommonNote)),...(more?[more]:[])],remove);rememberUIRoute();return true;
 }
+function renderOfferGroup(key){
+ const group=currentInventory?.groups.find(group=>group.key===key),body=byId('group-'+key),heading=body?.previousElementSibling;
+ const scope=heading?.querySelector('.offer-group-scope'),minimum=heading?.querySelector('.offer-group-min>strong'),arrow=heading?.querySelector('.rotate-arrow');
+ if(!group||!body||!heading?.matches('[data-action="offer-group"]')||heading.dataset.value!==key||!scope||!minimum||!arrow||!appendGeneratedRoots(body,[]))return false;
+ const open=offerView.open.includes(key);heading.setAttribute('aria-expanded',String(open));body.hidden=!open;scope.hidden=open;minimum.hidden=open;arrow.classList.toggle('up',open);rememberUIRoute();return true;
+}
 function mountOfferList({h,all}){
  $('#modal-body').innerHTML=`${all.some(o=>!needsRefresh(o))?selectionStepsHTML(0):''}<div class="offer-list-context"><p>${offerSearchContext()} · ${durationText()} · ${guestsText()}</p><span>${icon('info')} Все цены за всех туристов. ${esc(sharedOfferNote(all)||(all.every(needsRefresh)?'Цены и наличие требуют проверки':'Сборы уточняются при выборе'))}</span></div><details class="offer-filter-disclosure" ${innerWidth>760?'open':''}><summary><span>Уточнить варианты <span id="offer-local-filter-count"></span></span><small id="offer-filter-summary"></small></summary><div class="offer-controls"><label class="offer-departure-filter">Дата вылета<select id="offer-departure"><option value="">Все даты</option></select></label><label>Перелёт<select id="offer-flight"><option value="">Любой</option></select></label><label>Номер<select id="offer-room"><option value="">Любой</option></select></label><label>Питание<select id="offer-meal"><option value="">Любое</option></select></label></div></details><div id="offer-local-selected" class="offer-local-selected" aria-label="Условия выбора тура" hidden></div><div class="offer-list-toolbar"><span id="offer-count" aria-live="polite" tabindex="-1"></span><label id="offer-sort-label"><span class="sr-only">Сортировать туры</span><select id="offer-sort"><option value="price">Сначала дешевле</option><option value="date">По дате вылета</option></select></label></div><button class="text-button offer-reset" data-action="reset-offer-filters" hidden>Сбросить фильтры туров</button><div id="all-offers-list"></div>`;
 }
- return {renderOfferList:reset=>{const inventory=offerListInventory();if(!$('#offer-count'))mountOfferList(inventory);renderOfferList(reset,inventory);},renderMoreGroup};
+ return {renderOfferList:reset=>{const inventory=offerListInventory();if(!$('#offer-count'))mountOfferList(inventory);renderOfferList(reset,inventory);},renderMoreGroup,renderOfferGroup};
 }
 window.AnyTourOfferList={create};
 })();
