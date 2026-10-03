@@ -1244,30 +1244,48 @@
     return Object.freeze({state:'current',currentContextVerified:true,finalPriceReady:ready,finalPrice,additionalPrices,
       finalPriceVerified:false,localHotelId:localId,searchRef,offerRef});
   }
-  async function verifyAnexConcrete(o){
-    const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');
-    if(!o||o.cached||o.provider!=='anex'||raw?.selectionEnabled!==false||raw?.anexKind!=='concrete'||raw?.anexSessionCurrent!==true
-      ||!Number.isSafeInteger(localId)||localId<1||!Number.isInteger(epoch)||epoch!==generation
-      ||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)||!(/^[a-f0-9]{32}$/).test(searchRef)){
-      throw new Error('Конкретное предложение ANEX устарело. Откройте актуальные варианты.');
-    }
+  const anexFollowUps=Object.freeze({
+    offer:{normalize:normalizeAnexConcrete,
+      stale:'Конкретное предложение ANEX устарело. Откройте актуальные варианты.',
+      limit:'Лимит проверки ANEX временно исчерпан.',failed:'ANEX не смог проверить выбранное предложение.',
+      invalid:'ANEX вернул ответ для другого или устаревшего предложения.'},
+    flights:{normalize:normalizeAnexFlights,attempts:anexFlightAttempts,receipts:anexFlightReceipts,
+      stale:'Сначала проверьте контекст конкретного предложения ANEX.',
+      repeated:'Рейсы уже запрашивались. Неизвестный результат не запрашивается повторно.',
+      limit:'Лимит проверки рейсов ANEX временно исчерпан.',failed:'Не удалось получить рейсы ANEX.',
+      invalid:'Рейсы выбранного предложения не подтверждены.'},
+    additional_prices:{normalize:normalizeAnexAdditional,attempts:anexAdditionalAttempts,
+      stale:'Сначала подтвердите актуальность конкретного предложения ANEX.',
+      repeated:'Обязательные доплаты уже запрашивались для этого предложения. Повторите поиск для новой проверки.',
+      limit:'Лимит проверки доплат ANEX временно исчерпан.',failed:'ANEX не смог уточнить обязательные доплаты.',
+      invalid:'ANEX не вернул применимый расчёт обязательных доплат.'}
+  });
+  async function verifyAnexFollowUp(o,action){
+    const operation=anexFollowUps[action],identity=anexConcreteKey(o);
+    if(!identity||action!=='offer'&&!anexCurrentReceipts.has(identity.key))throw new Error(operation.stale);
+    if(operation.receipts?.has(identity.key))return operation.receipts.get(identity.key);
+    if(operation.attempts?.has(identity.key))throw new Error(operation.repeated);
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
+    operation.attempts?.add(identity.key);
     activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
     const timeout=setTimeout(()=>controller.abort(),30000);
     try{
-      const body={action:'offer',generation:epoch,search_ref:searchRef,offer_ref:offerRef,local_hotel_id:localId};
+      const body={action,generation:identity.epoch,search_ref:identity.searchRef,offer_ref:identity.offerRef,local_hotel_id:identity.localId};
       const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
       const payload=await response.json().catch(()=>null);
-      if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data)throw new Error(response.status===429?'Лимит проверки ANEX временно исчерпан.':'ANEX не смог проверить выбранное предложение.');
-      const currentOffer=normalizeAnexConcrete(payload.data,o);if(!currentOffer)throw new Error('ANEX вернул ответ для другого или устаревшего предложения.');
-      const identity=anexConcreteKey(o);if(!identity)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      anexCurrentReceipts.add(identity.key);
-      return currentOffer;
+      if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(!response.ok||payload?.ok!==true||action!=='flights'&&!payload.data)throw new Error(response.status===429?operation.limit:operation.failed);
+      const result=operation.normalize(payload.data,o);if(!result)throw new Error(operation.invalid);
+      if(action==='offer'){
+        const currentIdentity=anexConcreteKey(o);if(!currentIdentity)throw new Error('Условия поиска изменились. Выберите тур заново.');
+        anexCurrentReceipts.add(currentIdentity.key);
+      }else operation.receipts?.set(identity.key,result);
+      return result;
     }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
   }
+  async function verifyAnexConcrete(o){return verifyAnexFollowUp(o,'offer');}
   function normalizeAnexPackage(value,o,choiceRef){
     const identity=anexConcreteKey(o);
     if(!identity||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef)return null;
@@ -1383,27 +1401,7 @@
         routes:Object.freeze(routes),truncated:inventory.truncated});
     }catch{return null;}
   }
-  async function verifyAnexFlights(o){
-    const identity=anexConcreteKey(o);
-    if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Сначала проверьте контекст конкретного предложения ANEX.');
-    if(anexFlightReceipts.has(identity.key))return anexFlightReceipts.get(identity.key);
-    if(anexFlightAttempts.has(identity.key))throw new Error('Рейсы уже запрашивались. Неизвестный результат не запрашивается повторно.');
-    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
-    if(!url)throw new Error('ANEX сейчас недоступен.');
-    anexFlightAttempts.add(identity.key);
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
-    const timeout=setTimeout(()=>controller.abort(),30000);
-    try{
-      const body={action:'flights',generation:identity.epoch,search_ref:identity.searchRef,offer_ref:identity.offerRef,local_hotel_id:identity.localId};
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
-      const payload=await response.json().catch(()=>null);
-      if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true)throw new Error(response.status===429?'Лимит проверки рейсов ANEX временно исчерпан.':'Не удалось получить рейсы ANEX.');
-      const result=normalizeAnexFlights(payload.data,o);if(!result)throw new Error('Рейсы выбранного предложения не подтверждены.');
-      anexFlightReceipts.set(identity.key,result);return result;
-    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
-  }
+  async function verifyAnexFlights(o){return verifyAnexFollowUp(o,'flights');}
   function normalizeAnexAdditional(value,o,status='additional_prices'){
     const identity=anexConcreteKey(o),evidence=value&&value.additional_prices;
     if(!identity||!value||value.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef
@@ -1421,28 +1419,7 @@
       partySurcharge:Object.freeze({amount:surcharge.amount,currency:'RUB'}),
       calculatedTotal:Object.freeze({amount:total.amount,currency:'RUB'})});
   }
-  async function verifyAnexAdditional(o){
-    const identity=anexConcreteKey(o);
-    if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Сначала подтвердите актуальность конкретного предложения ANEX.');
-    if(anexAdditionalAttempts.has(identity.key))throw new Error('Обязательные доплаты уже запрашивались для этого предложения. Повторите поиск для новой проверки.');
-    const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
-    if(!url)throw new Error('ANEX сейчас недоступен.');
-    anexAdditionalAttempts.add(identity.key);
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
-    const timeout=setTimeout(()=>controller.abort(),30000);
-    try{
-      const body={action:'additional_prices',generation:identity.epoch,search_ref:identity.searchRef,offer_ref:identity.offerRef,local_hotel_id:identity.localId};
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-        headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
-      const payload=await response.json().catch(()=>null);
-      if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data){
-        throw new Error(response.status===429?'Лимит проверки доплат ANEX временно исчерпан.':'ANEX не смог уточнить обязательные доплаты.');
-      }
-      const result=normalizeAnexAdditional(payload.data,o);if(!result)throw new Error('ANEX не вернул применимый расчёт обязательных доплат.');
-      return result;
-    }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
-  }
+  async function verifyAnexAdditional(o){return verifyAnexFollowUp(o,'additional_prices');}
   function andromedaContext(value,depth=0){
     if(!value||depth>1||value.provider!=='andromeda'||!(/^offer_[a-f0-9]{64}$/).test(String(value.offer_ref||''))
       ||!(/^[a-f0-9]{64}$/).test(String(value.search_ref||''))||!Number.isInteger(value.generation)||value.generation<1

@@ -99,6 +99,8 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
   }
   if(target.pathname==='/_preview/search3-anex-candidate/api-anex-search3-preview.php'){
    assert.ok(anex,'unexpected direct ANEX request');
+   assert.equal(options.method,'POST');assert.equal(options.credentials,'same-origin');assert.equal(options.cache,'no-store');
+   assert.equal(JSON.stringify(options.headers),JSON.stringify({'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'}));
    const body=JSON.parse(options.body);anexCalls.push(structuredClone(body));
    const result=await anex(body,options.signal,anexCalls);
    if(result&&result.response)return result.response;
@@ -474,6 +476,49 @@ test('expanded concrete ANEX offer verifies in the same provider session without
  assert.equal(current.state,'current');assert.equal(current.currentContextVerified,true);assert.equal(current.finalPriceReady,false);
  assert.equal(current.finalPrice,null);assert.equal(current.finalPriceVerified,false);
 });
+for(const [action,method] of [['offer','verifyAnexConcrete'],['flights','verifyAnexFlights'],['additional_prices','verifyAnexAdditional']]){
+ for(const mode of ['invalid-json','rate-limit','timeout','superseded'])test(`ANEX ${action} preserves protocol, cleanup and ${mode} authority`,async()=>{
+  const gate=defer();let target=false,signal=null;
+  const h=harness({anex:async(body,requestSignal)=>{
+   if(target&&body.action===action&&!signal){
+    signal=requestSignal;
+    if(mode==='timeout'||mode==='superseded')await gate.promise;
+    return {response:{ok:mode!=='rate-limit',status:mode==='rate-limit'?429:200,json:async()=>{
+     if(mode==='invalid-json')throw Error('PRIVATE malformed supplier reply');
+     return currentAnexConcrete(body);
+    }}};
+   }
+   return {response:{ok:true,status:200,json:async()=>body.action==='expand'?expandedAnex(body):body.action==='offer'?currentAnexConcrete(body):directAnex(body)}};
+  }});
+  canonicalMeals(h);await h.start();await h.poll();
+  const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
+  const concrete=(await h.data.expandAnexGroup(group)).offers[0];
+  if(action!=='offer')await h.data.verifyAnexConcrete(concrete);
+  const timersBefore=[...h.timers.keys()],callsBefore=h.anexCalls.length;target=true;
+  const pending=h.data[method](concrete);
+  const rejected=assert.rejects(pending,error=>{
+   assert.doesNotMatch(error.message,/PRIVATE/);
+   assert.match(error.message,mode==='rate-limit'?/Лимит/:mode==='invalid-json'?/не смог|Не удалось/:/Условия поиска изменились/);
+   return true;
+  });
+  await waitFor(()=>signal!==null,'one explicit verification request required');
+  assert.equal(h.anexCalls.length,callsBefore+1);
+  assert.equal(JSON.stringify(h.anexCalls.at(-1)),JSON.stringify({action,generation:concrete.raw.anexGeneration,
+   search_ref:concrete.raw.searchRef,offer_ref:concrete.raw.offerRef,local_hotel_id:concrete.raw.anexLocalHotelId}));
+  if(mode==='timeout'){
+   const timeout=[...h.timers.values()].find(timer=>timer.delay===30000);assert.ok(timeout,'existing30s limit remains');
+   timeout.fn();assert.equal(signal.aborted,true);gate.resolve();
+  }else if(mode==='superseded'){
+   await h.data.verifyAnexConcrete(concrete);assert.equal(signal.aborted,true,'explicit successor aborts the previous cycle');gate.resolve();
+  }
+  await rejected;
+  assert.deepEqual([...h.timers.keys()],timersBefore,'all timers from either cycle are cleaned');
+  const beforeReplay=h.anexCalls.length;
+  if(action!=='offer')await assert.rejects(h.data[method](concrete),/уже запрашивались/);
+  else if(mode!=='superseded')await assert.rejects(h.data.verifyAnexAdditional(concrete),/Сначала подтвердите/);
+  assert.equal(h.anexCalls.length,beforeReplay,'failed authority never spends another follow-up');
+ });
+}
 test('ANEX current authority requires exact envelope identity and the server top-level context',async()=>{
  for(const [name,mutate] of [
   ['missing context',v=>{delete v.context;}],
