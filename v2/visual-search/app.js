@@ -455,7 +455,7 @@ const editingFilterModel=()=>filterDraft||appliedFilterModel();
 const countMatchingHotels=model=>{const s=model.search||state.search,f=model.filters||state.filters,selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to),matches=hotelOfferPredicate(s,f,from,to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;return hotels.reduce((count,h)=>count+Number(hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined),0);};
 // Facet counts are per hotel, so stop after each requested identity is found.
 // Keep the inventory local to this pass: later responses and edits recalculate it.
-function countFacetOptions(model,group,values,selectedInventory=null){
+function facetCountPlan(model,group,values,selectedInventory=null){
  const counts=new Map(values.map(value=>[value,0]));if(!counts.size)return counts;
  if(!['meals','operators','flight','resorts','stars','amenities'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
  const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=['resorts','stars','amenities'].includes(group),wanted=new Map(),selectedKeys=new Set();
@@ -471,20 +471,20 @@ function countFacetOptions(model,group,values,selectedInventory=null){
   if(!wanted.size)return counts;
  }
  const matches=!hotelFacet||group==='amenities'?hotelOfferPredicate(s,filters,from,to):null;
- for(const h of hotels){
-  if(!h)continue;
+ const visit=h=>{
+  if(!h)return;
   if(hotelFacet){
    if(group==='amenities'){
-    if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites)||(h.offers||[]).find(matches)===undefined)continue;
-   }else if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)continue;
+    if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites)||(h.offers||[]).find(matches)===undefined)return;
+   }else if(!hotelOffers(h,{...model,filters,firstOnly:true}).length)return;
    let facts;if(group==='resorts')facts=hotelPlaces(h);else if(group==='stars')facts=[h.stars];else{facts=new Set();(h.amenities||[]).forEach(value=>facts.add(value.key));}
    const selectedMatch=group==='amenities'?selectedValues.every(value=>facts.has(value)):!selectedValues.length||selectedValues.some(value=>facts.includes(value));
    if(selectedInventory&&selectedMatch)selectedInventory.count++;
-   if(group==='amenities'&&!selectedMatch)continue;
+   if(group==='amenities'&&!selectedMatch)return;
    for(const value of new Set(facts))if(counts.has(value))counts.set(value,counts.get(value)+1);
-   continue;
+   return;
   }
-  if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))continue;
+  if(!hotelMatch(h,filters,s,model.onlyFavorites??state.onlyFavorites))return;
   const remaining=new Set(wanted.keys());let selectedMatch=false;
   for(const o of h.offers||[]){
    const key=group==='meals'?(data.live?o.mealPlanId:o.meal):group==='operators'?o.operator:o.flight;
@@ -496,7 +496,22 @@ function countFacetOptions(model,group,values,selectedInventory=null){
    for(const value of wanted.get(key))counts.set(value,counts.get(value)+1);
    remaining.delete(key);if(!remaining.size&&(!selectedInventory||selectedMatch))break;
   }
+ };
+ return {counts,visit};
+}
+function countFacetOptions(model,group,values,selectedInventory=null){
+ const plan=facetCountPlan(model,group,values,selectedInventory);if(plan instanceof Map)return plan;
+ for(const h of hotels)plan.visit(h);
+ return plan.counts;
+}
+function countFacetOptionGroups(model,groups,selectedInventory=null){
+ const counts=new Map(),plans=[];let selected=false;
+ for(const [group,values] of groups){
+  const selection=selectedInventory&&!selected?selectedInventory:null,plan=facetCountPlan(model,group,values,selection);
+  if(plan instanceof Map){counts.set(group,plan);continue;}
+  if(selection)selected=true;counts.set(group,plan.counts);plans.push(plan);
  }
+ for(const h of hotels)for(const plan of plans)plan.visit(h);
  return counts;
 }
 const hotelCountText=n=>`${n} ${n%10===1&&n%100!==11?'отель':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'отеля':'отелей'}`;
@@ -565,7 +580,7 @@ function updateDrawerPreview(knownCount){
 }
 function filterEdited(rebuild=false){if(filterDraft){if(rebuild){renderFilters();updateDrawerPreview()}else updateDrawerPreview(updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));}
 const {facetQueries,expandedFilterSections,compareMealLabels,syncFilterSections,setFilterSectionOpen,applyFacetSearch,updateFacetCounts,settleFilterRoots,renderFilterNavigation,jumpToFilterSection,renderFilters}=window.AnyTourFilterPanelV1.create({
- $,$$,esc,icon,state,data,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,
+ $,$$,esc,icon,state,data,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,countFacetOptionGroups,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,
  getHotels:()=>hotels,getFilterDraft:()=>filterDraft,getViewportWidth:()=>innerWidth
 });
 
