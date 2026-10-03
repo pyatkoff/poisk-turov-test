@@ -72,6 +72,7 @@ function characterize(source, scenario) {
     searchLifecycle:{requestSubmit:()=>trace.push(['requestSubmit'])},
     getStored:()=>['Moscow','Kazan'],recentDestinations:()=>[{country:'Egypt',resorts:[],hotelId:0}],
     destinationHotel:()=>({id:7,country:'Turkey'}),normalizeSearch:s=>s.trim().toLowerCase(),
+    renderMoreDestinationHotels:()=>{trace.push(['renderMoreDestinationHotels']);return 4;},
     dateObj:s=>new Date(s+'T00:00:00Z'),iso:d=>d.toISOString().slice(0,10),dateRangeError:()=>false,
     readBudget:()=>({valid:!scenario.invalidBudget,min:200,max:2000,invalidMin:true}),scrollBehavior:()=> 'instant'
   };
@@ -163,7 +164,7 @@ const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='8f417fcfcc78a2c25e1317c623aab8b95bda9fe5cd0684e055fe31a144b45543';
+const BASELINE='489f7e05a479fd524c3d77cacd59a79ca8253cf79ff377bfbb6a143062a41663';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original retained event observations');
 const result=name=>actual.find(r=>r.name===name).result;
@@ -174,6 +175,7 @@ assert.deepEqual(result('jump stops later attributes').trace,[['jumpToFilterSect
 assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
+assert.deepEqual(result('first new hotel focuses').trace.slice(-3),[['renderMoreDestinationHotels'],['focus','.destination-hotel[4]',{preventScroll:true}],['scrollIntoView','.destination-hotel[4]',{block:'nearest',behavior:'instant'}]],'destination page focuses and reveals the first appended hotel');
 // Stale comparison controls are unknown change events; they cannot mutate the
 // retained favorites, selected tour, provider, filter or flight state.
 const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
