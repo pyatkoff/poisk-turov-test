@@ -305,8 +305,12 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
  vm.createContext(ctx);vm.runInContext(generatedRootOwner(source),ctx);
  const a=document.querySelector('#a'),b=document.querySelector('#b'),entries=[{id:'same',markup:'<button id="same">Current</button>'}];
  try{
-  ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);const other=b.firstChild;a.firstChild.textContent='stale';ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);
+ ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);const other=b.firstChild;a.firstChild.textContent='stale';ctx.paintGeneratedRoots(a,entries);ctx.paintGeneratedRoots(b,entries);
   assert.equal(a.textContent,'Current');assert.strictEqual(b.firstChild,other,'container bindings are independent');
+  const clean=a.firstChild;assert.equal(ctx.appendGeneratedRoots(a,[]),true);assert.strictEqual(a.firstChild,clean,'empty append keeps an unchanged generated root');
+  a.firstChild.textContent='dirty';const dirty=a.firstChild;assert.equal(ctx.appendGeneratedRoots(a,[]),true);assert.notStrictEqual(a.firstChild,dirty,'empty append replaces a known externally dirtied root');assert.equal(a.textContent,'Current');
+  a.append(document.createElement('span'));assert.equal(ctx.appendGeneratedRoots(a,[]),false,'an unknown inserted root fails closed for a full-render fallback');
+  assert.equal(ctx.appendGeneratedRoots(document.createElement('div'),[]),false,'an unbound root fails closed');
  }finally{dom.window.close();}
  const mutated=summaryDOM({code:source.replace('previous&&!dirty.has(previous)&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)','previous&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)')});
  try{mutated.render();mutated.summary.querySelector('[data-action="budget"] strong').textContent='stale';mutated.render();assert.equal(mutated.summary.querySelector('[data-action="budget"] strong').textContent,'stale','missing mutation invalidation is detected');}finally{mutated.close();}
