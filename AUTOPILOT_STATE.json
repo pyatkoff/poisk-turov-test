@@ -1286,35 +1286,30 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: inventory+CSS package accepted; structural optimization continues",
+    "title": "Search3 NEXT: hotel-details same-call inventory merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4348,
+    "pr": 4350,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+    "last_fully_checked_release_sha": "f56c722246fb7e520524bcff9a2a077bff10501c",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "NEXT_INVENTORY_CASCADE_ACCEPTED_SNAPSHOT_LIST_HISTORY_FILTER_PRISTINE_LIVE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue structural optimization from fresh release and current claims. Current4348 packet implemented/checked/merged/published/live-verified; onecommand5962942732/run37076627937 terminal/no-replay, newpublishedpredecessor 6ddeb4a88b9c05966f0e5682bc6418752fd5bf46. Initial598638/full628442, -7354/-7345compiled; direct offer-list3->1/history3->2, no latencyclaim. Existing NEXTRefactor scheduler is enabled hourly, first resumed backgroundrun notyetverified. Next finite hotel-details invocation-inventory candidate is read-onlyREADY: opening2->1 with fresh later renders,20raw+served+20updated-price evidence, compiled+55B compute tradeoff. Claim exact current paths, preserve assertions/protected contracts, existing narrow+mandatoryCI+compiledresponsive acceptance before merge; accumulate compatible work before one guarded NEXT publication. Current runtime source/integration/publisher claims RELEASED; final three-path audit/state rootclaim remains ACTIVE until docs terminal, then released. No production, second coordinator, byte-only PR, data.js/INT handoff shortcut or historical replay.",
+    "acceptance_status": "HOTEL_DETAILS_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue structural optimization from fresh release and current claims. PR4350 source5ede80e994035d380b0c7ac1e7660bbf2282e541/treebe3a506648b785d8908174bc6be61a38f8d43112 is checked and merged as releasef56c722246fb7e520524bcff9a2a077bff10501c: opening inventory2->1,1000-offer visits2000->1000, comparisons17066->8533; later renders remain fresh; raw+49/served+20/compiled-gzip+12, no latencyclaim. Security37081257447, build37081257414 and fullvisual37081257484 SUCCESS; terminal5963550537. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next finite candidate is meal-picker same-call selected-count reuse: open/refresh currently run one facet inventory then repeat scalar selected-model counting; use the existing per-pass selectedInventory result only within that call, retain fresh later edits. Claim exact source paths separately, characterize meal-specific wiring, run narrow+mandatoryCI+compiledresponsive before merge, and keep accumulating compatible work before one guarded NEXT publication. No production, byte-only PR, data.js/INT handoff shortcut or historical replay.",
     "next_task": {
-      "id": "S3_NEXT_HOTEL_DETAILS_INVOCATION_INVENTORY",
+      "id": "S3_NEXT_MEAL_PICKER_SELECTED_COUNT_INVENTORY",
       "status": "READ_ONLY_READY_NOT_IMPLEMENTED",
       "paths": [
-        "v2/visual-search/hotel-details-v1.js",
-        "tests/search3-visual-hotel-details-rendering.cjs",
+        "v2/visual-search/app.js",
+        "tests/search3-visual-facet-presentation.cjs",
         "v2/visual-search/migration-manifest.json"
       ],
-      "benefit": "Same synchronous opening computes matching/sorted offers and meal inventory twice; reuse within that invocation only. Later filters/results keep fresh computation.",
-      "evidence": "20 existing raw+served observations retain digest d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5, plus20 later-price states; actual1000-offer host direct/warm calls2->1, filter visits2000->1000, comparisons17066->8533; subsequent renders1->1.",
-      "cost": {
-        "source_delta": 75,
-        "compiled_delta": 55,
-        "local_gzip_delta": 30
-      },
-      "execution": "Read fresh release/current_task/claims; claim exact paths; implement bounded same-call optional inventory; preserve all assertions and fresh defaults. Existing rendering/lazy/newest/failure/history plus exact CI/compiled responsive checks before merge. Accumulate compatible work before one guarded NEXT publish; no replay or per-micro-change deploy.",
-      "protected": "No app.js/data.js/provider/price/fuel/lead/Metrika/prototype change; favorites current paused flag retained."
+      "benefit": "Reuse countFacetOptions selectedInventory only between updateMealCounts and the immediately following updateMealPicker for the same model. This removes one full scalar selected-model hotel traversal from meal-picker open and result-refresh without a cross-event cache; checkbox/query edits continue to compute fresh counts.",
+      "evidence": "Both openMeals and refreshResultPickerPreviews call updateMealCounts then updateMealPicker synchronously. Existing deterministic non-hotel-facet oracle proves selectedInventory is exact and reports twelve redundant scalar selected counts as1212 age canonicalizations; one same-model scalar pass is101 in the 100-hotel fixture and becomes0 when the batched result is consumed. Add a meal-specific call-count/fresh-edit assertion before implementation and report honest raw/served/gzip deltas.",
+      "execution": "Read fresh release/current_task/claims; claim only the three paths; characterize same-call meal open/refresh and later checkbox/query edits; pass the selected count as a one-call argument, never persistent state. Preserve calendar/filter/search-scope semantics, raw identity/order, price/fuel, supplier/auth and lead/Metrika contracts. Run narrow facet/event tests, all applicable exact-head CI and compiled responsive acceptance before merge; accumulate before one guarded NEXT publish.",
+      "protected": "No data.js, provider, supplier/auth, price/fuel, lead/CRM/Metrika, prototype or favorites-flag change; no persistent inventory cache and no production/sibling preview change."
     },
     "scheduler_observation": {
       "id": "6a936eb5226081919fb7ec372e05d2e0",
@@ -1328,7 +1323,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/blob/release/search3-production-ready-v1/docs/project/search3-inventory-cascade-20261003.md"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4350"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
