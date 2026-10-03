@@ -455,10 +455,11 @@ const editingFilterModel=()=>filterDraft||appliedFilterModel();
 const countMatchingHotels=model=>{const s=model.search||state.search,f=model.filters||state.filters,selected=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate,from=model.day||(selected&&!model.ignoreDate?selected:s.from),to=model.day||(selected&&!model.ignoreDate?selected:s.to),matches=hotelOfferPredicate(s,f,from,to),onlyFavorites=model.onlyFavorites??state.onlyFavorites;return hotels.reduce((count,h)=>count+Number(hotelMatch(h,f,s,onlyFavorites)&&(h.offers||[]).find(matches)!==undefined),0);};
 // Facet counts are per hotel, so stop after each requested identity is found.
 // Keep the inventory local to this pass: later responses and edits recalculate it.
-function facetCountPlan(model,group,values,selectedInventory=null){
- const counts=new Map(values.map(value=>[value,0]));if(!counts.size)return counts;
- if(!['meals','operators','flight','resorts','stars','amenities'].includes(group))return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
- const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,hotelFacet=['resorts','stars','amenities'].includes(group),wanted=new Map(),selectedKeys=new Set();
+function facetCountPlan(model,group,values,selectedInventory=null,dynamic=false){
+ const supported=['meals','operators','flight','resorts','stars','amenities'].includes(group),hotelFacet=['resorts','stars','amenities'].includes(group),counts=new Map(values.map(value=>[value,0]));
+ if(!counts.size&&!(dynamic&&hotelFacet))return counts;
+ if(!supported)return new Map(values.map(value=>[value,countMatchingHotels({...model,filters:{...model.filters,[group]:[value]}})]));
+ const selectedValues=model.filters[group]||[],filters={...model.filters,[group]:[]},s=model.search||state.search,wanted=new Map(),selectedKeys=new Set();
  if(selectedInventory)selectedInventory.count=0;
  const selectedDate=Object.hasOwn(model,'selectedDate')?model.selectedDate:state.selectedDate;
  const from=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.from),to=model.day||(selectedDate&&!model.ignoreDate?selectedDate:s.to);
@@ -497,21 +498,25 @@ function facetCountPlan(model,group,values,selectedInventory=null){
    remaining.delete(key);if(!remaining.size&&(!selectedInventory||selectedMatch))break;
   }
  };
- return {counts,visit};
+ const add=value=>{if(dynamic&&hotelFacet&&!counts.has(value))counts.set(value,0);};
+ return {counts,visit,add};
 }
 function countFacetOptions(model,group,values,selectedInventory=null){
  const plan=facetCountPlan(model,group,values,selectedInventory);if(plan instanceof Map)return plan;
  for(const h of hotels)plan.visit(h);
  return plan.counts;
 }
-function countFacetOptionGroups(model,groups,selectedInventory=null){
- const counts=new Map(),plans=[];let selected=false;
+function countFacetOptionGroups(model,groups,selectedInventory=null,discover=null){
+ const counts=new Map(),plans=[],plansByGroup=new Map();let selected=false;
  for(const [group,values] of groups){
-  const selection=selectedInventory&&!selected?selectedInventory:null,plan=facetCountPlan(model,group,values,selection);
+  const selection=selectedInventory&&!selected?selectedInventory:null,plan=facetCountPlan(model,group,values,selection,!!discover);
   if(plan instanceof Map){counts.set(group,plan);continue;}
-  if(selection)selected=true;counts.set(group,plan.counts);plans.push(plan);
+  if(selection)selected=true;counts.set(group,plan.counts);plans.push(plan);plansByGroup.set(group,plan);
  }
- for(const h of hotels)for(const plan of plans)plan.visit(h);
+ for(const h of hotels){
+  discover?.(h,(group,value)=>plansByGroup.get(group)?.add(value));
+  for(const plan of plans)plan.visit(h);
+ }
  return counts;
 }
 const hotelCountText=n=>`${n} ${n%10===1&&n%100!==11?'отель':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'отеля':'отелей'}`;
