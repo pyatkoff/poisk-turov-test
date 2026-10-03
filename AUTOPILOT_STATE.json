@@ -1286,18 +1286,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: destination pagination inventory merged; structural optimization continues",
+    "title": "Search3 NEXT: cold group pagination inventory merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4360,
+    "pr": 4362,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "951f1a8b9b18cad764926b12fdc8ef943dae58c7",
+    "last_fully_checked_release_sha": "b1bc8f6148b3405dafa4056a305b863212b115bd",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "DESTINATION_PAGINATION_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4360 sourcefab3137edd5b7e1867c6d1806b31edc4c428bd4a is checked and merged as release951f1a8b9b18cad764926b12fdc8ef943dae58c7: destination pagination reuses the fresh exact match inventory from the immediately preceding full render and appends only the next eight generated roots while every full render/async lookup refresh replaces inventory fresh. Deterministic 1000-match history-bounded 8->80 work is rank normalization/preference evaluations10010->1001 and visible hotel markup440->80, with exact final DOM/order/raw object identity, clean live node identity, dirty-root repair, async replacement, history restore and focus/scroll retained. Honest delta: source+940raw/+257gzip-before; compiled app and complete LIVE graph+475served/+126gzip-after. This is rendering-operation reduction only; no transfer or latency reduction claim. Security37092764946, lead37092765007, build37092764977 and fullvisual/exact-compiled-Chromium37092764960 SUCCESS; terminal5965047664. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a new read-only audit of active large-script/reconciliation/rendering work and require another material reproducible hotspot before a new exact-path claim; reject cosmetic byte-only/code movement. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "COLD_GROUP_PAGINATION_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4362 sourcec68b6154fcfa365dee65c687d1090a174c49b5d2 is checked and merged as releaseb1bc8f6148b3405dafa4056a305b863212b115bd: cold all-offers group pagination retains only the exact inventory and shared note from the immediately preceding successful full render, then reconciles/appends only the next eight rows through the existing generated-root owner; every full render/filter/sort/group/refinement refresh replaces that inventory fresh. Deterministic accepted 500-offer one-group 4->500 work is full inventory visits31500->500 and visible row markup builds15876->500, with exact final DOM/view/route output, raw object identity/order, clean live node identity, dirty-row repair, lazy lifecycle, stale-request cancellation, filter/sort/refinement semantics, history restore and focus/scroll retained. Pinned result/calendar/list digest eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9 remains exact. Honest delta: source app+offer owner+1468raw/+468gzip; compiled complete JS+1124served/+438 summed per-asset gzip. This is rendering-operation reduction only; no transfer or latency reduction claim. Security37095183733, lead37095183704, build37095183712 and fullvisual/exact-compiled-Chromium37095183706 SUCCESS; terminal5965382775. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a new read-only audit of active large-script/reconciliation/rendering work and require another material reproducible hotspot before a new exact-path claim; reject cosmetic byte-only/code movement. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4360"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4362"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
