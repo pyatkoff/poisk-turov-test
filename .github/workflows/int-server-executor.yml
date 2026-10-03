@@ -7,9 +7,11 @@ on:
       - '.github/workflows/int-server-executor.yml'
       - 'scripts/deploy/int_server_executor.py'
       - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
+      - 'scripts/deploy/int_server_executor_firstpage_readback.py'
       - 'scripts/deploy/int_server_executor_match_primary.py'
       - 'tests/int_server_executor_test.py'
       - 'tests/int_server_executor_anex_secret_transport_test.py'
+      - 'tests/int_server_executor_firstpage_readback_test.py'
       - 'tests/int_server_executor_match_primary_test.py'
       - 'scripts/deploy/int_server_executor_local_profile_plan.py'
       - 'scripts/diagnostics/local_profile_plan_4191.php'
@@ -67,6 +69,8 @@ jobs:
           python3 tests/int_server_executor_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
+          python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
@@ -123,6 +127,8 @@ jobs:
           python3 tests/int_server_executor_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
           python3 tests/int_server_executor_anex_secret_transport_test.py -v
+          python3 -m py_compile scripts/deploy/int_server_executor_firstpage_readback.py
+          python3 tests/int_server_executor_firstpage_readback_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_match_primary.py
           python3 tests/int_server_executor_match_primary_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_local_profile_plan.py
