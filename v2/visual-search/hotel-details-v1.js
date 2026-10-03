@@ -50,9 +50,9 @@ function hotelAmenitiesHTML(h){
 function roomOfferChoiceHTML(o){
  return `<div class="room-offer-choice" data-offer-key="${esc(o.key)}"><div class="room-offer-conditions"><strong class="room-offer-meal">${esc(mealLabel(o))}</strong><dl class="room-choice-facts"><div><dt class="sr-only">Даты и отдых</dt><dd><time datetime="${esc(o.day)}">${dateText(o.day)}</time> → <time datetime="${esc(o.returnDay)}">${dateText(o.returnDay)}</time> · ${nightsText(o.nights)}</dd></div></dl><span class="room-offer-operator">${esc(o.operator)} · ${flightLabel(o)}</span></div><div class="hotel-room-price"><small>Весь тур · ${guestsText(o)}</small><strong>${money(o.total)}</strong><button class="primary" data-action="offer" data-key="${esc(o.key)}" aria-label="Смотреть тур: ${esc(mealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}">Смотреть тур ${icon('arrow')}</button></div></div>`;
 }
-function renderHotelRooms(id,meal='',restoredRooms=null){
+function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  const h=hotels.find(h=>h.id===id);if(!h||modalType!=='hotel-details')return;
- const allOffers=hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];
+ const allOffers=initialOffers||hotelOffers(h),meals=[...new Set(allOffers.map(o=>o.meal))];
  let mealControl=$('#hotel-room-meal');
  if(!mealControl&&meals.length>1&&allOffers.length>2){$('#hotel-room-count').insertAdjacentHTML('beforebegin',`<label class="hotel-room-meal-filter">Питание в туре<select id="hotel-room-meal" data-id="${h.id}"></select></label>`);mealControl=$('#hotel-room-meal');}
  if(mealControl){const values=['',...meals];if(meal&&!values.includes(meal))values.push(meal);if(JSON.stringify([...mealControl.options].map(o=>o.value))!==JSON.stringify(values))mealControl.innerHTML=values.map(value=>`<option value="${esc(value)}">${esc(value||'Любое питание')}</option>`).join('');}
@@ -100,7 +100,7 @@ function openHotelDetails(id){
  <p id="hotel-room-count" class="hotel-room-count" role="status" aria-live="polite"></p><div class="hotel-room-cards"></div></section>`;
  $('#modal').classList.add('hotel-details-dialog');
  if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>За ${guestsText()}</span><strong id="hotel-detail-min"></strong><small id="hotel-detail-price-status"></small></div><button id="hotel-detail-offers" class="primary" data-action="hotel-detail-offers" data-id="${id}"></button>`;}
- renderHotelRooms(id);
+ renderHotelRooms(id,'',null,offers);
 }
 return {openHotelDetails,renderHotelRooms};
 }

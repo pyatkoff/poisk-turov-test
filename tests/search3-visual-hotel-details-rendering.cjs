@@ -1,18 +1,19 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm'),crypto=require('crypto'),{JSDOM}=require('jsdom');
 const source=fs.readFileSync(__dirname+'/../v2/visual-search/hotel-details-v1.js','utf8');
-function records(code,baseline=false){const output=[];
+function records(code,baseline=false){const output=[],checkInvocation=code===source&&!baseline;
  for(const mode of ['empty','single','two','many','incomplete'])for(const long of [false,true])for(const meal of ['', 'BB']){
   const dom=new JSDOM('<div id="modal-body"></div><div id="modal-footer" hidden></div><dialog id="modal"></dialog>'),doc=dom.window.document;
-  const offers=Array.from({length:mode==='empty'?0:mode==='single'?1:mode==='two'?2:5},(_,i)=>({key:'offer-'+i,day:'2026-10-01',returnDay:'2026-10-08',nights:7,total:119000+i*6500,room:i%2?'Family<&':'Standard<&',meal:i%3?'BB':'AI',operator:'Operator<&',flight:i%2?'regular':'charter'}));
+  let offers=Array.from({length:mode==='empty'?0:mode==='single'?1:mode==='two'?2:5},(_,i)=>({key:'offer-'+i,day:'2026-10-01',returnDay:'2026-10-08',nights:7,total:119000+i*6500,room:i%2?'Family<&':'Standard<&',meal:i%3?'BB':'AI',operator:'Operator<&',flight:i%2?'regular':'charter'}));
   const h={id:1,name:'Hotel<&',resort:'Resort<&',stars:mode==='incomplete'?0:5,photos:mode==='incomplete'?[]:['photo1','photo2','photo3','photo4'],amenities:mode==='incomplete'?[]:Array.from({length:long?4:1},(_,i)=>({label:'Услуга<&'+i,group:'Группа<&'})),raw:mode==='incomplete'?{}:{description:long?'Длинное описание<& '.repeat(60):'Описание<&',hotelInformation:{services:{available:long?'Услуги<& '.repeat(45):'Услуги<&'},infrastructure:{beach:['Пляж<&','Пляж<&']}}}};
-  let remembered=0,observed=0,synced=0;
+  let remembered=0,observed=0,synced=0,offerInventories=0;
   const ctx={window:dom.window,document:doc,queueMicrotask:fn=>fn(),$:s=>doc.querySelector(s),$$:s=>[...doc.querySelectorAll(s)],data:{text:v=>String(v??'')},hotels:[h],modalType:'hotel-details',
-   plainHotelText:v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),esc:v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),hotelOffers:()=>offers,
+   plainHotelText:v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim(),esc:v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),hotelOffers:()=>{offerInventories++;return offers;},
    mealLabel:o=>o.meal,dateText:d=>d,nightsText:n=>n+' ночей',flightLabel:o=>o.flight,guestsText:()=> '2 взрослых',money:n=>n+' ₽',icon:n=>'['+n+']',offerCountText:n=>n+' туров',cardPriceNote:()=> 'Цена предложения',observeHotelRoomChoices:()=>observed++,syncHotelSectionNavigation:()=>synced++,rememberUIRoute:()=>remembered++,ratingValue:()=>mode==='incomplete'?null:4.5,ratingText:()=> '4,5',departureScopeText:()=> '1–7 октября',durationText:()=> '7 ночей',
    showModal:(type,title,kicker,body)=>{doc.querySelector('#modal-body').innerHTML=body;}
-  };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);owner.openHotelDetails(1);owner.renderHotelRooms(1,meal,['Standard<&']);
-  output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});dom.window.close();
+  };vm.createContext(ctx);vm.runInContext(code,ctx);let owner=baseline?ctx:ctx.window.AnyTourHotelDetails.create(ctx);owner.openHotelDetails(1);if(checkInvocation)assert.equal(offerInventories,1,'opening reuses one synchronous offer inventory');owner.renderHotelRooms(1,meal,['Standard<&']);if(checkInvocation)assert.equal(offerInventories,2,'later render computes a fresh offer inventory');
+  output.push({mode,long,meal,body:doc.querySelector('#modal-body').innerHTML,footer:doc.querySelector('#modal-footer').innerHTML,footerHidden:doc.querySelector('#modal-footer').hidden,remembered,observed,synced});
+  if(checkInvocation){offers=offers.map((offer,index)=>({...offer,total:offer.total+777+index}));owner.renderHotelRooms(1,meal,['Standard<&']);assert.equal(offerInventories,3,'updated-price render computes another fresh offer inventory');const updated=offers.find(offer=>!meal||offer.meal===meal);if(updated)assert.match(doc.querySelector('.hotel-room-cards').textContent,new RegExp(String(updated.total)),`later room price is rendered from the fresh inventory (${mode}/${meal})`);}dom.window.close();
  }return output;
 }
 const compare=process.argv.indexOf('--compare');if(compare>=0)assert.deepEqual(records(source),records(fs.readFileSync(process.argv[compare+1],'utf8'),true),'actual before/after hotel HTML and room DOM equivalence');
