@@ -283,6 +283,34 @@ if(source.includes('function calendarPriceInventory(')){
  console.log(`PASS month-local calendar inventories: callback visits ${currentCallbackVisits}->${monthCallbackVisits}; full open path 47900->5500; 27 progressive maps, exact replacement minimum, sparse/inherited/initial-length and raw input parity; supplier/lead HTTP 0`);
 }
 
+// The compact result strip has its own progressive owner. Keep the current
+// results inventory stable between remote callbacks, but replace every remote
+// inventory exactly and rebuild the base on every real result render.
+if(source.includes('function resultCalendarSnapshot(')){
+ const pricedHotel=(id,date,total)=>{const hotel=fixture()[1],offer={...hotel.offers[2],key:String(id),day:date,total};hotel.id=id;hotel.offers=[offer];return hotel;};
+ const base=Array.from({length:1000},(_,id)=>pricedHotel('base-'+id,day(id%7),120000+id)),remote=Array.from({length:100},(_,id)=>pricedHotel('remote-'+id,day(id%7),90000+id));
+ const owner=make(source,base),reference=make(source,base),days=Array.from({length:7},(_,index)=>day(index));
+ Object.assign(owner,{addDays:(date,n)=>day(Math.round((Date.parse(date)-Date.parse(day(0)))/86400000)+n),calendarSourceLabel:()=>'',calendarScope:()=>({destination:'',filters:[]}),guestsText:()=>'',durationText:()=>''});
+ vm.runInContext(section(source,'function resultCalendarDays(','function calendarStripEntries('),owner);
+ const reset=()=>owner.resultCalendar={key:'scope',search:structuredClone(owner.state.search),filters:structuredClone(owner.state.filters),hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'loading',controller:null};
+ const model=(refreshBase=false)=>{if(refreshBase)owner.prepareResultCalendarBase();return owner.resultCalendarModel();};
+ const expected=(snapshot)=>Array.from(reference.calendarMinimums(days,{calendarHotels:[...owner.hotels,...snapshot.hotels]},snapshot.observations));
+ const run=events=>{
+  reset();owner.scans=0;const maps=[Array.from(model(true).prices)];assert.deepEqual(maps[0],expected({hotels:[],observations:[]}));
+  for(const snapshot of events){const before=JSON.stringify(snapshot),hotelRows=snapshot.hotels,observationRows=snapshot.observations;owner.resultCalendarSnapshot(owner.resultCalendar,snapshot);assert.strictEqual(owner.resultCalendar.hotels,hotelRows);assert.strictEqual(owner.resultCalendar.observations,observationRows);assert.equal(JSON.stringify(snapshot),before,'progressive snapshot and raw order remain untouched');maps.push(Array.from(model().prices));assert.deepEqual(maps.at(-1),expected(snapshot),'progressive result-calendar price parity');}
+  return {maps,visits:owner.scans};
+ };
+ const observations=[{date:day(0),price:80000},{date:day(0),price:70000},{date:day(1),price:Infinity}];
+ const observationsFirst=run([{hotels:[],observations},{hotels:remote,observations},{hotels:remote,observations}]);
+ const calendarFirst=run([{hotels:remote,observations:[]},{hotels:remote,observations},{hotels:remote,observations}]);
+ assert.deepEqual([observationsFirst.maps.length,observationsFirst.visits,calendarFirst.maps.length,calendarFirst.visits],[4,1200,4,1300]);
+ const cheap=pricedHotel('cheap',day(2),50000),expensive=pricedHotel('expensive',day(2),90000);reset();model(true);owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:[cheap,expensive],observations:[]});assert.equal(model().prices[2],50000);owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:[expensive],observations:[]});assert.equal(model().prices[2],90000,'full remote replacement can raise the minimum');
+ const priorBase=model().prices;owner.hotels=[pricedHotel('generation',day(3),40000)];assert.deepEqual(model().prices,priorBase,'progressive callback does not rescan the stable base');assert.equal(model(true).prices[3],40000,'real result render rebuilds the base generation');
+ reset();assert(model().prices.every(price=>price===null),'new request starts without an inherited inventory');assert.equal(model(true).prices[3],40000,'new request rebuilds only the current result generation');
+ const inherited=pricedHotel('inherited',day(4),30000),sparse=new Array(1);Object.setPrototypeOf(sparse,Object.assign(Object.create(Array.prototype),{0:inherited}));owner.scans=0;owner.resultCalendarSnapshot(owner.resultCalendar,{hotels:sparse,observations:[]});assert.equal(model().prices[4],30000);assert.equal(owner.scans,1,'remote inventory keeps sparse/inherited source membership');
+ console.log(`PASS result-calendar inventories: observations-first visits 4200->${observationsFirst.visits}; calendar-first 4300->${calendarFirst.visits}; 8/8 progressive maps, base-generation/reset isolation, exact remote replacement, sparse/inherited and raw identity/order; supplier/lead HTTP 0`);
+}
+
 // Batch facet counts are compared with independent scalar existence counts.
 function facetCountRecords(candidate,checkReference=true){
  const hs=fixture(),ctx=make(candidate,hs),before=JSON.stringify(hs),rows=[];
