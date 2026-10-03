@@ -182,6 +182,10 @@ const groupHandled=characterize(source,{type:'click',action:'offer-group',groupH
 assert.deepEqual(groupHandled.offerView.open,['room|AI']);assert.deepEqual(groupHandled.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['focus','offer-group-heading',{preventScroll:true}]],'handled disclosure updates view and restores heading focus without a full render');
 const groupFallback=characterize(source,{type:'click',action:'offer-group',dataset:{value:'room|AI'},setup:groupSetup});
 assert.deepEqual(groupFallback.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['renderOfferList'],['focus','offer-group-heading',{preventScroll:true}]],'stale disclosure falls back to the full renderer and restores focus');
+const roomOffers=characterize(source,{type:'click',action:'hotel-room-offers',dataset:{room:'SEA',meal:'BB'}});
+assert.deepEqual(roomOffers.trace.filter(call=>['openAllOffers','renderOfferList'].includes(call[0])),[['openAllOffers',7,null,{room:'SEA',meal:'BB'}]],'room CTA supplies refinements before the single all-offers render');
+const mealOffers=characterize(source,{type:'click',action:'hotel-detail-offers',dataset:{meal:'BB'}});
+assert.deepEqual(mealOffers.trace.filter(call=>['openAllOffers','renderOfferList'].includes(call[0])),[['openAllOffers',7,null,{meal:'BB'}]],'meal CTA supplies its refinement before the single all-offers render');
 // Stale comparison controls are unknown change events; they cannot mutate the
 // retained favorites, selected tour, provider, filter or flight state.
 const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
