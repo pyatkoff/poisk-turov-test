@@ -2146,7 +2146,7 @@ function refreshCalendarPrices(){
  renderCalendarPrices();
 }
 function renderCalendarPrices(){
- $('#date-calendar .calendar-month').forEach(month=>{
+ $$('#date-calendar .calendar-month').forEach(month=>{
   const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=Math.min(...prices.filter(p=>p!==null));
   cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':shortAmount(price);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
  });
