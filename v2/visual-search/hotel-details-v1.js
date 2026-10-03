@@ -101,6 +101,7 @@ function openHotelDetails(id){
  $('#modal').classList.add('hotel-details-dialog');
  if(offers.length){$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="footer-total"><span>За ${guestsText()}</span><strong id="hotel-detail-min"></strong><small id="hotel-detail-price-status"></small></div><button id="hotel-detail-offers" class="primary" data-action="hotel-detail-offers" data-id="${id}"></button>`;}
  renderHotelRooms(id,'',null,offers);
+ return offers;
 }
 return {openHotelDetails,renderHotelRooms};
 }

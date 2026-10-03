@@ -725,9 +725,9 @@ function loadHotelDetails(){
  return hotelDetailsLoad;
 }
 function hotelDetailsOwner(){return window.AnyTourHotelDetails.create({$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText});}
-function renderHotelRooms(id,meal='',restoredRooms=null){
+function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  if(!window.AnyTourHotelDetails?.create||modalType!=='hotel-details'||!$('#hotel-room-count')||Number($('.hotel-section-nav')?.dataset.hotelId)!==id)return;
- hotelDetailsOwner().renderHotelRooms(id,meal,restoredRooms);
+ hotelDetailsOwner().renderHotelRooms(id,meal,restoredRooms,initialOffers);
 }
 function openHotelDetails(id,restored=null){
  const h=hotels.find(h=>h.id===id);if(!h)return;
@@ -740,9 +740,9 @@ function renderHotelDetails(){
  const current=()=>hotelDetailsView===view&&request===hotelDetailsRequest&&modalType==='hotel-details'&&$('#modal').open;
  const render=()=>{
   if(!current()||!hotels.some(h=>h.id===view.id))return;
-  hotelDetailsOwner().openHotelDetails(view.id);
+  const initialOffers=hotelDetailsOwner().openHotelDetails(view.id);
   const restored=view.restored;view.restored=null;
-  if(restored){const h=hotels.find(h=>h.id===view.id);renderHotelRooms(view.id,hotelOffers(h).some(o=>o.meal===restored.meal)?restored.meal:'',Array.isArray(restored.rooms)?restored.rooms:null);
+  if(restored){renderHotelRooms(view.id,initialOffers.some(o=>o.meal===restored.meal)?restored.meal:'',Array.isArray(restored.rooms)?restored.rooms:null,initialOffers);
    for(const room of $$('.hotel-room-card[data-room]'))if(Array.isArray(restored.more)&&restored.more.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
    if(Number.isFinite(restored.scroll)&&restored.scroll>=0)$('#modal-body').scrollTop=restored.scroll;
   }
