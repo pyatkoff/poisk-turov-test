@@ -9,7 +9,7 @@ const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
- if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
+ if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
  if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('function confirmTour(){',start);return end<0?source.slice(start):source.slice(start,end);
@@ -38,7 +38,7 @@ function observe(source,s){
   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live'},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
-  searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>({items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined})),
+  __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
   appliedDestination:call('appliedDestination',()=>({kind:'resort',id:9})),destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
   dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),
   responseFor:call('responseFor',()=>({phase:s.phase||'complete'})),hotelCountText:call('hotelCountText',n=>n+' отелей'),
@@ -73,9 +73,15 @@ function observe(source,s){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
+ let retainedIdentity=null;
+ if(s.paginate){
+  trace.length=0;
+  if(observedOwner.includes('function renderMoreResultCards(){')){retainedIdentity=vm.runInContext('renderedResultItems===__items',ctx);ctx.renderMoreResultCards();}
+  else vm.runInContext('renderedCardLimit+=24;renderResults({keepFilters:true});',ctx);
+ }
  const dom=[...nodes].map(([key,n])=>[key,{value:n.value,textContent:n.textContent,innerHTML:n.innerHTML,hidden:n.hidden,title:n.title,open:n.open}]);
  return copy({trace,dom,state:ctx.state,response:ctx.searchResponse,view:ctx.offerView,comparisonQuotes:ctx.comparisonQuotes,
-  cards:s.kind==='results'?vm.runInContext('({limit:renderedCardLimit,scope:renderedCardScope})',ctx):null});
+  cards:s.kind==='results'?vm.runInContext('({limit:renderedCardLimit,scope:renderedCardScope})',ctx):null,...(s.paginate?{retainedIdentity}:{})});
 }
 const scenarios=[];const add=(name,s)=>scenarios.push({name,...s});
 for(const draft of [false,true])for(const keepFilters of [false,true])for(const modal of ['', 'budget','meals'])for(const filterDraft of [false,true])add(`filter:${draft}:${keepFilters}:${modal}:${filterDraft}`,{kind:'results',draft,keepFilters,modal,filterDraft});
@@ -134,6 +140,30 @@ assert(changed(source.replaceAll('if(searchEditSession){','if(false&&searchEditS
 assert(changed(source.replaceAll('renderedCardLimit=24;','renderedCardLimit=25;')),'card reset mutation detected');
 assert(changed(source.replace('!offerView.departure||o.day===offerView.departure', 'true||o.day===offerView.departure')),'list departure scope mutation detected');
 console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/state observations; digest ${digest}; draft/focus/date mutations detected; supplier and lead HTTP 0`);
+
+// Loading another card page used to repeat the entire result inventory and
+// page-level rendering cascade. Compare the actual fast path against that
+// immediately preceding owner while keeping the same 1,000 raw item objects.
+const paginationDeclaration="let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];";
+const paginationHelper='function renderMoreResultCards(){const next=renderedCardLimit;renderedCardLimit+=24;renderResultCards(renderedResultItems);return next;}\n';
+assert(source.includes(paginationDeclaration)&&source.includes(paginationHelper),'pagination fast-path owner');
+const previousPaginationSource=source
+ .replace(paginationDeclaration,"let renderedCardLimit=24,renderedCardScope='';")
+ .replace(paginationHelper,'')
+ .replace(';renderedResultItems=items;',';');
+const paginationScenario={kind:'results',count:1000,keepFilters:true,paginate:true,inventoryVisits:true};
+const previousPagination=observe(previousPaginationSource,paginationScenario),currentPagination=observe(source,paginationScenario);
+const calls=(result,name)=>result.trace.filter(call=>call[0]===name).length;
+assert.equal(calls(previousPagination,'inventoryItem'),1000,'previous load-more re-walks every result item');
+assert.equal(calls(currentPagination,'inventoryItem'),0,'fast load-more performs no result inventory walk');
+for(const name of ['results','renderCalendarStrip','renderActive','updateNav','renderSummary','updateURL','renderSearchStatus']){
+ assert.equal(calls(previousPagination,name),1,`previous load-more repeats ${name}`);
+ assert.equal(calls(currentPagination,name),0,`fast load-more skips ${name}`);
+}
+assert.equal(previousPagination.cards.limit,48);assert.equal(currentPagination.cards.limit,48);
+assert.equal(currentPagination.retainedIdentity,true,'fast path retains the exact current raw result array');
+assert.equal(calls(previousPagination,'cardHTML'),48);assert.equal(calls(currentPagination,'cardHTML'),48,'same 48 cards and order are reconciled');
+console.log('PASS result pagination: 1,000→0 result inventory visits; 7→0 whole-page collaborator calls; 24→48 cards with exact current raw array identity/order; supplier and lead HTTP 0');
 
 // Result cards previously re-read a valid rating through six ratingValue calls;
 // the validator itself also observed the property four times per call. Compare
