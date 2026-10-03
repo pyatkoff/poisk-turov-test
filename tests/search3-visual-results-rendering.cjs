@@ -110,7 +110,7 @@ if(scopeStart>=0){
 const retiredNodes=new Set(['#modal','#offer-comparison-dates','[data-action="offer-view"]0','[data-action="offer-view"]1']);
 const stripComparisonAction=html=>html.replace(/<button class="text-button compare-tour-link" data-action="compare-tour" data-key="[^"]*">Сравнить на эти даты<\/button>/g,'');
 function visibleRecords(rows){return rows.map((row,index)=>{
- if(scenarios[index].kind!=='offers')return row;
+ if(scenarios[index].kind!=='offers')return {...row,result:{...row.result,trace:row.result.trace.map(call=>call[0]==='updateMealPicker'?call.slice(0,1):call)}};
  const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view;
  return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(dom.innerHTML)}]),trace:result.trace
   .filter(call=>call[0]!=='offerGroupKey'&&call[0]!=='sharedOfferNote'&&!retiredNodes.has(call[1]))

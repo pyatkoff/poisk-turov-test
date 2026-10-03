@@ -737,7 +737,7 @@ function refreshResultFilters(options,ratingCounts){
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
 }
 function refreshResultPickerPreviews(){
- if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals'){updateMealCounts();updateMealPicker();}
+ if(filterDraft)updateDrawerPreview();if(modalType==='budget')updateBudgetPreview();if(modalType==='meals')updateMealPicker(updateMealCounts());
 }
 function renderResultHeadings(items,total,pristine){
  $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);
@@ -1034,10 +1034,11 @@ function mealPreviewModel(){
  return {...appliedFilterModel(),filters:{...state.filters,meals:[...mealDraft]}};
 }
 function updateMealCounts(){
- const model=mealPreviewModel(),rows=$$('.meal-option'),counts=model?countFacetOptions(model,'meals',rows.map(row=>row.querySelector('input').value).filter(Boolean)):null;
+ const model=mealPreviewModel(),rows=$$('.meal-option'),selectedInventory=model?{count:null}:null,counts=model?countFacetOptions(model,'meals',rows.map(row=>row.querySelector('input').value).filter(Boolean),selectedInventory):null;
  rows.forEach(row=>{row.querySelector('.meal-hotel-count')?.remove();if(!model)return;const value=row.querySelector('input').value,count=value?counts.get(value):countMatchingHotels({...model,filters:{...model.filters,meals:[]}});row.insertAdjacentHTML('beforeend',`<span class="meal-hotel-count" aria-label="${hotelCountText(count)}">${count}</span>`);});
+ return selectedInventory?.count;
 }
-function updateMealPicker(){
+function updateMealPicker(selectedCount=null){
  const query=($('#meal-query')?.value||'').trim().toLocaleLowerCase('ru-RU');let visible=0;
  $$('.meal-option').forEach(row=>{const value=row.querySelector('input').value;row.hidden=!!value&&!value.toLocaleLowerCase('ru-RU').includes(query);if(value&&!row.hidden)visible++;});
  $('#meal-no-match').hidden=visible>0;
@@ -1046,7 +1047,7 @@ function updateMealPicker(){
  const model=mealPreviewModel(),preview=$('#meal-result-preview');
  preview.classList.remove('meal-preview-empty');
  if(!model){preview.textContent='Количество отелей появится после поиска с новыми условиями.';return;}
- const count=countMatchingHotels(model),complete=responseFor(state.search).phase==='complete';
+ const count=selectedCount??countMatchingHotels(model),complete=responseFor(state.search).phase==='complete';
  preview.textContent=count?`${hotelCountText(count)} · по загруженной выдаче`:complete?'Нет отелей с таким питанием и остальными условиями.':'В загруженной части выдачи пока нет подходящих отелей.';
  preview.classList.toggle('meal-preview-empty',count===0);
 }
@@ -1057,8 +1058,7 @@ function openMeals(restore=null){
  showModal('meals','Питание','УСЛОВИЯ ТУРА',`<p class="modal-intro">Можно выбрать несколько вариантов.</p>${choices.length>7?'<div class="meal-search"><label><span class="sr-only">Найти тип питания</span><input id="meal-query" type="search" placeholder="Найти тип питания" autocomplete="off"></label><button type="button" id="meal-clear-query" class="text-button" data-action="clear-meal-query" hidden>Сбросить поиск</button></div>':''}<div class="meal-options">${[['','Любое питание'],...choices.map(m=>[m,m])].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(v)}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${mealHelp[v]?`<small>${esc(mealHelp[v])}</small>`:''}</span></label>`).join('')}</div><p id="meal-no-match" class="meal-no-match" hidden>Такого названия нет. Попробуйте другое или сбросьте поиск.</p>`);
  $('#modal').classList.add('meals-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="meal-result-summary" role="status" aria-live="polite"><strong id="meal-result-preview"></strong><span id="meal-selection-status"></span></div><button class="primary picker-apply" data-action="apply-meals">Применить</button>';
  if($('#meal-query'))$('#meal-query').value=boundedHistoryText(restore?.query,'');
- updateMealCounts();
- updateMealPicker();
+ updateMealPicker(updateMealCounts());
  if(Number.isFinite(restore?.scroll)&&restore.scroll>=0)$('#modal-body').scrollTop=restore.scroll;
 }
 function parseBudgetAmount(value,empty){

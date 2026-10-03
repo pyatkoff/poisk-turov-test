@@ -96,12 +96,19 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  c.dom.window.close();
 }
 {
- const c=environment('<div id="host">'+['','AI','BB'].map(value=>'<label class="meal-option"><input value="'+value+'"><span class="meal-hotel-count">99</span></label>').join('')+'</div>');let current={filters:{meals:['AI']}};
- Object.assign(c,{mealPreviewModel:()=>current,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value==='AI'?3:0])),countMatchingHotels:model=>model.filters.meals.length?99:9});
- context(c);vm.runInContext(functions(source,['updateMealCounts']),c);c.updateMealCounts();
+ const c=environment('<div id="host">'+['','AI','BB'].map(value=>'<label class="meal-option"><input value="'+value+'"><span class="meal-hotel-count">99</span></label>').join('')+'<p id="meal-no-match"></p><p id="meal-selection-status"></p><strong id="meal-result-preview"></strong></div>');let current={filters:{meals:['AI']}},selectedCount=7,scalarCalls=0;
+ Object.assign(c,{mealDraft:['AI'],state:{search:{}},responseFor:()=>({phase:'complete'}),mealPreviewModel:()=>current,countFacetOptions:(model,group,values,selectedInventory)=>{selectedInventory.count=selectedCount;return new Map(values.map(value=>[value,value==='AI'?3:0]));},countMatchingHotels:model=>{scalarCalls++;return model.filters.meals.length?5:9;},hotelCountText:n=>n+' отелей'});
+ context(c);vm.runInContext(functions(source,['updateMealCounts','updateMealPicker']),c);assert.equal(c.updateMealCounts(),7,'meal inventory exposes selected-model count');
  assert.deepEqual(c.$$('.meal-hotel-count').map(span=>span.textContent),['9','3','0'],'any/known/unavailable meal counts');
+ c.updateMealPicker(selectedCount);assert.equal(scalarCalls,1,'same-call picker consumes the selected inventory; only any-meal count stays scalar');assert.equal(c.$('#meal-result-preview').textContent,'7 отелей · по загруженной выдаче');
+ selectedCount=4;c.updateMealPicker();assert.equal(scalarCalls,2,'later picker edit recomputes a fresh selected count');assert.equal(c.$('#meal-result-preview').textContent,'5 отелей · по загруженной выдаче');
  current=null;c.updateMealCounts();assert.equal(c.$$('.meal-hotel-count').length,0,'new draft has no result counts');
  c.dom.window.close();
+}
+{
+ const calls=[],c={filterDraft:null,modalType:'meals',updateDrawerPreview:()=>calls.push('drawer'),updateBudgetPreview:()=>calls.push('budget'),updateMealCounts:()=>7,updateMealPicker:value=>calls.push(['meal',value])};
+ context(c);vm.runInContext(functions(source,['refreshResultPickerPreviews']),c);c.refreshResultPickerPreviews();assert.deepEqual(calls,[['meal',7]],'result refresh forwards the same-call meal inventory');
+ assert.equal((appSource.match(/updateMealPicker\(updateMealCounts\(\)\)/g)||[]).length,2,'both meal open and result refresh reuse the same-call inventory');
 }
 {
  const c=environment('<div id="host"></div>'),model={filters:{stars:[4]}};
