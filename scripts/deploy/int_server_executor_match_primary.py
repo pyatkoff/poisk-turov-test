@@ -6,6 +6,7 @@ All old modes delegate unchanged. Native110 stages have fixed intake scopes.
 from __future__ import annotations
 
 import ast
+import os
 import re
 
 MODE = 'match-primary-candidate'
@@ -38,6 +39,10 @@ TARGET_PREFLIGHT_READBACK_OPERATION = 'int-andromeda-match-live30-target-preflig
 TARGET_V2_MODE = 'match-tv-live30-target-catalog-v2'
 TARGET_V2_OPERATION = 'int-andromeda-match-live30-target-catalog-v2-20261001-v1'
 TARGET_V2_BATCH = 'tv-live30-targets-v2-20261001'
+SOURCE3_MODE = 'match-source3-native-current'
+SOURCE3_OPERATION = 'int-andromeda-match-source3-native-current-20261001-v1'
+SOURCE3_BATCH = 'source3-native-20261001'
+SOURCE3_MANIFEST_SHA = '8af3a42bc63fb7b7eacb01df661cbf7ba6bcc83bdf9681adfc1e59c159b2cf85'
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -77,6 +82,10 @@ BG_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native
 SHAMS_GEO_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_shams_geography_saved_v1.php',)
 SHAMS_WRITE_SOURCE_FILES = tuple(dict.fromkeys(GUARDED_SOURCE_FILES + SHAMS_GEO_SOURCE_FILES +
     ('scripts/diagnostics/hotel_match_shams_guarded_v1.php',)))
+SOURCE3_SOURCE_FILES = PROOF_SOURCE_FILES + (
+    'scripts/diagnostics/hotel_match_source3_native_current_v1.php',
+    'scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json',
+)
 
 
 def register_parser(core) -> None:
@@ -87,11 +96,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == SOURCE3_MODE:
+            core.need(operation == SOURCE3_OPERATION and batch == SOURCE3_BATCH, 'source3_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': SOURCE3_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 3}
         if mode == TARGET_V2_MODE:
             core.need(operation == TARGET_V2_OPERATION and batch == TARGET_V2_BATCH, 'target_catalog_v2_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_V2_BATCH,
@@ -1255,11 +1268,191 @@ REMOTE_TARGET_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-readb
 '''
 
 
+REMOTE_SOURCE3_HANDLER = r'''
+def validate_match_source3(data,receipt,digest,expected_source):
+    expected={'163887':(5,'operator_5',1124,'8319'),
+              '2000057636':(342,'operator_342',21679,'24891'),
+              '2000073063':(5,'operator_5',60766,None)}
+    fixed={'schema':'match-source3-native-current-result/1',
+           'operation':'int-andromeda-match-source3-native-current-20261001-v1',
+           'source_sha':expected_source,'batch':'source3-native-20261001','requested_sources':3,
+           'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False}
+    extra={'state','reason','captured_at_utc','preflight_rows','evidence_rows','responses',
+           'provider_http_calls','database_reads','no_replay'}
+    receipt_fields={'state','operation','source_sha','batch','result_sha256','provider_http_calls',
+                    'tourvisor_http_calls','database_reads','database_writes','mapping_writes',
+                    'safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('source3_terminal_binding')
+    for item in (data,receipt):
+        if (any(type(item[k]) is not int or item[k]!=0 for k in ('tourvisor_http_calls','database_writes','mapping_writes'))
+                or type(item['provider_http_calls']) is not int or not 0<=item['provider_http_calls']<=3
+                or type(item['database_reads']) is not int or item['database_reads'] not in (0,1)
+                or item['safe_to_write_now'] is not False or type(item['no_replay']) is not bool
+                or item['no_replay']!=(item['provider_http_calls']>0)):
+            fail('source3_zero_write_authority')
+    if type(data['requested_sources']) is not int or data['acceptance_evaluated'] is not False:
+        fail('source3_acceptance_authority')
+    state=data['state'];success=state=='completed_source3_native_current'
+    if state not in ('completed_source3_native_current','failed_before_provider','terminal_failed_no_replay'):
+        fail('source3_terminal_state')
+    if ((state=='failed_before_provider' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and (data['database_reads']!=1 or data['reason'] is not None))):
+        fail('source3_terminal_state_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or not re.fullmatch(r'[A-Za-z0-9_.:-]{1,140}',reason)):
+        fail('source3_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|\+00:00)',stamp):
+        fail('source3_timestamp')
+    import datetime as dt
+    try: dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+    except ValueError: fail('source3_timestamp')
+    holds={'current_source_not_unique','current_source_not_pending_null','current_source_revision_differs',
+           'current_source_history_review','target_missing_or_inactive','target_country_changed',
+           'target_manual_or_exclusion','target_occupied'}
+    base={'catalog_id','operator_id','supplier_namespace','target_tv_hotel_id','target_native_id_for_comparison',
+          'state','holds','safe_to_write_now'}
+    def identity(row):
+        if not isinstance(row,dict) or row.get('catalog_id') not in expected: fail('source3_row_identity')
+        spec=expected[row['catalog_id']]
+        if (type(row.get('operator_id')) is not int or type(row.get('target_tv_hotel_id')) is not int
+                or tuple(row.get(k) for k in ('operator_id','supplier_namespace','target_tv_hotel_id','target_native_id_for_comparison'))!=spec
+                or row.get('safe_to_write_now') is not False): fail('source3_row_identity')
+        reasons=row.get('holds')
+        if (not isinstance(reasons,list) or reasons!=sorted(set(reasons)) or any(r not in holds for r in reasons)):
+            fail('source3_row_holds')
+    preflight=data['preflight_rows'];evidence=data['evidence_rows'];responses=data['responses']
+    if (not isinstance(preflight,list) or len(preflight) not in (0,3)
+            or not isinstance(evidence,list) or len(evidence) not in (0,3)
+            or not isinstance(responses,list) or len(responses)>2
+            or (success and (len(preflight)!=3 or len(evidence)!=3))): fail('source3_partition')
+    pre={}
+    for row in preflight:
+        identity(row)
+        if (set(row)!=base or row['catalog_id'] in pre
+                or row['state']!=('hold' if row['holds'] else 'eligible_for_source_evidence')): fail('source3_preflight_shape')
+        pre[row['catalog_id']]=row
+    response_index={}
+    for response in responses:
+        if not isinstance(response,dict) or set(response)!={'operator_id','catalog_ids','sha256'}: fail('source3_response_shape')
+        op=response['operator_id']
+        catalogs=sorted([c for c,r in pre.items() if r['operator_id']==op and not r['holds']],key=int)
+        if (type(op) is not int or op not in (5,342) or op in response_index or not catalogs
+                or response['catalog_ids']!=catalogs or not isinstance(response['sha256'],str)
+                or not re.fullmatch(r'[a-f0-9]{64}',response['sha256'])): fail('source3_response_binding')
+        response_index[op]=response['sha256']
+    if success:
+        eligible_ops={r['operator_id'] for r in preflight if not r['holds']}
+        if set(response_index)!=eligible_ops or data['provider_http_calls']!=(1+len(eligible_ops) if eligible_ops else 0):
+            fail('source3_http_binding')
+    seen=set()
+    for row in evidence:
+        identity(row);cat=row['catalog_id']
+        if (set(row)!=base|{'price_rows','native_ids','references','matches_target_native'}
+                or cat in seen or cat not in pre or row['holds']!=pre[cat]['holds']): fail('source3_evidence_shape')
+        seen.add(cat);ids=row['native_ids'];refs=row['references']
+        if (type(row['price_rows']) is not int or not 0<=row['price_rows']<=2000
+                or not isinstance(ids,list) or len(ids)>2000
+                or any(not isinstance(n,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',n) for n in ids)
+                or ids!=sorted(set(ids),key=int) or not isinstance(refs,list)
+                or not len(ids)<=len(refs)<=row['price_rows'] or (not ids and refs)):
+            fail('source3_evidence_counts')
+        expected_state=('preflight_hold' if row['holds'] else 'captured_single_native' if len(ids)==1
+                        else 'captured_ambiguous_native' if ids else 'catalog_only' if row['price_rows'] else 'not_returned_in_context')
+        target=row['target_native_id_for_comparison']
+        if (row['state']!=expected_state or type(row['matches_target_native']) is not bool
+                or row['matches_target_native']!=(not row['holds'] and target is not None and ids==[target])
+                or (row['holds'] and (row['price_rows'] or ids or refs))): fail('source3_evidence_state')
+        pointers=set()
+        for ref in refs:
+            op=row['operator_id']
+            if (not isinstance(ref,dict) or set(ref)!={'private_file','sha256','json_pointer'}
+                    or ref['private_file']!='operator-'+str(op)+'-page-1.json'
+                    or ref['sha256']!=response_index.get(op) or not isinstance(ref['json_pointer'],str)
+                    or not re.fullmatch(r'/PRICES/(?:0|[1-9][0-9]{0,3})',ref['json_pointer'])
+                    or int(ref['json_pointer'].rsplit('/',1)[1])>=2000
+                    or ref['json_pointer'] in pointers): fail('source3_reference_binding')
+            pointers.add(ref['json_pointer'])
+    if evidence and seen!=set(expected): fail('source3_evidence_partition')
+    # Do not export provider/config exception text, even if the PHP sanitizer allowed it.
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_source3(stage):
+    if (operation!='int-andromeda-match-source3-native-current-20261001-v1'
+            or payload.get('batch')!='source3-native-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=3):
+        fail('source3_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_source3_native_current_v1.php'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='8af3a42bc63fb7b7eacb01df661cbf7ba6bcc83bdf9681adfc1e59c159b2cf85'):
+        fail('source3_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('source3_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('source3_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'source3-native-20261001',
+                 'maximum_writes':0,'provider_http_calls':3,'state':'reserved_before_db_and_provider','reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    # A consumed batch cannot be revived with another version or source head.
+    exclusive(parent/'source3-native-current-batch-source3-native-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0',str(runner),'--acquire-source-evidence'],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8388608) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536): fail('source3_terminal_missing_no_replay')
+    data=safe_json(result_path,8388608);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_source3(data,receipt,digest,source)
+    successful=summary['state']=='completed_source3_native_current'
+    if run.returncode!=(0 if successful else 2): fail('source3_exit_binding')
+    stdout=json.loads(run.stdout)
+    states={}
+    for row in data['evidence_rows']: states[row['state']]=states.get(row['state'],0)+1
+    if stdout!={'state':data['state'],'reason':data['reason'],'requested_sources':3,
+                'provider_http_calls':data['provider_http_calls'],'evidence_states':states,'safe_to_write_now':False}:
+        fail('source3_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_SOURCE3_DISPATCH = r'''    if mode=='match-source3-native-current':
+        source3=run_match_source3(stage)
+        result['match_source3_native_current']=source3
+        result['supplier_calls']=source3['summary']['provider_http_calls']
+        result['database_reads']=source3['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if source3['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+
 def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False,
                         shams_geo: bool = False, shams_geo_readback: bool = False, shams_write: bool = False,
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
-                        target_v2: bool = False) -> str:
+                        target_v2: bool = False, source3: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1291,6 +1484,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_READBACK_HANDLER, REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH, TARGET_PREFLIGHT_READBACK_MODE
     if target_v2:
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_V2_HANDLER, REMOTE_TARGET_V2_DISPATCH, TARGET_V2_MODE
+    if source3:
+        handler, mode_dispatch, selected_mode = REMOTE_SOURCE3_HANDLER, REMOTE_SOURCE3_DISPATCH, SOURCE3_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1299,7 +1494,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1318,7 +1513,13 @@ def activate(core, command: dict) -> None:
     target_preflight = command['mode'] == TARGET_PREFLIGHT_MODE
     target_preflight_readback = command['mode'] == TARGET_PREFLIGHT_READBACK_MODE
     target_v2 = command['mode'] == TARGET_V2_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2)
+    source3 = command['mode'] == SOURCE3_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3)
+    if source3:
+        # activate is reached only after stock checked_event; parse-only exits before it.
+        token = os.environ.get('GH_TOKEN', '')
+        core.need(bool(token), 'source3_supplier_slot_token')
+        core.ensure_supplier_slot(token)
     files = list(core.FIXED)
     selected_files = SHAMS_WRITE_SOURCE_FILES if shams_write else (SHAMS_GEO_SOURCE_FILES if (shams_geo or shams_geo_readback) else (BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)))))
     if target_catalog or target_readback:
@@ -1327,6 +1528,8 @@ def activate(core, command: dict) -> None:
         selected_files = TARGET_PREFLIGHT_SOURCE_FILES
     if target_v2:
         selected_files = TARGET_V2_SOURCE_FILES
+    if source3:
+        selected_files = SOURCE3_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)

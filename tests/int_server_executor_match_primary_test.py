@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import ast
+import base64
 import copy
 import hashlib
 import importlib.util
@@ -13,6 +14,7 @@ import tempfile
 import time
 import types
 import unittest
+import zlib
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -1056,5 +1058,206 @@ class Live30TargetCatalogV2RegistrationTest(unittest.TestCase):
                 ns,stage,root=self.namespace(tmp)
                 with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
                     with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog_v2'](stage)
+
+
+SOURCE3_FIXTURE = "{\n  \"schema\": \"match-source3-native-current/1\",\n  \"batch\": \"source3-native-20261001\",\n  \"request\": {\n    \"townfrominc\": 1,\n    \"stateinc\": 5,\n    \"checkin_beg\": \"20261008\",\n    \"checkin_end\": \"20261029\",\n    \"nights\": 7,\n    \"adults\": 2,\n    \"children\": 0,\n    \"currencyinc\": 643,\n    \"packettype\": 0,\n    \"group_by\": 32,\n    \"page\": 1\n  },\n  \"rows\": [\n    {\n      \"catalog_id\": \"163887\",\n      \"operator_id\": 5,\n      \"supplier_namespace\": \"operator_5\",\n      \"target_tv_hotel_id\": 1124,\n      \"target_native_id_for_comparison\": \"8319\",\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"68805396c525fbbebfc77f5de1c9264625c96e2149bf4089c741a70c6051fa46\"\n    },\n    {\n      \"catalog_id\": \"2000057636\",\n      \"operator_id\": 342,\n      \"supplier_namespace\": \"operator_342\",\n      \"target_tv_hotel_id\": 21679,\n      \"target_native_id_for_comparison\": \"24891\",\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"7f19e9a7087358ed130d9a29ab814e9217c6eff4e2461086c34a072d2cf273a9\"\n    },\n    {\n      \"catalog_id\": \"2000073063\",\n      \"operator_id\": 5,\n      \"supplier_namespace\": \"operator_5\",\n      \"target_tv_hotel_id\": 60766,\n      \"target_native_id_for_comparison\": null,\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"0f8a5e6d4314d386f50706bf98be6fb363380d9906853298bbbb8ca033c5e67a\"\n    }\n  ]\n}\n"
+
+class Source3RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.old_remote=self.core.REMOTE;self.old_files=list(self.core.FIXED)
+        registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.SOURCE3_MODE+' '+registration.SOURCE3_OPERATION+' '+registration.SOURCE3_BATCH
+
+    def activate(self):
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'}),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,self.core.parse_command(self.body()))
+            slot.assert_called_once_with('fixture-token')
+
+    def test_exact_scope_and_supplier_slot_after_authorization(self):
+        cmd=self.core.parse_command(self.body())
+        self.assertEqual(cmd,dict(source_sha=SOURCE,mode=registration.SOURCE3_MODE,operation_id=registration.SOURCE3_OPERATION,
+                                  batch=registration.SOURCE3_BATCH,maximum_writes=0,provider_http_calls=3))
+        for altered in [self.body()+' 4',self.body().replace('-v1','-v2'),self.body().replace('source3-native-20261001','native110-20260928')]:
+            with self.assertRaises(ValueError):self.core.parse_command(altered)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot:
+            with self.assertRaises(ValueError):registration.activate(self.core,cmd)
+            slot.assert_not_called()
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'}),patch.object(self.core,'ensure_supplier_slot',side_effect=ValueError('supplier_slot_busy')):
+            with self.assertRaises(ValueError):registration.activate(self.core,cmd)
+        self.assertEqual(self.core.REMOTE,self.old_remote);self.assertEqual(self.core.FIXED,self.old_files)
+        self.activate()
+        self.assertTrue(set(registration.SOURCE3_SOURCE_FILES).issubset(self.core.FIXED))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+                and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.SOURCE3_MODE)))
+        encoded=base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def test_source3_keeps_owner_canonical_and_current_head_authorization(self):
+        body=self.body();event={'issue':{'number':4217},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
+        def api(path,token):
+            if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
+            if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/'+self.core.FEATURE:return {'object':{'sha':SOURCE}}
+            raise AssertionError(path)
+        with patch.object(self.core,'api_get',side_effect=api):
+            self.assertEqual(self.core.checked_event('fixture',event,CONTROL)['provider_http_calls'],3)
+            for change in [lambda e:e['issue'].update(number=3419),lambda e:e['issue'].update(number=1971),
+                           lambda e:e['comment']['user'].update(id=1),lambda e:e['comment'].update(author_association='NONE')]:
+                bad=copy.deepcopy(event);change(bad)
+                with self.assertRaises(ValueError):self.core.checked_event('fixture',bad,CONTROL)
+            with self.assertRaises(ValueError):self.core.checked_event('fixture',event,'c'*40)
+
+    def namespace(self,tmp):
+        home=Path(tmp);project=home/'www/anytoour.ru';project.mkdir(parents=True)
+        root=home/'.anytoour-match/operations';root.mkdir(parents=True)
+        stage=home/'stage'
+        manifest=stage/registration.SOURCE3_SOURCE_FILES[-1];manifest.parent.mkdir(parents=True)
+        manifest.write_bytes(SOURCE3_FIXTURE.encode())
+        self.assertEqual(hashlib.sha256(manifest.read_bytes()).hexdigest(),registration.SOURCE3_MANIFEST_SHA)
+        runner=stage/'scripts/diagnostics/hotel_match_source3_native_current_v1.php';runner.write_text('<?php // fixture')
+        ns=dict(home=home,project=project,operation=registration.SOURCE3_OPERATION,source=SOURCE,
+                payload=dict(batch=registration.SOURCE3_BATCH,maximum_writes=0,provider_http_calls=3),
+                os=os,re=re,json=json,hashlib=hashlib,time=time,subprocess=subprocess)
+        nodes=[n for n in ast.parse(self.old_remote).body if isinstance(n,ast.FunctionDef) and n.name in ('fail','safe_file','safe_json')]
+        exec(compile(ast.Module(body=nodes,type_ignores=[]),'<stock_helpers>','exec'),ns)
+        exec(registration.REMOTE_SOURCE3_HANDLER,ns)
+        return ns,stage,root
+
+    def result_fixture(self,held=()):
+        specs=[('163887',5,'operator_5',1124,'8319'),('2000057636',342,'operator_342',21679,'24891'),('2000073063',5,'operator_5',60766,None)]
+        pre=[];rows=[]
+        for cat,op,namespace,target,native in specs:
+            hold=['target_occupied'] if cat in held else []
+            base=dict(catalog_id=cat,operator_id=op,supplier_namespace=namespace,target_tv_hotel_id=target,
+                      target_native_id_for_comparison=native,holds=hold,safe_to_write_now=False)
+            pre.append(dict(base,state='hold' if hold else 'eligible_for_source_evidence'))
+            native_ids=[] if hold else [native or '9999']
+            rows.append(dict(base,state='preflight_hold' if hold else 'captured_single_native',price_rows=0 if hold else 1,
+                native_ids=native_ids,references=[] if hold else [dict(private_file='operator-'+str(op)+'-page-1.json',sha256=str(op%10)*64,json_pointer='/PRICES/0')],
+                matches_target_native=not hold and native is not None))
+        ops=sorted({r['operator_id'] for r in pre if not r['holds']})
+        responses=[dict(operator_id=op,catalog_ids=sorted([r['catalog_id'] for r in pre if r['operator_id']==op and not r['holds']],key=int),sha256=str(op%10)*64) for op in ops]
+        calls=1+len(ops) if ops else 0
+        return dict(schema='match-source3-native-current-result/1',state='completed_source3_native_current',reason=None,
+            operation=registration.SOURCE3_OPERATION,source_sha=SOURCE,batch=registration.SOURCE3_BATCH,captured_at_utc='2026-10-04T00:00:00+00:00',
+            requested_sources=3,preflight_rows=pre,evidence_rows=rows,responses=responses,provider_http_calls=calls,tourvisor_http_calls=0,
+            database_reads=1,database_writes=0,mapping_writes=0,safe_to_write_now=False,acceptance_evaluated=False,no_replay=calls>0)
+
+    def child(self,data,mutate_receipt=None):
+        def run(argv,**kw):
+            self.assertEqual(argv[-1],'--acquire-source-evidence')
+            self.assertEqual(set(kw['env'])-{'PATH','HOME','LANG','LC_ALL'},{'ANYTOUR_ROOT','MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+            child=Path(kw['env']['MATCH_OPERATION_DIR']);res=json.loads((child/'reservation.json').read_text())
+            self.assertEqual(res['state'],'reserved_before_db_and_provider');self.assertEqual(res['provider_http_calls'],3)
+            self.assertEqual(res['maximum_writes'],0)
+            marker=child.parents[1]/'source3-native-current-batch-source3-native-20261001.json'
+            self.assertEqual(json.loads(marker.read_text()),res)
+            raw=json.dumps(data).encode();(child/'result.json').write_bytes(raw)
+            keys=('state','operation','source_sha','batch','provider_http_calls','tourvisor_http_calls','database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay')
+            receipt={k:data[k] for k in keys};receipt['result_sha256']=hashlib.sha256(raw).hexdigest()
+            if mutate_receipt:mutate_receipt(receipt)
+            (child/'receipt.json').write_text(json.dumps(receipt))
+            counts={}
+            for row in data['evidence_rows']:counts[row['state']]=counts.get(row['state'],0)+1
+            out=dict(state=data['state'],reason=data['reason'],requested_sources=3,provider_http_calls=data['provider_http_calls'],evidence_states=counts,safe_to_write_now=False)
+            return types.SimpleNamespace(returncode=0 if data['state']=='completed_source3_native_current' else 2,stdout=json.dumps(out),stderr='')
+        return run
+
+    def test_success_exact_strings_offset_timestamp_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture()
+            with patch.dict(os.environ,{'ANEX_API_TOKEN':'secret','DB_PASSWORD':'secret'}),patch.object(subprocess,'run',side_effect=self.child(data)) as call:
+                result=ns['run_match_source3'](stage)
+                self.assertTrue(result['successful']);self.assertTrue(result['no_replay'])
+                self.assertEqual(result['summary']['provider_http_calls'],3)
+                self.assertTrue(result['summary']['evidence_rows'][0]['matches_target_native'])
+                self.assertNotIn('reason',result['summary'])
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+            marker=root.parent/'source3-native-current-batch-source3-native-20261001.json'
+            self.assertEqual(marker.stat().st_mode&0o777,0o600)
+
+    def test_one_hold_leaves_independent_rows_and_all_holds_use_zero_http(self):
+        for held in [('163887',),('163887','2000073063'),('163887','2000057636','2000073063')]:
+            with self.subTest(held=held),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);data=self.result_fixture(held)
+                with patch.object(subprocess,'run',side_effect=self.child(data)):
+                    result=ns['run_match_source3'](stage)
+                self.assertTrue(result['successful'])
+                self.assertEqual(sum(r['state']=='preflight_hold' for r in result['summary']['evidence_rows']),len(held))
+                self.assertTrue(result['no_replay'])
+
+    def test_ambiguous_native_preserves_tokens_and_false_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture();row=data['evidence_rows'][0]
+            row.update(native_ids=['804','8319','44562'],price_rows=3,state='captured_ambiguous_native',matches_target_native=False,
+                       references=[dict(row['references'][0],json_pointer='/PRICES/'+str(i)) for i in range(3)])
+            with patch.object(subprocess,'run',side_effect=self.child(data)):
+                result=ns['run_match_source3'](stage)
+            self.assertEqual(result['summary']['evidence_rows'][0]['native_ids'],['804','8319','44562'])
+
+    def test_failure_receipt_charges_calls_and_omits_exception_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture()
+            data.update(state='terminal_failed_no_replay',reason='fixture_private_exception',evidence_rows=[],responses=[],provider_http_calls=2)
+            with patch.object(subprocess,'run',side_effect=self.child(data)) as call:
+                result=ns['run_match_source3'](stage)
+                self.assertFalse(result['successful']);self.assertEqual(result['summary']['provider_http_calls'],2)
+                self.assertNotIn('fixture_private_exception',json.dumps(result))
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_widened_payload_or_manifest_never_starts_child(self):
+        for key,value in [('maximum_writes',1),('provider_http_calls',4),('provider_http_calls',True),('batch','other')]:
+            with self.subTest(key=key),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);ns['payload'][key]=value
+                with patch.object(subprocess,'run') as call:
+                    with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                    call.assert_not_called()
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);(stage/registration.SOURCE3_SOURCE_FILES[-1]).write_text('{}')
+            with patch.object(subprocess,'run') as call:
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                call.assert_not_called()
+
+    def test_terminal_mutations_are_rejected_and_marker_remains(self):
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(database_writes=True),lambda d:d.update(provider_http_calls=4),
+                 lambda d:d.update(acceptance_evaluated=True),lambda d:d.update(safe_to_write_now=0),lambda d:d.update(no_replay=1),
+                 lambda d:d.update(source_sha='c'*40),lambda d:d.update(captured_at_utc='2026-13-04T00:00:00+00:00'),
+                 lambda d:d['evidence_rows'][0].update(native_ids=[8319]),lambda d:d['evidence_rows'][0].update(matches_target_native=False),
+                 lambda d:d['evidence_rows'][0].update(references=[]),
+                 lambda d:d['evidence_rows'][0]['references'][0].update(private_file='/tmp/secret'),
+                 lambda d:d['responses'][0].update(catalog_ids=['163887']),lambda d:d.update(extra='private')]
+        for change in changes:
+            with self.subTest(change=change),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);data=self.result_fixture();change(data)
+                with patch.object(subprocess,'run',side_effect=self.child(data)):
+                    with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertTrue((root.parent/'source3-native-current-batch-source3-native-20261001.json').is_file())
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=self.child(self.result_fixture(),lambda r:r.update(result_sha256='0'*64))):
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+
+    def test_timeout_and_consumed_batch_cannot_retry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_source3'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            marker=root.parent/'source3-native-current-batch-source3-native-20261001.json';marker.write_text('already consumed')
+            with patch.object(subprocess,'run') as call:
+                with self.assertRaises(FileExistsError):ns['run_match_source3'](stage)
+                call.assert_not_called();self.assertFalse((root/registration.SOURCE3_OPERATION).exists())
 
 if __name__=='__main__':unittest.main()
