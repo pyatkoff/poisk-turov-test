@@ -29,12 +29,9 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="retry-offer-list"]').click();while(!pending)await page.waitForTimeout(20);assert.equal(requests,2);
    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourOfferList?.create);
    assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late load does not reopen a closed modal');
+   await page.evaluate(()=>{const owner=window.AnyTourOfferList,create=owner.create;owner.create=context=>create({...context,hotelOffers:hotel=>{const rows=context.hotelOffers(hotel);if(!rows.length)return rows;const seed=rows[0],extra=Array.from({length:12},(_,i)=>({...seed,key:seed.key+'-o44-'+i,total:seed.total+i+1}));return [...rows,...extra];}});});
    await trigger.click();await page.locator('#offer-count').waitFor();await page.locator('.offer-group-heading').first().click();await page.locator('.grouped-offer').first().waitFor();assert.equal(requests,2,'warm open reuses the already loaded owner');
-   let paginationIdentity=null,more=page.locator('[data-action="group-more"]').first();
-   for(let i=1;await more.count()===0&&i<await page.locator('.hotel-card [data-action="all-offers"]').count();i++){
-    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.locator('.hotel-card [data-action="all-offers"]').nth(i).click();await page.locator('#offer-count').waitFor();more=page.locator('[data-action="group-more"]').first();
-   }
-   assert.equal(await more.count(),1,'mixed fixture exposes a bounded group page across loaded hotels');
+   let paginationIdentity=null,more=page.locator('[data-action="group-more"]').first();assert.equal(await more.count(),1,'controlled compiled fixture exposes a bounded group page');
    if(await more.count()){
     const key=await more.getAttribute('data-value'),group=page.locator(`[id="group-${key}"]`);if(await group.getAttribute('hidden')!==null)await page.locator(`[data-action="offer-group"][data-value="${key}"]`).click();
     const before=await group.locator('.grouped-offer').count();assert(before>=2,'pagination group has retained rows to reconcile');
