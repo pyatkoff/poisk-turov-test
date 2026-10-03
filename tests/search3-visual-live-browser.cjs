@@ -593,7 +593,9 @@ const server=http.createServer((req,res)=>{
   await page.locator('#hotel-room-meal').selectOption({label:'Завтраки'});
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 1 · Туры: 1');
   assert.match(await page.locator('#hotel-detail-offers').getAttribute('data-key'),/^andromeda%3A/);
+  await page.evaluate(()=>{const owner=window.AnyTourOfferList,create=owner.create;window.__warmHotelOfferRenders=0;owner.create=context=>{const api=create(context),render=api.renderOfferList;api.renderOfferList=reset=>{window.__warmHotelOfferRenders++;return render(reset);};return api;};});
   await page.locator('#hotel-detail-offers').click();assert.match(await page.locator('#modal-body').textContent(),/SAMO STANDARD/);
+  assert.equal(await page.evaluate(()=>window.__warmHotelOfferRenders),1,'warm hotel-detail offer handoff performs one full list render');
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeHotelSearch+1);
   await page.locator('[data-action="close-modal"]').click();
   transport.state.samoMeal='BB';let releaseHotelBackSource;transport.state.samoSearchGate=new Promise(resolve=>releaseHotelBackSource=resolve);
