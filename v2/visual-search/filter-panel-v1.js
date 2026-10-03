@@ -68,9 +68,8 @@ document.addEventListener('input',event=>{const group=event.target.dataset?.face
 document.addEventListener('toggle',event=>{const group=event.target.dataset?.facet;if(group&&!facetQueries.get(group)){if(event.target.open)expandedFacets.add(group);else expandedFacets.delete(group);}},true);
 function filterCheckRowHTML(attributes,label,count,selected){const available=count>0||selected;return `<label class="check-row" data-available="${available}" ${available?'':'hidden'}><input type="checkbox" ${attributes} ${selected?'checked':''}><span>${esc(label)}</span><small aria-label="${hotelCountText(count)}">${count}</small></label>`;}
 function fullCheckRows(group,options){const model=editingFilterModel();return options.map(([val,label,knownCount])=>filterCheckRowHTML(`data-filter="${group}" value="${esc(val)}"`,label,knownCount??countMatchingHotels({...model,filters:{...model.filters,[group]:[val]}}),model.filters[group].includes(val))).join('');}
-function amenityFilterGroups(hs,f){
- const facts=new Map();hs.forEach(h=>(h.amenities||[]).forEach(a=>{if(a?.filterable===false)return;facts.set(a.key,a);amenityNames.set(a.key,a);}));
- for(const key of f.amenities||[])if(!facts.has(key)&&amenityNames.has(key))facts.set(key,amenityNames.get(key));
+function amenityFilterGroups(facts,f){
+ for(const key of f.amenities||[])if(!facts.has(key)&&amenityNames.has(key)){facts=new Map(facts);facts.set(key,amenityNames.get(key));}
  const counts=countFacetOptions(editingFilterModel(),'amenities',[...facts.keys()]);
  const groups=new Map();for(const fact of facts.values()){if(!groups.has(fact.groupId))groups.set(fact.groupId,{name:fact.group,items:[]});groups.get(fact.groupId).items.push(fact);}
  return [...groups.values()].map(group=>`<div class="filter-group"><h4>${esc(group.name)}</h4>${group.items.map(a=>{const selected=(f.amenities||[]).includes(a.key);return filterCheckRowHTML(`data-filter="amenities" value="${esc(a.key)}"`,a.label,counts.get(a.key),selected);}).join('')}</div>`).join('');
@@ -154,17 +153,30 @@ function jumpToFilterSection(id){
  $('#filter-section-jump').value='';
 }
 function filterStarOptions(model){const f=model.filters,hs=getHotels().filter(h=>h.country===state.search.country);return [...new Set([...hs.map(h=>h.stars).filter(n=>Number.isInteger(n)&&n>=1&&n<=5),...f.stars])].sort((a,b)=>a-b);}
-function filterStarButtons(model,counts=null){const f=model.filters,starOptions=counts?[...counts.keys()]:filterStarOptions(model);counts??=countFacetOptions(model,'stars',starOptions);return starOptions.map(n=>{const count=counts.get(n),selected=f.stars.includes(n);return count>0||selected?`<button type="button" data-action="star" data-value="${n}" aria-label="${n} ${n===1?'звезда':n<5?'звезды':'звёзд'} — ${hotelCountText(count)}" aria-pressed="${selected}" class="${selected?'active':''}"><span>${n} ★</span><small aria-hidden="true">${count}</small></button>`:''}).join('');}
+function filterPresentationInventory(f){
+ const stars=new Set(),resorts=new Set(f.resorts),amenities=new Map();let hasRating=!!f.rating;
+ for(const h of getHotels()){
+  if(h.country!==state.search.country)continue;
+  if(Number.isInteger(h.stars)&&h.stars>=1&&h.stars<=5)stars.add(h.stars);
+  if(!hasRating&&ratingValue(h)!==null)hasRating=true;
+  for(const resort of hotelPlaces(h))resorts.add(resort);
+  for(const fact of h.amenities||[])if(fact?.filterable!==false){amenities.set(fact.key,fact);amenityNames.set(fact.key,fact);}
+ }
+ for(const value of f.stars)stars.add(value);
+ for(const key of f.amenities||[])if(!amenities.has(key)&&amenityNames.has(key))amenities.set(key,amenityNames.get(key));
+ return {stars:[...stars].sort((a,b)=>a-b),resorts:[...resorts],amenities,hasRating};
+}
+function filterStarButtons(model,counts=null,options=null){const f=model.filters,starOptions=counts?[...counts.keys()]:options||filterStarOptions(model);counts??=countFacetOptions(model,'stars',starOptions);return starOptions.map(n=>{const count=counts.get(n),selected=f.stars.includes(n);return count>0||selected?`<button type="button" data-action="star" data-value="${n}" aria-label="${n} ${n===1?'звезда':n<5?'звезды':'звёзд'} — ${hotelCountText(count)}" aria-pressed="${selected}" class="${selected?'active':''}"><span>${n} ★</span><small aria-hidden="true">${count}</small></button>`:''}).join('');}
 function updateFilterStars(counts=null){const host=$('#filters .star-options');if(!host)return;const focused=document.activeElement,active=host.contains(focused)?focused.dataset.value:null,html=filterStarButtons(editingFilterModel(),counts);if(host.innerHTML!==html){host.innerHTML=html;if(active)host.querySelector(`[data-value="${active}"]`)?.focus({preventScroll:true});}host.closest('.filter-group').hidden=!html;}
-function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(state.search),data.scenario]);if(queryScope!==facetQueryScope){facetQueries.clear();facetQueryScope=queryScope;}const model=editingFilterModel(),f=model.filters,hs=getHotels().filter(h=>h.country===state.search.country),scale=budgetScale(f),budgetEdit=currentFilterBudgetEdit(f),starButtons=filterStarButtons(model);paintFilters(`
+function renderFilters(ratingCount){const queryScope=JSON.stringify([searchKey(state.search),data.scenario]);if(queryScope!==facetQueryScope){facetQueries.clear();facetQueryScope=queryScope;}const model=editingFilterModel(),f=model.filters,inventory=filterPresentationInventory(f),scale=budgetScale(f),budgetEdit=currentFilterBudgetEdit(f),starButtons=filterStarButtons(model,null,inventory.stars);paintFilters(`
  <div class="filter-group"><h4>Название отеля или курорт</h4><div class="filter-search"><input class="input" id="hotel-query" type="search" value="${esc(f.q)}" placeholder="Название или несколько слов" aria-label="Название отеля или курорт">${icon('search')}<button type="button" class="icon-button clear-hotel-query" data-action="clear-hotel-query" aria-label="Очистить название отеля или курорт" ${f.q?'':'hidden'}>${icon('x')}</button></div></div>
  <div class="filter-group"><h4>Бюджет на всех туристов</h4><div class="price-inputs"><label>От, ₽<input type="text" inputmode="decimal" id="min-price" value="${esc(budgetEdit?.minText??f.min)}" aria-describedby="filter-budget-error"></label><label>До, ₽<input type="text" inputmode="decimal" id="max-price" value="${esc(budgetEdit?.maxText??f.max??'')}" placeholder="Без лимита" aria-describedby="filter-budget-error"></label></div><input class="range" type="range" id="price-range" aria-label="Максимальная цена" aria-valuetext="${esc(budgetLabel(f))}" min="${f.min}" max="${scale}" step="1000" value="${f.max??scale}"><p class="error-text filter-budget-error" id="filter-budget-error" role="alert" hidden></p></div>
  <div class="filter-group" ${starButtons?'':'hidden'}><h4>Категория отеля</h4><div class="star-options">${starButtons}</div></div>
  ${Object.keys(mealNames).length?`<div class="filter-group"><h4>Питание</h4>${checkRows('meals',[...new Set([...Object.keys(mealNames),...f.meals])].map(m=>[m,m]))}</div>`:''}
- ${f.rating||hs.some(h=>ratingValue(h)!==null)?(()=>{const count=ratingCount??countMatchingHotels({...model,filters:{...f,rating:true}});return `<div class="filter-group"><h4>Оценка гостей</h4>${filterCheckRowHTML('data-filter-bool="rating"','От 4,5 из 5',count,f.rating)}</div>`})():''}
- ${f.resorts.length||hs.some(h=>hotelPlaces(h).length)?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',[...new Set([...f.resorts,...hs.flatMap(h=>hotelPlaces(h))])].map(r=>[r,r]))}</div>`:''}
+ ${inventory.hasRating?(()=>{const count=ratingCount??countMatchingHotels({...model,filters:{...f,rating:true}});return `<div class="filter-group"><h4>Оценка гостей</h4>${filterCheckRowHTML('data-filter-bool="rating"','От 4,5 из 5',count,f.rating)}</div>`})():''}
+ ${inventory.resorts.length?`<div class="filter-group"><h4>Курорт</h4>${checkRows('resorts',inventory.resorts.map(r=>[r,r]))}</div>`:''}
  ${f.operators.length||operators.length?`<div class="filter-group"><h4>Туроператор</h4>${checkRows('operators',[...new Set([...f.operators,...operators])].map(o=>[o,o]))}</div>`:''}
- ${amenityFilterGroups(hs,f)}
+ ${amenityFilterGroups(inventory.amenities,f)}
  <div class="filter-hint">${icon('info')}<span>${!state.hasSearched&&!state.onlyFavorites?'Условия применятся после нажатия «Найти туры». Доступные курорты и туроператоры появятся в выдаче.':'Фильтры применяются к найденным предложениям. Актуальная цена и сборы уточняются при выборе.'}</span></div>`,f);
  renderFilterNavigation();syncFilterResetState(model);showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));$('#beach-chip').hidden=true;$('#family-chip').hidden=true;settleFilterRoots($('#filters'));
 }
