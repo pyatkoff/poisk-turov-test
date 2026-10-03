@@ -5,6 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 const terser=require('terser');
 const {parsed}=require('./compact.cjs');
 const {printCSS}=require('./compact-css.cjs');
+const {verify:verifyLeadRuntime}=require('./lead-runtime.cjs');
 const cssTree=require('css-tree');
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 function syntax(node,rename=false,context=''){
@@ -95,7 +96,7 @@ const privateBindingAssets=new Set(['visual-search/app.js','tour-controller-v4.j
 // Its entry/boundary declarations are observed instrumentation, not private names.
 const observedBindings={'prototype-search/data.js':['andromedaPoint','normalizeAndromedaQuote']};
 async function build(root){
- root=path.resolve(root);const graphs=inventory(root),files=[];
+ root=path.resolve(root);verifyLeadRuntime(root);const graphs=inventory(root),files=[];
  for(const src of new Set([...graphs.live,...graphs.offline,...graphs.ondemand])){
   const relative=path.posix.normalize(path.posix.join('visual-search',src));
   const input=path.resolve(root,relative);assert(input.startsWith(root+path.sep),'source stays inside payload');
