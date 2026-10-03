@@ -1286,18 +1286,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: offer refinement inventory merged; structural optimization continues",
+    "title": "Search3 NEXT: multi-facet source traversal merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4373,
+    "pr": 4375,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "a87cef1065d5a5c94dc3640d3399697ed52f573c",
+    "last_fully_checked_release_sha": "2044efb454a269d3fd720ad8fe7dd1cc1697e679",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "OFFER_REFINEMENT_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4373 heade0efdabaa0d29a3de521067bd3252dc7a703d3e7 is checked and merged as releasea87cef1065d5a5c94dc3640d3399697ed52f573c: all-offers refinement rendering now builds one ephemeral per-render inventory for ordered option values and exact ignore-current-field counts instead of eight row passes. Accepted 1000-offer work is row passes8->1, value reads8790->4000 and count predicates4780->4000; 501 refinement plus sparse/inherited/initial-length parity cases, 32 render states, raw identity/order, history/focus and later-render freshness are retained. Honest delta: readable owner+514raw/+91gzip-before; compiled complete LIVE+514raw/+248served/+110gzip-after, totals592690raw/450050served/140918gzip-after. Operation-count reduction only; no transfer or latency improvement claim. Security37106325000 and build37106324957 SUCCESS; full visual/exact-compiled Chromium37106324913 attempt2 SUCCESS after attempt1 alone hit an unrelated direct-card terminal-offer retry timing assertion, while all changed-owner tests and compiled lazy-owner browsers passed; exactly one same-SHA failed-job retry, no code/carrier substitution. Source terminal5966804427. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Next perform a fresh read-only audit and require another material compiled-reachable structural hotspot before any claim; reject legacy/unreachable, cosmetic byte-only and code movement. Preserve all protected contracts, data.js only by bounded INT->SEARCH handoff, accumulate before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "MULTI_FACET_SOURCE_TRAVERSAL_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4375 headaff2d3000b5917ea11141d386869fb8c491800df is checked and merged as release2044efb454a269d3fd720ad8fe7dd1cc1697e679: ordinary five-group facet render/refresh now composes the existing exact group plans into one fresh top-level hotel traversal, with no cross-refresh cache. Accepted 1000-hotel work is top-level source reads5000->1000; group counts equal standalone counts, selected-model count, 1042 presentation states, 144 dynamic reconciliation states, sparse/inherited/live-growth behavior and raw identity/order are retained. Honest delta: source+1083raw/+241gzip; compiled LIVE+614served/+198gzip. Operation-count reduction only; no transfer or latency improvement claim. Exact-head guard37109241891, full visual/focused+compiled Chromium37109241917, lead-source37109241932 and build-preview-artifact37109241915 SUCCESS; no review submissions or threads. Source terminal5967147200. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Next perform a fresh read-only audit and require another material compiled-reachable structural hotspot before any claim; reject legacy/unreachable, cosmetic byte-only and code movement. Preserve all protected contracts, data.js only by bounded INT->SEARCH handoff, accumulate before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4373"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4375"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
