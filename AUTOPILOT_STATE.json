@@ -1286,23 +1286,23 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: multi-facet source traversal merged; structural optimization continues",
+    "title": "Search3 NEXT: shared facet discovery merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4375,
+    "pr": 4378,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "2044efb454a269d3fd720ad8fe7dd1cc1697e679",
+    "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 requires browser milliseconds before any user-visible speed claim. NEXT only; favorites paused flag and protected contracts retained.",
+    "last_fully_checked_release_sha": "d5de276169abb1da8489cf07818c54e27d01f94f",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "MULTI_FACET_SOURCE_TRAVERSAL_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4375 headaff2d3000b5917ea11141d386869fb8c491800df is checked and merged as release2044efb454a269d3fd720ad8fe7dd1cc1697e679: ordinary five-group facet render/refresh now composes the existing exact group plans into one fresh top-level hotel traversal, with no cross-refresh cache. Accepted 1000-hotel work is top-level source reads5000->1000; group counts equal standalone counts, selected-model count, 1042 presentation states, 144 dynamic reconciliation states, sparse/inherited/live-growth behavior and raw identity/order are retained. Honest delta: source+1083raw/+241gzip; compiled LIVE+614served/+198gzip. Operation-count reduction only; no transfer or latency improvement claim. Exact-head guard37109241891, full visual/focused+compiled Chromium37109241917, lead-source37109241932 and build-preview-artifact37109241915 SUCCESS; no review submissions or threads. Source terminal5967147200. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Next perform a fresh read-only audit and require another material compiled-reachable structural hotspot before any claim; reject legacy/unreachable, cosmetic byte-only and code movement. Preserve all protected contracts, data.js only by bounded INT->SEARCH handoff, accumulate before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "SHARED_FACET_DISCOVERY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4378 head525933edc96e3a799c4c56accc819a949b3bc42a is checked and merged as released5de276169abb1da8489cf07818c54e27d01f94f: filter render/refresh now shares dynamic option discovery with grouped facet counting in one fresh top-level hotel traversal, with no cross-render cache. Accepted 1000-hotel operation result is source visits2000->1000; historical presentation discovery7000->1000. Dynamic star/resort/amenity identity/order, selected-unavailable values, exact standalone/group counts, selected-model count, 1042 presentation states, 144 reconciliation states, sparse/inherited/live-growth behavior and raw identity/order are retained. Honest delta: source+812raw/+245gzip; compiled LIVE+812raw/+485served/+170gzip. Operation-count reduction only; no transfer or measured page-latency improvement claim. Exact-head guard37112088635, lead-source37112088637, build-preview-artifact37112088671 and full visual/focused+compiled Chromium37112088691 SUCCESS; no review submissions or threads. Source terminal5967635504. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Independent timing diagnostics claim5967222127 remains active and disjoint; do not consume provisional/invalid measurements. Next perform a fresh read-only audit and require another material compiled-reachable structural hotspot before any source claim; reject legacy/unreachable, cosmetic byte-only and code movement. Preserve protected contracts, data.js only by bounded INT->SEARCH handoff, accumulate before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
-      "candidate_scope": "Active app.js rendering/reconciliation/inventory paths and other unclaimed Search3 NEXT scripts. data.js is inspection-only unless a bounded INT->SEARCH handoff is confirmed.",
-      "acceptance": "Select only a hotspot with a reproducible operation/rendering/complexity benefit and explicit behavior oracle. Reject cosmetic byte-only changes and code movement whose only benefit is a smaller single file. Report raw, served and gzip deltas separately from operation work; do not claim page latency without measurement.",
+      "candidate_scope": "Active app.js rendering/reconciliation/inventory paths and other unclaimed Search3 NEXT scripts. data.js is inspection-only unless a bounded INT->SEARCH handoff is confirmed. Diagnostics/workflow paths remain under independent claim5967222127.",
+      "acceptance": "Select only a hotspot with a reproducible operation/rendering/complexity benefit and explicit behavior oracle. Reject cosmetic byte-only changes and code movement whose only benefit is a smaller single file. Report raw, served and gzip deltas separately from operation work; do not claim user-visible speed without valid repeated paired browser milliseconds on identical outputs.",
       "execution": "Read fresh release/current_task/claims and terminal receipts, audit read-only, then claim the minimal exact source/test/manifest paths. Preserve raw object identity/order, calendar/filter/search scope, URLs/payload, price/fuel, supplier/auth, lead/CRM/Metrika, generation and logo contracts. Run lean narrow tests first, applicable exact-head CI and compiled Chromium before merge; continue independently around blockers and accumulate before one guarded NEXT publish.",
       "protected": "No production/sibling preview/main change, no provider or direct-ANEX removal, no data.js mutation without bounded INT handoff, no favorites-flag change and no replay."
     },
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4375"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4378"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
