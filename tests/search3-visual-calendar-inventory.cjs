@@ -223,7 +223,7 @@ function expandedCalendar(source){
  const hs=fixture(),ctx=make(source,hs),rows=[];
  ctx.calendarHotels=[hs[1],hs[0]];ctx.startDay=day(0);ctx.endDay=day(6);ctx.datePrices=new Map();
  ctx.calendarObservations=[{date:day(0),price:0},{date:day(1),price:90000},{date:day(1),price:89000},{date:day(2),price:NaN},{date:day(7),price:1}];
- vm.runInContext(section(source,'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);
+ vm.runInContext(section(source,source.includes('function calendarPriceInventory(')?'function calendarPriceInventory(':'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);
  for(const filters of variants)for(const supported of [false,true]){
   ctx.dateContext={search:ctx.state.search,filters:{...defaultFilters(),...filters}};ctx.supported=supported;ctx.refreshCalendarPriceCache();
   rows.push(Array.from({length:7},(_,i)=>ctx.datePrices.get(day(i))??null));
@@ -240,9 +240,47 @@ function expandedCalendar(source){
  let sorts=0;for(const h of hs)h.offers.filter=function(...args){const rows=Array.prototype.filter.apply(this,args);rows.sort=function(...args){sorts++;return Array.prototype.sort.apply(this,args)};return rows;};
  ctx.run([day(0),day(1),day(2)],{},[]);assert.equal(sorts,0,'calendar does not sort offer arrays');
  Object.assign(ctx,{calendarHotels:[hs[1]],startDay:day(0),endDay:day(6),datePrices:new Map(),calendarObservations:[],dateContext:{search:ctx.state.search,filters:defaultFilters()}});
- vm.runInContext(section(source,'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);ctx.refreshCalendarPriceCache();assert.equal(sorts,0,'expanded calendar does not sort offer arrays');
+ vm.runInContext(section(source,source.includes('function calendarPriceInventory(')?'function calendarPriceInventory(':'function refreshCalendarPriceCache(){','function calendarPrice('),ctx);ctx.refreshCalendarPriceCache();assert.equal(sorts,0,'expanded calendar does not sort offer arrays');
  ctx.hotelOffers(hs[1],options);assert.equal(sorts,1,'normal offer consumers remain sorted');
  console.log(`PASS calendar ordering: ${rows.length} expanded price sequences; digest ${hash}; raw membership retained; per-hotel calendar sorts removed, normal sorting retained`);
+}
+
+// Progressive calendar callbacks replace one month at a time. Rebuilding only
+// that month's exact inventory must match the former accumulated global owner
+// after every callback, including a replacement that removes the cheapest row.
+if(source.includes('function calendarPriceInventory(')){
+ const pricedHotel=(id,date,total)=>{const hotel=fixture()[1],offer={...hotel.offers[2],key:String(id),day:date,total};hotel.id=id;hotel.offers=[offer];return hotel;};
+ const base=Array.from({length:1000},(_,id)=>pricedHotel('base-'+id,day(id%7),120000+id)),ctx=make(source,base);
+ ctx.startDay='2026-09-24';ctx.endDay='2027-03-23';ctx.dateContext={search:ctx.state.search,filters:defaultFilters()};
+ vm.runInContext(section(source,'function calendarPriceInventory(','function prepareCalendarBasePrices(')+'globalThis.priceInventory=calendarPriceInventory;',ctx);
+ const monthNames=['2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03'],windowCounts=[1,2,2,2,2,2,2],events=[];
+ const windowRows=(month,window)=>Array.from({length:100},(_,id)=>pricedHotel(month+'-'+window+'-'+id,month+'-'+String(id%20+1).padStart(2,'0'),100000+window*1000+id));
+ for(let index=0;index<monthNames.length;index++){
+  const month=monthNames[index];let monthHotels=[];
+  for(let window=0;window<windowCounts[index];window++){monthHotels=monthHotels.concat(windowRows(month,window));events.push({month,phase:'window',hotels:monthHotels,observations:[]});}
+  const observations=[{date:month+'-01',price:80000+index}];events.push({month,phase:'observation',hotels:monthHotels,observations});events.push({month,phase:'terminal',hotels:monthHotels,observations});
+ }
+ const merge=inventories=>{const out=new Map();for(const inventory of inventories)for(const [date,price]of inventory)out.set(date,Math.min(out.get(date)??Infinity,price));return out;};
+ const snapshots=new Map(),monthInventories=new Map(),baseInventory=ctx.priceInventory(base,[],ctx.dateContext);ctx.scans=0;
+ const progressive=[];
+ for(const event of events){
+  snapshots.set(event.month,event);const current=ctx.priceInventory([...base,...[...snapshots.values()].flatMap(row=>row.hotels)],[...snapshots.values()].flatMap(row=>row.observations),ctx.dateContext);
+  progressive.push(Array.from(current));
+ }
+ const currentCallbackVisits=ctx.scans;ctx.scans=0;
+ for(let index=0;index<events.length;index++){
+  const event=events[index];monthInventories.set(event.month,ctx.priceInventory(event.hotels,event.observations,ctx.dateContext));
+  assert.equal(JSON.stringify(Array.from(merge([baseInventory,...monthInventories.values()]))),JSON.stringify(progressive[index]),event.month+' '+event.phase+' progressive price parity');
+ }
+ const monthCallbackVisits=ctx.scans;
+ assert.deepEqual([events.length,currentCallbackVisits,monthCallbackVisits],[27,45900,4500]);
+ const replacementMonth='2026-10',cheap=pricedHotel('cheap','2026-10-10',50000),expensive=pricedHotel('expensive','2026-10-10',90000);
+ monthInventories.set(replacementMonth,ctx.priceInventory([cheap,expensive],[],ctx.dateContext));assert.equal(merge(monthInventories.values()).get('2026-10-10'),50000);
+ monthInventories.set(replacementMonth,ctx.priceInventory([expensive],[],ctx.dateContext));assert.equal(merge(monthInventories.values()).get('2026-10-10'),90000,'same-month replacement can raise the minimum');
+ const inherited=Object.create(Array.prototype);inherited[1]=cheap;const sparse=new Array(2);Object.setPrototypeOf(sparse,inherited);ctx.scans=0;assert.equal(ctx.priceInventory(sparse,[],ctx.dateContext).get('2026-10-10'),50000);assert.equal(ctx.scans,2,'sparse/inherited hotel membership matches spread semantics');
+ const growing=[cheap];let appended=false;const originalOffers=ctx.hotelOffers;ctx.hotelOffers=(hotel,options)=>{if(!appended){appended=true;growing.push(expensive);}return originalOffers(hotel,options);};ctx.scans=0;ctx.priceInventory(growing,[],ctx.dateContext);assert.deepEqual([ctx.scans,growing.length],[1,2],'hotel source membership is fixed before offer access');ctx.priceInventory(growing,[],ctx.dateContext);assert.equal(ctx.scans,3,'next inventory observes appended hotel');
+ assert.equal(JSON.stringify(base).includes('calendar'),false,'raw hotels remain unannotated');
+ console.log(`PASS month-local calendar inventories: callback visits ${currentCallbackVisits}->${monthCallbackVisits}; full open path 47900->5500; 27 progressive maps, exact replacement minimum, sparse/inherited/initial-length and raw input parity; supplier/lead HTTP 0`);
 }
 
 // Batch facet counts are compared with independent scalar existence counts.
