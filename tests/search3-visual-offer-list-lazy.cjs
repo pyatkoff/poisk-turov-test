@@ -3,15 +3,17 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const start=app.indexOf('let offerListLoad=null,'),end=app.indexOf('function confirmTour(){',start);assert(start>=0&&end>start);
-const source=app.slice(start,end),context=source.match(/const api=owner.create\(\{([^}]+)\}\);/);assert(context,'real cold owner renderer context');
+const openStart=app.indexOf('function openAllOffers('),openEnd=app.indexOf('const offerCountText=',openStart);assert(openStart>=0&&openEnd>openStart);
+const source=app.slice(openStart,openEnd)+app.slice(start,end),context=source.match(/const api=owner.create\(\{([^}]+)\}\);/);assert(context,'real cold owner renderer context');
 const dependencies=context[1].split(',').map(name=>name.trim());assert(dependencies.every(name=>/^[$A-Z_a-z][$\w]*$/.test(name)),'cold renderer context contains named live dependencies');
 const flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(){
- const scripts=[],timers=new Map(),renders=[],list={innerHTML:'before'},modal={open:true},filters={open:false},body={scrollTop:0};let nextTimer=0,remembers=0;
- const ctx={window:{},Promise,Error,WeakMap,Number,modalType:'all-offers',offerView:{id:1},
+ const scripts=[],timers=new Map(),renders=[],list={innerHTML:'before'},modal={open:true,classList:{add:()=>{}}},filters={open:false},body={scrollTop:0};let nextTimer=0,remembers=0;
+ const ctx={window:{},Promise,Error,WeakMap,Number,modalType:'all-offers',offerView:{id:1},hotels:[{id:1,name:'Hotel'}],
   setTimeout:fn=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   document:{head:{dataset:{offerListSrc:'./offer-list-v1.js?v=exact'},append:script=>scripts.push(script)},createElement:()=>({removed:false,remove(){this.removed=true;}})},
   $:selector=>({'#all-offers-list':list,'#modal':modal,'.offer-filter-disclosure':filters,'#modal-body':body}[selector]),
+  showModal:()=>{ctx.modalType='all-offers';modal.open=true;},
   rememberUIRoute:()=>{remembers++;}
  };
  for(const name of dependencies)if(!(name in ctx))ctx[name]=()=>{};
@@ -25,6 +27,8 @@ function fixture(){
  assert.equal(f.scripts[0].src,'./offer-list-v1.js?v=exact','use the entry supplied exact asset version');
  f.ctx.window.AnyTourOfferList=f.owner;f.scripts[0].onload();await flush();assert.equal(f.renders.length,1);assert.equal(f.renders[0].reset,false,'only the latest render request applies');assert.equal(vm.runInContext('offerListPage?.view===offerView',f.ctx),true,'latest full render retains its exact page API');assert(f.scripts[0].removed);assert.equal(f.timers.size,0);
  f.ctx.renderOfferList(true);assert.equal(f.renders.length,2,'warm rendering remains synchronous');assert.equal(f.scripts.length,1,'warm open has no additional download');
+ const warm=fixture();warm.ctx.window.AnyTourOfferList=warm.owner;warm.ctx.openAllOffers(1,null,{room:'SEA',meal:'BB'});assert.equal(warm.renders.length,1,'warm hotel-detail handoff renders exactly once');assert.deepEqual(JSON.parse(JSON.stringify(warm.renders[0].view)),{id:1,departure:'',flight:'',room:'SEA',meal:'BB',sort:'price',open:[],limits:{}});assert.equal(warm.renders[0].reset,true);
+ const cold=fixture();cold.ctx.openAllOffers(1,null,{room:'SEA',meal:'BB'});assert.equal(cold.scripts.length,1);assert.equal(cold.ctx.offerView.room,'SEA');assert.equal(cold.ctx.offerView.meal,'BB');cold.ctx.window.AnyTourOfferList=cold.owner;cold.scripts[0].onload();await flush();assert.equal(cold.renders.length,1,'cold hotel-detail handoff keeps one current render');assert.strictEqual(cold.renders[0].view,cold.ctx.offerView);
  for(const cancel of ['close','replace','view']){
   const g=fixture();g.ctx.renderOfferList();if(cancel==='close')g.modal.open=false;else if(cancel==='replace')g.ctx.modalType='gallery';else g.ctx.offerView={id:2};
   const pending=g.list.innerHTML;g.ctx.window.AnyTourOfferList=g.owner;g.scripts[0].onload();await flush();assert.equal(g.renders.length,0,cancel+' rejects late render');assert.equal(g.list.innerHTML,pending);
@@ -38,7 +42,7 @@ function fixture(){
  const h=fixture();vm.runInContext('offerListRestores.set(offerView,{filtersOpen:true,scroll:713})',h.ctx);h.ctx.renderOfferList();h.ctx.window.AnyTourOfferList=h.owner;h.scripts[0].onload();await flush();assert.equal(h.filters.open,true);assert.equal(h.body.scrollTop,713);assert.equal(h.remembers(),1,'history restoration happens after the actual renderer');
  const c=fixture();c.ctx.renderOfferList();c.modal.open=false;const pending=c.list.innerHTML;c.scripts[0].onerror();await flush();assert.equal(c.list.innerHTML,pending,'late failure cannot edit a closed modal');
  assert(app.includes("case 'retry-offer-list':if(modalType==='all-offers')renderOfferList(true);"),'real event dispatcher exposes retry');
- console.log('PASS cold offer-list: zero bootstrap fetch; shared/warm request; newest view; close/replace cancellation; network/timeout/missing-owner retries; deferred history restore');
+ console.log('PASS cold offer-list: zero bootstrap fetch; shared/warm request; warm/cold hotel-detail handoff one render; newest view; close/replace cancellation; network/timeout/missing-owner retries; deferred history restore');
 })().catch(error=>{console.error(error);process.exitCode=1;});
 
 // Keep the same-owner inventory oracle on this existing lean/full CI entrypoint.
