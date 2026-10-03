@@ -73,6 +73,7 @@ function characterize(source, scenario) {
     getStored:()=>['Moscow','Kazan'],recentDestinations:()=>[{country:'Egypt',resorts:[],hotelId:0}],
     destinationHotel:()=>({id:7,country:'Turkey'}),normalizeSearch:s=>s.trim().toLowerCase(),
     renderMoreDestinationHotels:()=>{trace.push(['renderMoreDestinationHotels']);return 4;},
+    renderOfferGroup:key=>{trace.push(['renderOfferGroup',key]);return scenario.groupHandled===true;},byId:id=>node('#'+id),
     dateObj:s=>new Date(s+'T00:00:00Z'),iso:d=>d.toISOString().slice(0,10),dateRangeError:()=>false,
     readBudget:()=>({valid:!scenario.invalidBudget,min:200,max:2000,invalidMin:true}),scrollBehavior:()=> 'instant'
   };
@@ -176,6 +177,11 @@ assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
 assert.deepEqual(result('first new hotel focuses').trace.slice(-3),[['renderMoreDestinationHotels'],['focus','.destination-hotel[4]',{preventScroll:true}],['scrollIntoView','.destination-hotel[4]',{block:'nearest',behavior:'instant'}]],'destination page focuses and reveals the first appended hotel');
+const groupSetup=(c,t,node)=>{node('#group-room|AI').previousElementSibling=node('offer-group-heading');};
+const groupHandled=characterize(source,{type:'click',action:'offer-group',groupHandled:true,dataset:{value:'room|AI'},setup:groupSetup});
+assert.deepEqual(groupHandled.offerView.open,['room|AI']);assert.deepEqual(groupHandled.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['focus','offer-group-heading',{preventScroll:true}]],'handled disclosure updates view and restores heading focus without a full render');
+const groupFallback=characterize(source,{type:'click',action:'offer-group',dataset:{value:'room|AI'},setup:groupSetup});
+assert.deepEqual(groupFallback.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['renderOfferList'],['focus','offer-group-heading',{preventScroll:true}]],'stale disclosure falls back to the full renderer and restores focus');
 // Stale comparison controls are unknown change events; they cannot mutate the
 // retained favorites, selected tour, provider, filter or flight state.
 const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
