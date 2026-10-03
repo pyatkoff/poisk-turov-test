@@ -1064,7 +1064,7 @@ function modalBack(){
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();closeModal();});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal()}});
-let calendarHotels=[],calendarObservations=[],calendarRequest=null,calendarObserver=null,calendarMobile=null,calendarLoads=new Map();
+let calendarHotels=[],calendarObservations=[],calendarRequest=null,calendarObserver=null,calendarMobile=null,calendarLoads=new Map(),calendarBasePrices=new Map(),calendarMonthPrices=new Map(),calendarPriceContext=null;
 let dateContext=null,datePrices=new Map(),mealDraft=[];
 function budgetLabel(f){return f.max===null?(f.min?'От '+money(f.min):'Без ограничений'):f.min?`${money(f.min)} — ${money(f.max)}`:'До '+money(f.max);}
 const budgetText=()=>budgetLabel(state.filters);
@@ -1158,7 +1158,7 @@ function prepareDatePicker(source,restore){
  const restoredDraft=restore?.draft&&typeof restore.draft==='object'?{from:String(restore.draft.from||''),to:String(restore.draft.to||''),phase:restore.draft.phase===1?1:0}:null;
  dateDraft=restoredDraft&&!dateRangeError(restoredDraft)?restoredDraft:{from:selectedDay||s.from,to:selectedDay||s.to,phase:0};
  const firstMonth=startDay.slice(0,7)+'-01',lastMonth=endDay.slice(0,7)+'-01',restoredMonth=String(restore?.month||'');
- datePrices=new Map();calendarLoads=new Map();calendarMonth=/^\d{4}-\d{2}-01$/.test(restoredMonth)&&restoredMonth>=firstMonth&&restoredMonth<=lastMonth?restoredMonth:dateDraft.from.slice(0,7)+'-01';
+ datePrices=new Map();calendarLoads=new Map();calendarHotels=[];calendarObservations=[];calendarBasePrices=new Map();calendarMonthPrices=new Map();calendarPriceContext=null;calendarMonth=/^\d{4}-\d{2}-01$/.test(restoredMonth)&&restoredMonth>=firstMonth&&restoredMonth<=lastMonth?restoredMonth:dateDraft.from.slice(0,7)+'-01';
 }
 function openDates(source='form',restore=null){
  prepareDatePicker(source,restore);
@@ -1169,11 +1169,25 @@ function openDates(source='form',restore=null){
  loadCalendarPrices();
  if(innerWidth<=760&&calendarMonth!==startDay.slice(0,7)+'-01'){const tools=$('.date-choice-tools');$('#modal').style.setProperty('--calendar-context-height',tools.offsetHeight+12+'px');document.querySelector(`[data-month="${calendarMonth}"]`)?.scrollIntoView({block:'start',behavior:'instant'});}
 }
+function calendarPriceInventory(hotelRows,observationRows,ctx=dateContext){
+ const prices=new Map(),s={...ctx.search,from:startDay,to:endDay},f=ctx.filters;
+ const add=(day,price)=>{if(day>=startDay&&day<=endDay&&Number.isFinite(price)&&price>0)prices.set(day,Math.min(prices.get(day)??Infinity,price));};
+ // Snapshot the source membership before offer access: preserve the previous
+ // spread semantics for sparse/inherited arrays and mid-scan source growth.
+ for(const h of [...hotelRows])for(const o of hotelOffers(h,{search:s,filters:f,selectedDate:null,onlyFavorites:false,sort:false}))add(o.day,o.total);
+ if(data.observationScopeSupported(s,f))for(const point of observationRows)add(point.date,point.price);
+ return prices;
+}
+function applyCalendarPriceInventories(){
+ datePrices.clear();
+ for(const prices of [calendarBasePrices,...calendarMonthPrices.values()])for(const [day,price]of prices)datePrices.set(day,Math.min(datePrices.get(day)??Infinity,price));
+}
+function prepareCalendarBasePrices(ctx){
+ calendarPriceContext=ctx;calendarBasePrices=calendarPriceInventory(hotels,[],ctx);calendarMonthPrices=new Map();applyCalendarPriceInventories();
+}
 function refreshCalendarPriceCache(){
- datePrices.clear();const s={...dateContext.search,from:startDay,to:endDay},f=dateContext.filters;
- const add=(day,price)=>{if(day>=startDay&&day<=endDay&&Number.isFinite(price)&&price>0)datePrices.set(day,Math.min(datePrices.get(day)??Infinity,price));};
- for(const h of [...hotels,...calendarHotels])for(const o of hotelOffers(h,{search:s,filters:f,selectedDate:null,onlyFavorites:false,sort:false}))add(o.day,o.total);
- if(data.observationScopeSupported(s,f))for(const point of calendarObservations)add(point.date,point.price);
+ const prices=calendarPriceInventory([...hotels,...calendarHotels],calendarObservations,dateContext);datePrices.clear();for(const [day,price]of prices)datePrices.set(day,price);
+ if(!calendarHotels.length&&!calendarObservations.length){calendarPriceContext=dateContext;calendarBasePrices=new Map(prices);calendarMonthPrices=new Map();}
 }
 function calendarPrice(day){return datePrices.get(day)??null;}
 function monthFrame(month){
@@ -2127,8 +2141,12 @@ $('#modal-body').addEventListener('touchend',e=>{const start=touchStart;touchSta
 window.addEventListener('resize',()=>{if(innerWidth>1100&&$('#filter-panel').classList.contains('open'))closeFilters({apply:true,adapt:true});if(modalType==='dates'&&calendarMobile!==(innerWidth<=760)){renderDateCalendar();loadCalendarPrices();}});
 
 function refreshCalendarPrices(){
- refreshCalendarPriceCache();
- $$('#date-calendar .calendar-month').forEach(month=>{
+ if(typeof calendarPriceContext==='undefined'||calendarPriceContext!==dateContext)refreshCalendarPriceCache();
+ else{calendarBasePrices=calendarPriceInventory(hotels,[],dateContext);applyCalendarPriceInventories();}
+ renderCalendarPrices();
+}
+function renderCalendarPrices(){
+ $('#date-calendar .calendar-month').forEach(month=>{
   const cells=[...month.querySelectorAll('.month-day:not([disabled])')],prices=cells.map(b=>calendarPrice(b.dataset.date)),min=Math.min(...prices.filter(p=>p!==null));
   cells.forEach((b,i)=>{const price=prices[i];b.classList.toggle('is-cheap',price!==null&&price===min);b.querySelector('small').textContent=price===null?'—':shortAmount(price);b.setAttribute('aria-label',dateLong(b.dataset.date)+(price===null?', цена пока неизвестна':', от '+money(price)));});
  });
@@ -2136,13 +2154,13 @@ function refreshCalendarPrices(){
 }
 function loadCalendarPrices(){
  calendarRequest?.abort();calendarObserver?.disconnect();calendarRequest=new AbortController();const controller=calendarRequest,ctx=dateContext,loads=new Map();calendarLoads=loads;
- calendarHotels=[];calendarObservations=[];const snapshots=new Map();refreshCalendarPrices();
+ calendarHotels=[];calendarObservations=[];if(calendarPriceContext!==ctx)prepareCalendarBasePrices(ctx);else{calendarMonthPrices=new Map();applyCalendarPriceInventories();}renderCalendarPrices();
  if(!catalogReady){$('.date-choice-tools').setAttribute('aria-busy',String(!catalogError));$('.calendar-price-key>span').textContent=catalogError?'Даты можно выбрать без цены':'Загружаем направления…';return;}
  const legend=()=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;const phases=[...loads.values()],node=$('.calendar-legend'),loading=phases.includes('loading');$('.date-choice-tools').setAttribute('aria-busy',String(loading));$('.calendar-price-key>span').textContent=loading?'Открываем цены…':'Весь тур · тыс. ₽';node.hidden=!phases.includes('error');node.querySelector('span').textContent=phases.includes('error')?'Не все цены загрузились. Даты можно выбрать без цены.':'';renderDateSelectionPrice();};
  const read=async month=>{
   if(loads.has(month)||controller.signal.aborted)return;loads.set(month,'loading');legend();
   const from=month<startDay?startDay:month,next=dateObj(month);next.setUTCMonth(next.getUTCMonth()+1);next.setUTCDate(0);const to=iso(next)>endDay?endDay:iso(next);
-  const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;snapshots.set(month,snapshot);calendarHotels=[...snapshots.values()].flatMap(row=>row.hotels);calendarObservations=[...snapshots.values()].flatMap(row=>row.observations);refreshCalendarPrices();};
+  const show=snapshot=>{if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;calendarMonthPrices.set(month,calendarPriceInventory(snapshot.hotels,snapshot.observations,ctx));applyCalendarPriceInventories();renderCalendarPrices();};
   try{const snapshot=await data.calendarPrices(ctx.search,from,to,controller.signal,ctx.filters,show);if(controller.signal.aborted||dateContext!==ctx||modalType!=='dates')return;show(snapshot);loads.set(month,snapshot.partial?'error':'complete');legend();}
   catch(error){if(error.name!=='AbortError'){loads.set(month,'error');legend();}}
  };
