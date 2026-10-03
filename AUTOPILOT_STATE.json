@@ -1286,18 +1286,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: meal-picker same-call selected count merged; structural optimization continues",
+    "title": "Search3 NEXT: filter presentation inventory merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4352,
+    "pr": 4354,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "15b8ab52146679ef445fd3020a63a21c6387b8e4",
+    "last_fully_checked_release_sha": "ca1a811a3feef7e3b739f32418bc02b8edd11411",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "MEAL_PICKER_SELECTED_COUNT_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4352 sourced799ad5dc229b2ff66a6d2d8a7c58cdabefb74fb/tree4d3182778dd0bd8177649bbb385990c6ab6090e3 is checked and merged as release15b8ab52146679ef445fd3020a63a21c6387b8e4: one extra same-call selected-count traversal1->0 for meal open/result refresh; deterministic100-hotel extra visits100->0 and age canonicalizations101->0; later checkbox/query edits remain fresh. Honest size source+121raw/app compiled+45served/canonical+27gzip-after, no transfer/latency reduction claim. Security37082657687, lead37082657670, build37082657688 and fullvisual/compiledChromium37082657618 SUCCESS; terminal5963728546. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a read-only audit of active large-script/reconciliation/rendering work and require a material measurable hotspot before a new exact-path claim; do not create a cosmetic byte-only/code-movement continuation. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "FILTER_PRESENTATION_INVENTORY_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4354 sourceac97df37bfed566f58265910d45e02e4aad99850/tree3e797266be3c2cb41eefc5eeea5b6f7c603d0da2 is checked and merged as releaseca1a811a3feef7e3b739f32418bc02b8edd11411: one fresh per-render filter presentation inventory replaces repeated hotel discovery for stars, rating presence, resorts and amenities; deterministic1000-hotel top-level visits7000->1000; no cross-render cache and facet counts remain fresh. Honest size source+614raw/+160local-gzip, compiled/full-LIVE+381served/+141gzip-after, operation-count only with no transfer/latency reduction claim. Security37085611433, build37085611459 and fullvisual/compiledChromium37085611458 SUCCESS; terminal5964083284. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a read-only audit of active large-script/reconciliation/rendering work and require a material measurable hotspot before a new exact-path claim; do not create a cosmetic byte-only/code-movement continuation. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4352"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4354"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
