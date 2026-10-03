@@ -38,6 +38,7 @@ function calendarObservations(source){
  const cells=['2026-10-01','2026-10-02','2026-10-03'].map(date=>({dataset:{date},classList:{toggle:(...args)=>trace.push(['class',date,...args])},querySelector:()=>({set textContent(value){trace.push(['text',date,value]);}}),setAttribute:(...args)=>trace.push(['attribute',date,...args])}));
  const trace=[],context={startDay:'2024-01-01',endDay:'2028-12-31',calendarPrice:day=>day.endsWith('02')?null:133500.5,refreshCalendarPriceCache:()=>trace.push(['refresh']),renderDateSelectionPrice:()=>trace.push(['selection']),$$:()=>[{querySelectorAll:()=>cells}]};
  vm.createContext(context);vm.runInContext(owner(source),context);
+ const minimum=source.match(/^function minimumKnownPrice\([^\n]+/m);if(minimum)vm.runInContext(minimum[0],context);
  for(const [first,last] of [['function monthFrame(', 'function renderDateCalendar('],['function refreshCalendarPrices(', 'function loadCalendarPrices(']]){
   const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a);vm.runInContext(source.slice(a,b),context);
  }

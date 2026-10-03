@@ -77,6 +77,21 @@ assert(changed(source.replace('if(data.observationScopeSupported(s,f))','if(true
  assert(!helperSource.includes('.filter(')&&!helperSource.includes('...'),'fixed-arity price merge creates no candidate/filter arrays');
  console.log('PASS fixed-arity price merge: exhaustive 2-way + 3-way values; getter/validation order, sparse/inherited/initial-length map semantics; paired 21-day candidate/filter arrays 84->0');
 }
+
+// Month rendering owns positive finite prices or null. Preserve native filter
+// membership/getter behavior while dropping its per-month minimum buffer.
+{
+ const owner=source.match(/^function minimumKnownPrice\([^\n]+/m)?.[0];assert(owner,'month minimum owner');const context={};vm.createContext(context);vm.runInContext(owner+';globalThis.minimumKnownPrice=minimumKnownPrice;',context);
+ const reference=prices=>Math.min(...prices.filter(price=>price!==null)),values=[null,Number.MIN_VALUE,1,1.5,Number.MAX_VALUE];
+ assert.equal(context.minimumKnownPrice([]),Infinity,'an empty/unknown month retains the native empty minimum');
+ for(const first of values)for(const second of values)for(const third of values){const prices=[first,second,third];assert.equal(context.minimumKnownPrice(prices),reference(prices));}
+ let reads=0;const tied=()=>[0,1].map(index=>Object.defineProperty({},'price',{get(){reads++;return 7}})).map(row=>row.price);reads=0;assert.equal(context.minimumKnownPrice(tied()),7);assert.equal(reads,2,'candidate reads each source value once');reads=0;assert.equal(reference(tied()),7);assert.equal(reads,2,'native baseline reads each source value once');
+ const inherited=new Array(3),prototype=Object.create(Array.prototype);prototype[1]=5;Object.setPrototypeOf(inherited,prototype);assert.equal(context.minimumKnownPrice(inherited),5,'inherited native membership retained');
+ const growing=[9];let appended=false;Object.defineProperty(growing,0,{get(){if(!appended){appended=true;growing.push(1)}return 9}});assert.equal(context.minimumKnownPrice(growing),9);assert.equal(growing.length,2,'native reduce retains the initial month length');assert.equal(context.minimumKnownPrice(growing),1,'the next render observes the appended price');
+ assert.equal((source.match(/minimumKnownPrice\(prices\)/g)||[]).length,3,'both month-rendering consumers share one owner');assert(!source.includes('Math.min(...prices.filter(p=>p!==null))'),'month render creates no filtered minimum buffer');
+ const full=Array.from({length:181},(_,index)=>index+1);assert.equal(context.minimumKnownPrice(full),1);
+ console.log('PASS month price minimum: seven-month fully priced refresh filter arrays 7->0, logical price visits 362->181; exact empty/tie/sparse/inherited/initial-length behavior; source reads and DOM visits unchanged');
+}
 if(process.argv.includes('--benchmark')){
  assert(compare>=0,'benchmark needs actual original');const perf=require('node:perf_hooks').performance;
  const hotels=Array.from({length:1047},(_,i)=>{const h=fixture()[1];h.id=i+1;h.offers=h.offers.filter(o=>Number.isFinite(o.total)&&o.total>0);return h;});
