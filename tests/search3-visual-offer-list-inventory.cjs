@@ -40,31 +40,29 @@ function referenceRefinementCounts(all,view,options){
  }
  return {counts,work};
 }
-function refinementCounts(code,all,view,options){
- const start=code.indexOf('function offerRefinementCounts('),end=code.indexOf('function renderOfferRefinements(',start);
- assert(start>=0&&end>start,'refinement count owner boundary');
- const work={visits:0,predicates:0},ctx={Map,offerRefinementFields:refinementFields,offerView:view,work};
- const measuredOwner=code.slice(start,end)
-  .replace('  const offer=all[i];let matches=true;','  work.visits++;const offer=all[i];let matches=true;')
-  .replace('   const selected=offerView[current];','   work.predicates++;const selected=offerView[current];');
- vm.createContext(ctx);vm.runInContext(measuredOwner+'globalThis.countOwner=offerRefinementCounts;',ctx);
- const counts=Object.fromEntries(refinementFields.map(field=>[field,ctx.countOwner(all,field,options[field].map(value=>({value}))) ]));
- return {counts,work};
-}
-function refinementInventory(code,all){
+function refinementInventory(code,all,view={departure:'',flight:'',room:'',meal:''},measure=false){
  const start=code.indexOf('function offerRefinementInventory('),end=code.indexOf('function offerGroupScope(',start);
  assert(start>=0&&end>start,'refinement value inventory owner boundary');
- const ctx={Map,Set,offerRefinementFields:refinementFields};
- vm.createContext(ctx);vm.runInContext(code.slice(start,end)+'globalThis.inventoryOwner=offerRefinementInventory;',ctx);
- return ctx.inventoryOwner(all);
+ const work={visits:0,predicates:0},ctx={Map,Set,offerRefinementFields:refinementFields,offerView:view,work};
+ const owner=measure?code.slice(start,end)
+  .replace('  const offer=all[i],values=','  work.visits++;const offer=all[i],values=')
+  .replace('   const selected=offerView[offerRefinementFields[index]];','   work.predicates++;const selected=offerView[offerRefinementFields[index]];'):code.slice(start,end);
+ vm.createContext(ctx);vm.runInContext(owner+'globalThis.inventoryOwner=offerRefinementInventory;',ctx);
+ return {inventory:ctx.inventoryOwner(all),work};
 }
-function referenceRefinementInventory(all,repeats=1){
+function referenceRefinementValues(all,repeats=1){
  let inventory;
  for(let pass=0;pass<repeats;pass++)inventory=new Map(refinementFields.map(field=>{const values=[...new Set(all.map(offer=>refinementValue(offer,field)))];return [field,{values,hasChoice:values.length>1}];}));
  return inventory;
 }
+function referenceRefinementInventory(all,view){
+ const inventory=referenceRefinementValues(all),options=Object.fromEntries(refinementFields.map(field=>{const values=['',...inventory.get(field).values];if(view[field]&&!values.includes(view[field]))values.push(view[field]);return [field,values];}));
+ const counts=referenceRefinementCounts(all,view,options).counts;
+ for(const field of refinementFields)inventory.get(field).counts=counts[field];
+ return inventory;
+}
 function sameRefinementInventory(actual,expected){for(const field of refinementFields){assert.deepEqual([...actual.get(field).values],[...expected.get(field).values],field+' ordered values');assert.equal(actual.get(field).hasChoice,expected.get(field).hasChoice,field+' visibility');}}
-function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual[field]],[...expected[field]],field+' option counts');}
+function sameCounts(actual,expected){for(const field of refinementFields)assert.deepEqual([...actual.get(field).counts],[...expected[field]],field+' option counts');}
 function inventory(code,rows,view){
  const start=code.indexOf('function offerListInventory('),end=code.indexOf('function renderOfferList(',start);
  assert(start>=0&&end>start);
@@ -157,20 +155,22 @@ for(let i=0;i<500;i++){
  const all=refinementRows.slice(0,1+i*37%120),view={...baseView(),departure:i%3?refinementRows[i%all.length].day:'',flight:i%4?refinementRows[i*3%all.length].flight:'',room:i%5?refinementRows[i*7%all.length].room:'',meal:i%6?refinementRows[i*11%all.length].meal:''};
  if(i%17===0)view.room='absent';
  const options=Object.fromEntries(refinementFields.map(field=>{const values=['',...new Set(all.map(offer=>refinementValue(offer,field)))];if(view[field]&&!values.includes(view[field]))values.push(view[field]);return [field,values];}));
- sameCounts(refinementCounts(source,all,view,options).counts,referenceRefinementCounts(all,view,options).counts);refinementCases++;
+ sameCounts(refinementInventory(source,all,view).inventory,referenceRefinementCounts(all,view,options).counts);refinementCases++;
 }
 const refinementSparse=[];refinementSparse.length=9;refinementSparse[2]=refinementRows[2];refinementSparse[6]=refinementRows[6];
 const refinementProto=Object.create(Array.prototype);refinementProto[4]=refinementRows[4];Object.setPrototypeOf(refinementSparse,refinementProto);
-sameCounts(refinementCounts(source,refinementSparse,baseView(),refinementOptions).counts,referenceRefinementCounts(refinementSparse,baseView(),refinementOptions).counts);refinementCases++;
+const sparseRefinements=refinementInventory(source,refinementSparse,baseView()).inventory,sparseRefinementOptions=Object.fromEntries(refinementFields.map(field=>[field,['',...sparseRefinements.get(field).values]]));
+const sparseReferenceCounts=referenceRefinementCounts(refinementSparse,baseView(),sparseRefinementOptions).counts;for(const field of refinementFields)sparseReferenceCounts[field].set(undefined,0);
+sameCounts(sparseRefinements,sparseReferenceCounts);refinementCases++;
 const previousRefinements=referenceRefinementCounts(refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
-const currentRefinements=refinementCounts(source,refinementRows,{...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},refinementOptions);
-sameCounts(currentRefinements.counts,previousRefinements.counts);assert.equal(previousRefinements.work.visits,56000);assert.equal(currentRefinements.work.visits,4000);assert.equal(previousRefinements.work.predicates,62670);assert.equal(currentRefinements.work.predicates,4780);
-for(const values of [refinementRows.slice(0,120),refinementSparse,[]])sameRefinementInventory(refinementInventory(source,values),referenceRefinementInventory(values));
+const refinementView={...baseView(),departure:refinementRows[2].day,flight:'regular',room:'room-7',meal:'AI'},currentRefinements=refinementInventory(source,refinementRows,refinementView,true);
+sameCounts(currentRefinements.inventory,previousRefinements.counts);assert.equal(previousRefinements.work.visits,56000);assert.equal(currentRefinements.work.visits,1000);assert.equal(previousRefinements.work.predicates,62670);assert.equal(currentRefinements.work.predicates,4000);
+for(const values of [refinementRows.slice(0,120),refinementSparse,[]])sameRefinementInventory(refinementInventory(source,values,baseView()).inventory,referenceRefinementInventory(values,baseView()));
 let refinementValueReads=0;
 const trackedRefinementRows=Array.from({length:1000},(_,i)=>{const day='2026-10-'+String(1+i%20).padStart(2,'0'),flight=i%2?'charter':'regular',room='room-'+i%25,meal=['RO','BB','HB','FB','AI'][i%5];return {get day(){refinementValueReads++;return day},get flight(){refinementValueReads++;return flight},get room(){refinementValueReads++;return room},get meal(){refinementValueReads++;return meal}};});
-referenceRefinementInventory(trackedRefinementRows,3);const firstRenderValueReads=refinementValueReads;refinementValueReads=0;
-referenceRefinementInventory(trackedRefinementRows,2);const repeatedRenderValueReads=refinementValueReads;refinementValueReads=0;
-sameRefinementInventory(refinementInventory(source,trackedRefinementRows),referenceRefinementInventory(refinementRows));const currentValueReads=refinementValueReads;
+referenceRefinementValues(trackedRefinementRows,3);const firstRenderValueReads=refinementValueReads;refinementValueReads=0;
+referenceRefinementValues(trackedRefinementRows,2);const repeatedRenderValueReads=refinementValueReads;refinementValueReads=0;
+const trackedCurrent=refinementInventory(source,trackedRefinementRows,refinementView);sameRefinementInventory(trackedCurrent.inventory,referenceRefinementInventory(refinementRows,refinementView));const currentValueReads=refinementValueReads;
 assert.equal(firstRenderValueReads,12000);assert.equal(repeatedRenderValueReads,8000);assert.equal(currentValueReads,4000);
 assert(source.includes('<select id="offer-departure"><option value="">Все даты</option></select>'),'mount defers refinement enumeration to the render owner');
 // Render both actual owner variants against the same deterministic DOM boundary.
@@ -179,18 +179,14 @@ const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
 const legacyNotes=source.replace(hoisted," const commonNote='';\n")
  .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));');
-const countStart=legacyNotes.indexOf('function offerRefinementCounts('),countEnd=legacyNotes.indexOf('function renderOfferRefinements(',countStart);
-assert(countStart>=0&&countEnd>countStart,'current refinement count boundary');
-const legacyCounts=(legacyNotes.slice(0,countStart)+legacyNotes.slice(countEnd))
- .replace('  const counts=offerRefinementCounts(all,field,select.options);\n','')
- .replace('  const counts=comparing?null:offerRefinementCounts(all,field,select.options);\n','')
- .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
+const legacyCounts=legacyNotes
+ .replace('  const counts=currentRefinementInventory.get(field).counts;\n','')
+ .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value)||0)}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
  .replace('   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value))}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=comparing?option.dataset.baseLabel:`${option.dataset.baseLabel} · ${offerCountText(count)}`;');
 const legacyRenderer=legacyCounts.replace('${offerGroupScope(offers)}</small>','${[...new Set(offers.map(o=>nightsText(o.nights)))].join(\' / \')} · ${[...new Set(offers.map(o=>o.day))].length===1?dateText(first.day):\'Вылеты \'+rangeText([...offers].sort((a,b)=>a.day.localeCompare(b.day))[0].day,[...offers].sort((a,b)=>a.day.localeCompare(b.day)).at(-1).day)}</small>');
-const valueInventoryStart=source.indexOf('function offerRefinementInventory('),valueInventoryEnd=source.indexOf('function offerGroupScope(',valueInventoryStart);
-const legacyValueRenderer=(source.slice(0,valueInventoryStart)+source.slice(valueInventoryEnd))
+const legacyValueRenderer=source
  .replace('  const hasChoice=currentRefinementInventory.get(field).hasChoice;','  const hasChoice=new Set(all.map(o=>field===\'departure\'?o.day:o[field])).size>1;')
- .replace(" currentRefinementInventory=offerRefinementInventory(all);\n for(const field of offerRefinementFields){\n  const select=$('#offer-'+field),values=[...currentRefinementInventory.get(field).values];"," for(const field of offerRefinementFields){\n  const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];");
+ .replace("  const select=$('#offer-'+field),values=[...currentRefinementInventory.get(field).values];","  const select=$('#offer-'+field),values=[...new Set(all.map(o=>field==='departure'?o.day:o[field]))];");
 assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy boundary');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
@@ -269,7 +265,7 @@ assert.equal(incrementalDisclosureWork.reduce((sum,work)=>sum+work.appendCalls,0
 const closedGroup=incrementalPagination.currentSnapshot().dom.find(([selector])=>selector==='#group-'+paginationKey)[1];
 assert.equal(closedGroup.hidden,true);assert.equal(closedGroup.heading.expanded,'false');assert.equal(closedGroup.heading.scopeHidden,false);assert.equal(closedGroup.heading.minimumHidden,false);assert.deepEqual(closedGroup.heading.arrowClasses,[]);assert.deepEqual(incrementalPagination.currentSnapshot().view.open,[]);
 console.log('PASS cold group disclosure: open+close inventory visits 1000→0, row markups 1000→0; exact closed aria/body/scope/minimum/arrow/view state');
-const forbiddenRefinementInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("required list refinement inventory");');
+const forbiddenRefinementInventory=source.replace('function offerRefinementInventory(all){','function offerRefinementInventory(all){throw new Error("required list refinement inventory");');
 assert.throws(()=>render(forbiddenRefinementInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);
 const reversedResult=inventory(reversed,rows,baseView());
