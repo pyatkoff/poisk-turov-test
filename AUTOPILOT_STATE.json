@@ -1286,18 +1286,18 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: cold group disclosure merged; structural optimization continues",
+    "title": "Search3 NEXT: warm history inventory handoff merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4364,
+    "pr": 4367,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing; owner steering 2026-10-03 expects existing hourly autopilot enabled. NEXT only; favorites paused flag and protected contracts retained.",
-    "last_fully_checked_release_sha": "f234409c6436e27255e013bfd2e162699fdf251c",
+    "last_fully_checked_release_sha": "c0e2c092455c58ce9ebc3bfccb15fa0669139e82",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "COLD_GROUP_DISCLOSURE_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4364 head81925b7aca354c5befa2bf1e0e0f151aa1ada45b is checked and merged as releasef234409c6436e27255e013bfd2e162699fdf251c: an already rendered cold all-offers group now updates only its disclosure aria/body/scope/minimum/arrow state and route through the existing generated-root owner; clean live rows retain identity, known dirty rows repair, and unknown/unbound/stale DOM fails closed to the full renderer. Deterministic accepted 500-offer one-group open->close work is inventory visits1000->0 and visible row markup builds1000->0, with exact closed/open state, focus, filters/sort/refinement/history and raw object identity/order retained. Pinned event digest 489f7e05a479fd524c3d77cacd59a79ca8253cf79ff377bfbb6a143062a41663 and result/calendar/list digest eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9 remain exact. Honest delta: source app+offer owner+929raw/+246gzip; compiled complete LIVE JS+670served/+236gzip-after. This is rendering-operation reduction only; no transfer or latency reduction claim. Security37099282766, lead37099282798, build37099282801 and fullvisual/exact-compiled-Chromium37099282858 SUCCESS; terminal5965911634. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a new read-only audit of active large-script/reconciliation/rendering work and require another material reproducible hotspot before a new exact-path claim; reject cosmetic byte-only/code movement. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "WARM_HISTORY_INVENTORY_HANDOFF_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4367 headdf4d5ef0da94ead153fb538b4b57b2951c64d5de is checked and merged as releasec0e2c092455c58ce9ebc3bfccb15fa0669139e82: warm browser-history all-offers restoration reuses only the exact canonical offer array already built synchronously to validate restored refinements/open groups/limits, eliminating the owner-side duplicate inventory without a persistent cache; cold owner loading deliberately recomputes current rows after the asynchronous load, and later refinement/result renders remain fresh. Deterministic accepted 500-offer Forward work is complete hotelOffers inventories2->1 and owner repeat1->0 with renders1->1, exact restored room/meal/departure/flight/sort/open/limits/filter disclosure/scroll/focus/history, public DOM/view/route output and raw offer identity/order retained. Pinned event digest 489f7e05a479fd524c3d77cacd59a79ca8253cf79ff377bfbb6a143062a41663 remains exact. Honest delta: readable app+offer owner+121raw/+50gzip-before; compiled complete LIVE JS+47served/+29gzip-after, totals592036raw/449750served/140782gzip-after. This is repeated-work reduction only; no transfer or page-latency improvement claim. Security37103082336, lead37103082308, build37103082301 and fullvisual/exact-compiled-Chromium37103082317 SUCCESS; terminal5966385663. It is NOT published. Published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 from onecommand5962942732/run37076627937 terminal/no-replay. Next perform a fresh read-only audit of active app.js rendering/reconciliation/inventory paths and require another material compiled-reachable hotspot before any new exact-path claim; reject legacy/unreachable, cosmetic byte-only and code-movement work. Keep app.js/data boundaries, favorites paused flag and all protected contracts; data.js only through bounded INT->SEARCH handoff. Accumulate compatible work before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4364"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4367"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
