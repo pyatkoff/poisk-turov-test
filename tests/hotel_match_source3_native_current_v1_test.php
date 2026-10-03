@@ -56,4 +56,26 @@ $mut=$manifest;$mut['rows'][1]['operator_id']=5;s3reject(fn()=>s3n_manifest($mut
 $mut=$manifest;$mut['request']['page']=2;s3reject(fn()=>s3n_manifest($mut),'reject_page_mutation');
 $mut=$manifest;$mut['rows'][2]['target_native_id_for_comparison']='1';s3reject(fn()=>s3n_manifest($mut),'reject_target_native_mutation');
 
+$own=s3n_preflight($scope,$sources,[1124=>[['external_hotel_id'=>'163887']]],$hotels,[],[]);
+s3t($own[0]['state']==='eligible_for_source_evidence'&&$own[0]['holds']===[],'same_source_owner_not_occupied');
+$foreign=s3n_preflight($scope,$sources,[1124=>[['external_hotel_id'=>'163888']]],$hotels,[],[]);
+s3t($foreign[0]['holds']===['target_occupied']&&$foreign[1]['state']==='eligible_for_source_evidence','foreign_owner_hold_isolated');
+
+$base=['state'=>'not_returned_in_context','price_rows'=>1,'native_ids'=>['8319'=>true],
+    'target_native_id_for_comparison'=>'8319','matches_target_native'=>false,'safe_to_write_now'=>false];
+$final=s3n_finalize_evidence_row($base);
+s3t($final['native_ids']===['8319']&&$final['state']==='captured_single_native'&&$final['matches_target_native']===true,'numeric_native_matches_string_target');
+$final=s3n_finalize_evidence_row(array_merge($base,['native_ids'=>['24891'=>true]]));
+s3t($final['state']==='captured_single_native'&&$final['matches_target_native']===false,'different_native_not_match');
+$final=s3n_finalize_evidence_row(array_merge($base,['native_ids'=>['44562'=>true,'804'=>true],'target_native_id_for_comparison'=>'804']));
+s3t($final['native_ids']===['804','44562']&&$final['state']==='captured_ambiguous_native'&&$final['matches_target_native']===false,'ambiguous_native_preserves_all_tokens');
+$final=s3n_finalize_evidence_row(array_merge($base,['target_native_id_for_comparison'=>null]));
+s3t($final['matches_target_native']===false&&$final['safe_to_write_now']===false,'unknown_target_stays_evidence_only');
+$final=s3n_finalize_evidence_row(array_merge($base,['state'=>'preflight_hold','native_ids'=>[]]));
+s3t($final['state']==='preflight_hold'&&$final['matches_target_native']===false,'preflight_hold_preserved');
+$final=s3n_finalize_evidence_row(array_merge($base,['native_ids'=>[]]));
+s3t($final['state']==='catalog_only'&&$final['matches_target_native']===false,'catalog_only_preserved');
+$final=s3n_finalize_evidence_row(array_merge($base,['price_rows'=>0,'native_ids'=>[]]));
+s3t($final['state']==='not_returned_in_context'&&$final['matches_target_native']===false,'absent_price_preserved');
+
 echo 'hotel_match_source3_native_current_v1_test: PASS '.$checks."\n";

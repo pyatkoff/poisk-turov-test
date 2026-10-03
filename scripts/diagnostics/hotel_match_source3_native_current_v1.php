@@ -65,6 +65,7 @@ function s3n_fact(array $row,string $catalogId,int $operatorId):array{
 function s3n_preflight(array $scope,array $sources,array $targetOwners,array $hotels,array $manual,array $excluded):array{
     $out=[];
     foreach($scope['rows'] as $cat=>$request){
+        $cat=(string)$cat;
         $holds=[];$matches=$sources[$cat]??[];$source=count($matches)===1?$matches[0]:null;
         if($source===null)$holds[]='current_source_not_unique';
         else{
@@ -123,6 +124,15 @@ function s3n_budget(string $private,int $call,string $action):void{
     }finally{flock($lock,LOCK_UN);fclose($lock);}
 }
 
+/** Normalize PHP numeric array keys back to namespace-preserving string IDs. */
+function s3n_finalize_evidence_row(array $row):array{
+    $ids=array_map('strval',array_keys($row['native_ids']));sort($ids,SORT_NATURAL);$row['native_ids']=$ids;
+    if($row['state']==='preflight_hold')return $row;
+    $row['state']=count($ids)===1?'captured_single_native':(count($ids)>1?'captured_ambiguous_native':($row['price_rows']>0?'catalog_only':'not_returned_in_context'));
+    $target=$row['target_native_id_for_comparison'];$row['matches_target_native']=$target!==null&&$ids===[$target];
+    return $row;
+}
+
 function s3n_acquire(string $root,string $dir,array $scope,array $preflight):array{
     $eligible=[];foreach($preflight as $row)if($row['state']==='eligible_for_source_evidence')$eligible[$row['operator_id']][]=$row;
     ksort($eligible,SORT_NUMERIC);$evidence=[];$calls=0;$last=0.0;
@@ -159,12 +169,7 @@ function s3n_acquire(string $root,string $dir,array $scope,array $preflight):arr
                 $evidence[$catalog]['references'][]=['private_file'=>$file,'sha256'=>$digest,'json_pointer'=>'/PRICES/'.$index];}
         }
     }
-    foreach($evidence as &$row){
-        $ids=array_keys($row['native_ids']);sort($ids,SORT_NATURAL);$row['native_ids']=$ids;
-        if($row['state']==='preflight_hold')continue;
-        $row['state']=count($ids)===1?'captured_single_native':(count($ids)>1?'captured_ambiguous_native':($row['price_rows']>0?'catalog_only':'not_returned_in_context'));
-        $target=$row['target_native_id_for_comparison'];$row['matches_target_native']=$target!==null&&$ids===[$target];
-    }unset($row);
+    foreach($evidence as &$row)$row=s3n_finalize_evidence_row($row);unset($row);
     return ['provider_http_calls'=>$calls,'rows'=>array_values($evidence),'responses'=>$responses];
 }
 
