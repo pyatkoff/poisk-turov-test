@@ -9,7 +9,7 @@ const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
- if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
+ if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
  if(kind==='calendar')return generatedRootOwner(source)+section(source,source.includes('function resultCalendarModel(){')?'function resultCalendarModel(){':'function renderCalendarStrip(){','function renderActive(');
  const first=source.includes('function offerListInventory(')?'function offerListInventory(':'function renderOfferList(reset=false){';
  const start=source.indexOf(first),end=source.indexOf('function confirmTour(){',start);return end<0?source.slice(start):source.slice(start,end);
@@ -69,19 +69,21 @@ function observe(source,s){
  const observedOwner=owner(source,s.kind);
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
  vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
+ if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
   ctx.renderResults({keepFilters:!!s.keepFilters});
  }else if(s.kind==='calendar')ctx.renderCalendarStrip();else ctx.renderOfferList(!!s.reset);
  let retainedIdentity=null;
- if(s.paginate){
+ if(s.paginate||s.paginateAll){
   trace.length=0;
-  if(observedOwner.includes('function renderMoreResultCards(){')){retainedIdentity=vm.runInContext('renderedResultItems===__items',ctx);ctx.renderMoreResultCards();}
-  else vm.runInContext('renderedCardLimit+=24;renderResults({keepFilters:true});',ctx);
+  const more=()=>{if(observedOwner.includes('function renderMoreResultCards(){'))ctx.renderMoreResultCards();else vm.runInContext('renderedCardLimit+=24;renderResults({keepFilters:true});',ctx);};
+  if(observedOwner.includes('renderedResultItems'))retainedIdentity=vm.runInContext('renderedResultItems===__items',ctx);
+  if(s.paginateAll)while(vm.runInContext('renderedCardLimit',ctx)<(s.count??0))more();else more();
  }
  const dom=[...nodes].map(([key,n])=>[key,{value:n.value,textContent:n.textContent,innerHTML:n.innerHTML,hidden:n.hidden,title:n.title,open:n.open}]);
  return copy({trace,dom,state:ctx.state,response:ctx.searchResponse,view:ctx.offerView,comparisonQuotes:ctx.comparisonQuotes,
-  cards:s.kind==='results'?vm.runInContext('({limit:renderedCardLimit,scope:renderedCardScope})',ctx):null,...(s.paginate?{retainedIdentity}:{})});
+  cards:s.kind==='results'?vm.runInContext('({limit:renderedCardLimit,scope:renderedCardScope})',ctx):null,...(s.paginate||s.paginateAll?{retainedIdentity}:{})});
 }
 const scenarios=[];const add=(name,s)=>scenarios.push({name,...s});
 for(const draft of [false,true])for(const keepFilters of [false,true])for(const modal of ['', 'budget','meals'])for(const filterDraft of [false,true])add(`filter:${draft}:${keepFilters}:${modal}:${filterDraft}`,{kind:'results',draft,keepFilters,modal,filterDraft});
@@ -145,10 +147,9 @@ console.log(`PASS result/calendar/offer-list: ${actual.length} DOM/collaborator/
 // page-level rendering cascade. Compare the actual fast path against that
 // immediately preceding owner while keeping the same 1,000 raw item objects.
 const paginationDeclaration="let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];";
-const paginationHelper='function renderMoreResultCards(){const next=renderedCardLimit;renderedCardLimit+=24;renderResultCards(renderedResultItems);return next;}\n';
+const paginationHelper=section(source,'function renderMoreResultCards(){','function renderResults(');
 assert(source.includes(paginationDeclaration)&&source.includes(paginationHelper),'pagination fast-path owner');
 const previousPaginationSource=source
- .replace(paginationDeclaration,"let renderedCardLimit=24,renderedCardScope='';")
  .replace(paginationHelper,'')
  .replace(';renderedResultItems=items;',';');
 const paginationScenario={kind:'results',count:1000,keepFilters:true,paginate:true,inventoryVisits:true};
@@ -162,8 +163,21 @@ for(const name of ['results','renderCalendarStrip','renderActive','updateNav','r
 }
 assert.equal(previousPagination.cards.limit,48);assert.equal(currentPagination.cards.limit,48);
 assert.equal(currentPagination.retainedIdentity,true,'fast path retains the exact current raw result array');
-assert.equal(calls(previousPagination,'cardHTML'),48);assert.equal(calls(currentPagination,'cardHTML'),48,'same 48 cards and order are reconciled');
+assert.equal(calls(previousPagination,'cardHTML'),48);assert.equal(calls(currentPagination,'cardHTML'),24,'only the newly exposed card page builds markup');
 console.log('PASS result pagination: 1,000→0 result inventory visits; 7→0 whole-page collaborator calls; 24→48 cards with exact current raw array identity/order; supplier and lead HTTP 0');
+
+// Across all 1,000 retained results, rebuilding every already displayed card
+// makes pagination work grow quadratically. Reconstruct the immediately prior
+// O41 card reconciler and compare exact final DOM with append-only markup work.
+const priorEntryHelper='function renderMoreResultCards(){const next=renderedCardLimit;renderedCardLimit+=24;renderResultCards(renderedResultItems);return next;}\n';
+const previousEntrySource=source.replace(paginationHelper,priorEntryHelper);
+assert.notEqual(previousEntrySource,source,'prior card pagination owner reconstructed');
+const allPages={kind:'results',count:1000,keepFilters:true,paginateAll:true};
+const previousEntries=observe(previousEntrySource,allPages),currentEntries=observe(source,allPages);
+assert.equal(calls(previousEntries,'cardHTML'),21640,'prior pagination rebuilds every displayed card page');
+assert.equal(calls(currentEntries,'cardHTML'),976,'append path builds each newly exposed card exactly once');
+assert.equal(currentEntries.retainedIdentity,true,'all pages retain exact raw result array identity');
+console.log('PASS result pagination markup inventory: cumulative 1,000-result cardHTML evaluations 21,640→976; raw array identity retained; no wall-clock claim');
 
 // Result cards previously re-read a valid rating through six ratingValue calls;
 // the validator itself also observed the property four times per call. Compare
@@ -350,19 +364,19 @@ const calendarRoots=(records,key)=>records.reduce((sum,record)=>sum+[...record[k
 // Progressive updates must keep current markup while retaining unchanged live
 // articles and photos. Compare against the old full-innerHTML DOM independently.
 function cardDOM(code=source){
- const dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards');let parsed=0;
+ const dom=new JSDOM('<main id="results"><div id="cards"></div></main>'),document=dom.window.document,cards=document.querySelector('#cards');let parsed=0,cardCalls=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,CSS:{escape:s=>String(s)},MutationObserver:dom.window.MutationObserver,scrollY:400,
   window:{scrollTo:()=>{}},$:s=>document.querySelector(s),data:{scenario:'live'},
   state:{search:{country:'4'},filters:{meals:[]},selectedDate:null,sort:'price',onlyFavorites:false},
-  cardHTML:({hotel:h,offers})=>`<article class="hotel-card" id="hotel-${h.id}" data-hotel-id="${h.id}"><img src="/photo-${h.photo||0}.jpg" alt="${esc(h.name)}"><h3>${esc(h.name)}</h3><strong>${offers[0].total}</strong><button data-action="offer" data-key="${offers[0].key}">Тур</button></article>`,
+  cardHTML:({hotel:h,offers})=>{cardCalls++;return `<article class="hotel-card" id="hotel-${h.id}" data-hotel-id="${h.id}"><img src="/photo-${h.photo||0}.jpg" alt="${esc(h.name)}"><h3>${esc(h.name)}</h3><strong>${offers[0].total}</strong><button data-action="offer" data-key="${offers[0].key}">Тур</button></article>`;},
   emptyResultsHTML:()=>'<p class="empty">Нет подходящих туров</p>'};
  dom.window.HTMLElement.prototype.getClientRects=function(){return [{}];};
  dom.window.HTMLElement.prototype.getBoundingClientRect=function(){return {top:100};};
  vm.createContext(ctx);vm.runInContext(owner(code,'results')+'\n'+section(code,'function focusReference(','function capturePageReturn('),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(cards,{childList:true});
  return {dom,ctx,cards,render:items=>{ctx.renderResultCards(items);return observer.takeRecords();},parsed:()=>parsed,
-  more:()=>vm.runInContext('renderedCardLimit+=24;',ctx),close:()=>{observer.disconnect();dom.window.close();}};
+  cardCalls:()=>cardCalls,more:()=>vm.runInContext('renderedCardLimit+=24;',ctx),paginate:items=>{ctx.__items=items;vm.runInContext('renderedResultItems=__items;renderMoreResultCards();',ctx);return observer.takeRecords();},close:()=>{observer.disconnect();dom.window.close();}};
 }
 const entry=(id,total=100000+id)=>({hotel:{id,name:'Hotel <& '+id,photo:id%3},offers:[{key:'tour-'+id,total}]});
 const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].filter(n=>n.matches?.('.hotel-card')).length,0);
@@ -386,6 +400,22 @@ const removedArticles=records=>records.reduce((sum,r)=>sum+[...r.removedNodes].f
   assert.equal(JSON.stringify(items),before,'render preserves raw hotel/offer inputs');
   console.log('PASS progressive cards: 10 unchanged 24-card updates parse 250→0 roots and remove 240→0 articles; one price update parses/replaces 1; photo/focus/order/load-more/filter reset retained; no wall-clock or whole-page timing claim');
  }finally{h.close();}
+}
+{
+ const current=cardDOM(),previous=cardDOM(previousEntrySource),items=Array.from({length:1000},(_,i)=>entry(i+1));
+ try{
+ current.render(items);previous.render(items);const retained=[...current.cards.querySelectorAll('.hotel-card')];
+  retained[0].querySelector('strong').textContent='stale price';
+  while(current.cards.querySelector('[data-action="more-cards"]'))current.paginate(items);
+  while(previous.cards.querySelector('[data-action="more-cards"]'))previous.paginate(items);
+  assert.equal(current.cardCalls(),1000,'append path builds every card exactly once including initial page');
+  assert.equal(previous.cardCalls(),21664,'prior path repeatedly rebuilds already displayed card markup');
+  assert.equal(current.cards.innerHTML,previous.cards.innerHTML,'all-page final DOM exactly matches prior reconciliation');
+  assert.deepEqual([...current.cards.querySelectorAll('.hotel-card')].map(card=>card.dataset.hotelId),items.map(item=>String(item.hotel.id)),'all-page order remains exact');
+  assert.equal(current.cards.querySelector('#hotel-1 strong').textContent,'100001','append path repairs externally dirtied retained markup');
+  retained.slice(1).forEach(card=>assert.strictEqual(current.cards.querySelector('#'+card.id),card,'clean initial live articles retain identity through all pages'));
+ }finally{current.close();previous.close();}
+ console.log('PASS all-page pagination DOM: 1,000 exact cards/order; clean live identity and stale-DOM repair retained; cardHTML including initial page 21,664→1,000');
 }
 {
  const h=cardDOM(),reference=new JSDOM('<div id="cards"></div>'),expected=reference.window.document.querySelector('#cards');let seed=12345;
