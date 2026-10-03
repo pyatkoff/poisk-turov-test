@@ -20,6 +20,8 @@
  * input queue delay or INP. Readbacks/hashes happen after timing has finished.
  * Pagination cumulative values sum separate processing intervals; they exclude
  * think time and driver gaps. No latency threshold fails on machine noise.
+ * Mobile reset uses the visible drawer-header Reset control, then Apply; its
+ * selected-chip container is intentionally hidden by the actual compiled CSS.
  *
  * Snapshot has at most 3 offers/hotel. Group-more (>4), dense-offer performance,
  * progressive LIVE supplier updates and public-host network timing are unmeasured.
@@ -235,7 +237,7 @@ function installProbe(config) {
 }
 const samples=[], failures=[];
 let browser,phpVersion=null,deadlineExceeded=false,startedAt=new Date().toISOString();
-const deadline=setTimeout(()=>{deadlineExceeded=true;browser?.close().catch(()=>{});},180*1000);deadline.unref();
+const deadline=setTimeout(()=>{deadlineExceeded=true;browser?.close().catch(()=>{});},480*1000);deadline.unref();
 async function closeDialog(page) {
   await page.locator('#modal [data-action="close-modal"]').click();
   await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
@@ -304,7 +306,7 @@ async function trial(label,width,pair,warmup,order,origin) {
     }
     if(width<=1100){
       await page.locator('.mobile-bottom [data-action="filters"]').click();
-      await action('star4_reset_draft_preview','#drawer-selected [data-action="remove-draft-filter"][data-key="stars"][data-value="4"]',{kind:'drawer',hotels:1047,star4:false});
+      await action('star4_reset_draft_preview','#filter-panel .filter-top [data-action="reset"]',{kind:'drawer',hotels:1047,star4:false});
       await action('star4_reset','#apply-filters',{kind:'results',cards:24,hotels:1047,offers:1453,star4:false,drawer:false});
     }else{
       await action('star4_reset','#active-filters [data-action="remove-filter"][data-key="stars"][data-value="4"]',{kind:'results',cards:24,hotels:1047,offers:1453,star4:false});
@@ -420,6 +422,21 @@ function summarize() {
 function writeReceipt(status,error=null) {
   let statistics=[],parityError=null;
   try{statistics=summarize();}catch(err){parityError=err.message;}
+  // Only serialization is compacted. In-memory samples/parity/statistics retain
+  // their full original semantic objects; every raw timing remains per trial.
+  const semanticSnapshots=Object.create(null),snapshotJSON=new Map();
+  function serializeStep(step){
+    if(step.semantic===undefined)return {...step};
+    const serialized=JSON.stringify(step.semantic),digest=sha(serialized);
+    assert.equal(digest,step.semantic_digest,'serialized semantic digest must match recorded proof');
+    if(snapshotJSON.has(digest))assert.equal(snapshotJSON.get(digest),serialized,'semantic digest collision');
+    else{snapshotJSON.set(digest,serialized);semanticSnapshots[digest]=step.semantic;}
+    const {semantic,...timingAndProof}=step;
+    return timingAndProof;
+  }
+  const serializeTrial=sample=>({...sample,steps:sample.steps.map(serializeStep)});
+  const serializedSamples=samples.map(serializeTrial);
+  const serializedFailures=failures.map(failure=>failure.partial_trial?{...failure,partial_trial:serializeTrial(failure.partial_trial)}:{...failure});
   const receipt={
     schema:'search3.visual-performance.v1',status:parityError?'invalid':status,started_at:startedAt,finished_at:new Date().toISOString(),
     error:error?.stack||error||parityError,deadline_exceeded:deadlineExceeded,
@@ -428,12 +445,14 @@ function writeReceipt(status,error=null) {
       cpu_throttling:{method:'CDP Emulation.setCPUThrottlingRate',physical_device:false},
       viewports:[{width:1280,height,cpu_rate:1},{width:390,height,cpu_rate:4}],retained_pairs_per_viewport:pairs,discarded_warmup_pairs_per_viewport:warmupPairs,
       context_policy:'fresh isolated context per variant/trial; warm browser process and OS caches; local HTTP no WAN emulation',
-      order_policy:'AB/BA alternating and balanced per viewport',maximum_wall_seconds:180,
+      order_policy:'AB/BA alternating and balanced per viewport',maximum_wall_seconds:480,
       timing_policy:'capturing trusted click or selectOption change -> expected DOM MutationObserver -> second subsequent rAF; no driver latency; paint proxy is not actual paint or INP'},
     fixture:{sha256:sha(fixtureBytes.baseline),bytes:fixtureBytes.baseline.length,hotels:1047,offers:1453,max_offers_per_hotel:maxOffers,star4_hotels:395,star4_offers:522,unchanged:true},
     inputs:artifacts,unmeasured:['group-more: saved snapshot max3 offers/hotel, button requires >4','dense per-hotel offer workloads','LIVE pristine17-owner canonical catalog/bootstrap loading (this run uses saved offline8-owner entry)','LIVE supplier/progressive update work','public-host/WAN timing','physical mobile devices','actual compositor paint, INP and input queue delay'],
     blocked_image_policy:'all external image requests aborted identically; original fixture and source URLs unchanged; no external connection allowed',
-    server_errors:serverErrors,failures,samples,statistics,
+    server_errors:serverErrors,failures:serializedFailures,samples:serializedSamples,statistics,
+    semantic_snapshots:semanticSnapshots,
+    semantic_storage:'step.semantic_digest references exact full payload in semantic_snapshots; identical payloads stored once; complete and partial failed trials included; digest and collision equality checked',
     parity_policy:'exact JSON semantic payload digest per paired step; timings finished before snapshot/hashing; cards/summary/filter/modal/group/refinement content included'
   };
   fs.writeFileSync(output,JSON.stringify(receipt,null,2)+'\n');
@@ -454,7 +473,7 @@ function writeReceipt(status,error=null) {
         const warmup=index<0,pair=warmup?index+warmupPairs:index;
         const order=((index+warmupPairs+widthIndex)%2===0)?['baseline','candidate']:['candidate','baseline'];
         for(const label of order){
-          assert(!deadlineExceeded,'finite 180 second deadline exceeded');
+          assert(!deadlineExceeded,'finite 480 second deadline exceeded');
           const sample=await trial(label,width,pair,warmup,order.join('/'),origins[label]);
           samples.push(sample);
         }
