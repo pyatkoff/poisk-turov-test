@@ -1784,9 +1784,10 @@ function restoredOfferLimits(value,offers){
  return limits;
 }
 const sharedOfferNote=offers=>{const notes=[...new Set(offers.map(offerMetaNote))];return notes.length===1?notes[0]:'';};
-function openAllOffers(id,restored=null){
+function openAllOffers(id,restored=null,initial=null){
  const h=hotels.find(h=>h.id===id),all=restored?hotelOffers(h):null;
  offerView={id,departure:'',flight:'',room:'',meal:'',sort:'price',open:[],limits:{}};
+ if(initial){if('room' in initial)offerView.room=initial.room;if('meal' in initial)offerView.meal=initial.meal;}
  if(restored)offerListRestores.set(offerView,restored);
  if(restored){for(const [name,values] of Object.entries({departure:['',...all.map(o=>o.day)],flight:['','regular','charter','unknown'],room:['',...all.map(o=>o.room)],meal:['',...all.map(o=>o.meal)],sort:['price','date']}))if(values.includes(restored[name]))offerView[name]=restored[name];}
  const restoredOpen=restored?boundedHistoryStrings(restored.open):null;
@@ -2064,8 +2065,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'hotel-details':openHotelDetails(id);break;
  case 'change-room':{const previous=modalHistory.at(-1);if(['hotel-details','all-offers'].includes(previous?.type))modalBack();else if(selectedOffer)openAllOffers(selectedOffer.hotelId);break;}
  case 'hotel-gallery':openGallery(id,+b.dataset.value);break;
- case 'hotel-room-offers':openAllOffers(id);offerView.room=b.dataset.room;offerView.meal=b.dataset.meal||'';renderOfferList(true);break;
- case 'hotel-detail-offers':openAllOffers(id);offerView.meal=b.dataset.meal||'';renderOfferList(true);break;
+ case 'hotel-room-offers':openAllOffers(id,null,{room:b.dataset.room,meal:b.dataset.meal||''});break;
+ case 'hotel-detail-offers':openAllOffers(id,null,{meal:b.dataset.meal||''});break;
  case 'hotel-section':{const body=$('#modal-body'),target=body.querySelector('#'+CSS.escape(b.dataset.target));if(target){target.focus({preventScroll:true});const top=target.getBoundingClientRect().top-body.getBoundingClientRect().top+body.scrollTop-($('.hotel-section-nav')?.offsetHeight||0)-16;body.scrollTo({top:Math.max(0,top),behavior:scrollBehavior()});}break;}
  case 'card-photo-index':case 'card-photo':{const h=hotels.find(h=>h.id===id);if(!h?.photos.length)break;const idx=action==='card-photo-index'?+b.dataset.value:((state.photoIndexes[id]||0)+(+b.dataset.dir)+h.photos.length)%h.photos.length;state.photoIndexes[id]=idx;$('#hotel-'+id+' .hotel-image').src=photoUrl(h,idx);$('#hotel-'+id+' .photo-index').textContent=idx+1;$$('#hotel-'+id+' .card-thumb').forEach((el,i)=>{el.classList.toggle('active',i===idx);el.setAttribute('aria-pressed',i===idx)});break;}
 
