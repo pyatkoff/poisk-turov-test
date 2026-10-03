@@ -1,0 +1,331 @@
+{
+  "schema": 1,
+  "repo": "pyatkoff/poisk-turov-test",
+  "purpose": "frozen published-vs-overnight actual compiled Chromium comparison; does not include O51",
+  "arms": {
+    "baseline": {
+      "artifact_id": 11256626238,
+      "build_run_id": 37075599968,
+      "zip_sha256": "fe5dfe5bb294b1b641c51a0231afc6fa4e8d52b576060367d7596513acc345ab",
+      "source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+      "source_tree_sha": "fe5cfab388fb7384490d7e0f0e63692bf5b985dd",
+      "integration_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+      "payload_count": 838,
+      "asset_size_sha256": "ae1762f4e42e141bcc2fe01426f20d81c186fd47d5ed2d5d83fe2ea9706a0036",
+      "compiled_owners": [
+        {
+          "path": "prototype-search/config.js",
+          "sha256": "c28185f6cd98cf02787f799560e6d7ed590d7b4f04aa9a17800fc567c9c873a7",
+          "bytes": 329
+        },
+        {
+          "path": "runtime-v3.js",
+          "sha256": "efb2cafb06d709343ee798cc409f22e3406f7976e3e8b58ba44120c9e3d5a08e",
+          "bytes": 3062
+        },
+        {
+          "path": "lead-search-context.js",
+          "sha256": "5f3779ae2cb2f51e28c88e03855d0ecb1a8fc0b62b44cd69eb0e4a6fb9b79adf",
+          "bytes": 1485
+        },
+        {
+          "path": "tour-controller-v4.js",
+          "sha256": "88d973f5d111254dc2a527157a16aa207b8369971556cb890176597f8bf62654",
+          "bytes": 26479
+        },
+        {
+          "path": "lead-form-guard-v1.js",
+          "sha256": "8a9e71201b7b182401074a900cc9d452890564bd702b2d125667014de51b3f3c",
+          "bytes": 15365
+        },
+        {
+          "path": "search3-canonical-profiles-v1.js",
+          "sha256": "d90089c94f82601d7b8ed322878769c58806c6b47ee72bdb98ee60fd1ff3a579",
+          "bytes": 11466
+        },
+        {
+          "path": "search3-local-db-provider-v1.js",
+          "sha256": "1ce738c44477f4efd371e452cb936267d86c35433bef35e527a57d8c937776d0",
+          "bytes": 11258
+        },
+        {
+          "path": "prototype-search/data.js",
+          "sha256": "c56324e713a0dcfa031a4ce01496dd5d0ad08528918a56be23edd028af553b14",
+          "bytes": 87876
+        },
+        {
+          "path": "prototype-search/calendar-exact-hotel-v1.js",
+          "sha256": "e21904d726930118bff837ec5783123c5e45e0399751151c92f76a46bd4cb6ab",
+          "bytes": 4758
+        },
+        {
+          "path": "prototype-search/source-receipt-v1.js",
+          "sha256": "78419f942a40e1e98968f553ab9b92ede08358ee0cd66833285e3458e28d8b0c",
+          "bytes": 5055
+        },
+        {
+          "path": "prototype-search/search-lifecycle-v1.js",
+          "sha256": "b2e51ee9908491f60616686d937b9080c515e5bad32a3bfbe61c96c73ab13cf9",
+          "bytes": 6293
+        },
+        {
+          "path": "prototype-search/lead.js",
+          "sha256": "2e93eed4cd25df44bdbb8e1ad1a5ca6b692f7457dc7efa576ecc5290638c7bb0",
+          "bytes": 12735
+        },
+        {
+          "path": "prototype-search/hotel-popularity-v1.js",
+          "sha256": "68c45e98d8c75e92f787e02f37ff369375576b0843ebccf84083e67448f8df43",
+          "bytes": 907
+        },
+        {
+          "path": "visual-search/live-bridge.js",
+          "sha256": "465d44c484021dcacb5321f6f999c9ac2f18790e70d913b1c474962722e81e63",
+          "bytes": 1471
+        },
+        {
+          "path": "visual-search/flight-picker-v18.js",
+          "sha256": "cc81de4192e75dfd5322affcac89d8b7061d88abca1a29af184a585e998f90f6",
+          "bytes": 4274
+        },
+        {
+          "path": "visual-search/filter-panel-v1.js",
+          "sha256": "12e126b4ccfcb0c9c9592099515ae2f29875793718491001cda67f47240d33cd",
+          "bytes": 17689
+        },
+        {
+          "path": "visual-search/app.js",
+          "sha256": "f4279f196830b951ca0cbc059fd99cdd0b1b7fef614d546d910206bdb9373106",
+          "bytes": 205839
+        },
+        {
+          "path": "visual-search/fixture-data.js",
+          "sha256": "774d818a8dc45a089fe0ae8a3cfea7ddea0b49a97c8b4f7718a10adfb59b8860",
+          "bytes": 11806
+        },
+        {
+          "path": "visual-search/local-db-parser.js",
+          "sha256": "f7167fc8e2be4860abe93100e98abc89bc9edad3f1c8078130b4a10aabc72151",
+          "bytes": 9862
+        },
+        {
+          "path": "visual-search/recorded-data.js",
+          "sha256": "b2af56bc9c67f3a533f39e22ba01763dac8f7e8fe6994c90607601f4718cd543",
+          "bytes": 10280
+        },
+        {
+          "path": "visual-search/search-lifecycle-v1.js",
+          "sha256": "8c07ccfcf6434c0788bc4acb632de23071c91fead417b26635113c90fdbd11f7",
+          "bytes": 3938
+        },
+        {
+          "path": "visual-search/preview-lead.js",
+          "sha256": "aab427e19d9a9329f38b77b94126af15b143b81b459c86f73f420f1ec2ec86cb",
+          "bytes": 8164
+        },
+        {
+          "path": "visual-search/offer-list-v1.js",
+          "sha256": "67d63140aee253184ff3cc215431f32996510d51649f9378c8ddcc3507fc4675",
+          "bytes": 9061
+        },
+        {
+          "path": "visual-search/hotel-details-v1.js",
+          "sha256": "bc2476ac2651f20f5d0ba1d206b1e40c539ae0034d602301846851bba141a018",
+          "bytes": 10896
+        },
+        {
+          "path": "visual-search/flight-picker-ui-v1.js",
+          "sha256": "d188d4cbec05736b03055f85862ab3df49b4c2b58d45800e7492c8c80e9148ec",
+          "bytes": 9847
+        },
+        {
+          "path": "visual-search/styles.css",
+          "sha256": "26c4ad81ce450985d0a9067554589a3a776e3ad1bf6aa56a906f1c14aef35797",
+          "bytes": 180773
+        },
+        {
+          "path": "visual-search/mobile-controls-v1.css",
+          "sha256": "5baf1dc2cdb82f49635c6d442f3a64d4858beaa94635f240ad9a3038a0d647bb",
+          "bytes": 1524
+        }
+      ],
+      "snapshot_sha256": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3",
+      "js_css_sizes": {
+        "live": {
+          "raw": 742355,
+          "served": 598638,
+          "gzip_before": 191312,
+          "gzip_after": 160686
+        },
+        "complete_live": {
+          "raw": 779735,
+          "served": 628442,
+          "gzip_before": 204200,
+          "gzip_after": 172063
+        }
+      }
+    },
+    "candidate": {
+      "artifact_id": 11267509633,
+      "build_run_id": 37106324957,
+      "zip_sha256": "f07bb8c81f4016e9153bc60b78a478c35e027ec33465fed8484f892e834c2cfe",
+      "source_sha": "e0efdabaa0d29a3de521067bd3252dc7a703d3e7",
+      "source_tree_sha": "0e16f8c634f0765b14df6adc6ec9f7cfb4261071",
+      "integration_sha": "a87cef1065d5a5c94dc3640d3399697ed52f573c",
+      "payload_count": 838,
+      "asset_size_sha256": "faca84ddcea4d111af4a7f9d47c1ab1154223f82c45cc6d30ddf9d2238605e9f",
+      "compiled_owners": [
+        {
+          "path": "prototype-search/config.js",
+          "sha256": "c28185f6cd98cf02787f799560e6d7ed590d7b4f04aa9a17800fc567c9c873a7",
+          "bytes": 329
+        },
+        {
+          "path": "runtime-v3.js",
+          "sha256": "efb2cafb06d709343ee798cc409f22e3406f7976e3e8b58ba44120c9e3d5a08e",
+          "bytes": 3062
+        },
+        {
+          "path": "lead-search-context.js",
+          "sha256": "5f3779ae2cb2f51e28c88e03855d0ecb1a8fc0b62b44cd69eb0e4a6fb9b79adf",
+          "bytes": 1485
+        },
+        {
+          "path": "tour-controller-v4.js",
+          "sha256": "88d973f5d111254dc2a527157a16aa207b8369971556cb890176597f8bf62654",
+          "bytes": 26479
+        },
+        {
+          "path": "lead-form-guard-v1.js",
+          "sha256": "8a9e71201b7b182401074a900cc9d452890564bd702b2d125667014de51b3f3c",
+          "bytes": 15365
+        },
+        {
+          "path": "search3-canonical-profiles-v1.js",
+          "sha256": "d90089c94f82601d7b8ed322878769c58806c6b47ee72bdb98ee60fd1ff3a579",
+          "bytes": 11466
+        },
+        {
+          "path": "search3-local-db-provider-v1.js",
+          "sha256": "1ce738c44477f4efd371e452cb936267d86c35433bef35e527a57d8c937776d0",
+          "bytes": 11258
+        },
+        {
+          "path": "prototype-search/data.js",
+          "sha256": "c56324e713a0dcfa031a4ce01496dd5d0ad08528918a56be23edd028af553b14",
+          "bytes": 87876
+        },
+        {
+          "path": "prototype-search/calendar-exact-hotel-v1.js",
+          "sha256": "e21904d726930118bff837ec5783123c5e45e0399751151c92f76a46bd4cb6ab",
+          "bytes": 4758
+        },
+        {
+          "path": "prototype-search/source-receipt-v1.js",
+          "sha256": "78419f942a40e1e98968f553ab9b92ede08358ee0cd66833285e3458e28d8b0c",
+          "bytes": 5055
+        },
+        {
+          "path": "prototype-search/search-lifecycle-v1.js",
+          "sha256": "b2e51ee9908491f60616686d937b9080c515e5bad32a3bfbe61c96c73ab13cf9",
+          "bytes": 6293
+        },
+        {
+          "path": "prototype-search/lead.js",
+          "sha256": "2e93eed4cd25df44bdbb8e1ad1a5ca6b692f7457dc7efa576ecc5290638c7bb0",
+          "bytes": 12735
+        },
+        {
+          "path": "prototype-search/hotel-popularity-v1.js",
+          "sha256": "68c45e98d8c75e92f787e02f37ff369375576b0843ebccf84083e67448f8df43",
+          "bytes": 907
+        },
+        {
+          "path": "visual-search/live-bridge.js",
+          "sha256": "465d44c484021dcacb5321f6f999c9ac2f18790e70d913b1c474962722e81e63",
+          "bytes": 1471
+        },
+        {
+          "path": "visual-search/flight-picker-v18.js",
+          "sha256": "cc81de4192e75dfd5322affcac89d8b7061d88abca1a29af184a585e998f90f6",
+          "bytes": 4274
+        },
+        {
+          "path": "visual-search/filter-panel-v1.js",
+          "sha256": "44f0e297b67f21b065aaa19a5493d027445a94a1d70bfccca2e62feaccedfd1c",
+          "bytes": 18070
+        },
+        {
+          "path": "visual-search/app.js",
+          "sha256": "673d28fe8d698d84888ca7955605930144a4c1929954d521f3e68a39a8ad7b81",
+          "bytes": 207840
+        },
+        {
+          "path": "visual-search/fixture-data.js",
+          "sha256": "774d818a8dc45a089fe0ae8a3cfea7ddea0b49a97c8b4f7718a10adfb59b8860",
+          "bytes": 11806
+        },
+        {
+          "path": "visual-search/local-db-parser.js",
+          "sha256": "f7167fc8e2be4860abe93100e98abc89bc9edad3f1c8078130b4a10aabc72151",
+          "bytes": 9862
+        },
+        {
+          "path": "visual-search/recorded-data.js",
+          "sha256": "b2af56bc9c67f3a533f39e22ba01763dac8f7e8fe6994c90607601f4718cd543",
+          "bytes": 10280
+        },
+        {
+          "path": "visual-search/search-lifecycle-v1.js",
+          "sha256": "8c07ccfcf6434c0788bc4acb632de23071c91fead417b26635113c90fdbd11f7",
+          "bytes": 3938
+        },
+        {
+          "path": "visual-search/preview-lead.js",
+          "sha256": "aab427e19d9a9329f38b77b94126af15b143b81b459c86f73f420f1ec2ec86cb",
+          "bytes": 8164
+        },
+        {
+          "path": "visual-search/offer-list-v1.js",
+          "sha256": "d958c0a01c81f7704a8c4e8a4c3064bbd8d09d072d2892937be04a636889859a",
+          "bytes": 10555
+        },
+        {
+          "path": "visual-search/hotel-details-v1.js",
+          "sha256": "d6116309676231458ec02b3584e736d90031731e24668a9e3ac165fedcaddbe9",
+          "bytes": 10925
+        },
+        {
+          "path": "visual-search/flight-picker-ui-v1.js",
+          "sha256": "d188d4cbec05736b03055f85862ab3df49b4c2b58d45800e7492c8c80e9148ec",
+          "bytes": 9847
+        },
+        {
+          "path": "visual-search/styles.css",
+          "sha256": "26c4ad81ce450985d0a9067554589a3a776e3ad1bf6aa56a906f1c14aef35797",
+          "bytes": 180773
+        },
+        {
+          "path": "visual-search/mobile-controls-v1.css",
+          "sha256": "5baf1dc2cdb82f49635c6d442f3a64d4858beaa94635f240ad9a3038a0d647bb",
+          "bytes": 1524
+        }
+      ],
+      "snapshot_sha256": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3",
+      "js_css_sizes": {
+        "live": {
+          "raw": 746254,
+          "served": 601020,
+          "gzip_before": 192291,
+          "gzip_after": 161449
+        },
+        "complete_live": {
+          "raw": 786090,
+          "served": 632347,
+          "gzip_before": 205899,
+          "gzip_after": 173432
+        }
+      }
+    }
+  }
+}
