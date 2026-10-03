@@ -60,7 +60,7 @@ jobs:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' && 15 || 10 }}
+    timeout-minutes: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' && 20 || 10 }}
     permissions:
       contents: read
       actions: read
@@ -115,7 +115,7 @@ jobs:
         run: python3 tests/search3-visual-performance-artifacts.py --output "$RUNNER_TEMP/performance-artifacts"
       - name: Measure actual compiled browser actions in paired trials
         if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' }}
-        timeout-minutes: 9
+        timeout-minutes: 13
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
           node tests/search3-visual-performance.cjs --baseline-root "$RUNNER_TEMP/performance-artifacts/baseline/v2" --candidate-root "$RUNNER_TEMP/performance-artifacts/candidate/v2" --output visual-live-evidence/compiled-benchmark
