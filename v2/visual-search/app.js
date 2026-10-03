@@ -1976,9 +1976,16 @@ function prepareSearchRun(options={}){
  return {search:state.search,filters:structuredClone(state.filters),hotelIds:options.hotelIds||(state.filters.hotelId?destinationHotel(state.filters.hotelId)?.legacyIds||[]:[]),response:searchResponse};
 }
 function mergeSearchResults(event){
- const incoming=new Map(event.hotels.map(h=>[h.id,{...h,offers:h.offers.map(o=>({...o,sourceMeal:o.sourceMeal??o.meal,meal:String(o.meal||'Питание уточняется')}))}]));
- hotels=hotels.filter(h=>state.favorites.includes(h.id)).map(h=>({...h,offers:[]}));
- hotels=[...new Map([...hotels,...incoming.values()].map(h=>[h.id,h])).values()];
+ const incoming=new Map(),received=event.hotels;let sparse=false;
+ for(let index=0,length=received.length;index<length;index++){
+  if(!(index in received)){sparse=true;continue}
+  const h=received[index];incoming.set(h.id,{...h,offers:h.offers.map(o=>({...o,sourceMeal:o.sourceMeal??o.meal,meal:String(o.meal||'Питание уточняется')}))});
+ }
+ if(sparse)throw new TypeError('Iterator value undefined is not an entry object');
+ const retained=hotels.filter(h=>state.favorites.includes(h.id)),merged=new Map();
+ retained.forEach(h=>{const copy={...h,offers:[]};merged.set(copy.id,copy)});
+ incoming.forEach(h=>merged.set(h.id,h));
+ hotels=[...merged.values()];
  const resultOperators=new Set();
  hotels.forEach(h=>h.offers.forEach(o=>{resultOperators.add(o.operator);if(!data.live)mealNames[o.meal]=o.meal;else if(Number.isSafeInteger(o.mealPlanId)&&o.mealPlanId>0&&o.mealFacet){const previous=mealNames[o.mealFacet];if(previous===undefined||previous===o.mealPlanId)mealNames[o.mealFacet]=o.mealPlanId;}}));
  operators.splice(0,operators.length,...resultOperators);

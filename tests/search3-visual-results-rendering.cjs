@@ -630,7 +630,7 @@ function observeMerge(code,{live=false,sparse=false,mutating=false,count=0}={}){
  const ctx={hotels:fixture.initial,state:{favorites:[2]},data:{live},operators:['old'],mealNames:{'Из каталога':77},work,
   refreshOpenOfferList:()=>calls.push('offers'),refreshOpenHotelRooms:()=>calls.push('rooms')};
  const operatorsRef=ctx.operators,mealsRef=ctx.mealNames;vm.createContext(ctx);
- vm.runInContext(`let mapCount=0;const NativeMap=Map;Map=class extends NativeMap{constructor(entries){super(entries);if(++mapCount===2)for(const hotel of this.values())hotel.offers=new Proxy(hotel.offers,{get(target,key,receiver){if(typeof key==='string'&&/^[0-9]+$/.test(key))work.elementReads++;return Reflect.get(target,key,receiver);}});}};
+ vm.runInContext(`let mapCount=0;const NativeMap=Map;Map=class extends NativeMap{constructor(entries){super();this.search3MapIndex=++mapCount;if(entries)for(const entry of entries)this.set(entry[0],entry[1]);}set(key,hotel){if(this.search3MapIndex===2&&hotel?.offers)hotel.offers=new Proxy(hotel.offers,{get(target,key,receiver){if(typeof key==='string'&&/^[0-9]+$/.test(key))work.elementReads++;return Reflect.get(target,key,receiver);}});return super.set(key,hotel);}};
  const nativeFlatMap=Array.prototype.flatMap;Array.prototype.flatMap=function(...args){const result=nativeFlatMap.apply(this,args);work.intermediate+=result.length;return result;};`,ctx);
  vm.runInContext(code,ctx);ctx.mergeSearchResults(fixture.event);
  const measured={...work};assert.strictEqual(ctx.operators,operatorsRef);assert.strictEqual(ctx.mealNames,mealsRef);
@@ -657,7 +657,7 @@ for(const live of [false,true]){
 for(const mutation of [
  currentMergeOwner.replace('resultOperators.add(o.operator);',''),
  currentMergeOwner.replace('previous===undefined||previous===o.mealPlanId','true'),
- currentMergeOwner.replace('incoming.values()','event.hotels')
+ currentMergeOwner.replace('incoming.forEach(h=>merged.set(h.id,h));','event.hotels.forEach(h=>merged.set(h.id,h));')
 ])assert.throws(()=>assert.deepEqual(observeMerge(mutation,{live:true}).snapshot,observeMerge(previousMergeOwner,{live:true}).snapshot),'reference guard rejects changed operators, conflicting meals or raw duplicate input');
 console.log('PASS final merge inventory: normalized duplicate/saved/sparse/inherited/getter-mutation parity; 1000 offers read 2000→1000, flatMap intermediate 1000→0 in preview/live; no supplier/lead HTTP');
 require('./search3-visual-rating-render-inventory.cjs');

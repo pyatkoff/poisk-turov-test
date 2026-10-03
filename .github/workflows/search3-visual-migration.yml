@@ -21,8 +21,6 @@ on:
       - 'v2/prototype-search/hotel-popularity-v1.js'
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
-      - 'tests/search3-visual-performance-pins.json'
-      - 'tests/search3-visual-performance-artifacts.py'
       - 'tests/search3-prototype-*.cjs'
       - '.github/workflows/search3-visual-migration.yml'
 permissions:
@@ -56,14 +54,12 @@ jobs:
           node tests/search3-visual-hotel-content-text.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
+          node tests/search3-visual-result-merge.cjs
   visual-migration:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' && 30 || 10 }}
-    permissions:
-      contents: read
-      actions: read
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -89,6 +85,7 @@ jobs:
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
           node tests/search3-visual-event-dispatch.cjs
+          node tests/search3-visual-result-merge.cjs
           node tests/search3-visual-modal-history.cjs
           node tests/search3-visual-offer-list-lazy.cjs
           node tests/search3-visual-hotel-details-lazy.cjs
@@ -107,18 +104,6 @@ jobs:
           php -l v2/visual-search/index.php
           php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'
           php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include "v2/visual-search/index.php";' | grep -Eq 'app.js\?v=[0-9a-f]{12}'
-      - name: Verify and materialize frozen performance artifact comparison
-        if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' }}
-        timeout-minutes: 1
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 tests/search3-visual-performance-artifacts.py --output "$RUNNER_TEMP/performance-artifacts"
-      - name: Measure actual compiled browser actions in paired trials
-        if: ${{ !github.event.pull_request.draft && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'diagnostics/search3-performance-20261003' }}
-        timeout-minutes: 21
-        run: |
-          export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
-          node tests/search3-visual-performance.cjs --baseline-root "$RUNNER_TEMP/performance-artifacts/baseline/v2" --candidate-root "$RUNNER_TEMP/performance-artifacts/candidate/v2" --output visual-live-evidence/compiled-benchmark
       - name: Retain visual bridge acceptance
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
