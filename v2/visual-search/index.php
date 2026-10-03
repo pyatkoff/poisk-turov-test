@@ -14,7 +14,7 @@ if (!$offline) {
     // Reuse the functional owners. This route has no second search/price/lead transport.
     $scripts = [
         '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js',
-        '../tour-controller-v4.js', '../lead-form-guard-v1.js', '../search3-canonical-profiles-v1.js',
+        './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js',
         '../search3-local-db-provider-v1.js', '../prototype-search/data.js',
         '../prototype-search/calendar-exact-hotel-v1.js',
         '../prototype-search/source-receipt-v1.js', '../prototype-search/search-lifecycle-v1.js',
