@@ -23,6 +23,7 @@ const server=http.createServer((req,res)=>{
     await page.getByRole('button',{name:'К деталям тура',exact:true}).click();
     await page.locator('[data-action="retry-flights"]').click();
     await page.getByRole('heading',{name:'Выберите перелёт',exact:true}).waitFor();
+    await page.locator('[data-action="apply-flight"]').waitFor({state:'attached',timeout:10000});
     assert.equal(await page.locator('[data-action="apply-flight"]').count(),1,'retry after application opens flight picker directly');
     await page.screenshot({path:path.join(evidence,`${scenario}-retry-${width}.png`)});
    }else await page.locator('[data-action="start-tour-flights"]').click();
