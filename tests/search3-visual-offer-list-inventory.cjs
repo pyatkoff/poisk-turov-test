@@ -177,7 +177,8 @@ assert(source.includes('<select id="offer-departure"><option value="">Все д�
 // The reference restores the old repeated note, heading and refinement inventory work.
 const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
-const legacyNotes=source.replace(hoisted,'').replace('  const rows=offers.slice','  const commonNote=sharedOfferNote(all);\n  const rows=offers.slice');
+const legacyNotes=source.replace(hoisted," const commonNote='';\n")
+ .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));');
 const countStart=legacyNotes.indexOf('function offerRefinementCounts('),countEnd=legacyNotes.indexOf('function renderOfferRefinements(',countStart);
 assert(countStart>=0&&countEnd>countStart,'current refinement count boundary');
 const legacyCounts=(legacyNotes.slice(0,countStart)+legacyNotes.slice(countEnd))
@@ -194,19 +195,21 @@ assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy bo
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
 function render(code,all,view,shortlist=false,reset=false,mount=false){
- const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0,hotelCalls=0,currentRows=all,mounted=!mount;
+ const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0,hotelCalls=0,rowMarkupCalls=0,currentRows=all,mounted=!mount;
  const node=name=>{if(name==='#offer-count'&&!mounted)return null;if(!dom.has(name)){
   let html='';const classes=new Set(),style={},label={hidden:false},n={hidden:false,open:false,textContent:'',value:'',options:[{value:'',textContent:'Any',dataset:{}}],classList:{contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)},style:{setProperty:(k,v)=>{style[k]=v;}},closest:()=>label};
   Object.defineProperty(n,'innerHTML',{get:()=>html,set:v=>{html=v;if(name==='#modal-body')mounted=true;if(name.startsWith('#offer-'))n.options=[...v.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m=>({value:unesc(m[1]),textContent:unesc(m[2]),dataset:{}}));}});
   n.snapshot=()=>({html,hidden:n.hidden,open:n.open,text:n.textContent,value:n.value,options:n.options,classes:[...classes],style,label});dom.set(name,n);
  }return dom.get(name);};
- const context={$:node,$$:()=>[],hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
+ const context={$:node,$$:()=>[],byId:id=>node('#'+id),hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
+  paintGeneratedRoots:(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');},appendGeneratedRoots:(container,entries)=>{container.innerHTML=container.innerHTML.replace(/<button class="text-button group-more"[\s\S]*?<\/button>$/,'')+entries.map(entry=>entry.markup).join('');},
   sharedOfferNote:input=>{assert.strictEqual(input,currentRows,'shared note uses current all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
-  mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>'',offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
+  mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>{rowMarkupCalls++;return '';},offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
  const sandbox={window:{}};vm.createContext(sandbox);vm.runInContext(code,sandbox);
  const api=sandbox.window.AnyTourOfferList.create(context);api.renderOfferList(reset);
  const snapshot=()=>JSON.parse(JSON.stringify({dom:[...dom].map(([k,n])=>[k,n.snapshot()]),events,view:context.offerView}));
- return {snapshot:snapshot(),noteCalls,noteVisits,keyCalls,hotelCalls,
+ return {snapshot:snapshot(),noteCalls,noteVisits,keyCalls,hotelCalls,rowMarkupCalls,currentSnapshot:snapshot,
+  paginate:(groupKey,count,incremental=true)=>{const before={hotelCalls,rowMarkupCalls},renderPage=shown=>incremental&&api.renderMoreGroup?api.renderMoreGroup(groupKey,shown,{}):api.renderOfferList(false);let shown=4;for(let limit=12;limit<count;limit+=8){context.offerView.limits[groupKey]=Math.min(count,limit);renderPage(shown);shown=limit;}if(count>4){context.offerView.limits[groupKey]=count;renderPage(shown);}return {hotelCalls:hotelCalls-before.hotelCalls,rowMarkupCalls:rowMarkupCalls-before.rowMarkupCalls};},
   rerender:(nextRows,changes={})=>{currentRows=nextRows;Object.assign(context.offerView,changes);const previousCalls=hotelCalls;api.renderOfferList(false);return {snapshot:snapshot(),hotelCalls:hotelCalls-previousCalls};}};
 }
 // Optional before/after proof uses the old owner only when explicitly supplied.
@@ -245,6 +248,15 @@ for(const all of [[],rows.slice(0,1),rows.slice(0,2),rows]){
  invocationCases+=2;
 }
 console.log(`PASS cold list invocation: ${invocationCases} actual mount/refinement/fresh-result states; mount hotelOffers calls 2→1; raw current rows and updated prices retained`);
+const paginationRows=Array.from({length:500},(_,i)=>({...offer(20000+i),room:'one-room',meal:'AI'}));
+const paginationView=baseView(),paginationKey=key(paginationRows[0]),fullPagination=render(source,paginationRows,paginationView,false,false,true),incrementalPagination=render(source,paginationRows,paginationView,false,false,true);
+const fullPaginationWork=fullPagination.paginate(paginationKey,500,false),incrementalPaginationWork=incrementalPagination.paginate(paginationKey,500,true);
+assert.equal(fullPagination.rowMarkupCalls+fullPaginationWork.rowMarkupCalls,15876,'500-row full-render reference rebuilds every visible row on each page');
+assert.equal(fullPagination.hotelCalls+fullPaginationWork.hotelCalls,63,'500-row full-render reference rebuilds the full inventory for all 63 renders');
+assert.equal(incrementalPagination.rowMarkupCalls+incrementalPaginationWork.rowMarkupCalls,500,'incremental owner builds each visible row once');
+assert.equal(incrementalPagination.hotelCalls+incrementalPaginationWork.hotelCalls,1,'incremental owner retains only the immediately preceding full inventory');
+assert.deepEqual(incrementalPagination.currentSnapshot(),fullPagination.currentSnapshot(),'incremental and repeated full-render pagination finish with exact DOM/view/route output');
+console.log(`PASS cold group pagination: 500 rows, inventory visits 31500→500, row markups 15876→500; exact final public-owner DOM/view/route output`);
 const forbiddenRefinementInventory=source.replace('function offerRefinementCounts(all,field,options){','function offerRefinementCounts(all,field,options){throw new Error("required list refinement inventory");');
 assert.throws(()=>render(forbiddenRefinementInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);
