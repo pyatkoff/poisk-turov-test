@@ -1286,22 +1286,22 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: result-merge container pass merged; structural optimization continues",
+    "title": "Search3 NEXT: fixed-arity calendar price merge merged; structural optimization continues",
     "status": "STRUCTURAL_REFACTOR_IN_PROGRESS",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4388,
+    "pr": 4390,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "owner_request": "Continue reducing/optimizing with material structural or rendering gains. NEXT only; measure browser milliseconds before any user-visible speed claim. Preserve favorites paused flag and protected contracts.",
-    "last_fully_checked_release_sha": "b17f1b3394acc89c10870e293d17c61543b4264a",
+    "last_fully_checked_release_sha": "ccecbad1e24b61d4eded814ec31c521a75535af2",
     "published_source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
-    "acceptance_status": "O57_RESULT_MERGE_CONTAINERS_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
-    "next_action": "Continue only from fresh release and current claims. PR4388 exact head1a0cfe85e2107356567815947ea301a6a120ce7e is checked and merged as releaseb17f1b3394acc89c10870e293d17c61543b4264a. mergeSearchResults now fills incoming/final Maps directly while retaining separate favorite filtering, retained cloning, final hotels materialization and operator/meal scanning: dense 1000 incoming + 100 retained favorites temporary merge-container arrays2105->1 and application-level hotel visits3400->3300. Duplicate/overlap order, raw identity/order, retained clone timing, sparse/inherited/initial-length behavior, late getter mutation, meal/operator facts and refresh order are exact; supplier/lead HTTP0. Honest delta: source app+322raw/+125gzip-before; compiled LIVE and complete-LIVE+322raw/+188served/+100gzip-after. Transfer grew; this is allocation/operation-count evidence only, not browser-ms or latency. Exact-head Security37125408627, lead37125408647, build37125470335 artifact11275241126 digest sha256:45d7ec4b13946f7d499c6a24781f0e32d56db0f4a1120fa8e3514129936e2c67 and full visual/focused+compiled Chromium37125470365 SUCCESS; no reviews/threads. Source terminal5969561655. O57 is NOT published; published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Next perform a fresh read-only audit and require another material compiled-reachable structural/rendering hotspot before any source claim; reject legacy/unreachable, cosmetic byte-only, unsafe traversal fusion and code movement. Preserve protected contracts, keep data.js inspection-only absent a bounded INT->SEARCH handoff, and accumulate before one guarded NEXT publication. No production or historical replay.",
+    "acceptance_status": "O58_FIXED_ARITY_CALENDAR_PRICE_MERGE_CHECKED_MERGED_NOT_PUBLISHED_NEXT_RUNTIME_REMAINS_PRIOR_ACCEPTED_SOURCE_PHYSICAL_AND_REAL_SUPPLIER_UNVERIFIED",
+    "next_action": "Continue only from fresh release and current claims. PR4390 exact head812a4635d6eb80628ead9cee6c271dd783a9e381 is checked and merged as releaseccecbad1e24b61d4eded814ec31c521a75535af2. calendarMinimums and resultCalendarPrices now use fixed-arity positive-finite minimum owners: for one paired 21-day computation temporary candidate/filter arrays84->0 while day callbacks42->42 and hotel/source visits are unchanged. Exhaustive two-/three-way undefined/null/NaN/infinity/negative/zero/subnormal/fractional/max/tie cases preserve exact results and left-to-right property/Number.isFinite reads once per value; 182 pinned price sequences, 8/8 progressive maps, base/request/reset isolation, raw identity/order and sparse/inherited/initial-length behavior remain exact; supplier/lead HTTP0. Honest delta: source app+252raw/+51gzip-9n; compiled LIVE and complete-LIVE+252raw/+48served/+28gzip-after. Transfer grew; this is allocation/complexity evidence only, not browser-ms or latency. Exact-head Security37128788420, lead37128788448, build37128859337 artifact11275976865 digest sha256:6fb175bba1fe11c62af0e1dc6907de2672763908f8346243a9cc7946d41884c2 and ready-only focused+full compiled Chromium37128859358 SUCCESS; no reviews/threads. Source terminal5970020971. O58 is NOT published; published NEXT remains source6ddeb4a88b9c05966f0e5682bc6418752fd5bf46 terminal/no-replay. Next perform a fresh read-only audit and require another material compiled-reachable structural/rendering hotspot before any source claim; reject legacy/unreachable, cosmetic byte-only, unsafe traversal fusion and code movement. Preserve protected contracts, keep data.js inspection-only absent a bounded INT->SEARCH handoff, and accumulate before one guarded NEXT publication. No production or historical replay.",
     "next_task": {
       "id": "S3_NEXT_LARGE_SCRIPT_STRUCTURAL_AUDIT",
       "status": "READ_ONLY_AUDIT_REQUIRED",
-      "candidate_scope": "Active app.js rendering/reconciliation/inventory paths and other unclaimed Search3 NEXT scripts. data.js is inspection-only unless a bounded INT->SEARCH handoff is confirmed. Published runtime remains prior accepted source; O57 is merged only.",
+      "candidate_scope": "Active app.js rendering/reconciliation/inventory paths and other unclaimed Search3 NEXT scripts. data.js is inspection-only unless a bounded INT->SEARCH handoff is confirmed. Published runtime remains prior accepted source; O58 is merged only.",
       "acceptance": "Select only a compiled-reachable hotspot with a reproducible operation/rendering/complexity or allocation-volume benefit and explicit behavior oracle. Reject cosmetic byte-only changes, unsafe pass fusion, and code movement whose only benefit is a smaller single file. Report raw, served and gzip deltas separately from operation/allocation work; do not claim user-visible speed without valid repeated paired browser milliseconds on identical outputs.",
       "execution": "Read fresh release/current_task/claims and terminal receipts, audit read-only, then claim the minimal exact source/test/manifest paths. Preserve raw object identity/order, calendar/filter/search scope, URLs/payload, price/fuel, supplier/auth, lead/CRM/Metrika, generation and logo contracts. Run lean narrow tests first, applicable exact-head CI and compiled Chromium before merge; continue independently around blockers and accumulate before one guarded NEXT publish.",
       "protected": "No production/sibling preview/main change, no provider or direct-ANEX removal, no data.js mutation without bounded INT handoff, no favorites-flag change and no replay."
@@ -1318,7 +1318,7 @@
       "prompt_unchanged": true,
       "schedule_unchanged": true
     },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4388"
+    "audit": "https://github.com/pyatkoff/poisk-turov-test/pull/4390"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
