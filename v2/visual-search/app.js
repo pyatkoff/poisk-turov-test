@@ -731,7 +731,7 @@ function renderHotelDetails(){
  loadHotelDetails().then(render).catch(()=>{if(current())$('#hotel-details-load').innerHTML='<div role="alert"><p>Не удалось загрузить подробности отеля.</p><button class="secondary" data-action="retry-hotel-details">Попробовать ещё раз</button></div>';});
 }
 
-let renderedCardLimit=24,renderedCardScope='';
+let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];
 function refreshResultFilters(options,ratingCounts){
  const ratingCount=filterDraft?undefined:ratingCounts?.rating;
  if(!options.keepFilters){if(ratingCount===undefined)renderFilters();else renderFilters(ratingCount);}else{if(ratingCount===undefined)updateFacetCounts();else updateFacetCounts(ratingCount);syncFilterResetState();}
@@ -765,6 +765,7 @@ function renderResultCards(items){
   if(nextAnchor&&Number.isFinite(anchorTop))window.scrollTo({top:anchorScroll+nextAnchor.getBoundingClientRect().top-anchorTop,behavior:'instant'});
  }
 }
+function renderMoreResultCards(){const next=renderedCardLimit;renderedCardLimit+=24;renderResultCards(renderedResultItems);return next;}
 function renderResults(options={}){
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
@@ -773,7 +774,7 @@ function renderResults(options={}){
   return;
  }
  if(searchResponse.key&&searchResponse.key!==searchKey(state.search)){clearSearchTimers();searchResponse={key:searchKey(state.search),phase:'complete',operators:[...operators],pending:false};}
- const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;
+ const inventory=resultInventory(),items=inventory.items,total=inventory.total,pristine=!state.hasSearched&&!state.onlyFavorites;renderedResultItems=items;
  renderResultHeadings(items,total,pristine);
  renderResultCards(items);
  $('#apply-filters').textContent=pristine?'Сохранить условия':`Показать отели (${items.length})`;
@@ -2141,7 +2142,7 @@ async function switchFixture(value){
 window.addEventListener('anytour:data-status',()=>{$('#fixture-description').textContent=data.describe();});
 $('#fixture-scenario').value=data.scenario;
 $('#fixture-scenario').addEventListener('change',event=>switchFixture(event.target.value).catch(error=>{catalogReady=false;toast(error.message);$('#fixture-description').textContent=error.message;}));
-document.addEventListener('click',event=>{if(event.target.closest('[data-action="more-cards"]')){const next=renderedCardLimit;renderedCardLimit+=24;renderResults({keepFilters:true});$('#cards').children[next]?.querySelector('button')?.focus({preventScroll:true});}});
+document.addEventListener('click',event=>{if(event.target.closest('[data-action="more-cards"]')){const next=renderMoreResultCards();$('#cards').children[next]?.querySelector('button')?.focus({preventScroll:true});}});
 
 const initialUIRoute=history.state?.[uiHistoryKey];
 hydrate();renderResults();bootRealData();
