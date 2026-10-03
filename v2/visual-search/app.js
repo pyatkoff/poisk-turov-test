@@ -159,6 +159,13 @@ function paintGeneratedRoots(container,entries,sameScope=true,field='id'){
  while(cursor){const next=cursor.nextSibling;cursor.remove();cursor=next;}
  observer.takeRecords();
 }
+function appendGeneratedRoots(container,entries,remove){
+ const binding=generatedRootBindings.get(container);if(binding)binding.mark(binding.observer.takeRecords());
+ if(binding)for(const node of [...container.children])if(node!==remove&&binding.dirty.has(node)){const markup=binding.markup.get(node);if(markup){const fresh=parseGeneratedRoot(markup);binding.markup.set(fresh,markup);binding.dirty.delete(node);container.replaceChild(fresh,node);}}
+ if(remove){binding?.dirty.delete(remove);remove.remove();}
+ for(const entry of entries){const node=parseGeneratedRoot(entry.markup);binding?.markup.set(node,entry.markup);container.append(node);}
+ binding?.observer.takeRecords();
+}
 function renderSummary(){const s=state.search,f=state.filters;paintGeneratedRoots($('#applied-search'),[{id:'',markup:`<div class="applied-main"><div class="applied-route"><span class="summary-icon">${icon('plane')}</span><div><small>Маршрут</small><strong>${esc(s.origin)}<span>→</span>${esc(destinationLabel(appliedDestination()))}</strong></div></div><dl class="applied-trip"><div><dt>${departureScopeLabel(s)}</dt><dd>${departureScopeValue(s)}</dd></div><div><dt>Отдых</dt><dd>${durationText()}</dd></div><div><dt>Туристы</dt><dd>${guestsText()}</dd></div></dl><button class="secondary" data-action="edit-search" aria-controls="search-form" aria-expanded="false">${icon('sliders')} Изменить</button></div>`},{id:'',markup:`<div class="applied-extras"><button type="button" data-action="filters" aria-label="Звёзды: ${esc(f.stars.length?f.stars.join(', '):'любая категория')}. Открыть фильтры"><span class="applied-extra-label">Звёзды</span><strong>${esc(f.stars.length?[...f.stars].sort((a,b)=>a-b).map(n=>n+' ★').join(', '):'Любая')}</strong></button><button type="button" data-action="meals" aria-haspopup="dialog" title="${esc(f.meals.join(' · ')||'Любое питание')}" aria-label="Питание: ${esc(f.meals.join(', ')||'любое')}"><span class="applied-extra-label">Питание</span><strong>${esc(f.meals.length>1?f.meals.length+' варианта':f.meals[0]||'Любое')}</strong></button><button type="button" data-action="budget" aria-haspopup="dialog"><span class="applied-extra-label">Бюджет за всех</span><strong>${esc(budgetLabel(f))}</strong></button><button type="button" class="applied-all-filters" data-action="filters">${icon('sliders')} Все фильтры${filterCount()?' · '+filterCount():''}</button></div>`}]);}
 function collapseSearch(){renderSummary();$('#search-form').hidden=true;$('.intro').hidden=true;$('#applied-search').hidden=false;$('#search').classList.add('search-collapsed');document.body.classList.remove('search-editing');}
 function editSearch(){
@@ -765,7 +772,12 @@ function renderResultCards(items){
   if(nextAnchor&&Number.isFinite(anchorTop))window.scrollTo({top:anchorScroll+nextAnchor.getBoundingClientRect().top-anchorTop,behavior:'instant'});
  }
 }
-function renderMoreResultCards(){const next=renderedCardLimit;renderedCardLimit+=24;renderResultCards(renderedResultItems);return next;}
+function renderMoreResultCards(){
+ const next=renderedCardLimit;renderedCardLimit+=24;
+ const entries=renderedResultItems.slice(next,renderedCardLimit).map(item=>({id:`hotel-${item.hotel.id}`,markup:cardHTML(item)}));
+ if(renderedResultItems.length>renderedCardLimit)entries.push({id:'',markup:`<button type="button" class="secondary load-more-cards" data-action="more-cards">Показать ещё ${Math.min(24,renderedResultItems.length-renderedCardLimit)} отеля <span>Показано ${Math.min(renderedCardLimit,renderedResultItems.length)} из ${renderedResultItems.length}</span></button>`});
+ const cards=$('#cards'),last=cards.lastElementChild,more=last?.matches('[data-action="more-cards"]')?last:null;appendGeneratedRoots(cards,entries,more);return next;
+}
 function renderResults(options={}){
  // A changed form is a draft, not a new result set. Keep cards, pagination and
  // the shareable URL intact until Search; child pickers may still preview counts.
