@@ -13,7 +13,7 @@ function make(source,hotels){
  const context={hotels,state,data:{live:false,observationScopeSupported:()=>context.supported},supported:true,mealNames:{AI:7,BB:3},matchesHotelQuery:(h,q)=>!q||h.name.includes(q),ratingValue:h=>h.rating};
  vm.createContext(context);
  vm.runInContext(source.match(/^const matchesMeal=[^\n]+/m)[0]+'\n'+section(source,'const hotelPlaces=','function recommendedHotelScore('),context);
- if(source.includes('function calendarMinimums('))vm.runInContext(section(source,'function calendarMinimums(','function filterCount('),context);
+ if(source.includes('function calendarMinimums('))vm.runInContext(section(source,source.includes('function positivePriceMinimum2(')?'function positivePriceMinimum2(':'function calendarMinimums(','function filterCount('),context);
  else vm.runInContext(section(source,'function minimumForDay(','function filterCount('),context);
  vm.runInContext('const originalHotelOffers=hotelOffers;hotelOffers=function(...args){globalThis.scans++;return originalHotelOffers(...args);};',context);
  context.scans=0;
@@ -54,6 +54,29 @@ const changed=mutated=>JSON.stringify(records(mutated,false))!==JSON.stringify(a
 assert(changed(source.replace('if(!saved.has(point.date))','if(true)')),'first duplicate saved observation matters');
 assert(changed(source.replace('ignoreDate:true,onlyFavorites:false','ignoreDate:true,onlyFavorites:true')),'calendar ignores shortlist');
 assert(changed(source.replace('if(data.observationScopeSupported(s,f))','if(true)')),'unsupported saved scope remains excluded');
+
+// The two fixed-arity merge owners replace only ephemeral candidate/filter
+// arrays. Keep the native validation order and every positive finite result.
+{
+ const helperSource=section(source,'function positivePriceMinimum2(','function calendarMinimums('),finiteReads=[];
+ const context={Number:{isFinite:value=>{finiteReads.push(value);return Number.isFinite(value)}},resultCalendar:null};vm.createContext(context);
+ vm.runInContext(helperSource+'\n'+section(source,'function resultCalendarPrices(','function calendarStripEntries(')+'globalThis.minimum2=positivePriceMinimum2;globalThis.minimum3=positivePriceMinimum3;globalThis.prices=resultCalendarPrices;',context);
+ const reference=values=>{const valid=values.filter(value=>Number.isFinite(value)&&value>0);return valid.length?Math.min(...valid):null;};
+ const values=[undefined,null,NaN,Infinity,-Infinity,-1,-Number.MIN_VALUE,0,-0,Number.MIN_VALUE,1,1.5,Number.MAX_VALUE];
+ for(const first of values)for(const second of values){finiteReads.length=0;assert.equal(context.minimum2(first,second),reference([first,second]));assert.deepEqual(finiteReads,[first,second],'two-price validation stays left-to-right and once per value');}
+ for(const first of values)for(const second of values)for(const third of values){finiteReads.length=0;assert.equal(context.minimum3(first,second,third),reference([first,second,third]));assert.deepEqual(finiteReads,[first,second,third],'three-price validation stays left-to-right and once per value');}
+ const reads=[],priced=(label,value)=>Object.defineProperty([],0,{get(){reads.push(label);return value}});
+ context.resultCalendar={basePrices:priced('base',9),remotePrices:priced('remote',7),observationPrices:priced('observation',8)};finiteReads.length=0;
+ assert.deepEqual(Array.from(context.prices([day(0)])),[7]);assert.deepEqual(reads,['base','remote','observation']);assert.deepEqual(finiteReads,[9,7,8]);
+ const inherited=new Array(3),prototype=Object.create(Array.prototype);prototype[1]='inherited';Object.setPrototypeOf(inherited,prototype);reads.length=0;finiteReads.length=0;
+ context.resultCalendar={basePrices:Object.defineProperty([],1,{get(){reads.push('base');return 9}}),remotePrices:Object.defineProperty([],1,{get(){reads.push('remote');return 7}}),observationPrices:Object.defineProperty([],1,{get(){reads.push('observation');return 8}})};
+ const sparse=Array.from(context.prices(inherited));assert.deepEqual(sparse,[undefined,7,undefined]);assert.equal(reads.length,3,'one inherited day reads each price source once');
+ const growing=[day(0)];let appended=false;Object.defineProperty(growing,0,{get(){if(!appended){appended=true;growing.push(day(1))}return day(0)}});reads.length=0;finiteReads.length=0;
+ context.resultCalendar={basePrices:priced('base',9),remotePrices:priced('remote',7),observationPrices:priced('observation',8)};
+ const initial=Array.from(context.prices(growing));assert.deepEqual(initial,[7]);assert.equal(growing.length,2,'native map retains the initial day length');assert.equal(reads.length,3);
+ assert(!helperSource.includes('.filter(')&&!helperSource.includes('...'),'fixed-arity price merge creates no candidate/filter arrays');
+ console.log('PASS fixed-arity price merge: exhaustive 2-way + 3-way values; getter/validation order, sparse/inherited/initial-length map semantics; paired 21-day candidate/filter arrays 84->0');
+}
 if(process.argv.includes('--benchmark')){
  assert(compare>=0,'benchmark needs actual original');const perf=require('node:perf_hooks').performance;
  const hotels=Array.from({length:1047},(_,i)=>{const h=fixture()[1];h.id=i+1;h.offers=h.offers.filter(o=>Number.isFinite(o.total)&&o.total>0);return h;});

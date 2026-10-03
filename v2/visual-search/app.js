@@ -251,6 +251,17 @@ function resultInventory(){
  inventory.items=sortResultItems(inventory.items);return inventory;
 }
 function results(){return resultInventory().items;}
+function positivePriceMinimum2(first,second){
+ let minimum=null;
+ if(Number.isFinite(first)&&first>0)minimum=first;
+ if(Number.isFinite(second)&&second>0&&(minimum===null||second<minimum))minimum=second;
+ return minimum;
+}
+function positivePriceMinimum3(first,second,third){
+ let minimum=positivePriceMinimum2(first,second);
+ if(Number.isFinite(third)&&third>0&&(minimum===null||third<minimum))minimum=third;
+ return minimum;
+}
 function calendarMinimums(days,options={},observations=[]){
  if(!days.length)return[];
  const s=options.search||state.search,f=options.filters||state.filters,span=[...days].sort(),requested=new Set(days),minimums=new Map(),saved=new Map();
@@ -260,7 +271,7 @@ function calendarMinimums(days,options={},observations=[]){
  }
  // Keep the first saved observation for a date, just as the old find() did.
  if(data.observationScopeSupported(s,f))for(const point of observations)if(!saved.has(point.date))saved.set(point.date,point.price);
- return days.map(day=>{const values=[minimums.get(day),saved.get(day)].filter(value=>Number.isFinite(value)&&value>0);return values.length?Math.min(...values):null;});
+ return days.map(day=>positivePriceMinimum2(minimums.get(day),saved.get(day)));
 }
 function filterCount(){return Object.entries(state.filters).reduce((n,[k,v])=>n+(Array.isArray(v)?v.length:k==='max'?(v!==null?1:0):k==='min'?(v>0?1:0):v?1:0),0);}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>t.hidden=true,3600);}
@@ -681,7 +692,7 @@ function resultCalendarModel(){
 }
 function prepareResultCalendarBase(){resultCalendar.basePrices=calendarMinimums(resultCalendarDays(state.search),{calendarHotels:hotels},[]);}
 function resultCalendarPrices(days){
- return days.map((_,index)=>{const values=[resultCalendar.basePrices[index],resultCalendar.remotePrices[index],resultCalendar.observationPrices[index]].filter(value=>Number.isFinite(value)&&value>0);return values.length?Math.min(...values):null;});
+ return days.map((_,index)=>positivePriceMinimum3(resultCalendar.basePrices[index],resultCalendar.remotePrices[index],resultCalendar.observationPrices[index]));
 }
 function calendarStripEntries({days,prices,min,max}){return days.map((day,i)=>{const price=prices[i];return {day,markup:`<button class="date-price ${price!==null&&price===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${price!==null?', от '+money(price):', цена пока неизвестна'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${dateText(day)}</span><strong>${price===null?'—':money(price)}</strong><span class="calendar-bar" style="--bar-height:${price===null?5:12+Math.round((price-min)/Math.max(1,max-min)*22)}px"></span></button>`};});}
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
