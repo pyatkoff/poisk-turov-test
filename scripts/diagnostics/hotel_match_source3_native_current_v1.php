@@ -113,15 +113,19 @@ function s3n_private_config(string $root):array{
     throw new RuntimeException('andromeda_private_config_missing');
 }
 function s3n_budget(string $private,int $call,string $action):void{
-    $path=$private.'/monthly-requests.json';$lock=fopen($path.'.lock','c');s3n_need($lock!==false&&flock($lock,LOCK_EX),'budget_lock');
+    $path=$private.'/monthly-requests.json';
+    s3n_need(is_dir($private)&&!is_link($private)&&!is_link($path)&&!is_link($path.'.lock'),'budget_path');
+    $lock=@fopen($path.'.lock','c');s3n_need($lock!==false,'budget_lock');$tmp=null;
     try{
-        $month=gmdate('Y-m');$state=is_file($path)?s3n_read($path):[];
+        s3n_need(flock($lock,LOCK_EX),'budget_lock');
+        $month=gmdate('Y-m');$state=file_exists($path)?s3n_read($path):[];
         if(($state['month']??'')!==$month)$state=['month'=>$month,'reserved_requests'=>0,'monthly_limit'=>S3N_MONTHLY_LIMIT,'scope'=>'this_integration'];
-        $used=(int)($state['reserved_requests']??0);$limit=(int)($state['monthly_limit']??S3N_MONTHLY_LIMIT);
-        s3n_need($limit===S3N_MONTHLY_LIMIT&&$used<$limit,'monthly_quota');$state['reserved_requests']=$used+1;
+        $used=$state['reserved_requests']??null;$limit=$state['monthly_limit']??S3N_MONTHLY_LIMIT;
+        s3n_need(is_int($used)&&$used>=0&&$limit===S3N_MONTHLY_LIMIT&&$used<$limit,'monthly_quota');$state['reserved_requests']=$used+1;
         $state['last_match_operation']=S3N_OP;$state['last_match_call']=$call;$state['last_match_action']=$action;
-        $tmp=$path.'.'.bin2hex(random_bytes(4));file_put_contents($tmp,s3n_json($state));chmod($tmp,0600);rename($tmp,$path);
-    }finally{flock($lock,LOCK_UN);fclose($lock);}
+        $tmp=$path.'.'.bin2hex(random_bytes(4));s3n_save($tmp,$state);
+        s3n_need(rename($tmp,$path),'budget_replace');$tmp=null;
+    }finally{if($tmp!==null&&is_file($tmp))unlink($tmp);flock($lock,LOCK_UN);fclose($lock);}
 }
 
 /** Normalize PHP numeric array keys back to namespace-preserving string IDs. */

@@ -78,4 +78,23 @@ s3t($final['state']==='catalog_only'&&$final['matches_target_native']===false,'c
 $final=s3n_finalize_evidence_row(array_merge($base,['price_rows'=>0,'native_ids'=>[]]));
 s3t($final['state']==='not_returned_in_context'&&$final['matches_target_native']===false,'absent_price_preserved');
 
+$budgetDir=sys_get_temp_dir().'/match-source3-budget-'.bin2hex(random_bytes(6));
+s3t(mkdir($budgetDir,0700),'budget_fixture_directory');
+$budgetPath=$budgetDir.'/monthly-requests.json';
+try{
+    $initial=['month'=>gmdate('Y-m'),'reserved_requests'=>23,'monthly_limit'=>S3N_MONTHLY_LIMIT,'scope'=>'this_integration','unrelated_marker'=>'preserve'];
+    s3n_save($budgetPath,$initial);s3n_budget($budgetDir,1,'login');$saved=s3n_read($budgetPath);
+    s3t($saved['reserved_requests']===24&&$saved['unrelated_marker']==='preserve'&&$saved['last_match_call']===1,'shared_budget_increments_existing_count');
+    foreach([['reserved_requests'=>-1],['reserved_requests'=>'23'],['reserved_requests'=>S3N_MONTHLY_LIMIT],['monthly_limit'=>S3N_MONTHLY_LIMIT+1]] as $mutation){
+        unlink($budgetPath);$bad=array_merge($initial,$mutation);s3n_save($budgetPath,$bad);$before=hash_file('sha256',$budgetPath);
+        s3reject(fn()=>s3n_budget($budgetDir,2,'price'),'invalid_or_exhausted_budget_refused');
+        s3t(hash_file('sha256',$budgetPath)===$before,'rejected_budget_unchanged');
+    }
+    unlink($budgetPath);s3n_save($budgetDir.'/original.json',$initial);symlink($budgetDir.'/original.json',$budgetPath);
+    s3reject(fn()=>s3n_budget($budgetDir,2,'price'),'symlink_budget_refused');
+    s3t(s3n_read($budgetDir.'/original.json')['reserved_requests']===23,'symlink_target_unchanged');
+}finally{
+    foreach(glob($budgetDir.'/*')?:[] as $path)unlink($path);rmdir($budgetDir);
+}
+
 echo 'hotel_match_source3_native_current_v1_test: PASS '.$checks."\n";
