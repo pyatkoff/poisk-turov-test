@@ -1774,14 +1774,15 @@ function openLeadPreview(source=selectedOffer){
 
 let offerView=null;
 const offerGroupKey=o=>encodeURIComponent(o.room+'|'+o.meal);
-function restoredOfferLimits(value,offers){
- const limits={};if(!value||typeof value!=='object'||Array.isArray(value))return limits;
+function restoredOfferGroups(open,value,offers){
+ const limits={},entries=value&&typeof value==='object'&&!Array.isArray(value)?Object.entries(value).slice(0,100):[];
+ if((!open||!open.length)&&!entries.length)return {open:[],limits};
  const sizes=new Map();for(const offer of offers){const key=offerGroupKey(offer);sizes.set(key,(sizes.get(key)||0)+1);}
- for(const [key,limit] of Object.entries(value).slice(0,100)){
+ for(const [key,limit] of entries){
   const size=sizes.get(key),max=Math.min(500,(size||0)+7);
   if(size>4&&Number.isInteger(limit)&&limit>=12&&(limit-4)%8===0&&limit<=max)limits[key]=limit;
  }
- return limits;
+ return {open:open?open.filter(key=>sizes.has(key)):[],limits};
 }
 const sharedOfferNote=offers=>{const notes=[...new Set(offers.map(offerMetaNote))];return notes.length===1?notes[0]:'';};
 function openAllOffers(id,restored=null){
@@ -1790,7 +1791,7 @@ function openAllOffers(id,restored=null){
  if(restored)offerListRestores.set(offerView,restored);
  if(restored){for(const [name,values] of Object.entries({departure:['',...all.map(o=>o.day)],flight:['','regular','charter','unknown'],room:['',...all.map(o=>o.room)],meal:['',...all.map(o=>o.meal)],sort:['price','date']}))if(values.includes(restored[name]))offerView[name]=restored[name];}
  const restoredOpen=restored?boundedHistoryStrings(restored.open):null;
- if(restored){if(restoredOpen)offerView.open=restoredOpen.filter(key=>all.some(o=>offerGroupKey(o)===key));offerView.limits=restoredOfferLimits(restored.limits,all);}
+ if(restored){const groups=restoredOfferGroups(restoredOpen,restored.limits,all);offerView.open=groups.open;offerView.limits=groups.limits;}
  showModal('all-offers',h.name,'ВЫБЕРИТЕ КОНКРЕТНЫЙ ТУР','<div id="all-offers-list" aria-live="polite"></div>',true);
  $('#modal').classList.add('offers-dialog');renderOfferList(restoredOpen===null,all);
 }
