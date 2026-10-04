@@ -348,12 +348,16 @@ class Provider:
                 if tmp.exists():
                     tmp.unlink()
 
-    def call(self, action, path, params, rows):
+    def check(self, action, rows):
         current = current_preflight(self.root, rows)
         self.preflight_seq += 1
         snapshot = {"sequence": self.preflight_seq, "next_http_call": self.used + 1, "action": action, "rows": current}
         self.preflight.append(snapshot)
         save(self.opdir / f"current-preflight-{self.preflight_seq:02d}.json", snapshot)
+        return current
+
+    def call(self, action, path, params, rows):
+        current = self.check(action, rows)
         eligible = {(r["source_catalog_id"], r["target_tv_hotel_id"]) for r in current if r["state"] == "eligible"}
         wanted = {(str(r["source_catalog_id"]), int(r["target_tv_hotel_id"])) for r in rows}
         if not eligible:
@@ -394,7 +398,7 @@ class Provider:
 
 def run_group(provider, opdir, index, group, request):
     rows = group["rows"]
-    active = current_preflight(provider.root, rows)
+    active = provider.check("group_preflight", rows)
     eligible_keys = {(r["source_catalog_id"], r["target_tv_hotel_id"]) for r in active if r["state"] == "eligible"}
     active_rows = [r for r in rows if (r["source_catalog_id"], r["target_tv_hotel_id"]) in eligible_keys]
     if not active_rows:
@@ -538,6 +542,7 @@ def execute(root, opdir, manifest_path):
         "preflight_snapshots": provider.preflight if provider else [],
         "provider_http_calls": provider.used if provider else 0,
         "physical_http_attempts": provider.used if provider else 0,
+        "database_reads": len(provider.preflight) if provider else 0,
         "call_counts": dict(provider.counts) if provider else {},
         "returned_edges": len(edges),
         "edge_state_counts": dict(collections.Counter(edge.get("state", "unknown") for edge in edges)),
@@ -558,6 +563,7 @@ def execute(root, opdir, manifest_path):
         "state": state,
         "result_sha256": digest,
         "provider_http_calls": output["provider_http_calls"],
+        "database_reads": output["database_reads"],
         "database_writes": 0,
         "mapping_writes": 0,
         "safe_to_write_now": False,
