@@ -2241,9 +2241,9 @@ def run_match_observed_page1_identity(stage):
     runner=stage/'scripts/diagnostics/hotel_match_observed_page1_identity_readonly_v1.py'
     manifest=stage/'scripts/diagnostics/fixtures/hotel_match_observed_page1_identity_readonly_v1.json'
     source_test=stage/'tests/hotel_match_observed_page1_identity_readonly_v1_test.py'
-    checked=[(runner,'447a5362ef6746496890c3f156cc3756ba6d4c0847f981a1571a2cf25e67873c',2*1024*1024),
+    checked=[(runner,'5c8bc6632295afa46a9faa23c7646a14659148b090f6ba8585d6803be5e978d0',2*1024*1024),
              (manifest,'771fba36e04ad0c051158ac0c08e8e228eef7e1e9e2aa2850d719e3d915dab94',65536),
-             (source_test,'d27156b2a002bcef68726ac1b9fe6d844d8dc9d19ec741352045a7ba848b7618',2*1024*1024)]
+             (source_test,'c01966ae238c8da1b71a85ba53bd9bc002af28d675426693eef29fda66435163',2*1024*1024)]
     for path,digest,maximum in checked:
         if path.resolve()!=path or not safe_file(path,maximum) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('observed_page1_source_binding')
     parent=home/'.anytoour-match';root=parent/'operations'
