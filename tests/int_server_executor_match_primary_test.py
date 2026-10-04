@@ -1675,4 +1675,60 @@ class ExactTourvisorRemoteGuardTest(unittest.TestCase):
                     registration.remote_with_primary(core, **{flag: True})
 
 
+
+class UserSearchDeltaRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.DELTA_MODE+' '+registration.DELTA_OPERATION+' '+registration.DELTA_BATCH
+
+    def test_exact_readonly_scope_and_cross_scope_rejected(self):
+        value=self.core.parse_command(self.body())
+        self.assertEqual(value,dict(source_sha=SOURCE,mode=registration.DELTA_MODE,operation_id=registration.DELTA_OPERATION,batch=registration.DELTA_BATCH,maximum_writes=0,provider_http_calls=0))
+        for body in [self.body().replace(registration.DELTA_OPERATION,registration.ANEX2_OPERATION),self.body().replace(registration.DELTA_BATCH,registration.NATIVE_BATCH),self.body()+' 1']:
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+
+    def test_emitted_remote_and_staged_paths_preserve_stock_executor(self):
+        before=self.core.REMOTE;fixed=list(self.core.FIXED)
+        registration.activate(self.core,self.core.parse_command(self.body()))
+        ast.parse(self.core.REMOTE)
+        self.assertIn('def run_match_user_delta(stage):',self.core.REMOTE)
+        self.assertIn("if mode=='match-user-search-delta-readonly':",self.core.REMOTE)
+        self.assertIn("r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*'",self.core.REMOTE)
+        self.assertEqual(self.core.FIXED,fixed+list(registration.DELTA_SOURCE_FILES))
+        self.assertIn('os.O_WRONLY|os.O_CREAT|os.O_EXCL',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('os.fsync(fd)',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('delta_reservation_readback',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('validate_source(data)',registration.REMOTE_DELTA_HANDLER)
+
+    def fixture(self):
+        data=dict(schema='match-user-search-delta-readonly-result/1',operation=registration.DELTA_OPERATION,batch=registration.DELTA_BATCH,source_sha=SOURCE,provider_http_calls=0,physical_http_attempts=0,database_reads=1,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,accepted=0,written=0,safe_to_write_now=False,acceptance_evaluated=False,global_uniqueness_evaluated=False,no_replay=True,operator_ids=[13,18,25,43],window_civil={'lower_exclusive':'2026-10-02 12:46:00','upper_inclusive':'2026-10-03 09:23:17'},private_input_sha256='c'*64,state='completed_read_only_delta')
+        keys=['operation','batch','source_sha','state','private_input_sha256','provider_http_calls','physical_http_attempts','database_reads','database_writes','mapping_writes','booking_calls','lead_calls','accepted','written','safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay']
+        receipt={k:data[k] for k in keys};receipt['result_sha256']='d'*64
+        return data,receipt
+
+    def validate(self,data,receipt,validator=lambda x:None):
+        env={'fail':lambda reason:(_ for _ in ()).throw(RuntimeError(reason))}
+        exec(registration.REMOTE_DELTA_HANDLER,env)
+        return env['validate_match_user_delta'](data,receipt,'d'*64,'c'*64,SOURCE,validator)
+
+    def test_digest_receipt_source_bindings(self):
+        data,receipt=self.fixture();self.assertEqual(self.validate(data,receipt),data)
+        for change in [('source_sha','e'*40),('result_sha256','f'*64),('private_input_sha256','f'*64)]:
+            d,r=copy.deepcopy(data),copy.deepcopy(receipt);r[change[0]]=change[1]
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_no_authority_promotion_or_boolean_counter(self):
+        for key,value in [('database_writes',1),('provider_http_calls',1),('written',1),('accepted',True),('database_reads',True),('safe_to_write_now',True),('no_replay',False)]:
+            d,r=self.fixture();d[key]=value
+            if key in r:r[key]=value
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_source_validator_failure_cannot_be_ignored(self):
+        d,r=self.fixture()
+        with self.assertRaises(RuntimeError):self.validate(d,r,lambda x:(_ for _ in ()).throw(ValueError('unsafe_row')))
+        r['unknown_field']=0
+        with self.assertRaises(RuntimeError):self.validate(d,r)
+
 if __name__=='__main__':unittest.main()
