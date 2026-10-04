@@ -156,6 +156,13 @@ class UrlPaths(unittest.TestCase):
         self.assertEqual(p["source_url_candidate"], url)
         self.assertEqual(p["path"], "/hotel/MyDream")
 
+    def test_urlsplit_stripped_literal_controls_are_held_before_export(self):
+        for url in ("\nhttps://intourist.ru/hotel/a", "https://intourist.ru/hotel/a\r", "https://intourist.ru/ho\ttel/a", " https://intourist.ru/hotel/a", "https://intourist.ru/hotel/a\x00", "https://intourist.ru/hotel/a\x7f"):
+            p = m.path_projection(url, "intourist.ru")
+            self.assertEqual(p["state"], "hold")
+            self.assertEqual(p["hold_reason"], "url_path_unsafe_characters")
+            self.assertIsNone(p["source_url_candidate"])
+
     def test_query_fragment_userinfo_port_hold_without_secret(self):
         for url in ("https://user:pw@intourist.ru/hotel/a", "https://intourist.ru:443/hotel/a", "https://intourist.ru/hotel/a?token=VERYPRIVATE", "https://intourist.ru/hotel/a#VERYPRIVATE", "https://intourist.ru/hotel/a?"):
             p = m.path_projection(url, "intourist.ru")

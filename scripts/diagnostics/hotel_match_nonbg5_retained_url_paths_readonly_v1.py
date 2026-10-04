@@ -161,6 +161,10 @@ def path_projection(value, expected_host):
     def hold(reason):
         out["hold_reason"] = reason
         return out
+    # urlsplit removes some literal C0 controls before parsing. Reject them in
+    # the original captured value so a safe projection never republishes them.
+    if type(value) is not str or re.search(r"[\x00-\x20\x7f]", value):
+        return hold("url_path_unsafe_characters")
     try:
         p = urllib.parse.urlsplit(value)
         if p.scheme.lower() != "https" or not p.netloc:
