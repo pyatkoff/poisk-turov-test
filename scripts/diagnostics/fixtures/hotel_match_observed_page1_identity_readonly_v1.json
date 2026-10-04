@@ -1,0 +1,12 @@
+{
+  "schema": "match-observed-page1-identity-fixture/1",
+  "operation": "int-andromeda-match-observed-page1-identity-20261005-v1",
+  "batch": "observed-page1-20261004-175945",
+  "window_start": 1791136782,
+  "window_end": 1791136804,
+  "created_at": 1791136785,
+  "observed_normalized_offers": 50,
+  "criteria": {"CHECKIN_BEG":"20261014","CHECKIN_END":"20261020","NIGHTS_FROM":7,"NIGHTS_TILL":7,"ADULT":2,"CHILD":0,"CURRENCYINC":643,"PACKETTYPE":0,"PAGE":1,"GROUP_BY":32},
+  "precursor": {"source_sha":"3054d34bb587ca684d5ecbc5f3c306851785d624","canonical_comment_id":5983334797,"run_id":37226290997,"job_id":111506511063,"artifact_id":11312042786,"artifact_zip_sha256":"f5ece9e7c04a5c526fb846ce42a5407107ee49815f17a620961be9d121764a3c","result_sha256":"15f9318afb81e7a848352bd8db5aa4fee7ef041784c581582eee12f1d25c79a8"},
+  "meaning": "New normalized PAGE1 hotel identifiers, never original raw PRICE or accepted identity proof. Old PAGE2 and its readback remain consumed."
+}
