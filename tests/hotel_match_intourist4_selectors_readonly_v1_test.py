@@ -48,7 +48,7 @@ class FakeProvider:
             return 200, {
                 "hotel": {"id": hotel},
                 "operator": {"id": 43},
-                "operatorLink": "https://intourist.example/hotel?hotelId=" + native,
+                "operatorLink": "https://b2b.intourist.ru/hotel?hotelId=" + native,
             }
         raise AssertionError(action)
 
@@ -141,4 +141,5 @@ assert '"database_reads": len(provider.preflight)' in source
 assert '"mapping_writes": 0' in source
 assert MODULE.safe_payload({"operatorLink": "https://example.test/hotel?hotelId=549"}, "token")
 assert not MODULE.safe_payload({"operatorLink": "https://example.test/hotel?session=secret"}, "token")
+assert MODULE.native_projection("https://example.test/hotel?hotelId=549")["link_state"] == "unexpected_intourist_host"
 print("MATCH_INTOURIST4_SELECTORS_READONLY_V1_TEST_OK")
