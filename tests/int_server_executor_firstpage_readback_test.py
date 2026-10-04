@@ -83,6 +83,52 @@ class CommandTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'main_changed'):
                 self.core.checked_event('fixture', event, 'c' * 40)
 
+    def test_new_failure_command_is_separate_and_has_no_window_or_path_options(self):
+        body = f'{self.core.PREFIX}{extension.FAILURE_SOURCE} {extension.FAILURE_MODE} {extension.FAILURE_OPERATION}'
+        command = self.core.parse_command(body)
+        self.assertEqual({'source_sha': extension.FAILURE_SOURCE, 'mode': extension.FAILURE_MODE,
+                          'operation_id': extension.FAILURE_OPERATION}, command)
+        for bad in [body + ' 1791127647', body + ' /private/page.json',
+                    body.replace(extension.FAILURE_SOURCE, extension.SOURCE),
+                    body.replace(extension.FAILURE_OPERATION, extension.OPERATION),
+                    self.body.replace(extension.OPERATION, extension.FAILURE_OPERATION)]:
+            with self.subTest(body=bad), self.assertRaises(ValueError):
+                self.core.parse_command(bad)
+        wrapper = load('int_server_executor_anex_secret_transport')
+        self.assertEqual(command, wrapper.core.parse_command(body))
+        self.assertNotIn(extension.FAILURE_MODE, wrapper.SUPPLIER_SLOT_MODES)
+        self.assertNotIn(extension.FAILURE_MODE, wrapper.DIRECT_ANEX_MODES)
+        remote = self.core.REMOTE
+        with self.assertRaises(ValueError):
+            extension.activate(self.core, command | {'path': '/private/page.json'})
+        self.assertEqual(remote, self.core.REMOTE)
+        extension.activate(self.core, command)
+        self.assertIn('initial_failure_readback', self.core.REMOTE)
+        self.assertLess(len(base64.b64encode(zlib.compress(self.core.REMOTE.encode(), 9))) + 1024, 65536)
+
+    def test_old_incident_is_still_sealed_and_new_reader_requires_current_source(self):
+        self.assertEqual('598092cd292b66b7b94e4a7913a3e2d1f5b550ae', extension.SOURCE)
+        self.assertEqual('int-andromeda-firstpage-receipt-20261004-v1', extension.OPERATION)
+        original = extension.remote_with_readback(self.core)
+        self.assertIn('FP_START=1791053925', original)
+        self.assertIn('FP_END=1791053946', original)
+        self.assertNotIn('IF_START=', original)
+        body = f'{self.core.PREFIX}{extension.FAILURE_SOURCE} {extension.FAILURE_MODE} {extension.FAILURE_OPERATION}'
+        comment = {'id': 123, 'body': body, 'user': {'id': self.core.OWNER_ID},
+                   'author_association': 'OWNER'}
+        replies = {'/issues/comments/123': comment, '/git/ref/heads/main': {'object': {'sha': 'a' * 40}},
+                   '/git/ref/heads/' + self.core.FEATURE: {'object': {'sha': extension.FAILURE_SOURCE}}}
+        event = {'issue': {'number': self.core.ISSUE}, 'comment': comment}
+        with mock.patch.object(self.core, 'api_get', side_effect=lambda path, token: replies[path]):
+            self.assertEqual(extension.FAILURE_MODE, self.core.checked_event('fixture', event, 'a' * 40)['mode'])
+            replies['/git/ref/heads/' + self.core.FEATURE]['object']['sha'] = extension.SOURCE
+            with self.assertRaisesRegex(ValueError, 'feature_changed'):
+                self.core.checked_event('fixture', event, 'a' * 40)
+            replies['/git/ref/heads/' + self.core.FEATURE]['object']['sha'] = extension.FAILURE_SOURCE
+            comment['user']['id'] = 0
+            with self.assertRaises(ValueError):
+                self.core.checked_event('fixture', event, 'a' * 40)
+
 
 class EvidenceTest(unittest.TestCase):
     def setUp(self):
@@ -291,7 +337,7 @@ class EvidenceTest(unittest.TestCase):
         self.assertEqual(42, result['page']['normalized_offers'])
         self.assertNotIn('credential-canary', json.dumps(result))
 
-    def remote_fixture(self):
+    def remote_fixture(self, mode=extension.MODE):
         core = load('int_server_executor')
         source = self.root / 'source'
         app = source / 'app/integrations'
@@ -315,16 +361,18 @@ class EvidenceTest(unittest.TestCase):
             'assert len(sys.argv)==6 and "ob_start()" in sys.argv[4]\n'
             'print(' + repr(json.dumps({'directory': str(self.directory.parent)})) + ')\n')
         php.chmod(0o755)
-        payload = {'source_sha': extension.SOURCE, 'mode': extension.MODE,
-                   'operation_id': extension.OPERATION, 'archive': str(archive),
+        source_sha, operation = ((extension.SOURCE, extension.OPERATION) if mode == extension.MODE
+                                  else (extension.FAILURE_SOURCE, extension.FAILURE_OPERATION))
+        payload = {'source_sha': source_sha, 'mode': mode,
+                   'operation_id': operation, 'archive': str(archive),
                    'manifest_sha256': hashlib.sha256(json.dumps(manifest, sort_keys=True,
                                                                separators=(',', ':')).encode()).hexdigest()}
         env = dict(os.environ, HOME=str(self.home), PATH=str(bindir) + os.pathsep + os.environ.get('PATH', ''))
         remote = self.root / 'remote.py'
-        remote.write_text(extension.remote_with_readback(core))
+        remote.write_text(extension.remote_with_readback(core, mode))
 
-        def run():
-            call = subprocess.run([sys.executable, str(remote)], input=json.dumps(payload),
+        def run(overrides=None):
+            call = subprocess.run([sys.executable, str(remote)], input=json.dumps(payload | (overrides or {})),
                                   text=True, capture_output=True, env=env, timeout=30)
             self.assertEqual(0, call.returncode, call.stderr)
             self.assertEqual('', call.stderr)
@@ -364,6 +412,199 @@ class EvidenceTest(unittest.TestCase):
         for value in ['private-malformed-json-canary', str(self.home), self.ref]:
             self.assertNotIn(value, json.dumps(result))
         self.assertEqual('operation_exists_no_replay', run()['reason'])
+
+
+class InitialFailureEvidenceTest(unittest.TestCase):
+    fail_remote = staticmethod(EvidenceTest.fail_remote)
+    write_page = EvidenceTest.write_page
+    remote_fixture = EvidenceTest.remote_fixture
+
+    def setUp(self):
+        EvidenceTest.setUp(self)
+        exec(extension.REMOTE_FAILURE_READER, self.namespace)
+        self.start, self.end = self.namespace['IF_START'], self.namespace['IF_END']
+        self.state = {'version': 1, 'search_ref': self.ref, 'generation': self.generation,
+                      'status': 'unavailable', 'error': 'supplier_result_unavailable',
+                      'error_code': 'ANDROMEDA_TRANSPORT_ERROR',
+                      'criteria': self.namespace['IF_CRITERIA'] | {'TOWNFROMINC': 1, 'STATEINC': 3},
+                      'store': {'version': 1, 'search_ref': self.ref, 'generation': self.generation,
+                                'created_at': self.start, 'expires_at': self.start + 900,
+                                'snapshot': None, 'criteria': [], 'raw_ids': []}}
+        for name in ['andromeda-search.php', 'andromeda-transport.php', 'andromeda-offer-store.php']:
+            (self.app / name).write_text('<?php throw new Exception("supplier-module-must-not-load");')
+        self.write_page()
+
+    def read(self):
+        return self.namespace['initial_failure_readback']()
+
+    def test_expired_failure_reports_only_code_and_never_reuses_state(self):
+        before = {p: p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
+        result = self.read()
+        self.assertEqual({'status': 'unavailable', 'error_code': 'ANDROMEDA_TRANSPORT_ERROR',
+                          'created_at': self.start, 'expires_at': self.start + 900,
+                          'expired_now': True, 'snapshot_present': False}, result['page'])
+        self.assertEqual(1791127622, result['window_start'])
+        self.assertEqual(1791127646, result['window_end'])
+        self.assertEqual(1, result['matched_first_pages'])
+        self.assertFalse(result['route_identity_verified'])
+        self.assertFalse(result['expired_context_reused'])
+        self.assertFalse(result['raw_payloads_exposed'])
+        for field in ['supplier_calls', 'database_reads', 'database_writes', 'runtime_writes']:
+            self.assertEqual(0, result[field])
+        self.assertEqual(hashlib.sha256((self.app / 'andromeda-search.php').read_bytes()).hexdigest(),
+                         result['runtime_sha256']['search'])
+        for value in ['credential-canary', self.ref, str(self.home), 'TOWNFROMINC', 'STATEINC']:
+            self.assertNotIn(value, json.dumps(result))
+        self.assertNotIn('logs', result)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.home.rglob('*') if p.is_file()})
+        self.php.assert_called_once()
+
+    def test_pending_reservation_does_not_invent_a_failure_code(self):
+        self.state.update(status='pending', error=None)
+        del self.state['error_code']
+        self.write_page()
+        self.assertEqual('pending', self.read()['page']['status'])
+        self.assertIsNone(self.read()['page']['error_code'])
+
+    def test_unknown_and_malicious_codes_are_never_exposed(self):
+        for code in ['ANDROMEDA_PASSWORD_CANARY_1234', 'password=credential-canary',
+                     {'secret': 'credential-canary'}, None, 'ANDROMEDA_HTTP_ERROR']:
+            with self.subTest(code=code):
+                self.state['error_code'] = code
+                self.write_page()
+                result = self.read()
+                self.assertEqual('ANDROMEDA_HTTP_ERROR' if code == 'ANDROMEDA_HTTP_ERROR'
+                                 else 'ANDROMEDA_UNCLASSIFIED_ERROR', result['page']['error_code'])
+                self.assertNotIn('canary', json.dumps(result).lower())
+
+    def test_state_ref_generation_times_and_status_are_bound_strictly(self):
+        changes = [lambda d: d.update(version=True), lambda d: d.update(generation=True),
+                   lambda d: d.update(generation=2147483648), lambda d: d.update(search_ref='b' * 64),
+                   lambda d: d.update(status='partial'), lambda d: d.update(error='private-canary'),
+                   lambda d: d.pop('error_code'), lambda d: d['store'].update(version=True),
+                   lambda d: d['store'].update(generation=True),
+                   lambda d: d['store'].update(generation=1),
+                   lambda d: d['store'].update(search_ref='b' * 64),
+                   lambda d: d['store'].update(created_at=self.start - 1),
+                   lambda d: d['store'].update(created_at=self.end + 1),
+                   lambda d: d['store'].update(expires_at=self.start + 901),
+                   lambda d: d['store'].pop('snapshot'), lambda d: d['store'].update(snapshot={}),
+                   lambda d: d['store'].update(raw_ids=['private-canary'])]
+        for change in changes:
+            state = copy.deepcopy(self.state)
+            change(state)
+            self.write_page(state)
+            with self.subTest(change=changes.index(change)), self.assertRaisesRegex(
+                    RuntimeError, 'initial_failure_retained_contract'):
+                self.read()
+
+    def test_changed_party_dates_page_filters_and_bad_types_fail_closed(self):
+        for key, value in [('CHECKIN_BEG', '20261014'), ('CHECKIN_END', '20261020'),
+                           ('NIGHTS_FROM', 8), ('ADULT', 3), ('CHILD', 1), ('PAGE', 2),
+                           ('GROUP_BY', True), ('TOWNFROMINC', True), ('STATEINC', '3'),
+                           ('HOTELS', '123'), ('MEAL', '5'), ('OPERATORS', 'credential-canary')]:
+            state = copy.deepcopy(self.state)
+            state['criteria'][key] = value
+            self.write_page(state)
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, 'initial_failure_criteria_contract'):
+                self.read()
+        self.state['criteria']['OPERATORS'] = '5,6'
+        self.write_page()
+        self.assertEqual('unavailable', self.read()['page']['status'])
+
+    def test_missing_ambiguous_or_outside_window_page_is_not_an_incident_receipt(self):
+        self.page_path.unlink()
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_missing'):
+            self.read()
+        self.write_page(at=self.start - 3)
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_missing'):
+            self.read()
+        self.write_page()
+        self.write_page(path=self.directory / ('b' * 64 + '-1.json'))
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_ambiguous'):
+            self.read()
+
+    def test_auth_other_pages_autosave_and_logs_are_not_read(self):
+        for name in [self.ref + '-auth.json', self.ref + '-2.json',
+                     self.ref + '-123-page-1-anytour-offer-autosave-result-v1.json']:
+            (self.directory / name).write_text('not-json-private-canary')
+        (self.project / 'error_log').write_text('private-canary')
+        result = self.read()
+        self.assertEqual(1, result['matched_first_pages'])
+        self.assertNotIn('private-canary', json.dumps(result))
+        self.assertNotIn('logs', result)
+
+    def test_symlink_oversize_scope_and_inventory_guards_are_retained(self):
+        self.page_path.unlink()
+        target = self.root / 'outside.json'
+        target.write_text('private-canary')
+        self.page_path.symlink_to(target)
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_symlink'):
+            self.read()
+        self.page_path.unlink()
+        self.page_path.write_bytes(b'x' * (3 * 1024 * 1024 + 1))
+        os.utime(self.page_path, (self.end, self.end))
+        with self.assertRaisesRegex(RuntimeError, 'firstpage_evidence_file'):
+            self.read()
+        self.write_page()
+        outside = self.home / 'www/another-project'
+        (outside / 'searches').mkdir(parents=True)
+        self.php.return_value.stdout = json.dumps({'directory': str(outside)})
+        with self.assertRaisesRegex(RuntimeError, 'firstpage_catalog_scope'):
+            self.read()
+        self.php.return_value.stdout = json.dumps({'directory': str(self.directory.parent)})
+        self.namespace['FP_MAX_ENTRIES'] = 1
+        (self.directory / 'unrelated.json').write_text('{}')
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_inventory_bound'):
+            self.read()
+
+    @unittest.skipUnless(shutil.which('php'), 'PHP unavailable locally; CI exercises real private-config reader')
+    def test_real_php_config_reader_discards_credentials_without_loading_modules(self):
+        self.namespace['subprocess'] = subprocess
+        result = self.read()
+        self.assertEqual('ANDROMEDA_TRANSPORT_ERROR', result['page']['error_code'])
+        self.assertNotIn('credential-canary', json.dumps(result))
+
+    def test_full_executor_failure_read_once_preserves_files_and_blocks_replay(self):
+        run = self.remote_fixture(extension.FAILURE_MODE)
+        before = {p: p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        retained = self.page_path.read_bytes()
+        result = run()
+        self.assertEqual('complete', result['status'])
+        self.assertEqual('ANDROMEDA_TRANSPORT_ERROR', result['initial_failure_readback']['page']['error_code'])
+        self.assertTrue(result['production_unchanged'])
+        self.assertEqual(result['production_before'], result['production_after'])
+        for field in ['supplier_calls', 'database_reads', 'database_writes', 'runtime_writes',
+                      'booking_calls', 'lead_calls']:
+            self.assertEqual(0, result[field])
+        for field in ['collector', 'before_db', 'firstpage_readback']:
+            self.assertNotIn(field, result)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+        self.assertEqual(retained, self.page_path.read_bytes())
+        reservation = self.home / '.anytoour-int-executor' / extension.FAILURE_OPERATION / 'reservation.json'
+        reserved = reservation.read_bytes()
+        blocked = run()
+        self.assertEqual('operation_exists_no_replay', blocked['reason'])
+        self.assertNotIn('initial_failure_readback', blocked)
+        self.assertEqual(reserved, reservation.read_bytes())
+
+    def test_full_executor_malformed_data_is_sanitized_and_not_retried(self):
+        run = self.remote_fixture(extension.FAILURE_MODE)
+        self.page_path.write_text('private-malformed-json-canary')
+        os.utime(self.page_path, (self.end, self.end))
+        result = run()
+        self.assertEqual('unknown_no_replay', result['status'])
+        self.assertEqual('initial_failure_readback_unclassified', result['reason'])
+        for value in ['private-malformed-json-canary', str(self.home), self.ref]:
+            self.assertNotIn(value, json.dumps(result))
+        self.assertEqual(0, result['database_reads'])
+        self.assertEqual('operation_exists_no_replay', run()['reason'])
+
+    def test_full_executor_rejects_a_different_source_before_private_read(self):
+        run = self.remote_fixture(extension.FAILURE_MODE)
+        result = run({'source_sha': extension.SOURCE})
+        self.assertEqual('initial_failure_sealed_scope', result['reason'])
+        self.assertNotIn('initial_failure_readback', result)
 
 
 if __name__ == '__main__':
