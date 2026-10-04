@@ -33,6 +33,8 @@ HOSTS = {"operator_5": "agent.anextour.ru", "operator_315": "b2b.fstravel.com", 
 SECRET = re.compile(r"(?:^|[._/-])(?:token|jwt|auth|password|passwd|secret|session|sid|cookie|signature|api[_-]?key)(?:$|[._/-])", re.I)
 PUBLIC_PATH = re.compile(r"/[A-Za-z0-9/._%-]*")
 DECODED_PATH = re.compile(r"/[A-Za-z0-9/._-]*")
+UUID_SEGMENT = re.compile(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}")
+COMPACT_TOKEN_SEGMENT = re.compile(r"[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]*")
 
 
 def enc(value):
@@ -186,7 +188,7 @@ def path_projection(value, expected_host):
             return hold("url_path_resource_cap")
         if any(s in (".", "..") for s in segments):
             return hold("url_path_navigation")
-        if SECRET.search(decoded) or any(re.fullmatch(r"[0-9a-fA-F]{32,}", s) or re.fullmatch(r"[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{8,}", s) or (len(s) >= 32 and re.fullmatch(r"[A-Za-z0-9_-]+", s) and re.search(r"[A-Z]", s) and re.search(r"[a-z]", s) and re.search(r"[0-9]", s)) for s in segments):
+        if SECRET.search(decoded) or any((re.fullmatch(r"[0-9a-fA-F]{32,}", s) and re.search(r"[a-fA-F]", s)) or UUID_SEGMENT.fullmatch(s) or COMPACT_TOKEN_SEGMENT.fullmatch(s) or (len(s) >= 32 and re.fullmatch(r"[A-Za-z0-9_-]+", s) and ((re.search(r"[A-Za-z]", s) and re.search(r"[0-9]", s)) or (re.search(r"[A-Z]", s) and re.search(r"[a-z]", s)))) for s in segments):
             return hold("url_path_private_or_opaque")
         tokens = [s for s in segments if re.fullmatch(r"-?[0-9]+", s)]
         positives = list(dict.fromkeys(s for s in tokens if re.fullmatch(r"[0-9]+", s) and int(s) > 0))

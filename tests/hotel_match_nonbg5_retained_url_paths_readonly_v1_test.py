@@ -177,12 +177,27 @@ class UrlPaths(unittest.TestCase):
             self.assertIsNone(p["path"])
 
     def test_jwt_shaped_dotted_segment_is_private_but_property_filename_remains(self):
-        p = m.path_projection("https://agent.anextour.ru/a/eyJhbGciOiJIUzI1NiJ9.e30.ABCdef123456", "agent.anextour.ru")
-        self.assertEqual(p["hold_reason"], "url_path_private_or_opaque")
-        self.assertIsNone(p["source_url_candidate"])
-        self.assertNotIn("eyJhbGci", m.enc(p).decode())
+        for segment in ("eyJhbGciOiJIUzI1NiJ9.e30.ABCdef123456", "eyJhbGciOiJub25lIn0.eyJzdWIiOiJwcml2YXRlIn0.", "eyJhbGciOiJIUzI1NiJ9.e30.x", "eyJhbGciOiJub25lIn0.e30.", "eyJhbGciOiJub25lIn0%2ee30%2e"):
+            p = m.path_projection("https://agent.anextour.ru/a/" + segment, "agent.anextour.ru")
+            self.assertEqual(p["hold_reason"], "url_path_private_or_opaque")
+            self.assertIsNone(p["source_url_candidate"])
+            self.assertNotIn("eyJhbGci", m.enc(p).decode())
         for path in ("/hotel/mydream.html", "/hotel/123.45.678"):
             self.assertEqual(m.path_projection("https://intourist.ru" + path, "intourist.ru")["state"], "safe_absolute_operator_path_candidate")
+
+    def test_uuid_and_base64_like_paths_hold_with_private_original_preserved(self):
+        for segment in ("qwertyuiopasdfghjklzxcvbnm12345678", "AbCdEfGhIjKlMnOpQrStUvWxYzAbCdEf", "01234567-89ab-cdef-0123-456789abcdef", "01234567-8901-2345-6789-012345678901"):
+            url = "https://intourist.ru/hotel/" + segment
+            p = m.path_projection(url, "intourist.ru")
+            self.assertEqual(p["hold_reason"], "url_path_private_or_opaque")
+            self.assertIsNone(p["source_url_candidate"])
+            self.assertNotIn(segment, m.enc(p).decode())
+
+    def test_lowercase_hyphenated_property_slug_and_numeric_id_are_candidates(self):
+        for path in ("/hotel/sunrise-juman-beach-resort-hurghada", "/hotel/grand-bagoz-hotel-istanbul", "/hotel/789636", "/hotel/" + "1234567890" * 4):
+            p = m.path_projection("https://intourist.ru" + path, "intourist.ru")
+            self.assertEqual(p["state"], "safe_absolute_operator_path_candidate")
+            self.assertIs(p["namespace_bridge_verified"], False)
 
     def test_seaside_legitimate_slug_not_rejected_by_sid_substring(self):
         self.assertEqual(m.path_projection("https://intourist.ru/hotel/seaside", "intourist.ru")["state"], "safe_absolute_operator_path_candidate")
