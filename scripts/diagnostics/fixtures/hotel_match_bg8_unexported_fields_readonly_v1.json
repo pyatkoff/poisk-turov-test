@@ -1,0 +1,225 @@
+{
+  "acceptance_evaluated": false,
+  "batch": "bg8-unexported-fields-20261004",
+  "database_reads": 0,
+  "database_writes": 0,
+  "generic_prefix_rule_permitted": false,
+  "global_uniqueness_evaluated": false,
+  "inputs": {
+    "bg18_terminal": {
+      "path": "operations/int-andromeda-match-native110-bg-evidence-20261001-v1/result.json",
+      "sha256": "b0d9a916a25813fe58f8470048fec07fc1c4c39d2ecbaa2ab0c6a851ac245daf"
+    },
+    "bg8_dossier_sha256": "3cf7db560a55d15ce4a9e448180c9c51afc84151dff4018e58f4d01ca4221578",
+    "global_v77_reference_sha256": "d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7",
+    "global_v77_reread": false,
+    "native_current": {
+      "path": "operations/int-andromeda-match-native-current-20261001-v1/native110-current-manifest.json",
+      "sha256": "59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e"
+    },
+    "retained_frontier_sha256": "44d3af258f37dc38c0b9d2da84f7efa5500fdfb977ee459ea13d26927865f09a"
+  },
+  "limits": {
+    "input_metadata_bytes_cap": 8388608,
+    "raw_bytes_cap": 847514,
+    "raw_file_cap": 22,
+    "raw_references": 18,
+    "unique_raw_files": 15
+  },
+  "mapping_writes": 0,
+  "maximum_writes": 0,
+  "mode": "match-bg8-unexported-fields-readonly",
+  "novelty": "Only field representations omitted from terminal BG18: non-HTTPS/relative hotelUrl and original.tourKey values. Never invoke terminal BG18/native110/dictionary operations.",
+  "old_bg18_projection_omissions": [
+    "URL values required an HTTPS bgoperator host",
+    "original.tourKey value was not exported"
+  ],
+  "opaque_tour_key_identity_proof_permitted": false,
+  "operation": "int-andromeda-match-bg8-unexported-fields-20261004-v1",
+  "operator_ids": [
+    18
+  ],
+  "physical_http_attempts": 0,
+  "projection_fields": [
+    "row.hotelUrl",
+    "original.tourKey"
+  ],
+  "protected_catalog_id": "2000086118",
+  "provider_http_calls": 0,
+  "relative_origin_assumption_permitted": false,
+  "requested_rows": 8,
+  "rows": [
+    {
+      "catalog_id": "205729",
+      "full_bg_key": "102625414997",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/0",
+          "sha256": "95847c8be39131a6befe71d3252bf79bd87e70b421add0bee804befc5c10f187",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-022-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/25",
+          "sha256": "78e14d57a3c9c263e86512fe0310d68d67463e26ad751a5a30def353d8e4f39b",
+          "source_file": "operations/hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave3/evidence-private/batch-211-page-3.json"
+        },
+        {
+          "json_pointer": "/PRICES/4",
+          "sha256": "8df90d6e2cc787243b4f8a26da4e1df489703d8f4480dba44fdfcd007c5c8786",
+          "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-016-page-3.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "625414997",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 9283
+    },
+    {
+      "catalog_id": "2000041008",
+      "full_bg_key": "102610121438",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/1",
+          "sha256": "fe7470b496491ce4c818870450c83f26fb974a664912f9dac8bfffdfeba4a655",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-032-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/18",
+          "sha256": "d24d705850f848e2d71a17c357b2e2863ac491d3056e9777015d9122ee37dfcb",
+          "source_file": "operations/hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave3/evidence-private/batch-211-page-2.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610121438",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 62868
+    },
+    {
+      "catalog_id": "2000052316",
+      "full_bg_key": "102610144591",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/0",
+          "sha256": "5285af034603aa96c9c1eac17efaab7c116eed6cb6d2989e079ab4375e404377",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-034-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/2",
+          "sha256": "d24d705850f848e2d71a17c357b2e2863ac491d3056e9777015d9122ee37dfcb",
+          "source_file": "operations/hotel-match-samo-business-live30-common4-acquire-1971-20260924-v3-wave3/evidence-private/batch-211-page-2.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610144591",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 70457
+    },
+    {
+      "catalog_id": "2000059209",
+      "full_bg_key": "102610155352",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/1",
+          "sha256": "b495312c950893f97c37b6983069cd02cc0c90bba084111acdc1973585e20b45",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-035-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/22",
+          "sha256": "9f067f1248f4a89337ca5b84e596957f033c8f0c844326cc314d8263c1d59c67",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-14-page-3.json"
+        },
+        {
+          "json_pointer": "/PRICES/35",
+          "sha256": "38e545ec08cec2375983d18e355cdbde14b36a65bbb3b9538aa36bfad07556fb",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-3.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610155352",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 67000
+    },
+    {
+      "catalog_id": "2000060910",
+      "full_bg_key": "102610175943",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/0",
+          "sha256": "0187ce7830bbb2f95b441acbe4833f1f9d0a14e8955f9f2400e03ba0db210eec",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-036-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610175943",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 72889
+    },
+    {
+      "catalog_id": "2000062548",
+      "full_bg_key": "102610149698",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/1",
+          "sha256": "ec8296c69549b213605bae9d83f8a1856ca309e52531c42b9baf3dcbc728552c",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-016-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/0",
+          "sha256": "0f136e3b96808a714f396210a89b5d184c436602c9ef71ce1e94ff0f3aad9835",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-037-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/6",
+          "sha256": "13f6925cc37dcf8bbcdb7588192489c7ebda2fbbbc88346fe3df2fe24c70f0d1",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610149698",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 72865
+    },
+    {
+      "catalog_id": "2000062557",
+      "full_bg_key": "102610179507",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/1",
+          "sha256": "0f136e3b96808a714f396210a89b5d184c436602c9ef71ce1e94ff0f3aad9835",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-037-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/37",
+          "sha256": "13f6925cc37dcf8bbcdb7588192489c7ebda2fbbbc88346fe3df2fe24c70f0d1",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-1.json"
+        },
+        {
+          "json_pointer": "/PRICES/36",
+          "sha256": "a8da09ba5d575fe7973d90b84dffed47390dbc71ad6264fe4269b621a7dc0740",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-14-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "610179507",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 75791
+    },
+    {
+      "catalog_id": "2000086021",
+      "full_bg_key": "102668981793",
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/2",
+          "sha256": "41f286e0d370a523518acfcbdb9b923298077ffbcaef5e3a884223d45557bc3c",
+          "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-005-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_115",
+      "source_native_id": "668981793",
+      "target_operator_id": 18,
+      "target_tv_hotel_id": 316
+    }
+  ],
+  "safe_to_write_now": false,
+  "schema": "match-bg8-unexported-fields-readonly/1"
+}
