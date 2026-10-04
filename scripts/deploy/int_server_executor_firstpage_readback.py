@@ -1,4 +1,4 @@
-"""Sealed, read-only inspection of captured SAMO first-page incidents.
+"""Sealed, read-only inspection of captured SAMO pagination incidents.
 
 Registers in the permanent executor; retains its actor/ref/reservation/SSH guards.
 Never resumes a search, consumes a snapshot, loads supplier clients or opens DB.
@@ -14,6 +14,10 @@ SOURCE = '598092cd292b66b7b94e4a7913a3e2d1f5b550ae'
 FAILURE_MODE = 'andromeda-initial-failure-readback'
 FAILURE_OPERATION = 'int-andromeda-initial-failure-20261004-v1'
 FAILURE_SOURCE = 'd1ad064fbc6fda65929cc57395581b1ba819d952'
+CONTINUATION_MODE = 'andromeda-continuation-failure-readback'
+CONTINUATION_OPERATION = 'int-andromeda-continuation-failure-20261004-v1'
+CONTINUATION_SOURCE = '3054d34bb587ca684d5ecbc5f3c306851785d624'
+MODES = (MODE, FAILURE_MODE, CONTINUATION_MODE)
 
 
 def need(value: bool, reason: str) -> None:
@@ -28,12 +32,14 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, FAILURE_MODE):
+        if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
         need(len(parts) == 3, 'firstpage_command_shape')
         source, mode, operation = parts
-        expected_source, expected_operation = ((SOURCE, OPERATION) if mode == MODE
-                                               else (FAILURE_SOURCE, FAILURE_OPERATION))
+        expected_source, expected_operation = {
+            MODE: (SOURCE, OPERATION), FAILURE_MODE: (FAILURE_SOURCE, FAILURE_OPERATION),
+            CONTINUATION_MODE: (CONTINUATION_SOURCE, CONTINUATION_OPERATION),
+        }[mode]
         need(source == expected_source, 'firstpage_evidence_source')
         need(operation == expected_operation, 'firstpage_sealed_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
@@ -253,19 +259,46 @@ IF_CODES={'ANDROMEDA_CREDENTIALS_REQUIRED','ANDROMEDA_DISABLED','ANDROMEDA_REQUE
     'ANDROMEDA_PRICE_ROW_BUDGET','ANDROMEDA_SECRET_ECHO','ANDROMEDA_UNCLASSIFIED_ERROR'}
 IF_CRITERIA={'CHECKIN_BEG':'20261013','CHECKIN_END':'20261019','NIGHTS_FROM':7,'NIGHTS_TILL':7,
     'ADULT':2,'CHILD':0,'CURRENCYINC':643,'PACKETTYPE':0,'PAGE':1,'GROUP_BY':32}
+CF_START=1791136876  # 2026-10-04T18:01:16Z; ONE explicit Continue click.
+CF_END=1791136898    # 2026-10-04T18:01:38Z; observed response rounded up.
+CF_FIRST_START=1791136782  # 2026-10-04T17:59:42Z; fresh initial click.
+CF_FIRST_END=1791136804    # 2026-10-04T18:00:04Z; actual successful page1 log.
+CF_CRITERIA=IF_CRITERIA|{'CHECKIN_BEG':'20261014','CHECKIN_END':'20261020','PAGE':2}
 
-def initial_failure_readback():
+def cf_transport_facts(data):
+    # Reconstruct only the closed schema emitted by the installed typed wrapper.
+    # Missing/invalid facts never become guessed timeout or retry provenance.
+    if 'transport_failure' not in data: return {'status':'missing','facts':None}
+    facts=data['transport_failure']
+    actions={'login','townfrom','state','all','price','broninit','unknown'}
+    categories={'network_transfer','endpoint_guard','action_guard','request_budget',
+        'monthly_quota','curl_unavailable','response_size_guard','unclassified'}
+    if (data.get('status')!='unavailable' or data.get('error_code')!='ANDROMEDA_TRANSPORT_ERROR'
+            or not isinstance(facts,dict) or set(facts)!={'source','action','reason_category','curl_errno'}
+            or facts.get('source')!='andromeda_transport_error'
+            or not isinstance(facts.get('action'),str) or facts['action'] not in actions
+            or not isinstance(facts.get('reason_category'),str) or facts['reason_category'] not in categories
+            or (facts.get('curl_errno') is not None and (type(facts['curl_errno']) is not int
+                or not 1<=facts['curl_errno']<=999 or facts['reason_category']!='network_transfer'))):
+        return {'status':'invalid','facts':None}
+    return {'status':'retained','facts':{key:facts[key] for key in
+        ('source','action','reason_category','curl_errno')}}
+
+def initial_failure_readback(continuation=False):
     directory=fp_directory()
+    start,end=(CF_START,CF_END) if continuation else (IF_START,IF_END)
+    expected_criteria=CF_CRITERIA if continuation else IF_CRITERIA
+    pattern=r'([a-f0-9]{64})-([1-9][0-9]{0,9})-2\.json' if continuation else r'([a-f0-9]{64})-1\.json'
     candidates=[]
     for index,path in enumerate(directory.iterdir()):
         if index>=FP_MAX_ENTRIES: fail('initial_failure_inventory_bound')
-        if not re.fullmatch(r'[a-f0-9]{64}-1\.json',path.name): continue
+        if not re.fullmatch(pattern,path.name): continue
         if path.is_symlink(): fail('initial_failure_evidence_symlink')
-        if path.is_file() and IF_START-2<=int(path.stat().st_mtime)<=IF_END+2:
+        if path.is_file() and start-2<=int(path.stat().st_mtime)<=end+2:
             candidates.append(path)
     if len(candidates)!=1: fail('initial_failure_evidence_missing' if not candidates
                                else 'initial_failure_evidence_ambiguous')
-    path=candidates[0];ref=path.name[:-7];data=fp_json(path)
+    path=candidates[0];matched=re.fullmatch(pattern,path.name);ref=matched[1];data=fp_json(path)
     store=data.get('store');criteria=data.get('criteria');status=data.get('status')
     if (type(data.get('version')) is not int or data['version']!=1
             or data.get('search_ref')!=ref or not fp_integer(data.get('generation'),2147483647)
@@ -274,7 +307,7 @@ def initial_failure_readback():
             or store.get('search_ref')!=ref or type(store.get('generation')) is not int
             or store['generation']!=data['generation']
             or not fp_integer(store.get('created_at'),4102444800)
-            or not IF_START<=store['created_at']<=IF_END
+            or not start<=store['created_at']<=end
             or not fp_integer(store.get('expires_at'),4102444800)
             or store['expires_at']!=store['created_at']+900
             or 'snapshot' not in store or store['snapshot'] is not None
@@ -288,15 +321,43 @@ def initial_failure_readback():
     # observed stay/party/filter fields, require valid mapped IDs and a unique
     # page in the fixed window. This does not independently prove route identity.
     if (not isinstance(criteria,dict)
-            or set(criteria) not in (set(IF_CRITERIA)|{'TOWNFROMINC','STATEINC'},
-                                    set(IF_CRITERIA)|{'TOWNFROMINC','STATEINC','OPERATORS'})
-            or any(type(criteria.get(k)) is not type(v) or criteria[k]!=v for k,v in IF_CRITERIA.items())
+            or set(criteria) not in (set(expected_criteria)|{'TOWNFROMINC','STATEINC'},
+                                    set(expected_criteria)|{'TOWNFROMINC','STATEINC','OPERATORS'})
+            or any(type(criteria.get(k)) is not type(v) or criteria[k]!=v for k,v in expected_criteria.items())
             or any(not fp_integer(criteria.get(k),2147483647) or criteria[k]<1
                    for k in ('TOWNFROMINC','STATEINC'))
             or ('OPERATORS' in criteria and (not isinstance(criteria['OPERATORS'],str)
                 or len(criteria['OPERATORS'])>300
                 or not re.fullmatch(r'[1-9][0-9]*(?:,[1-9][0-9]*)*',criteria['OPERATORS'])))):
         fail('initial_failure_criteria_contract')
+    if continuation:
+        # The endpoint names page2 with the actual retained page1 creation time.
+        # Bind both windows, ref, generation, complete criteria and exact snapshot;
+        # an unrelated second-page file is not evidence for this failed Continue.
+        first=fp_json(directory/(ref+'-1.json'));first_store=first.get('store')
+        snapshot=first_store.get('snapshot') if isinstance(first_store,dict) else None
+        if (first.get('status') not in ('complete','partial') or first.get('search_ref')!=ref
+                or type(first.get('version')) is not int or first['version']!=1
+                or type(first.get('generation')) is not int or first['generation']!=data['generation']
+                or not isinstance(first.get('criteria'),dict) or set(first['criteria'])!=set(criteria)
+                or any(type(first['criteria'][key]) is not type(value) or first['criteria'][key]!=value
+                       for key,value in (criteria|{'PAGE':1}).items())
+                or not isinstance(first_store,dict) or type(first_store.get('version')) is not int
+                or first_store['version']!=1 or first_store.get('search_ref')!=ref
+                or type(first_store.get('generation')) is not int or first_store['generation']!=data['generation']
+                or type(first_store.get('created_at')) is not int or first_store['created_at']!=int(matched[2])
+                or not CF_FIRST_START<=first_store['created_at']<=CF_FIRST_END
+                or type(first_store.get('expires_at')) is not int
+                or first_store['expires_at']!=first_store['created_at']+900
+                or store['created_at']>=first_store['expires_at']
+                or not isinstance(snapshot,dict) or snapshot.get('provider')!='andromeda'
+                or snapshot.get('search_ref')!=ref or type(snapshot.get('generation')) is not int
+                or snapshot['generation']!=data['generation'] or type(snapshot.get('page')) is not int
+                or snapshot['page']!=1 or snapshot.get('selection_enabled') is not False
+                or not fp_integer(snapshot.get('pages_count'),1000) or snapshot['pages_count']<2
+                or not isinstance(snapshot.get('offers'),list) or len(snapshot['offers'])>5000
+                or not isinstance(snapshot.get('rejected'),list) or len(snapshot['rejected'])>2000):
+            fail('initial_failure_precursor_contract')
     app=(runtime/'app/integrations' if fp_safe(runtime/'app/integrations/andromeda-client.php')
          else runtime.parent/'app/integrations')
     owners={'endpoint':runtime/'api-andromeda-search3-preview.php',
@@ -304,8 +365,8 @@ def initial_failure_readback():
             'transport':app/'andromeda-transport.php','offer_store':app/'andromeda-offer-store.php'}
     code=data.get('error_code')
     code=code if isinstance(code,str) and code in IF_CODES else 'ANDROMEDA_UNCLASSIFIED_ERROR'
-    return {'incident':'samo-initial-failure-20261004-152702Z',
-            'window_start':IF_START,'window_end':IF_END,'matched_first_pages':1,
+    result={'incident':'samo-initial-failure-20261004-152702Z',
+            'window_start':start,'window_end':end,'matched_first_pages':1,
             'page':{'status':status,'error_code':code if status=='unavailable' else None,
                     'created_at':store['created_at'],'expires_at':store['expires_at'],
                     'expired_now':int(time.time())>=store['expires_at'],'snapshot_present':False},
@@ -313,6 +374,16 @@ def initial_failure_readback():
             'runtime_sha256':{name:fp_hash(path) for name,path in owners.items()},
             'supplier_calls':0,'database_reads':0,'database_writes':0,'runtime_writes':0,
             'expired_context_reused':False,'raw_payloads_exposed':False}
+    if continuation:
+        result['incident']='samo-continuation-failure-20261004-180116Z'
+        del result['matched_first_pages'];result['matched_continuations']=1
+        result['page']['number']=2
+        result['precursor']={'page':1,'created_at':first_store['created_at'],
+            'expires_at':first_store['expires_at'],'context_fresh_at_continue':True}
+        result['correlation']='unique_page2_window_and_bound_page1_criteria'
+        result['transport_failure']=cf_transport_facts(data)
+        result['runtime_sha256']['network_marker']=fp_hash(app/'andromeda-network-transport-failure.php')
+    return result
 
 '''
 
@@ -342,9 +413,36 @@ REMOTE_FAILURE_DISPATCH = r'''    if mode=='andromeda-initial-failure-readback':
         result['status']='complete'
 '''
 
+REMOTE_CONTINUATION_DISPATCH = r'''    if mode=='andromeda-continuation-failure-readback':
+        if operation!='int-andromeda-continuation-failure-20261004-v1' or source!='3054d34bb587ca684d5ecbc5f3c306851785d624':
+            fail('continuation_failure_sealed_scope')
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['runtime_writes']=0
+        try:
+            result['continuation_failure_readback']=initial_failure_readback(True)
+        except Exception as cf_error:
+            reason=str(cf_error)
+            for prefix in ('firstpage_','initial_failure_'):
+                if reason.startswith(prefix):
+                    reason='continuation_failure_'+reason[len(prefix):]
+                    break
+            fail(reason if reason in {
+                'continuation_failure_private_config','continuation_failure_config_read','continuation_failure_catalog_scope',
+                'continuation_failure_evidence_file','continuation_failure_evidence_shape','continuation_failure_inventory_bound',
+                'continuation_failure_evidence_symlink','continuation_failure_evidence_missing','continuation_failure_evidence_ambiguous',
+                'continuation_failure_retained_contract','continuation_failure_criteria_contract','continuation_failure_precursor_contract'}
+                else 'continuation_failure_readback_unclassified')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
 
 def remote_with_readback(core, mode: str = MODE) -> str:
-    need(mode in (MODE, FAILURE_MODE), 'firstpage_registration_mode')
+    need(mode in MODES, 'firstpage_registration_mode')
     remote = core.REMOTE
     definition = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -354,10 +452,13 @@ def remote_with_readback(core, mode: str = MODE) -> str:
     remote = remote.replace(definition, REMOTE_READER + definition, 1)
     remote = remote.replace(dispatch, REMOTE_DISPATCH + dispatch, 1)
     modes = MODE
-    if mode == FAILURE_MODE:
+    if mode in (FAILURE_MODE, CONTINUATION_MODE):
         remote = remote.replace(definition, REMOTE_FAILURE_READER + definition, 1)
         remote = remote.replace(dispatch, REMOTE_FAILURE_DISPATCH + dispatch, 1)
         modes += "','" + FAILURE_MODE
+    if mode == CONTINUATION_MODE:
+        remote = remote.replace(dispatch, REMOTE_CONTINUATION_DISPATCH + dispatch, 1)
+        modes += "','" + CONTINUATION_MODE
     remote = remote.replace(collectors, "    if mode not in ('" + modes + "','reconcile',")
     ast.parse(remote)
     return remote
@@ -365,7 +466,7 @@ def remote_with_readback(core, mode: str = MODE) -> str:
 
 def activate(core, command: dict) -> None:
     mode = command.get('mode')
-    if mode not in (MODE, FAILURE_MODE):
+    if mode not in MODES:
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha', '')), mode, str(command.get('operation_id', '')),

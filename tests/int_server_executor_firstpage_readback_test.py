@@ -361,8 +361,11 @@ class EvidenceTest(unittest.TestCase):
             'assert len(sys.argv)==6 and "ob_start()" in sys.argv[4]\n'
             'print(' + repr(json.dumps({'directory': str(self.directory.parent)})) + ')\n')
         php.chmod(0o755)
-        source_sha, operation = ((extension.SOURCE, extension.OPERATION) if mode == extension.MODE
-                                  else (extension.FAILURE_SOURCE, extension.FAILURE_OPERATION))
+        source_sha, operation = {
+            extension.MODE: (extension.SOURCE, extension.OPERATION),
+            extension.FAILURE_MODE: (extension.FAILURE_SOURCE, extension.FAILURE_OPERATION),
+            extension.CONTINUATION_MODE: (extension.CONTINUATION_SOURCE, extension.CONTINUATION_OPERATION),
+        }[mode]
         payload = {'source_sha': source_sha, 'mode': mode,
                    'operation_id': operation, 'archive': str(archive),
                    'manifest_sha256': hashlib.sha256(json.dumps(manifest, sort_keys=True,
@@ -605,6 +608,257 @@ class InitialFailureEvidenceTest(unittest.TestCase):
         result = run({'source_sha': extension.SOURCE})
         self.assertEqual('initial_failure_sealed_scope', result['reason'])
         self.assertNotIn('initial_failure_readback', result)
+
+
+class ContinuationFailureEvidenceTest(unittest.TestCase):
+    fail_remote = staticmethod(EvidenceTest.fail_remote)
+    write_page = EvidenceTest.write_page
+    remote_fixture = EvidenceTest.remote_fixture
+
+    def setUp(self):
+        EvidenceTest.setUp(self)
+        exec(extension.REMOTE_FAILURE_READER, self.namespace)
+        self.first_path = self.page_path
+        self.first = self.state
+        self.first.update(version=1, criteria=self.namespace['CF_CRITERIA']
+                          | {'PAGE': 1, 'TOWNFROMINC': 1, 'STATEINC': 3})
+        created = self.namespace['CF_FIRST_START']
+        self.first['store'].update(created_at=created, expires_at=created + 900)
+        self.write_page(self.first, self.first_path, self.namespace['CF_FIRST_END'])
+        self.start, self.end = self.namespace['CF_START'], self.namespace['CF_END']
+        self.page_path = self.directory / f'{self.ref}-{created}-2.json'
+        self.facts = {'source': 'andromeda_transport_error', 'action': 'price',
+                      'reason_category': 'network_transfer', 'curl_errno': 28}
+        self.state = {'version': 1, 'search_ref': self.ref, 'generation': self.generation,
+                      'status': 'unavailable', 'error': 'supplier_result_unavailable',
+                      'error_code': 'ANDROMEDA_TRANSPORT_ERROR', 'transport_failure': self.facts,
+                      'criteria': self.first['criteria'] | {'PAGE': 2},
+                      'store': {'version': 1, 'search_ref': self.ref, 'generation': self.generation,
+                                'created_at': self.start, 'expires_at': self.start + 900,
+                                'snapshot': None, 'criteria': [], 'raw_ids': []}}
+        for name in ['andromeda-search.php', 'andromeda-transport.php', 'andromeda-offer-store.php',
+                     'andromeda-network-transport-failure.php']:
+            (self.app / name).write_text('<?php throw new Exception("supplier-module-must-not-load");')
+        self.write_page()
+
+    def read(self):
+        return self.namespace['initial_failure_readback'](True)
+
+    def test_exact_command_has_no_options_and_keeps_both_historical_seals(self):
+        wrapper = load('int_server_executor_anex_secret_transport')
+        core = wrapper.core
+        body = f'{core.PREFIX}{extension.CONTINUATION_SOURCE} {extension.CONTINUATION_MODE} {extension.CONTINUATION_OPERATION}'
+        command = core.parse_command(body)
+        self.assertEqual(extension.CONTINUATION_MODE, command['mode'])
+        for bad in [body + ' /private/page.json', body + ' 1791136899',
+                    body.replace(extension.CONTINUATION_SOURCE, extension.FAILURE_SOURCE),
+                    body.replace(extension.CONTINUATION_OPERATION, extension.FAILURE_OPERATION),
+                    body.replace(extension.CONTINUATION_OPERATION, extension.OPERATION),
+                    body.replace('-v1', '-v2')]:
+            with self.subTest(body=bad), self.assertRaises(ValueError):
+                core.parse_command(bad)
+        self.assertNotIn(extension.CONTINUATION_MODE, wrapper.SUPPLIER_SLOT_MODES)
+        self.assertNotIn(extension.CONTINUATION_MODE, wrapper.DIRECT_ANEX_MODES)
+        for mode in (extension.MODE, extension.FAILURE_MODE):
+            remote = extension.remote_with_readback(core, mode)
+            self.assertNotIn("if mode=='andromeda-continuation-failure-readback':", remote)
+            self.assertIn('FP_START=1791053925', remote)
+            self.assertIn('FP_END=1791053946', remote)
+        self.assertEqual('d1ad064fbc6fda65929cc57395581b1ba819d952', extension.FAILURE_SOURCE)
+        self.assertEqual('int-andromeda-initial-failure-20261004-v1', extension.FAILURE_OPERATION)
+        remote = core.REMOTE
+        with self.assertRaises(ValueError):
+            extension.activate(core, command | {'path': str(self.page_path)})
+        self.assertEqual(remote, core.REMOTE)
+        extension.activate(core, command)
+        self.assertLess(len(base64.b64encode(zlib.compress(core.REMOTE.encode(), 9))) + 1024, 65536)
+
+    def test_current_main_int_and_owner_checks_remain_required(self):
+        core = load('int_server_executor')
+        extension.register_parser(core)
+        body = f'{core.PREFIX}{extension.CONTINUATION_SOURCE} {extension.CONTINUATION_MODE} {extension.CONTINUATION_OPERATION}'
+        comment = {'id': 123, 'body': body, 'user': {'id': core.OWNER_ID}, 'author_association': 'OWNER'}
+        event = {'issue': {'number': core.ISSUE}, 'comment': comment}
+        replies = {'/issues/comments/123': comment, '/git/ref/heads/main': {'object': {'sha': 'a' * 40}},
+                   '/git/ref/heads/' + core.FEATURE: {'object': {'sha': extension.CONTINUATION_SOURCE}}}
+        with mock.patch.object(core, 'api_get', side_effect=lambda path, token: replies[path]):
+            self.assertEqual(extension.CONTINUATION_MODE, core.checked_event('fixture', event, 'a' * 40)['mode'])
+            with self.assertRaisesRegex(ValueError, 'main_changed'):
+                core.checked_event('fixture', event, 'b' * 40)
+            replies['/git/ref/heads/' + core.FEATURE]['object']['sha'] = extension.FAILURE_SOURCE
+            with self.assertRaisesRegex(ValueError, 'feature_changed'):
+                core.checked_event('fixture', event, 'a' * 40)
+
+    def test_retained_facts_bind_to_page2_and_its_fresh_precursor_without_reuse(self):
+        before = {p: p.read_bytes() for p in self.home.rglob('*') if p.is_file()}
+        result = self.read()
+        self.assertEqual({'status': 'retained', 'facts': self.facts}, result['transport_failure'])
+        self.assertEqual(2, result['page']['number'])
+        self.assertEqual(1, result['matched_continuations'])
+        self.assertEqual(1791136876, result['window_start'])
+        self.assertEqual(1791136898, result['window_end'])
+        self.assertTrue(result['precursor']['context_fresh_at_continue'])
+        self.assertFalse(result['route_identity_verified'])
+        self.assertFalse(result['expired_context_reused'])
+        for value in ['credential-canary', 'private-offer-canary', self.ref, str(self.home),
+                      'TOWNFROMINC', 'STATEINC']:
+            self.assertNotIn(value, json.dumps(result))
+        for field in ['supplier_calls', 'database_reads', 'database_writes', 'runtime_writes']:
+            self.assertEqual(0, result[field])
+        self.assertEqual(before, {p: p.read_bytes() for p in self.home.rglob('*') if p.is_file()})
+        self.php.assert_called_once()
+
+    def test_missing_facts_are_not_fabricated_and_pending_is_not_called_failed(self):
+        del self.state['transport_failure']
+        self.write_page()
+        self.assertEqual({'status': 'missing', 'facts': None}, self.read()['transport_failure'])
+        self.state.update(status='pending', error=None)
+        del self.state['error_code']
+        self.write_page()
+        result = self.read()
+        self.assertEqual('pending', result['page']['status'])
+        self.assertIsNone(result['page']['error_code'])
+        self.assertEqual('missing', result['transport_failure']['status'])
+
+    def test_untrusted_fact_shape_and_codes_cannot_leak_or_establish_network_provenance(self):
+        malformed = [None, 'credential-canary', {'source': 'credential-canary'},
+                     self.facts | {'curl_errno': True}, self.facts | {'curl_errno': 0},
+                     self.facts | {'curl_errno': 1000}, self.facts | {'curl_errno': '28'},
+                     self.facts | {'reason_category': 'request_budget'},
+                     self.facts | {'action': 'private-canary'}, self.facts | {'source': 'private-canary'},
+                     self.facts | {'url': 'private-canary'}, self.facts | {'reason_category': []}]
+        for facts in malformed:
+            self.state['transport_failure'] = facts
+            self.write_page()
+            with self.subTest(facts=facts):
+                result = self.read()
+                self.assertEqual({'status': 'invalid', 'facts': None}, result['transport_failure'])
+                self.assertNotIn('canary', json.dumps(result))
+        self.state.update(transport_failure=self.facts, error_code='ANDROMEDA_HTTP_ERROR')
+        self.write_page()
+        self.assertEqual('invalid', self.read()['transport_failure']['status'])
+
+    def test_closed_non_network_categories_have_no_errno_and_missing_errno_stays_unknown(self):
+        for category in ['endpoint_guard', 'action_guard', 'request_budget', 'monthly_quota',
+                         'curl_unavailable', 'response_size_guard', 'unclassified', 'network_transfer']:
+            self.state['transport_failure'] = self.facts | {'reason_category': category, 'curl_errno': None}
+            self.write_page()
+            with self.subTest(category=category):
+                result = self.read()['transport_failure']
+                self.assertEqual('retained', result['status'])
+                self.assertIsNone(result['facts']['curl_errno'])
+
+    def test_precursor_ref_generation_window_criteria_and_snapshot_are_required(self):
+        changes = [lambda d: d.update(version=True), lambda d: d.update(search_ref='b' * 64),
+                   lambda d: d.update(generation=1), lambda d: d.update(status='unavailable'),
+                   lambda d: d['criteria'].update(PAGE=True),
+                   lambda d: d['criteria'].update(ADULT=True),
+                   lambda d: d['criteria'].update(STATEINC=5),
+                   lambda d: d['store'].update(created_at=self.namespace['CF_FIRST_START'] - 1),
+                   lambda d: d['store'].update(generation=True),
+                   lambda d: d['store'].update(expires_at=1),
+                   lambda d: d['store'].update(snapshot=None),
+                   lambda d: d['store']['snapshot'].update(page=2),
+                   lambda d: d['store']['snapshot'].update(generation=True),
+                   lambda d: d['store']['snapshot'].update(pages_count=1),
+                   lambda d: d['store']['snapshot'].update(selection_enabled=True)]
+        for change in changes:
+            first = copy.deepcopy(self.first)
+            change(first)
+            self.write_page(first, self.first_path, self.namespace['CF_FIRST_END'])
+            with self.subTest(change=changes.index(change)), self.assertRaisesRegex(
+                    RuntimeError, 'initial_failure_precursor_contract'):
+                self.read()
+
+    def test_wrong_failed_page_criteria_and_other_attempts_are_not_read(self):
+        for key, value in [('CHECKIN_BEG', '20261013'), ('PAGE', 1), ('ADULT', 3),
+                           ('CHILD', 1), ('MEAL', '5')]:
+            state = copy.deepcopy(self.state)
+            state['criteria'][key] = value
+            self.write_page(state)
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, 'initial_failure_criteria_contract'):
+                self.read()
+        self.write_page()
+        for name in [self.ref + '-auth.json', self.ref + '-123-3.json', 'quote.json']:
+            (self.directory / name).write_text('not-json-private-canary')
+        self.assertEqual('retained', self.read()['transport_failure']['status'])
+        self.page_path.unlink()
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_missing'):
+            self.read()
+
+    def test_failed_state_time_status_and_snapshot_are_bound(self):
+        changes = [lambda d: d.update(generation=True), lambda d: d.update(version=True),
+                   lambda d: d.update(status='partial'), lambda d: d.update(error='credential-canary'),
+                   lambda d: d['store'].update(created_at=self.start - 1),
+                   lambda d: d['store'].update(created_at=self.end + 1),
+                   lambda d: d['store'].update(expires_at=self.start + 901),
+                   lambda d: d['store'].update(snapshot={}), lambda d: d['store'].update(raw_ids=['canary'])]
+        for change in changes:
+            state = copy.deepcopy(self.state)
+            change(state)
+            self.write_page(state)
+            with self.subTest(change=changes.index(change)), self.assertRaisesRegex(
+                    RuntimeError, 'initial_failure_retained_contract'):
+                self.read()
+
+    def test_symlink_oversize_and_ambiguous_failed_pages_fail_closed(self):
+        self.page_path.unlink()
+        self.page_path.symlink_to(self.first_path)
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_symlink'):
+            self.read()
+        self.page_path.unlink()
+        self.page_path.write_bytes(b'x' * (3 * 1024 * 1024 + 1))
+        os.utime(self.page_path, (self.end, self.end))
+        with self.assertRaisesRegex(RuntimeError, 'firstpage_evidence_file'):
+            self.read()
+        self.write_page()
+        self.write_page(path=self.directory / f'{"b" * 64}-{self.namespace["CF_FIRST_START"]}-2.json')
+        with self.assertRaisesRegex(RuntimeError, 'initial_failure_evidence_ambiguous'):
+            self.read()
+
+    def test_full_executor_reads_once_and_keeps_search_files_production_and_no_replay(self):
+        run = self.remote_fixture(extension.CONTINUATION_MODE)
+        before = {p: p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        retained = {p: p.read_bytes() for p in self.directory.iterdir() if p.is_file()}
+        result = run()
+        self.assertEqual('complete', result['status'])
+        self.assertEqual(self.facts, result['continuation_failure_readback']['transport_failure']['facts'])
+        self.assertEqual(result['production_before'], result['production_after'])
+        for field in ['supplier_calls', 'database_reads', 'database_writes', 'runtime_writes',
+                      'booking_calls', 'lead_calls']:
+            self.assertEqual(0, result[field])
+        for field in ['collector', 'before_db', 'initial_failure_readback', 'firstpage_readback']:
+            self.assertNotIn(field, result)
+        self.assertEqual(before, {p: p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+        self.assertEqual(retained, {p: p.read_bytes() for p in self.directory.iterdir() if p.is_file()})
+        reservation = self.home / '.anytoour-int-executor' / extension.CONTINUATION_OPERATION / 'reservation.json'
+        reserved = reservation.read_bytes()
+        self.assertEqual('operation_exists_no_replay', run()['reason'])
+        self.assertEqual(reserved, reservation.read_bytes())
+
+    def test_full_executor_sanitizes_malformed_evidence_and_never_retries(self):
+        run = self.remote_fixture(extension.CONTINUATION_MODE)
+        self.page_path.write_text('private-malformed-json-canary')
+        os.utime(self.page_path, (self.end, self.end))
+        result = run()
+        self.assertEqual('unknown_no_replay', result['status'])
+        self.assertEqual('continuation_failure_readback_unclassified', result['reason'])
+        for value in ['private-malformed-json-canary', str(self.home), self.ref]:
+            self.assertNotIn(value, json.dumps(result))
+        self.assertEqual(0, result['database_reads'])
+        self.assertEqual('operation_exists_no_replay', run()['reason'])
+
+    def test_full_executor_rejects_wrong_source_before_reading(self):
+        result = self.remote_fixture(extension.CONTINUATION_MODE)({'source_sha': extension.FAILURE_SOURCE})
+        self.assertEqual('continuation_failure_sealed_scope', result['reason'])
+        self.assertNotIn('continuation_failure_readback', result)
+
+    @unittest.skipUnless(shutil.which('php'), 'PHP unavailable locally; CI exercises real private-config reader')
+    def test_real_php_reader_discards_credentials_and_does_not_load_supplier_modules(self):
+        self.namespace['subprocess'] = subprocess
+        result = self.read()
+        self.assertEqual('retained', result['transport_failure']['status'])
+        self.assertNotIn('credential-canary', json.dumps(result))
 
 
 if __name__ == '__main__':
