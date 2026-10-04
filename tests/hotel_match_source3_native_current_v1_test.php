@@ -85,6 +85,14 @@ try{
     $initial=['month'=>gmdate('Y-m'),'reserved_requests'=>23,'monthly_limit'=>S3N_MONTHLY_LIMIT,'scope'=>'this_integration','unrelated_marker'=>'preserve'];
     s3n_save($budgetPath,$initial);s3n_budget($budgetDir,1,'login');$saved=s3n_read($budgetPath);
     s3t($saved['reserved_requests']===24&&$saved['unrelated_marker']==='preserve'&&$saved['last_match_call']===1,'shared_budget_increments_existing_count');
+    clearstatcache(true,$budgetPath);
+    s3t((fileperms($budgetPath)&0777)===0600,'budget_permissions_0600');
+    $budgetTemps=array_values(array_filter(glob($budgetPath.'.*')?:[],fn($path)=>$path!==$budgetPath.'.lock'));
+    s3t($budgetTemps===[],'budget_atomic_temp_removed');
+    $probePath=$budgetDir.'/readback-probe.json';$probeSha=s3n_save($probePath,['ok'=>true]);
+    file_put_contents($probePath,"{}\n");
+    s3reject(fn()=>s3n_assert_saved($probePath,$probeSha,'probe_readback'),'durable_hash_readback_rejects_mutation');
+    unlink($probePath);
     foreach([['reserved_requests'=>-1],['reserved_requests'=>'23'],['reserved_requests'=>S3N_MONTHLY_LIMIT],['monthly_limit'=>S3N_MONTHLY_LIMIT+1]] as $mutation){
         unlink($budgetPath);$bad=array_merge($initial,$mutation);s3n_save($budgetPath,$bad);$before=hash_file('sha256',$budgetPath);
         s3reject(fn()=>s3n_budget($budgetDir,2,'price'),'invalid_or_exhausted_budget_refused');
