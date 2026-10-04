@@ -1,0 +1,28 @@
+name: MATCH BG8 unexported fields readonly v1
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/fixtures/hotel_match_bg8_unexported_fields_readonly_v1.json'
+      - 'scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py'
+      - 'tests/hotel_match_bg8_unexported_fields_readonly_v1_test.py'
+      - '.github/workflows/hotel-match-bg8-unexported-fields-readonly-v1.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        run: python3 -m py_compile scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py
+      - name: Contract tests
+        run: python3 tests/hotel_match_bg8_unexported_fields_readonly_v1_test.py
+      - name: Self test
+        run: python3 scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py --self-test
+      - name: No provider or DB import
+        run: |
+          ! grep -E 'import (subprocess|requests|socket|pymysql)|from (subprocess|requests|socket|pymysql)' scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py
