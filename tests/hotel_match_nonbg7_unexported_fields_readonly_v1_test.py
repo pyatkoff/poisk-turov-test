@@ -261,6 +261,63 @@ class NonBG7FieldsTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "public_opaque_identity"):
             m.validate_result(result)
 
+    def test_all_fields_near_cap_keep_complete_private_input_and_bound_public_envelope(self):
+        value = capture(self.fixture)
+        token = "+12345678901234567890"
+        total_fields = 0
+        for row in value["rows"]:
+            host = m.RULES[row["source_namespace"]]
+            for ref in row["references"]:
+                for field in ref["fields"].values():
+                    field["value"] = "https://" + host + "/search?HOTEL=" + ",".join(["%2B" + token[1:]] * 650)
+                    total_fields += 1
+        self.assertEqual(total_fields, 24)
+        code, result, receipt, opdir = self._execute(value)
+        self.assertEqual(code, 0)
+        self.assertEqual(result["raw_references_verified"], 12)
+        self.assertLessEqual(len(m.enc(result)), 2097152)
+        m.validate_result(result, receipt, "b" * 40)
+        fields = [f for row in result["rows"] for ref in row["references"] for f in ref["fields"]]
+        self.assertTrue(any(f["projection_hold"] == "field_selector_resource_cap" for f in fields))
+        self.assertTrue(any(f["raw_selector_tokens"] == [token] * 650 for f in fields))
+        stored = json.loads((opdir / "current-input.json").read_bytes())
+        self.assertEqual(stored, value)
+        for f in fields:
+            self.assertFalse(f["namespace_bridge_verified"])
+            if f["projection_hold"]:
+                self.assertEqual(f["raw_selector_tokens"], [])
+                self.assertEqual(f["positive_selector_candidates"], [])
+        self.assertTrue(all(row["safe_to_write_now"] is False for row in result["rows"]))
+
+    def test_existing_delta_hotelinc_alias_only_for_funsun_and_intourist(self):
+        for namespace, native in (("operator_315", "354014"), ("operator_342", "25728")):
+            field = m.field_projection("row.hotelUrl", {"present": True, "value": "https://" + m.RULES[namespace] + "/search?HOTELINC=" + native}, native, namespace)
+            self.assertEqual(field["raw_selector_tokens"], [native])
+            self.assertFalse(field["namespace_bridge_verified"])
+        field = m.field_projection("row.hotelUrl", {"present": True, "value": "https://anextour.ru/?HOTELINC=44562"}, "44562", "operator_5")
+        self.assertEqual(field["raw_selector_tokens"], [])
+
+    def test_near_full_projection_budget_reserves_all_remaining_hold_descriptors(self):
+        value = capture(self.fixture)
+        native = self.fixture["rows"][0]["source_native_id"]
+        descriptor = m.field_projection("row.hotelUrl", value["rows"][0]["references"][0]["fields"]["row.hotelUrl"], native, "operator_5")
+        one_weight = m.public_projection_weight(descriptor)
+        with mock.patch.object(m, "MAX_PROJECTION_PUBLIC_WEIGHT", one_weight):
+            code, result, receipt, _ = self._execute(value)
+            self.assertEqual(code, 0)
+            m.validate_result(result, receipt, "b" * 40)
+            fields = [f for row in result["rows"] for ref in row["references"] for f in ref["fields"]]
+            self.assertEqual(sum(f["projection_hold"] is None for f in fields), 1)
+            self.assertEqual(sum(f["projection_hold"] == "field_selector_resource_cap" for f in fields), 23)
+            self.assertLess(len(m.enc(result)), 2097152)
+
+    def test_uppercase_url_scheme_and_domain_preserve_query_tokens_case(self):
+        field = m.field_projection("row.hotelUrl", {"present": True, "value": "HTTP://B2B.INTOURIST.RU/search?HOTEL=25728&HOTEL=-25728"}, "25728", "operator_342")
+        self.assertEqual(field["operator_host"], "b2b.intourist.ru")
+        self.assertEqual(field["url_scheme"], "http")
+        self.assertEqual(field["raw_selector_tokens"], ["25728", "-25728"])
+        self.assertFalse(field["namespace_bridge_verified"])
+
     def _real_metadata_and_pages(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

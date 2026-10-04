@@ -27,6 +27,10 @@ REF_PATH = re.compile(r"operations/hotel-match-[a-zA-Z0-9_-]+/(?:evidence-privat
 ROSTER = (('2000029745', 'operator_5', '44562', 159, 13), ('2000109038', 'operator_5', '43661', 109380, 13), ('2000037261', 'operator_315', '354014', 59115, 25), ('2000068203', 'operator_315', '789636', 70782, 25), ('2000068203', 'operator_342', '17173', 70782, 43), ('2000052591', 'operator_342', '25728', 128, 43), ('2000073045', 'operator_342', '29363', 80964, 43))
 RULES = {"operator_5": "anextour.ru", "operator_315": "fstravel.com", "operator_342": "intourist.ru"}
 HOTEL_KEYS = {"hotel", "hotels", "hotelid", "hotel_id", "hotelcode", "hotel_code", "hotellist", "hotelkey", "hotel_key"}  # Existing reviewed namespace tooling aliases; candidate-only.
+KEYS_BY_NAMESPACE = {"operator_5": HOTEL_KEYS, "operator_315": HOTEL_KEYS | {"hotelinc"}, "operator_342": HOTEL_KEYS | {"hotelinc"}}  # HOTELINC is also retained by reviewed user_search_delta rules.
+MAX_FIELD_PUBLIC_WEIGHT = 262144
+MAX_PROJECTION_PUBLIC_WEIGHT = 1572864  # Non-HOLD field budget; <=24 descriptors separately bounded.
+MAX_CAP_DESCRIPTOR_WEIGHT = 8192
 ROW_KEYS = ("catalog_id", "source_namespace", "source_native_id", "target_tv_hotel_id", "target_operator_id")
 MAX_RAW_BYTES = 9654037
 
@@ -253,12 +257,12 @@ def field_projection(name, field, expected, namespace):
     raw = enc(value)
     kind = "null" if value is None else ("boolean" if type(value) is bool else ("number" if type(value) in (int, float) else ("string" if isinstance(value, str) else ("array" if isinstance(value, list) else "object"))))
     out = {"field_name": name, "present": field["present"], "value_type": kind, "value_sha256": hashlib.sha256(raw).hexdigest(), "value_bytes": len(raw), "representation": "opaque_or_non_url", "url_scheme": None, "origin_state": "not_established", "operator_host": None, "raw_selector_parameters": [], "raw_selector_values": [], "selector_value_sha256": [], "selector_token_positions": [], "opaque_selector_token_counts": [], "raw_selector_tokens": [], "positive_selector_candidates": [], "exact_source_native_candidate_observed": False, "namespace_bridge_verified": False, "projection_hold": None}
-    if isinstance(value, str) and len(value) > 16384 and value.startswith(("https://", "http://", "//", "/", "?")):
+    if isinstance(value, str) and len(value) > 16384 and value.lower().startswith(("https://", "http://", "//", "/", "?")):
         out.update(representation="url_or_relative_url", projection_hold="field_selector_resource_cap")
         return out
     if not isinstance(value, str) or not value or len(value) > 16384 or re.search(r"[\x00-\x20\x7f]", value):
         return out
-    if not value.startswith(("https://", "http://", "//", "/", "?")):
+    if not value.lower().startswith(("https://", "http://", "//", "/", "?")):
         return out  # Opaque/numeric tourKey is never searched for numeric substrings.
     out["representation"] = "url_or_relative_url"
     try:
@@ -281,7 +285,7 @@ def field_projection(name, field, expected, namespace):
         return out
     else:
         out.update(origin_state="absolute_operator_host_candidate", operator_host=p.hostname.lower())
-    selected = [(k.lower(), v) for k, v in pairs if k.lower() in HOTEL_KEYS]
+    selected = [(k.lower(), v) for k, v in pairs if k.lower() in KEYS_BY_NAMESPACE[namespace]]
     values = [v for _, v in selected]
     tokens, positions, opaque, safe_values = [], [], [], []
     for index, value in enumerate(values):
@@ -303,10 +307,29 @@ def field_projection(name, field, expected, namespace):
     return out
 
 
+def public_projection_weight(field):
+    raw = enc(field)
+    # Source public envelope adds at most 12 spaces per line for field nesting.
+    # A 24-space allowance plus fixed metadata slack bounds that without
+    # treating pretty-print overhead as supplier evidence.
+    return len(raw) + 24 * raw.count(b"\n") + 4096
+
+
+def cap_projection(field):
+    field = dict(field)
+    field.update(url_scheme=None, origin_state="not_established", operator_host=None,
+                 raw_selector_parameters=[], raw_selector_values=[], selector_value_sha256=[],
+                 selector_token_positions=[], opaque_selector_token_counts=[], raw_selector_tokens=[],
+                 positive_selector_candidates=[], exact_source_native_candidate_observed=False,
+                 projection_hold="field_selector_resource_cap")
+    return field
+
+
 def project_capture(capture, fixture, private_sha):
     if capture.get("schema") != "match-nonbg7-unexported-private-input/1" or capture.get("operation") != OP or capture.get("batch") != BATCH or capture.get("projection_fields") != list(FIELDS) or capture.get("inputs") != fixture["inputs"] or tuple(tuple(r.get(k) for k in ROW_KEYS) for r in capture.get("rows", [])) != ROSTER:
         raise RuntimeError("private_capture_binding")
     rows = []
+    projection_weight = 0
     for i, (raw, spec) in enumerate(zip(capture["rows"], fixture["rows"])):
         refs = raw.get("references", [])
         if [ref_key(r) for r in refs] != [ref_key(r) for r in spec["raw_references"]]:
@@ -317,6 +340,13 @@ def project_capture(capture, fixture, private_sha):
             holds.append("scoped_operator_identity_present_dated")
         for j, ref in enumerate(refs):
             fields = [field_projection(name, ref["fields"][name], spec["source_native_id"], spec["source_namespace"]) for name in FIELDS] if ref.get("raw_verified") is True else []
+            for index, field in enumerate(fields):
+                weight = public_projection_weight(field)
+                if field["projection_hold"] is None and (weight > MAX_FIELD_PUBLIC_WEIGHT or projection_weight + weight > MAX_PROJECTION_PUBLIC_WEIGHT):
+                    field = cap_projection(field)
+                    fields[index] = field
+                if field["projection_hold"] is None:
+                    projection_weight += weight
             if any(f["projection_hold"] is not None for f in fields):
                 holds.extend(f["projection_hold"] for f in fields if f["projection_hold"] is not None)
             if any(f["present"] is False for f in fields):
@@ -362,6 +392,7 @@ def validate_result(data, receipt=None, expected_source=None):
     ref_keys = {"source_file", "sha256", "json_pointer", "raw_verified", "failure", "fields", "private_input_pointer"}
     field_keys = {"field_name", "present", "value_type", "value_sha256", "value_bytes", "representation", "url_scheme", "origin_state", "operator_host", "raw_selector_parameters", "raw_selector_values", "selector_value_sha256", "selector_token_positions", "opaque_selector_token_counts", "raw_selector_tokens", "positive_selector_candidates", "exact_source_native_candidate_observed", "namespace_bridge_verified", "projection_hold"}
     verified = 0
+    projection_weight = 0
     candidate_rows = 0
     incomplete = False
     for i, row in enumerate(rows):
@@ -389,6 +420,16 @@ def validate_result(data, receipt=None, expected_source=None):
             if [f.get("field_name") for f in ref["fields"]] != list(FIELDS):
                 raise RuntimeError("public_projection_field_scope")
             for f in ref["fields"]:
+                weight = public_projection_weight(f)
+                if f.get("projection_hold") is not None:
+                    if weight > MAX_CAP_DESCRIPTOR_WEIGHT:
+                        raise RuntimeError("public_hold_descriptor_resource_budget")
+                else:
+                    if weight > MAX_FIELD_PUBLIC_WEIGHT:
+                        raise RuntimeError("public_field_resource_budget")
+                    projection_weight += weight
+                    if projection_weight > MAX_PROJECTION_PUBLIC_WEIGHT:
+                        raise RuntimeError("public_projection_resource_budget")
                 if not isinstance(f, dict) or set(f) != field_keys or type(f["present"]) is not bool or f["value_type"] not in ("null", "boolean", "number", "string", "array", "object") or not SHA.fullmatch(f["value_sha256"] or "") or type(f["value_bytes"]) is not int or not 0 < f["value_bytes"] <= MAX_RAW_BYTES or f["representation"] not in ("opaque_or_non_url", "url_or_relative_url") or f["url_scheme"] not in (None, "http", "https") or f["origin_state"] not in ("not_established", "private_or_invalid_origin", "private_parameters_redacted", "relative_origin_unknown", "unexpected_origin", "absolute_operator_host_candidate", "opaque_selector_redacted") or f["namespace_bridge_verified"] is not False or type(f["exact_source_native_candidate_observed"]) is not bool:
                     raise RuntimeError("public_field_shape")
                 if f["projection_hold"] not in (None, "field_selector_resource_cap") or (f["projection_hold"] is not None and f["projection_hold"] not in holds):
@@ -402,7 +443,7 @@ def validate_result(data, receipt=None, expected_source=None):
                     raise RuntimeError("public_field_host")
                 values, tokens, positive, parameters = f["raw_selector_values"], f["raw_selector_tokens"], f["positive_selector_candidates"], f["raw_selector_parameters"]
                 positions, digests, opaque = f["selector_token_positions"], f["selector_value_sha256"], f["opaque_selector_token_counts"]
-                if not isinstance(values, list) or not isinstance(tokens, list) or not isinstance(parameters, list) or len(parameters) != len(values) or any(p not in HOTEL_KEYS for p in parameters) or len(tokens) > 2000 or any(v is not None and not isinstance(v, str) for v in values) or any(not isinstance(t, str) or not re.fullmatch(r"[+-]?[0-9]{1,20}", t) for t in tokens) or positive != [t for t in tokens if re.fullmatch(r"[1-9][0-9]{0,19}", t)] or f["exact_source_native_candidate_observed"] != (spec["source_native_id"] in positive) or not isinstance(positions, list) or len(positions) != len(tokens) or not isinstance(digests, list) or len(digests) != len(values) or any(not isinstance(d, str) or not SHA.fullmatch(d) for d in digests) or not isinstance(opaque, list) or len(opaque) != len(values) or any(type(c) is not int or not 0 <= c <= 16385 for c in opaque):
+                if not isinstance(values, list) or not isinstance(tokens, list) or not isinstance(parameters, list) or len(parameters) != len(values) or any(p not in KEYS_BY_NAMESPACE[spec["source_namespace"]] for p in parameters) or len(tokens) > 2000 or any(v is not None and not isinstance(v, str) for v in values) or any(not isinstance(t, str) or not re.fullmatch(r"[+-]?[0-9]{1,20}", t) for t in tokens) or positive != [t for t in tokens if re.fullmatch(r"[1-9][0-9]{0,19}", t)] or f["exact_source_native_candidate_observed"] != (spec["source_native_id"] in positive) or not isinstance(positions, list) or len(positions) != len(tokens) or not isinstance(digests, list) or len(digests) != len(values) or any(not isinstance(d, str) or not SHA.fullmatch(d) for d in digests) or not isinstance(opaque, list) or len(opaque) != len(values) or any(type(c) is not int or not 0 <= c <= 16385 for c in opaque):
                     raise RuntimeError("public_field_tokens")
                 if any(not isinstance(p, list) or len(p) != 2 or any(type(n) is not int or n < 0 for n in p) or p[0] >= len(values) for p in positions) or positions != sorted(positions) or len({tuple(p) for p in positions}) != len(positions):
                     raise RuntimeError("public_selector_positions")
