@@ -82,7 +82,7 @@ def build_cli_case(base):
         bindir = home / "stub-bin"
         bindir.mkdir()
         stub = bindir / "php"
-        stub.write_text("#!" + sys.executable + "\nimport json,sys\nfrom pathlib import Path\na=sys.argv\nassert '-n' in a and 'allow_url_fopen=0' in a and any(x.startswith('disable_functions=') for x in a)\nassert Path(a[-1]).name=='.andromeda-private.php'\nprint(json.dumps({'directory':" + repr(str(catalog)) + "}))\n")
+        stub.write_text("#!" + sys.executable + "\nimport json,sys\nfrom pathlib import Path\na=sys.argv\nassert '-n' not in a and not any(x.startswith('open_basedir=') for x in a)\nassert 'allow_url_fopen=0' in a and any(x.startswith('disable_functions=') for x in a)\nassert Path(a[-1]).name=='.andromeda-private.php'\nprint(json.dumps({'directory':" + repr(str(catalog)) + "}))\n")
         stub.chmod(0o700)
         env["PATH"] = str(bindir) + os.pathsep + env.get("PATH", "")
     return {"home":home, "project":project, "runtime":runtime, "app":app, "searches":searches, "page_path":p, "page":page, "opdir":opdir, "env":env}
