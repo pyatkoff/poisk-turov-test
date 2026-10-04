@@ -1,0 +1,25 @@
+name: HOTEL MATCH NONBG5 URL paths terminal readback v1
+on:
+  push:
+    paths:
+      - scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py
+      - scripts/diagnostics/fixtures/hotel_match_nonbg5_url_paths_terminal_readback_v1.json
+      - tests/hotel_match_nonbg5_url_paths_terminal_readback_v1_test.py
+      - .github/workflows/hotel-match-nonbg5-url-paths-terminal-readback-v1.yml
+  pull_request:
+    paths:
+      - scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py
+      - scripts/diagnostics/fixtures/hotel_match_nonbg5_url_paths_terminal_readback_v1.json
+      - tests/hotel_match_nonbg5_url_paths_terminal_readback_v1_test.py
+      - .github/workflows/hotel-match-nonbg5-url-paths-terminal-readback-v1.yml
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py
+      - run: python tests/hotel_match_nonbg5_url_paths_terminal_readback_v1_test.py
+      - run: python scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py --self-test
