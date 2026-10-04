@@ -1,0 +1,1018 @@
+{
+  "batch": "nonbg5-retained-url-paths-20261004",
+  "guards": {
+    "acceptance_evaluated": false,
+    "accepted": 0,
+    "booking_calls": 0,
+    "database_reads": 0,
+    "database_writes": 0,
+    "global_uniqueness_evaluated": false,
+    "lead_calls": 0,
+    "mapping_writes": 0,
+    "no_replay": true,
+    "physical_http_attempts": 0,
+    "provider_http_calls": 0,
+    "safe_to_write_now": false,
+    "source_namespace_bridge_verified": false,
+    "target_native_identity_verified": false,
+    "written": 0
+  },
+  "inputs": {
+    "prior_fixture_sha256": "220cfc26cab422113d2caf6ce61080e8020a0fb5f9f2548916e828fa3cad43be",
+    "prior_private_input": {
+      "maximum_bytes": 16777216,
+      "path": "operations/int-andromeda-match-nonbg7-unexported-fields-20261004-v1/current-input.json",
+      "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+    },
+    "prior_result": {
+      "bytes": 39042,
+      "path": "operations/int-andromeda-match-nonbg7-unexported-fields-20261004-v1/result.json",
+      "sha256": "8336b824bf48df8771685c00d744bb8a720fa062addb1d71a93ec23c4e394604"
+    },
+    "prior_source_sha": "bcd25c42a899071b09abce06890b2ce0c3eeb465"
+  },
+  "limits": {
+    "metadata_files": 2,
+    "original_raw_files_read": 0,
+    "path_characters": 2048,
+    "path_segments": 20,
+    "private_capture_bytes": 16777216,
+    "public_result_bytes": 2097152,
+    "segment_characters": 128,
+    "selected_catalog_sources": 4,
+    "selected_facts": 5,
+    "selected_references": 8
+  },
+  "mode": "match-nonbg5-retained-url-paths-readonly",
+  "operation": "int-andromeda-match-nonbg5-retained-url-paths-20261004-v1",
+  "prior_result": {
+    "acceptance_evaluated": false,
+    "accepted": 0,
+    "batch": "nonbg7-unexported-fields-20261004",
+    "booking_calls": 0,
+    "captured_at_utc": "2026-10-04T12:13:41Z",
+    "database_reads": 0,
+    "database_writes": 0,
+    "distinct_source_count": 6,
+    "failure_stage": null,
+    "global_saved_context_only": true,
+    "global_uniqueness_evaluated": false,
+    "hold_counts": {
+      "current_global_uniqueness_not_evaluated": 7,
+      "current_registry_checks_not_performed": 7,
+      "independent_operator_target_proof_not_evaluated": 7,
+      "scoped_operator_identity_present_dated": 6
+    },
+    "inputs": {
+      "global_v77_reread": false,
+      "native_current": {
+        "batch": "native110-20260928",
+        "bytes": 251866,
+        "operation": "int-andromeda-match-native-current-20261001-v1",
+        "path": "operations/int-andromeda-match-native-current-20261001-v1/native110-current-manifest.json",
+        "schema": "native110-current-review/1",
+        "sha256": "59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e",
+        "source_sha": "9c82d143ccd6173ade0d6b1d52c6e3a41657d460"
+      }
+    },
+    "lead_calls": 0,
+    "mapping_writes": 0,
+    "no_replay": true,
+    "operation": "int-andromeda-match-nonbg7-unexported-fields-20261004-v1",
+    "operator_ids": [
+      13,
+      25,
+      43
+    ],
+    "physical_http_attempts": 0,
+    "private_input_sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce",
+    "projection_fields": [
+      "row.hotelUrl",
+      "original.tourKey"
+    ],
+    "provider_http_calls": 0,
+    "raw_bytes_read": 1214179,
+    "raw_files_attempted": 11,
+    "raw_files_read": 11,
+    "raw_references_verified": 12,
+    "reason": null,
+    "requested_rows": 7,
+    "requested_sources": 6,
+    "rows": [
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000029745",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 0,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_5",
+          "native_id": "44562"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_5",
+          "native_id": "44562",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "agent.anextour.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 83,
+                "value_sha256": "59bf2afcf1e83f084cc3b7d12ffa3a9a0909545294c59eb1848619796ada0afe",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 5,
+                "value_sha256": "59980b05fb1c482d1800544748cf95d6013fb95e7be02b0b72d16aa9d1d09ed8",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/6",
+            "private_input_pointer": {
+              "json_pointer": "/rows/0/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "a16240130914e51841096033f3efd843ee5480d6f8df2df208f21206ece0d7d0",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-4-3-5-20261005-20261005-7-none-page-2.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_5",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "44562",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 13,
+        "target_tv_hotel_id": 159
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000109038",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_5",
+          "native_id": "43661"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_5",
+          "native_id": "43661",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "agent.anextour.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 69,
+                "value_sha256": "6fca2e2c31d05b09b3cfa765017943e5d86257b411a395d61479edb28a622a70",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 5,
+                "value_sha256": "a110eccd163766a1ed074111f030f94042572774205f61f3035c7644ff863d8b",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/6",
+            "private_input_pointer": {
+              "json_pointer": "/rows/1/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "eda7e9e87b746c635f0a69cb8b856e4e8a25c2059a226dc2edb06a82a81ee780",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-6-5-5-20261011-20261011-7-none-page-2.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_5",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "43661",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 13,
+        "target_tv_hotel_id": 109380
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000037261",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_315",
+          "native_id": "354014"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_315",
+          "native_id": "354014",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "b2b.fstravel.com",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 40,
+                "value_sha256": "c8c65f719fb5f5aad23653c5e93ffcc3a98e8048b942fbcef51cb0a4fed3742a",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 3,
+                "value_sha256": "b03c70ff0d641a363f1a021413a098dce02e4c68b75f3a47aa10044f42ee1784",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/21",
+            "private_input_pointer": {
+              "json_pointer": "/rows/2/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "c7cec8ac3277528ca271148cc93ab05a1d1c9aa4a07fe2bbb442300433a329b2",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-3-5-315-20261016-20261016-7-none-page-18.json"
+          },
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "b2b.fstravel.com",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 40,
+                "value_sha256": "c8c65f719fb5f5aad23653c5e93ffcc3a98e8048b942fbcef51cb0a4fed3742a",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 3,
+                "value_sha256": "b03c70ff0d641a363f1a021413a098dce02e4c68b75f3a47aa10044f42ee1784",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/16",
+            "private_input_pointer": {
+              "json_pointer": "/rows/2/references/1",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "47a309905769048269c16644c62e492eb8d77780a9f28b728455e13160cbf0a0",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26/evidence-private/context-5-315-7-page-18.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_315",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "354014",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 25,
+        "target_tv_hotel_id": 59115
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000068203",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_315",
+          "native_id": "789636"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_315",
+          "native_id": "789636",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "b2b.fstravel.com",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 40,
+                "value_sha256": "815dbc12b32b50a48822b2ebc66f556282bbf2e02efa6a9fa918c2cd5ce5e0b4",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 6,
+                "value_sha256": "a0343ca3ecf7301c38d6575e78601fcd1b914d548cbbc791952828cb0df939f0",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/23",
+            "private_input_pointer": {
+              "json_pointer": "/rows/3/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "491952920ca566be56a4762b321cd54cf1dced0e4a052308de0149950d4bd480",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-3-5-315-20261016-20261016-7-none-page-10.json"
+          },
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "b2b.fstravel.com",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 40,
+                "value_sha256": "815dbc12b32b50a48822b2ebc66f556282bbf2e02efa6a9fa918c2cd5ce5e0b4",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 6,
+                "value_sha256": "a0343ca3ecf7301c38d6575e78601fcd1b914d548cbbc791952828cb0df939f0",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/24",
+            "private_input_pointer": {
+              "json_pointer": "/rows/3/references/1",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "2e186b92dca1bb3bbdee6e3c1f57ba10db05ce696eaf6567adb6f11e239c5346",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-2-5-315-20261011-20261011-7-none-page-10.json"
+          },
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "b2b.fstravel.com",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 40,
+                "value_sha256": "815dbc12b32b50a48822b2ebc66f556282bbf2e02efa6a9fa918c2cd5ce5e0b4",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 6,
+                "value_sha256": "a0343ca3ecf7301c38d6575e78601fcd1b914d548cbbc791952828cb0df939f0",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/44",
+            "private_input_pointer": {
+              "json_pointer": "/rows/3/references/2",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "847b533751468772924c1b40e2740fcf66582bb7f1260372095ab4f1e1c1eff1",
+            "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26/evidence-private/context-5-315-7-page-9.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_315",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "789636",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 25,
+        "target_tv_hotel_id": 70782
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000068203",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_342",
+          "native_id": "17173"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_342",
+          "native_id": "17173",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "intourist.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 75,
+                "value_sha256": "07813e02671b983fd968e2663be83410a6d28a9c226c17e51132b5266cd9f443",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 4,
+                "value_sha256": "cc1bdefa1677283e90c64275f66ccd52fe41900b9c53763e2e1058dc971c01b6",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/0",
+            "private_input_pointer": {
+              "json_pointer": "/rows/4/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "1ebf98425a6776f169b040ac7546d5d9bbb873ac7c9a627a8717c17644d3e06b",
+            "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-059-page-1.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_342",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "17173",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 43,
+        "target_tv_hotel_id": 70782
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000052591",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_342",
+          "native_id": "25728"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_342",
+          "native_id": "25728",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "intourist.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 75,
+                "value_sha256": "9af1170324b7146129557d3dac1ba6391be8deb47376b88335c29cfbd67a07bb",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 4,
+                "value_sha256": "140154083d726867f5e43282aeaf021f9300ec6287d4d2c874493ee655a766e7",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/8",
+            "private_input_pointer": {
+              "json_pointer": "/rows/5/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "cd6bc52c3b7160bcca41788111a9e48525fc0b31de166b13d521c582edda6aac",
+            "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-008-page-1.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_342",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "25728",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 43,
+        "target_tv_hotel_id": 128
+      },
+      {
+        "acceptance_evaluated": false,
+        "catalog_id": "2000073045",
+        "dated_operator_ownership_fact": {
+          "current_identity_count": 1,
+          "current_local_hotel_ids": [],
+          "namespace": "operator_342",
+          "native_id": "29363"
+        },
+        "dated_original_fact_check": {
+          "failures": [],
+          "global_saved_unique": true,
+          "namespace": "operator_342",
+          "native_id": "29363",
+          "raw_verified": true
+        },
+        "global_uniqueness_evaluated": false,
+        "holds": [
+          "independent_operator_target_proof_not_evaluated",
+          "current_registry_checks_not_performed",
+          "current_global_uniqueness_not_evaluated",
+          "scoped_operator_identity_present_dated"
+        ],
+        "independent_anytour_local_id": null,
+        "references": [
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "intourist.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 94,
+                "value_sha256": "4866003bee070d5668e00cb032447b8282b3a84b94225f7ffdd18460ae535a1c",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 4,
+                "value_sha256": "0590dbaeaad31be1063b2b2392e61fa3373fd004461eb50f77b8d67738092901",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/46",
+            "private_input_pointer": {
+              "json_pointer": "/rows/6/references/0",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "3d893ec0927bf3f5b9f1dfd3c9e26626835ce713610857a0f60491c86116c293",
+            "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-3-342-14-page-2.json"
+          },
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "intourist.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 94,
+                "value_sha256": "4866003bee070d5668e00cb032447b8282b3a84b94225f7ffdd18460ae535a1c",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 4,
+                "value_sha256": "0590dbaeaad31be1063b2b2392e61fa3373fd004461eb50f77b8d67738092901",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/44",
+            "private_input_pointer": {
+              "json_pointer": "/rows/6/references/1",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "850ea8ba876df9f2533ef17680cf55c1c608e9a2b1c77f5c46dc1cbec26a4f01",
+            "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-3-342-10-page-2.json"
+          },
+          {
+            "failure": null,
+            "fields": [
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "row.hotelUrl",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": "intourist.ru",
+                "origin_state": "absolute_operator_host_candidate",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "url_or_relative_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": "https",
+                "value_bytes": 94,
+                "value_sha256": "4866003bee070d5668e00cb032447b8282b3a84b94225f7ffdd18460ae535a1c",
+                "value_type": "string"
+              },
+              {
+                "exact_source_native_candidate_observed": false,
+                "field_name": "original.tourKey",
+                "namespace_bridge_verified": false,
+                "opaque_selector_token_counts": [],
+                "operator_host": null,
+                "origin_state": "not_established",
+                "positive_selector_candidates": [],
+                "present": true,
+                "projection_hold": null,
+                "raw_selector_parameters": [],
+                "raw_selector_tokens": [],
+                "raw_selector_values": [],
+                "representation": "opaque_or_non_url",
+                "selector_token_positions": [],
+                "selector_value_sha256": [],
+                "url_scheme": null,
+                "value_bytes": 4,
+                "value_sha256": "87615fab5bd53deabdd9791b1d7c1c4360d752656d14090fc5cdff1341811765",
+                "value_type": "number"
+              }
+            ],
+            "json_pointer": "/PRICES/18",
+            "private_input_pointer": {
+              "json_pointer": "/rows/6/references/2",
+              "sha256": "8ac39c85f19a0fd944536b4f9d85cbf41450eea46d2f6c16e2c0cd98344fc1ce"
+            },
+            "raw_verified": true,
+            "sha256": "cd6bc52c3b7160bcca41788111a9e48525fc0b31de166b13d521c582edda6aac",
+            "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-008-page-1.json"
+          }
+        ],
+        "safe_to_write_now": false,
+        "source_namespace": "operator_342",
+        "source_namespace_bridge_verified": false,
+        "source_native_id": "29363",
+        "target_id_namespace": "tourvisor",
+        "target_operator_id": 43,
+        "target_tv_hotel_id": 80964
+      }
+    ],
+    "rows_examined": 7,
+    "safe_to_write_now": false,
+    "schema": "match-nonbg7-unexported-fields-readonly-result/1",
+    "selector_candidate_rows": 0,
+    "source_namespace_bridge_verified": false,
+    "source_sha": "bcd25c42a899071b09abce06890b2ce0c3eeb465",
+    "state": "completed_read_only_nonbg7_fields",
+    "written": 0
+  },
+  "schema": "match-nonbg5-retained-url-paths-fixture/1",
+  "scope": "first_safe_path_projection_of_five_unrecovered_nonbg7_private_urls",
+  "selected_rows": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ]
+}
