@@ -491,13 +491,14 @@ def run_group(provider, opdir, index, group, request):
 
 def execute(root, opdir, manifest_path):
     root = pathlib.Path(root)
+    source_root = pathlib.Path(os.environ.get("MATCH_SOURCE_ROOT", root))
     opdir = pathlib.Path(opdir)
     data = manifest(manifest_path)
     reservation = read_json(opdir / "reservation.json")
     if reservation.get("operation") != OP or reservation.get("batch") != BATCH or reservation.get("provider_http_calls") != HTTP_CAP:
         raise RuntimeError("reservation_scope")
     for path_key, sha_key in (("official_context_path", "official_context_sha256"), ("negative_ledger_path", "negative_ledger_sha256")):
-        path = root / data["inputs"][path_key]
+        path = source_root / data["inputs"][path_key]
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != data["inputs"][sha_key]:
             raise RuntimeError("immutable_input_hash")
     provider = None
