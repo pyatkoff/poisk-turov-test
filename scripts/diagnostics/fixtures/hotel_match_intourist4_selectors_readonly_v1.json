@@ -1,0 +1,55 @@
+{
+  "schema": "match-intourist4-selectors-readonly/1",
+  "operation": "int-tourvisor-match-intourist4-selectors-readonly-20261001-v1",
+  "batch": "intourist4-official-context-20261001",
+  "inputs": {
+    "official_context_path": "reports/hotel-match-intourist-official-context-20261001.json",
+    "official_context_sha256": "bb211d69b6e1a3dd78a036fe50b5a77ef2ab8c3c3887b778d878349556df6aae",
+    "negative_ledger_path": "reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json",
+    "negative_ledger_sha256": "9f72b3d70349428f6004067576bb10a82a7d388b95917e838ee3d97e15c909b3"
+  },
+  "request": {
+    "operator_id": 43,
+    "departure_id": 1,
+    "date": "2026-11-15",
+    "nights": 7,
+    "adults": 2,
+    "children": [],
+    "currency": "RUB",
+    "only_charter": false
+  },
+  "rows": [
+    {
+      "source_catalog_id": "2000034121",
+      "source_namespace": "operator_342",
+      "source_native_id": "549",
+      "target_tv_hotel_id": 1151,
+      "country_id": 4
+    },
+    {
+      "source_catalog_id": "2000062084",
+      "source_namespace": "operator_342",
+      "source_native_id": "18273",
+      "target_tv_hotel_id": 70943,
+      "country_id": 4
+    },
+    {
+      "source_catalog_id": "2000052591",
+      "source_namespace": "operator_342",
+      "source_native_id": "25728",
+      "target_tv_hotel_id": 128,
+      "country_id": 1
+    },
+    {
+      "source_catalog_id": "2000073045",
+      "source_namespace": "operator_342",
+      "source_native_id": "29363",
+      "target_tv_hotel_id": 80964,
+      "country_id": 1
+    }
+  ],
+  "http_cap": 14,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "safe_to_write_now": false
+}
