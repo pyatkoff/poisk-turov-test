@@ -1,4 +1,4 @@
-"""Sealed, read-only inspection of the failed 2026-10-03 SAMO first page.
+"""Sealed, read-only inspection of captured SAMO first-page incidents.
 
 Registers in the permanent executor; retains its actor/ref/reservation/SSH guards.
 Never resumes a search, consumes a snapshot, loads supplier clients or opens DB.
@@ -11,6 +11,9 @@ import ast
 MODE = 'andromeda-firstpage-readback'
 OPERATION = 'int-andromeda-firstpage-receipt-20261004-v1'
 SOURCE = '598092cd292b66b7b94e4a7913a3e2d1f5b550ae'
+FAILURE_MODE = 'andromeda-initial-failure-readback'
+FAILURE_OPERATION = 'int-andromeda-initial-failure-20261004-v1'
+FAILURE_SOURCE = 'd1ad064fbc6fda65929cc57395581b1ba819d952'
 
 
 def need(value: bool, reason: str) -> None:
@@ -25,12 +28,14 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] != MODE:
+        if len(parts) < 2 or parts[1] not in (MODE, FAILURE_MODE):
             return original(body)
         need(len(parts) == 3, 'firstpage_command_shape')
         source, mode, operation = parts
-        need(source == SOURCE, 'firstpage_evidence_source')
-        need(operation == OPERATION, 'firstpage_sealed_operation')
+        expected_source, expected_operation = ((SOURCE, OPERATION) if mode == MODE
+                                               else (FAILURE_SOURCE, FAILURE_OPERATION))
+        need(source == expected_source, 'firstpage_evidence_source')
+        need(operation == expected_operation, 'firstpage_sealed_operation')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
 
     core.parse_command = parse
@@ -134,7 +139,7 @@ def fp_checkpoint(directory,ref,created,generation):
             'ready_offers':data['ready_offer_count'],
             'confirmation_offers':data['confirmation_required_offer_count']}
 
-def firstpage_readback():
+def fp_directory():
     config=runtime/'.andromeda-private.php'
     if not fp_safe(config,65536): fail('firstpage_private_config')
     # Loading the existing return-only private config supplies only its catalog
@@ -158,6 +163,10 @@ while(ob_get_level())ob_end_clean();echo json_encode($r);"""
             or home not in directory.parents
             or (www in directory.parents and project not in directory.parents)):
         fail('firstpage_catalog_scope')
+    return directory
+
+def firstpage_readback():
+    directory=fp_directory()
     app=(runtime/'app/integrations' if fp_safe(runtime/'app/integrations/andromeda-client.php')
          else runtime.parent/'app/integrations')
     ingest=project/'_preview/search3-local-candidate/data/anytour-offer-snapshot-ingest-v1.php'
@@ -233,8 +242,109 @@ REMOTE_DISPATCH = r'''    if mode=='andromeda-firstpage-readback':
         result['status']='complete'
 '''
 
+REMOTE_FAILURE_READER = r'''
+# A separate incident. The Oct3 reader/window/source/operation above stay sealed.
+IF_START=1791127622  # 2026-10-04T15:27:02Z; new UI initial click.
+IF_END=1791127646    # 2026-10-04T15:27:26Z; observed HTTP502 response rounded up.
+IF_CODES={'ANDROMEDA_CREDENTIALS_REQUIRED','ANDROMEDA_DISABLED','ANDROMEDA_REQUEST_BUDGET',
+    'ANDROMEDA_TRANSPORT_ERROR','ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_HTTP_ERROR',
+    'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SUPPLIER_ERROR','ANDROMEDA_LOGIN_REQUIRED',
+    'ANDROMEDA_INVALID_PARAMS','ANDROMEDA_PRICE_REPLAY_REFUSED','ANDROMEDA_INVALID_PRICE_RESPONSE',
+    'ANDROMEDA_PRICE_ROW_BUDGET','ANDROMEDA_SECRET_ECHO','ANDROMEDA_UNCLASSIFIED_ERROR'}
+IF_CRITERIA={'CHECKIN_BEG':'20261013','CHECKIN_END':'20261019','NIGHTS_FROM':7,'NIGHTS_TILL':7,
+    'ADULT':2,'CHILD':0,'CURRENCYINC':643,'PACKETTYPE':0,'PAGE':1,'GROUP_BY':32}
 
-def remote_with_readback(core) -> str:
+def initial_failure_readback():
+    directory=fp_directory()
+    candidates=[]
+    for index,path in enumerate(directory.iterdir()):
+        if index>=FP_MAX_ENTRIES: fail('initial_failure_inventory_bound')
+        if not re.fullmatch(r'[a-f0-9]{64}-1\.json',path.name): continue
+        if path.is_symlink(): fail('initial_failure_evidence_symlink')
+        if path.is_file() and IF_START-2<=int(path.stat().st_mtime)<=IF_END+2:
+            candidates.append(path)
+    if len(candidates)!=1: fail('initial_failure_evidence_missing' if not candidates
+                               else 'initial_failure_evidence_ambiguous')
+    path=candidates[0];ref=path.name[:-7];data=fp_json(path)
+    store=data.get('store');criteria=data.get('criteria');status=data.get('status')
+    if (type(data.get('version')) is not int or data['version']!=1
+            or data.get('search_ref')!=ref or not fp_integer(data.get('generation'),2147483647)
+            or data['generation']<1 or status not in ('pending','unavailable')
+            or not isinstance(store,dict) or type(store.get('version')) is not int or store['version']!=1
+            or store.get('search_ref')!=ref or type(store.get('generation')) is not int
+            or store['generation']!=data['generation']
+            or not fp_integer(store.get('created_at'),4102444800)
+            or not IF_START<=store['created_at']<=IF_END
+            or not fp_integer(store.get('expires_at'),4102444800)
+            or store['expires_at']!=store['created_at']+900
+            or 'snapshot' not in store or store['snapshot'] is not None
+            or store.get('criteria')!=[] or store.get('raw_ids')!=[]
+            or (status=='pending' and (data.get('error') is not None or 'error_code' in data))
+            or (status=='unavailable' and (data.get('error')!='supplier_result_unavailable'
+                                         or 'error_code' not in data))):
+        fail('initial_failure_retained_contract')
+    # The UI supplies canonical local route IDs; the endpoint maps them through
+    # current dictionaries. Do not guess supplier IDs or expose them. Bind all
+    # observed stay/party/filter fields, require valid mapped IDs and a unique
+    # page in the fixed window. This does not independently prove route identity.
+    if (not isinstance(criteria,dict)
+            or set(criteria) not in (set(IF_CRITERIA)|{'TOWNFROMINC','STATEINC'},
+                                    set(IF_CRITERIA)|{'TOWNFROMINC','STATEINC','OPERATORS'})
+            or any(type(criteria.get(k)) is not type(v) or criteria[k]!=v for k,v in IF_CRITERIA.items())
+            or any(not fp_integer(criteria.get(k),2147483647) or criteria[k]<1
+                   for k in ('TOWNFROMINC','STATEINC'))
+            or ('OPERATORS' in criteria and (not isinstance(criteria['OPERATORS'],str)
+                or len(criteria['OPERATORS'])>300
+                or not re.fullmatch(r'[1-9][0-9]*(?:,[1-9][0-9]*)*',criteria['OPERATORS'])))):
+        fail('initial_failure_criteria_contract')
+    app=(runtime/'app/integrations' if fp_safe(runtime/'app/integrations/andromeda-client.php')
+         else runtime.parent/'app/integrations')
+    owners={'endpoint':runtime/'api-andromeda-search3-preview.php',
+            'search':app/'andromeda-search.php','client':app/'andromeda-client.php',
+            'transport':app/'andromeda-transport.php','offer_store':app/'andromeda-offer-store.php'}
+    code=data.get('error_code')
+    code=code if isinstance(code,str) and code in IF_CODES else 'ANDROMEDA_UNCLASSIFIED_ERROR'
+    return {'incident':'samo-initial-failure-20261004-152702Z',
+            'window_start':IF_START,'window_end':IF_END,'matched_first_pages':1,
+            'page':{'status':status,'error_code':code if status=='unavailable' else None,
+                    'created_at':store['created_at'],'expires_at':store['expires_at'],
+                    'expired_now':int(time.time())>=store['expires_at'],'snapshot_present':False},
+            'correlation':'unique_page_window_and_known_criteria','route_identity_verified':False,
+            'runtime_sha256':{name:fp_hash(path) for name,path in owners.items()},
+            'supplier_calls':0,'database_reads':0,'database_writes':0,'runtime_writes':0,
+            'expired_context_reused':False,'raw_payloads_exposed':False}
+
+'''
+
+REMOTE_FAILURE_DISPATCH = r'''    if mode=='andromeda-initial-failure-readback':
+        if operation!='int-andromeda-initial-failure-20261004-v1' or source!='d1ad064fbc6fda65929cc57395581b1ba819d952':
+            fail('initial_failure_sealed_scope')
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['runtime_writes']=0
+        try:
+            result['initial_failure_readback']=initial_failure_readback()
+        except Exception as if_error:
+            reason=str(if_error)
+            # Shared config/file guards also emit fixed firstpage_* categories.
+            if re.fullmatch(r'firstpage_[a-z_]{1,80}',reason):
+                reason='initial_failure_'+reason[len('firstpage_'):]
+            fail(reason if reason in {
+                'initial_failure_private_config','initial_failure_config_read','initial_failure_catalog_scope',
+                'initial_failure_evidence_file','initial_failure_evidence_shape','initial_failure_inventory_bound',
+                'initial_failure_evidence_symlink','initial_failure_evidence_missing','initial_failure_evidence_ambiguous',
+                'initial_failure_retained_contract','initial_failure_criteria_contract'}
+                else 'initial_failure_readback_unclassified')
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+
+def remote_with_readback(core, mode: str = MODE) -> str:
+    need(mode in (MODE, FAILURE_MODE), 'firstpage_registration_mode')
     remote = core.REMOTE
     definition = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -243,16 +353,22 @@ def remote_with_readback(core) -> str:
          and remote.count(collectors) == 2, 'firstpage_registration_source_drift')
     remote = remote.replace(definition, REMOTE_READER + definition, 1)
     remote = remote.replace(dispatch, REMOTE_DISPATCH + dispatch, 1)
-    remote = remote.replace(collectors, "    if mode not in ('" + MODE + "','reconcile',")
+    modes = MODE
+    if mode == FAILURE_MODE:
+        remote = remote.replace(definition, REMOTE_FAILURE_READER + definition, 1)
+        remote = remote.replace(dispatch, REMOTE_FAILURE_DISPATCH + dispatch, 1)
+        modes += "','" + FAILURE_MODE
+    remote = remote.replace(collectors, "    if mode not in ('" + modes + "','reconcile',")
     ast.parse(remote)
     return remote
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') != MODE:
+    mode = command.get('mode')
+    if mode not in (MODE, FAILURE_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
-        str(command.get('source_sha', '')), MODE, str(command.get('operation_id', '')),
+        str(command.get('source_sha', '')), mode, str(command.get('operation_id', '')),
     ]))
     need(command == expected, 'firstpage_authorized_shape')
-    core.REMOTE = remote_with_readback(core)
+    core.REMOTE = remote_with_readback(core, mode)
