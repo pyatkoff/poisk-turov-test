@@ -6,6 +6,7 @@ All old modes delegate unchanged. Native110 stages have fixed intake scopes.
 from __future__ import annotations
 
 import ast
+import os
 import re
 
 MODE = 'match-primary-candidate'
@@ -38,6 +39,51 @@ TARGET_PREFLIGHT_READBACK_OPERATION = 'int-andromeda-match-live30-target-preflig
 TARGET_V2_MODE = 'match-tv-live30-target-catalog-v2'
 TARGET_V2_OPERATION = 'int-andromeda-match-live30-target-catalog-v2-20261001-v1'
 TARGET_V2_BATCH = 'tv-live30-targets-v2-20261001'
+SOURCE3_MODE = 'match-source3-native-current'
+SOURCE3_OPERATION = 'int-andromeda-match-source3-native-current-20261001-v1'
+SOURCE3_BATCH = 'source3-native-20261001'
+SOURCE3_MANIFEST_SHA = '8af3a42bc63fb7b7eacb01df661cbf7ba6bcc83bdf9681adfc1e59c159b2cf85'
+INTOURIST4_MODE = 'match-intourist4-selectors-readonly'
+INTOURIST4_OPERATION = 'int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+INTOURIST4_BATCH = 'intourist4-official-context-20261001'
+INTOURIST4_MANIFEST_SHA = '3f05ddb13707866e8b3442da61528a1713b0ac710b53840a8b43ef5181337778'
+INTOURIST4_READBACK_MODE = 'match-intourist4-selectors-readback'
+INTOURIST4_READBACK_OPERATION = 'int-tourvisor-match-intourist4-selectors-readback-20261004-v1'
+INTOURIST4_READBACK_BATCH = 'intourist4-terminal-readback-20261004'
+FUNSUN2_MODE = 'match-funsun2-selectors-readonly'
+FUNSUN2_OPERATION = 'int-tourvisor-match-funsun2-selectors-readonly-20261001-v1'
+FUNSUN2_BATCH = 'funsun2-mass83-20261001'
+FUNSUN2_MANIFEST_SHA = '093970c2b59b95dc59f1187cd05dd50a3653d6cdd93ad892e5d5ead1685bebae'
+ANEX2_MODE = 'match-anex2-selectors-readonly'
+ANEX2_OPERATION = 'int-tourvisor-match-anex2-selectors-readonly-20261001-v1'
+ANEX2_BATCH = 'anex2-mass83-20261001'
+ANEX2_MANIFEST_SHA = '7bf2cd6dc73f451593308d3c2e78659a98725f5854c93680fcc6ea3f94b4f0f7'
+BP8_MODE = 'match-bg8-pin-bindings-readonly'
+BP8_OPERATION = 'int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1'
+BP8_BATCH = 'bg8-pin-bindings-20261004'
+BP8_MANIFEST_SHA = '4a14f5b4c641d80e378e1358341da09de17dc35478087bff134f63879c14ec1c'
+BP8_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_bg8_pin_bindings_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_bg8_pin_bindings_readonly_v1.json',
+)
+
+BF8_MODE = 'match-bg8-unexported-fields-readonly'
+BF8_OPERATION = 'int-andromeda-match-bg8-unexported-fields-20261004-v1'
+BF8_BATCH = 'bg8-unexported-fields-20261004'
+BF8_MANIFEST_SHA = '8f51faf57a29343f3989c58315b939e10295e93befb5da8d6056763237e21207'
+BF8_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_bg8_unexported_fields_readonly_v1.json',
+)
+
+DELTA_MODE = 'match-user-search-delta-readonly'
+DELTA_OPERATION = 'int-andromeda-match-user-search-delta-20261004-v1'
+DELTA_BATCH = 'user-search-delta-20261004'
+DELTA_MANIFEST_SHA = 'a58f13ec8513a612e5ae93302c81491ac132079b0f654ae72344385e6edf8057'
+DELTA_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_user_search_delta_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_user_search_delta_readonly_v1.json',
+)
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -77,6 +123,29 @@ BG_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_native
 SHAMS_GEO_SOURCE_FILES = NATIVE_SOURCE_FILES + ('scripts/diagnostics/hotel_match_shams_geography_saved_v1.php',)
 SHAMS_WRITE_SOURCE_FILES = tuple(dict.fromkeys(GUARDED_SOURCE_FILES + SHAMS_GEO_SOURCE_FILES +
     ('scripts/diagnostics/hotel_match_shams_guarded_v1.php',)))
+SOURCE3_SOURCE_FILES = PROOF_SOURCE_FILES + (
+    'scripts/diagnostics/hotel_match_source3_native_current_v1.php',
+    'scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json',
+)
+INTOURIST4_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_intourist4_selectors_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_intourist4_selectors_readonly_v1.json',
+    'reports/hotel-match-intourist-official-context-20261001.json',
+    'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json',
+)
+FUNSUN2_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_funsun2_selectors_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_funsun2_selectors_readonly_v1.json',
+    'reports/hotel-match-mass83-proof-minimization-20261001.json',
+    'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json',
+)
+
+ANEX2_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_anex2_selectors_readonly_v1.json',
+    'reports/hotel-match-mass83-proof-minimization-20261001.json',
+    'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json',
+)
 
 
 def register_parser(core) -> None:
@@ -87,11 +156,43 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == BP8_MODE:
+            core.need(operation == BP8_OPERATION and batch == BP8_BATCH, 'bg8_pins_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': BP8_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
+        if mode == BF8_MODE:
+            core.need(operation == BF8_OPERATION and batch == BF8_BATCH, 'bg8_fields_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': BF8_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
+        if mode == DELTA_MODE:
+            core.need(operation == DELTA_OPERATION and batch == DELTA_BATCH, 'delta_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': DELTA_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
+        if mode == ANEX2_MODE:
+            core.need(operation == ANEX2_OPERATION and batch == ANEX2_BATCH, 'anex2_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': ANEX2_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 12}
+        if mode == FUNSUN2_MODE:
+            core.need(operation == FUNSUN2_OPERATION and batch == FUNSUN2_BATCH, 'funsun2_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': FUNSUN2_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 7}
+        if mode == INTOURIST4_READBACK_MODE:
+            core.need(operation == INTOURIST4_READBACK_OPERATION and batch == INTOURIST4_READBACK_BATCH, 'intourist4_readback_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': INTOURIST4_READBACK_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
+        if mode == INTOURIST4_MODE:
+            core.need(operation == INTOURIST4_OPERATION and batch == INTOURIST4_BATCH, 'intourist4_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': INTOURIST4_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 14}
+        if mode == SOURCE3_MODE:
+            core.need(operation == SOURCE3_OPERATION and batch == SOURCE3_BATCH, 'source3_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': SOURCE3_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 3}
         if mode == TARGET_V2_MODE:
             core.need(operation == TARGET_V2_OPERATION and batch == TARGET_V2_BATCH, 'target_catalog_v2_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': TARGET_V2_BATCH,
@@ -1255,11 +1356,1299 @@ REMOTE_TARGET_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-readb
 '''
 
 
+
+
+REMOTE_INTOURIST4_READBACK_HANDLER = r'''
+def run_match_intourist4_readback(stage):
+    expected_source='a82516771252fab0ac4bd079480156c684766e05'
+    source_operation='int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+    source_batch='intourist4-official-context-20261001'
+    if (operation!='int-tourvisor-match-intourist4-selectors-readback-20261004-v1'
+            or payload.get('batch')!='intourist4-terminal-readback-20261004'
+            or source!=expected_source
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):
+        fail('intourist4_readback_fixed_scope')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:
+            fail('intourist4_readback_private_root')
+    source_child=root/source_operation
+    if not source_child.is_dir() or source_child.is_symlink() or source_child.resolve()!=source_child:
+        fail('intourist4_readback_source_missing')
+    batch_marker=parent/'intourist4-selectors-batch-intourist4-official-context-20261001.json'
+    source_reservation=source_child/'reservation.json'
+    if not safe_file(batch_marker,65536) or not safe_file(source_reservation,65536):
+        fail('intourist4_readback_source_reservation')
+    batch_data=safe_json(batch_marker,65536);reservation=safe_json(source_reservation,65536)
+    expected_reservation={'operation':source_operation,'source_sha':expected_source,'batch':source_batch,
+                          'maximum_writes':0,'provider_http_calls':14,'state':'reserved_before_db_and_provider'}
+    for name,data in (('batch',batch_data),('reservation',reservation)):
+        if (not isinstance(data,dict) or any(data.get(k)!=v for k,v in expected_reservation.items())
+                or type(data.get('reserved_at')) is not int or data['reserved_at']<1):
+            fail('intourist4_readback_'+name+'_binding')
+    readback_child=root/operation
+    if readback_child.exists() or readback_child.is_symlink():
+        fail('intourist4_readback_child_exists_no_replay')
+    own={'operation':operation,'source_sha':source,'batch':'intourist4-terminal-readback-20261004',
+         'maximum_writes':0,'provider_http_calls':0,'source_operation':source_operation,
+         'state':'reserved_readback_only','reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'intourist4-selectors-readback-batch-intourist4-terminal-readback-20261004.json',own)
+    readback_child.mkdir(mode=0o700);exclusive(readback_child/'reservation.json',own)
+
+    errors=[]
+    def optional_json(path,limit,label):
+        if not path.exists():
+            errors.append(label+'_missing');return None,None
+        if not safe_file(path,limit):
+            fail('intourist4_readback_'+label+'_unsafe')
+        raw=path.read_bytes();return safe_json(path,limit),hashlib.sha256(raw).hexdigest()
+    result,result_sha=optional_json(source_child/'result.json',8*1024*1024,'result')
+    receipt,receipt_sha=optional_json(source_child/'receipt.json',65536,'receipt')
+    allowed_states={'completed_read_only','failed_before_provider_access','terminal_failed_no_replay'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_intourist_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    def safe_int(data,key,limit,label):
+        value=data.get(key) if isinstance(data,dict) else None
+        if type(value) is int and 0<=value<=limit:return value
+        errors.append(label);return None
+    def safe_bool(data,key,label):
+        value=data.get(key) if isinstance(data,dict) else None
+        if type(value) is bool:return value
+        errors.append(label);return None
+    result_state=None;reason_sha=None;call_counts={};edge_counts={};groups=[]
+    counters={k:None for k in ('provider_http_calls','physical_http_attempts','database_reads',
+                                'database_writes','mapping_writes','returned_edges')}
+    result_no_replay=None;result_safe=None
+    if result is not None:
+        if not isinstance(result,dict):
+            errors.append('result_not_object')
+        else:
+            state=result.get('state')
+            if state in allowed_states:result_state=state
+            else:errors.append('result_state')
+            reason=result.get('reason')
+            if reason is None:reason_sha=None
+            elif isinstance(reason,str) and len(reason)<=4096:
+                reason_sha=hashlib.sha256(reason.encode()).hexdigest()
+            else:errors.append('result_reason')
+            limits={'provider_http_calls':14,'physical_http_attempts':14,'database_reads':32,
+                    'database_writes':0,'mapping_writes':0,'returned_edges':4}
+            for key,limit in limits.items():counters[key]=safe_int(result,key,limit,'result_'+key)
+            result_no_replay=safe_bool(result,'no_replay','result_no_replay')
+            result_safe=safe_bool(result,'safe_to_write_now','result_safe_to_write_now')
+            raw_calls=result.get('call_counts')
+            if isinstance(raw_calls,dict):
+                for key,value in raw_calls.items():
+                    if key in allowed_calls and type(value) is int and 0<=value<=14:call_counts[key]=value
+                    else:errors.append('result_call_counts');call_counts={};break
+            else:errors.append('result_call_counts')
+            raw_counts=result.get('edge_state_counts')
+            if isinstance(raw_counts,dict):
+                for key,value in raw_counts.items():
+                    if key in allowed_edge_states and type(value) is int and 0<=value<=4:edge_counts[key]=value
+                    else:errors.append('result_edge_state_counts');edge_counts={};break
+            else:errors.append('result_edge_state_counts')
+            raw_groups=result.get('groups')
+            if not isinstance(raw_groups,list) or len(raw_groups)>2:
+                errors.append('result_groups')
+            else:
+                for group in raw_groups:
+                    if not isinstance(group,dict):
+                        errors.append('result_group_shape');continue
+                    gnum=group.get('group');country=group.get('country_id');gstate=group.get('state')
+                    sent=group.get('sent');edges=group.get('edges')
+                    if (type(gnum) is not int or gnum not in (1,2) or country not in (1,4)
+                            or gstate not in allowed_group_states or type(sent) is not int or not 0<=sent<=2
+                            or not isinstance(edges,list) or len(edges)>2):
+                        errors.append('result_group_shape');continue
+                    clean_edges=[]
+                    for edge in edges:
+                        if not isinstance(edge,dict):
+                            errors.append('result_edge_shape');continue
+                        source_id=edge.get('source_catalog_id');target=edge.get('target_tv_hotel_id')
+                        estate=edge.get('state');operator_id=edge.get('operator_id');namespace=edge.get('namespace')
+                        link=edge.get('link_state','not_read');ids=edge.get('positive_native_candidates',[])
+                        match=edge.get('matches_source_native')
+                        if (source_id not in ('2000034121','2000062084','2000052591','2000073045')
+                                or type(target) is not int or target not in (1151,70943,128,80964)
+                                or estate not in allowed_edge_states or operator_id!=43 or namespace!='operator_342'
+                                or link not in allowed_links or not isinstance(ids,list) or len(ids)>8
+                                or any(type(v) is not int or v<1 for v in ids)
+                                or (match is not None and type(match) is not bool)):
+                            errors.append('result_edge_shape');continue
+                        clean_edges.append({'source_catalog_id':source_id,'target_tv_hotel_id':target,
+                                            'state':estate,'operator_id':43,'namespace':'operator_342',
+                                            'link_state':link,'native_candidate_count':len(ids),
+                                            'matches_source_native':match})
+                    groups.append({'group':gnum,'country_id':country,'state':gstate,'sent':sent,
+                                   'edge_count':len(edges),'edges':clean_edges})
+    receipt_state=None;receipt_counters={k:None for k in ('provider_http_calls','database_reads','database_writes','mapping_writes')}
+    receipt_no_replay=None;receipt_safe=None
+    if receipt is not None:
+        if not isinstance(receipt,dict):
+            errors.append('receipt_not_object')
+        else:
+            state=receipt.get('state')
+            if state in allowed_states:receipt_state=state
+            else:errors.append('receipt_state')
+            for key,limit in {'provider_http_calls':14,'database_reads':32,'database_writes':0,'mapping_writes':0}.items():
+                receipt_counters[key]=safe_int(receipt,key,limit,'receipt_'+key)
+            receipt_no_replay=safe_bool(receipt,'no_replay','receipt_no_replay')
+            receipt_safe=safe_bool(receipt,'safe_to_write_now','receipt_safe_to_write_now')
+            if receipt.get('operation')!=source_operation or receipt.get('batch')!=source_batch or receipt.get('source_sha')!=expected_source:
+                errors.append('receipt_binding')
+            if result_sha is not None and receipt.get('result_sha256')!=result_sha:
+                errors.append('receipt_result_digest')
+    summary={'schema':'match-intourist4-selectors-readback-result/1','operation':operation,
+             'batch':'intourist4-terminal-readback-20261004','source_sha':source,
+             'source_operation':source_operation,'source_batch':source_batch,
+             'state':'completed_read_only','provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+             'safe_to_write_now':False,'no_replay':True,
+             'source_batch_sha256':hashlib.sha256(batch_marker.read_bytes()).hexdigest(),
+             'source_reservation_sha256':hashlib.sha256(source_reservation.read_bytes()).hexdigest(),
+             'source_result_present':result is not None,'source_result_sha256':result_sha,
+             'source_receipt_present':receipt is not None,'source_receipt_sha256':receipt_sha,
+             'source_result_state':result_state,'source_receipt_state':receipt_state,
+             'source_result_reason_sha256':reason_sha,'source_result_counters':counters,
+             'source_receipt_counters':receipt_counters,'source_result_no_replay':result_no_replay,
+             'source_receipt_no_replay':receipt_no_replay,'source_result_safe_to_write_now':result_safe,
+             'source_receipt_safe_to_write_now':receipt_safe,'source_call_counts':call_counts,
+             'source_edge_state_counts':edge_counts,'source_groups':groups,
+             'shape_errors':sorted(set(errors))}
+    result_bytes=json.dumps(summary,sort_keys=True,separators=(',',':')).encode()+b'\n'
+    result_digest=hashlib.sha256(result_bytes).hexdigest()
+    exclusive(readback_child/'result.json',summary)
+    rb_receipt={'operation':operation,'batch':'intourist4-terminal-readback-20261004','source_sha':source,
+                'state':'completed_read_only','result_sha256':result_digest,'provider_http_calls':0,
+                'database_writes':0,'mapping_writes':0,'safe_to_write_now':False,'no_replay':True}
+    exclusive(readback_child/'receipt.json',rb_receipt)
+    return {'result_sha256':result_digest,'successful':True,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_INTOURIST4_READBACK_DISPATCH = r'''    if mode=='match-intourist4-selectors-readback':
+        lane=run_match_intourist4_readback(stage)
+        result['match_intourist4_selectors_readback']=lane
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
+REMOTE_INTOURIST4_HANDLER = r'''
+def validate_match_intourist4(data,receipt,digest,expected_source):
+    expected={'2000034121':('549',1151,4),'2000062084':('18273',70943,4),
+              '2000052591':('25728',128,1),'2000073045':('29363',80964,1)}
+    fixed={'schema':'match-intourist4-selectors-readonly-result/1',
+           'operation':'int-tourvisor-match-intourist4-selectors-readonly-20261001-v1',
+           'batch':'intourist4-official-context-20261001','source_sha':expected_source,
+           'requested_rows':4,'tourvisor_account':'TOURVISOR_ANEX_JWT','operator_ids':[43],
+           'continue_calls':0,'dates_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False}
+    extra={'state','reason','captured_at_utc','groups','preflight_snapshots','provider_http_calls',
+           'physical_http_attempts','database_reads','call_counts','returned_edges',
+           'edge_state_counts','no_replay'}
+    receipt_fields={'operation','batch','source_sha','state','result_sha256','provider_http_calls',
+                    'database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('intourist4_terminal_binding')
+    ints=('provider_http_calls','physical_http_attempts','database_reads','returned_edges')
+    if (any(type(data.get(k)) is not int for k in ints)
+            or not 0<=data['provider_http_calls']<=14
+            or data['physical_http_attempts']!=data['provider_http_calls']
+            or not 0<=data['database_reads']<=16 or not 0<=data['returned_edges']<=4
+            or type(data['no_replay']) is not bool or data['no_replay']!=(data['provider_http_calls']>0)):
+        fail('intourist4_counter_authority')
+    for k in ('provider_http_calls','database_reads','database_writes','mapping_writes'):
+        if type(receipt.get(k)) is not int or receipt[k]!=data[k]: fail('intourist4_receipt_counter')
+    if receipt['safe_to_write_now'] is not False or type(receipt['no_replay']) is not bool:
+        fail('intourist4_receipt_authority')
+    state=data['state'];success=state=='completed_read_only'
+    if state not in ('completed_read_only','failed_before_provider_access','terminal_failed_no_replay'):
+        fail('intourist4_terminal_state')
+    if ((state=='failed_before_provider_access' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and data['reason'] is not None)):
+        fail('intourist4_terminal_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or len(reason)<1 or len(reason)>180
+            or re.search(r'[\x00-\x1f\x7f]',reason)): fail('intourist4_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str):
+        fail('intourist4_timestamp')
+    import datetime as dt
+    try:
+        parsed=dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+        if parsed.utcoffset()!=dt.timedelta(0): fail('intourist4_timestamp')
+    except (ValueError,TypeError): fail('intourist4_timestamp')
+    calls=data['call_counts']
+    allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    if (not isinstance(calls,dict) or any(k not in allowed_calls or type(v) is not int or v<0 for k,v in calls.items())
+            or sum(calls.values())!=data['provider_http_calls']
+            or calls.get('search_start',0)>2 or calls.get('search_status',0)>6
+            or calls.get('search_results',0)>2 or calls.get('tour_detail',0)>4):
+        fail('intourist4_call_partition')
+    holds={'current_source_not_pending_null','current_source_history_review','target_missing_or_inactive',
+           'target_country_changed','target_manual','target_excluded','target_occupied','protected_source'}
+    snapshots=data['preflight_snapshots']
+    if not isinstance(snapshots,list) or len(snapshots)!=data['database_reads']:
+        fail('intourist4_preflight_count')
+    last=0
+    for snap in snapshots:
+        if (not isinstance(snap,dict) or set(snap)!={'sequence','next_http_call','action','rows'}
+                or type(snap['sequence']) is not int or snap['sequence']!=last+1
+                or type(snap['next_http_call']) is not int or not 1<=snap['next_http_call']<=15
+                or not isinstance(snap['action'],str) or not isinstance(snap['rows'],list)
+                or not 1<=len(snap['rows'])<=2):
+            fail('intourist4_preflight_shape')
+        last=snap['sequence'];seen=set()
+        for row in snap['rows']:
+            if (not isinstance(row,dict) or set(row)!={'source_catalog_id','target_tv_hotel_id','state','holds','safe_to_write_now'}
+                    or row['source_catalog_id'] not in expected or row['safe_to_write_now'] is not False):
+                fail('intourist4_preflight_row')
+            native,target,country=expected[row['source_catalog_id']]
+            if type(row['target_tv_hotel_id']) is not int or row['target_tv_hotel_id']!=target:
+                fail('intourist4_preflight_identity')
+            hs=row['holds']
+            if (not isinstance(hs,list) or hs!=sorted(set(hs)) or any(h not in holds for h in hs)
+                    or row['state']!=('eligible' if not hs else 'hold') or target in seen):
+                fail('intourist4_preflight_state')
+            seen.add(target)
+    groups=data['groups']
+    if not isinstance(groups,list) or len(groups)>2:
+        fail('intourist4_groups')
+    group_countries=set();edge_count=0;edge_states={}
+    edge_base={'source_catalog_id','source_native_id','target_tv_hotel_id','operator_id','namespace',
+               'operator_tour_count','tour_id_sha256','state','safe_to_write_now'}
+    edge_optional={'tour_detail_http','operator_link_sha256','operator_link_host','positive_native_candidates',
+                   'query_keys','link_state','matches_source_native'}
+    group_base={'group','country_id','state','sent','edges'}
+    group_optional={'initial_preflight','search_complete','returned_targets'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_intourist_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    seen_targets=set()
+    for group in groups:
+        if (not isinstance(group,dict) or not group_base.issubset(group)
+                or set(group)-group_base-group_optional or type(group['group']) is not int
+                or group['group'] not in (1,2) or group['country_id'] not in (1,4)
+                or group['country_id'] in group_countries or group['state'] not in allowed_group_states
+                or type(group['sent']) is not int or not 0<=group['sent']<=2
+                or not isinstance(group['edges'],list)):
+            fail('intourist4_group_shape')
+        group_countries.add(group['country_id'])
+        for edge in group['edges']:
+            if (not isinstance(edge,dict) or not edge_base.issubset(edge)
+                    or set(edge)-edge_base-edge_optional or edge['source_catalog_id'] not in expected
+                    or edge['source_native_id']!=expected[edge['source_catalog_id']][0]
+                    or type(edge['target_tv_hotel_id']) is not int
+                    or edge['target_tv_hotel_id']!=expected[edge['source_catalog_id']][1]
+                    or expected[edge['source_catalog_id']][2]!=group['country_id']
+                    or edge['operator_id']!=43 or edge['namespace']!='operator_342'
+                    or type(edge['operator_tour_count']) is not int or edge['operator_tour_count']<1
+                    or not isinstance(edge['tour_id_sha256'],str) or not re.fullmatch(r'[0-9a-f]{64}',edge['tour_id_sha256'])
+                    or edge['state'] not in allowed_edge_states or edge['safe_to_write_now'] is not False
+                    or edge['target_tv_hotel_id'] in seen_targets):
+                fail('intourist4_edge_identity')
+            seen_targets.add(edge['target_tv_hotel_id']);edge_count+=1
+            edge_states[edge['state']]=edge_states.get(edge['state'],0)+1
+            if 'positive_native_candidates' in edge:
+                ids=edge['positive_native_candidates']
+                if (not isinstance(ids,list) or ids!=sorted(set(ids))
+                        or any(type(v) is not int or v<1 for v in ids)): fail('intourist4_native_candidates')
+            if 'link_state' in edge and edge['link_state'] not in allowed_links:
+                fail('intourist4_link_state')
+            if edge.get('link_state') in ('captured_single_native','captured_ambiguous_native'):
+                host=edge.get('operator_link_host')
+                if not isinstance(host,str) or not (host=='intourist.ru' or host.endswith('.intourist.ru')):
+                    fail('intourist4_link_host')
+            if 'matches_source_native' in edge:
+                ids=edge.get('positive_native_candidates',[])
+                expected_match=ids==[int(edge['source_native_id'])]
+                if type(edge['matches_source_native']) is not bool or edge['matches_source_native']!=expected_match:
+                    fail('intourist4_native_match')
+    if edge_count!=data['returned_edges'] or data['edge_state_counts']!=edge_states:
+        fail('intourist4_edge_partition')
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_intourist4(stage):
+    if (operation!='int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+            or payload.get('batch')!='intourist4-official-context-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=14):
+        fail('intourist4_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_intourist4_selectors_readonly_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_intourist4_selectors_readonly_v1.py'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='3f05ddb13707866e8b3442da61528a1713b0ac710b53840a8b43ef5181337778'):
+        fail('intourist4_source_binding')
+    for path in ('reports/hotel-match-intourist-official-context-20261001.json',
+                 'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json'):
+        if not safe_file(stage/path,2*1024*1024): fail('intourist4_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('intourist4_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('intourist4_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'intourist4-official-context-20261001',
+                 'maximum_writes':0,'provider_http_calls':14,'state':'reserved_before_db_and_provider',
+                 'reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'intourist4-selectors-batch-intourist4-official-context-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),
+                'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536):
+        fail('intourist4_terminal_missing_no_replay')
+    data=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_intourist4(data,receipt,digest,source)
+    successful=summary['state']=='completed_read_only'
+    if run.returncode!=(0 if successful else 2): fail('intourist4_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','reason','requested_rows','provider_http_calls','returned_edges','edge_state_counts')}:
+        fail('intourist4_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_INTOURIST4_DISPATCH = r'''    if mode=='match-intourist4-selectors-readonly':
+        lane=run_match_intourist4(stage)
+        result['match_intourist4_selectors_readonly']=lane
+        result['supplier_calls']=lane['summary']['provider_http_calls']
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+
+REMOTE_BP8_HANDLER = r'''
+def validate_match_bg8_pins(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-bg8-pin-bindings-readonly-result/1',
+           'operation':'int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1',
+           'batch':'bg8-pin-bindings-20261004','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'no_replay':True,
+           'operator_ids':[18],'requested_rows':8}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads']!=0
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('bg8_pins_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('bg8_pins_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay'}:fail('bg8_pins_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('bg8_pins_source_validation')
+    if data['state'] not in ('completed_read_only_bg8_pins','completed_read_only_bg8_pins_incomplete','terminal_failed_no_replay'):fail('bg8_pins_terminal_state')
+    return data
+
+def run_match_bg8_pins(stage):
+    if (operation!='int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1'
+            or payload.get('batch')!='bg8-pin-bindings-20261004'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('bg8_pins_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_bg8_pin_bindings_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_bg8_pin_bindings_readonly_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='4a14f5b4c641d80e378e1358341da09de17dc35478087bff134f63879c14ec1c'):fail('bg8_pins_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('bg8_pins_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('bg8_pins_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'bg8-pin-bindings-20261004',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('bg8_pins_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('bg8_pins_reservation_readback')
+    exclusive(parent/'bg8-pin-bindings-batch-20261004.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,2*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('bg8_pins_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_bg8_pins_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,2*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    summary=validate_match_bg8_pins(data,receipt,digest,input_digest,source,module.validate_result)
+    successful=summary['state'] in ('completed_read_only_bg8_pins','completed_read_only_bg8_pins_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('bg8_pins_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','rows_examined','accepted','written')}:fail('bg8_pins_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_BP8_DISPATCH = r'''    if mode=='match-bg8-pin-bindings-readonly':
+        lane=run_match_bg8_pins(stage)
+        result['match_bg8_pin_bindings_readonly']=lane
+        result['supplier_calls']=0
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
+REMOTE_BF8_HANDLER = r'''
+def validate_match_bg8_fields(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-bg8-unexported-fields-readonly-result/1',
+           'operation':'int-andromeda-match-bg8-unexported-fields-20261004-v1',
+           'batch':'bg8-unexported-fields-20261004','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'no_replay':True,
+           'operator_ids':[18],'requested_rows':8}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads']!=0
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('bg8_fields_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('bg8_fields_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay'}:fail('bg8_fields_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('bg8_fields_source_validation')
+    if data['state'] not in ('completed_read_only_bg8_fields','completed_read_only_bg8_fields_incomplete','terminal_failed_no_replay'):fail('bg8_fields_terminal_state')
+    return data
+
+def run_match_bg8_fields(stage):
+    if (operation!='int-andromeda-match-bg8-unexported-fields-20261004-v1'
+            or payload.get('batch')!='bg8-unexported-fields-20261004'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0):fail('bg8_fields_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_bg8_unexported_fields_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_bg8_unexported_fields_readonly_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='8f51faf57a29343f3989c58315b939e10295e93befb5da8d6056763237e21207'):fail('bg8_fields_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('bg8_fields_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('bg8_fields_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'bg8-unexported-fields-20261004',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('bg8_fields_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('bg8_fields_reservation_readback')
+    exclusive(parent/'bg8-unexported-fields-batch-20261004.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,64*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('bg8_fields_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_bg8_fields_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    summary=validate_match_bg8_fields(data,receipt,digest,input_digest,source,module.validate_result)
+    successful=summary['state'] in ('completed_read_only_bg8_fields','completed_read_only_bg8_fields_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('bg8_fields_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','rows_examined','accepted','written')}:fail('bg8_fields_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_BF8_DISPATCH = r'''    if mode=='match-bg8-unexported-fields-readonly':
+        lane=run_match_bg8_fields(stage)
+        result['match_bg8_unexported_fields_readonly']=lane
+        result['supplier_calls']=0
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
+REMOTE_DELTA_HANDLER = r'''
+def validate_match_user_delta(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-user-search-delta-readonly-result/1',
+           'operation':'int-andromeda-match-user-search-delta-20261004-v1',
+           'batch':'user-search-delta-20261004','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'no_replay':True,
+           'operator_ids':[13,18,25,43],
+           'window_civil':{'lower_exclusive':'2026-10-02 12:46:00','upper_inclusive':'2026-10-03 09:23:17'}}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads'] not in (0,1)
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('delta_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('delta_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay'}:fail('delta_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('delta_source_validation')
+    if data['state'] not in ('completed_read_only_delta','completed_read_only_delta_incomplete','terminal_failed_no_replay'):fail('delta_terminal_state')
+    return data
+
+def run_match_user_delta(stage):
+    if (operation!='int-andromeda-match-user-search-delta-20261004-v1'
+            or payload.get('batch')!='user-search-delta-20261004'
+            or payload.get('maximum_writes')!=0 or payload.get('provider_http_calls')!=0):fail('delta_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_user_search_delta_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_user_search_delta_readonly_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='a58f13ec8513a612e5ae93302c81491ac132079b0f654ae72344385e6edf8057'):fail('delta_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('delta_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('delta_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'user-search-delta-20261004',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_db_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('delta_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('delta_reservation_readback')
+    exclusive(parent/'user-search-delta-batch-20261004.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,64*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('delta_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_delta_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,32*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    summary=validate_match_user_delta(data,receipt,digest,input_digest,source,module.validate_result)
+    successful=summary['state'] in ('completed_read_only_delta','completed_read_only_delta_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('delta_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','observations_selected','accepted','written')}:fail('delta_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_DELTA_DISPATCH = r'''    if mode=='match-user-search-delta-readonly':
+        lane=run_match_user_delta(stage)
+        result['match_user_search_delta_readonly']=lane
+        result['supplier_calls']=0
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
+REMOTE_ANEX2_HANDLER = r'''
+def validate_match_anex2(data,receipt,digest,expected_source):
+    expected={'2000109038':('43661',109380,4),'2000029745':('44562',159,1)}
+    fixed={'schema':'match-anex2-selectors-readonly-result/1',
+           'operation':'int-tourvisor-match-anex2-selectors-readonly-20261001-v1',
+           'batch':'anex2-mass83-20261001','source_sha':expected_source,
+           'requested_rows':2,'tourvisor_account':'TOURVISOR_ANEX_JWT','operator_ids':[13],
+           'continue_calls':0,'dates_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False,'prior_identity_tokens':{'159':['804','44562'],'109380':[]}}
+    extra={'state','reason','captured_at_utc','groups','preflight_snapshots','provider_http_calls',
+           'physical_http_attempts','database_reads','call_counts','returned_edges',
+           'edge_state_counts','no_replay'}
+    receipt_fields={'operation','batch','source_sha','state','result_sha256','provider_http_calls',
+                    'database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('anex2_terminal_binding')
+    ints=('provider_http_calls','physical_http_attempts','database_reads','returned_edges')
+    if (any(type(data.get(k)) is not int for k in ints)
+            or not 0<=data['provider_http_calls']<=12
+            or data['physical_http_attempts']!=data['provider_http_calls']
+            or not 0<=data['database_reads']<=14 or not 0<=data['returned_edges']<=2
+            or type(data['no_replay']) is not bool or data['no_replay']!=(data['provider_http_calls']>0)):
+        fail('anex2_counter_authority')
+    for k in ('provider_http_calls','database_reads','database_writes','mapping_writes'):
+        if type(receipt.get(k)) is not int or receipt[k]!=data[k]: fail('anex2_receipt_counter')
+    if receipt['safe_to_write_now'] is not False or type(receipt['no_replay']) is not bool:
+        fail('anex2_receipt_authority')
+    state=data['state'];success=state=='completed_read_only'
+    if state not in ('completed_read_only','failed_before_provider_access','terminal_failed_no_replay'):
+        fail('anex2_terminal_state')
+    if ((state=='failed_before_provider_access' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and data['reason'] is not None)):
+        fail('anex2_terminal_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or len(reason)<1 or len(reason)>180
+            or re.search(r'[\x00-\x1f\x7f]',reason)): fail('anex2_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str): fail('anex2_timestamp')
+    import datetime as dt
+    try:
+        parsed=dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+        if parsed.utcoffset()!=dt.timedelta(0): fail('anex2_timestamp')
+    except (ValueError,TypeError): fail('anex2_timestamp')
+    calls=data['call_counts'];allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    if (not isinstance(calls,dict) or any(k not in allowed_calls or type(v) is not int or v<0 for k,v in calls.items())
+            or sum(calls.values())!=data['provider_http_calls']
+            or calls.get('search_start',0)>2 or calls.get('search_status',0)>6
+            or calls.get('search_results',0)>2 or calls.get('tour_detail',0)>2):
+        fail('anex2_call_partition')
+    holds={'current_source_not_pending_null','current_source_history_review','target_missing_or_inactive',
+           'target_country_changed','target_manual','target_excluded','target_occupied','protected_source'}
+    snapshots=data['preflight_snapshots']
+    if not isinstance(snapshots,list) or len(snapshots)!=data['database_reads']: fail('anex2_preflight_count')
+    last=0
+    for snap in snapshots:
+        if (not isinstance(snap,dict) or set(snap)!={'sequence','next_http_call','action','rows'}
+                or type(snap['sequence']) is not int or snap['sequence']!=last+1
+                or type(snap['next_http_call']) is not int or not 1<=snap['next_http_call']<=12
+                or not isinstance(snap['action'],str) or not isinstance(snap['rows'],list)
+                or not 1<=len(snap['rows'])<=2): fail('anex2_preflight_shape')
+        last=snap['sequence'];seen=set()
+        for row in snap['rows']:
+            if (not isinstance(row,dict) or set(row)!={'source_catalog_id','target_tv_hotel_id','state','holds','safe_to_write_now'}
+                    or row['source_catalog_id'] not in expected or row['safe_to_write_now'] is not False):
+                fail('anex2_preflight_row')
+            native,target,country=expected[row['source_catalog_id']]
+            if type(row['target_tv_hotel_id']) is not int or row['target_tv_hotel_id']!=target:
+                fail('anex2_preflight_identity')
+            hs=row['holds']
+            if (not isinstance(hs,list) or hs!=sorted(set(hs)) or any(h not in holds for h in hs)
+                    or row['state']!=('eligible' if not hs else 'hold') or target in seen):
+                fail('anex2_preflight_state')
+            seen.add(target)
+    groups=data['groups']
+    if not isinstance(groups,list) or len(groups)>2 or (success and len(groups)!=2): fail('anex2_groups')
+    edge_count=0;edge_states={}
+    edge_base={'source_catalog_id','source_native_id','target_tv_hotel_id','operator_id','namespace',
+               'operator_tour_count','tour_id_sha256','state','safe_to_write_now','prior_identity_tokens'}
+    edge_optional={'tour_detail_http','operator_link_sha256','operator_link_host','positive_native_candidates',
+                   'query_keys','raw_identity_values','raw_identity_tokens','link_state','matches_source_native'}
+    group_base={'group','country_id','state','sent','edges'}
+    group_optional={'initial_preflight','search_complete','returned_targets'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_anex_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    seen_targets=set()
+    seen_groups=set()
+    for group in groups:
+        if (not isinstance(group,dict) or not group_base.issubset(group)
+                or set(group)-group_base-group_optional or type(group['group']) is not int
+                or group['group'] not in (1,2) or group['group'] in seen_groups
+                or group['country_id']!={1:4,2:1}[group['group']]
+                or group['state'] not in allowed_group_states or type(group['sent']) is not int
+                or not 0<=group['sent']<=1 or not isinstance(group['edges'],list)): fail('anex2_group_shape')
+        seen_groups.add(group['group'])
+        for edge in group['edges']:
+            if (not isinstance(edge,dict) or not edge_base.issubset(edge)
+                    or set(edge)-edge_base-edge_optional or edge['source_catalog_id'] not in expected
+                    or edge['source_native_id']!=expected[edge['source_catalog_id']][0]
+                    or group['country_id']!=expected[edge['source_catalog_id']][2]
+                    or edge['prior_identity_tokens']!=(['804','44562'] if edge['target_tv_hotel_id']==159 else [])
+                    or type(edge['target_tv_hotel_id']) is not int
+                    or edge['target_tv_hotel_id']!=expected[edge['source_catalog_id']][1]
+                    or edge['operator_id']!=13 or edge['namespace']!='operator_5'
+                    or type(edge['operator_tour_count']) is not int or edge['operator_tour_count']<1
+                    or not isinstance(edge['tour_id_sha256'],str) or not re.fullmatch(r'[0-9a-f]{64}',edge['tour_id_sha256'])
+                    or edge['state'] not in allowed_edge_states or edge['safe_to_write_now'] is not False
+                    or edge['target_tv_hotel_id'] in seen_targets): fail('anex2_edge_identity')
+            seen_targets.add(edge['target_tv_hotel_id']);edge_count+=1
+            edge_states[edge['state']]=edge_states.get(edge['state'],0)+1
+            if 'positive_native_candidates' in edge:
+                ids=edge['positive_native_candidates']
+                if (not isinstance(ids,list) or ids!=sorted(set(ids))
+                        or any(type(v) is not int or v<1 for v in ids)): fail('anex2_native_candidates')
+            raw_values=edge.get('raw_identity_values');raw_tokens=edge.get('raw_identity_tokens')
+            if (raw_values is None)!=(raw_tokens is None): fail('anex2_raw_identity_pair')
+            if raw_values is not None:
+                if (not isinstance(raw_values,list) or not isinstance(raw_tokens,list)
+                        or any(not isinstance(v,str) or len(v)>512 for v in raw_values)
+                        or any(not isinstance(v,str) or len(v)>512 or re.search(r'[\x00-\x1f\x7f]',v) for v in raw_tokens)
+                        or raw_tokens!=[token.strip() for value in raw_values for token in value.split(',')]
+                        or sorted(set(int(v) for v in raw_tokens if re.fullmatch(r'[1-9][0-9]{0,19}',v)))!=edge.get('positive_native_candidates',[])):
+                    fail('anex2_raw_identity')
+            if 'query_keys' in edge:
+                keys=edge['query_keys']
+                if (not isinstance(keys,list) or len(keys)>40 or keys!=sorted(set(keys))
+                        or any(not isinstance(v,str) or not re.fullmatch(r'[a-z0-9_.-]{1,80}',v) for v in keys)):
+                    fail('anex2_query_keys')
+            if 'link_state' in edge and edge['link_state'] not in allowed_links: fail('anex2_link_state')
+            if edge.get('link_state') in ('captured_single_native','captured_ambiguous_native'):
+                host=edge.get('operator_link_host')
+                if not isinstance(host,str) or not (host=='anextour.ru' or host.endswith('.anextour.ru')):
+                    fail('anex2_link_host')
+            if 'matches_source_native' in edge:
+                ids=edge.get('positive_native_candidates',[]);expected_match=ids==[int(edge['source_native_id'])] and edge.get('link_state')=='captured_single_native'
+                if type(edge['matches_source_native']) is not bool or edge['matches_source_native']!=expected_match:
+                    fail('anex2_native_match')
+    if edge_count!=data['returned_edges'] or data['edge_state_counts']!=edge_states: fail('anex2_edge_partition')
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_anex2(stage):
+    if (operation!='int-tourvisor-match-anex2-selectors-readonly-20261001-v1'
+            or payload.get('batch')!='anex2-mass83-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=12):
+        fail('anex2_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_anex2_selectors_readonly_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='7bf2cd6dc73f451593308d3c2e78659a98725f5854c93680fcc6ea3f94b4f0f7'):
+        fail('anex2_source_binding')
+    for path in ('reports/hotel-match-mass83-proof-minimization-20261001.json',
+                 'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json'):
+        if not safe_file(stage/path,2*1024*1024): fail('anex2_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('anex2_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('anex2_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'anex2-mass83-20261001',
+                 'maximum_writes':0,'provider_http_calls':12,'state':'reserved_before_db_and_provider',
+                 'reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'anex2-selectors-batch-anex2-mass83-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),
+                'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536): fail('anex2_terminal_missing_no_replay')
+    data=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_anex2(data,receipt,digest,source)
+    successful=summary['state']=='completed_read_only'
+    if run.returncode!=(0 if successful else 2): fail('anex2_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','reason','requested_rows','provider_http_calls','returned_edges','edge_state_counts')}:
+        fail('anex2_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_ANEX2_DISPATCH = r'''    if mode=='match-anex2-selectors-readonly':
+        lane=run_match_anex2(stage)
+        result['match_anex2_selectors_readonly']=lane
+        result['supplier_calls']=lane['summary']['provider_http_calls']
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+REMOTE_FUNSUN2_HANDLER = r'''
+def validate_match_funsun2(data,receipt,digest,expected_source):
+    expected={'2000037261':('354014',59115,4),'2000068203':('789636',70782,4)}
+    fixed={'schema':'match-funsun2-selectors-readonly-result/1',
+           'operation':'int-tourvisor-match-funsun2-selectors-readonly-20261001-v1',
+           'batch':'funsun2-mass83-20261001','source_sha':expected_source,
+           'requested_rows':2,'tourvisor_account':'TOURVISOR_ANEX_JWT','operator_ids':[25],
+           'continue_calls':0,'dates_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False}
+    extra={'state','reason','captured_at_utc','groups','preflight_snapshots','provider_http_calls',
+           'physical_http_attempts','database_reads','call_counts','returned_edges',
+           'edge_state_counts','no_replay'}
+    receipt_fields={'operation','batch','source_sha','state','result_sha256','provider_http_calls',
+                    'database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('funsun2_terminal_binding')
+    ints=('provider_http_calls','physical_http_attempts','database_reads','returned_edges')
+    if (any(type(data.get(k)) is not int for k in ints)
+            or not 0<=data['provider_http_calls']<=7
+            or data['physical_http_attempts']!=data['provider_http_calls']
+            or not 0<=data['database_reads']<=8 or not 0<=data['returned_edges']<=2
+            or type(data['no_replay']) is not bool or data['no_replay']!=(data['provider_http_calls']>0)):
+        fail('funsun2_counter_authority')
+    for k in ('provider_http_calls','database_reads','database_writes','mapping_writes'):
+        if type(receipt.get(k)) is not int or receipt[k]!=data[k]: fail('funsun2_receipt_counter')
+    if receipt['safe_to_write_now'] is not False or type(receipt['no_replay']) is not bool:
+        fail('funsun2_receipt_authority')
+    state=data['state'];success=state=='completed_read_only'
+    if state not in ('completed_read_only','failed_before_provider_access','terminal_failed_no_replay'):
+        fail('funsun2_terminal_state')
+    if ((state=='failed_before_provider_access' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and data['reason'] is not None)):
+        fail('funsun2_terminal_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or len(reason)<1 or len(reason)>180
+            or re.search(r'[\x00-\x1f\x7f]',reason)): fail('funsun2_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str): fail('funsun2_timestamp')
+    import datetime as dt
+    try:
+        parsed=dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+        if parsed.utcoffset()!=dt.timedelta(0): fail('funsun2_timestamp')
+    except (ValueError,TypeError): fail('funsun2_timestamp')
+    calls=data['call_counts'];allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    if (not isinstance(calls,dict) or any(k not in allowed_calls or type(v) is not int or v<0 for k,v in calls.items())
+            or sum(calls.values())!=data['provider_http_calls']
+            or calls.get('search_start',0)>1 or calls.get('search_status',0)>3
+            or calls.get('search_results',0)>1 or calls.get('tour_detail',0)>2):
+        fail('funsun2_call_partition')
+    holds={'current_source_not_pending_null','current_source_history_review','target_missing_or_inactive',
+           'target_country_changed','target_manual','target_excluded','target_occupied','protected_source'}
+    snapshots=data['preflight_snapshots']
+    if not isinstance(snapshots,list) or len(snapshots)!=data['database_reads']: fail('funsun2_preflight_count')
+    last=0
+    for snap in snapshots:
+        if (not isinstance(snap,dict) or set(snap)!={'sequence','next_http_call','action','rows'}
+                or type(snap['sequence']) is not int or snap['sequence']!=last+1
+                or type(snap['next_http_call']) is not int or not 1<=snap['next_http_call']<=7
+                or not isinstance(snap['action'],str) or not isinstance(snap['rows'],list)
+                or not 1<=len(snap['rows'])<=2): fail('funsun2_preflight_shape')
+        last=snap['sequence'];seen=set()
+        for row in snap['rows']:
+            if (not isinstance(row,dict) or set(row)!={'source_catalog_id','target_tv_hotel_id','state','holds','safe_to_write_now'}
+                    or row['source_catalog_id'] not in expected or row['safe_to_write_now'] is not False):
+                fail('funsun2_preflight_row')
+            native,target,country=expected[row['source_catalog_id']]
+            if type(row['target_tv_hotel_id']) is not int or row['target_tv_hotel_id']!=target:
+                fail('funsun2_preflight_identity')
+            hs=row['holds']
+            if (not isinstance(hs,list) or hs!=sorted(set(hs)) or any(h not in holds for h in hs)
+                    or row['state']!=('eligible' if not hs else 'hold') or target in seen):
+                fail('funsun2_preflight_state')
+            seen.add(target)
+    groups=data['groups']
+    if not isinstance(groups,list) or len(groups)>1 or (success and len(groups)!=1): fail('funsun2_groups')
+    edge_count=0;edge_states={}
+    edge_base={'source_catalog_id','source_native_id','target_tv_hotel_id','operator_id','namespace',
+               'operator_tour_count','tour_id_sha256','state','safe_to_write_now'}
+    edge_optional={'tour_detail_http','operator_link_sha256','operator_link_host','positive_native_candidates',
+                   'query_keys','raw_identity_values','raw_identity_tokens','link_state','matches_source_native'}
+    group_base={'group','country_id','state','sent','edges'}
+    group_optional={'initial_preflight','search_complete','returned_targets'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_funsun_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    seen_targets=set()
+    for group in groups:
+        if (not isinstance(group,dict) or not group_base.issubset(group)
+                or set(group)-group_base-group_optional or group['group']!=1 or group['country_id']!=4
+                or group['state'] not in allowed_group_states or type(group['sent']) is not int
+                or not 0<=group['sent']<=2 or not isinstance(group['edges'],list)): fail('funsun2_group_shape')
+        for edge in group['edges']:
+            if (not isinstance(edge,dict) or not edge_base.issubset(edge)
+                    or set(edge)-edge_base-edge_optional or edge['source_catalog_id'] not in expected
+                    or edge['source_native_id']!=expected[edge['source_catalog_id']][0]
+                    or type(edge['target_tv_hotel_id']) is not int
+                    or edge['target_tv_hotel_id']!=expected[edge['source_catalog_id']][1]
+                    or edge['operator_id']!=25 or edge['namespace']!='operator_315'
+                    or type(edge['operator_tour_count']) is not int or edge['operator_tour_count']<1
+                    or not isinstance(edge['tour_id_sha256'],str) or not re.fullmatch(r'[0-9a-f]{64}',edge['tour_id_sha256'])
+                    or edge['state'] not in allowed_edge_states or edge['safe_to_write_now'] is not False
+                    or edge['target_tv_hotel_id'] in seen_targets): fail('funsun2_edge_identity')
+            seen_targets.add(edge['target_tv_hotel_id']);edge_count+=1
+            edge_states[edge['state']]=edge_states.get(edge['state'],0)+1
+            if 'positive_native_candidates' in edge:
+                ids=edge['positive_native_candidates']
+                if (not isinstance(ids,list) or ids!=sorted(set(ids))
+                        or any(type(v) is not int or v<1 for v in ids)): fail('funsun2_native_candidates')
+            raw_values=edge.get('raw_identity_values');raw_tokens=edge.get('raw_identity_tokens')
+            if (raw_values is None)!=(raw_tokens is None): fail('funsun2_raw_identity_pair')
+            if raw_values is not None:
+                if (not isinstance(raw_values,list) or not isinstance(raw_tokens,list)
+                        or any(not isinstance(v,str) or len(v)>512 for v in raw_values)
+                        or any(not isinstance(v,str) or not re.fullmatch(r'[1-9][0-9]{0,19}',v) for v in raw_tokens)
+                        or sorted(set(int(v) for v in raw_tokens))!=edge.get('positive_native_candidates',[])):
+                    fail('funsun2_raw_identity')
+            if 'query_keys' in edge:
+                keys=edge['query_keys']
+                if (not isinstance(keys,list) or len(keys)>40 or keys!=sorted(set(keys))
+                        or any(not isinstance(v,str) or not re.fullmatch(r'[a-z0-9_.-]{1,80}',v) for v in keys)):
+                    fail('funsun2_query_keys')
+            if 'link_state' in edge and edge['link_state'] not in allowed_links: fail('funsun2_link_state')
+            if edge.get('link_state') in ('captured_single_native','captured_ambiguous_native'):
+                host=edge.get('operator_link_host')
+                if not isinstance(host,str) or not (host=='fstravel.com' or host.endswith('.fstravel.com')):
+                    fail('funsun2_link_host')
+            if 'matches_source_native' in edge:
+                ids=edge.get('positive_native_candidates',[]);expected_match=ids==[int(edge['source_native_id'])]
+                if type(edge['matches_source_native']) is not bool or edge['matches_source_native']!=expected_match:
+                    fail('funsun2_native_match')
+    if edge_count!=data['returned_edges'] or data['edge_state_counts']!=edge_states: fail('funsun2_edge_partition')
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_funsun2(stage):
+    if (operation!='int-tourvisor-match-funsun2-selectors-readonly-20261001-v1'
+            or payload.get('batch')!='funsun2-mass83-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=7):
+        fail('funsun2_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_funsun2_selectors_readonly_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_funsun2_selectors_readonly_v1.py'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='093970c2b59b95dc59f1187cd05dd50a3653d6cdd93ad892e5d5ead1685bebae'):
+        fail('funsun2_source_binding')
+    for path in ('reports/hotel-match-mass83-proof-minimization-20261001.json',
+                 'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json'):
+        if not safe_file(stage/path,2*1024*1024): fail('funsun2_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('funsun2_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('funsun2_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'funsun2-mass83-20261001',
+                 'maximum_writes':0,'provider_http_calls':7,'state':'reserved_before_db_and_provider',
+                 'reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'funsun2-selectors-batch-funsun2-mass83-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),
+                'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536): fail('funsun2_terminal_missing_no_replay')
+    data=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_funsun2(data,receipt,digest,source)
+    successful=summary['state']=='completed_read_only'
+    if run.returncode!=(0 if successful else 2): fail('funsun2_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','reason','requested_rows','provider_http_calls','returned_edges','edge_state_counts')}:
+        fail('funsun2_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_FUNSUN2_DISPATCH = r'''    if mode=='match-funsun2-selectors-readonly':
+        lane=run_match_funsun2(stage)
+        result['match_funsun2_selectors_readonly']=lane
+        result['supplier_calls']=lane['summary']['provider_http_calls']
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+REMOTE_SOURCE3_HANDLER = r'''
+def validate_match_source3(data,receipt,digest,expected_source):
+    expected={'163887':(5,'operator_5',1124,'8319'),
+              '2000057636':(342,'operator_342',21679,'24891'),
+              '2000073063':(5,'operator_5',60766,None)}
+    fixed={'schema':'match-source3-native-current-result/1',
+           'operation':'int-andromeda-match-source3-native-current-20261001-v1',
+           'source_sha':expected_source,'batch':'source3-native-20261001','requested_sources':3,
+           'tourvisor_http_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False}
+    extra={'state','reason','captured_at_utc','preflight_rows','evidence_rows','responses',
+           'provider_http_calls','database_reads','no_replay'}
+    receipt_fields={'state','operation','source_sha','batch','result_sha256','provider_http_calls',
+                    'tourvisor_http_calls','database_reads','database_writes','mapping_writes',
+                    'safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('source3_terminal_binding')
+    for item in (data,receipt):
+        if (any(type(item[k]) is not int or item[k]!=0 for k in ('tourvisor_http_calls','database_writes','mapping_writes'))
+                or type(item['provider_http_calls']) is not int or not 0<=item['provider_http_calls']<=3
+                or type(item['database_reads']) is not int or item['database_reads'] not in (0,1)
+                or item['safe_to_write_now'] is not False or type(item['no_replay']) is not bool
+                or item['no_replay']!=(item['provider_http_calls']>0)):
+            fail('source3_zero_write_authority')
+    if type(data['requested_sources']) is not int or data['acceptance_evaluated'] is not False:
+        fail('source3_acceptance_authority')
+    state=data['state'];success=state=='completed_source3_native_current'
+    if state not in ('completed_source3_native_current','failed_before_provider','terminal_failed_no_replay'):
+        fail('source3_terminal_state')
+    if ((state=='failed_before_provider' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and (data['database_reads']!=1 or data['reason'] is not None))):
+        fail('source3_terminal_state_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or not re.fullmatch(r'[A-Za-z0-9_.:-]{1,140}',reason)):
+        fail('source3_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|\+00:00)',stamp):
+        fail('source3_timestamp')
+    import datetime as dt
+    try: dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+    except ValueError: fail('source3_timestamp')
+    holds={'current_source_not_unique','current_source_not_pending_null','current_source_revision_differs',
+           'current_source_history_review','target_missing_or_inactive','target_country_changed',
+           'target_manual_or_exclusion','target_occupied'}
+    base={'catalog_id','operator_id','supplier_namespace','target_tv_hotel_id','target_native_id_for_comparison',
+          'state','holds','safe_to_write_now'}
+    def identity(row):
+        if not isinstance(row,dict) or row.get('catalog_id') not in expected: fail('source3_row_identity')
+        spec=expected[row['catalog_id']]
+        if (type(row.get('operator_id')) is not int or type(row.get('target_tv_hotel_id')) is not int
+                or tuple(row.get(k) for k in ('operator_id','supplier_namespace','target_tv_hotel_id','target_native_id_for_comparison'))!=spec
+                or row.get('safe_to_write_now') is not False): fail('source3_row_identity')
+        reasons=row.get('holds')
+        if (not isinstance(reasons,list) or reasons!=sorted(set(reasons)) or any(r not in holds for r in reasons)):
+            fail('source3_row_holds')
+    preflight=data['preflight_rows'];evidence=data['evidence_rows'];responses=data['responses']
+    if (not isinstance(preflight,list) or len(preflight) not in (0,3)
+            or not isinstance(evidence,list) or len(evidence) not in (0,3)
+            or not isinstance(responses,list) or len(responses)>2
+            or (success and (len(preflight)!=3 or len(evidence)!=3))): fail('source3_partition')
+    pre={}
+    for row in preflight:
+        identity(row)
+        if (set(row)!=base or row['catalog_id'] in pre
+                or row['state']!=('hold' if row['holds'] else 'eligible_for_source_evidence')): fail('source3_preflight_shape')
+        pre[row['catalog_id']]=row
+    response_index={}
+    for response in responses:
+        if not isinstance(response,dict) or set(response)!={'operator_id','catalog_ids','sha256'}: fail('source3_response_shape')
+        op=response['operator_id']
+        catalogs=sorted([c for c,r in pre.items() if r['operator_id']==op and not r['holds']],key=int)
+        if (type(op) is not int or op not in (5,342) or op in response_index or not catalogs
+                or response['catalog_ids']!=catalogs or not isinstance(response['sha256'],str)
+                or not re.fullmatch(r'[a-f0-9]{64}',response['sha256'])): fail('source3_response_binding')
+        response_index[op]=response['sha256']
+    if success:
+        eligible_ops={r['operator_id'] for r in preflight if not r['holds']}
+        if set(response_index)!=eligible_ops or data['provider_http_calls']!=(1+len(eligible_ops) if eligible_ops else 0):
+            fail('source3_http_binding')
+    seen=set()
+    for row in evidence:
+        identity(row);cat=row['catalog_id']
+        if (set(row)!=base|{'price_rows','native_ids','references','matches_target_native'}
+                or cat in seen or cat not in pre or row['holds']!=pre[cat]['holds']): fail('source3_evidence_shape')
+        seen.add(cat);ids=row['native_ids'];refs=row['references']
+        if (type(row['price_rows']) is not int or not 0<=row['price_rows']<=2000
+                or not isinstance(ids,list) or len(ids)>2000
+                or any(not isinstance(n,str) or not re.fullmatch(r'[1-9][0-9]{0,31}',n) for n in ids)
+                or ids!=sorted(set(ids),key=int) or not isinstance(refs,list)
+                or not len(ids)<=len(refs)<=row['price_rows'] or (not ids and refs)):
+            fail('source3_evidence_counts')
+        expected_state=('preflight_hold' if row['holds'] else 'captured_single_native' if len(ids)==1
+                        else 'captured_ambiguous_native' if ids else 'catalog_only' if row['price_rows'] else 'not_returned_in_context')
+        target=row['target_native_id_for_comparison']
+        if (row['state']!=expected_state or type(row['matches_target_native']) is not bool
+                or row['matches_target_native']!=(not row['holds'] and target is not None and ids==[target])
+                or (row['holds'] and (row['price_rows'] or ids or refs))): fail('source3_evidence_state')
+        pointers=set()
+        for ref in refs:
+            op=row['operator_id']
+            if (not isinstance(ref,dict) or set(ref)!={'private_file','sha256','json_pointer'}
+                    or ref['private_file']!='operator-'+str(op)+'-page-1.json'
+                    or ref['sha256']!=response_index.get(op) or not isinstance(ref['json_pointer'],str)
+                    or not re.fullmatch(r'/PRICES/(?:0|[1-9][0-9]{0,3})',ref['json_pointer'])
+                    or int(ref['json_pointer'].rsplit('/',1)[1])>=2000
+                    or ref['json_pointer'] in pointers): fail('source3_reference_binding')
+            pointers.add(ref['json_pointer'])
+    if evidence and seen!=set(expected): fail('source3_evidence_partition')
+    # Do not export provider/config exception text, even if the PHP sanitizer allowed it.
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_source3(stage):
+    if (operation!='int-andromeda-match-source3-native-current-20261001-v1'
+            or payload.get('batch')!='source3-native-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=3):
+        fail('source3_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_source3_native_current_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_source3_native_current_v1.php'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='8af3a42bc63fb7b7eacb01df661cbf7ba6bcc83bdf9681adfc1e59c159b2cf85'):
+        fail('source3_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('source3_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('source3_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'source3-native-20261001',
+                 'maximum_writes':0,'provider_http_calls':3,'state':'reserved_before_db_and_provider','reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n');stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    # A consumed batch cannot be revived with another version or source head.
+    exclusive(parent/'source3-native-current-batch-source3-native-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_OPERATION_DIR':str(child),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0',str(runner),'--acquire-source-evidence'],
+                       cwd=project,env=env,capture_output=True,text=True,timeout=240)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8388608) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536): fail('source3_terminal_missing_no_replay')
+    data=safe_json(result_path,8388608);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_source3(data,receipt,digest,source)
+    successful=summary['state']=='completed_source3_native_current'
+    if run.returncode!=(0 if successful else 2): fail('source3_exit_binding')
+    stdout=json.loads(run.stdout)
+    states={}
+    for row in data['evidence_rows']: states[row['state']]=states.get(row['state'],0)+1
+    if stdout!={'state':data['state'],'reason':data['reason'],'requested_sources':3,
+                'provider_http_calls':data['provider_http_calls'],'evidence_states':states,'safe_to_write_now':False}:
+        fail('source3_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_SOURCE3_DISPATCH = r'''    if mode=='match-source3-native-current':
+        source3=run_match_source3(stage)
+        result['match_source3_native_current']=source3
+        result['supplier_calls']=source3['summary']['provider_http_calls']
+        result['database_reads']=source3['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if source3['successful'] else 'terminal_nonzero_no_replay'
+'''
+
+
 def remote_with_primary(core, proof: bool = False, native: bool = False, guarded: bool = False, bg: bool = False,
                         shams_geo: bool = False, shams_geo_readback: bool = False, shams_write: bool = False,
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
-                        target_v2: bool = False) -> str:
+                        target_v2: bool = False, source3: bool = False, intourist4: bool = False,
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1291,6 +2680,37 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_PREFLIGHT_READBACK_HANDLER, REMOTE_TARGET_PREFLIGHT_READBACK_DISPATCH, TARGET_PREFLIGHT_READBACK_MODE
     if target_v2:
         handler, mode_dispatch, selected_mode = REMOTE_TARGET_V2_HANDLER, REMOTE_TARGET_V2_DISPATCH, TARGET_V2_MODE
+    if source3:
+        handler, mode_dispatch, selected_mode = REMOTE_SOURCE3_HANDLER, REMOTE_SOURCE3_DISPATCH, SOURCE3_MODE
+    if intourist4:
+        handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_HANDLER, REMOTE_INTOURIST4_DISPATCH, INTOURIST4_MODE
+    if intourist4_readback:
+        handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_READBACK_HANDLER, REMOTE_INTOURIST4_READBACK_DISPATCH, INTOURIST4_READBACK_MODE
+    if funsun2:
+        handler, mode_dispatch, selected_mode = REMOTE_FUNSUN2_HANDLER, REMOTE_FUNSUN2_DISPATCH, FUNSUN2_MODE
+    if anex2:
+        handler, mode_dispatch, selected_mode = REMOTE_ANEX2_HANDLER, REMOTE_ANEX2_DISPATCH, ANEX2_MODE
+    if delta:
+        handler, mode_dispatch, selected_mode = REMOTE_DELTA_HANDLER, REMOTE_DELTA_DISPATCH, DELTA_MODE
+    if bf8:
+        handler, mode_dispatch, selected_mode = REMOTE_BF8_HANDLER, REMOTE_BF8_DISPATCH, BF8_MODE
+    if bp8:
+        handler, mode_dispatch, selected_mode = REMOTE_BP8_HANDLER, REMOTE_BP8_DISPATCH, BP8_MODE
+    if intourist4 or intourist4_readback or funsun2 or anex2:
+        # These fixed Tourvisor operations are authorized by the registered parser.
+        # Bind the emitted first guard to the exact triple, before any reservation;
+        # do not broaden the stock operation namespace for other modes.
+        operation_guard = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):\n"
+        core.need(remote.count(operation_guard) == 1, 'primary_operation_guard_source_drift')
+        selected_operation, selected_batch = (
+            (INTOURIST4_OPERATION, INTOURIST4_BATCH) if intourist4 else
+            (INTOURIST4_READBACK_OPERATION, INTOURIST4_READBACK_BATCH) if intourist4_readback else
+            (FUNSUN2_OPERATION, FUNSUN2_BATCH) if funsun2 else
+            (ANEX2_OPERATION, ANEX2_BATCH)
+        )
+        exact_guard = (f"    if not (mode=={selected_mode!r} and operation=={selected_operation!r} "
+                       f"and payload.get('batch')=={selected_batch!r}):\n")
+        remote = remote.replace(operation_guard, exact_guard, 1)
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1299,7 +2719,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1318,7 +2738,20 @@ def activate(core, command: dict) -> None:
     target_preflight = command['mode'] == TARGET_PREFLIGHT_MODE
     target_preflight_readback = command['mode'] == TARGET_PREFLIGHT_READBACK_MODE
     target_v2 = command['mode'] == TARGET_V2_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2)
+    source3 = command['mode'] == SOURCE3_MODE
+    intourist4 = command['mode'] == INTOURIST4_MODE
+    intourist4_readback = command['mode'] == INTOURIST4_READBACK_MODE
+    funsun2 = command['mode'] == FUNSUN2_MODE
+    anex2 = command['mode'] == ANEX2_MODE
+    delta = command['mode'] == DELTA_MODE
+    bp8 = command['mode'] == BP8_MODE
+    bf8 = command['mode'] == BF8_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8)
+    if source3 or intourist4 or funsun2 or anex2:
+        # activate is reached only after stock checked_event; parse-only exits before it.
+        token = os.environ.get('GH_TOKEN', '')
+        core.need(bool(token), 'match_supplier_slot_token')
+        core.ensure_supplier_slot(token)
     files = list(core.FIXED)
     selected_files = SHAMS_WRITE_SOURCE_FILES if shams_write else (SHAMS_GEO_SOURCE_FILES if (shams_geo or shams_geo_readback) else (BG_SOURCE_FILES if bg else (GUARDED_SOURCE_FILES if guarded else (NATIVE_SOURCE_FILES if native else (PROOF_SOURCE_FILES if proof else SOURCE_FILES)))))
     if target_catalog or target_readback:
@@ -1327,6 +2760,22 @@ def activate(core, command: dict) -> None:
         selected_files = TARGET_PREFLIGHT_SOURCE_FILES
     if target_v2:
         selected_files = TARGET_V2_SOURCE_FILES
+    if source3:
+        selected_files = SOURCE3_SOURCE_FILES
+    if intourist4:
+        selected_files = INTOURIST4_SOURCE_FILES
+    if intourist4_readback:
+        selected_files = ()
+    if funsun2:
+        selected_files = FUNSUN2_SOURCE_FILES
+    if anex2:
+        selected_files = ANEX2_SOURCE_FILES
+    if delta:
+        selected_files = DELTA_SOURCE_FILES
+    if bf8:
+        selected_files = BF8_SOURCE_FILES
+    if bp8:
+        selected_files = BP8_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)

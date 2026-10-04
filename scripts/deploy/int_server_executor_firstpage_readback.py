@@ -10,7 +10,7 @@ import ast
 
 MODE = 'andromeda-firstpage-readback'
 OPERATION = 'int-andromeda-firstpage-receipt-20261004-v1'
-SOURCE = '24699a22b7d4123b4e6ec387d7193c0c360e2d03'
+SOURCE = '598092cd292b66b7b94e4a7913a3e2d1f5b550ae'
 
 
 def need(value: bool, reason: str) -> None:
@@ -213,7 +213,7 @@ while(ob_get_level())ob_end_clean();echo json_encode($r);"""
 '''
 
 REMOTE_DISPATCH = r'''    if mode=='andromeda-firstpage-readback':
-        if operation!='int-andromeda-firstpage-receipt-20261004-v1' or source!='24699a22b7d4123b4e6ec387d7193c0c360e2d03':
+        if operation!='int-andromeda-firstpage-receipt-20261004-v1' or source!='598092cd292b66b7b94e4a7913a3e2d1f5b550ae':
             fail('firstpage_sealed_scope')
         result['supplier_calls']=0
         result['database_reads']=0

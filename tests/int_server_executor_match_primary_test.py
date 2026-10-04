@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import ast
+import base64
 import copy
 import hashlib
 import importlib.util
@@ -13,6 +14,7 @@ import tempfile
 import time
 import types
 import unittest
+import zlib
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -1056,5 +1058,849 @@ class Live30TargetCatalogV2RegistrationTest(unittest.TestCase):
                 ns,stage,root=self.namespace(tmp)
                 with patch.object(subprocess,'run',side_effect=lambda *a,**kw:self.response(kw,mutate)):
                     with self.assertRaises(RuntimeError):ns['run_match_tv_live30_target_catalog_v2'](stage)
+
+
+SOURCE3_FIXTURE = "{\n  \"schema\": \"match-source3-native-current/1\",\n  \"batch\": \"source3-native-20261001\",\n  \"request\": {\n    \"townfrominc\": 1,\n    \"stateinc\": 5,\n    \"checkin_beg\": \"20261008\",\n    \"checkin_end\": \"20261029\",\n    \"nights\": 7,\n    \"adults\": 2,\n    \"children\": 0,\n    \"currencyinc\": 643,\n    \"packettype\": 0,\n    \"group_by\": 32,\n    \"page\": 1\n  },\n  \"rows\": [\n    {\n      \"catalog_id\": \"163887\",\n      \"operator_id\": 5,\n      \"supplier_namespace\": \"operator_5\",\n      \"target_tv_hotel_id\": 1124,\n      \"target_native_id_for_comparison\": \"8319\",\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"68805396c525fbbebfc77f5de1c9264625c96e2149bf4089c741a70c6051fa46\"\n    },\n    {\n      \"catalog_id\": \"2000057636\",\n      \"operator_id\": 342,\n      \"supplier_namespace\": \"operator_342\",\n      \"target_tv_hotel_id\": 21679,\n      \"target_native_id_for_comparison\": \"24891\",\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"7f19e9a7087358ed130d9a29ab814e9217c6eff4e2461086c34a072d2cf273a9\"\n    },\n    {\n      \"catalog_id\": \"2000073063\",\n      \"operator_id\": 5,\n      \"supplier_namespace\": \"operator_5\",\n      \"target_tv_hotel_id\": 60766,\n      \"target_native_id_for_comparison\": null,\n      \"expected_country_id\": \"4\",\n      \"catalog_sha256\": \"6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99\",\n      \"evidence_sha256\": \"0f8a5e6d4314d386f50706bf98be6fb363380d9906853298bbbb8ca033c5e67a\"\n    }\n  ]\n}\n"
+
+class Source3RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.old_remote=self.core.REMOTE;self.old_files=list(self.core.FIXED)
+        registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.SOURCE3_MODE+' '+registration.SOURCE3_OPERATION+' '+registration.SOURCE3_BATCH
+
+    def activate(self):
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'}),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,self.core.parse_command(self.body()))
+            slot.assert_called_once_with('fixture-token')
+
+    def test_exact_scope_and_supplier_slot_after_authorization(self):
+        cmd=self.core.parse_command(self.body())
+        self.assertEqual(cmd,dict(source_sha=SOURCE,mode=registration.SOURCE3_MODE,operation_id=registration.SOURCE3_OPERATION,
+                                  batch=registration.SOURCE3_BATCH,maximum_writes=0,provider_http_calls=3))
+        for altered in [self.body()+' 4',self.body().replace('-v1','-v2'),self.body().replace('source3-native-20261001','native110-20260928')]:
+            with self.assertRaises(ValueError):self.core.parse_command(altered)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot:
+            with self.assertRaises(ValueError):registration.activate(self.core,cmd)
+            slot.assert_not_called()
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'}),patch.object(self.core,'ensure_supplier_slot',side_effect=ValueError('supplier_slot_busy')):
+            with self.assertRaises(ValueError):registration.activate(self.core,cmd)
+        self.assertEqual(self.core.REMOTE,self.old_remote);self.assertEqual(self.core.FIXED,self.old_files)
+        self.activate()
+        self.assertTrue(set(registration.SOURCE3_SOURCE_FILES).issubset(self.core.FIXED))
+        self.assertNotIn('def run_match_primary_candidate(stage):',self.core.REMOTE)
+        guards=[n.test for n in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+                and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode' and isinstance(n.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<guard>','eval'),{},dict(mode=registration.SOURCE3_MODE)))
+        encoded=base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def test_source3_keeps_owner_canonical_and_current_head_authorization(self):
+        body=self.body();event={'issue':{'number':4217},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
+        def api(path,token):
+            if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
+            if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
+            if path=='/git/ref/heads/'+self.core.FEATURE:return {'object':{'sha':SOURCE}}
+            raise AssertionError(path)
+        with patch.object(self.core,'api_get',side_effect=api):
+            self.assertEqual(self.core.checked_event('fixture',event,CONTROL)['provider_http_calls'],3)
+            for change in [lambda e:e['issue'].update(number=3419),lambda e:e['issue'].update(number=1971),
+                           lambda e:e['comment']['user'].update(id=1),lambda e:e['comment'].update(author_association='NONE')]:
+                bad=copy.deepcopy(event);change(bad)
+                with self.assertRaises(ValueError):self.core.checked_event('fixture',bad,CONTROL)
+            with self.assertRaises(ValueError):self.core.checked_event('fixture',event,'c'*40)
+
+    def namespace(self,tmp):
+        home=Path(tmp);project=home/'www/anytoour.ru';project.mkdir(parents=True)
+        root=home/'.anytoour-match/operations';root.mkdir(parents=True)
+        stage=home/'stage'
+        manifest=stage/registration.SOURCE3_SOURCE_FILES[-1];manifest.parent.mkdir(parents=True)
+        manifest.write_bytes(SOURCE3_FIXTURE.encode())
+        self.assertEqual(hashlib.sha256(manifest.read_bytes()).hexdigest(),registration.SOURCE3_MANIFEST_SHA)
+        runner=stage/'scripts/diagnostics/hotel_match_source3_native_current_v1.php';runner.write_text('<?php // fixture')
+        ns=dict(home=home,project=project,operation=registration.SOURCE3_OPERATION,source=SOURCE,
+                payload=dict(batch=registration.SOURCE3_BATCH,maximum_writes=0,provider_http_calls=3),
+                os=os,re=re,json=json,hashlib=hashlib,time=time,subprocess=subprocess)
+        nodes=[n for n in ast.parse(self.old_remote).body if isinstance(n,ast.FunctionDef) and n.name in ('fail','safe_file','safe_json')]
+        exec(compile(ast.Module(body=nodes,type_ignores=[]),'<stock_helpers>','exec'),ns)
+        exec(registration.REMOTE_SOURCE3_HANDLER,ns)
+        return ns,stage,root
+
+    def result_fixture(self,held=()):
+        specs=[('163887',5,'operator_5',1124,'8319'),('2000057636',342,'operator_342',21679,'24891'),('2000073063',5,'operator_5',60766,None)]
+        pre=[];rows=[]
+        for cat,op,namespace,target,native in specs:
+            hold=['target_occupied'] if cat in held else []
+            base=dict(catalog_id=cat,operator_id=op,supplier_namespace=namespace,target_tv_hotel_id=target,
+                      target_native_id_for_comparison=native,holds=hold,safe_to_write_now=False)
+            pre.append(dict(base,state='hold' if hold else 'eligible_for_source_evidence'))
+            native_ids=[] if hold else [native or '9999']
+            rows.append(dict(base,state='preflight_hold' if hold else 'captured_single_native',price_rows=0 if hold else 1,
+                native_ids=native_ids,references=[] if hold else [dict(private_file='operator-'+str(op)+'-page-1.json',sha256=str(op%10)*64,json_pointer='/PRICES/0')],
+                matches_target_native=not hold and native is not None))
+        ops=sorted({r['operator_id'] for r in pre if not r['holds']})
+        responses=[dict(operator_id=op,catalog_ids=sorted([r['catalog_id'] for r in pre if r['operator_id']==op and not r['holds']],key=int),sha256=str(op%10)*64) for op in ops]
+        calls=1+len(ops) if ops else 0
+        return dict(schema='match-source3-native-current-result/1',state='completed_source3_native_current',reason=None,
+            operation=registration.SOURCE3_OPERATION,source_sha=SOURCE,batch=registration.SOURCE3_BATCH,captured_at_utc='2026-10-04T00:00:00+00:00',
+            requested_sources=3,preflight_rows=pre,evidence_rows=rows,responses=responses,provider_http_calls=calls,tourvisor_http_calls=0,
+            database_reads=1,database_writes=0,mapping_writes=0,safe_to_write_now=False,acceptance_evaluated=False,no_replay=calls>0)
+
+    def child(self,data,mutate_receipt=None):
+        def run(argv,**kw):
+            self.assertEqual(argv[-1],'--acquire-source-evidence')
+            self.assertEqual(set(kw['env'])-{'PATH','HOME','LANG','LC_ALL'},{'ANYTOUR_ROOT','MATCH_OPERATION_DIR','MATCH_SOURCE_SHA'})
+            child=Path(kw['env']['MATCH_OPERATION_DIR']);res=json.loads((child/'reservation.json').read_text())
+            self.assertEqual(res['state'],'reserved_before_db_and_provider');self.assertEqual(res['provider_http_calls'],3)
+            self.assertEqual(res['maximum_writes'],0)
+            marker=child.parents[1]/'source3-native-current-batch-source3-native-20261001.json'
+            self.assertEqual(json.loads(marker.read_text()),res)
+            raw=json.dumps(data).encode();(child/'result.json').write_bytes(raw)
+            keys=('state','operation','source_sha','batch','provider_http_calls','tourvisor_http_calls','database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay')
+            receipt={k:data[k] for k in keys};receipt['result_sha256']=hashlib.sha256(raw).hexdigest()
+            if mutate_receipt:mutate_receipt(receipt)
+            (child/'receipt.json').write_text(json.dumps(receipt))
+            counts={}
+            for row in data['evidence_rows']:counts[row['state']]=counts.get(row['state'],0)+1
+            out=dict(state=data['state'],reason=data['reason'],requested_sources=3,provider_http_calls=data['provider_http_calls'],evidence_states=counts,safe_to_write_now=False)
+            return types.SimpleNamespace(returncode=0 if data['state']=='completed_source3_native_current' else 2,stdout=json.dumps(out),stderr='')
+        return run
+
+    def test_success_exact_strings_offset_timestamp_and_no_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture()
+            with patch.dict(os.environ,{'ANEX_API_TOKEN':'secret','DB_PASSWORD':'secret'}),patch.object(subprocess,'run',side_effect=self.child(data)) as call:
+                result=ns['run_match_source3'](stage)
+                self.assertTrue(result['successful']);self.assertTrue(result['no_replay'])
+                self.assertEqual(result['summary']['provider_http_calls'],3)
+                self.assertTrue(result['summary']['evidence_rows'][0]['matches_target_native'])
+                self.assertNotIn('reason',result['summary'])
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+            marker=root.parent/'source3-native-current-batch-source3-native-20261001.json'
+            self.assertEqual(marker.stat().st_mode&0o777,0o600)
+
+    def test_one_hold_leaves_independent_rows_and_all_holds_use_zero_http(self):
+        for held in [('163887',),('163887','2000073063'),('163887','2000057636','2000073063')]:
+            with self.subTest(held=held),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);data=self.result_fixture(held)
+                with patch.object(subprocess,'run',side_effect=self.child(data)):
+                    result=ns['run_match_source3'](stage)
+                self.assertTrue(result['successful'])
+                self.assertEqual(sum(r['state']=='preflight_hold' for r in result['summary']['evidence_rows']),len(held))
+                self.assertTrue(result['no_replay'])
+
+    def test_ambiguous_native_preserves_tokens_and_false_match(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture();row=data['evidence_rows'][0]
+            row.update(native_ids=['804','8319','44562'],price_rows=3,state='captured_ambiguous_native',matches_target_native=False,
+                       references=[dict(row['references'][0],json_pointer='/PRICES/'+str(i)) for i in range(3)])
+            with patch.object(subprocess,'run',side_effect=self.child(data)):
+                result=ns['run_match_source3'](stage)
+            self.assertEqual(result['summary']['evidence_rows'][0]['native_ids'],['804','8319','44562'])
+
+    def test_failure_receipt_charges_calls_and_omits_exception_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);data=self.result_fixture()
+            data.update(state='terminal_failed_no_replay',reason='fixture_private_exception',evidence_rows=[],responses=[],provider_http_calls=2)
+            with patch.object(subprocess,'run',side_effect=self.child(data)) as call:
+                result=ns['run_match_source3'](stage)
+                self.assertFalse(result['successful']);self.assertEqual(result['summary']['provider_http_calls'],2)
+                self.assertNotIn('fixture_private_exception',json.dumps(result))
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+
+    def test_widened_payload_or_manifest_never_starts_child(self):
+        for key,value in [('maximum_writes',1),('provider_http_calls',4),('provider_http_calls',True),('batch','other')]:
+            with self.subTest(key=key),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);ns['payload'][key]=value
+                with patch.object(subprocess,'run') as call:
+                    with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                    call.assert_not_called()
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp);(stage/registration.SOURCE3_SOURCE_FILES[-1]).write_text('{}')
+            with patch.object(subprocess,'run') as call:
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                call.assert_not_called()
+
+    def test_terminal_mutations_are_rejected_and_marker_remains(self):
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(database_writes=True),lambda d:d.update(provider_http_calls=4),
+                 lambda d:d.update(acceptance_evaluated=True),lambda d:d.update(safe_to_write_now=0),lambda d:d.update(no_replay=1),
+                 lambda d:d.update(source_sha='c'*40),lambda d:d.update(captured_at_utc='2026-13-04T00:00:00+00:00'),
+                 lambda d:d['evidence_rows'][0].update(native_ids=[8319]),lambda d:d['evidence_rows'][0].update(matches_target_native=False),
+                 lambda d:d['evidence_rows'][0].update(references=[]),
+                 lambda d:d['evidence_rows'][0]['references'][0].update(private_file='/tmp/secret'),
+                 lambda d:d['responses'][0].update(catalog_ids=['163887']),lambda d:d.update(extra='private')]
+        for change in changes:
+            with self.subTest(change=change),tempfile.TemporaryDirectory() as tmp:
+                ns,stage,root=self.namespace(tmp);data=self.result_fixture();change(data)
+                with patch.object(subprocess,'run',side_effect=self.child(data)):
+                    with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertTrue((root.parent/'source3-native-current-batch-source3-native-20261001.json').is_file())
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=self.child(self.result_fixture(),lambda r:r.update(result_sha256='0'*64))):
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+
+    def test_timeout_and_consumed_batch_cannot_retry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            with patch.object(subprocess,'run',side_effect=subprocess.TimeoutExpired('fixture',240)) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):ns['run_match_source3'](stage)
+                with self.assertRaises(RuntimeError):ns['run_match_source3'](stage)
+                self.assertEqual(call.call_count,1)
+        with tempfile.TemporaryDirectory() as tmp:
+            ns,stage,root=self.namespace(tmp)
+            marker=root.parent/'source3-native-current-batch-source3-native-20261001.json';marker.write_text('already consumed')
+            with patch.object(subprocess,'run') as call:
+                with self.assertRaises(FileExistsError):ns['run_match_source3'](stage)
+                call.assert_not_called();self.assertFalse((root/registration.SOURCE3_OPERATION).exists())
+
+class Intourist4RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core()
+        self.old_files=list(self.core.FIXED)
+        self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self, source=SOURCE, mode=None, operation=None, batch=None):
+        return self.core.PREFIX+' '.join([
+            source,
+            mode or registration.INTOURIST4_MODE,
+            operation or registration.INTOURIST4_OPERATION,
+            batch or registration.INTOURIST4_BATCH,
+        ])
+
+    def test_exact_fixed_parser_scope(self):
+        expected=dict(
+            source_sha=SOURCE,
+            mode=registration.INTOURIST4_MODE,
+            operation_id=registration.INTOURIST4_OPERATION,
+            batch=registration.INTOURIST4_BATCH,
+            maximum_writes=0,
+            provider_http_calls=14,
+        )
+        self.assertEqual(self.core.parse_command(self.body()),expected)
+        bad=[
+            self.body(operation=registration.INTOURIST4_OPERATION+'-changed'),
+            self.body(batch=registration.INTOURIST4_BATCH+'-changed'),
+            self.body(source='bad'),
+            self.body()+' extra',
+        ]
+        for body in bad:
+            with self.subTest(body=body),self.assertRaises(ValueError):
+                self.core.parse_command(body)
+
+    def test_activation_is_supplier_gated_and_exact(self):
+        command=self.core.parse_command(self.body())
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertTrue(set(registration.INTOURIST4_SOURCE_FILES).issubset(set(self.core.FIXED)))
+        self.assertEqual(self.core.REMOTE.count('def run_match_intourist4(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-intourist4-selectors-readonly':"),1)
+        self.assertIn("if mode not in ('match-intourist4-selectors-readonly','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+
+    def test_missing_or_busy_supplier_slot_fails_before_mutation(self):
+        command=self.core.parse_command(self.body())
+        with patch.dict(os.environ,{},clear=True),self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot',side_effect=ValueError('busy')) as slot,self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+
+
+
+class Intourist4ReadbackRegistrationTest(unittest.TestCase):
+    SOURCE_SHA='a82516771252fab0ac4bd079480156c684766e05'
+
+    def setUp(self):
+        self.core=fresh_core();self.old_files=list(self.core.FIXED);self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self,operation=None,batch=None):
+        return self.core.PREFIX+' '.join([
+            self.SOURCE_SHA,registration.INTOURIST4_READBACK_MODE,
+            operation or registration.INTOURIST4_READBACK_OPERATION,
+            batch or registration.INTOURIST4_READBACK_BATCH,
+        ])
+
+    def test_exact_zero_call_parser_and_activation(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual(command,dict(source_sha=self.SOURCE_SHA,mode=registration.INTOURIST4_READBACK_MODE,
+            operation_id=registration.INTOURIST4_READBACK_OPERATION,batch=registration.INTOURIST4_READBACK_BATCH,
+            maximum_writes=0,provider_http_calls=0))
+        for body in (self.body(operation='changed'),self.body(batch='changed'),self.body()+' extra'):
+            with self.subTest(body=body),self.assertRaises(ValueError):self.core.parse_command(body)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_not_called()
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE.count('def run_match_intourist4_readback(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-intourist4-selectors-readback':"),1)
+        self.assertIn("if mode not in ('match-intourist4-selectors-readback','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+        handler=registration.REMOTE_INTOURIST4_READBACK_HANDLER
+        for forbidden in ('subprocess.run','urlopen(','requests.','curl ','MATCH_SOURCE_ROOT','TOURVISOR_ANEX_JWT'):
+            self.assertNotIn(forbidden,handler)
+
+    def test_private_terminal_readback_is_sanitized_and_no_replay(self):
+        def fail(reason):raise RuntimeError(reason)
+        def safe_file(path,limit):
+            return path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=limit
+        def safe_json(path,limit):
+            self.assertTrue(safe_file(path,limit));return json.loads(path.read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);parent=home/'.anytoour-match';root=parent/'operations'
+            source_operation='int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+            source_child=root/source_operation;source_child.mkdir(parents=True)
+            reservation={'operation':source_operation,'source_sha':self.SOURCE_SHA,
+                'batch':'intourist4-official-context-20261001','maximum_writes':0,
+                'provider_http_calls':14,'state':'reserved_before_db_and_provider','reserved_at':1}
+            marker_path=parent/'intourist4-selectors-batch-intourist4-official-context-20261001.json'
+            marker_path.write_text(json.dumps(reservation));(source_child/'reservation.json').write_text(json.dumps(reservation))
+            result={'state':'terminal_failed_no_replay','reason':'fixture-private-reason',
+                'provider_http_calls':2,'physical_http_attempts':2,'database_reads':2,
+                'database_writes':0,'mapping_writes':0,'returned_edges':0,'no_replay':True,
+                'safe_to_write_now':False,'call_counts':{'search_start':2},'edge_state_counts':{},'groups':[]}
+            result_path=source_child/'result.json';result_path.write_text(json.dumps(result))
+            result_sha=hashlib.sha256(result_path.read_bytes()).hexdigest()
+            receipt={'operation':source_operation,'batch':'intourist4-official-context-20261001',
+                'source_sha':self.SOURCE_SHA,'state':'terminal_failed_no_replay','result_sha256':result_sha,
+                'provider_http_calls':2,'database_reads':2,'database_writes':0,'mapping_writes':0,
+                'safe_to_write_now':False,'no_replay':True}
+            (source_child/'receipt.json').write_text(json.dumps(receipt))
+            ns=dict(os=os,json=json,hashlib=hashlib,re=re,time=time,home=home,project=home/'project',
+                operation=registration.INTOURIST4_READBACK_OPERATION,
+                payload={'batch':registration.INTOURIST4_READBACK_BATCH,'maximum_writes':0,'provider_http_calls':0},
+                source=self.SOURCE_SHA,fail=fail,safe_file=safe_file,safe_json=safe_json)
+            exec(registration.REMOTE_INTOURIST4_READBACK_HANDLER,ns)
+            lane=ns['run_match_intourist4_readback'](home/'stage');summary=lane['summary']
+            self.assertTrue(lane['successful']);self.assertTrue(lane['no_replay'])
+            self.assertEqual(summary['source_result_state'],'terminal_failed_no_replay')
+            self.assertEqual(summary['source_result_counters']['provider_http_calls'],2)
+            self.assertEqual(summary['source_receipt_counters']['provider_http_calls'],2)
+            self.assertEqual(summary['source_result_reason_sha256'],hashlib.sha256(b'fixture-private-reason').hexdigest())
+            self.assertNotIn('fixture-private-reason',json.dumps(summary))
+            self.assertEqual(summary['shape_errors'],[])
+            self.assertEqual(summary['provider_http_calls'],0);self.assertEqual(summary['database_writes'],0)
+            with self.assertRaises(RuntimeError):
+                ns['run_match_intourist4_readback'](home/'stage')
+
+
+class FunSun2RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.old_files=list(self.core.FIXED);self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self,source=SOURCE,operation=None,batch=None):
+        return self.core.PREFIX+' '.join([source,registration.FUNSUN2_MODE,
+            operation or registration.FUNSUN2_OPERATION,batch or registration.FUNSUN2_BATCH])
+
+    def test_exact_fixed_scope_supplier_gate_and_registration(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual(command,dict(source_sha=SOURCE,mode=registration.FUNSUN2_MODE,
+            operation_id=registration.FUNSUN2_OPERATION,batch=registration.FUNSUN2_BATCH,
+            maximum_writes=0,provider_http_calls=7))
+        for body in (self.body(operation='changed'),self.body(batch='changed'),self.body(source='bad'),self.body()+' extra'):
+            with self.subTest(body=body),self.assertRaises(ValueError):self.core.parse_command(body)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot,self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        slot.assert_not_called();self.assertEqual(self.core.FIXED,self.old_files);self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertTrue(set(registration.FUNSUN2_SOURCE_FILES).issubset(set(self.core.FIXED)))
+        self.assertEqual(self.core.REMOTE.count('def run_match_funsun2(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-funsun2-selectors-readonly':"),1)
+        self.assertIn("if mode not in ('match-funsun2-selectors-readonly','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+        encoded=base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def result(self):
+        rows=[dict(source_catalog_id='2000037261',target_tv_hotel_id=59115,state='eligible',holds=[],safe_to_write_now=False),
+              dict(source_catalog_id='2000068203',target_tv_hotel_id=70782,state='eligible',holds=[],safe_to_write_now=False)]
+        actions=['group_preflight','search_start','search_status','search_results','tour_detail']
+        snapshots=[dict(sequence=i+1,next_http_call=max(1,i),action=action,rows=copy.deepcopy(rows))
+                   for i,action in enumerate(actions)]
+        edge=dict(source_catalog_id='2000037261',source_native_id='354014',target_tv_hotel_id=59115,
+            operator_id=25,namespace='operator_315',operator_tour_count=1,tour_id_sha256='1'*64,
+            state='detail_identity_verified',safe_to_write_now=False,tour_detail_http=200,
+            operator_link_sha256='2'*64,operator_link_host='b2b.fstravel.com',
+            positive_native_candidates=[354014,789636],raw_identity_values=['354014,789636'],
+            raw_identity_tokens=['354014','789636'],query_keys=['hotels'],
+            link_state='captured_ambiguous_native',matches_source_native=False)
+        return dict(schema='match-funsun2-selectors-readonly-result/1',
+            operation=registration.FUNSUN2_OPERATION,batch=registration.FUNSUN2_BATCH,source_sha=SOURCE,
+            state='completed_read_only',reason=None,captured_at_utc='2026-10-04T08:30:00+00:00',
+            requested_rows=2,groups=[dict(group=1,country_id=4,state='completed_read_only',sent=2,
+                initial_preflight=copy.deepcopy(rows),search_complete=True,returned_targets=1,edges=[edge])],
+            preflight_snapshots=snapshots,provider_http_calls=4,physical_http_attempts=4,database_reads=5,
+            call_counts={'search_start':1,'search_status':1,'search_results':1,'tour_detail':1},
+            returned_edges=1,edge_state_counts={'detail_identity_verified':1},
+            tourvisor_account='TOURVISOR_ANEX_JWT',operator_ids=[25],continue_calls=0,dates_calls=0,
+            database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
+
+    def validate(self,data):
+        raw=json.dumps(data,separators=(',',':')).encode();digest=hashlib.sha256(raw).hexdigest()
+        keys=('operation','batch','source_sha','state','provider_http_calls','database_reads',
+              'database_writes','mapping_writes','safe_to_write_now','no_replay')
+        receipt={key:data[key] for key in keys};receipt['result_sha256']=digest
+        def fail(reason):raise RuntimeError(reason)
+        ns=dict(re=re,json=json,hashlib=hashlib,fail=fail)
+        exec(registration.REMOTE_FUNSUN2_HANDLER,ns)
+        return ns['validate_match_funsun2'](data,receipt,digest,SOURCE)
+
+    def test_terminal_validator_preserves_raw_tokens_and_rejects_widening(self):
+        summary=self.validate(self.result())
+        self.assertEqual(summary['groups'][0]['edges'][0]['raw_identity_tokens'],['354014','789636'])
+        self.assertNotIn('reason',summary);self.assertIsNone(summary['reason_sha256'])
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(provider_http_calls=8),
+            lambda d:d.update(operator_ids=[25,43]),lambda d:d['groups'][0].update(country_id=1),
+            lambda d:d['groups'][0]['edges'][0].update(namespace='operator_342'),
+            lambda d:d['groups'][0]['edges'][0].update(operator_link_host='intourist.ru'),
+            lambda d:d['groups'][0]['edges'][0].update(raw_identity_tokens=['354014']),
+            lambda d:d['groups'][0]['edges'][0].update(positive_native_candidates=[789636,354014]),
+            lambda d:d.update(extra='unsafe')]
+        for change in changes:
+            with self.subTest(change=change):
+                data=self.result();change(data)
+                with self.assertRaises(RuntimeError):self.validate(data)
+
+    def test_handler_has_exact_manifest_roster_and_no_write_authority(self):
+        handler=registration.REMOTE_FUNSUN2_HANDLER
+        for required in (registration.FUNSUN2_OPERATION,registration.FUNSUN2_BATCH,registration.FUNSUN2_MANIFEST_SHA,
+                "'2000037261':('354014',59115,4)","'2000068203':('789636',70782,4)",
+                "'operator_ids':[25]","'namespace']!='operator_315'","maximum_writes']!=0"):
+            self.assertIn(required,handler)
+        for forbidden in ('database_writes=1','mapping_writes=1','--continue','date-walk','full-drain'):
+            self.assertNotIn(forbidden,handler)
+
+
+class Anex2RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.old_files=list(self.core.FIXED);self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self,source=SOURCE,operation=None,batch=None):
+        return self.core.PREFIX+' '.join([source,registration.ANEX2_MODE,
+            operation or registration.ANEX2_OPERATION,batch or registration.ANEX2_BATCH])
+
+    def test_exact_fixed_scope_supplier_gate_and_registration(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual(command,dict(source_sha=SOURCE,mode=registration.ANEX2_MODE,
+            operation_id=registration.ANEX2_OPERATION,batch=registration.ANEX2_BATCH,
+            maximum_writes=0,provider_http_calls=12))
+        for body in (self.body(operation='changed'),self.body(batch='changed'),self.body(source='bad'),self.body()+' extra'):
+            with self.subTest(body=body),self.assertRaises(ValueError):self.core.parse_command(body)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot,self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        slot.assert_not_called();self.assertEqual(self.core.FIXED,self.old_files);self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertTrue(set(registration.ANEX2_SOURCE_FILES).issubset(set(self.core.FIXED)))
+        self.assertEqual(self.core.REMOTE.count('def run_match_anex2(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-anex2-selectors-readonly':"),1)
+        self.assertIn("if mode not in ('match-anex2-selectors-readonly','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+        encoded=base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def result(self):
+        row=dict(source_catalog_id='2000029745',target_tv_hotel_id=159,state='eligible',holds=[],safe_to_write_now=False)
+        snapshots=[dict(sequence=i+1,next_http_call=max(1,i),action=action,rows=[copy.deepcopy(row)])
+                   for i,action in enumerate(['group_preflight','group_preflight','search_start','search_status','search_results','tour_detail'])]
+        edge=dict(source_catalog_id='2000029745',source_native_id='44562',target_tv_hotel_id=159,
+            operator_id=13,namespace='operator_5',operator_tour_count=1,tour_id_sha256='1'*64,
+            state='detail_identity_verified',safe_to_write_now=False,tour_detail_http=200,
+            prior_identity_tokens=['804','44562'],operator_link_sha256='2'*64,operator_link_host='agent.anextour.ru',
+            positive_native_candidates=[804,44562],raw_identity_values=['804,44562'],
+            raw_identity_tokens=['804','44562'],query_keys=['hotellist'],
+            link_state='captured_ambiguous_native',matches_source_native=False)
+        return dict(schema='match-anex2-selectors-readonly-result/1',
+            operation=registration.ANEX2_OPERATION,batch=registration.ANEX2_BATCH,source_sha=SOURCE,
+            state='completed_read_only',reason=None,captured_at_utc='2026-10-04T09:10:00.123456+00:00',
+            requested_rows=2,prior_identity_tokens={'159':['804','44562'],'109380':[]},
+            groups=[dict(group=1,country_id=4,state='preflight_hold',sent=0,edges=[]),
+                    dict(group=2,country_id=1,state='completed_read_only',sent=1,initial_preflight=[copy.deepcopy(row)],search_complete=True,returned_targets=1,edges=[edge])],
+            preflight_snapshots=snapshots,provider_http_calls=4,physical_http_attempts=4,database_reads=6,
+            call_counts={'search_start':1,'search_status':1,'search_results':1,'tour_detail':1},
+            returned_edges=1,edge_state_counts={'detail_identity_verified':1},
+            tourvisor_account='TOURVISOR_ANEX_JWT',operator_ids=[13],continue_calls=0,dates_calls=0,
+            database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
+
+    def validate(self,data):
+        raw=json.dumps(data,separators=(',',':')).encode();digest=hashlib.sha256(raw).hexdigest()
+        keys=('operation','batch','source_sha','state','provider_http_calls','database_reads',
+              'database_writes','mapping_writes','safe_to_write_now','no_replay')
+        receipt={key:data[key] for key in keys};receipt['result_sha256']=digest
+        def fail(reason):raise RuntimeError(reason)
+        ns=dict(re=re,json=json,hashlib=hashlib,fail=fail)
+        exec(registration.REMOTE_ANEX2_HANDLER,ns)
+        return ns['validate_match_anex2'](data,receipt,digest,SOURCE)
+
+    def test_terminal_validator_preserves_raw_tokens_and_rejects_widening(self):
+        summary=self.validate(self.result())
+        self.assertEqual(summary['groups'][1]['edges'][0]['raw_identity_tokens'],['804','44562'])
+        self.assertNotIn('reason',summary);self.assertIsNone(summary['reason_sha256'])
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(provider_http_calls=13),
+            lambda d:d.update(operator_ids=[13,43]),lambda d:d['groups'][1].update(country_id=4),
+            lambda d:d['groups'][1]['edges'][0].update(namespace='operator_342'),
+            lambda d:d['groups'][1]['edges'][0].update(operator_link_host='intourist.ru'),
+            lambda d:d['groups'][1]['edges'][0].update(raw_identity_tokens=['44562']),
+            lambda d:d['groups'][1]['edges'][0].update(positive_native_candidates=[44562,804]),
+            lambda d:d.update(extra='unsafe')]
+        for change in changes:
+            with self.subTest(change=change):
+                data=self.result();change(data)
+                with self.assertRaises(RuntimeError):self.validate(data)
+
+    def test_handler_has_exact_manifest_roster_and_no_write_authority(self):
+        handler=registration.REMOTE_ANEX2_HANDLER
+        for required in (registration.ANEX2_OPERATION,registration.ANEX2_BATCH,registration.ANEX2_MANIFEST_SHA,
+                "'2000109038':('43661',109380,4)","'2000029745':('44562',159,1)",
+                "'operator_ids':[13]","'namespace']!='operator_5'","maximum_writes']!=0"):
+            self.assertIn(required,handler)
+        for forbidden in ('database_writes=1','mapping_writes=1','--continue','date-walk','full-drain'):
+            self.assertNotIn(forbidden,handler)
+
+    def test_signed_tokens_and_prior_ambiguity_cannot_be_promoted(self):
+        data=self.result();edge=data['groups'][1]['edges'][0]
+        edge.update(raw_identity_values=['-804,44562'],raw_identity_tokens=['-804','44562'],positive_native_candidates=[44562])
+        self.assertEqual(self.validate(data)['groups'][1]['edges'][0]['raw_identity_tokens'],['-804','44562'])
+        edge['matches_source_native']=True
+        with self.assertRaises(RuntimeError):self.validate(data)
+        data=self.result();data['prior_identity_tokens']['159']=['44562']
+        with self.assertRaises(RuntimeError):self.validate(data)
+        data=self.result();data['groups'][1]['edges'][0]['prior_identity_tokens']=['44562']
+        with self.assertRaises(RuntimeError):self.validate(data)
+
+
+
+class ExactTourvisorRemoteGuardTest(unittest.TestCase):
+    SCOPES = (
+        (registration.INTOURIST4_MODE, registration.INTOURIST4_OPERATION,
+         registration.INTOURIST4_BATCH, 'intourist4'),
+        (registration.INTOURIST4_READBACK_MODE, registration.INTOURIST4_READBACK_OPERATION,
+         registration.INTOURIST4_READBACK_BATCH, 'intourist4_readback'),
+        (registration.FUNSUN2_MODE, registration.FUNSUN2_OPERATION,
+         registration.FUNSUN2_BATCH, 'funsun2'),
+        (registration.ANEX2_MODE, registration.ANEX2_OPERATION,
+         registration.ANEX2_BATCH, 'anex2'),
+    )
+
+    @staticmethod
+    def first_guard(remote):
+        block = next(node for node in ast.parse(remote).body if isinstance(node, ast.Try))
+        guard = block.body[0]
+        assert isinstance(guard, ast.If)
+        assert ast.unparse(guard.body[0]) == "fail('operation_invalid')"
+        return guard
+
+    def run_guard(self, remote, mode, operation, batch):
+        def fail(reason):
+            raise ValueError(reason)
+        namespace = dict(re=re, mode=mode, operation=operation,
+                         payload={'batch': batch}, fail=fail)
+        # Execute only the emitted first guard: no filesystem, SSH, DB or HTTP.
+        guard = self.first_guard(remote)
+        exec(compile(ast.Module(body=[guard], type_ignores=[]), '<remote-first-guard>', 'exec'),
+             namespace)
+
+    def test_registered_exact_triples_pass_emitted_remote_guard(self):
+        for mode, operation, batch, flag in self.SCOPES:
+            with self.subTest(mode=mode):
+                core = fresh_core()
+                registration.register_parser(core)
+                command = core.parse_command(core.PREFIX + ' '.join([SOURCE, mode, operation, batch]))
+                with patch.dict(os.environ, {'GH_TOKEN': 'fixture'}), \
+                        patch.object(core, 'ensure_supplier_slot'):
+                    registration.activate(core, command)
+                self.run_guard(core.REMOTE, mode, operation, batch)
+                self.assertLess(core.REMOTE.index("fail('operation_invalid')"),
+                                core.REMOTE.index('private.mkdir('))
+                self.assertIn("fail('operation_exists_no_replay')", core.REMOTE)
+
+    def test_emitted_guard_rejects_wrong_mode_operation_or_batch(self):
+        for mode, operation, batch, flag in self.SCOPES:
+            remote = registration.remote_with_primary(fresh_core(), **{flag: True})
+            bad_triples = [
+                ('match-coverage', operation, batch),
+                (mode, operation.replace('-v1', '-v2'), batch),
+                (mode, 'int-tourvisor-fixture-arbitrary-v1', batch),
+                (mode, 'int-andromeda-fixture-arbitrary-v1', batch),
+                (mode, operation, batch + '-other'),
+                (mode, operation, None),
+            ]
+            bad_triples.extend((mode, other_op, other_batch)
+                               for other_mode, other_op, other_batch, _ in self.SCOPES
+                               if other_mode != mode)
+            for triple in bad_triples:
+                with self.subTest(mode=mode, triple=triple), self.assertRaisesRegex(ValueError, 'operation_invalid'):
+                    self.run_guard(remote, *triple)
+
+    def test_legacy_remote_operation_guard_stays_identical(self):
+        core = fresh_core()
+        old = ast.dump(self.first_guard(core.REMOTE))
+        for kwargs in ({}, {'source3': True}, {'native': True}, {'guarded': True}):
+            remote = registration.remote_with_primary(core, **kwargs)
+            self.assertEqual(ast.dump(self.first_guard(remote)), old)
+            self.run_guard(remote, 'fixture', 'int-andromeda-fixture-legacy-v1', None)
+            self.run_guard(remote, 'fixture', 'int-anex-fixture-legacy-v1', None)
+            with self.assertRaisesRegex(ValueError, 'operation_invalid'):
+                self.run_guard(remote, 'fixture', 'int-tourvisor-fixture-legacy-v1', None)
+
+    def test_exact_guard_registration_fails_closed_on_anchor_drift(self):
+        for _, _, _, flag in self.SCOPES:
+            for mutation in ('missing', 'duplicate'):
+                core = fresh_core()
+                anchor = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):\n"
+                core.REMOTE = (core.REMOTE.replace(anchor, anchor.replace('8,80', '8,81'))
+                               if mutation == 'missing' else core.REMOTE + anchor)
+                with self.subTest(flag=flag, mutation=mutation), \
+                        self.assertRaisesRegex(ValueError, 'primary_operation_guard_source_drift'):
+                    registration.remote_with_primary(core, **{flag: True})
+
+
+
+class UserSearchDeltaRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.DELTA_MODE+' '+registration.DELTA_OPERATION+' '+registration.DELTA_BATCH
+
+    def test_exact_readonly_scope_and_cross_scope_rejected(self):
+        value=self.core.parse_command(self.body())
+        self.assertEqual(value,dict(source_sha=SOURCE,mode=registration.DELTA_MODE,operation_id=registration.DELTA_OPERATION,batch=registration.DELTA_BATCH,maximum_writes=0,provider_http_calls=0))
+        for body in [self.body().replace(registration.DELTA_OPERATION,registration.ANEX2_OPERATION),self.body().replace(registration.DELTA_BATCH,registration.NATIVE_BATCH),self.body()+' 1']:
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+
+    def test_emitted_remote_and_staged_paths_preserve_stock_executor(self):
+        before=self.core.REMOTE;fixed=list(self.core.FIXED)
+        registration.activate(self.core,self.core.parse_command(self.body()))
+        ast.parse(self.core.REMOTE)
+        self.assertIn('def run_match_user_delta(stage):',self.core.REMOTE)
+        self.assertIn("if mode=='match-user-search-delta-readonly':",self.core.REMOTE)
+        self.assertIn("r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*'",self.core.REMOTE)
+        self.assertEqual(self.core.FIXED,fixed+list(registration.DELTA_SOURCE_FILES))
+        self.assertIn('os.O_WRONLY|os.O_CREAT|os.O_EXCL',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('os.fsync(fd)',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('delta_reservation_readback',registration.REMOTE_DELTA_HANDLER)
+        self.assertIn('validate_source(data)',registration.REMOTE_DELTA_HANDLER)
+
+    def fixture(self):
+        data=dict(schema='match-user-search-delta-readonly-result/1',operation=registration.DELTA_OPERATION,batch=registration.DELTA_BATCH,source_sha=SOURCE,provider_http_calls=0,physical_http_attempts=0,database_reads=1,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,accepted=0,written=0,safe_to_write_now=False,acceptance_evaluated=False,global_uniqueness_evaluated=False,no_replay=True,operator_ids=[13,18,25,43],window_civil={'lower_exclusive':'2026-10-02 12:46:00','upper_inclusive':'2026-10-03 09:23:17'},private_input_sha256='c'*64,state='completed_read_only_delta')
+        keys=['operation','batch','source_sha','state','private_input_sha256','provider_http_calls','physical_http_attempts','database_reads','database_writes','mapping_writes','booking_calls','lead_calls','accepted','written','safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay']
+        receipt={k:data[k] for k in keys};receipt['result_sha256']='d'*64
+        return data,receipt
+
+    def validate(self,data,receipt,validator=lambda x:None):
+        env={'fail':lambda reason:(_ for _ in ()).throw(RuntimeError(reason))}
+        exec(registration.REMOTE_DELTA_HANDLER,env)
+        return env['validate_match_user_delta'](data,receipt,'d'*64,'c'*64,SOURCE,validator)
+
+    def test_digest_receipt_source_bindings(self):
+        data,receipt=self.fixture();self.assertEqual(self.validate(data,receipt),data)
+        for change in [('source_sha','e'*40),('result_sha256','f'*64),('private_input_sha256','f'*64)]:
+            d,r=copy.deepcopy(data),copy.deepcopy(receipt);r[change[0]]=change[1]
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_no_authority_promotion_or_boolean_counter(self):
+        for key,value in [('database_writes',1),('provider_http_calls',1),('written',1),('accepted',True),('database_reads',True),('safe_to_write_now',True),('no_replay',False)]:
+            d,r=self.fixture();d[key]=value
+            if key in r:r[key]=value
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_source_validator_failure_cannot_be_ignored(self):
+        d,r=self.fixture()
+        with self.assertRaises(RuntimeError):self.validate(d,r,lambda x:(_ for _ in ()).throw(ValueError('unsafe_row')))
+        r['unknown_field']=0
+        with self.assertRaises(RuntimeError):self.validate(d,r)
+
+class Bg8UnexportedFieldsRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.BF8_MODE+' '+registration.BF8_OPERATION+' '+registration.BF8_BATCH
+
+    def test_exact_readonly_scope_and_cross_scope_rejected(self):
+        value=self.core.parse_command(self.body())
+        self.assertEqual(value,dict(source_sha=SOURCE,mode=registration.BF8_MODE,operation_id=registration.BF8_OPERATION,batch=registration.BF8_BATCH,maximum_writes=0,provider_http_calls=0))
+        for body in [self.body().replace(registration.BF8_OPERATION,registration.ANEX2_OPERATION),self.body().replace(registration.BF8_BATCH,registration.NATIVE_BATCH),self.body()+' 1']:
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+
+    def test_emitted_remote_and_staged_paths_preserve_stock_executor(self):
+        before=self.core.REMOTE;fixed=list(self.core.FIXED)
+        registration.activate(self.core,self.core.parse_command(self.body()))
+        ast.parse(self.core.REMOTE)
+        self.assertIn('def run_match_bg8_fields(stage):',self.core.REMOTE)
+        self.assertIn("if mode=='match-bg8-unexported-fields-readonly':",self.core.REMOTE)
+        self.assertIn("r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*'",self.core.REMOTE)
+        self.assertEqual(self.core.FIXED,fixed+list(registration.BF8_SOURCE_FILES))
+        self.assertIn('os.O_WRONLY|os.O_CREAT|os.O_EXCL',registration.REMOTE_BF8_HANDLER)
+        self.assertIn('os.fsync(fd)',registration.REMOTE_BF8_HANDLER)
+        self.assertIn('bg8_fields_reservation_readback',registration.REMOTE_BF8_HANDLER)
+        self.assertIn('validate_source(data)',registration.REMOTE_BF8_HANDLER)
+        collectors=[]
+        for node in ast.walk(ast.parse(self.core.REMOTE)):
+            if isinstance(node,ast.If) and isinstance(node.test,ast.Compare) and isinstance(node.test.left,ast.Name) and node.test.left.id=='mode' and isinstance(node.test.ops[0],ast.NotIn):
+                collectors.append(eval(compile(ast.Expression(node.test),'<collector>','eval'),{},dict(mode=registration.BF8_MODE)))
+        self.assertEqual(collectors,[False,False])
+        self.assertIn('reserved_before_retained_read',registration.REMOTE_BF8_HANDLER)
+        self.assertNotIn('def run_match_user_delta(stage):',self.core.REMOTE)
+
+
+    def fixture(self):
+        data=dict(schema='match-bg8-unexported-fields-readonly-result/1',operation=registration.BF8_OPERATION,batch=registration.BF8_BATCH,source_sha=SOURCE,provider_http_calls=0,physical_http_attempts=0,database_reads=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,accepted=0,written=0,safe_to_write_now=False,acceptance_evaluated=False,global_uniqueness_evaluated=False,no_replay=True,operator_ids=[18],requested_rows=8,private_input_sha256='c'*64,state='completed_read_only_bg8_fields')
+        keys=['operation','batch','source_sha','state','private_input_sha256','provider_http_calls','physical_http_attempts','database_reads','database_writes','mapping_writes','booking_calls','lead_calls','accepted','written','safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay']
+        receipt={k:data[k] for k in keys};receipt['result_sha256']='d'*64
+        return data,receipt
+
+    def validate(self,data,receipt,validator=lambda x:None):
+        env={'fail':lambda reason:(_ for _ in ()).throw(RuntimeError(reason))}
+        exec(registration.REMOTE_BF8_HANDLER,env)
+        return env['validate_match_bg8_fields'](data,receipt,'d'*64,'c'*64,SOURCE,validator)
+
+    def test_digest_receipt_source_bindings(self):
+        data,receipt=self.fixture();self.assertEqual(self.validate(data,receipt),data)
+        for change in [('source_sha','e'*40),('result_sha256','f'*64),('private_input_sha256','f'*64)]:
+            d,r=copy.deepcopy(data),copy.deepcopy(receipt);r[change[0]]=change[1]
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_no_authority_promotion_or_boolean_counter(self):
+        for key,value in [('database_writes',1),('provider_http_calls',1),('written',1),('accepted',True),('database_reads',True),('safe_to_write_now',True),('no_replay',False)]:
+            d,r=self.fixture();d[key]=value
+            if key in r:r[key]=value
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_source_validator_failure_cannot_be_ignored(self):
+        d,r=self.fixture()
+        with self.assertRaises(RuntimeError):self.validate(d,r,lambda x:(_ for _ in ()).throw(ValueError('unsafe_row')))
+        r['unknown_field']=0
+        with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_child_parent_is_durable_before_read_and_timeout_stays_consumed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)/'home';ops=home/'.anytoour-match'/'operations';ops.mkdir(parents=True)
+            project=home/'www'/'anytoour.ru';project.mkdir(parents=True)
+            stage=Path(tmp)/'stage';folder=stage/'scripts'/'diagnostics';(folder/'fixtures').mkdir(parents=True)
+            (folder/'hotel_match_bg8_unexported_fields_readonly_v1.py').write_text('pass\n')
+            raw=b'{}';(folder/'fixtures'/'hotel_match_bg8_unexported_fields_readonly_v1.json').write_bytes(raw)
+            code=registration.REMOTE_BF8_HANDLER.replace(registration.BF8_MANIFEST_SHA,hashlib.sha256(raw).hexdigest())
+            env=dict(home=home,project=project,operation=registration.BF8_OPERATION,source=SOURCE,payload=dict(batch=registration.BF8_BATCH,maximum_writes=0,provider_http_calls=0),os=os,json=json,hashlib=hashlib,subprocess=subprocess,safe_file=lambda p,limit:p.is_file() and not p.is_symlink() and p.stat().st_size<=limit,fail=lambda reason:(_ for _ in ()).throw(RuntimeError(reason)))
+            exec(code,env);synced=[];real_fsync=os.fsync
+            def fsync(fd):
+                synced.append(Path(os.readlink('/proc/self/fd/'+str(fd))));real_fsync(fd)
+            def child(*args,**kw):
+                self.assertIn(ops,synced)
+                self.assertNotIn('GH_TOKEN',kw['env'])
+                raise subprocess.TimeoutExpired('python3',300)
+            with patch.object(os,'fsync',side_effect=fsync),patch.object(subprocess,'run',side_effect=child) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):env['run_match_bg8_fields'](stage)
+                self.assertTrue((home/'.anytoour-match'/'bg8-unexported-fields-batch-20261004.json').is_file())
+                self.assertTrue((ops/registration.BF8_OPERATION/'reservation.json').is_file())
+                with self.assertRaises(RuntimeError):env['run_match_bg8_fields'](stage)
+                self.assertEqual(call.call_count,1)
+
+class Bg8PinBindingsRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.BP8_MODE+' '+registration.BP8_OPERATION+' '+registration.BP8_BATCH
+
+    def test_exact_readonly_scope_and_cross_scope_rejected(self):
+        value=self.core.parse_command(self.body())
+        self.assertEqual(value,dict(source_sha=SOURCE,mode=registration.BP8_MODE,operation_id=registration.BP8_OPERATION,batch=registration.BP8_BATCH,maximum_writes=0,provider_http_calls=0))
+        for body in [self.body().replace(registration.BP8_OPERATION,registration.ANEX2_OPERATION),self.body().replace(registration.BP8_BATCH,registration.NATIVE_BATCH),self.body()+' 1']:
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+
+    def test_emitted_remote_and_staged_paths_preserve_stock_executor(self):
+        before=self.core.REMOTE;fixed=list(self.core.FIXED)
+        registration.activate(self.core,self.core.parse_command(self.body()))
+        ast.parse(self.core.REMOTE)
+        self.assertIn('def run_match_bg8_pins(stage):',self.core.REMOTE)
+        self.assertIn("if mode=='match-bg8-pin-bindings-readonly':",self.core.REMOTE)
+        self.assertIn("r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*'",self.core.REMOTE)
+        self.assertEqual(self.core.FIXED,fixed+list(registration.BP8_SOURCE_FILES))
+        self.assertIn('os.O_WRONLY|os.O_CREAT|os.O_EXCL',registration.REMOTE_BP8_HANDLER)
+        self.assertIn('os.fsync(fd)',registration.REMOTE_BP8_HANDLER)
+        self.assertIn('bg8_pins_reservation_readback',registration.REMOTE_BP8_HANDLER)
+        self.assertIn('validate_source(data)',registration.REMOTE_BP8_HANDLER)
+        collectors=[]
+        for node in ast.walk(ast.parse(self.core.REMOTE)):
+            if isinstance(node,ast.If) and isinstance(node.test,ast.Compare) and isinstance(node.test.left,ast.Name) and node.test.left.id=='mode' and isinstance(node.test.ops[0],ast.NotIn):
+                collectors.append(eval(compile(ast.Expression(node.test),'<collector>','eval'),{},dict(mode=registration.BP8_MODE)))
+        self.assertEqual(collectors,[False,False])
+        self.assertIn('reserved_before_retained_read',registration.REMOTE_BP8_HANDLER)
+        self.assertNotIn('def run_match_user_delta(stage):',self.core.REMOTE)
+
+
+    def fixture(self):
+        data=dict(schema='match-bg8-pin-bindings-readonly-result/1',operation=registration.BP8_OPERATION,batch=registration.BP8_BATCH,source_sha=SOURCE,provider_http_calls=0,physical_http_attempts=0,database_reads=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,accepted=0,written=0,safe_to_write_now=False,acceptance_evaluated=False,global_uniqueness_evaluated=False,no_replay=True,operator_ids=[18],requested_rows=8,private_input_sha256='c'*64,state='completed_read_only_bg8_pins')
+        keys=['operation','batch','source_sha','state','private_input_sha256','provider_http_calls','physical_http_attempts','database_reads','database_writes','mapping_writes','booking_calls','lead_calls','accepted','written','safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay']
+        receipt={k:data[k] for k in keys};receipt['result_sha256']='d'*64
+        return data,receipt
+
+    def validate(self,data,receipt,validator=lambda x:None):
+        env={'fail':lambda reason:(_ for _ in ()).throw(RuntimeError(reason))}
+        exec(registration.REMOTE_BP8_HANDLER,env)
+        return env['validate_match_bg8_pins'](data,receipt,'d'*64,'c'*64,SOURCE,validator)
+
+    def test_digest_receipt_source_bindings(self):
+        data,receipt=self.fixture();self.assertEqual(self.validate(data,receipt),data)
+        for change in [('source_sha','e'*40),('result_sha256','f'*64),('private_input_sha256','f'*64)]:
+            d,r=copy.deepcopy(data),copy.deepcopy(receipt);r[change[0]]=change[1]
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_no_authority_promotion_or_boolean_counter(self):
+        for key,value in [('database_writes',1),('provider_http_calls',1),('written',1),('accepted',True),('database_reads',True),('safe_to_write_now',True),('no_replay',False)]:
+            d,r=self.fixture();d[key]=value
+            if key in r:r[key]=value
+            with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_source_validator_failure_cannot_be_ignored(self):
+        d,r=self.fixture()
+        with self.assertRaises(RuntimeError):self.validate(d,r,lambda x:(_ for _ in ()).throw(ValueError('unsafe_row')))
+        r['unknown_field']=0
+        with self.assertRaises(RuntimeError):self.validate(d,r)
+
+    def test_child_parent_is_durable_before_read_and_timeout_stays_consumed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp)/'home';ops=home/'.anytoour-match'/'operations';ops.mkdir(parents=True)
+            project=home/'www'/'anytoour.ru';project.mkdir(parents=True)
+            stage=Path(tmp)/'stage';folder=stage/'scripts'/'diagnostics';(folder/'fixtures').mkdir(parents=True)
+            (folder/'hotel_match_bg8_pin_bindings_readonly_v1.py').write_text('pass\n')
+            raw=b'{}';(folder/'fixtures'/'hotel_match_bg8_pin_bindings_readonly_v1.json').write_bytes(raw)
+            code=registration.REMOTE_BP8_HANDLER.replace(registration.BP8_MANIFEST_SHA,hashlib.sha256(raw).hexdigest())
+            env=dict(home=home,project=project,operation=registration.BP8_OPERATION,source=SOURCE,payload=dict(batch=registration.BP8_BATCH,maximum_writes=0,provider_http_calls=0),os=os,json=json,hashlib=hashlib,subprocess=subprocess,safe_file=lambda p,limit:p.is_file() and not p.is_symlink() and p.stat().st_size<=limit,fail=lambda reason:(_ for _ in ()).throw(RuntimeError(reason)))
+            exec(code,env);synced=[];real_fsync=os.fsync
+            def fsync(fd):
+                synced.append(Path(os.readlink('/proc/self/fd/'+str(fd))));real_fsync(fd)
+            def child(*args,**kw):
+                self.assertIn(ops,synced)
+                self.assertNotIn('GH_TOKEN',kw['env'])
+                raise subprocess.TimeoutExpired('python3',300)
+            with patch.object(os,'fsync',side_effect=fsync),patch.object(subprocess,'run',side_effect=child) as call:
+                with self.assertRaises(subprocess.TimeoutExpired):env['run_match_bg8_pins'](stage)
+                self.assertTrue((home/'.anytoour-match'/'bg8-pin-bindings-batch-20261004.json').is_file())
+                self.assertTrue((ops/registration.BP8_OPERATION/'reservation.json').is_file())
+                with self.assertRaises(RuntimeError):env['run_match_bg8_pins'](stage)
+                self.assertEqual(call.call_count,1)
 
 if __name__=='__main__':unittest.main()
