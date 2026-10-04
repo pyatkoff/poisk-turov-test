@@ -251,6 +251,10 @@ def native_projection(url):
     if parsed.scheme.lower() != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
         out.update(link_state="invalid_origin", positive_native_candidates=[])
         return out
+    host = parsed.hostname.lower()
+    if host != "intourist.ru" and not host.endswith(".intourist.ru"):
+        out.update(link_state="unexpected_intourist_host", positive_native_candidates=[])
+        return out
     pairs = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
     if any(SECRET.search(k or "") for k, _ in pairs):
         out.update(link_state="secret_bearing_link", positive_native_candidates=[])
@@ -578,8 +582,8 @@ def self_test():
     value = manifest(path)
     assert [group["country_id"] for group in groups(value)] == [4, 1]
     assert [row["target_tv_hotel_id"] for row in groups(value)[0]["rows"]] == [1151, 70943]
-    assert native_projection("https://intourist.example/hotel?hotelId=549")["positive_native_candidates"] == [549]
-    assert native_projection("https://intourist.example/hotel?hotelId=549&hotelCode=18273")["link_state"] == "captured_ambiguous_native"
+    assert native_projection("https://b2b.intourist.ru/hotel?hotelId=549")["positive_native_candidates"] == [549]
+    assert native_projection("https://intourist.ru/hotel?hotelId=549&hotelCode=18273")["link_state"] == "captured_ambiguous_native"
     print("MATCH_INTOURIST4_SELECTORS_READONLY_V1_SELFTEST_OK")
 
 
