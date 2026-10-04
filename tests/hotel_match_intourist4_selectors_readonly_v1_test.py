@@ -139,6 +139,8 @@ assert '"continue_calls": 0' in source
 assert '"database_writes": 0' in source
 assert '"database_reads": len(provider.preflight)' in source
 assert '"mapping_writes": 0' in source
+assert 'source_root = pathlib.Path(os.environ.get("MATCH_SOURCE_ROOT", root))' in source
+assert 'path = source_root / data["inputs"][path_key]' in source
 assert MODULE.safe_payload({"operatorLink": "https://example.test/hotel?hotelId=549"}, "token")
 assert not MODULE.safe_payload({"operatorLink": "https://example.test/hotel?session=secret"}, "token")
 assert MODULE.native_projection("https://example.test/hotel?hotelId=549")["link_state"] == "unexpected_intourist_host"
