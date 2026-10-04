@@ -760,6 +760,101 @@ final class AnyTourAndromedaOfferAutosaveV1
         }
         return $receipt;
     }
+
+    /** Diagnostic only: never read by consume() as a publication checkpoint. */
+    public static function recordResult(
+        array $result,
+        array $request,
+        string $directory,
+        string $searchRef,
+        int $generation,
+        string $stage,
+        ?Throwable $error = null
+    ): void {
+        try {
+            $page = $request['page'] ?? null;
+            if (!preg_match('/\A[a-f0-9]{64}\z/D', $searchRef) || $generation < 1
+                || ($request['generation'] ?? null) !== $generation
+                || ($page !== null && (!is_int($page) || $page < 1 || $page > self::MAX_PAGES))
+                || !is_dir($directory) || is_link($directory) || basename($directory) !== 'searches'
+                || !function_exists('anytour_andromeda_search3_save')) return;
+            // Bind even an early dependency failure to the existing cohort. No
+            // validation/fetch/publication retry and no renewal of its lifetime.
+            $first = self::readState($directory . '/' . $searchRef . '-1.json', true);
+            $store = $first['store'] ?? null;
+            $created = $store['created_at'] ?? null;
+            $now = time();
+            if (($first['search_ref'] ?? null) !== $searchRef || ($first['generation'] ?? null) !== $generation
+                || !is_array($store) || ($store['version'] ?? null) !== 1
+                || ($store['search_ref'] ?? null) !== $searchRef || ($store['generation'] ?? null) !== $generation
+                || !is_int($created) || $created < 1 || $created > $now
+                || ($store['expires_at'] ?? null) !== $created + self::CONTEXT_TTL) return;
+            $reason = $result['reason'] ?? 'stored';
+            if (!in_array($reason, [
+                'stored', 'unknown', 'not_authoritative_search', 'context_invalid', 'cohort_incomplete',
+                'cohort_invalid', 'received_page_missing', 'cohort_rejected_rows', 'conflicting_offer_identity',
+                'too_many_offers', 'no_received_owned_offers', 'already_published', 'no_current_mapped_offers',
+                'offer_contract_incomplete', 'no_final_price_ready_resolved_offers', 'local_ingest_unavailable',
+                'partial_ingest_unavailable', 'runtime_dependency_unavailable', 'country_invalid', 'autosave_failed',
+            ], true)) $reason = 'unknown';
+            $count = static fn(string $key): ?int => is_int($result[$key] ?? null)
+                && $result[$key] >= 0 && $result[$key] <= self::MAX_OFFERS ? $result[$key] : null;
+            $value = [
+                'version' => 1, 'provider' => 'andromeda', 'search_ref' => $searchRef,
+                'generation' => $generation, 'first_page_created_at' => $created,
+                'received_page' => $page, 'snapshot_mode' => $page === null ? 'complete_replace' : 'partial_additive',
+                'recorded_at' => $now, 'published' => ($result['published'] ?? false) === true, 'reason' => $reason,
+                'received_offer_count' => $count('receivedOfferCount'), 'owned_offer_count' => $count('ownedOfferCount'),
+                'ready_offer_count' => $count('readyOfferCount'),
+                'confirmation_required_offer_count' => $count('confirmationRequiredOfferCount'),
+                'stage' => in_array($stage, [
+                    'local_ingest_load', 'runtime_dependencies', 'consume', 'mapping', 'canonical_targets',
+                    'saved_pricing', 'local_ingest', 'checkpoint', 'complete',
+                ], true) ? $stage : 'unknown',
+                'error' => $error === null ? null : self::safeError($error),
+            ];
+            $path = $directory . '/' . $searchRef . '-' . $created . '-'
+                . ($page === null ? 'complete' : 'page-' . $page) . '-anytour-offer-autosave-result-v1.json';
+            if (is_link($path) || (file_exists($path) && (!is_file($path) || filesize($path) > 2048))) return;
+            if (strlen(json_encode($value, JSON_THROW_ON_ERROR)) > 2048) return;
+            anytour_andromeda_search3_save($path, $value);
+        } catch (Throwable $ignored) {
+            // A diagnostic write must not change the receipt, SQL outcome or UI.
+        }
+    }
+
+    /** Closed codes only; arbitrary exception messages and SQL text stay out. */
+    public static function safeError(Throwable $error): array
+    {
+        $message = $error->getMessage();
+        $code = in_array($message, [
+            'ANDROMEDA_ANYTOUR_COHORT_INVALID', 'ANDROMEDA_ANYTOUR_CHECKPOINT_WRITE',
+            'ANDROMEDA_ANYTOUR_MAPPING_RECEIPT', 'ANDROMEDA_ANYTOUR_CANONICAL_RECEIPT',
+            'ANDROMEDA_ANYTOUR_MONEY_DIGEST', 'ANDROMEDA_ANYTOUR_PROTECTED_PRICE_MISMATCH',
+            'ANDROMEDA_ANYTOUR_CHILD_AGES', 'ANDROMEDA_ANYTOUR_CHECKPOINT_INVALID',
+            'ANDROMEDA_ANYTOUR_CHECKPOINT_COUNT', 'ANDROMEDA_ANYTOUR_CHECKPOINT_READBACK',
+            'ANYTOUR_INT_SNAPSHOT_PROVIDER', 'ANYTOUR_INT_SNAPSHOT_REFRESH_INCOMPLETE',
+            'ANYTOUR_INT_SNAPSHOT_TOO_MANY_OFFERS', 'ANYTOUR_INT_SNAPSHOT_EMPTY_NOT_AUTHORITATIVE',
+            'ANYTOUR_INT_SNAPSHOT_EMPTY_CONTRACT', 'ANYTOUR_INT_SNAPSHOT_OFFER', 'ANYTOUR_INT_SNAPSHOT_HOTEL',
+            'ANYTOUR_INT_SNAPSHOT_IDENTITY', 'ANYTOUR_INT_SNAPSHOT_DUPLICATE_IDENTITY',
+            'ANYTOUR_INT_SNAPSHOT_CONTEXT_EXPIRY', 'ANYTOUR_INT_SNAPSHOT_INGEST_RECEIPT',
+        ], true) ? $message : 'unclassified';
+        $sqlstate = null;
+        $driverCode = null;
+        if ($error instanceof PDOException) {
+            $info = $error->errorInfo;
+            $candidate = $info[0] ?? $error->getCode();
+            if (is_string($candidate) && preg_match('/\A[0-9A-Z]{5}\z/D', $candidate)) $sqlstate = $candidate;
+            $candidate = $info[1] ?? null;
+            if (is_int($candidate) && $candidate >= 0 && $candidate <= 99999) $driverCode = $candidate;
+        }
+        return [
+            'type' => $error instanceof PDOException ? 'pdo' : ($error instanceof JsonException ? 'json'
+                : ($error instanceof DomainException ? 'domain' : ($error instanceof InvalidArgumentException ? 'invalid_argument'
+                    : ($error instanceof RuntimeException ? 'runtime' : 'other')))),
+            'code' => $code, 'sqlstate' => $sqlstate, 'driver_code' => $driverCode,
+        ];
+    }
 }
 
 function anytour_andromeda_anytour_offer_canonical_targets(PDO $db, array $legacyIds): array
@@ -806,6 +901,13 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
     string $searchRef,
     int $generation
 ): array {
+    $stage = 'local_ingest_load';
+    $finish = static function(array $result, ?Throwable $error = null) use (
+        $request, $directory, $searchRef, $generation, &$stage
+    ): array {
+        AnyTourAndromedaOfferAutosaveV1::recordResult($result, $request, $directory, $searchRef, $generation, $stage, $error);
+        return anytour_andromeda_anytour_offer_autosave_receipt($result);
+    };
     try {
         $localIngest = getenv('ANYTOUR_LOCAL_SNAPSHOT_INGEST_FILE');
         $candidates = [];
@@ -819,38 +921,51 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
             if (is_string($candidate) && is_file($candidate)) { require_once $candidate; break; }
         }
         if (!class_exists('AnyTourOfferSnapshotIngestV1')) {
-            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'local_ingest_unavailable']);
+            return $finish(['published' => false, 'reason' => 'local_ingest_unavailable']);
         }
         $receivedPage = $request['page'] ?? null;
         if ($receivedPage !== null && (!is_int($receivedPage) || $receivedPage < 1 || $receivedPage > 1000)) {
-            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'context_invalid']);
+            return $finish(['published' => false, 'reason' => 'context_invalid']);
         }
         if ($receivedPage !== null && !method_exists('AnyTourOfferSnapshotIngestV1', 'mergePartialSnapshot')) {
             // Never fall back to complete replacement during a mixed-version rollout.
-            return anytour_andromeda_anytour_offer_autosave_receipt([
+            return $finish([
                 'published' => false, 'reason' => 'partial_ingest_unavailable', 'snapshotMode' => 'partial_additive',
             ]);
         }
+        $stage = 'runtime_dependencies';
         $reader = __DIR__ . '/andromeda-saved-package-runtime.php';
         if (is_file($reader) && !is_link($reader)) require_once $reader;
         if (!function_exists('anytour_andromeda_read_saved_pricing')
             || !function_exists('anytour_andromeda_search3_current_mappings')
             || !function_exists('anytour_andromeda_search3_save')) {
-            return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'runtime_dependency_unavailable']);
+            return $finish(['published' => false, 'reason' => 'runtime_dependency_unavailable']);
         }
         $country = (int)($request['params']['countryId'] ?? 0);
-        if ($country < 1) return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'country_invalid']);
+        if ($country < 1) return $finish(['published' => false, 'reason' => 'country_invalid']);
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $nowTs = $now->getTimestamp();
+        $stage = 'consume';
         $result = AnyTourAndromedaOfferAutosaveV1::consume(
             $request,
             $directory,
             $searchRef,
             $generation,
             $now,
-            static fn(array $offers): array => anytour_andromeda_search3_current_mappings($db, $country, $offers),
-            static fn(array $legacyIds): array => anytour_andromeda_anytour_offer_canonical_targets($db, $legacyIds),
-            static function(array $state, int $created, array $offer, array $current) use ($directory, $searchRef, $generation, $nowTs): ?array {
+            static function(array $offers) use ($db, $country, &$stage): array {
+                $stage = 'mapping';
+                $value = anytour_andromeda_search3_current_mappings($db, $country, $offers);
+                $stage = 'consume';
+                return $value;
+            },
+            static function(array $legacyIds) use ($db, &$stage): array {
+                $stage = 'canonical_targets';
+                $value = anytour_andromeda_anytour_offer_canonical_targets($db, $legacyIds);
+                $stage = 'consume';
+                return $value;
+            },
+            static function(array $state, int $created, array $offer, array $current) use ($directory, $searchRef, $generation, $nowTs, &$stage): ?array {
+                $stage = 'saved_pricing';
                 $allows = static function(array $candidate) use ($current): bool {
                     $key = json_encode([$candidate['supplier_namespace'] ?? null, (string)$candidate['external_hotel_id']]);
                     return is_int($candidate['local_hotel_id'] ?? null)
@@ -860,25 +975,37 @@ function anytour_andromeda_anytour_offer_autosave_runtime(
                     'provider' => 'andromeda', 'search_ref' => $searchRef, 'generation' => $generation,
                     'page' => $state['store']['snapshot']['page'], 'offer_ref' => $offer['offer_ref'],
                 ];
-                return anytour_andromeda_read_saved_pricing(
+                $value = anytour_andromeda_read_saved_pricing(
                     $directory, $state['store'], $created, $context, $allows, $nowTs
                 );
+                $stage = 'consume';
+                return $value;
             },
-            static fn(string $path, array $value): bool => anytour_andromeda_search3_save($path, $value),
-            static function(string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db, $receivedPage): array {
+            static function(string $path, array $value) use (&$stage): bool {
+                $stage = 'checkpoint';
+                $saved = anytour_andromeda_search3_save($path, $value);
+                if ($saved) $stage = 'consume';
+                return $saved;
+            },
+            static function(string $provider, array $search, array $rows, DateTimeImmutable $at) use ($db, $receivedPage, &$stage): array {
+                $stage = 'local_ingest';
                 if ($receivedPage !== null) {
-                    return AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db, $provider, $search, $rows, $at);
+                    $value = AnyTourOfferSnapshotIngestV1::mergePartialSnapshot($db, $provider, $search, $rows, $at);
+                } else {
+                    $value = AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db, $provider, $search, $rows, $at);
                 }
-                return AnyTourOfferSnapshotIngestV1::replaceCompleteSnapshot($db, $provider, $search, $rows, $at);
+                $stage = 'consume';
+                return $value;
             },
             $receivedPage
         );
+        $stage = 'complete';
         if (($result['published'] ?? false) === true) {
             error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_OK offers=' . (int)($result['readyOfferCount'] ?? 0));
         }
-        return anytour_andromeda_anytour_offer_autosave_receipt($result);
+        return $finish($result);
     } catch (Throwable $error) {
-        error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_FAILED ' . preg_replace('/[^A-Z0-9_:-]+/i', '_', substr($error->getMessage(), 0, 120)));
-        return anytour_andromeda_anytour_offer_autosave_receipt(['published' => false, 'reason' => 'autosave_failed']);
+        error_log('ANDROMEDA_ANYTOUR_AUTOSAVE_FAILED ' . json_encode(AnyTourAndromedaOfferAutosaveV1::safeError($error)));
+        return $finish(['published' => false, 'reason' => 'autosave_failed'], $error);
     }
 }
