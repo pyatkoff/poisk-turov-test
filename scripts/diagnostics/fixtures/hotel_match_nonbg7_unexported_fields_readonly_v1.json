@@ -1,0 +1,274 @@
+{
+  "acceptance_evaluated": false,
+  "batch": "nonbg7-unexported-fields-20261004",
+  "database_reads": 0,
+  "database_writes": 0,
+  "global_uniqueness_evaluated": false,
+  "inputs": {
+    "global_v77_reread": false,
+    "native_current": {
+      "batch": "native110-20260928",
+      "bytes": 251866,
+      "operation": "int-andromeda-match-native-current-20261001-v1",
+      "path": "operations/int-andromeda-match-native-current-20261001-v1/native110-current-manifest.json",
+      "schema": "native110-current-review/1",
+      "sha256": "59cfe4bf4001636f77a0e8ad440475c4d6b514599c9147fc984daad5f4f7849e",
+      "source_sha": "9c82d143ccd6173ade0d6b1d52c6e3a41657d460"
+    }
+  },
+  "limits": {
+    "metadata_file_bytes": 1048576,
+    "metadata_files": 1,
+    "private_capture_bytes": 16777216,
+    "raw_references": 12,
+    "total_raw_bytes": 9654037,
+    "unique_raw_files": 11
+  },
+  "mapping_writes": 0,
+  "maximum_writes": 0,
+  "mode": "match-nonbg7-unexported-fields-readonly",
+  "novelty": {
+    "consumed_BG_operator115_tuple_intersections": 0,
+    "excluded_optional_eighth_fact": true,
+    "feasibility_sha256": "ec619aaa65165a62bf97a0f558d647eabfc5acbf2e938edea86943e851f324e0",
+    "prior_source_projection": "native110_exported_identity_checks_and_raw_refs_not_these_values",
+    "same_catalog_different_operator_kept_distinct": true,
+    "source_projection": "first_values_and_types_of_selected_nonBG_original_fields",
+    "target_projectors": "ANEX2_FUNSUN2_INTOURIST4_target_operatorLink_only_consumed_no_replay"
+  },
+  "opaque_tour_key_identity_proof_permitted": false,
+  "operation": "int-andromeda-match-nonbg7-unexported-fields-20261004-v1",
+  "operator_ids": [
+    13,
+    25,
+    43
+  ],
+  "physical_http_attempts": 0,
+  "projection_fields": [
+    "row.hotelUrl",
+    "original.tourKey"
+  ],
+  "protected_catalog_id": "2000086118",
+  "provider_http_calls": 0,
+  "relative_origin_assumption_permitted": false,
+  "requested_rows": 7,
+  "requested_sources": 6,
+  "rows": [
+    {
+      "catalog_id": "2000029745",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 0,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_5",
+        "native_id": "44562"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_5",
+        "native_id": "44562",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/6",
+          "sha256": "a16240130914e51841096033f3efd843ee5480d6f8df2df208f21206ece0d7d0",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-4-3-5-20261005-20261005-7-none-page-2.json"
+        }
+      ],
+      "source_namespace": "operator_5",
+      "source_native_id": "44562",
+      "target_operator_id": 13,
+      "target_tv_hotel_id": 159
+    },
+    {
+      "catalog_id": "2000109038",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_5",
+        "native_id": "43661"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_5",
+        "native_id": "43661",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/6",
+          "sha256": "eda7e9e87b746c635f0a69cb8b856e4e8a25c2059a226dc2edb06a82a81ee780",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-6-5-5-20261011-20261011-7-none-page-2.json"
+        }
+      ],
+      "source_namespace": "operator_5",
+      "source_native_id": "43661",
+      "target_operator_id": 13,
+      "target_tv_hotel_id": 109380
+    },
+    {
+      "catalog_id": "2000037261",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_315",
+        "native_id": "354014"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_315",
+        "native_id": "354014",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/21",
+          "sha256": "c7cec8ac3277528ca271148cc93ab05a1d1c9aa4a07fe2bbb442300433a329b2",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-3-5-315-20261016-20261016-7-none-page-18.json"
+        },
+        {
+          "json_pointer": "/PRICES/16",
+          "sha256": "47a309905769048269c16644c62e492eb8d77780a9f28b728455e13160cbf0a0",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26/evidence-private/context-5-315-7-page-18.json"
+        }
+      ],
+      "source_namespace": "operator_315",
+      "source_native_id": "354014",
+      "target_operator_id": 25,
+      "target_tv_hotel_id": 59115
+    },
+    {
+      "catalog_id": "2000068203",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_315",
+        "native_id": "789636"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_315",
+        "native_id": "789636",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/23",
+          "sha256": "491952920ca566be56a4762b321cd54cf1dced0e4a052308de0149950d4bd480",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-3-5-315-20261016-20261016-7-none-page-10.json"
+        },
+        {
+          "json_pointer": "/PRICES/24",
+          "sha256": "2e186b92dca1bb3bbdee6e3c1f57ba10db05ce696eaf6567adb6f11e239c5346",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26b/evidence-private/context-2-5-315-20261011-20261011-7-none-page-10.json"
+        },
+        {
+          "json_pointer": "/PRICES/44",
+          "sha256": "847b533751468772924c1b40e2740fcf66582bb7f1260372095ab4f1e1c1eff1",
+          "source_file": "operations/hotel-match-common4-retained-context-acquire-1971-20260925-v26/evidence-private/context-5-315-7-page-9.json"
+        }
+      ],
+      "source_namespace": "operator_315",
+      "source_native_id": "789636",
+      "target_operator_id": 25,
+      "target_tv_hotel_id": 70782
+    },
+    {
+      "catalog_id": "2000068203",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_342",
+        "native_id": "17173"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_342",
+        "native_id": "17173",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/0",
+          "sha256": "1ebf98425a6776f169b040ac7546d5d9bbb873ac7c9a627a8717c17644d3e06b",
+          "source_file": "operations/hotel-match-samo-live30-common4-retry-1971-20260924-v2/evidence-private/batch-059-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_342",
+      "source_native_id": "17173",
+      "target_operator_id": 43,
+      "target_tv_hotel_id": 70782
+    },
+    {
+      "catalog_id": "2000052591",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_342",
+        "native_id": "25728"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_342",
+        "native_id": "25728",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/8",
+          "sha256": "cd6bc52c3b7160bcca41788111a9e48525fc0b31de166b13d521c582edda6aac",
+          "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-008-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_342",
+      "source_native_id": "25728",
+      "target_operator_id": 43,
+      "target_tv_hotel_id": 128
+    },
+    {
+      "catalog_id": "2000073045",
+      "dated_operator_ownership_fact": {
+        "current_identity_count": 1,
+        "current_local_hotel_ids": [],
+        "namespace": "operator_342",
+        "native_id": "29363"
+      },
+      "dated_original_fact_check": {
+        "failures": [],
+        "global_saved_unique": true,
+        "namespace": "operator_342",
+        "native_id": "29363",
+        "raw_verified": true
+      },
+      "raw_references": [
+        {
+          "json_pointer": "/PRICES/46",
+          "sha256": "3d893ec0927bf3f5b9f1dfd3c9e26626835ce713610857a0f60491c86116c293",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-3-342-14-page-2.json"
+        },
+        {
+          "json_pointer": "/PRICES/44",
+          "sha256": "850ea8ba876df9f2533ef17680cf55c1c608e9a2b1c77f5c46dc1cbec26a4f01",
+          "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-3-342-10-page-2.json"
+        },
+        {
+          "json_pointer": "/PRICES/18",
+          "sha256": "cd6bc52c3b7160bcca41788111a9e48525fc0b31de166b13d521c582edda6aac",
+          "source_file": "operations/hotel-match-samo-live30-common4-acquire-1971-20260924-v1/evidence-private/batch-008-page-1.json"
+        }
+      ],
+      "source_namespace": "operator_342",
+      "source_native_id": "29363",
+      "target_operator_id": 43,
+      "target_tv_hotel_id": 80964
+    }
+  ],
+  "safe_to_write_now": false,
+  "schema": "match-nonbg7-unexported-fields-readonly/1"
+}
