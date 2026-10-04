@@ -58,6 +58,15 @@ ANEX2_MODE = 'match-anex2-selectors-readonly'
 ANEX2_OPERATION = 'int-tourvisor-match-anex2-selectors-readonly-20261001-v1'
 ANEX2_BATCH = 'anex2-mass83-20261001'
 ANEX2_MANIFEST_SHA = '7bf2cd6dc73f451593308d3c2e78659a98725f5854c93680fcc6ea3f94b4f0f7'
+BP8_MODE = 'match-bg8-pin-bindings-readonly'
+BP8_OPERATION = 'int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1'
+BP8_BATCH = 'bg8-pin-bindings-20261004'
+BP8_MANIFEST_SHA = '4a14f5b4c641d80e378e1358341da09de17dc35478087bff134f63879c14ec1c'
+BP8_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_bg8_pin_bindings_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_bg8_pin_bindings_readonly_v1.json',
+)
+
 BF8_MODE = 'match-bg8-unexported-fields-readonly'
 BF8_OPERATION = 'int-andromeda-match-bg8-unexported-fields-20261004-v1'
 BF8_BATCH = 'bg8-unexported-fields-20261004'
@@ -147,11 +156,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == BP8_MODE:
+            core.need(operation == BP8_OPERATION and batch == BP8_BATCH, 'bg8_pins_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': BP8_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == BF8_MODE:
             core.need(operation == BF8_OPERATION and batch == BF8_BATCH, 'bg8_fields_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': BF8_BATCH,
@@ -1748,6 +1761,102 @@ REMOTE_INTOURIST4_DISPATCH = r'''    if mode=='match-intourist4-selectors-readon
 '''
 
 
+REMOTE_BP8_HANDLER = r'''
+def validate_match_bg8_pins(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-bg8-pin-bindings-readonly-result/1',
+           'operation':'int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1',
+           'batch':'bg8-pin-bindings-20261004','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'no_replay':True,
+           'operator_ids':[18],'requested_rows':8}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads']!=0
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('bg8_pins_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('bg8_pins_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay'}:fail('bg8_pins_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('bg8_pins_source_validation')
+    if data['state'] not in ('completed_read_only_bg8_pins','completed_read_only_bg8_pins_incomplete','terminal_failed_no_replay'):fail('bg8_pins_terminal_state')
+    return data
+
+def run_match_bg8_pins(stage):
+    if (operation!='int-andromeda-match-bg8-pin-bindings-readonly-20261004-v1'
+            or payload.get('batch')!='bg8-pin-bindings-20261004'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('bg8_pins_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_bg8_pin_bindings_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_bg8_pin_bindings_readonly_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='4a14f5b4c641d80e378e1358341da09de17dc35478087bff134f63879c14ec1c'):fail('bg8_pins_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('bg8_pins_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('bg8_pins_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'bg8-pin-bindings-20261004',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('bg8_pins_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('bg8_pins_reservation_readback')
+    exclusive(parent/'bg8-pin-bindings-batch-20261004.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,2*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('bg8_pins_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_bg8_pins_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,2*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    summary=validate_match_bg8_pins(data,receipt,digest,input_digest,source,module.validate_result)
+    successful=summary['state'] in ('completed_read_only_bg8_pins','completed_read_only_bg8_pins_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('bg8_pins_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','rows_examined','accepted','written')}:fail('bg8_pins_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_BP8_DISPATCH = r'''    if mode=='match-bg8-pin-bindings-readonly':
+        lane=run_match_bg8_pins(stage)
+        result['match_bg8_pin_bindings_readonly']=lane
+        result['supplier_calls']=0
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
 REMOTE_BF8_HANDLER = r'''
 def validate_match_bg8_fields(data,receipt,digest,input_digest,expected_source,validate_source):
     fixed={'schema':'match-bg8-unexported-fields-readonly-result/1',
@@ -2539,7 +2648,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -2585,6 +2694,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_DELTA_HANDLER, REMOTE_DELTA_DISPATCH, DELTA_MODE
     if bf8:
         handler, mode_dispatch, selected_mode = REMOTE_BF8_HANDLER, REMOTE_BF8_DISPATCH, BF8_MODE
+    if bp8:
+        handler, mode_dispatch, selected_mode = REMOTE_BP8_HANDLER, REMOTE_BP8_DISPATCH, BP8_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -2608,7 +2719,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -2633,8 +2744,9 @@ def activate(core, command: dict) -> None:
     funsun2 = command['mode'] == FUNSUN2_MODE
     anex2 = command['mode'] == ANEX2_MODE
     delta = command['mode'] == DELTA_MODE
+    bp8 = command['mode'] == BP8_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -2662,6 +2774,8 @@ def activate(core, command: dict) -> None:
         selected_files = DELTA_SOURCE_FILES
     if bf8:
         selected_files = BF8_SOURCE_FILES
+    if bp8:
+        selected_files = BP8_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
