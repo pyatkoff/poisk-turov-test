@@ -1260,4 +1260,63 @@ class Source3RegistrationTest(unittest.TestCase):
                 with self.assertRaises(FileExistsError):ns['run_match_source3'](stage)
                 call.assert_not_called();self.assertFalse((root/registration.SOURCE3_OPERATION).exists())
 
+class Intourist4RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core()
+        self.old_files=list(self.core.FIXED)
+        self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self, source=SOURCE, mode=None, operation=None, batch=None):
+        return self.core.PREFIX+' '.join([
+            source,
+            mode or registration.INTOURIST4_MODE,
+            operation or registration.INTOURIST4_OPERATION,
+            batch or registration.INTOURIST4_BATCH,
+        ])
+
+    def test_exact_fixed_parser_scope(self):
+        expected=dict(
+            source_sha=SOURCE,
+            mode=registration.INTOURIST4_MODE,
+            operation_id=registration.INTOURIST4_OPERATION,
+            batch=registration.INTOURIST4_BATCH,
+            maximum_writes=0,
+            provider_http_calls=14,
+        )
+        self.assertEqual(self.core.parse_command(self.body()),expected)
+        bad=[
+            self.body(operation=registration.INTOURIST4_OPERATION+'-changed'),
+            self.body(batch=registration.INTOURIST4_BATCH+'-changed'),
+            self.body(source='bad'),
+            self.body()+' extra',
+        ]
+        for body in bad:
+            with self.subTest(body=body),self.assertRaises(ValueError):
+                self.core.parse_command(body)
+
+    def test_activation_is_supplier_gated_and_exact(self):
+        command=self.core.parse_command(self.body())
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertTrue(set(registration.INTOURIST4_SOURCE_FILES).issubset(set(self.core.FIXED)))
+        self.assertEqual(self.core.REMOTE.count('def run_match_intourist4(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-intourist4-selectors-readonly':"),1)
+        self.assertIn("if mode not in ('match-intourist4-selectors-readonly','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+
+    def test_missing_or_busy_supplier_slot_fails_before_mutation(self):
+        command=self.core.parse_command(self.body())
+        with patch.dict(os.environ,{},clear=True),self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot',side_effect=ValueError('busy')) as slot,self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE,self.old_remote)
+
+
 if __name__=='__main__':unittest.main()
