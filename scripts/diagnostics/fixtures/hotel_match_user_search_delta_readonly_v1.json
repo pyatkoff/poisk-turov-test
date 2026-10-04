@@ -1,0 +1,25 @@
+{
+  "schema": "match-user-search-delta-readonly/1",
+  "operation": "int-andromeda-match-user-search-delta-20261004-v1",
+  "batch": "user-search-delta-20261004",
+  "mode": "match-user-search-delta-readonly",
+  "previous_capture": {
+    "operation": "int-andromeda-match-live30-target-catalog-v2-20261001-v1",
+    "captured_at_utc": "2026-10-01T12:46:00Z",
+    "result_sha256": "724af5102c39d7ea25513f3d7698586fb13a3309d010237145552421c159351e"
+  },
+  "fixed_upper_utc": "2026-10-04T09:23:17Z",
+  "window_civil": {
+    "lower_exclusive": "2026-10-02 12:46:00",
+    "upper_inclusive": "2026-10-03 09:23:17"
+  },
+  "source": "user_search",
+  "operator_ids": [13, 18, 25, 43],
+  "row_cap": 5000,
+  "provider_http_calls": 0,
+  "maximum_writes": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "safe_to_write_now": false,
+  "acceptance_evaluated": false
+}
