@@ -47,6 +47,9 @@ INTOURIST4_MODE = 'match-intourist4-selectors-readonly'
 INTOURIST4_OPERATION = 'int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
 INTOURIST4_BATCH = 'intourist4-official-context-20261001'
 INTOURIST4_MANIFEST_SHA = '3f05ddb13707866e8b3442da61528a1713b0ac710b53840a8b43ef5181337778'
+INTOURIST4_READBACK_MODE = 'match-intourist4-selectors-readback'
+INTOURIST4_READBACK_OPERATION = 'int-tourvisor-match-intourist4-selectors-readback-20261004-v1'
+INTOURIST4_READBACK_BATCH = 'intourist4-terminal-readback-20261004'
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -106,11 +109,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == INTOURIST4_READBACK_MODE:
+            core.need(operation == INTOURIST4_READBACK_OPERATION and batch == INTOURIST4_READBACK_BATCH, 'intourist4_readback_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': INTOURIST4_READBACK_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == INTOURIST4_MODE:
             core.need(operation == INTOURIST4_OPERATION and batch == INTOURIST4_BATCH, 'intourist4_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': INTOURIST4_BATCH,
@@ -1283,6 +1290,200 @@ REMOTE_TARGET_READBACK_DISPATCH = r'''    if mode=='match-tv-live30-target-readb
 
 
 
+
+REMOTE_INTOURIST4_READBACK_HANDLER = r'''
+def run_match_intourist4_readback(stage):
+    expected_source='a82516771252fab0ac4bd079480156c684766e05'
+    source_operation='int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+    source_batch='intourist4-official-context-20261001'
+    if (operation!='int-tourvisor-match-intourist4-selectors-readback-20261004-v1'
+            or payload.get('batch')!='intourist4-terminal-readback-20261004'
+            or source!=expected_source
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):
+        fail('intourist4_readback_fixed_scope')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:
+            fail('intourist4_readback_private_root')
+    source_child=root/source_operation
+    if not source_child.is_dir() or source_child.is_symlink() or source_child.resolve()!=source_child:
+        fail('intourist4_readback_source_missing')
+    batch_marker=parent/'intourist4-selectors-batch-intourist4-official-context-20261001.json'
+    source_reservation=source_child/'reservation.json'
+    if not safe_file(batch_marker,65536) or not safe_file(source_reservation,65536):
+        fail('intourist4_readback_source_reservation')
+    batch_data=safe_json(batch_marker,65536);reservation=safe_json(source_reservation,65536)
+    expected_reservation={'operation':source_operation,'source_sha':expected_source,'batch':source_batch,
+                          'maximum_writes':0,'provider_http_calls':14,'state':'reserved_before_db_and_provider'}
+    for name,data in (('batch',batch_data),('reservation',reservation)):
+        if (not isinstance(data,dict) or any(data.get(k)!=v for k,v in expected_reservation.items())
+                or type(data.get('reserved_at')) is not int or data['reserved_at']<1):
+            fail('intourist4_readback_'+name+'_binding')
+    readback_child=root/operation
+    if readback_child.exists() or readback_child.is_symlink():
+        fail('intourist4_readback_child_exists_no_replay')
+    own={'operation':operation,'source_sha':source,'batch':'intourist4-terminal-readback-20261004',
+         'maximum_writes':0,'provider_http_calls':0,'source_operation':source_operation,
+         'state':'reserved_readback_only','reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'intourist4-selectors-readback-batch-intourist4-terminal-readback-20261004.json',own)
+    readback_child.mkdir(mode=0o700);exclusive(readback_child/'reservation.json',own)
+
+    errors=[]
+    def optional_json(path,limit,label):
+        if not path.exists():
+            errors.append(label+'_missing');return None,None
+        if not safe_file(path,limit):
+            fail('intourist4_readback_'+label+'_unsafe')
+        raw=path.read_bytes();return safe_json(path,limit),hashlib.sha256(raw).hexdigest()
+    result,result_sha=optional_json(source_child/'result.json',8*1024*1024,'result')
+    receipt,receipt_sha=optional_json(source_child/'receipt.json',65536,'receipt')
+    allowed_states={'completed_read_only','failed_before_provider_access','terminal_failed_no_replay'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_intourist_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    def safe_int(data,key,limit,label):
+        value=data.get(key) if isinstance(data,dict) else None
+        if type(value) is int and 0<=value<=limit:return value
+        errors.append(label);return None
+    def safe_bool(data,key,label):
+        value=data.get(key) if isinstance(data,dict) else None
+        if type(value) is bool:return value
+        errors.append(label);return None
+    result_state=None;reason_sha=None;call_counts={};edge_counts={};groups=[]
+    counters={k:None for k in ('provider_http_calls','physical_http_attempts','database_reads',
+                                'database_writes','mapping_writes','returned_edges')}
+    result_no_replay=None;result_safe=None
+    if result is not None:
+        if not isinstance(result,dict):
+            errors.append('result_not_object')
+        else:
+            state=result.get('state')
+            if state in allowed_states:result_state=state
+            else:errors.append('result_state')
+            reason=result.get('reason')
+            if reason is None:reason_sha=None
+            elif isinstance(reason,str) and len(reason)<=4096:
+                reason_sha=hashlib.sha256(reason.encode()).hexdigest()
+            else:errors.append('result_reason')
+            limits={'provider_http_calls':14,'physical_http_attempts':14,'database_reads':32,
+                    'database_writes':0,'mapping_writes':0,'returned_edges':4}
+            for key,limit in limits.items():counters[key]=safe_int(result,key,limit,'result_'+key)
+            result_no_replay=safe_bool(result,'no_replay','result_no_replay')
+            result_safe=safe_bool(result,'safe_to_write_now','result_safe_to_write_now')
+            raw_calls=result.get('call_counts')
+            if isinstance(raw_calls,dict):
+                for key,value in raw_calls.items():
+                    if key in allowed_calls and type(value) is int and 0<=value<=14:call_counts[key]=value
+                    else:errors.append('result_call_counts');call_counts={};break
+            else:errors.append('result_call_counts')
+            raw_counts=result.get('edge_state_counts')
+            if isinstance(raw_counts,dict):
+                for key,value in raw_counts.items():
+                    if key in allowed_edge_states and type(value) is int and 0<=value<=4:edge_counts[key]=value
+                    else:errors.append('result_edge_state_counts');edge_counts={};break
+            else:errors.append('result_edge_state_counts')
+            raw_groups=result.get('groups')
+            if not isinstance(raw_groups,list) or len(raw_groups)>2:
+                errors.append('result_groups')
+            else:
+                for group in raw_groups:
+                    if not isinstance(group,dict):
+                        errors.append('result_group_shape');continue
+                    gnum=group.get('group');country=group.get('country_id');gstate=group.get('state')
+                    sent=group.get('sent');edges=group.get('edges')
+                    if (type(gnum) is not int or gnum not in (1,2) or country not in (1,4)
+                            or gstate not in allowed_group_states or type(sent) is not int or not 0<=sent<=2
+                            or not isinstance(edges,list) or len(edges)>2):
+                        errors.append('result_group_shape');continue
+                    clean_edges=[]
+                    for edge in edges:
+                        if not isinstance(edge,dict):
+                            errors.append('result_edge_shape');continue
+                        source_id=edge.get('source_catalog_id');target=edge.get('target_tv_hotel_id')
+                        estate=edge.get('state');operator_id=edge.get('operator_id');namespace=edge.get('namespace')
+                        link=edge.get('link_state','not_read');ids=edge.get('positive_native_candidates',[])
+                        match=edge.get('matches_source_native')
+                        if (source_id not in ('2000034121','2000062084','2000052591','2000073045')
+                                or type(target) is not int or target not in (1151,70943,128,80964)
+                                or estate not in allowed_edge_states or operator_id!=43 or namespace!='operator_342'
+                                or link not in allowed_links or not isinstance(ids,list) or len(ids)>8
+                                or any(type(v) is not int or v<1 for v in ids)
+                                or (match is not None and type(match) is not bool)):
+                            errors.append('result_edge_shape');continue
+                        clean_edges.append({'source_catalog_id':source_id,'target_tv_hotel_id':target,
+                                            'state':estate,'operator_id':43,'namespace':'operator_342',
+                                            'link_state':link,'native_candidate_count':len(ids),
+                                            'matches_source_native':match})
+                    groups.append({'group':gnum,'country_id':country,'state':gstate,'sent':sent,
+                                   'edge_count':len(edges),'edges':clean_edges})
+    receipt_state=None;receipt_counters={k:None for k in ('provider_http_calls','database_reads','database_writes','mapping_writes')}
+    receipt_no_replay=None;receipt_safe=None
+    if receipt is not None:
+        if not isinstance(receipt,dict):
+            errors.append('receipt_not_object')
+        else:
+            state=receipt.get('state')
+            if state in allowed_states:receipt_state=state
+            else:errors.append('receipt_state')
+            for key,limit in {'provider_http_calls':14,'database_reads':32,'database_writes':0,'mapping_writes':0}.items():
+                receipt_counters[key]=safe_int(receipt,key,limit,'receipt_'+key)
+            receipt_no_replay=safe_bool(receipt,'no_replay','receipt_no_replay')
+            receipt_safe=safe_bool(receipt,'safe_to_write_now','receipt_safe_to_write_now')
+            if receipt.get('operation')!=source_operation or receipt.get('batch')!=source_batch or receipt.get('source_sha')!=expected_source:
+                errors.append('receipt_binding')
+            if result_sha is not None and receipt.get('result_sha256')!=result_sha:
+                errors.append('receipt_result_digest')
+    summary={'schema':'match-intourist4-selectors-readback-result/1','operation':operation,
+             'batch':'intourist4-terminal-readback-20261004','source_sha':source,
+             'source_operation':source_operation,'source_batch':source_batch,
+             'state':'completed_read_only','provider_http_calls':0,'database_writes':0,'mapping_writes':0,
+             'safe_to_write_now':False,'no_replay':True,
+             'source_batch_sha256':hashlib.sha256(batch_marker.read_bytes()).hexdigest(),
+             'source_reservation_sha256':hashlib.sha256(source_reservation.read_bytes()).hexdigest(),
+             'source_result_present':result is not None,'source_result_sha256':result_sha,
+             'source_receipt_present':receipt is not None,'source_receipt_sha256':receipt_sha,
+             'source_result_state':result_state,'source_receipt_state':receipt_state,
+             'source_result_reason_sha256':reason_sha,'source_result_counters':counters,
+             'source_receipt_counters':receipt_counters,'source_result_no_replay':result_no_replay,
+             'source_receipt_no_replay':receipt_no_replay,'source_result_safe_to_write_now':result_safe,
+             'source_receipt_safe_to_write_now':receipt_safe,'source_call_counts':call_counts,
+             'source_edge_state_counts':edge_counts,'source_groups':groups,
+             'shape_errors':sorted(set(errors))}
+    result_bytes=json.dumps(summary,sort_keys=True,separators=(',',':')).encode()+b'\n'
+    result_digest=hashlib.sha256(result_bytes).hexdigest()
+    exclusive(readback_child/'result.json',summary)
+    rb_receipt={'operation':operation,'batch':'intourist4-terminal-readback-20261004','source_sha':source,
+                'state':'completed_read_only','result_sha256':result_digest,'provider_http_calls':0,
+                'database_writes':0,'mapping_writes':0,'safe_to_write_now':False,'no_replay':True}
+    exclusive(readback_child/'receipt.json',rb_receipt)
+    return {'result_sha256':result_digest,'successful':True,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_INTOURIST4_READBACK_DISPATCH = r'''    if mode=='match-intourist4-selectors-readback':
+        lane=run_match_intourist4_readback(stage)
+        result['match_intourist4_selectors_readback']=lane
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+'''
+
 REMOTE_INTOURIST4_HANDLER = r'''
 def validate_match_intourist4(data,receipt,digest,expected_source):
     expected={'2000034121':('549',1151,4),'2000062084':('18273',70943,4),
@@ -1676,7 +1877,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         shams_geo: bool = False, shams_geo_readback: bool = False, shams_write: bool = False,
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
-                        target_v2: bool = False, source3: bool = False, intourist4: bool = False) -> str:
+                        target_v2: bool = False, source3: bool = False, intourist4: bool = False,
+                        intourist4_readback: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1712,6 +1914,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_SOURCE3_HANDLER, REMOTE_SOURCE3_DISPATCH, SOURCE3_MODE
     if intourist4:
         handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_HANDLER, REMOTE_INTOURIST4_DISPATCH, INTOURIST4_MODE
+    if intourist4_readback:
+        handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_READBACK_HANDLER, REMOTE_INTOURIST4_READBACK_DISPATCH, INTOURIST4_READBACK_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1720,7 +1924,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1741,7 +1945,8 @@ def activate(core, command: dict) -> None:
     target_v2 = command['mode'] == TARGET_V2_MODE
     source3 = command['mode'] == SOURCE3_MODE
     intourist4 = command['mode'] == INTOURIST4_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4)
+    intourist4_readback = command['mode'] == INTOURIST4_READBACK_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback)
     if source3 or intourist4:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -1759,6 +1964,8 @@ def activate(core, command: dict) -> None:
         selected_files = SOURCE3_SOURCE_FILES
     if intourist4:
         selected_files = INTOURIST4_SOURCE_FILES
+    if intourist4_readback:
+        selected_files = ()
     for path in selected_files:
         if path not in files:
             files.append(path)
