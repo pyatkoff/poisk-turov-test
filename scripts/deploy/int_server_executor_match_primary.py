@@ -95,6 +95,15 @@ NR5_SOURCE_FILES = (
     *NU5_SOURCE_FILES,
 )
 
+OBSERVED_PAGE1_MODE = 'match-observed-page1-identity'
+OBSERVED_PAGE1_OPERATION = 'int-andromeda-match-observed-page1-identity-20261005-v1'
+OBSERVED_PAGE1_BATCH = 'observed-page1-20261004-175945'
+OBSERVED_PAGE1_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_observed_page1_identity_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_observed_page1_identity_readonly_v1.json',
+    'tests/hotel_match_observed_page1_identity_readonly_v1_test.py',
+)
+
 BF5_MODE = 'match-bg5-unexported-fields-readonly'
 BF5_OPERATION = 'int-andromeda-match-bg5-unexported-fields-20261004-v1'
 BF5_BATCH = 'bg5-unexported-fields-20261004'
@@ -193,11 +202,16 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == OBSERVED_PAGE1_MODE:
+            core.need(operation == OBSERVED_PAGE1_OPERATION and batch == OBSERVED_PAGE1_BATCH,
+                      'observed_page1_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                    'batch': OBSERVED_PAGE1_BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == BP8_MODE:
             core.need(operation == BP8_OPERATION and batch == BP8_BATCH, 'bg8_pins_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': BP8_BATCH,
@@ -2189,6 +2203,124 @@ REMOTE_NR5_DISPATCH = r'''    if mode=='match-nonbg5-url-paths-terminal-readback
 
 '''
 
+REMOTE_OBSERVED_PAGE1_HANDLER = r'''
+def validate_match_observed_page1_identity(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-observed-page1-identity-result/1',
+           'operation':'int-andromeda-match-observed-page1-identity-20261005-v1',
+           'batch':'observed-page1-20261004-175945','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_reads':0,
+           'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,
+           'accepted':0,'written':0,'safe_to_write_now':False,
+           'acceptance_evaluated':False,'global_uniqueness_evaluated':False,
+           'raw_samo_evidence_verified':False,'session_identity_verified':False,
+           'route_identity_verified':False,'current_registry_verified':False,'no_replay':True}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('observed_page1_terminal_binding')
+    receipt_keys={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                  'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                  'mapping_writes','booking_calls','lead_calls','accepted','written',
+                  'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated',
+                  'raw_samo_evidence_verified','session_identity_verified','route_identity_verified',
+                  'current_registry_verified','no_replay'}
+    if set(receipt)!=receipt_keys:fail('observed_page1_receipt_shape')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('observed_page1_receipt_binding')
+    try:validate_source(data)
+    except Exception:fail('observed_page1_source_validation')
+    if data['state'] not in ('completed_read_only','terminal_failed_no_replay'):fail('observed_page1_terminal_state')
+    return data
+
+def run_match_observed_page1_identity(stage):
+    if (operation!='int-andromeda-match-observed-page1-identity-20261005-v1'
+            or payload.get('batch')!='observed-page1-20261004-175945'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('observed_page1_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_observed_page1_identity_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_observed_page1_identity_readonly_v1.json'
+    source_test=stage/'tests/hotel_match_observed_page1_identity_readonly_v1_test.py'
+    checked=[(runner,'447a5362ef6746496890c3f156cc3756ba6d4c0847f981a1571a2cf25e67873c',2*1024*1024),
+             (manifest,'771fba36e04ad0c051158ac0c08e8e228eef7e1e9e2aa2850d719e3d915dab94',65536),
+             (source_test,'d27156b2a002bcef68726ac1b9fe6d844d8dc9d19ec741352045a7ba848b7618',2*1024*1024)]
+    for path,digest,maximum in checked:
+        if path.resolve()!=path or not safe_file(path,maximum) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('observed_page1_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('observed_page1_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('observed_page1_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'observed-page1-20261004-175945',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('observed_page1_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('observed_page1_reservation_readback')
+    exclusive(parent/'observed-page1-batch-20261004-175945.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_PRIVATE_DIRECTORY':str(child),'MATCH_CURRENT_MANIFEST_PATH':str(manifest),
+                'MATCH_RESULT_PATH':str(result_path),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,16*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('observed_page1_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_observed_page1_identity_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    try:
+        result_raw=module.file_bytes(result_path,2*1024*1024)
+        receipt_raw=module.file_bytes(receipt_path,65536)
+        input_raw=module.file_bytes(input_path,16*1024*1024)
+        data=module.parsed(result_raw);receipt=module.parsed(receipt_raw)
+    except Exception:fail('observed_page1_terminal_artifact_parse')
+    digest=hashlib.sha256(result_raw).hexdigest()
+    input_digest=hashlib.sha256(input_raw).hexdigest()
+    summary=validate_match_observed_page1_identity(data,receipt,digest,input_digest,source,
+                                                  lambda value:module.validate_result(value,receipt,source))
+    successful=summary['state']=='completed_read_only'
+    if run.returncode!=(0 if successful else 2):fail('observed_page1_exit_binding')
+    def stdout_pairs(pairs):
+        value={}
+        for key,item in pairs:
+            if key in value:fail('observed_page1_stdout_duplicate_key')
+            value[key]=item
+        return value
+    stdout=json.loads(run.stdout,object_pairs_hook=stdout_pairs)
+    stdout_types={'state':str,'examined_offers':int,'accepted':int,'written':int}
+    if (not isinstance(stdout,dict) or set(stdout)!=set(stdout_types)
+            or any(type(stdout[k]) is not kind or stdout[k]!=data[k] for k,kind in stdout_types.items())):fail('observed_page1_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_OBSERVED_PAGE1_DISPATCH = r'''    if mode=='match-observed-page1-identity':
+        lane=run_match_observed_page1_identity(stage)
+        result['match_observed_page1_identity']=lane
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
 REMOTE_NU5_DISPATCH = r'''    if mode=='match-nonbg5-retained-url-paths-readonly':
         lane=run_match_nonbg5_url_paths(stage)
         result['match_nonbg5_retained_url_paths_readonly']=lane
@@ -3090,7 +3222,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -3146,6 +3278,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_NU5_HANDLER, REMOTE_NU5_DISPATCH, NU5_MODE
     if nr5:
         handler, mode_dispatch, selected_mode = REMOTE_NR5_HANDLER, REMOTE_NR5_DISPATCH, NR5_MODE
+    if observed_page1:
+        handler, mode_dispatch, selected_mode = REMOTE_OBSERVED_PAGE1_HANDLER, REMOTE_OBSERVED_PAGE1_DISPATCH, OBSERVED_PAGE1_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -3169,13 +3303,17 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
         str(command.get('operation_id','')), str(command.get('batch','')),
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
+    if command['mode'] == OBSERVED_PAGE1_MODE:
+        core.need(type(command.get('maximum_writes')) is int
+                  and type(command.get('provider_http_calls')) is int,
+                  'observed_page1_authorized_counter_type')
     proof = command['mode'] == READBACK_MODE
     native = command['mode'] == NATIVE_MODE
     guarded = command['mode'] == GUARDED_MODE
@@ -3199,8 +3337,9 @@ def activate(core, command: dict) -> None:
     nf7 = command['mode'] == NF7_MODE
     nu5 = command['mode'] == NU5_MODE
     nr5 = command['mode'] == NR5_MODE
+    observed_page1 = command['mode'] == OBSERVED_PAGE1_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -3238,6 +3377,8 @@ def activate(core, command: dict) -> None:
         selected_files = NU5_SOURCE_FILES
     if nr5:
         selected_files = NR5_SOURCE_FILES
+    if observed_page1:
+        selected_files = OBSERVED_PAGE1_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
