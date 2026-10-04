@@ -1397,4 +1397,95 @@ class Intourist4ReadbackRegistrationTest(unittest.TestCase):
                 ns['run_match_intourist4_readback'](home/'stage')
 
 
+class FunSun2RegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();self.old_files=list(self.core.FIXED);self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self,source=SOURCE,operation=None,batch=None):
+        return self.core.PREFIX+' '.join([source,registration.FUNSUN2_MODE,
+            operation or registration.FUNSUN2_OPERATION,batch or registration.FUNSUN2_BATCH])
+
+    def test_exact_fixed_scope_supplier_gate_and_registration(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual(command,dict(source_sha=SOURCE,mode=registration.FUNSUN2_MODE,
+            operation_id=registration.FUNSUN2_OPERATION,batch=registration.FUNSUN2_BATCH,
+            maximum_writes=0,provider_http_calls=7))
+        for body in (self.body(operation='changed'),self.body(batch='changed'),self.body(source='bad'),self.body()+' extra'):
+            with self.subTest(body=body),self.assertRaises(ValueError):self.core.parse_command(body)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot,self.assertRaises(ValueError):
+            registration.activate(self.core,command)
+        slot.assert_not_called();self.assertEqual(self.core.FIXED,self.old_files);self.assertEqual(self.core.REMOTE,self.old_remote)
+        with patch.dict(os.environ,{'GH_TOKEN':'fixture-token'},clear=False),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_called_once_with('fixture-token')
+        self.assertTrue(set(registration.FUNSUN2_SOURCE_FILES).issubset(set(self.core.FIXED)))
+        self.assertEqual(self.core.REMOTE.count('def run_match_funsun2(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-funsun2-selectors-readonly':"),1)
+        self.assertIn("if mode not in ('match-funsun2-selectors-readonly','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+        encoded=base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)).decode()
+        remote_command="python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\""+encoded+"\")))'"
+        self.assertLessEqual(len(remote_command.encode()),65536)
+
+    def result(self):
+        rows=[dict(source_catalog_id='2000037261',target_tv_hotel_id=59115,state='eligible',holds=[],safe_to_write_now=False),
+              dict(source_catalog_id='2000068203',target_tv_hotel_id=70782,state='eligible',holds=[],safe_to_write_now=False)]
+        actions=['group_preflight','search_start','search_status','search_results','tour_detail']
+        snapshots=[dict(sequence=i+1,next_http_call=max(1,i),action=action,rows=copy.deepcopy(rows))
+                   for i,action in enumerate(actions)]
+        edge=dict(source_catalog_id='2000037261',source_native_id='354014',target_tv_hotel_id=59115,
+            operator_id=25,namespace='operator_315',operator_tour_count=1,tour_id_sha256='1'*64,
+            state='detail_identity_verified',safe_to_write_now=False,tour_detail_http=200,
+            operator_link_sha256='2'*64,operator_link_host='b2b.fstravel.com',
+            positive_native_candidates=[354014,789636],raw_identity_values=['354014,789636'],
+            raw_identity_tokens=['354014','789636'],query_keys=['hotels'],
+            link_state='captured_ambiguous_native',matches_source_native=False)
+        return dict(schema='match-funsun2-selectors-readonly-result/1',
+            operation=registration.FUNSUN2_OPERATION,batch=registration.FUNSUN2_BATCH,source_sha=SOURCE,
+            state='completed_read_only',reason=None,captured_at_utc='2026-10-04T08:30:00+00:00',
+            requested_rows=2,groups=[dict(group=1,country_id=4,state='completed_read_only',sent=2,
+                initial_preflight=copy.deepcopy(rows),search_complete=True,returned_targets=1,edges=[edge])],
+            preflight_snapshots=snapshots,provider_http_calls=4,physical_http_attempts=4,database_reads=5,
+            call_counts={'search_start':1,'search_status':1,'search_results':1,'tour_detail':1},
+            returned_edges=1,edge_state_counts={'detail_identity_verified':1},
+            tourvisor_account='TOURVISOR_ANEX_JWT',operator_ids=[25],continue_calls=0,dates_calls=0,
+            database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
+
+    def validate(self,data):
+        raw=json.dumps(data,separators=(',',':')).encode();digest=hashlib.sha256(raw).hexdigest()
+        keys=('operation','batch','source_sha','state','provider_http_calls','database_reads',
+              'database_writes','mapping_writes','safe_to_write_now','no_replay')
+        receipt={key:data[key] for key in keys};receipt['result_sha256']=digest
+        def fail(reason):raise RuntimeError(reason)
+        ns=dict(re=re,json=json,hashlib=hashlib,fail=fail)
+        exec(registration.REMOTE_FUNSUN2_HANDLER,ns)
+        return ns['validate_match_funsun2'](data,receipt,digest,SOURCE)
+
+    def test_terminal_validator_preserves_raw_tokens_and_rejects_widening(self):
+        summary=self.validate(self.result())
+        self.assertEqual(summary['groups'][0]['edges'][0]['raw_identity_tokens'],['354014','789636'])
+        self.assertNotIn('reason',summary);self.assertIsNone(summary['reason_sha256'])
+        changes=[lambda d:d.update(mapping_writes=1),lambda d:d.update(provider_http_calls=8),
+            lambda d:d.update(operator_ids=[25,43]),lambda d:d['groups'][0].update(country_id=1),
+            lambda d:d['groups'][0]['edges'][0].update(namespace='operator_342'),
+            lambda d:d['groups'][0]['edges'][0].update(operator_link_host='intourist.ru'),
+            lambda d:d['groups'][0]['edges'][0].update(raw_identity_tokens=['354014']),
+            lambda d:d['groups'][0]['edges'][0].update(positive_native_candidates=[789636,354014]),
+            lambda d:d.update(extra='unsafe')]
+        for change in changes:
+            with self.subTest(change=change):
+                data=self.result();change(data)
+                with self.assertRaises(RuntimeError):self.validate(data)
+
+    def test_handler_has_exact_manifest_roster_and_no_write_authority(self):
+        handler=registration.REMOTE_FUNSUN2_HANDLER
+        for required in (registration.FUNSUN2_OPERATION,registration.FUNSUN2_BATCH,registration.FUNSUN2_MANIFEST_SHA,
+                "'2000037261':('354014',59115,4)","'2000068203':('789636',70782,4)",
+                "'operator_ids':[25]","'namespace']!='operator_315'","maximum_writes']!=0"):
+            self.assertIn(required,handler)
+        for forbidden in ('database_writes=1','mapping_writes=1','--continue','date-walk','full-drain'):
+            self.assertNotIn(forbidden,handler)
+
+
 if __name__=='__main__':unittest.main()

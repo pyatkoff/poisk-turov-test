@@ -50,6 +50,10 @@ INTOURIST4_MANIFEST_SHA = '3f05ddb13707866e8b3442da61528a1713b0ac710b53840a8b43e
 INTOURIST4_READBACK_MODE = 'match-intourist4-selectors-readback'
 INTOURIST4_READBACK_OPERATION = 'int-tourvisor-match-intourist4-selectors-readback-20261004-v1'
 INTOURIST4_READBACK_BATCH = 'intourist4-terminal-readback-20261004'
+FUNSUN2_MODE = 'match-funsun2-selectors-readonly'
+FUNSUN2_OPERATION = 'int-tourvisor-match-funsun2-selectors-readonly-20261001-v1'
+FUNSUN2_BATCH = 'funsun2-mass83-20261001'
+FUNSUN2_MANIFEST_SHA = '093970c2b59b95dc59f1187cd05dd50a3653d6cdd93ad892e5d5ead1685bebae'
 TARGET_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_pending8_transition_v76.php',
     'scripts/diagnostics/hotel_match_tv_live30_target_catalog_v1.php',
@@ -99,6 +103,12 @@ INTOURIST4_SOURCE_FILES = (
     'reports/hotel-match-intourist-official-context-20261001.json',
     'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json',
 )
+FUNSUN2_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_funsun2_selectors_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_funsun2_selectors_readonly_v1.json',
+    'reports/hotel-match-mass83-proof-minimization-20261001.json',
+    'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json',
+)
 
 
 def register_parser(core) -> None:
@@ -109,11 +119,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == FUNSUN2_MODE:
+            core.need(operation == FUNSUN2_OPERATION and batch == FUNSUN2_BATCH, 'funsun2_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': FUNSUN2_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 7}
         if mode == INTOURIST4_READBACK_MODE:
             core.need(operation == INTOURIST4_READBACK_OPERATION and batch == INTOURIST4_READBACK_BATCH, 'intourist4_readback_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': INTOURIST4_READBACK_BATCH,
@@ -1693,6 +1707,213 @@ REMOTE_INTOURIST4_DISPATCH = r'''    if mode=='match-intourist4-selectors-readon
         result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
 '''
 
+
+REMOTE_FUNSUN2_HANDLER = r'''
+def validate_match_funsun2(data,receipt,digest,expected_source):
+    expected={'2000037261':('354014',59115,4),'2000068203':('789636',70782,4)}
+    fixed={'schema':'match-funsun2-selectors-readonly-result/1',
+           'operation':'int-tourvisor-match-funsun2-selectors-readonly-20261001-v1',
+           'batch':'funsun2-mass83-20261001','source_sha':expected_source,
+           'requested_rows':2,'tourvisor_account':'TOURVISOR_ANEX_JWT','operator_ids':[25],
+           'continue_calls':0,'dates_calls':0,'database_writes':0,'mapping_writes':0,
+           'safe_to_write_now':False}
+    extra={'state','reason','captured_at_utc','groups','preflight_snapshots','provider_http_calls',
+           'physical_http_attempts','database_reads','call_counts','returned_edges',
+           'edge_state_counts','no_replay'}
+    receipt_fields={'operation','batch','source_sha','state','result_sha256','provider_http_calls',
+                    'database_reads','database_writes','mapping_writes','safe_to_write_now','no_replay'}
+    if (not isinstance(data,dict) or set(data)!=set(fixed)|extra
+            or not isinstance(receipt,dict) or set(receipt)!=receipt_fields
+            or any(data.get(k)!=v for k,v in fixed.items()) or receipt.get('result_sha256')!=digest
+            or any(receipt.get(k)!=data.get(k) for k in receipt_fields-{'result_sha256'})):
+        fail('funsun2_terminal_binding')
+    ints=('provider_http_calls','physical_http_attempts','database_reads','returned_edges')
+    if (any(type(data.get(k)) is not int for k in ints)
+            or not 0<=data['provider_http_calls']<=7
+            or data['physical_http_attempts']!=data['provider_http_calls']
+            or not 0<=data['database_reads']<=8 or not 0<=data['returned_edges']<=2
+            or type(data['no_replay']) is not bool or data['no_replay']!=(data['provider_http_calls']>0)):
+        fail('funsun2_counter_authority')
+    for k in ('provider_http_calls','database_reads','database_writes','mapping_writes'):
+        if type(receipt.get(k)) is not int or receipt[k]!=data[k]: fail('funsun2_receipt_counter')
+    if receipt['safe_to_write_now'] is not False or type(receipt['no_replay']) is not bool:
+        fail('funsun2_receipt_authority')
+    state=data['state'];success=state=='completed_read_only'
+    if state not in ('completed_read_only','failed_before_provider_access','terminal_failed_no_replay'):
+        fail('funsun2_terminal_state')
+    if ((state=='failed_before_provider_access' and data['provider_http_calls']!=0)
+            or (state=='terminal_failed_no_replay' and data['provider_http_calls']==0)
+            or (success and data['reason'] is not None)):
+        fail('funsun2_terminal_counts')
+    reason=data['reason']
+    if not success and (not isinstance(reason,str) or len(reason)<1 or len(reason)>180
+            or re.search(r'[\x00-\x1f\x7f]',reason)): fail('funsun2_reason_shape')
+    stamp=data['captured_at_utc']
+    if not isinstance(stamp,str): fail('funsun2_timestamp')
+    import datetime as dt
+    try:
+        parsed=dt.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+        if parsed.utcoffset()!=dt.timedelta(0): fail('funsun2_timestamp')
+    except (ValueError,TypeError): fail('funsun2_timestamp')
+    calls=data['call_counts'];allowed_calls={'search_start','search_status','search_results','tour_detail'}
+    if (not isinstance(calls,dict) or any(k not in allowed_calls or type(v) is not int or v<0 for k,v in calls.items())
+            or sum(calls.values())!=data['provider_http_calls']
+            or calls.get('search_start',0)>1 or calls.get('search_status',0)>3
+            or calls.get('search_results',0)>1 or calls.get('tour_detail',0)>2):
+        fail('funsun2_call_partition')
+    holds={'current_source_not_pending_null','current_source_history_review','target_missing_or_inactive',
+           'target_country_changed','target_manual','target_excluded','target_occupied','protected_source'}
+    snapshots=data['preflight_snapshots']
+    if not isinstance(snapshots,list) or len(snapshots)!=data['database_reads']: fail('funsun2_preflight_count')
+    last=0
+    for snap in snapshots:
+        if (not isinstance(snap,dict) or set(snap)!={'sequence','next_http_call','action','rows'}
+                or type(snap['sequence']) is not int or snap['sequence']!=last+1
+                or type(snap['next_http_call']) is not int or not 1<=snap['next_http_call']<=7
+                or not isinstance(snap['action'],str) or not isinstance(snap['rows'],list)
+                or not 1<=len(snap['rows'])<=2): fail('funsun2_preflight_shape')
+        last=snap['sequence'];seen=set()
+        for row in snap['rows']:
+            if (not isinstance(row,dict) or set(row)!={'source_catalog_id','target_tv_hotel_id','state','holds','safe_to_write_now'}
+                    or row['source_catalog_id'] not in expected or row['safe_to_write_now'] is not False):
+                fail('funsun2_preflight_row')
+            native,target,country=expected[row['source_catalog_id']]
+            if type(row['target_tv_hotel_id']) is not int or row['target_tv_hotel_id']!=target:
+                fail('funsun2_preflight_identity')
+            hs=row['holds']
+            if (not isinstance(hs,list) or hs!=sorted(set(hs)) or any(h not in holds for h in hs)
+                    or row['state']!=('eligible' if not hs else 'hold') or target in seen):
+                fail('funsun2_preflight_state')
+            seen.add(target)
+    groups=data['groups']
+    if not isinstance(groups,list) or len(groups)>1 or (success and len(groups)!=1): fail('funsun2_groups')
+    edge_count=0;edge_states={}
+    edge_base={'source_catalog_id','source_native_id','target_tv_hotel_id','operator_id','namespace',
+               'operator_tour_count','tour_id_sha256','state','safe_to_write_now'}
+    edge_optional={'tour_detail_http','operator_link_sha256','operator_link_host','positive_native_candidates',
+                   'query_keys','raw_identity_values','raw_identity_tokens','link_state','matches_source_native'}
+    group_base={'group','country_id','state','sent','edges'}
+    group_optional={'initial_preflight','search_complete','returned_targets'}
+    allowed_group_states={'preflight_hold','completed_read_only','current_rows_hold','current_rows_changed'}
+    allowed_edge_states={'operator_tour_returned','detail_404','detail_identity_mismatch',
+                         'detail_identity_verified','current_hold_before_detail'}
+    allowed_links={'missing','invalid','invalid_origin','unexpected_funsun_host','secret_bearing_link',
+                   'captured_single_native','captured_ambiguous_native','missing_native','not_read'}
+    seen_targets=set()
+    for group in groups:
+        if (not isinstance(group,dict) or not group_base.issubset(group)
+                or set(group)-group_base-group_optional or group['group']!=1 or group['country_id']!=4
+                or group['state'] not in allowed_group_states or type(group['sent']) is not int
+                or not 0<=group['sent']<=2 or not isinstance(group['edges'],list)): fail('funsun2_group_shape')
+        for edge in group['edges']:
+            if (not isinstance(edge,dict) or not edge_base.issubset(edge)
+                    or set(edge)-edge_base-edge_optional or edge['source_catalog_id'] not in expected
+                    or edge['source_native_id']!=expected[edge['source_catalog_id']][0]
+                    or type(edge['target_tv_hotel_id']) is not int
+                    or edge['target_tv_hotel_id']!=expected[edge['source_catalog_id']][1]
+                    or edge['operator_id']!=25 or edge['namespace']!='operator_315'
+                    or type(edge['operator_tour_count']) is not int or edge['operator_tour_count']<1
+                    or not isinstance(edge['tour_id_sha256'],str) or not re.fullmatch(r'[0-9a-f]{64}',edge['tour_id_sha256'])
+                    or edge['state'] not in allowed_edge_states or edge['safe_to_write_now'] is not False
+                    or edge['target_tv_hotel_id'] in seen_targets): fail('funsun2_edge_identity')
+            seen_targets.add(edge['target_tv_hotel_id']);edge_count+=1
+            edge_states[edge['state']]=edge_states.get(edge['state'],0)+1
+            if 'positive_native_candidates' in edge:
+                ids=edge['positive_native_candidates']
+                if (not isinstance(ids,list) or ids!=sorted(set(ids))
+                        or any(type(v) is not int or v<1 for v in ids)): fail('funsun2_native_candidates')
+            raw_values=edge.get('raw_identity_values');raw_tokens=edge.get('raw_identity_tokens')
+            if (raw_values is None)!=(raw_tokens is None): fail('funsun2_raw_identity_pair')
+            if raw_values is not None:
+                if (not isinstance(raw_values,list) or not isinstance(raw_tokens,list)
+                        or any(not isinstance(v,str) or len(v)>512 for v in raw_values)
+                        or any(not isinstance(v,str) or not re.fullmatch(r'[1-9][0-9]{0,19}',v) for v in raw_tokens)
+                        or sorted(set(int(v) for v in raw_tokens))!=edge.get('positive_native_candidates',[])):
+                    fail('funsun2_raw_identity')
+            if 'query_keys' in edge:
+                keys=edge['query_keys']
+                if (not isinstance(keys,list) or len(keys)>40 or keys!=sorted(set(keys))
+                        or any(not isinstance(v,str) or not re.fullmatch(r'[a-z0-9_.-]{1,80}',v) for v in keys)):
+                    fail('funsun2_query_keys')
+            if 'link_state' in edge and edge['link_state'] not in allowed_links: fail('funsun2_link_state')
+            if edge.get('link_state') in ('captured_single_native','captured_ambiguous_native'):
+                host=edge.get('operator_link_host')
+                if not isinstance(host,str) or not (host=='fstravel.com' or host.endswith('.fstravel.com')):
+                    fail('funsun2_link_host')
+            if 'matches_source_native' in edge:
+                ids=edge.get('positive_native_candidates',[]);expected_match=ids==[int(edge['source_native_id'])]
+                if type(edge['matches_source_native']) is not bool or edge['matches_source_native']!=expected_match:
+                    fail('funsun2_native_match')
+    if edge_count!=data['returned_edges'] or data['edge_state_counts']!=edge_states: fail('funsun2_edge_partition')
+    summary={k:v for k,v in data.items() if k!='reason'}
+    summary['reason_sha256']=hashlib.sha256(reason.encode()).hexdigest() if reason else None
+    return summary
+
+def run_match_funsun2(stage):
+    if (operation!='int-tourvisor-match-funsun2-selectors-readonly-20261001-v1'
+            or payload.get('batch')!='funsun2-mass83-20261001'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=7):
+        fail('funsun2_fixed_scope')
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_funsun2_selectors_readonly_v1.json'
+    runner=stage/'scripts/diagnostics/hotel_match_funsun2_selectors_readonly_v1.py'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='093970c2b59b95dc59f1187cd05dd50a3653d6cdd93ad892e5d5ead1685bebae'):
+        fail('funsun2_source_binding')
+    for path in ('reports/hotel-match-mass83-proof-minimization-20261001.json',
+                 'reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json'):
+        if not safe_file(stage/path,2*1024*1024): fail('funsun2_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder: fail('funsun2_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink(): fail('funsun2_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'funsun2-mass83-20261001',
+                 'maximum_writes':0,'provider_http_calls':7,'state':'reserved_before_db_and_provider',
+                 'reserved_at':int(time.time())}
+    def exclusive(path,value):
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            stream.write(json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try: os.fsync(fd)
+        finally: os.close(fd)
+    exclusive(parent/'funsun2-selectors-batch-funsun2-mass83-20261001.json',reservation)
+    child.mkdir(mode=0o700);exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),
+                'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,
+                       capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json'
+    if (not safe_file(result_path,8*1024*1024) or not safe_file(receipt_path,65536)
+            or run.stderr.strip() or len(run.stdout.encode())>65536): fail('funsun2_terminal_missing_no_replay')
+    data=safe_json(result_path,8*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    summary=validate_match_funsun2(data,receipt,digest,source)
+    successful=summary['state']=='completed_read_only'
+    if run.returncode!=(0 if successful else 2): fail('funsun2_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','reason','requested_rows','provider_http_calls','returned_edges','edge_state_counts')}:
+        fail('funsun2_stdout_binding')
+    return {'result_sha256':digest,'successful':successful,'no_replay':True,'summary':summary}
+'''
+
+REMOTE_FUNSUN2_DISPATCH = r'''    if mode=='match-funsun2-selectors-readonly':
+        lane=run_match_funsun2(stage)
+        result['match_funsun2_selectors_readonly']=lane
+        result['supplier_calls']=lane['summary']['provider_http_calls']
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before: fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+'''
+
 REMOTE_SOURCE3_HANDLER = r'''
 def validate_match_source3(data,receipt,digest,expected_source):
     expected={'163887':(5,'operator_5',1124,'8319'),
@@ -1878,7 +2099,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -1916,6 +2137,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_HANDLER, REMOTE_INTOURIST4_DISPATCH, INTOURIST4_MODE
     if intourist4_readback:
         handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_READBACK_HANDLER, REMOTE_INTOURIST4_READBACK_DISPATCH, INTOURIST4_READBACK_MODE
+    if funsun2:
+        handler, mode_dispatch, selected_mode = REMOTE_FUNSUN2_HANDLER, REMOTE_FUNSUN2_DISPATCH, FUNSUN2_MODE
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
@@ -1924,7 +2147,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -1946,8 +2169,9 @@ def activate(core, command: dict) -> None:
     source3 = command['mode'] == SOURCE3_MODE
     intourist4 = command['mode'] == INTOURIST4_MODE
     intourist4_readback = command['mode'] == INTOURIST4_READBACK_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback)
-    if source3 or intourist4:
+    funsun2 = command['mode'] == FUNSUN2_MODE
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2)
+    if source3 or intourist4 or funsun2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
         core.need(bool(token), 'match_supplier_slot_token')
@@ -1966,6 +2190,8 @@ def activate(core, command: dict) -> None:
         selected_files = INTOURIST4_SOURCE_FILES
     if intourist4_readback:
         selected_files = ()
+    if funsun2:
+        selected_files = FUNSUN2_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
