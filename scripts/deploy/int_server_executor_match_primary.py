@@ -2139,6 +2139,20 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_INTOURIST4_READBACK_HANDLER, REMOTE_INTOURIST4_READBACK_DISPATCH, INTOURIST4_READBACK_MODE
     if funsun2:
         handler, mode_dispatch, selected_mode = REMOTE_FUNSUN2_HANDLER, REMOTE_FUNSUN2_DISPATCH, FUNSUN2_MODE
+    if intourist4 or intourist4_readback or funsun2:
+        # These fixed Tourvisor operations are authorized by the registered parser.
+        # Bind the emitted first guard to the exact triple, before any reservation;
+        # do not broaden the stock operation namespace for other modes.
+        operation_guard = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):\n"
+        core.need(remote.count(operation_guard) == 1, 'primary_operation_guard_source_drift')
+        selected_operation, selected_batch = (
+            (INTOURIST4_OPERATION, INTOURIST4_BATCH) if intourist4 else
+            (INTOURIST4_READBACK_OPERATION, INTOURIST4_READBACK_BATCH) if intourist4_readback else
+            (FUNSUN2_OPERATION, FUNSUN2_BATCH)
+        )
+        exact_guard = (f"    if not (mode=={selected_mode!r} and operation=={selected_operation!r} "
+                       f"and payload.get('batch')=={selected_batch!r}):\n")
+        remote = remote.replace(operation_guard, exact_guard, 1)
     remote = remote.replace(definition, handler + definition, 1)
     remote = remote.replace(dispatch, mode_dispatch + dispatch, 1)
     remote = remote.replace(collector, "    if mode not in ('" + selected_mode + "','reconcile',")
