@@ -1,0 +1,531 @@
+{
+  "acceptance_policy_defined": false,
+  "acquisition_authorized": false,
+  "counterexample_context": [
+    {
+      "accepted_catalog_ids": [],
+      "full_bg_keys": [
+        "102632930483"
+      ],
+      "namespace_holds": [
+        "supplier_native_namespace_must_be_proven",
+        "current_writer_checks_not_performed"
+      ],
+      "safe_to_write_now": false,
+      "source_names": [],
+      "target_name": "SUNNY DAYS MIRETTE FAMILY AQUAPARK",
+      "tv_hotel_id": 474
+    },
+    {
+      "accepted_catalog_ids": [
+        "2000059367",
+        "2000068784"
+      ],
+      "full_bg_keys": [
+        "102632819729"
+      ],
+      "namespace_holds": [
+        "supplier_native_namespace_must_be_proven",
+        "current_writer_checks_not_performed"
+      ],
+      "safe_to_write_now": false,
+      "source_names": [
+        {
+          "catalog_id": "2000059367",
+          "names": [
+            "Sunny Days Mirette Family Resort & Aqua Park"
+          ]
+        },
+        {
+          "catalog_id": "2000068784",
+          "names": [
+            "Sunny Days Palma De Mirette Resort & SPA"
+          ]
+        }
+      ],
+      "target_name": "SUNNY DAYS PALMA DE MIRETTE RESORT",
+      "tv_hotel_id": 475
+    }
+  ],
+  "counts": {
+    "coverage_gain": 0,
+    "exact_dictionary_keys_present": 0,
+    "exact_geography_keys_present": 0,
+    "existing_rows_examined": 8,
+    "explicit_source_namespace_contracts": 0,
+    "new_accepted": 0,
+    "new_committed": 0,
+    "original_tv_bytes_verified": 29194,
+    "original_tv_files_verified": 24,
+    "original_tv_request_response_bindings_verified": 8,
+    "retained_dictionary_rows_indexed": 820,
+    "retained_geography_rows_indexed": 816,
+    "source_original_pages_reverified": 0
+  },
+  "created_at_utc": "2026-10-04T09:17:18.348201+00:00",
+  "current_registry_uniqueness_verified": false,
+  "database_reads": 0,
+  "database_writes": 0,
+  "dictionary_scope": {
+    "absence_in_filtered_artifact_is_not_provider_absence": true,
+    "full_dictionary_total_rows": 12192,
+    "full_raw_body_retained": false,
+    "only_filtered_rows_retained": true
+  },
+  "existing_operation_invoked": false,
+  "existing_proposed_operation": "int-match-bg8-retained-row-bridge-audit-20261001-v1",
+  "global_original_source_uniqueness_verified": false,
+  "global_prefix_rule_permitted": false,
+  "inputs": {
+    "detail_v4_zip_sha256": "ed9bdce7f2372ef9ca4aeeec06d99719719abf8b004cdb834f72454518856c76",
+    "dictionary_artifact_id": 10684769853,
+    "dictionary_result_sha256": "b52da9feaa87caea3800b6434fbcaf75d7fc21ff8742824074cef02632758964",
+    "dictionary_zip_sha256": "0f3f82ba6716155bbfc74a44c7b90df7bca88a944864450b73b1b8893b73a3bf",
+    "geography_artifact_id": 10688472272,
+    "geography_result_sha256": "3917d36c7b665d1b44b84e7c009ced24321982367aa155e35554c5dd2f27515a",
+    "geography_zip_sha256": "a52b4dbdf4a9eafdd49746a5a1aae461374f8d558e088096165ff82964e2b515",
+    "joint_bg18_report_sha256": "d99f31423c52278741990dfdda4244a9e16764a98fe44bc4fc8854fbba0519b4"
+  },
+  "limits": [
+    "No generic prefix stripping or arithmetic acceptance predicate; full keys are fixed existing proposal inputs.",
+    "Original full BG dictionary body was not retained; eight exact keys are outside its filtered820-row output and816-row geography report.",
+    "This dossier verifies original TV bytes only. Private original SAMO bytes and explicit row namespace contract remain missing; no summary substitutes for raw.",
+    "Known Mirette Family/Palma canonical cluster ambiguity remains held; this dossier does not adjudicate or alter accepted rows.",
+    "Name/category/geo agreement remains supporting evidence; no new PM1 gates or inferred raw starKey stars.",
+    "Retained ownership is dated2026-10-01, not CURRENT writer authorization."
+  ],
+  "mapping_writes": 0,
+  "next_step": "Continue existing BG8 proposal with separately reviewed retained-original readback only if it can access the original private SAMO pages and explicit namespace material. Do not replay #3407/#3411/native110/BG18/detail/search, requery full dictionaries or turn this partial dossier into a writer manifest.",
+  "proposal_comment": 5940437402,
+  "provider_http_calls": 0,
+  "rows": [
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102625414997",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Grand Belish Beach Resort & Spa 5*",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102625414997&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1469,
+            "path": "server/edge-0468.json",
+            "sha256": "b764573349a9afdd428d61b95df6346efe330a1f1243cbd24d7dc385e80892ca"
+          },
+          "full_bg_key": "102625414997",
+          "operator_link_sha256": "599e7ac1eed8b58783b147754c8f0c8c72dbed127b9c27a714897ca64adfa320",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0468.json",
+            "sha256": "ef4a339965bce308091ea7ca35f8a565d700d2ae130ee6f11bef668101673d98"
+          },
+          "response_file": {
+            "bytes": 1986,
+            "path": "server/response-0468.json",
+            "sha256": "ad98fd662513432aece04d133b456917dbe13a623f09f2cc9eee436f6d763fc5"
+          },
+          "tv_hotel_id": 9283,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "205729",
+      "source_names": "Grand Belish Beach Resort & Spa",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "625414997",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 9283
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610121438",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Amore Boutique Hotel 3*",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610121438&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1473,
+            "path": "server/edge-0401.json",
+            "sha256": "638411276a732e09c1f72f75fb744a48ae9a69957031cf2d13119af0bc8b866d"
+          },
+          "full_bg_key": "102610121438",
+          "operator_link_sha256": "bf56c20ef60d45095dee6bb40b78d301389f3e2dd4102bd25273902ff873e0c3",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0401.json",
+            "sha256": "a310ada8331d6da59b55f1326ec4fa480739c4b6536be29ffe86da5662abb0b5"
+          },
+          "response_file": {
+            "bytes": 2025,
+            "path": "server/response-0401.json",
+            "sha256": "b0c9059f48743ee5e6e7c30bb5887234df0e85b41a71c57414f43e3331c62b2d"
+          },
+          "tv_hotel_id": 62868,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000041008",
+      "source_names": "Amore Boutique Hotel",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610121438",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 62868
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610144591",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Lykia Apart 3*",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610144591&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1476,
+            "path": "server/edge-0370.json",
+            "sha256": "f1caea02b878a9baaca4675a94d89637e15217a684355066e32c8700641e1831"
+          },
+          "full_bg_key": "102610144591",
+          "operator_link_sha256": "2147f3a75609cf707e9e7af95a1b88f072449ccd8c8bc96fcd1e9c06e135d9db",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0370.json",
+            "sha256": "481666e34eac64523740d9e884385fa1c7c5fff5bb284c5e7671f0720ce6d967"
+          },
+          "response_file": {
+            "bytes": 1972,
+            "path": "server/response-0370.json",
+            "sha256": "d5bc9253f06707117e4276005ce5111de3ac58b6fe702bcbbd3c3911c2067575"
+          },
+          "tv_hotel_id": 70457,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000052316",
+      "source_names": "Lykia Apart",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610144591",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 70457
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610155352",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Tryp by Wyndham Didim (Asel Hotel)",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610155352&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1503,
+            "path": "server/edge-0393.json",
+            "sha256": "8341aafb85954b67513b69963b0817dfac000b516215c78253d98b103f0df43e"
+          },
+          "full_bg_key": "102610155352",
+          "operator_link_sha256": "08311bf749073e41205f769835b97343de7a63b8b1ba6844fe6900605671ae01",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0393.json",
+            "sha256": "69b90f36935c87a17512da90cbdbadd229eec68b3b97cdb0a6e423ba8de67627"
+          },
+          "response_file": {
+            "bytes": 1949,
+            "path": "server/response-0393.json",
+            "sha256": "43514a34ca9c46bf77c5499737ea10bc91c5581c3a6046e492b2f91569747b77"
+          },
+          "tv_hotel_id": 67000,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000059209",
+      "source_names": "Asel Hotel",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610155352",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 67000
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610175943",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Side Square Hotel (only adults 16+) 4*",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610175943&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1492,
+            "path": "server/edge-0437.json",
+            "sha256": "88f04b52731de64f8467f59784858b61e7d00533b1d50be53e8a38eb52564c36"
+          },
+          "full_bg_key": "102610175943",
+          "operator_link_sha256": "9d2ec85e332a0ff9c95406a4427f4aafdfe9ccd0e993d0f549ae899be70d68df",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0437.json",
+            "sha256": "c70c90df905dcb090c2c8d625b7b8fae11be367b941cc1f6293e7f18b4b45794"
+          },
+          "response_file": {
+            "bytes": 2055,
+            "path": "server/response-0437.json",
+            "sha256": "e8dffb6d4fa02ebcd01c93f2d6bf1018e3a125b95a4ca54b45676ceafd890b3c"
+          },
+          "tv_hotel_id": 72889,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000060910",
+      "source_names": "Side Square Hotel (only adults 16+)",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610175943",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 72889
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610149698",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Yaman Life Hotel",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610149698&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1474,
+            "path": "server/edge-0371.json",
+            "sha256": "3d5433d09ea64f5e892360ab51dd109af287713f6c4f4958680de7141153ba75"
+          },
+          "full_bg_key": "102610149698",
+          "operator_link_sha256": "63928a65ba2113f28a6bbf716b9f8094967b091182fe679ac213fa4df91487e7",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0371.json",
+            "sha256": "2a76ad993acb46d59b6f57bcbe40df6c14010dc82aaea07de3128d27d4dd64e8"
+          },
+          "response_file": {
+            "bytes": 2017,
+            "path": "server/response-0371.json",
+            "sha256": "4d849cf13e3d7bc34a1d0505b561642f0b842ee4ea24ccf48aa515952a46c829"
+          },
+          "tv_hotel_id": 72865,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000062548",
+      "source_names": "Yaman Life Hotel",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610149698",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 72865
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102610179507",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "Ipek Apart APARTMENT",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102610179507&flt=100411293179&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1475,
+            "path": "server/edge-0374.json",
+            "sha256": "9f194926496437d552c825519c6e7b3e355d6d7b0f32ba6a921d0d0c762c9ef1"
+          },
+          "full_bg_key": "102610179507",
+          "operator_link_sha256": "e4c5d25aa1f094c358f797ebe59078e150a4f04c45802b2334ac20d39ff800a5",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 154,
+            "path": "server/request-0374.json",
+            "sha256": "8203ca6c829d3620a1697db032de14d35f5d3113dfbdc89713b067476743169e"
+          },
+          "response_file": {
+            "bytes": 1984,
+            "path": "server/response-0374.json",
+            "sha256": "ba18f6db8ed7cd694d36f24bde7c4f93bba99d7d3fee692f56ab31081dfaf582"
+          },
+          "tv_hotel_id": 75791,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000062557",
+      "source_names": "Ipek Apart",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "610179507",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 75791
+    },
+    {
+      "explicit_canonical_namespace_contract_found": false,
+      "fresh_current_source_target_verified": false,
+      "full_bg_key": "102668981793",
+      "holds": [
+        "explicit_row_namespace_bridge_missing",
+        "filtered_dictionary_row_not_retained",
+        "filtered_geography_row_not_retained",
+        "original_source_page_not_available_locally",
+        "current_writer_checks_not_performed"
+      ],
+      "official_property_name": "NAAMA BAY PROMENADE MOUNTAIN SIDE 4*",
+      "official_public_selector_links": [
+        "https://www.bgoperator.ru/price.shtml?action=shw&code=102668981793&flt=100410000047&page=info&tid=26"
+      ],
+      "original_tv_proofs": [
+        {
+          "file": {
+            "bytes": 1553,
+            "path": "server/edge-0090.json",
+            "sha256": "015a5858b339e73808879a4298dd44fbbb4a33dc7a60b204b3090879c53ec852"
+          },
+          "full_bg_key": "102668981793",
+          "operator_link_sha256": "87e61007304ce42b9202aa73d17fb53b402921f03e1864c34359b23757f9e7fc",
+          "original_request_response_verified": true,
+          "request_file": {
+            "bytes": 153,
+            "path": "server/request-0090.json",
+            "sha256": "0c9dc99fbcb9a858120c5799a9932a39c5e05d7660015af142bdf83f9a94e99b"
+          },
+          "response_file": {
+            "bytes": 2060,
+            "path": "server/response-0090.json",
+            "sha256": "76fc7f6e4ea1ae815b643a417f93a0a1baf65fc32d7e6c13070cd3397ce86a60"
+          },
+          "tv_hotel_id": 316,
+          "tv_operator_id": 18
+        }
+      ],
+      "retained_dictionary_exact_key_rows": 0,
+      "retained_geography_exact_key_rows": 0,
+      "retained_target_occupancy": "unoccupied_in_2026-10-01_observation_only",
+      "safe_to_write_now": false,
+      "source_catalog_id": "2000086021",
+      "source_names": "Naama Bay Promenade Mountain Side",
+      "source_namespace": "operator_115",
+      "source_namespace_bridge_verified": false,
+      "source_native_id": "668981793",
+      "source_original_pages_available_locally": false,
+      "source_raw_reverified_this_dossier": false,
+      "state": "supporting_only_required_inputs_missing",
+      "target_tv_hotel_id": 316
+    }
+  ],
+  "safe_to_write_now": false,
+  "schema": "match-bg8-retained-dictionary-dossier/1",
+  "source_feature_sha": "60d86c0e6393a212abb5a91ac38f194ca9959d02",
+  "state": "partial_required_original_inputs_missing"
+}
