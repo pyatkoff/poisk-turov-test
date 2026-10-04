@@ -26,6 +26,9 @@ class FakeProvider:
         self.root = ROOT
         self.calls = []
 
+    def check(self, action, rows):
+        return MODULE.current_preflight(self.root, rows)
+
     def call(self, action, path, params, rows):
         self.calls.append((action, path, params, rows))
         if action == "search_start":
@@ -125,8 +128,8 @@ with tempfile.TemporaryDirectory() as tmp:
         assert str(error) == "quota_exhausted"
 
 source = PATH.read_text()
-assert "current_preflight(self.root, rows)" in source
-assert source.index("current_preflight(self.root, rows)") < source.index("self.reserve(action)")
+assert "current = self.check(action, rows)" in source
+assert source.index("current = self.check(action, rows)") < source.index("self.reserve(action)")
 assert "os.replace(tmp, self.day)" in source
 assert "fsync_dir(self.quota)" in source
 assert "read_json(self.day) != state" in source
@@ -134,6 +137,7 @@ assert "physical >= DAILY_LIMIT" in source
 assert '"operatorIds": [43]' in source
 assert '"continue_calls": 0' in source
 assert '"database_writes": 0' in source
+assert '"database_reads": len(provider.preflight)' in source
 assert '"mapping_writes": 0' in source
 assert MODULE.safe_payload({"operatorLink": "https://example.test/hotel?hotelId=549"}, "token")
 assert not MODULE.safe_payload({"operatorLink": "https://example.test/hotel?session=secret"}, "token")
