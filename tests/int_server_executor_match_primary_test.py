@@ -1319,4 +1319,82 @@ class Intourist4RegistrationTest(unittest.TestCase):
         self.assertEqual(self.core.REMOTE,self.old_remote)
 
 
+
+class Intourist4ReadbackRegistrationTest(unittest.TestCase):
+    SOURCE_SHA='a82516771252fab0ac4bd079480156c684766e05'
+
+    def setUp(self):
+        self.core=fresh_core();self.old_files=list(self.core.FIXED);self.old_remote=self.core.REMOTE
+        registration.register_parser(self.core)
+
+    def body(self,operation=None,batch=None):
+        return self.core.PREFIX+' '.join([
+            self.SOURCE_SHA,registration.INTOURIST4_READBACK_MODE,
+            operation or registration.INTOURIST4_READBACK_OPERATION,
+            batch or registration.INTOURIST4_READBACK_BATCH,
+        ])
+
+    def test_exact_zero_call_parser_and_activation(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual(command,dict(source_sha=self.SOURCE_SHA,mode=registration.INTOURIST4_READBACK_MODE,
+            operation_id=registration.INTOURIST4_READBACK_OPERATION,batch=registration.INTOURIST4_READBACK_BATCH,
+            maximum_writes=0,provider_http_calls=0))
+        for body in (self.body(operation='changed'),self.body(batch='changed'),self.body()+' extra'):
+            with self.subTest(body=body),self.assertRaises(ValueError):self.core.parse_command(body)
+        with patch.dict(os.environ,{},clear=True),patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command)
+        slot.assert_not_called()
+        self.assertEqual(self.core.FIXED,self.old_files)
+        self.assertEqual(self.core.REMOTE.count('def run_match_intourist4_readback(stage):'),1)
+        self.assertEqual(self.core.REMOTE.count("if mode=='match-intourist4-selectors-readback':"),1)
+        self.assertIn("if mode not in ('match-intourist4-selectors-readback','reconcile',",self.core.REMOTE)
+        ast.parse(self.core.REMOTE)
+        handler=registration.REMOTE_INTOURIST4_READBACK_HANDLER
+        for forbidden in ('subprocess.run','urlopen(','requests.','curl ','MATCH_SOURCE_ROOT','TOURVISOR_ANEX_JWT'):
+            self.assertNotIn(forbidden,handler)
+
+    def test_private_terminal_readback_is_sanitized_and_no_replay(self):
+        def fail(reason):raise RuntimeError(reason)
+        def safe_file(path,limit):
+            return path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=limit
+        def safe_json(path,limit):
+            self.assertTrue(safe_file(path,limit));return json.loads(path.read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);parent=home/'.anytoour-match';root=parent/'operations'
+            source_operation='int-tourvisor-match-intourist4-selectors-readonly-20261001-v1'
+            source_child=root/source_operation;source_child.mkdir(parents=True)
+            reservation={'operation':source_operation,'source_sha':self.SOURCE_SHA,
+                'batch':'intourist4-official-context-20261001','maximum_writes':0,
+                'provider_http_calls':14,'state':'reserved_before_db_and_provider','reserved_at':1}
+            marker_path=parent/'intourist4-selectors-batch-intourist4-official-context-20261001.json'
+            marker_path.write_text(json.dumps(reservation));(source_child/'reservation.json').write_text(json.dumps(reservation))
+            result={'state':'terminal_failed_no_replay','reason':'fixture-private-reason',
+                'provider_http_calls':2,'physical_http_attempts':2,'database_reads':2,
+                'database_writes':0,'mapping_writes':0,'returned_edges':0,'no_replay':True,
+                'safe_to_write_now':False,'call_counts':{'search_start':2},'edge_state_counts':{},'groups':[]}
+            result_path=source_child/'result.json';result_path.write_text(json.dumps(result))
+            result_sha=hashlib.sha256(result_path.read_bytes()).hexdigest()
+            receipt={'operation':source_operation,'batch':'intourist4-official-context-20261001',
+                'source_sha':self.SOURCE_SHA,'state':'terminal_failed_no_replay','result_sha256':result_sha,
+                'provider_http_calls':2,'database_reads':2,'database_writes':0,'mapping_writes':0,
+                'safe_to_write_now':False,'no_replay':True}
+            (source_child/'receipt.json').write_text(json.dumps(receipt))
+            ns=dict(os=os,json=json,hashlib=hashlib,re=re,time=time,home=home,project=home/'project',
+                operation=registration.INTOURIST4_READBACK_OPERATION,
+                payload={'batch':registration.INTOURIST4_READBACK_BATCH,'maximum_writes':0,'provider_http_calls':0},
+                source=self.SOURCE_SHA,fail=fail,safe_file=safe_file,safe_json=safe_json)
+            exec(registration.REMOTE_INTOURIST4_READBACK_HANDLER,ns)
+            lane=ns['run_match_intourist4_readback'](home/'stage');summary=lane['summary']
+            self.assertTrue(lane['successful']);self.assertTrue(lane['no_replay'])
+            self.assertEqual(summary['source_result_state'],'terminal_failed_no_replay')
+            self.assertEqual(summary['source_result_counters']['provider_http_calls'],2)
+            self.assertEqual(summary['source_receipt_counters']['provider_http_calls'],2)
+            self.assertEqual(summary['source_result_reason_sha256'],hashlib.sha256(b'fixture-private-reason').hexdigest())
+            self.assertNotIn('fixture-private-reason',json.dumps(summary))
+            self.assertEqual(summary['shape_errors'],[])
+            self.assertEqual(summary['provider_http_calls'],0);self.assertEqual(summary['database_writes'],0)
+            with self.assertRaises(RuntimeError):
+                ns['run_match_intourist4_readback'](home/'stage')
+
+
 if __name__=='__main__':unittest.main()
