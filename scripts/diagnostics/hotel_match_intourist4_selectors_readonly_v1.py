@@ -111,9 +111,25 @@ def ready(value):
 
 def safe_payload(value, token):
     raw = json.dumps(value, ensure_ascii=False)
-    return not (token and token in raw) and not re.search(
+    if (token and token in raw) or re.search(
         r'"(?:access_token|oauth_token|refresh_token|password|authorization|secret)"\s*:', raw, re.I
-    )
+    ):
+        return False
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, dict):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+        elif isinstance(item, str) and item.startswith(("http://", "https://")):
+            try:
+                pairs = urllib.parse.parse_qsl(urllib.parse.urlsplit(item).query, keep_blank_values=True)
+            except ValueError:
+                continue
+            if any(SECRET.search(key or "") for key, _ in pairs):
+                return False
+    return True
 
 
 def manifest(path):
@@ -273,6 +289,7 @@ class Provider:
         self.tariff_used = 0
         self.counts = collections.Counter()
         self.preflight = []
+        self.preflight_seq = 0
         token = subprocess.run(
             [
                 "php",
@@ -309,7 +326,7 @@ class Provider:
             if not isinstance(physical, int) or physical < 0 or not isinstance(tariff, int) or tariff < 0:
                 raise RuntimeError("ledger_counter")
             charge = 1 if action == "search_start" else 0
-            if tariff + charge > DAILY_LIMIT or self.used >= HTTP_CAP:
+            if physical >= DAILY_LIMIT or tariff + charge > DAILY_LIMIT or self.used >= HTTP_CAP:
                 raise RuntimeError("quota_exhausted")
             self.used += 1
             self.tariff_used += charge
@@ -333,11 +350,16 @@ class Provider:
 
     def call(self, action, path, params, rows):
         current = current_preflight(self.root, rows)
-        self.preflight.append({"call": self.used + 1, "action": action, "rows": current})
+        self.preflight_seq += 1
+        snapshot = {"sequence": self.preflight_seq, "next_http_call": self.used + 1, "action": action, "rows": current}
+        self.preflight.append(snapshot)
+        save(self.opdir / f"current-preflight-{self.preflight_seq:02d}.json", snapshot)
         eligible = {(r["source_catalog_id"], r["target_tv_hotel_id"]) for r in current if r["state"] == "eligible"}
         wanted = {(str(r["source_catalog_id"]), int(r["target_tv_hotel_id"])) for r in rows}
-        if not eligible or not eligible.issubset(wanted):
+        if not eligible:
             raise RuntimeError("current_rows_hold")
+        if eligible != wanted:
+            raise RuntimeError("current_rows_changed")
         if dt.datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat() != self.day_value:
             raise RuntimeError("provider_day_changed")
         self.reserve(action)
@@ -376,7 +398,7 @@ def run_group(provider, opdir, index, group, request):
     eligible_keys = {(r["source_catalog_id"], r["target_tv_hotel_id"]) for r in active if r["state"] == "eligible"}
     active_rows = [r for r in rows if (r["source_catalog_id"], r["target_tv_hotel_id"]) in eligible_keys]
     if not active_rows:
-        return {"group": index, "country_id": group["country_id"], "state": "preflight_hold", "sent": 0, "edges": []}
+        return {"group": index, "country_id": group["country_id"], "state": "preflight_hold", "sent": 0, "initial_preflight": active, "edges": []}
     params = {
         "departureId": request["departure_id"],
         "countryId": group["country_id"],
@@ -440,10 +462,11 @@ def run_group(provider, opdir, index, group, request):
             else:
                 edge["state"] = "detail_identity_verified"
                 edge.update(native_projection(detail.get("operatorLink")))
+                edge["matches_source_native"] = edge.get("positive_native_candidates") == [int(row["source_native_id"])]
         except RuntimeError as error:
-            if str(error) != "current_rows_hold":
+            if str(error) not in ("current_rows_hold", "current_rows_changed"):
                 raise
-            edge.update(state="current_hold_before_detail", link_state="not_read")
+            edge.update(state="current_hold_before_detail", link_state="not_read", matches_source_native=False)
         save(opdir / f"tv-edge-{hotel_id}-43.json", edge)
         edges.append(edge)
     return {
@@ -451,6 +474,7 @@ def run_group(provider, opdir, index, group, request):
         "country_id": group["country_id"],
         "state": "completed_read_only",
         "sent": len(active_rows),
+        "initial_preflight": active,
         "search_complete": complete,
         "returned_targets": len({e["target_tv_hotel_id"] for e in edges}),
         "edges": edges,
@@ -475,7 +499,27 @@ def execute(root, opdir, manifest_path):
     try:
         provider = Provider(root, opdir)
         for index, group in enumerate(groups(data), 1):
-            results.append(run_group(provider, opdir, index, group, data["request"]))
+            save(opdir / f"group-{index}-reservation.json", {
+                "operation": OP,
+                "batch": BATCH,
+                "group": index,
+                "country_id": group["country_id"],
+                "operator_id": 43,
+                "target_tv_hotel_ids": [row["target_tv_hotel_id"] for row in group["rows"]],
+                "state": "reserved_before_current_and_provider",
+            })
+            try:
+                results.append(run_group(provider, opdir, index, group, data["request"]))
+            except RuntimeError as error:
+                if str(error) not in ("current_rows_hold", "current_rows_changed"):
+                    raise
+                results.append({
+                    "group": index,
+                    "country_id": group["country_id"],
+                    "state": str(error),
+                    "sent": 0,
+                    "edges": [],
+                })
         state = "completed_read_only"
     except Exception as error:
         reason = (type(error).__name__ + ":" + str(error))[:180]
