@@ -1,0 +1,80 @@
+{
+  "batch": "nonbg5-url-paths-terminal-readback-20261004",
+  "guards": {
+    "acceptance_evaluated": false,
+    "global_uniqueness_evaluated": false,
+    "no_replay": true,
+    "old_operation_replayed": false,
+    "safe_to_write_now": false
+  },
+  "inputs": {
+    "old_batch": "nonbg5-retained-url-paths-20261004",
+    "old_operation": "int-andromeda-match-nonbg5-retained-url-paths-20261004-v1",
+    "old_source_fixture": {
+      "bytes": 42821,
+      "path": "scripts/diagnostics/fixtures/hotel_match_nonbg5_retained_url_paths_readonly_v1.json",
+      "sha256": "a24dd81ad112bc220fda3721bfa98985460dc08e74ac6fadc9bb596e188fb269"
+    },
+    "old_source_sha": "5e802eacbe43c0925902ce159ef5669b5cd0c7eb",
+    "old_source_validator": {
+      "bytes": 28459,
+      "path": "scripts/diagnostics/hotel_match_nonbg5_retained_url_paths_readonly_v1.py",
+      "sha256": "8437cdb48cc571ff273cfdb95f9e8c5aca9cde5a6586cb93d99f60303961b356"
+    },
+    "unknown_outer_wrapper": {
+      "artifact_id": 11304162523,
+      "control_sha": "6cf524d0910adcb81fc6388d93146b82139f107a",
+      "database_writes": "unknown",
+      "job_id": 111443430748,
+      "reason": "nonbg5_url_paths_terminal_missing_no_replay",
+      "run_id": 37204727071,
+      "sha256": "cc9d9d17caf4307cea45c008fd1c5fbbf60866885172050346387ccbdeed54bc",
+      "source_sha": "5e802eacbe43c0925902ce159ef5669b5cd0c7eb",
+      "status": "unknown_no_replay",
+      "supplier_calls": "unknown"
+    }
+  },
+  "limits": {
+    "nonbg7_private_files_read": 0,
+    "original_raw_files_read": 0,
+    "private_capture_bytes": 16777216,
+    "private_metadata_records": 6,
+    "public_result_bytes": 2097152
+  },
+  "metadata_records": [
+    {
+      "maximum_bytes": 1048576,
+      "relative_path": "nonbg5-retained-url-paths-batch-20261004.json",
+      "role": "batch_marker"
+    },
+    {
+      "maximum_bytes": 1048576,
+      "relative_path": "operations/int-andromeda-match-nonbg5-retained-url-paths-20261004-v1/reservation.json",
+      "role": "reservation"
+    },
+    {
+      "maximum_bytes": 65536,
+      "relative_path": "operations/int-andromeda-match-nonbg5-retained-url-paths-20261004-v1/execution-started.json",
+      "role": "execution_started"
+    },
+    {
+      "maximum_bytes": 16777216,
+      "relative_path": "operations/int-andromeda-match-nonbg5-retained-url-paths-20261004-v1/current-input.json",
+      "role": "private_input"
+    },
+    {
+      "maximum_bytes": 2097152,
+      "relative_path": "operations/int-andromeda-match-nonbg5-retained-url-paths-20261004-v1/result.json",
+      "role": "result"
+    },
+    {
+      "maximum_bytes": 65536,
+      "relative_path": "operations/int-andromeda-match-nonbg5-retained-url-paths-20261004-v1/receipt.json",
+      "role": "receipt"
+    }
+  ],
+  "mode": "match-nonbg5-url-paths-terminal-readback",
+  "operation": "int-andromeda-match-nonbg5-url-paths-terminal-readback-20261004-v1",
+  "schema": "match-nonbg5-url-paths-terminal-readback-fixture/1",
+  "scope": "six_old_url5_terminal_metadata_records_only_no_nf7_or_raw_projection"
+}
