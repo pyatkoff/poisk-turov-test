@@ -85,6 +85,16 @@ NU5_SOURCE_FILES = (
     'scripts/diagnostics/fixtures/hotel_match_nonbg5_retained_url_paths_readonly_v1.json',
 )
 
+NR5_MODE = 'match-nonbg5-url-paths-terminal-readback'
+NR5_OPERATION = 'int-andromeda-match-nonbg5-url-paths-terminal-readback-20261004-v1'
+NR5_BATCH = 'nonbg5-url-paths-terminal-readback-20261004'
+NR5_MANIFEST_SHA = '515ccfc283244713f6ecd3b87c3bc5829e1173d9468a66e24d2fa54379950151'
+NR5_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_nonbg5_url_paths_terminal_readback_v1.json',
+    *NU5_SOURCE_FILES,
+)
+
 BF5_MODE = 'match-bg5-unexported-fields-readonly'
 BF5_OPERATION = 'int-andromeda-match-bg5-unexported-fields-20261004-v1'
 BF5_BATCH = 'bg5-unexported-fields-20261004'
@@ -183,7 +193,7 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
@@ -195,6 +205,10 @@ def register_parser(core) -> None:
         if mode == NF7_MODE:
             core.need(operation == NF7_OPERATION and batch == NF7_BATCH, 'nonbg7_fields_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NF7_BATCH,
+                    'maximum_writes': 0, 'provider_http_calls': 0}
+        if mode == NR5_MODE:
+            core.need(operation == NR5_OPERATION and batch == NR5_BATCH, 'nonbg5_terminal_readback_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation, 'batch': NR5_BATCH,
                     'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == NU5_MODE:
             core.need(operation == NU5_OPERATION and batch == NU5_BATCH, 'nonbg5_url_paths_fixed_scope')
@@ -2053,7 +2067,7 @@ def run_match_nonbg5_url_paths(stage):
     exclusive(child/'reservation.json',reservation)
     env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
     env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
-                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+                'MATCH_OPERATION_DIRECTORY':str(child),'MATCH_MANIFEST':str(manifest),'MATCH_SOURCE_SHA':source})
     run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
     result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
     if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
@@ -2071,6 +2085,107 @@ def run_match_nonbg5_url_paths(stage):
     stdout=json.loads(run.stdout)
     if stdout!={k:data[k] for k in ('state','rows_examined','accepted','written')}:fail('nonbg5_url_paths_stdout_binding')
     return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_NR5_HANDLER = r'''
+def validate_match_nonbg5_terminal_readback(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-nonbg5-url-paths-terminal-readback-result/1',
+           'operation':'int-andromeda-match-nonbg5-url-paths-terminal-readback-20261004-v1',
+           'batch':'nonbg5-url-paths-terminal-readback-20261004','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'no_replay':True,
+           'requested_records':6}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads']!=0
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('nonbg5_terminal_readback_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('nonbg5_terminal_readback_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','no_replay'}:fail('nonbg5_terminal_readback_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('nonbg5_terminal_readback_source_validation')
+    if data['state'] not in ('completed_read_only_nonbg5_url_paths_terminal_readback','completed_read_only_nonbg5_url_paths_terminal_readback_incomplete','terminal_failed_no_replay'):fail('nonbg5_terminal_readback_terminal_state')
+    return data
+
+def run_match_nonbg5_terminal_readback(stage):
+    if (operation!='int-andromeda-match-nonbg5-url-paths-terminal-readback-20261004-v1'
+            or payload.get('batch')!='nonbg5-url-paths-terminal-readback-20261004'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('nonbg5_terminal_readback_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_nonbg5_url_paths_terminal_readback_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_nonbg5_url_paths_terminal_readback_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='515ccfc283244713f6ecd3b87c3bc5829e1173d9468a66e24d2fa54379950151'):fail('nonbg5_terminal_readback_source_binding')
+    old_runner=stage/'scripts/diagnostics/hotel_match_nonbg5_retained_url_paths_readonly_v1.py'
+    old_manifest=stage/'scripts/diagnostics/fixtures/hotel_match_nonbg5_retained_url_paths_readonly_v1.json'
+    if (not safe_file(old_runner,28459) or not safe_file(old_manifest,42821)
+            or hashlib.sha256(old_runner.read_bytes()).hexdigest()!='8437cdb48cc571ff273cfdb95f9e8c5aca9cde5a6586cb93d99f60303961b356'
+            or hashlib.sha256(old_manifest.read_bytes()).hexdigest()!='a24dd81ad112bc220fda3721bfa98985460dc08e74ac6fadc9bb596e188fb269'):fail('nonbg5_terminal_readback_validator_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('nonbg5_terminal_readback_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('nonbg5_terminal_readback_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'nonbg5-url-paths-terminal-readback-20261004',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('nonbg5_terminal_readback_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('nonbg5_terminal_readback_reservation_readback')
+    exclusive(parent/'nonbg5-url-paths-terminal-readback-batch-20261004.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,16*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('nonbg5_terminal_readback_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_nonbg5_terminal_readback_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,2*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    summary=validate_match_nonbg5_terminal_readback(data,receipt,digest,input_digest,source,module.validate_result)
+    successful=summary['state'] in ('completed_read_only_nonbg5_url_paths_terminal_readback','completed_read_only_nonbg5_url_paths_terminal_readback_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('nonbg5_terminal_readback_exit_binding')
+    stdout=json.loads(run.stdout)
+    if stdout!={k:data[k] for k in ('state','rows_examined','accepted','written')}:fail('nonbg5_terminal_readback_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_NR5_DISPATCH = r'''    if mode=='match-nonbg5-url-paths-terminal-readback':
+        lane=run_match_nonbg5_terminal_readback(stage)
+        result['match_nonbg5_url_paths_terminal_readback']=lane
+        result['supplier_calls']=0
+        result['database_reads']=lane['summary']['database_reads']
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
 
 '''
 
@@ -2975,7 +3090,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -3029,6 +3144,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_NF7_HANDLER, REMOTE_NF7_DISPATCH, NF7_MODE
     if nu5:
         handler, mode_dispatch, selected_mode = REMOTE_NU5_HANDLER, REMOTE_NU5_DISPATCH, NU5_MODE
+    if nr5:
+        handler, mode_dispatch, selected_mode = REMOTE_NR5_HANDLER, REMOTE_NR5_DISPATCH, NR5_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -3052,7 +3169,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
@@ -3081,8 +3198,9 @@ def activate(core, command: dict) -> None:
     bf5 = command['mode'] == BF5_MODE
     nf7 = command['mode'] == NF7_MODE
     nu5 = command['mode'] == NU5_MODE
+    nr5 = command['mode'] == NR5_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -3118,6 +3236,8 @@ def activate(core, command: dict) -> None:
         selected_files = NF7_SOURCE_FILES
     if nu5:
         selected_files = NU5_SOURCE_FILES
+    if nr5:
+        selected_files = NR5_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
