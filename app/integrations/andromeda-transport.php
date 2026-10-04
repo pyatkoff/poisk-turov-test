@@ -70,7 +70,7 @@ final class AnyTourAndromedaTransport
                 if ($oversize) throw new RuntimeException('ANDROMEDA_RESPONSE_TOO_LARGE');
                 // Endpoint/action/setup already succeeded and no HTTP response exists.
                 // This is the only local transport state eligible for network retry evidence.
-                throw new AnyTourAndromedaNetworkTransportFailure('ANDROMEDA_NETWORK_TRANSPORT_FAILURE');
+                throw AnyTourAndromedaNetworkTransportFailure::fromCurlError(curl_errno($handle));
             }
             return ['status' => (int) curl_getinfo($handle, CURLINFO_HTTP_CODE), 'body' => $body];
         } finally {

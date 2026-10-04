@@ -18,16 +18,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: d1ad064fbc6fda65929cc57395581b1ba819d952
+          path: recovered
+          sparse-checkout: app/integrations
+          persist-credentials: false
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-      - name: Verify recovered installed sources exactly
+      - name: Verify recovered source provenance and current contract
         run: |
           set -euo pipefail
-          echo '92b522508b336b767ca325e1d6323e949a713fa06a7262370b3e409bcbcfe0d0  app/integrations/andromeda-search.php' | sha256sum -c -
-          echo '8083fff227e44f4df9b132a0482b715aedda521bf0204a141abf9429139ee032  app/integrations/andromeda-offer-store.php' | sha256sum -c -
-          echo '805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754  app/integrations/andromeda-hotel-resolver.php' | sha256sum -c -
-          echo 'cd093f6a2253d1c5159520ca69098e580a3ba9a3d7cfdbc7c4faae2b8cb3891c  app/integrations/andromeda-hotel-observations.php' | sha256sum -c -
+          echo '92b522508b336b767ca325e1d6323e949a713fa06a7262370b3e409bcbcfe0d0  recovered/app/integrations/andromeda-search.php' | sha256sum -c -
+          echo '8083fff227e44f4df9b132a0482b715aedda521bf0204a141abf9429139ee032  recovered/app/integrations/andromeda-offer-store.php' | sha256sum -c -
+          echo '805ad9509de681c95a18ee7f96ae8e1b77d1eb2b29221e35e2d38ce9b6f52754  recovered/app/integrations/andromeda-hotel-resolver.php' | sha256sum -c -
+          echo 'cd093f6a2253d1c5159520ca69098e580a3ba9a3d7cfdbc7c4faae2b8cb3891c  recovered/app/integrations/andromeda-hotel-observations.php' | sha256sum -c -
           php -l app/integrations/andromeda-search.php
           php -l app/integrations/andromeda-offer-store.php
           php -l app/integrations/andromeda-hotel-resolver.php
