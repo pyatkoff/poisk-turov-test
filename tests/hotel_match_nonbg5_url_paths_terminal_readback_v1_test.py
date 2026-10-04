@@ -106,6 +106,29 @@ class TerminalReadback(unittest.TestCase):
         self.assertTrue(m.validate_result(self.output(capture)))
         self.assertEqual(old["state"], "terminal_failed_no_replay")
 
+    def test_failed_result_never_recovers_success_shaped_private_capture(self):
+        # All six old files and their byte digests/receipt are authentic in this
+        # synthetic chain; the public failure contains no rows to bind a
+        # successful private projection. Both malformed and plausible rows HOLD.
+        for rows, metadata_bytes in (("SECRET_NON_ROW_VALUE", True), ([], 1234)):
+            with self.subTest(rows_type=type(rows).__name__):
+                result = self.full_old_failed_terminal()
+                inp = {"schema": "match-nonbg5-retained-url-paths-private-input/1", "operation": m.OLD_OP, "batch": m.OLD_BATCH, "inputs": result["inputs"], "metadata_files_bound": 2, "metadata_bytes_bound": metadata_bytes, "selected_rows": [0, 1, 2, 3, 4], "rows": rows, "complete_source_values_retained_in_prior_private_input": True, "original_raw_files_read": 0}
+                raw = m.enc(inp)
+                self.paths["private_input"].write_bytes(raw)
+                result["private_input_sha256"] = hashlib.sha256(raw).hexdigest()
+                self.paths["result"].write_bytes(m.enc(result))
+                receipt = {k: result[k] for k in m.RECEIPT_KEYS} | {"result_sha256": hashlib.sha256(m.enc(result)).hexdigest()}
+                self.paths["receipt"].write_bytes(m.enc(receipt))
+                data = self.output()
+                self.assertTrue(m.validate_result(data))
+                self.assertEqual(data["classification"], "partial_or_unbound_old_terminal_metadata")
+                self.assertEqual(data["recovery_reason"], "existing_old_terminal_validation_failed")
+                self.assertIsNone(data["existing_terminal_summary"])
+                self.assertEqual(data["recovered_path_candidate_references"], 0)
+                self.assertEqual(data["recovered_path_candidate_rows"], 0)
+                self.assertNotIn("SECRET_NON_ROW_VALUE", m.enc(data).decode())
+
     def test_partial_terminal_never_loads_old_validator(self):
         self.paths["execution_started"].write_bytes(m.enc({"operation": m.OLD_OP, "batch": m.OLD_BATCH, "source_sha": m.OLD_SOURCE, "no_replay": True}))
         with mock.patch.object(m, "load_old_validator", side_effect=AssertionError("must not load")):

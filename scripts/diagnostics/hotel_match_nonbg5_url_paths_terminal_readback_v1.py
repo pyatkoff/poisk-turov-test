@@ -188,14 +188,16 @@ def load_old_validator(fixture):
 def validate_old_private(data, result):
     if result["state"] == "terminal_failed_no_replay":
         expected = {"schema": "match-nonbg5-retained-url-paths-private-input/1", "operation": OLD_OP, "batch": OLD_BATCH, "state": "capture_failed", "reason": result["reason"], "failure_stage": result["failure_stage"]}
-        # A result can fail after a durable successful private projection. It
-        # stays an existing terminal fact, never a reason to run that projection.
         if equal_typed(data, expected):
             return True
+        # The failed public result has no row projection against which a
+        # successful-shaped private object can be bound. Preserve only its
+        # metadata presence/digest; never reopen NF7 or reproject those values.
+        raise ValueError("old_failed_result_requires_failed_private_placeholder")
     expected_keys = {"schema", "operation", "batch", "inputs", "metadata_files_bound", "metadata_bytes_bound", "selected_rows", "rows", "complete_source_values_retained_in_prior_private_input", "original_raw_files_read"}
     if not isinstance(data, dict) or set(data) != expected_keys or data["schema"] != "match-nonbg5-retained-url-paths-private-input/1" or data["operation"] != OLD_OP or data["batch"] != OLD_BATCH or not equal_typed(data["inputs"], result["inputs"]) or not equal_typed(data["selected_rows"], [0, 1, 2, 3, 4]) or data["complete_source_values_retained_in_prior_private_input"] is not True or type(data["original_raw_files_read"]) is not int or data["original_raw_files_read"] != 0 or type(data["metadata_files_bound"]) is not int or data["metadata_files_bound"] != 2:
         raise ValueError("old_private_shape")
-    if result["state"] != "terminal_failed_no_replay" and (not equal_typed(data["rows"], result["rows"]) or not equal_typed(data["metadata_bytes_bound"], result["metadata_bytes_bound"])):
+    if not equal_typed(data["rows"], result["rows"]) or not equal_typed(data["metadata_bytes_bound"], result["metadata_bytes_bound"]):
         raise ValueError("old_private_result_relation")
     return True
 
