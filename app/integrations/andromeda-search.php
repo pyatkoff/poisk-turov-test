@@ -76,13 +76,16 @@ final class AnyTourAndromedaSearch {
             $next['status']=$projection['status'];
         } catch (Throwable $error) {
             // Even a connection error may follow supplier execution. No retry/re-login.
-            // Persist only a fixed safe category; never raw supplier payload/message.
+            // Persist only fixed safe codes/facts; never raw supplier payload/message.
             $message=$error->getMessage();
             $next['status']='unavailable';
             $next['error']='supplier_result_unavailable';
             $next['error_code']=is_string($message)
                 && preg_match('/\\AANDROMEDA_[A-Z0-9_]{2,80}\\z/D',$message)===1
                 ? $message : 'ANDROMEDA_UNCLASSIFIED_ERROR';
+            if ($error instanceof AnyTourAndromedaClientTransportFailure) {
+                $next['transport_failure'] = $error->diagnosticFacts();
+            }
         }
         $this->commit($next);
         return $this->resume($searchRef,$generation,$now);

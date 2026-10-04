@@ -1,6 +1,35 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/andromeda-network-transport-failure.php';
+
+/** Private observability only; this wrapper is not network retry evidence. */
+final class AnyTourAndromedaClientTransportFailure extends RuntimeException
+{
+    private array $diagnosticFacts;
+
+    public function __construct(string $action, string $category, ?int $curlError)
+    {
+        $category = in_array($category, ['network_transfer', 'endpoint_guard', 'action_guard',
+            'request_budget', 'monthly_quota', 'curl_unavailable', 'response_size_guard'], true)
+            ? $category : 'unclassified';
+        $this->diagnosticFacts = [
+            'source' => 'andromeda_transport_error',
+            'action' => in_array($action, ['login', 'townfrom', 'state', 'all', 'price', 'broninit'], true)
+                ? $action : 'unknown',
+            'reason_category' => $category,
+            'curl_errno' => $category === 'network_transfer' && $curlError !== null
+                && $curlError > 0 && $curlError <= 999 ? $curlError : null,
+        ];
+        // Keep the public message and drop the original exception/previous chain.
+        parent::__construct('ANDROMEDA_TRANSPORT_ERROR');
+    }
+
+    public function diagnosticFacts(): array { return $this->diagnosticFacts; }
+    public function __debugInfo(): array { return $this->diagnosticFacts; }
+    public function __serialize(): array { throw new RuntimeException('ANDROMEDA_SERIALIZATION_DISABLED'); }
+}
+
 /** Fixed-message supplier rejection with bounded, non-raw diagnostic facts. */
 class AnyTourAndromedaPriceSupplierException extends RuntimeException
 {
@@ -273,7 +302,27 @@ final class AnyTourAndromedaClient
         $url = self::ENDPOINT . '?' . http_build_query(['version' => '1.01', 'action' => $action] + $params, '', '&', PHP_QUERY_RFC3986);
         try {
             $response = ($this->transport)($url, ['method' => 'GET', 'verify_peer' => true, 'verify_host' => 2,'follow_redirects' => false, 'timeout' => 20,'max_response_bytes' => self::BODY_LIMIT]);
-        } catch (Throwable $ignored) { throw new RuntimeException('ANDROMEDA_TRANSPORT_ERROR'); }
+        } catch (Throwable $failure) {
+            $category = 'unclassified';
+            $curlError = null;
+            if ($failure instanceof AnyTourAndromedaNetworkTransportFailure) {
+                $category = 'network_transfer';
+                $curlError = $failure->curlErrorCode();
+            } elseif ($failure instanceof OverflowException && $failure->getMessage() === 'monthly_quota_exhausted') {
+                $category = 'monthly_quota';
+            } else {
+                // Exact known local guards only. Messages never establish retry provenance.
+                $category = match ($failure->getMessage()) {
+                    'ANDROMEDA_ENDPOINT_REJECTED' => 'endpoint_guard',
+                    'ANDROMEDA_ACTION_NOT_ALLOWED' => 'action_guard',
+                    'ANDROMEDA_REQUEST_BUDGET' => 'request_budget',
+                    'ANDROMEDA_CURL_REQUIRED' => 'curl_unavailable',
+                    'ANDROMEDA_RESPONSE_TOO_LARGE' => 'response_size_guard',
+                    default => 'unclassified',
+                };
+            }
+            throw new AnyTourAndromedaClientTransportFailure($action, $category, $curlError);
+        }
         if (!is_array($response) || !isset($response['status'], $response['body']) || !is_int($response['status']) || !is_string($response['body'])) throw new RuntimeException('ANDROMEDA_INVALID_RESPONSE');
         if ($response['status'] !== 200) throw new RuntimeException('ANDROMEDA_HTTP_ERROR');
         if (strlen($response['body']) > self::BODY_LIMIT) throw new RuntimeException('ANDROMEDA_RESPONSE_TOO_LARGE');
