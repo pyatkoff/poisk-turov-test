@@ -1,0 +1,29 @@
+name: MATCH ANEX2 selectors readonly v1
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/fixtures/hotel_match_anex2_selectors_readonly_v1.json'
+      - 'scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py'
+      - 'tests/hotel_match_anex2_selectors_readonly_v1_test.py'
+      - '.github/workflows/hotel-match-anex2-selectors-readonly-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile
+        run: python3 -m py_compile scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py
+      - name: Self-test
+        run: python3 scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py --self-test
+      - name: Contract test
+        run: python3 tests/hotel_match_anex2_selectors_readonly_v1_test.py
+      - name: Read-only guard
+        run: |
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM' scripts/diagnostics/hotel_match_anex2_selectors_readonly_v1.py

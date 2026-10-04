@@ -1,0 +1,46 @@
+{
+  "schema": "match-anex2-selectors-readonly/1",
+  "operation": "int-tourvisor-match-anex2-selectors-readonly-20261001-v1",
+  "batch": "anex2-mass83-20261001",
+  "inputs": {
+    "candidate_roster_path": "reports/hotel-match-mass83-proof-minimization-20261001.json",
+    "candidate_roster_sha256": "30094e7eb2bfaac57ff057d45b8b313d93e66c705b9cbb71bfaedbd69b2f81ae",
+    "negative_ledger_path": "reports/hotel-match-minimal-nonbg-ledger-reconcile-20261001.json",
+    "negative_ledger_sha256": "9f72b3d70349428f6004067576bb10a82a7d388b95917e838ee3d97e15c909b3"
+  },
+  "request": {
+    "operator_id": 13,
+    "departure_id": 1,
+    "date": "2026-11-15",
+    "nights": 7,
+    "adults": 2,
+    "children": [],
+    "currency": "RUB",
+    "only_charter": false
+  },
+  "rows": [
+    {
+      "source_catalog_id": "2000109038",
+      "source_namespace": "operator_5",
+      "source_native_id": "43661",
+      "target_tv_hotel_id": 109380,
+      "country_id": 4,
+      "prior_identity_tokens": []
+    },
+    {
+      "source_catalog_id": "2000029745",
+      "source_namespace": "operator_5",
+      "source_native_id": "44562",
+      "target_tv_hotel_id": 159,
+      "country_id": 1,
+      "prior_identity_tokens": [
+        "804",
+        "44562"
+      ]
+    }
+  ],
+  "http_cap": 12,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "safe_to_write_now": false
+}
