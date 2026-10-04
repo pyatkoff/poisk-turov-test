@@ -19,10 +19,24 @@ function s3n_read(string $path,int $cap=1048576):array{
     $value=json_decode((string)file_get_contents($path),true,64,JSON_THROW_ON_ERROR);
     s3n_need(is_array($value),'input_json');return $value;
 }
+function s3n_assert_saved(string $path,string $sha,string $why):void{
+    s3n_need(is_file($path)&&!is_link($path),$why);
+    $actual=@hash_file('sha256',$path);s3n_need(is_string($actual)&&hash_equals($sha,$actual),$why);
+}
 function s3n_save(string $path,array $value):string{
-    $raw=s3n_json($value)."\n";$f=@fopen($path,'x+b');s3n_need($f!==false,'exclusive_create');
-    try{s3n_need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'durable_write');if(function_exists('fsync'))s3n_need(fsync($f),'durable_sync');}
-    finally{fclose($f);}chmod($path,0600);return hash('sha256',$raw);
+    $raw=s3n_json($value)."\n";$sha=hash('sha256',$raw);$f=@fopen($path,'x+b');s3n_need($f!==false,'exclusive_create');
+    try{
+        s3n_need(@chmod($path,0600),'file_permissions');
+        s3n_need(fwrite($f,$raw)===strlen($raw)&&fflush($f),'durable_write');
+        s3n_need(function_exists('fsync')&&fsync($f),'durable_sync');
+    }finally{fclose($f);}
+    s3n_assert_saved($path,$sha,'durable_readback');return $sha;
+}
+function s3n_sync_dir(string $dir):void{
+    s3n_need(is_dir($dir)&&!is_link($dir),'directory_path');
+    $f=@fopen($dir,'rb');s3n_need($f!==false,'directory_open');
+    try{s3n_need(function_exists('fsync')&&fsync($f),'directory_sync');}
+    finally{fclose($f);}
 }
 
 function s3n_manifest(array $manifest):array{
@@ -123,8 +137,11 @@ function s3n_budget(string $private,int $call,string $action):void{
         $used=$state['reserved_requests']??null;$limit=$state['monthly_limit']??S3N_MONTHLY_LIMIT;
         s3n_need(is_int($used)&&$used>=0&&$limit===S3N_MONTHLY_LIMIT&&$used<$limit,'monthly_quota');$state['reserved_requests']=$used+1;
         $state['last_match_operation']=S3N_OP;$state['last_match_call']=$call;$state['last_match_action']=$action;
-        $tmp=$path.'.'.bin2hex(random_bytes(4));s3n_save($tmp,$state);
+        $tmp=$path.'.'.bin2hex(random_bytes(4));$expectedSha=s3n_save($tmp,$state);
         s3n_need(rename($tmp,$path),'budget_replace');$tmp=null;
+        s3n_sync_dir($private);
+        s3n_assert_saved($path,$expectedSha,'budget_readback');
+        s3n_need(s3n_read($path,4096)===$state,'budget_state_readback');
     }finally{if($tmp!==null&&is_file($tmp))unlink($tmp);flock($lock,LOCK_UN);fclose($lock);}
 }
 
