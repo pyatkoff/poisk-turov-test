@@ -1488,4 +1488,87 @@ class FunSun2RegistrationTest(unittest.TestCase):
             self.assertNotIn(forbidden,handler)
 
 
+class ExactTourvisorRemoteGuardTest(unittest.TestCase):
+    SCOPES = (
+        (registration.INTOURIST4_MODE, registration.INTOURIST4_OPERATION,
+         registration.INTOURIST4_BATCH, 'intourist4'),
+        (registration.INTOURIST4_READBACK_MODE, registration.INTOURIST4_READBACK_OPERATION,
+         registration.INTOURIST4_READBACK_BATCH, 'intourist4_readback'),
+        (registration.FUNSUN2_MODE, registration.FUNSUN2_OPERATION,
+         registration.FUNSUN2_BATCH, 'funsun2'),
+    )
+
+    @staticmethod
+    def first_guard(remote):
+        block = next(node for node in ast.parse(remote).body if isinstance(node, ast.Try))
+        guard = block.body[0]
+        assert isinstance(guard, ast.If)
+        assert ast.unparse(guard.body[0]) == "fail('operation_invalid')"
+        return guard
+
+    def run_guard(self, remote, mode, operation, batch):
+        def fail(reason):
+            raise ValueError(reason)
+        namespace = dict(re=re, mode=mode, operation=operation,
+                         payload={'batch': batch}, fail=fail)
+        # Execute only the emitted first guard: no filesystem, SSH, DB or HTTP.
+        guard = self.first_guard(remote)
+        exec(compile(ast.Module(body=[guard], type_ignores=[]), '<remote-first-guard>', 'exec'),
+             namespace)
+
+    def test_registered_exact_triples_pass_emitted_remote_guard(self):
+        for mode, operation, batch, flag in self.SCOPES:
+            with self.subTest(mode=mode):
+                core = fresh_core()
+                registration.register_parser(core)
+                command = core.parse_command(core.PREFIX + ' '.join([SOURCE, mode, operation, batch]))
+                with patch.dict(os.environ, {'GH_TOKEN': 'fixture'}), \
+                        patch.object(core, 'ensure_supplier_slot'):
+                    registration.activate(core, command)
+                self.run_guard(core.REMOTE, mode, operation, batch)
+                self.assertLess(core.REMOTE.index("fail('operation_invalid')"),
+                                core.REMOTE.index('private.mkdir('))
+                self.assertIn("fail('operation_exists_no_replay')", core.REMOTE)
+
+    def test_emitted_guard_rejects_wrong_mode_operation_or_batch(self):
+        for mode, operation, batch, flag in self.SCOPES:
+            remote = registration.remote_with_primary(fresh_core(), **{flag: True})
+            bad_triples = [
+                ('match-coverage', operation, batch),
+                (mode, operation.replace('-v1', '-v2'), batch),
+                (mode, 'int-tourvisor-fixture-arbitrary-v1', batch),
+                (mode, 'int-andromeda-fixture-arbitrary-v1', batch),
+                (mode, operation, batch + '-other'),
+                (mode, operation, None),
+            ]
+            bad_triples.extend((mode, other_op, other_batch)
+                               for other_mode, other_op, other_batch, _ in self.SCOPES
+                               if other_mode != mode)
+            for triple in bad_triples:
+                with self.subTest(mode=mode, triple=triple), self.assertRaisesRegex(ValueError, 'operation_invalid'):
+                    self.run_guard(remote, *triple)
+
+    def test_legacy_remote_operation_guard_stays_identical(self):
+        core = fresh_core()
+        old = ast.dump(self.first_guard(core.REMOTE))
+        for kwargs in ({}, {'source3': True}, {'native': True}, {'guarded': True}):
+            remote = registration.remote_with_primary(core, **kwargs)
+            self.assertEqual(ast.dump(self.first_guard(remote)), old)
+            self.run_guard(remote, 'fixture', 'int-andromeda-fixture-legacy-v1', None)
+            self.run_guard(remote, 'fixture', 'int-anex-fixture-legacy-v1', None)
+            with self.assertRaisesRegex(ValueError, 'operation_invalid'):
+                self.run_guard(remote, 'fixture', 'int-tourvisor-fixture-legacy-v1', None)
+
+    def test_exact_guard_registration_fails_closed_on_anchor_drift(self):
+        for _, _, _, flag in self.SCOPES:
+            for mutation in ('missing', 'duplicate'):
+                core = fresh_core()
+                anchor = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):\n"
+                core.REMOTE = (core.REMOTE.replace(anchor, anchor.replace('8,80', '8,81'))
+                               if mutation == 'missing' else core.REMOTE + anchor)
+                with self.subTest(flag=flag, mutation=mutation), \
+                        self.assertRaisesRegex(ValueError, 'primary_operation_guard_source_drift'):
+                    registration.remote_with_primary(core, **{flag: True})
+
+
 if __name__=='__main__':unittest.main()
