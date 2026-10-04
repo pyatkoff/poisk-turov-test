@@ -186,7 +186,7 @@ def path_projection(value, expected_host):
             return hold("url_path_resource_cap")
         if any(s in (".", "..") for s in segments):
             return hold("url_path_navigation")
-        if SECRET.search(decoded) or any(re.fullmatch(r"[0-9a-fA-F]{32,}", s) or (len(s) >= 32 and re.fullmatch(r"[A-Za-z0-9_-]+", s) and re.search(r"[A-Z]", s) and re.search(r"[a-z]", s) and re.search(r"[0-9]", s)) for s in segments):
+        if SECRET.search(decoded) or any(re.fullmatch(r"[0-9a-fA-F]{32,}", s) or re.fullmatch(r"[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{2,}\.[A-Za-z0-9_-]{8,}", s) or (len(s) >= 32 and re.fullmatch(r"[A-Za-z0-9_-]+", s) and re.search(r"[A-Z]", s) and re.search(r"[a-z]", s) and re.search(r"[0-9]", s)) for s in segments):
             return hold("url_path_private_or_opaque")
         tokens = [s for s in segments if re.fullmatch(r"-?[0-9]+", s)]
         positives = list(dict.fromkeys(s for s in tokens if re.fullmatch(r"[0-9]+", s) and int(s) > 0))

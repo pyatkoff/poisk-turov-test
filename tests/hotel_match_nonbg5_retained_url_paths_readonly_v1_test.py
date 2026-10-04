@@ -176,6 +176,14 @@ class UrlPaths(unittest.TestCase):
             self.assertEqual(p["hold_reason"], "url_path_private_or_opaque")
             self.assertIsNone(p["path"])
 
+    def test_jwt_shaped_dotted_segment_is_private_but_property_filename_remains(self):
+        p = m.path_projection("https://agent.anextour.ru/a/eyJhbGciOiJIUzI1NiJ9.e30.ABCdef123456", "agent.anextour.ru")
+        self.assertEqual(p["hold_reason"], "url_path_private_or_opaque")
+        self.assertIsNone(p["source_url_candidate"])
+        self.assertNotIn("eyJhbGci", m.enc(p).decode())
+        for path in ("/hotel/mydream.html", "/hotel/123.45.678"):
+            self.assertEqual(m.path_projection("https://intourist.ru" + path, "intourist.ru")["state"], "safe_absolute_operator_path_candidate")
+
     def test_seaside_legitimate_slug_not_rejected_by_sid_substring(self):
         self.assertEqual(m.path_projection("https://intourist.ru/hotel/seaside", "intourist.ru")["state"], "safe_absolute_operator_path_candidate")
 
