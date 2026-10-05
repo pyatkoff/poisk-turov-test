@@ -20,6 +20,130 @@ function typed_transport_error(callable $call, string $class, string $message): 
     throw new RuntimeException('typed_transport_expected_error');
 }
 
+// This child intercepts the actual curl_setopt_array call. No request or real wait
+// occurs; the synthetic transfer duration checks the configured transport budget.
+if (($argv[1] ?? null) === '--continuation-timeout-options') {
+    foreach (['curl_init', 'curl_setopt_array', 'curl_getinfo', 'curl_errno', 'curl_close', 'curl_exec'] as $name) {
+        if (function_exists($name)) throw new RuntimeException('timeout_fixture_requires_disabled_curl');
+    }
+    function curl_init() { return (object) ['options' => [], 'errno' => 0, 'status' => 200, 'closed' => false]; }
+    function curl_setopt_array($handle, array $options): bool { $handle->options = $options; return true; }
+    function curl_getinfo($handle, int $option): int {
+        typed_transport_check($option === CURLINFO_HTTP_CODE);
+        return $handle->status;
+    }
+    function curl_errno($handle): int { return $handle->errno; }
+    function curl_close($handle): void { $handle->closed = true; }
+    function curl_exec($handle) { throw new RuntimeException('timeout_fixture_network_forbidden'); }
+    function timeout_fixture_execute($handle, callable $writer, int $duration, string $body, array &$seen): bool {
+        $seen[] = $handle;
+        $options = $handle->options;
+        typed_transport_check($options[CURLOPT_CONNECTTIMEOUT] === 10);
+        typed_transport_check($options[CURLOPT_PROTOCOLS] === CURLPROTO_HTTPS);
+        typed_transport_check($options[CURLOPT_SSL_VERIFYPEER] === true && $options[CURLOPT_SSL_VERIFYHOST] === 2);
+        typed_transport_check($options[CURLOPT_FOLLOWLOCATION] === false && $options[CURLOPT_MAXREDIRS] === 0);
+        typed_transport_check($options[CURLOPT_HTTPGET] === true && $options[CURLOPT_HEADER] === false);
+        typed_transport_check($options[CURLOPT_VERBOSE] === false && $options[CURLOPT_HTTPHEADER] === ['Accept: application/json']);
+        typed_transport_check(is_callable($options[CURLOPT_WRITEFUNCTION]));
+        if ($duration > $options[CURLOPT_TIMEOUT]) { $handle->errno = 28; return false; }
+        return $writer($handle, $body) === strlen($body);
+    }
+
+    $priceUrl = 'https://gateway.samo.ru/api/?version=1.01&action=price&sid=fixture&PAGE=2';
+    $body = '{"PAGE":2,"PAGES_COUNT":2,"PRICES":[]}';
+    $seen = [];
+    $baseline = new AnyTourAndromedaTransport(true, false,
+        static function($handle, $writer) use (&$seen, $body): bool {
+            return timeout_fixture_execute($handle, $writer, 25, $body, $seen);
+        });
+    $error = typed_transport_error(static fn() => $baseline($priceUrl, ['timeout' => 3600]),
+        AnyTourAndromedaNetworkTransportFailure::class, 'ANDROMEDA_NETWORK_TRANSPORT_FAILURE');
+    typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 20
+        && $seen[0]->closed === true && $error->curlErrorCode() === 28);
+
+    $seen = [];
+    $continuation = AnyTourAndromedaTransport::forContinuation(
+        static function($handle, $writer) use (&$seen, $body): bool {
+            return timeout_fixture_execute($handle, $writer, 25, $body, $seen);
+        });
+    $reply = $continuation($priceUrl, ['timeout' => 3600, 'verify_peer' => false]);
+    typed_transport_check($reply === ['status' => 200, 'body' => $body]);
+    typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 45 && $seen[0]->closed === true);
+
+    foreach (['login', 'townfrom', 'state', 'all'] as $action) {
+        $seen = [];
+        $transport = AnyTourAndromedaTransport::forContinuation(
+            static function($handle, $writer) use (&$seen): bool {
+                return timeout_fixture_execute($handle, $writer, 0, '{}', $seen);
+            });
+        $transport('https://gateway.samo.ru/api/?version=1.01&action=' . $action, ['timeout' => 3600]);
+        typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 20 && $seen[0]->closed === true);
+    }
+    $seen = [];
+    $package = new AnyTourAndromedaTransport(false, true,
+        static function($handle, $writer) use (&$seen): bool {
+            return timeout_fixture_execute($handle, $writer, 0, '{}', $seen);
+        });
+    $package('https://gateway.samo.ru/api/?version=1.01&action=broninit&sid=fixture&claiminc=opaque');
+    typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 20);
+
+    $seen = [];
+    $guarded = AnyTourAndromedaTransport::forContinuation(
+        static function($handle, $writer) use (&$seen): bool {
+            return timeout_fixture_execute($handle, $writer, 0, '{}', $seen);
+        });
+    typed_transport_error(static fn() => $guarded('https://gateway.samo.ru/api/?version=1.01&action=broninit'),
+        RuntimeException::class, 'ANDROMEDA_ACTION_NOT_ALLOWED');
+    typed_transport_error(static fn() => $guarded('http://gateway.samo.ru/api/?version=1.01&action=price'),
+        RuntimeException::class, 'ANDROMEDA_ENDPOINT_REJECTED');
+    typed_transport_check($seen === []);
+    $guarded($priceUrl); $guarded($priceUrl); $guarded($priceUrl); $guarded($priceUrl);
+    typed_transport_error(static fn() => $guarded($priceUrl), RuntimeException::class, 'ANDROMEDA_REQUEST_BUDGET');
+    typed_transport_check(count($seen) === 4);
+
+    // Restored next-page auth requires exactly one PRICE, with durable reservation
+    // before execution. The longer allowance never creates a retry/relogin path.
+    $criteria = AnyTourAndromedaClient::priceProbeParams(); $criteria['PAGE'] = 2;
+    foreach ([25, 44, 46] as $duration) {
+        $seen = []; $saved = []; $state = [];
+        $transport = AnyTourAndromedaTransport::forContinuation(
+            static function($handle, $writer) use (&$seen, &$saved, $body, $duration): bool {
+                typed_transport_check(($saved[count($saved) - 1]['status'] ?? null) === 'pending');
+                parse_str((string) parse_url($handle->options[CURLOPT_URL], PHP_URL_QUERY), $query);
+                typed_transport_check(($query['action'] ?? null) === 'price' && ($query['PAGE'] ?? null) === '2');
+                return timeout_fixture_execute($handle, $writer, $duration, $body, $seen);
+            });
+        $client = new AnyTourAndromedaClient($transport, true);
+        $client->restorePrivateSession(['sid' => 'fixture-session', 'expires' => time() + 600]);
+        $handler = new AnyTourAndromedaSearch($state, static function($next) use (&$saved): bool {
+            $saved[] = $next; return true;
+        }, true, true);
+        $now = time(); $ref = 'continuation_timeout_' . $duration;
+        $out = $handler->start($criteria, $ref, 1, $now, $client, 'fixture-user', 'fixture-password');
+        typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 45 && $seen[0]->closed === true);
+        typed_transport_check(count($saved) === 2 && $saved[0]['status'] === 'pending' && $saved[1] === $state);
+        if ($duration <= 45) {
+            typed_transport_check($out['status'] === 'complete' && $out['page'] === 2 && $out['pages_count'] === 2);
+            typed_transport_check(!isset($state['transport_failure']));
+        } else {
+            typed_transport_check($out['status'] === 'unavailable' && $state['error_code'] === 'ANDROMEDA_TRANSPORT_ERROR');
+            typed_transport_check($state['transport_failure'] === ['source' => 'andromeda_transport_error',
+                'action' => 'price', 'reason_category' => 'network_transfer', 'curl_errno' => 28]);
+            typed_transport_error(static fn() => $handler->start($criteria, $ref, 1, $now, $client, 'u', 'p'),
+                RuntimeException::class, 'ANDROMEDA_SEARCH_REPLAY_REFUSED');
+            typed_transport_error(static fn() => $handler->start($criteria, 'replacement', 2, $now, $client, 'u', 'p'),
+                RuntimeException::class, 'ANDROMEDA_PREVIOUS_RESULT_UNKNOWN');
+        }
+        typed_transport_check($handler->resume($ref, 1, $now + 1) === $out && count($seen) === 1 && count($saved) === 2);
+        typed_transport_error(static fn() => $client->price($criteria), RuntimeException::class, 'ANDROMEDA_PRICE_REPLAY_REFUSED');
+        typed_transport_error(static fn() => $handler->resume($ref, 1, $state['store']['expires_at']),
+            RuntimeException::class, 'EXPIRED_SEARCH');
+        typed_transport_check(count($seen) === 1 && count($saved) === 2);
+    }
+    echo 'Andromeda continuation timeout fixture: ' . $checks . " checks passed; physical requests=0.\n";
+    exit(0);
+}
+
 $packageUrl = 'https://gateway.samo.ru/api/?version=1.01&action=broninit&sid=fixture&claiminc=opaque';
 $execCalls = 0;
 $network = new AnyTourAndromedaTransport(false, true,
@@ -233,4 +357,15 @@ foreach (['success', 'http', 'supplier'] as $kind) {
     typed_transport_check($handler->resume('transport_control_' . $kind, 1, $now + 1) === $out && $calls === ['login', 'price']);
 }
 
+$pipes = [];
+$process = proc_open([PHP_BINARY, '-d', 'allow_url_fopen=0', '-d',
+    'disable_functions=curl_init,curl_setopt_array,curl_getinfo,curl_errno,curl_close,curl_exec',
+    __FILE__, '--continuation-timeout-options'],
+    [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+typed_transport_check(is_resource($process));
+$fixtureOutput = stream_get_contents($pipes[1]); $fixtureErrors = stream_get_contents($pipes[2]);
+fclose($pipes[1]); fclose($pipes[2]);
+typed_transport_check(proc_close($process) === 0 && $fixtureErrors === ''
+    && preg_match('/^Andromeda continuation timeout fixture: [0-9]+ checks passed; physical requests=0\.\n$/D', $fixtureOutput) === 1);
+echo $fixtureOutput;
 echo 'Andromeda typed transport: ' . $checks . " checks passed; curl_exec disabled/not invoked, supplier/SSH/DB=0.\n";

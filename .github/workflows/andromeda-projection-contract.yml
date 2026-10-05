@@ -4,6 +4,7 @@ on:
     paths:
       - 'v2/api-andromeda-search3-preview.php'
       - 'app/integrations/andromeda-client.php'
+      - 'app/integrations/andromeda-transport.php'
       - 'app/integrations/andromeda-network-transport-failure.php'
       - 'app/integrations/andromeda-search.php'
       - 'app/integrations/andromeda-normalizer.php'
@@ -47,6 +48,7 @@ jobs:
         run: |
           cp change/v2/api-andromeda-search3-preview.php runtime/v2/api-andromeda-search3-preview.php
           cp change/app/integrations/andromeda-client.php runtime/app/integrations/andromeda-client.php
+          cp change/app/integrations/andromeda-transport.php runtime/app/integrations/andromeda-transport.php
           cp change/app/integrations/andromeda-network-transport-failure.php runtime/app/integrations/andromeda-network-transport-failure.php
           cp change/app/integrations/andromeda-search.php runtime/app/integrations/andromeda-search.php
           cp change/app/integrations/andromeda-normalizer.php runtime/app/integrations/andromeda-normalizer.php
@@ -58,6 +60,7 @@ jobs:
           php -l change/tests/andromeda-search3-page-orchestrator-test.php
           php change/tests/andromeda-search3-page-orchestrator-test.php runtime
           php -l runtime/app/integrations/andromeda-client.php
+          php -l runtime/app/integrations/andromeda-transport.php
           php -l runtime/app/integrations/andromeda-normalizer.php
           php change/tests/andromeda-canonical-transport-smoke.php runtime
           php change/tests/andromeda-filter-request-smoke.php runtime
@@ -70,6 +73,7 @@ jobs:
           mkdir candidate
           cp runtime/v2/api-andromeda-search3-preview.php candidate/
           cp runtime/app/integrations/andromeda-client.php candidate/
+          cp runtime/app/integrations/andromeda-transport.php candidate/
           cp runtime/app/integrations/andromeda-network-transport-failure.php candidate/
           cp runtime/app/integrations/andromeda-search.php candidate/
           cp runtime/app/integrations/andromeda-normalizer.php candidate/
@@ -77,7 +81,7 @@ jobs:
           cp runtime/app/integrations/andromeda-selected-offer.php candidate/
           php change/tests/andromeda-public-projection-fixture.php runtime > candidate/synthetic-public-response.json
           git -C change rev-parse HEAD > candidate/source-sha.txt
-          sha256sum candidate/api-andromeda-search3-preview.php candidate/andromeda-client.php candidate/andromeda-network-transport-failure.php candidate/andromeda-search.php candidate/andromeda-normalizer.php candidate/andromeda-pagination.php candidate/andromeda-selected-offer.php > candidate/runtime-sha256.txt
+          sha256sum candidate/api-andromeda-search3-preview.php candidate/andromeda-client.php candidate/andromeda-transport.php candidate/andromeda-network-transport-failure.php candidate/andromeda-search.php candidate/andromeda-normalizer.php candidate/andromeda-pagination.php candidate/andromeda-selected-offer.php > candidate/runtime-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
           name: andromeda-public-projection-candidate
