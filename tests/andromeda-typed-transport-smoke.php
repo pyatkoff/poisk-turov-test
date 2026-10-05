@@ -365,7 +365,13 @@ $process = proc_open([PHP_BINARY, '-d', 'allow_url_fopen=0', '-d',
 typed_transport_check(is_resource($process));
 $fixtureOutput = stream_get_contents($pipes[1]); $fixtureErrors = stream_get_contents($pipes[2]);
 fclose($pipes[1]); fclose($pipes[2]);
-typed_transport_check(proc_close($process) === 0 && $fixtureErrors === ''
+$fixtureExit = proc_close($process);
+if ($fixtureExit !== 0 || $fixtureErrors !== '') {
+    // This child uses only synthetic fixtures; surface its failure before the
+    // parent assertion so CI identifies the failing option/state check.
+    fwrite(STDERR, substr($fixtureErrors . $fixtureOutput, 0, 8192));
+}
+typed_transport_check($fixtureExit === 0 && $fixtureErrors === ''
     && preg_match('/^Andromeda continuation timeout fixture: [0-9]+ checks passed; physical requests=0\.\n$/D', $fixtureOutput) === 1);
 echo $fixtureOutput;
 echo 'Andromeda typed transport: ' . $checks . " checks passed; curl_exec disabled/not invoked, supplier/SSH/DB=0.\n";
