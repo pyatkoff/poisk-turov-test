@@ -1,0 +1,16 @@
+{
+  "schema": "match-passive-oct4-frontier-fixture/1",
+  "operation": "int-andromeda-match-passive-oct4-frontier-20261005-v1",
+  "batch": "passive-oct4-before175942",
+  "mode": "match-passive-oct4-frontier",
+  "table_name": "andromeda_search_hotel_observations",
+  "source_provenance": "passive_preview_search_observation",
+  "window_utc": {"lower_inclusive":"2026-10-04 00:00:00","upper_exclusive":"2026-10-04 17:59:42"},
+  "row_cap": 5000,
+  "provider_http_calls": 0,
+  "maximum_writes": 0,
+  "producer_git_blob": "5fdb35ed22821ce6ccbc24ad86e12e546e76e799",
+  "source_base_sha": "a31451ee922670136e1866bbbc833e73a52d5188",
+  "independent_precursor": {"canonical_comment_id":5981308520,"before_run_id":37210399822,"before_result_sha256":"afff984ecf9b71b1d16d21858d461639262f44a0917bf8e2567e7a7580c2cad0","after_run_id":37210833266,"after_result_sha256":"e9370623b29109e008022f705ea246e8857ef482dd5a460dee7ed5f38ec4463b","meaning":"The separate 14:51 autosave observation proves a new retained search context, not this table's existence or number of unresolved hotels."},
+  "excluded_consumed_page1": {"created_at":1791136785,"run_id":37244782071,"artifact_id":11319145696,"result_sha256":"e05d453e793fd80f63e4d523f2c8ffe50179979e0a25070beab15a0e152ce1aa","meaning":"Its operation and entire 17:59 PAGE1 context are consumed. No private file, input, child, receipt, or readback from it is accessed."}
+}
