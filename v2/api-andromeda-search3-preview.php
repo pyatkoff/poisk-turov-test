@@ -446,7 +446,7 @@ function anytour_andromeda_search3_run(array $request, PDO $pdo, array $saved, a
             $lookup=$pdo->prepare("SELECT i.supplier_namespace,i.external_hotel_id,i.local_hotel_id AS catalog_hotel_id,h.id AS existing_catalog_hotel_id,i.decision_status FROM andromeda_hotel_identities i JOIN catalog_hotels h ON h.id=i.local_hotel_id WHERE i.decision_status='accepted' AND h.is_active=1 AND h.country_id=? ORDER BY i.external_hotel_id");
             $lookup->execute([(int)($saved['local_country_id']??1)]);$identities=$lookup->fetchAll(PDO::FETCH_ASSOC);
             $resolver=AnyTourAndromedaHotelResolver::fromRows($identities,hash('sha256',json_encode($identities)));
-            $transport=new AnyTourAndromedaTransport(true);
+            $transport=$number>1 ? AnyTourAndromedaTransport::forContinuation() : new AnyTourAndromedaTransport(true);
             $client=new AnyTourAndromedaClient(static function($url,$options)use($transport,$directory){
                 anytour_andromeda_search3_budget(dirname($directory));return $transport($url,$options);
             },true);

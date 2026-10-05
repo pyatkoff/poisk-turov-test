@@ -9,6 +9,7 @@ final class AnyTourAndromedaTransport
     private int $attempts = 0;
     private float $lastStarted = 0.0;
     private $exec;
+    private bool $continuationPrice = false;
 
     /**
      * The optional executor is an offline test seam. Production/default execution uses
@@ -19,6 +20,14 @@ final class AnyTourAndromedaTransport
         ?callable $exec = null)
     {
         $this->exec = $exec ?? static fn($handle, $writer) => curl_exec($handle);
+    }
+
+    /** One explicit next-page PRICE; the default/pilot/package budgets stay separate. */
+    public static function forContinuation(?callable $exec = null): self
+    {
+        $transport = new self(true, false, $exec);
+        $transport->continuationPrice = true;
+        return $transport;
     }
 
     public function __invoke(string $url, array $ignoredOptions = []): array
@@ -59,7 +68,8 @@ final class AnyTourAndromedaTransport
                 CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
                 CURLOPT_FOLLOWLOCATION => false, CURLOPT_MAXREDIRS => 0,
                 CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2,
-                CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 20,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => $this->continuationPrice && ($query['action'] ?? null) === 'price' ? 45 : 20,
                 CURLOPT_VERBOSE => false, CURLOPT_HEADER => false,
                 CURLOPT_HTTPHEADER => ['Accept: application/json'],
                 CURLOPT_WRITEFUNCTION => $writer,
