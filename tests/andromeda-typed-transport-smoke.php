@@ -123,7 +123,9 @@ if (($argv[1] ?? null) === '--continuation-timeout-options') {
         typed_transport_check(count($seen) === 1 && $seen[0]->options[CURLOPT_TIMEOUT] === 45 && $seen[0]->closed === true);
         typed_transport_check(count($saved) === 2 && $saved[0]['status'] === 'pending' && $saved[1] === $state);
         if ($duration <= 45) {
-            typed_transport_check($out['status'] === 'complete' && $out['page'] === 2 && $out['pages_count'] === 2);
+            // This handler captures one page. Completion across earlier pages is
+            // the endpoint orchestrator's contract, not a standalone snapshot.
+            typed_transport_check($out['status'] === 'partial' && $out['page'] === 2 && $out['pages_count'] === 2);
             typed_transport_check(!isset($state['transport_failure']));
         } else {
             typed_transport_check($out['status'] === 'unavailable' && $state['error_code'] === 'ANDROMEDA_TRANSPORT_ERROR');
