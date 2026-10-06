@@ -44,7 +44,7 @@ async function expansionEntryScenario(count,late=false){
    assert.match(q('#modal-body').textContent,/ANEX STANDARD/,'late expansion does not replace the original group inventory');
    assert.doesNotMatch(q('#modal-body').textContent,/ANEX CONCRETE/);
   }else if(count===0){
-   await wait(()=>q('.error-text')?.textContent.includes('не вернул конкретные'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.includes('не вернул конкретные'));
    assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty supplier expansion keeps existing recovery');
    assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
    click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/ANEX STANDARD/);
