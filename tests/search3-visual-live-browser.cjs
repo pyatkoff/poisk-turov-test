@@ -90,13 +90,14 @@ const mobileQuickFieldLayout=async(page,width)=>{
  await page.setViewportSize({width:360,height:900});
  try{
   const boxes=await page.locator('#quick-budget').evaluate(field=>{
-   const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,right:b.right};},value=field.querySelector('strong'),label=field.querySelector('span:not(.chevron)'),arrow=field.querySelector('.chevron');
-   return{field:rect(field),value:rect(value),label:rect(label),arrow:rect(arrow),column:getComputedStyle(value).gridColumn,text:value.textContent};
+   const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom};},value=field.querySelector('strong'),label=field.querySelector('span:not(.chevron)'),arrow=field.querySelector('.chevron');
+   const range=document.createRange();range.selectNodeContents(value);const textBox=range.getBoundingClientRect();
+   return{field:rect(field),value:rect(value),label:rect(label),arrow:rect(arrow),textRight:textBox.right,text:value.textContent};
   });
-  assert.equal(boxes.column,'1 / -1','budget value spans both columns');
-  assert(boxes.value.y>boxes.label.y,'budget value is below its label');
-  assert(boxes.arrow.y<boxes.value.y,'chevron leaves the value row free');
-  assert(boxes.value.right<=boxes.field.right,'budget value stays inside its field');
+  assert(boxes.field.x>=0&&boxes.field.right<=360&&boxes.field.height>=48,'approved budget control fits the mobile viewport and retains its touch target');
+  assert(boxes.value.y>=boxes.label.bottom-1,'budget value is below its label');
+  assert(boxes.arrow.x>=boxes.textRight-1,'chevron stays beside the approved value text without overlap');
+  assert(boxes.value.x>=boxes.field.x&&boxes.value.right<=boxes.field.right&&boxes.value.bottom<=boxes.field.bottom,'whole budget value stays inside its field');
  }finally{await page.setViewportSize({width,height:900});}
 };
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
