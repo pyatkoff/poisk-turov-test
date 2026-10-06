@@ -24,8 +24,9 @@ const server=http.createServer((req,res)=>{
   });
   const shot=async name=>{
    await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(80);
-   const record=await page.evaluate(()=>({viewport:innerWidth,pageWidth:document.documentElement.scrollWidth,modalOpen:document.querySelector('#modal').open,modalWidth:document.querySelector('#modal').clientWidth,modalScrollWidth:document.querySelector('#modal').scrollWidth}));
+   const record=await page.evaluate(()=>({viewport:innerWidth,pageWidth:document.documentElement.scrollWidth,modalOpen:document.querySelector('#modal').open,modalWidth:document.querySelector('#modal').clientWidth,modalScrollWidth:document.querySelector('#modal').scrollWidth,steps:[...document.querySelectorAll('#modal .selection-steps li')].map(step=>{const style=getComputedStyle(step),number=step.querySelector('span'),box=number.getBoundingClientRect();return {display:style.display,gap:parseFloat(style.gap),numberWidth:box.width,numberHeight:box.height};})}));
    assert(record.pageWidth<=width+1,name+' fits the viewport');if(record.modalOpen)assert(record.modalScrollWidth<=record.modalWidth+1,name+' has no horizontal dialog overflow');
+   for(const step of record.steps)assert(step.display==='flex'&&step.gap>=5&&step.numberWidth>=20&&Math.abs(step.numberWidth-step.numberHeight)<1,name+' retains separated, numbered selection steps');
    geometry.push({name,...record});await page.screenshot({path:path.join(evidence,`${name}-${width}.png`)});
   };
   try{
@@ -63,7 +64,7 @@ const server=http.createServer((req,res)=>{
    if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    const room=page.locator('#offer-room'),choices=await room.locator('option').count();assert(choices>=3);const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);assert(await list.locator('.grouped-offer').count()>0);
    await page.evaluate(()=>window.__ownerInventories=0);await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await room.waitFor();assert.equal(await room.inputValue(),selected);assert.equal(await page.evaluate(()=>window.__ownerInventories),0,'warm Forward uses the validated history inventory');assert.equal(requests,2);
-   await list.locator('[data-action="offer"]').first().click();await page.locator('#detail-total').waitFor();await shot('tour');
+   await list.locator('[data-action="offer"]').first().click();const tourPrice=page.locator(width<=760?'#modal-footer .footer-total>strong':'#detail-total');await tourPrice.waitFor();assert.match(await tourPrice.textContent(),/\d.*₽/,'the selected offer has a visible total');await shot('tour');
    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[data-action="apply-flight"]').waitFor();await shot('flights');
    await page.locator('[data-action="apply-flight"]').click();await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();await shot('application');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,supplier_requests:0,lead_requests:0,physicalSafari:false});
