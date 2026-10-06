@@ -169,7 +169,7 @@ const server=http.createServer((req,res)=>{
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
-  let releaseAnexQuote,markAnexQuotePending;const anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
+  let releaseAnexQuote,markAnexQuotePending;let anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
   let releaseSamoPair;const samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
@@ -344,6 +344,11 @@ const server=http.createServer((req,res)=>{
   const samoOffer=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();
   await samoOffer.waitFor({state:'visible'});
   await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
+  await page.locator('[name="andromeda-outbound"]').first().waitFor();
+  assert.match((await page.locator('[name="andromeda-outbound"]').first().locator('xpath=ancestor::label').textContent()).replace(/\s/g,''),/Доплатаоператора:2000₽/);
+  assert.match(await page.locator('#andromeda-flight-price-status').textContent(),/пока не подтверждена/);
+  assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0);
+  await page.screenshot({path:path.join(evidence,`samo-flight-prices-${width}.png`)});
   const chosenOut='flight_'+'3'.repeat(32),chosenBack='flight_'+'4'.repeat(32);
   await page.locator('[name="andromeda-outbound"][value="'+chosenOut+'"]').check();
   await page.locator('[name="andromeda-return"][value="'+chosenBack+'"]').check();
@@ -363,6 +368,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('[name="andromeda-return"]:checked').inputValue(),chosenBack);
   assert.equal(await page.locator('[name="andromeda-return"]:checked').isDisabled(),true);
   assert.equal(await page.locator('[data-action="apply-andromeda-flights"]').isDisabled(),true);
+  assert.match(await page.locator('#andromeda-flight-price-status').textContent(),/Уточняем полную цену/);
   await page.screenshot({path:path.join(evidence,`samo-flight-draft-return-${width}.png`)});
   const submittedPair=transport.calls.findLast(call=>call.action==='quote_select_flights').body.flight_selection;
   assert.equal(submittedPair.outbound_ref,chosenOut);assert.equal(submittedPair.return_ref,chosenBack);
@@ -678,6 +684,28 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`hotel-moved-offer-back-${width}.png`)});
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeMovedOfferSearch+1);
   await page.locator('[data-action="close-modal"]').click();transport.state.samoRoom='SAMO STANDARD';
+  // A fresh isolated fixture search exercises the actual compiled sole-pair path.
+  transport.state.wideFacets=false;transport.state.anexCurrentAdditional=true;transport.state.anexPackageChoiceCount=1;
+  anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
+  const beforeSoleStart=transport.calls.filter(c=>c.action==='quote_start').length,beforeSoleCalc=transport.calls.filter(c=>c.action==='quote_calculate').length;
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();
+  await page.locator('[data-action="refresh-hotel"]').click();await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
+  await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-package-quote"]').click();await anexQuotePending;
+  assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,beforeSoleCalc+1,'unique supplier pair calculates without another click');
+  assert.equal(await page.locator('[name="anex-package-choice"]').count(),1);
+  assert.equal(await page.locator('[data-action="anex-package-calculate"]').isDisabled(),true);
+  assert.equal(await page.locator('[data-action="anex-application-preview"]').count(),0);
+  assert.match(await page.locator('#anex-package-status').textContent(),/Уточняем полную цену/);
+  assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
+  await page.screenshot({path:path.join(evidence,`anex-sole-pair-pending-${width}.png`)});
+  releaseAnexQuote();await page.locator('[data-action="anex-application-preview"]').waitFor();
+  assert.match((await page.locator('.verification-tour').textContent()).replace(/\s/g,''),/135678,9/);
+  assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 1 OUT/);
+  assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,beforeSoleStart+1);
+  await page.screenshot({path:path.join(evidence,`anex-sole-pair-verified-${width}.png`)});
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }

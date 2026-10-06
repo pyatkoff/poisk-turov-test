@@ -25,7 +25,7 @@ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
 w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
 let additionalGate=null;
-w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32),transport_markup_reported:i?{amount:'0',currency:'RUB',source:'andromeda_transport_detail',aggregation:'unknown',uid:'private-not-public'}:{amount:'18.25',currency:'USD',source:'andromeda_transport_detail',aggregation:'unknown'}})),{...value.data.flights[0],name:'TEST SAMO UNPRICED',flight_ref:'flight_'+'5'.repeat(32),transport_markup_reported:{amount:'-100',currency:'RUB',source:'andromeda_transport_detail',aggregation:'unknown'}},{...value.data.flights[1],name:'TEST SAMO NO MARKUP',flight_ref:'flight_'+'6'.repeat(32),transport_markup_reported:null});if(value.data?.status==='additional_prices'&&additionalGate)await additionalGate;return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
 const quoteFailures=[];w.addEventListener('anytour:quote-failure',e=>quoteFailures.push(e.detail));
 let lastSamoOffer,quoteControl=null;
 for(const file of scripts){
@@ -320,6 +320,19 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
  transport.state.samoFlightChoice=true;
  const samo=[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A'));assert(samo);samo.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="apply-andromeda-flights"]'));
+ const markupQuote=await w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer);
+ assert.equal(markupQuote.finalPrice,null);assert.equal(markupQuote.finalPriceVerified,false,'reported flight markup never verifies a tour total');
+ const markupRows=markupQuote.flights;
+ assert.equal(markupRows.find(f=>f.flightRef==='flight_'+'4'.repeat(32)).transportMarkupReported.amount,'0','explicit zero is preserved');
+ assert.deepEqual(Object.keys(markupRows[0].transportMarkupReported).sort(),['aggregation','amount','currency','source']);
+ assert.equal(markupRows.find(f=>f.flightRef==='flight_'+'5'.repeat(32)).transportMarkupReported,null,'malformed money is unpriced');
+ assert.equal(markupRows.find(f=>f.flightRef==='flight_'+'6'.repeat(32)).transportMarkupReported,null,'missing money is unpriced');
+ assert.doesNotMatch(JSON.stringify(markupQuote),/private-not-public/,'only whitelisted public facts survive');
+ assert.match(q('[name="andromeda-outbound"]').closest('label').textContent.replace(/\s/g,''),/Доплатаоператора:2000₽/);
+ assert.match(q('[name="andromeda-outbound"][value="flight_'+'3'.repeat(32)+'"]').closest('label').textContent,/18,25\s*\$/,'native USD is displayed without RUB conversion');
+ assert.match(q('[name="andromeda-return"][value="flight_'+'4'.repeat(32)+'"]').closest('label').textContent,/Доплата оператора: 0/);
+ assert.match(q('[name="andromeda-outbound"][value="flight_'+'5'.repeat(32)+'"]').closest('label').textContent,/Доплата не указана/);
+ assert.match(q('#andromeda-flight-price-status').textContent,/пока не подтверждена/);
  const alternative=q('[name="andromeda-outbound"][value="flight_'+'3'.repeat(32)+'"]');assert(alternative);alternative.click();
  const alternativeReturn=q('[name="andromeda-return"][value="flight_'+'4'.repeat(32)+'"]');assert(alternativeReturn);alternativeReturn.click();
  const beforeSamoForward=transport.calls.length,flightRef=alternative.value;
@@ -335,7 +348,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  await assert.rejects(w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer,{provider:'andromeda',outbound_ref:flightRef,return_ref:'flight_'+'2'.repeat(32)}),e=>e.code==='offer_expired');
  assert.equal(transport.calls.length,beforeSamoForward,'expired flight choice cannot spend a continuation');w.Date.now=realNow;
 
- click('[data-action="apply-andromeda-flights"]');await wait(()=>q('#modal-title').textContent==='Тур подтверждён');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
+ click('[data-action="apply-andromeda-flights"]');assert.match(q('#andromeda-flight-price-status').textContent,/Уточняем полную цену/);await wait(()=>q('#modal-title').textContent==='Тур подтверждён');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
  const submittedPair=transport.calls.findLast(call=>call.action==='quote_select_flights').body.flight_selection;
  assert.equal(submittedPair.outbound_ref,flightRef);assert.equal(submittedPair.return_ref,alternativeReturn.value);
  const beforeSamoReturn=transport.calls.length;click('#modal-back');await settle();

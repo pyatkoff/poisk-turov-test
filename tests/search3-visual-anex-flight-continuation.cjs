@@ -71,7 +71,74 @@ async function expansionEntryScenario(count,late=false){
   assert.deepEqual(errors,[]);
  }finally{releaseExpansion?.();await settle();dom.window.close();}
 }
+async function solePackagePriceScenario(mode){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ transport.state.anexPackageChoiceCount=1;transport.state.anexCurrentAdditional=true;transport.state.anexQuoteFailure=mode==='failed';
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ let releaseStart,releaseCalc;
+ w.fetch=async(url,options={})=>{
+  const value=await transport.json(url,options),action=options.body&&JSON.parse(options.body).action;
+  if(action==='quote_start'&&mode==='late-start')await new Promise(resolve=>releaseStart=resolve);
+  if(action==='quote_calculate')await new Promise(resolve=>releaseCalc=resolve);
+  return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+ };
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Sole price timeout: '+d.body.textContent.slice(-2000));};
+ const count=action=>transport.calls.filter(c=>c.action===action).length;
+ const reopen=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');};
+ try{
+  for(const file of scripts)w.eval(source(file));
+  await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+  await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  reopen();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+  click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));click('[data-action="anex-package-quote"]');
+  if(mode==='late-start'){
+   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();reopen();
+   releaseStart();await wait(()=>q('[name="anex-package-choice"]'));
+   assert.equal(count('quote_calculate'),0,'passive reopen cannot turn a late inventory response into a calculation');
+   click('[data-action="anex-package-calculate"]');
+  }
+  await wait(()=>releaseCalc);
+  assert.equal(count('quote_start'),1);assert.equal(count('quote_calculate'),1,'the explicit actualization continues the unique supplier pair once');
+  assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,'anex_quote:'+'1'.repeat(64));
+  assert.match(q('#anex-package-status').textContent,/Уточняем полную цену/);
+  assert(q('[name="anex-package-choice"]').disabled);assert(q('[data-action="anex-package-calculate"]').disabled);
+  assert.equal(q('[data-action="anex-application-preview"]'),null,'a pending price cannot enter application');
+  click('[data-action="anex-package-calculate"]');assert.equal(count('quote_calculate'),1,'duplicate pending click is inert');
+  if(mode==='late-calc'){
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+   const body=q('#modal-body').innerHTML;releaseCalc();await settle();assert.equal(q('#modal-body').innerHTML,body,'late price cannot replace another selected tour');
+   click('[data-action="close-modal"]');await settle();reopen();
+  }else{
+   click('[data-action="close-modal"]');await settle();reopen();
+   assert(q('[data-action="anex-package-calculate"]').disabled,'pending reopen keeps the same reservation');
+   click('[data-action="close-modal"]');await settle();w.history.forward();await settle();
+   assert.equal(count('quote_calculate'),1,'Back/reopen/Forward never repeats calculation');
+   releaseCalc();
+  }
+  if(mode==='failed'){
+   await wait(()=>q('#anex-package-status')?.getAttribute('role')==='alert');
+   assert.equal(q('[data-action="anex-application-preview"]'),null);assert.equal(q('[data-action="anex-package-calculate"]'),null);
+   click('[data-action="close-modal"]');await settle();reopen();assert.equal(count('quote_calculate'),1,'failure stays consumed on reopen');
+  }else{
+   await wait(()=>q('[data-action="anex-application-preview"]'));
+   assert.match(q('.verification-tour').textContent.replace(/\s/g,''),/135678,9/);
+   const before=transport.calls.length;click('[data-action="anex-application-preview"]');assert(q('#prototype-lead-form'));
+   assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 1 OUT/);assert.equal(transport.calls.length,before);
+   assert.equal(q('#modal-body [name="consent"]').checked,false);
+  }
+  assert.equal(count('quote_start'),1);assert.equal(count('quote_calculate'),1);assert.deepEqual(errors,[]);
+ }finally{releaseStart?.();releaseCalc?.();await settle();dom.window.close();}
+}
 (async()=>{
+ for(const mode of ['verified','failed','late-start','late-calc'])await solePackagePriceScenario(mode);
+ console.log('VISUAL_ANEX_SOLE_PAIR_PRICE_OK verified/failed/late inventory/late price/history/duplicate; supplier calls 0');
  for(const count of [0,1,2])await expansionEntryScenario(count);
  await expansionEntryScenario(1,true);
  console.log('VISUAL_ANEX_EXPANSION_ENTRY_OK single/multiple/empty/history/late response; supplier calls 0');
