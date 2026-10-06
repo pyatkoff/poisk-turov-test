@@ -404,9 +404,11 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   const anexOffer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await anexOffer.waitFor({state:'visible'});
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
-  const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await concrete.waitFor({state:'visible'});
+  await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Ваш тур в деталях'&&document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
+  assert.equal(await page.locator('#all-offers-list').count(),0,'single expanded ANEX offer opens directly');
+  assert.equal(transport.calls.filter(c=>c.action==='offer').length,0,'direct entry retains explicit concrete verification');
   transport.state.anexCurrentAdditional=true;
-  await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();
+  await page.locator('[data-action="refresh-hotel"]').click();
   await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Доплаты ANEX рассчитаны');assert((await page.locator('#modal-body').textContent()).replace(/\s/g,'').includes('123000'));
   assert.equal(transport.calls.filter(c=>c.action==='additional_prices').length,0,'ready current offer reuses retained APD');
   assert.equal(await page.locator('[data-action="anex-additional-prices"]').count(),0);
@@ -470,6 +472,8 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
   await anexOffer.waitFor({state:'visible'});
   await anexOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
+  await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
+  await page.locator('#modal-back').click();
   await samoOffer.waitFor({state:'visible'});
   await samoOffer.click();await page.locator('[data-action="refresh-hotel"]').click();
   await page.locator('[data-action="andromeda-application-preview"]').waitFor();

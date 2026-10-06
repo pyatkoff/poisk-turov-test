@@ -1894,7 +1894,8 @@ async function refreshLiveHotel(id){
    const keys=new Set(expanded.offers.map(item=>item.key));
    h.offers=[...h.offers.filter(item=>item.key!==o.key&&!keys.has(item.key)),...expanded.offers];
    selectedOffer={...o,loading:false};renderResults({keepFilters:true});
-   openAllOffers(id,{flight:'',room:'',meal:'',sort:'price'});
+   if(expanded.offers.length===1&&expanded.offers[0].raw?.anexKind==='concrete')openOffer(expanded.offers[0].key);
+   else openAllOffers(id,{flight:'',room:'',meal:'',sort:'price'});
    toast('ANEX вернул конкретные варианты тура');
   }catch(error){
    if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){

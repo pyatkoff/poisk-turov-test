@@ -7,7 +7,74 @@ const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(r
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
+async function expansionEntryScenario(count,late=false){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ let releaseExpansion;
+ w.fetch=async(url,options={})=>{
+  const value=await transport.json(url,options);
+  if(value.data?.status==='expanded'){
+   const tours=value.data.hotels[0].tours;
+   if(count===0)tours.length=0;
+   if(count===2)tours.push({...tours[0],room:'ANEX ALTERNATIVE',offer_ref:'anex_online:'+'2'.repeat(64)});
+   if(late)await new Promise(resolve=>releaseExpansion=resolve);
+  }
+  return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+ };
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Expansion entry timeout: '+d.body.textContent.slice(-2000));};
+ try{
+  for(const file of scripts)w.eval(source(file));
+  await wait(()=>!q('.search-submit').disabled);click('.search-submit');
+  await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
+  if(late){
+   await wait(()=>releaseExpansion);
+   click('[data-action="close-modal"]');await settle();
+   click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+   const current=q('#modal-body').innerHTML;releaseExpansion();await settle();
+   assert.equal(q('#modal-body').innerHTML,current,'late single-offer expansion cannot replace another selected tour');
+   click('#modal-back');await settle();
+   assert.match(q('#modal-body').textContent,/ANEX STANDARD/,'late expansion does not replace the original group inventory');
+   assert.doesNotMatch(q('#modal-body').textContent,/ANEX CONCRETE/);
+  }else if(count===0){
+   await wait(()=>q('.error-text')?.textContent.includes('не вернул конкретные'));
+   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty supplier expansion keeps existing recovery');
+   assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
+   click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/ANEX STANDARD/);
+  }else if(count===2){
+   await wait(()=>q('#all-offers-list')&&q('#modal-body').textContent.includes('ANEX ALTERNATIVE'));
+   assert.equal(d.querySelectorAll('#all-offers-list [data-action="offer"][data-key^="anex%3A"]').length,2,'multiple exact offers retain explicit choice');
+   assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);
+  }else{
+   await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+   assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
+   const calls=transport.calls.length;
+   click('#modal-back');await settle();
+   assert(q('#all-offers-list'),'Back skips the obsolete group detail and returns to the original passive list');
+   assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);
+   click('[data-action="offer"][data-key^="anex%3A"]');await settle();
+   click('[data-action="close-modal"]');await settle();w.history.forward();await settle();
+   assert.equal(q('#modal').open,true);assert.equal(q('#all-offers-list'),null);
+   assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);
+   assert.equal(transport.calls.length,calls,'Back, reopen and Forward never re-expand or verify the direct selection');
+  }
+  assert.equal(transport.calls.filter(c=>c.action==='expand').length,1);
+  assert.equal(transport.calls.filter(c=>c.action==='offer').length,0,'expansion entry never verifies the exact offer implicitly');
+  assert.equal(transport.calls.filter(c=>['quote_start','quote_calculate','additional_prices'].includes(c.action)).length,0);
+  assert.deepEqual(errors,[]);
+ }finally{releaseExpansion?.();await settle();dom.window.close();}
+}
 (async()=>{
+ for(const count of [0,1,2])await expansionEntryScenario(count);
+ await expansionEntryScenario(1,true);
+ console.log('VISUAL_ANEX_EXPANSION_ENTRY_OK single/multiple/empty/history/late response; supplier calls 0');
  for(const zero of [false,true]){
   const transport=fixture({anexZeroSurcharge:zero}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
   transport.state.anexCurrentAdditional=true;
@@ -42,7 +109,9 @@ scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-li
    if(zero)assert.match(q('#modal-body').textContent,/Без питания/,'native RO does not require a Tourvisor catalogue alias');
    assert.equal(transport.calls.filter(c=>c.action==='search').length,1);
    assert.equal(transport.calls.filter(c=>c.action==='expand').length,1);
-   click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-application-preview"]'));
+   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','one concrete offer bypasses the list');assert.equal(q('#all-offers-list'),null);
+   assert.equal(transport.calls.filter(c=>c.action==='offer').length,0,'direct selection spends no concrete verification request');
+   click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-application-preview"]'));
    assert.match(q('#modal-body').textContent,/не финально подтверждённая/);
    assert.equal(q('[data-action="anex-additional-prices"]'),null,'retained APD requires no repeated supplier request');
    click('[data-action="anex-application-preview"]');
@@ -103,7 +172,8 @@ scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-li
    await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
-   click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
+   assert.equal(q('#all-offers-list'),null,'single concrete offer is already selected');
+   click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
    assert.match(q('#modal-body').textContent,/не пересчёт стоимости/);
    click('[data-action="anex-additional-prices"]');await wait(()=>q('#anex-additional-error').textContent.includes('не вернул'));
    assert(q('[data-action="anex-additional-prices"]').disabled);assert(!q('[data-action="anex-flights"]').disabled,'empty APD leaves independent continuation available');
@@ -143,7 +213,8 @@ scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-li
    await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
    await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
-   click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));
+   assert.equal(q('#all-offers-list'),null,'single concrete offer is already selected');
+   click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));
    click('[data-action="anex-package-quote"]');await wait(()=>q('[name="anex-package-choice"]'));
    const alternate=d.querySelectorAll('[name="anex-package-choice"]')[1];alternate.click();
    assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 2 OUT/);
