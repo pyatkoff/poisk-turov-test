@@ -367,7 +367,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');
  const anex=[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('anex%3A'));assert(anex);anex.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
- const concrete=[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('anex%3A'));concrete.click();await settle();click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
+ assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','one concrete ANEX offer opens directly without another offer list');
+ assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'),'exact offer still requires explicit verification');
+ assert.equal(transport.calls.filter(c=>c.action==='expand').length,1);
+ assert.equal(transport.calls.filter(c=>c.action==='offer').length,0,'direct entry does not verify the concrete offer automatically');
+ click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-additional-prices"]'));
  let releaseAdditional;additionalGate=new Promise(resolve=>releaseAdditional=resolve);const callsBeforeAdditional=transport.calls.length;
  click('[data-action="anex-additional-prices"]');await wait(()=>transport.calls.length>callsBeforeAdditional);
  click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');await settle();
