@@ -1659,12 +1659,18 @@ function showAndromedaExpired(o){
  selectedOffer={...o,loading:false,quoteError:'Срок подтверждения тура истёк. Выполните новый поиск.',quoteErrorCode:'offer_expired',quoteErrorTerminal:true};
  renderRealOffer();
 }
+function andromedaFlightPriceHTML(f){
+ const fact=f.transportMarkupReported;
+ if(!fact)return '<small>Доплата не указана</small>';
+ const value=Number(fact.amount).toLocaleString('ru-RU',{maximumFractionDigits:2}),currency={RUB:'₽',USD:'$',EUR:'€'}[fact.currency]||fact.currency;
+ return `<small>Доплата оператора: ${esc(value)} ${esc(currency)}</small>`;
+}
 function openAndromedaFlightChoice(o,quote){
  if(!andromedaQuoteCurrent(quote)){showAndromedaExpired(o);return;}
  const h=selectedTourHotel(o),outbound=quote.flights.filter(f=>f.direction==='0'),inbound=quote.flights.filter(f=>f.direction==='1');
  if(!h||!outbound.length||!inbound.length){selectedOffer={...o,loading:false,quoteError:'Andromeda не вернул полный выбор перелёта.'};renderRealOffer();return;}
  rememberProviderView(o,'andromeda-flights',quote,'',retainedProviderView(o)?.pending);andromedaQuoteDraft={offer:o,quote};
- showModal('andromeda-flights','Выберите перелёт','ANDROMEDA · ПРОВЕРКА ТУРА',`<div class="flight-picker-context"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span></div><p class="flight-picker-note">Выберите один рейс туда и один обратно. Цена будет подтверждена Andromeda после выбора.</p><fieldset class="flight-options"><legend>Туда</legend>${outbound.map((f,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="andromeda-outbound" value="${esc(f.flightRef)}" ${i===0?'checked':''}><span><strong>${esc(f.name||'Рейс '+(i+1))}</strong><small>${esc([data.text(f.departure?.port),data.text(f.arrival?.port)].filter(Boolean).join(' → '))}</small></span></div></label>`).join('')}</fieldset><fieldset class="flight-options"><legend>Обратно</legend>${inbound.map((f,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="andromeda-return" value="${esc(f.flightRef)}" ${i===0?'checked':''}><span><strong>${esc(f.name||'Рейс '+(i+1))}</strong><small>${esc([data.text(f.departure?.port),data.text(f.arrival?.port)].filter(Boolean).join(' → '))}</small></span></div></label>`).join('')}</fieldset><p class="error-text" id="andromeda-quote-error" role="alert"></p>`,true);
+ showModal('andromeda-flights','Выберите перелёт','ANDROMEDA · ПРОВЕРКА ТУРА',`<div class="flight-picker-context"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span></div><p class="flight-picker-note">Выберите один рейс туда и один обратно. Доплаты показаны в валюте оператора. Одна общая доплата может повторяться у обоих рейсов — они не складываются.</p><fieldset class="flight-options"><legend>Туда</legend>${outbound.map((f,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="andromeda-outbound" value="${esc(f.flightRef)}" ${i===0?'checked':''}><span><strong>${esc(f.name||'Рейс '+(i+1))}</strong><small>${esc([data.text(f.departure?.port),data.text(f.arrival?.port)].filter(Boolean).join(' → '))}</small>${andromedaFlightPriceHTML(f)}</span></div></label>`).join('')}</fieldset><fieldset class="flight-options"><legend>Обратно</legend>${inbound.map((f,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="andromeda-return" value="${esc(f.flightRef)}" ${i===0?'checked':''}><span><strong>${esc(f.name||'Рейс '+(i+1))}</strong><small>${esc([data.text(f.departure?.port),data.text(f.arrival?.port)].filter(Boolean).join(' → '))}</small>${andromedaFlightPriceHTML(f)}</span></div></label>`).join('')}</fieldset><p class="flight-picker-note" id="andromeda-flight-price-status" role="status">${retainedProviderView(o)?.pending?'Уточняем полную цену тура с выбранными рейсами…':'Итоговая цена тура пока не подтверждена. Проверьте выбранные рейсы.'}</p><p class="error-text" id="andromeda-quote-error" role="alert"></p>`,true);
  $('#modal').classList.add('flight-picker-dialog');$('#modal-footer').hidden=false;
  $('#modal-footer').innerHTML='<button class="secondary" data-action="modal-back">Отмена</button><button class="primary" data-action="apply-andromeda-flights">Проверить выбранные рейсы</button>';
  const view=retainedProviderView(o);
@@ -1713,6 +1719,7 @@ async function applyAndromedaFlightChoice(){
  selectionGeneration++;const button=$('[data-action="apply-andromeda-flights"]');button.disabled=true;
  $('#andromeda-quote-error').textContent='';
  rememberProviderView(draft.offer,'andromeda-flights',draft.quote,'',true);
+ $('#andromeda-flight-price-status').textContent='Уточняем полную цену тура с выбранными рейсами…';
  $$('[name="andromeda-outbound"],[name="andromeda-return"]').forEach(input=>input.disabled=true);
  try{
   const quote=await data.verifyAndromeda(draft.offer,{provider:'andromeda',outbound_ref:outbound,return_ref:back});
@@ -1773,8 +1780,8 @@ function openAnexPackageQuote(o,result,error='',pending=false){
  if(view)view.choice=choice;
  const content=`<div class="verification-tour"><strong>${esc(h.name)}</strong><span>${dateText(o.day)} · ${nightsText(o.nights)} · ${guestsText(o)}</span><span>${esc(o.room)} · ${esc(mealLabel(o))}</span>${verified?`<strong>${money(Number(result.finalPrice.amount))}</strong>`:''}</div>`
   +(verified?`<p>ANEX пересчитал полную стоимость тура с выбранным перелётом.</p>${result.choice.legs.map((leg,i)=>`<p><strong>${i?'Обратно':'Туда'}</strong><br>${esc(leg.label)}</p>`).join('')}`
-   :choices.length?`<p>Выберите перелёт. Полную цену подтвердит ANEX после выбора.</p><fieldset class="flight-options"><legend>Перелёт туда и обратно</legend>${choices.map((c,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="anex-package-choice" value="${esc(c.choiceRef)}" ${c.choiceRef===choice?'checked':''} ${pending||error?'disabled':''}><span>${c.legs.map((leg,n)=>`<strong>${n?'Обратно':'Туда'}</strong><small>${esc(leg.label)}</small>`).join('')}</span></div></label>`).join('')}</fieldset>`:'')
-  +`<p id="anex-package-status" class="${error?'error-text':''}" role="${error?'alert':'status'}">${esc(error||(pending?'ANEX проверяет выбранный тур…':''))}</p>`;
+   :choices.length?`<p>Выберите перелёт. Полную цену подтвердит ANEX после выбора.</p><fieldset class="flight-options"><legend>Перелёт туда и обратно</legend>${choices.map((c,i)=>`<label class="flight-option"><div class="flight-option-heading"><input type="radio" name="anex-package-choice" value="${esc(c.choiceRef)}" ${c.choiceRef===choice?'checked':''} ${pending||error?'disabled':''}><span>${c.legs.map((leg,n)=>`<strong>${n?'Обратно':'Туда'}</strong><small>${esc(leg.label)}</small>`).join('')}<small>Цена тура с этим перелётом требует расчёта</small></span></div></label>`).join('')}</fieldset>`:'')
+  +`<p id="anex-package-status" class="${error?'error-text':''}" role="${error?'alert':'status'}">${esc(error||(pending?choices.length?'Уточняем полную цену тура с выбранным перелётом…':'ANEX проверяет выбранный тур…':''))}</p>`;
  showModal('anex-quote',verified?'Тур подтверждён':'Перелёт и цена тура','ANEX · АКТУАЛИЗАЦИЯ',content,true);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button>`+(verified?'<button class="primary" data-action="anex-application-preview">К заявке</button>':choices.length&&!error?`<button class="primary" data-action="anex-package-calculate" ${pending?'disabled':''}>Подтвердить перелёт и цену</button>`:'');
 }
@@ -1782,9 +1789,15 @@ async function loadAnexPackageQuote(calculate=false){
  const o=selectedOffer,view=retainedProviderView(o);if(!o||o.provider!=='anex'||view?.pending)return;
  if(calculate&&modalType!=='anex-quote'||!calculate&&!['anex-current','anex-additional'].includes(modalType))return;
  const choice=calculate?$('[name="anex-package-choice"]:checked')?.value:null;if(calculate&&!choice)return;
- const old=calculate?view?.result:null;openAnexPackageQuote(o,old,'',true);
+ let old=calculate?view?.result:null;openAnexPackageQuote(o,old,'',true);
+ const requestedView=retainedProviderView(o),run=selectionGeneration;
  try{
-  const result=await data.verifyAnexPackage(o,choice);
+  let result=await data.verifyAnexPackage(o,choice);
+  if(!calculate&&result.state==='quote_choices'&&result.choices.length===1&&run===selectionGeneration
+    &&retainedProviderView(o)===requestedView&&$('#modal').open&&modalType==='anex-quote'&&selectedOffer?.raw===o.raw){
+   old=result;openAnexPackageQuote(o,result,'',true);
+   result=await data.verifyAnexPackage(o,result.choices[0].choiceRef);
+  }
   rememberProviderView(o,'anex-quote',result);
   if($('#modal').open&&selectedOffer?.raw===o.raw&&modalType==='anex-quote')openAnexPackageQuote(o,result);
  }catch(error){

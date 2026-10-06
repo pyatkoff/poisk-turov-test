@@ -1467,11 +1467,18 @@
     }
     return clean;
   }
+  function andromedaTransportMarkup(value){
+    if(!value||value.source!=='andromeda_transport_detail'||value.aggregation!=='unknown'
+      ||typeof value.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(value.amount)
+      ||typeof value.currency!=='string'||!(/^[A-Z0-9_]{2,8}$/).test(value.currency))return null;
+    return Object.freeze({amount:value.amount,currency:value.currency,source:value.source,aggregation:value.aggregation});
+  }
   function andromedaQuoteFlight(value,pending,seen){
     if(!value||!['0','1'].includes(String(value.direction||'')))return null;
     const row={direction:String(value.direction),name:typeof value.name==='string'?value.name.slice(0,160):null,
       datebeg:typeof value.datebeg==='string'?value.datebeg.slice(0,40):null,dateend:typeof value.dateend==='string'?value.dateend.slice(0,40):null,
-      class:typeof value.class==='string'?value.class.slice(0,80):null,departure:andromedaPoint(value.departure),arrival:andromedaPoint(value.arrival)};
+      class:typeof value.class==='string'?value.class.slice(0,80):null,departure:andromedaPoint(value.departure),arrival:andromedaPoint(value.arrival),
+      transportMarkupReported:andromedaTransportMarkup(value.transport_markup_reported)};
     if(value.departure!==null&&value.departure!==undefined&&!row.departure||value.arrival!==null&&value.arrival!==undefined&&!row.arrival)return null;
     if(pending){
       const ref=String(value.flight_ref||'');if(!(/^flight_[a-f0-9]{32}$/).test(ref)||seen.has(ref))return null;
