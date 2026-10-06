@@ -46,7 +46,7 @@ const server=http.createServer((req,res)=>{
     await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
    }
    await page.locator('[data-action="cancel-search-edit"]').click();assert.equal(requests,0,'all form states leave the exact-list owner cold');
-   if(width<=1100){await page.locator('.results-toolbar [data-action="filters"]').click();await shot('filters');await page.locator('#filter-panel [data-action="close-filters"]').click();}
+   if(width<=1100){await page.locator('.results-toolbar [data-action="filters"]').click();await shot('filters');await page.locator('.filter-operator-group>.filter-section-toggle').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Туроператор');assert(await page.locator('#filter-detail-back').evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#apply-filters').isVisible(),false);await shot('operators');await page.locator('#filter-detail-back').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Фильтры');assert(await page.locator('.filter-operator-group>.filter-section-toggle').evaluate(el=>document.activeElement===el));await page.locator('#filter-panel [data-action="close-filters"]').click();}
    else{await page.locator('#filters').scrollIntoViewIfNeeded();await shot('filters');}
    await trigger.click();await page.locator('[data-action="retry-offer-list"]').waitFor();assert.equal(requests,1);
    await page.locator('[data-action="retry-offer-list"]').click();while(!pending)await page.waitForTimeout(20);assert.equal(requests,2);
