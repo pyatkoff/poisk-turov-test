@@ -31,7 +31,20 @@
     min-height:44px;
   }
 
-  .drawer-trigger,.quick-chips .chip,.active-filter,.hotel-links .text-button,.offer-price .primary,.calendar-heading .text-button,.calendar-foot .text-button,.destination-selection button,.flex-dates button,.filter-panel .check-row,.filter-top .text-button {
+  .drawer-trigger,
+  .quick-chips .chip,
+  .active-filter,
+  .hotel-links .text-button,
+  .compare-btn,
+  .offer-price .primary,
+  .compare-tray > .primary,
+  .calendar-heading .text-button,
+  .calendar-foot .text-button,
+  .destination-selection button,
+  .flex-dates button,
+  .filter-panel .check-row,
+  .filter-panel .star-options button,
+  .filter-top .text-button {
     min-height:44px;
   }
 
@@ -41,7 +54,14 @@
     min-height:44px;
   }
 
-  .filter-top .mobile-close,.favorite-button,.modal-header .icon-button,#modal-back,.counter button,.favorite-item .icon-button {
+  .filter-top .mobile-close,
+  .favorite-button,
+  .compare-tray .icon-button,
+  .modal-header .icon-button,
+  #modal-back,
+  .counter button,
+  .favorite-item .icon-button,
+  .compare-hotel-card .compare-remove {
     width:44px;
     min-width:44px;
     height:44px;
@@ -67,8 +87,6 @@
   }
 
 
-
-
   .hotel-detail-photos {
     grid-template-rows:108px 108px;
   }
@@ -91,4 +109,514 @@
     white-space:nowrap;
     scroll-snap-align:start;
   }
+}
+
+/* The shared comparison toggle also emits a text label for saved-list buttons.
+   Photo overlays remain icon-only; their explicit accessible name and pressed
+   state are unchanged. Do not suppress labels on full-width .compare-btn. */
+.compare-photo-button {
+  font-size:0;
+  line-height:0;
+}
+
+.compare-photo-button svg {
+  flex-shrink:0;
+}
+
+/* OTA design pass: photo, hotel facts, exact package, then the total. */
+
+.calendar-pick-guide {
+  margin:6px 0 10px;
+  color:var(--text);
+  font-size:.875rem;
+  line-height:1.5;
+}
+
+@media (max-width:1100px) {
+  #filter-panel .filter-section-title {
+    font-size:1rem;
+  }
+
+  #filter-panel .filter-section-value {
+    font-size:.875rem;
+  }
+
+  #filter-panel .section-open > .filter-section-toggle {
+    color:var(--brand);
+  }
+
+  #filter-panel .check-row,
+  #filter-panel .price-inputs input {
+    font-size:1rem;
+    min-height:44px;
+  }
+
+  #filter-panel .check-row span {
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+
+  #filter-panel .filter-section-values {
+    padding-top:2px;
+    padding-bottom:18px;
+  }
+
+  #filter-panel .star-options {
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;
+  }
+
+  #filter-panel .star-options button {
+    width:100%;
+    min-width:0;
+    min-height:48px;
+    justify-content:center;
+    font-size:.9375rem;
+  }
+
+  #filter-panel .star-options small {
+    display:none;
+  }
+
+  #filter-panel .star-options span {
+    color:inherit;
+  }
+}
+
+@media (max-width:760px) {
+
+  .date-footer .date-selection-price {
+    flex-wrap:wrap;
+  }
+}
+
+/* Design packet 3: room choices and the selected package use the same hierarchy. */
+.room-offer-operator {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px 12px;
+}
+
+.room-offer-operator .flight-tag {
+  font-size:.875rem;
+  line-height:1.5;
+}
+
+.room-offer-operator .operator-logo {
+  min-height:44px;
+}
+
+.hotel-details-dialog .hotel-room-card h4,
+.hotel-details-dialog .room-overview-meals {
+  overflow-wrap:anywhere;
+}
+
+@media (max-width:760px) {
+  .hotel-details-dialog .modal-header h2{
+    font-size:1.375rem;
+    line-height:1.35;
+    overflow-wrap:anywhere;
+  }
+
+  .hotel-details-dialog .hotel-section-nav {
+    flex-wrap:nowrap;
+    gap:20px;
+    overflow-x:auto;
+    overscroll-behavior-x:contain;
+    scrollbar-width:thin;
+  }
+
+  .hotel-details-dialog .hotel-section-nav button {
+    flex:0 0 auto;
+    min-height:48px;
+    font-size:.875rem;
+    white-space:nowrap;
+  }
+
+  .hotel-details-dialog .hotel-detail-copy,
+  .hotel-details-dialog .hotel-fact-section .hotel-detail-copy {
+    font-size:1rem;
+    line-height:1.65;
+  }
+
+  .hotel-details-dialog .hotel-room-meal-filter {
+    font-size:.875rem;
+  }
+
+  .hotel-details-dialog .hotel-room-meal-filter select {
+    min-height:48px;
+    font-size:1rem;
+  }
+
+  .hotel-details-dialog .room-choice-label,
+  .hotel-details-dialog .room-overview-meals,
+  .hotel-details-dialog .room-overview-action {
+    font-size:.875rem;
+    line-height:1.5;
+  }
+
+  .hotel-details-dialog .room-offer-choice {
+    gap:14px;
+    padding:16px;
+  }
+
+  .hotel-details-dialog .room-offer-conditions {
+    gap:8px;
+  }
+
+  .hotel-details-dialog .room-choice-facts dd {
+    font-size:1rem;
+  }
+
+  .hotel-details-dialog .room-offer-choice .hotel-room-price {
+    grid-template-columns:minmax(0,1fr);
+    gap:4px;
+  }
+
+  .hotel-details-dialog .room-offer-choice .hotel-room-price > small {
+    font-size:.875rem;
+  }
+
+  .hotel-details-dialog .room-offer-choice .hotel-room-price > strong {
+    font-size:1.625rem;
+    line-height:1.3;
+  }
+
+  .hotel-details-dialog .room-offer-choice .hotel-room-price > .primary {
+    grid-column:1;
+    grid-row:auto;
+    width:100%;
+    max-width:none;
+    min-height:48px;
+    margin-top:8px;
+    font-size:1rem;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  dialog.hotel-details-dialog #modal-footer{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:12px;
+    padding:12px 16px max(14px,env(safe-area-inset-bottom));
+  }
+
+  dialog.hotel-details-dialog #modal-footer[hidden]{
+    display:none;
+  }
+
+  dialog.hotel-details-dialog #modal-footer .footer-total{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    gap:4px 12px;
+    align-items:center;
+    min-width:0;
+  }
+
+  dialog.hotel-details-dialog #modal-footer .footer-total > span{
+    grid-column:1;
+    font-size:.875rem;
+    line-height:1.5;
+  }
+
+  dialog.hotel-details-dialog #modal-footer .footer-total > strong{
+    grid-column:2;
+    grid-row:1;
+    font-size:1.625rem;
+    line-height:1.3;
+    text-align:right;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+
+  dialog.hotel-details-dialog #modal-footer .footer-total > small{
+    grid-column:1 / -1;
+    font-size:.875rem;
+    line-height:1.45;
+    overflow-wrap:anywhere;
+  }
+
+  dialog.hotel-details-dialog #modal-footer > .primary{
+    width:100%;
+    max-width:none;
+    min-height:48px;
+    font-size:1rem;
+    white-space:normal;
+    line-height:1.4;
+  }
+}
+
+/* Design packet 4: visible refinements before and after search. */
+.applied-extras button:not(.applied-all-filters) {
+  display:block;
+}
+
+.applied-extras .applied-extra-label {
+  display:block;
+  margin-bottom:3px;
+  color:var(--muted);
+  font-size:.875rem;
+  font-weight:400;
+}
+
+.applied-extras strong {
+  display:block;
+  color:var(--ink);
+  font-size:.875rem;
+  font-weight:600;
+  overflow-wrap:anywhere;
+}
+
+@media (max-width:760px) {
+
+  .search-collapsed .applied-extras {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+
+  .search-collapsed .applied-extras button {
+    min-width:0;
+    min-height:56px;
+    padding:8px 10px;
+    text-align:left;
+    line-height:1.45;
+  }
+
+  .search-collapsed .applied-extras .applied-all-filters {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    color:var(--brand);
+    text-align:center;
+  }
+}
+
+/* Design packet 5: clear inherited grid placement, not just button width. */
+
+
+/* Keep the budget value wide enough for complete words on 360 px. */
+@media (max-width:760px) {
+}
+
+/* Gallery keeps its light controls on a dark header at every width. */
+dialog.gallery-dialog .modal-header {
+  background:#111B31;
+  border-bottom-color:#FFFFFF20;
+}
+
+/* Packet 9: compact search-to-tour journey, without hiding decision facts. */
+@media(max-width:760px) {
+  .search-section.search-collapsed > .wrap {padding:12px;}
+  .search-collapsed .applied-main {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;}
+  .search-collapsed .applied-route {grid-column:1;min-width:0;}
+  .search-collapsed .applied-route small {display:none;}
+  .search-collapsed .applied-main > .secondary {grid-column:2;grid-row:1;order:0;margin:0;}
+  .search-collapsed .applied-trip {grid-column:1/-1;grid-row:2;order:0;width:100%;gap:4px 12px;}
+  .search-collapsed .applied-trip dd {font-size:.875rem;}
+  .search-collapsed .applied-extras {margin-top:8px;gap:6px;}
+  .search-collapsed .applied-extras button {max-width:none;width:100%;border-radius:10px;}
+  .search-collapsed .applied-extra-label {font-size:.875rem;line-height:1.3;margin-bottom:2px;}
+  .search-collapsed .applied-extras strong {line-height:1.35;}
+  .search-collapsed .applied-all-filters {flex-wrap:nowrap;}
+
+  .calendar-card {padding:12px;border-radius:12px;}
+  .calendar-heading h3 {font-size:1rem;line-height:1.4;}
+  .calendar-heading {align-items:center;margin-bottom:4px;}
+  .calendar-heading .text-button {font-size:.875rem;min-height:44px;white-space:normal;text-align:right;}
+  .calendar-caption {font-size:.875rem;line-height:1.4;margin:0 0 8px;}
+  .date-price {flex-basis:96px;min-height:64px;}
+  .calendar-foot {font-size:.875rem;line-height:1.4;}
+  .calendar-selection-hint {margin:8px 0 0;font-size:.875rem;line-height:1.4;color:var(--muted);}
+
+
+
+
+
+  #prototype-lead-form .form-row {gap:12px;}
+  #prototype-lead-form .input {min-height:48px;font-size:1rem;}
+}
+
+/* Packet 10: one readable rhythm from search controls through application. */
+
+
+
+
+
+
+
+
+
+
+.calendar-selection-hint {font-size:.875rem;line-height:1.45;color:var(--muted);margin:8px 0 0;}
+.selection-steps li {font-size:.875rem;line-height:1.4;}
+.selection-steps li > span {font-size:.75rem;}
+
+#prototype-lead-form input:focus-visible,
+#prototype-lead-form textarea:focus-visible {outline:3px solid #FFB18F;outline-offset:2px;}
+@media(max-width:760px) {
+
+  dialog.hotel-details-dialog .modal-header {padding:8px 12px;gap:8px;min-height:60px;}
+  dialog.hotel-details-dialog .modal-header h2 {font-size:1.25rem;line-height:1.3;}
+  dialog .modal-header .icon-button {width:44px;height:44px;}
+  .selection-steps {grid-template-columns:1.2fr 1fr .85fr;gap:8px;margin-bottom:12px;}
+  .selection-steps li {font-size:.875rem;align-items:flex-start;padding-bottom:8px;}
+  .selection-steps li > span {width:20px;height:20px;font-size:.75rem;margin-top:1px;}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  .calendar-scope > summary {min-height:48px;gap:8px;padding:0 0 6px;}
+  .calendar-scope-label strong {font-size:.875rem;display:block;overflow:visible;}
+  .calendar-scope-label small {font-size:.875rem;line-height:1.4;}
+  .calendar-scope-toggle {font-size:.875rem;}
+  .counter-row small,.ages label,.form-row label {font-size:.875rem;line-height:1.45;}
+  .counter button {width:44px;height:44px;}
+
+
+}
+@media(max-width:359px) {
+
+  .selection-steps li {display:block;}
+  .selection-steps li > span {margin-right:4px;}
+}
+/* Results block: one composition for trip context, decision controls, hotel
+   identity, exact package and price. This replaces the packet-13 composition. */
+.result-date-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:3px 8px;min-width:0;padding:0;margin-bottom:6px}
+.result-date-heading>div {min-width:0}
+.result-date-heading>.text-button {grid-column:2;grid-row:1/3;flex:none;min-height:44px;padding:6px 4px;font-size:.875rem;line-height:1.4}
+.result-dates .calendar-foot {justify-content:space-between;flex-wrap:wrap;gap:4px 8px;color:var(--text);font-size:.8125rem;line-height:1.4}
+.result-date-heading strong {grid-column:1;grid-row:1;display:block;font-size:1rem;line-height:1.4}
+.result-dates .calendar-units {grid-column:1;grid-row:2;margin:0;font-size:.8125rem;line-height:1.4;color:var(--muted)}
+.result-dates .calendar-month-label {margin:0 0 8px;font-size:.875rem;line-height:1.4;font-weight:650;color:var(--text)}
+.result-dates .calendar-minimum {margin:9px 0 3px;font-size:.875rem;line-height:1.4;font-weight:650;color:#276B3B}
+#price-calendar .calendar-caption {margin:0;font-size:.75rem;line-height:1.4;color:var(--muted)}
+.result-dates .calendar-heading p {font-size:.875rem;line-height:1.4;color:var(--muted)}
+
+@media(max-width:760px){
+ .search-section.search-collapsed>.wrap{padding:10px 12px}
+ .search-collapsed .applied-main{gap:4px 8px;align-items:center}
+ .search-collapsed .applied-main>.secondary{grid-column:2;grid-row:1;width:100px;min-width:100px;min-height:44px;margin:0;padding:6px 8px;font-size:.875rem;line-height:1.35;white-space:normal;text-align:center}
+ .search-collapsed .applied-main>.secondary svg{display:none}
+ .search-collapsed .applied-route strong{font-size:1rem;line-height:1.4}
+ .search-collapsed .applied-trip{margin-top:0;gap:3px 10px;flex-wrap:wrap}
+ .search-collapsed .applied-trip dt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .search-collapsed .applied-trip dd{font-size:.875rem;line-height:1.45}
+ .search-collapsed .preview-disclosure{margin-top:2px;font-size:.8125rem;color:var(--text)}
+ .results-section{padding-top:10px}
+ .results-heading{margin-bottom:8px}
+ .results-heading h2{font-size:1.25rem;line-height:1.3;letter-spacing:-.02em}
+ .results-heading p{margin-top:0;font-size:.8125rem;line-height:1.4}
+ #price-calendar.calendar-card{padding:6px 0;border-radius:12px}
+ #results:not(.results-pristine) .results-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:10px 0}
+ #results .results-toolbar>.drawer-trigger{display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:#ccd7f3;background:#fff}
+ #results .results-toolbar>.sort-label:not([hidden]){display:block;min-width:0;max-width:190px;border:1px solid var(--line);border-radius:10px;background:#fff}
+ #results .sort-label select{display:block;width:100%;max-width:100%;min-height:44px;padding:8px 22px 8px 10px;font-size:.875rem;font-weight:500;white-space:normal}
+ #results .quick-chips:not(:has(.chip:not([hidden]))){display:none}
+ .mobile-bottom>.mobile-sort{display:none}
+ .calendar-heading{gap:8px}
+ .calendar-heading .text-button{padding-inline:4px;font-size:.875rem;min-height:44px}
+ .price-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;overflow:visible;padding:0}
+ .date-price{min-width:0;min-height:60px;padding:4px 0;justify-content:center}
+ .date-price .date{font-size:1.125rem;font-weight:650;line-height:1.35}
+ .date-price strong{font-size:.9375rem;font-weight:400;margin:4px 0 0;line-height:1.35}
+ .date-price.best strong{font-weight:650;color:#276B3B}
+ .date-price.selected.best strong{padding:0 3px;border-radius:4px;background:#fff}
+ body.mobile-results>.header,body.mobile-results #search{display:none}
+ @media(max-width:374px){body.mobile-results #results{padding-inline:9px}.date-price strong{font-size:.875rem}}
+ .calendar-selection-hint{display:none}
+ .calendar-foot{margin-top:2px;font-size:.8125rem;line-height:1.4}
+ .cards{gap:14px}
+
+}
+
+/* Whole block 2: the calendar range and source remain beside confirmation. */
+@media(max-width:760px){
+}
+
+/* Design packet 15: keep the complete chosen-tour context and application
+   controls in view with less repeated vertical space. Price, status, flight
+   choice and every 44/48px action remain explicit. */
+@media(max-width:760px){
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
+/* Design packet 17: surface detailed active filters that are otherwise hidden
+   behind the mobile filter count. Stars, meals and budget stay in the compact
+   search summary instead of repeating here. */
+@media(max-width:760px){
+ #active-filters.mobile-filter-details{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:7px;
+  margin:0 0 9px;
+  padding:2px 2px 7px;
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+ }
+ #active-filters.mobile-filter-details .active-filter:not(.mobile-filter-detail){display:none}
+ #active-filters.mobile-filter-details .mobile-filter-detail{
+  flex:0 0 auto;
+  max-width:min(82vw,320px);
+  min-height:44px;
+  white-space:normal;
+  text-align:left;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+ }
 }

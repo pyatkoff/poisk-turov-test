@@ -1,3 +1,4 @@
+// Site100 presentation composition replaces the earlier tour layout. Selected-offer objects and policy collaborators are unchanged; only inert unavailable markup is computed before frame assembly. The 8194 action-policy, terminal/error/stale recovery and mutation cases remain.
 // Actual offer rendering and action policy, with surrounding formatting/data
 // collaborators intercepted. No quote, supplier transport or lead submission.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
@@ -34,7 +35,7 @@ const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stri
 const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
 assert(source.includes(flightGuard),'terminal flight presentation guard');
 const baseline=records(source.replace(flightGuard,'${flightSummaryHTML(o)}'));
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'1fe709d5b40c2fc691860711c02e7cc5f44afd24b470b96f35b32c383489fadc','original oracle unchanged outside the intentional flight-summary delta');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'56912ddd980b629a3b7e8bb934460be1823ec76fe05476680f7adde33363d5e5','approved frame unchanged outside the intentional flight-summary delta');
 function expectedDelta(before){return before.map((record,index)=>{
  const s=scenarios[index];if(!s.unavailable&&!(s.flags&64)&&!(s.flags&128))return record;
  const expected=JSON.parse(JSON.stringify(record));expected.calls=expected.calls.filter(c=>c[0]!=='flightSummaryHTML');
@@ -59,7 +60,7 @@ assert.notDeepEqual(records(source.replace(flightGuard,"${unavailable?'':flightS
 assert.notDeepEqual(records(source.replace('o.quoteErrorTerminal===true||','false||')),actual,'terminal action mutation detected');
 assert.notDeepEqual(records(source.replace('&&!o.loading&&!o.quoteError&&!o.flightsLoading','&&!o.quoteError&&!o.flightsLoading')),actual,'retained selection guard mutation detected');
 assert.notDeepEqual(records(source.replace("${o.pricePending?'Цена уточняется':money(o.total)}","${money(o.total)}")),actual,'pending price disclosure mutation detected');
-console.log(`PASS offer rendering: ${actual.length} states, original oracle retained with exact terminal-flight delta; actual digest ${digest}; supplier/lead HTTP 0`);
+console.log(`PASS offer rendering: ${actual.length} states, approved presentation and exact terminal-flight policy; actual digest ${digest}; supplier/lead HTTP 0`);
 
 // Execute the actual asynchronous loader against controlled supplier responses.
 // The real transport is never called; stale replies must not replace a new tour.

@@ -156,7 +156,7 @@ const continueToFlights=async()=>{
   assert(!form.querySelector('.rehearsal-optional').open,'Optional fields start collapsed');
   const flightDetails=d.querySelector('.summary-flight-details');assert(flightDetails,scenario+' keeps flight details');
   assert.equal(flightDetails.open,false,scenario+' keeps mobile flight details collapsed');
-  assert(form.compareDocumentPosition(flightDetails)&w.Node.DOCUMENT_POSITION_FOLLOWING,scenario+' shows application before flight details');
+  assert(form.compareDocumentPosition(flightDetails)&w.Node.DOCUMENT_POSITION_PRECEDING,scenario+' shows the approved tour/flight review before the contact form');
   assert(flightDetails.querySelector('.saved-flight-summary'),scenario+' reveals both supplied flight legs');
   assert.equal(d.querySelector('#modal-title').textContent,'Заявка на тур');
   const applicationRoute=w.history.state?.['anytour.prototype.v18.ui.v1'];

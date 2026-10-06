@@ -1,3 +1,4 @@
+// Site100 modal route snapshots retain nested form drafts; returning to passive all-offers preserves the newly chosen flight instead of restoring the old listing. Original identity/focus/scroll and stale-provider mutations stay required.
 // Execute the actual modal owner with DOM/collaborator boundaries intercepted.
 // Baseline is P5's unchanged modal code, originally app blob db413a55.
 // The retained pin was recomputed from release 7a4e93b before removal,
@@ -18,7 +19,7 @@ function observe(source,s){
   setAttribute:(k,v)=>{n[k]=v;record('attribute',key,k,v);},
   closest:selector=>node(selector),querySelector:selector=>node(selector),
   showModal:()=>{n.open=true;record('showModal');},close:()=>{n.open=false;record('close');},
-  classList:{contains:()=>!!s.filterOpen},style:{overflow:'initial'}
+  classList:{contains:()=>!!s.filterOpen,toggle:()=>{}},style:{overflow:'initial'}
  };nodes.set(key,n);return n;}
  const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
@@ -36,6 +37,7 @@ function observe(source,s){
  function step(type,index=0){const offer={...savedOffer,key:'step-'+index,viewType:type};return {type,title:'title '+type,kicker:'kicker',body:'<section>'+type+'</section>',footer:'footer '+type,footerHidden:!!s.footerHidden,className:type==='gallery'?'gallery-dialog':s.className||'wide-dialog',scroll:83,gallery:{id:7,index:3},offer,focus:{element:node('focus-target'),selector:'#offer-button',top:s.noFocusTop?undefined:18}};}
  if(s.kind==='back'){ctx.modalHistory=[step(s.previous)];if(s.staleAbove)ctx.modalHistory.push(step('andromeda-flights',1),step('anex-current',2));if(s.empty)ctx.modalHistory=[];if(s.onlyStale)ctx.modalHistory=[step('anex-current',2)];}
  if(s.setup)s.setup(ctx,node);
+ ctx.formFiltersDraft=null;ctx.destinationPending=null;ctx.uiRoute=()=>({type:ctx.modalType,key:ctx.selectedOffer?.key});
  vm.createContext(ctx);vm.runInContext(owner(source),ctx);
  if(s.kind==='show')ctx.showModal(s.next,'new title','new kicker','<new>body</new>',!!s.wide);
  else if(s.kind==='close')ctx.closeModal({fromHistory:!!s.fromHistory});
@@ -70,11 +72,13 @@ function records(source){return scenarios.map(s=>{const result=observe(source,s)
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
 assert.equal(actual.length,67,'only two comparison Back scenarios retired from the original 69 cases');
-if(!process.argv.includes('--capture'))assert.equal(digest,'2a6a798ab407600955aee035cf68c97a7ee50a3155176a636f07da08015d228f','pinned original active modal observations; comparison cases and retired no-op callbacks excluded');
+if(!process.argv.includes('--capture'))assert.equal(digest,'a3b548c81876c1bf7b2e4b0c9ca6f066b6d92eb997f9cb53e0fbbd5ebfc819f2','approved modal snapshots and retained active observations');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);
 assert.equal(result('back:offer').restoringModal,false);
+assert.equal(result('back:all-offers').identities.selectedIsOriginal,true,'return to passive offers preserves current selected flight');
+assert.deepEqual(result('show:true:dates:false').history.at(-1).route,{type:'offer',key:'offer-7'},'nested picker snapshot retains route context');
 assert.deepEqual(result('only stale step').history,[]);
 assert.equal(result('close:true:true:false').overflow,'hidden');
 assert.equal(result('close:true:false:false').overflow,'');

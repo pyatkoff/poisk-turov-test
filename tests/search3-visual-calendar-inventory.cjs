@@ -11,6 +11,7 @@ const matchingCountSection=source=>source.includes('function matchingHotelPlan('
 function make(source,hotels){
  const state={search:{origin:'Москва',country:'4',from:day(0),to:day(6),minNights:7,maxNights:7,adults:2,ages:[0,17]},filters:defaultFilters(),selectedDate:day(2),onlyFavorites:true,favorites:[1]};
  const context={hotels,state,data:{live:false,observationScopeSupported:()=>context.supported},supported:true,mealNames:{AI:7,BB:3},matchesHotelQuery:(h,q)=>!q||h.name.includes(q),ratingValue:h=>h.rating};
+ context.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
  vm.createContext(context);
  vm.runInContext(source.match(/^const matchesMeal=[^\n]+/m)[0]+'\n'+section(source,'const hotelPlaces=','function recommendedHotelScore('),context);
  if(source.includes('function calendarMinimums('))vm.runInContext(section(source,source.includes('function positivePriceMinimum2(')?'function positivePriceMinimum2(':'function calendarMinimums(','function filterCount('),context);
@@ -53,13 +54,14 @@ assert.equal(digest,'53766c9a1cd0fd38f3ee6f9a203889169462400fb9738c3f2ee697e3b2a
 const changed=mutated=>JSON.stringify(records(mutated,false))!==JSON.stringify(actual);
 assert(changed(source.replace('if(!saved.has(point.date))','if(true)')),'first duplicate saved observation matters');
 assert(changed(source.replace('ignoreDate:true,onlyFavorites:false','ignoreDate:true,onlyFavorites:true')),'calendar ignores shortlist');
-assert(changed(source.replace('if(data.observationScopeSupported(s,f))','if(true)')),'unsupported saved scope remains excluded');
+assert(changed(source.replace('if(destinationIds(f).length<2&&data.observationScopeSupported(s,f))','if(true)')),'unsupported saved scope remains excluded');
 
 // The two fixed-arity merge owners replace only ephemeral candidate/filter
 // arrays. Keep the native validation order and every positive finite result.
 {
  const helperSource=section(source,'function positivePriceMinimum2(','function calendarMinimums('),finiteReads=[];
- const context={Number:{isFinite:value=>{finiteReads.push(value);return Number.isFinite(value)}},resultCalendar:null};vm.createContext(context);
+ const context={Number:{isFinite:value=>{finiteReads.push(value);return Number.isFinite(value)}},resultCalendar:null};context.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ vm.createContext(context);
  vm.runInContext(helperSource+'\n'+section(source,'function resultCalendarPrices(','function calendarStripEntries(')+'globalThis.minimum2=positivePriceMinimum2;globalThis.minimum3=positivePriceMinimum3;globalThis.prices=resultCalendarPrices;',context);
  const reference=values=>{const valid=values.filter(value=>Number.isFinite(value)&&value>0);return valid.length?Math.min(...valid):null;};
  const values=[undefined,null,NaN,Infinity,-Infinity,-1,-Number.MIN_VALUE,0,-0,Number.MIN_VALUE,1,1.5,Number.MAX_VALUE];
@@ -81,7 +83,8 @@ assert(changed(source.replace('if(data.observationScopeSupported(s,f))','if(true
 // Month rendering owns positive finite prices or null. Preserve native filter
 // membership/getter behavior while dropping its per-month minimum buffer.
 {
- const owner=source.match(/^function minimumKnownPrice\([^\n]+/m)?.[0];assert(owner,'month minimum owner');const context={};vm.createContext(context);vm.runInContext(owner+';globalThis.minimumKnownPrice=minimumKnownPrice;',context);
+ const owner=source.match(/^function minimumKnownPrice\([^\n]+/m)?.[0];assert(owner,'month minimum owner');const context={};context.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ vm.createContext(context);vm.runInContext(owner+';globalThis.minimumKnownPrice=minimumKnownPrice;',context);
  const reference=prices=>Math.min(...prices.filter(price=>price!==null)),values=[null,Number.MIN_VALUE,1,1.5,Number.MAX_VALUE];
  assert.equal(context.minimumKnownPrice([]),Infinity,'an empty/unknown month retains the native empty minimum');
  for(const first of values)for(const second of values)for(const third of values){const prices=[first,second,third];assert.equal(context.minimumKnownPrice(prices),reference(prices));}
@@ -127,7 +130,7 @@ console.log(`PASS calendar inventory: ${actual.length} original price sequences;
  const active=()=>({filters:{...defaultFilters(),max:100000,min:50000,q:'Hotel',meals:['AI'],stars:[5],flight:['regular'],operators:['A'],beach:true,rating:true,family:true,spa:true,resorts:['Кемер'],hotelId:1,amenities:Array.from({length:20},(_,i)=>'amenity:'+i)},onlyFavorites:true,selectedDate:day(2)});
  const run=(candidate,model,outcomes,verifyUntouched=true)=>{
   let calls=0,hotelVisits=0,minimumScans=0;const amenityReads=[],inventory=Array.from({length:100},(_,id)=>({id}));
-  const context={structuredClone,countMatchingHotels:()=>{const result=outcomes[calls++]??0;for(const hotel of inventory){assert(hotel);hotelVisits++;}return result;},countMatchingHotelGroups:models=>{const start=calls;calls+=models.length;for(const hotel of inventory){assert(hotel);hotelVisits++;}return models.map((_,i)=>outcomes[start+i]??0);},hotels:inventory,hotelOffers:()=>{minimumScans++;return {total:200000}},money:value=>value+' ₽',amenityNames:{get:key=>{amenityReads.push(key);return {label:String(key)}}},rangeText:()=>'',state:{search:{from:day(0),to:day(6)}},defaultFilters};
+  const context={destinationIds:f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[],setDestinationIds:(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;},structuredClone,countMatchingHotels:()=>{const result=outcomes[calls++]??0;for(const hotel of inventory){assert(hotel);hotelVisits++;}return result;},countMatchingHotelGroups:models=>{const start=calls;calls+=models.length;for(const hotel of inventory){assert(hotel);hotelVisits++;}return models.map((_,i)=>outcomes[start+i]??0);},hotels:inventory,hotelOffers:()=>{minimumScans++;return {total:200000}},money:value=>value+' ₽',amenityNames:{get:key=>{amenityReads.push(key);return {label:String(key)}}},rangeText:()=>'',state:{search:{from:day(0),to:day(6)}},defaultFilters};
   const recovery=new Function(...Object.keys(context),section(candidate,candidate.includes('function minimumHotelOfferTotal(')?'function minimumHotelOfferTotal(':'function recoverySuggestions(','function recoveryHTML')+';return recoverySuggestions;')(...Object.values(context));
   const before=verifyUntouched?structuredClone(model):null,rows=recovery(model);if(verifyUntouched)assert.deepEqual(model,before,'recovery keeps the caller model untouched');
   return {rows,calls,hotelVisits,minimumScans,amenityReads};

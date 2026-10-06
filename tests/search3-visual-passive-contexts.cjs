@@ -1,3 +1,4 @@
+// Site100 accepted calendar markup/copy and multi-hotel scope. All 203 supplier-view route/restore records are byte-identical to b74ac0; their independent historical digest is checked below.
 // Actual passive route restoration and calendar presentation, with only their
 // DOM/render/loading boundaries intercepted. No supplier or lead transport runs.
 // Pinned baseline: app blob6a27aa34, before context extraction.
@@ -21,8 +22,8 @@ function observe(source,s){
  function node(key){
   if(s.noNode&&(key==='#date-selection-price'||key==='.calendar-context'))return null;
   if(nodes.has(key))return nodes.get(key);
-  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:true,offsetHeight:80,dataset:{room:'r1'},style:{setProperty:call('style:'+key)},
-   classList:{contains:()=>false},querySelector:()=>null,closest:()=>null,
+  const n=new Proxy({nodeKey:key,value:key.includes(':checked')?'choice':'old',checked:false,scrollTop:37,innerHTML:'<old>',hidden:true,offsetHeight:80,dataset:{room:'r1'},style:{removeProperty:()=>{},setProperty:call('style:'+key)},
+   classList:{contains:()=>false,toggle:()=>{}},getBoundingClientRect:()=>({top:0,bottom:0}),querySelector:()=>null,closest:()=>null,
    scrollIntoView:call('scrollIntoView:'+key),setAttribute:call('attribute:'+key)},
    {set:(t,k,v)=>{record('write:'+key,k,v);t[k]=v;return true;}});
   nodes.set(key,n);return n;
@@ -31,7 +32,7 @@ function observe(source,s){
  const view={type:s.viewType||s.type,offer,pending:!!s.pending,error:s.error?'error':'',result:{state:s.verified?'quote_verified':'estimate'},choice:'old'};
  const oldPrices=new Map([['old',5]]),oldLoads=new Map([['old','complete']]);
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:'2026-10-16',adults:2,ages:s.noAges?[]:[0,17],minNights:7,maxNights:10};
- ctx={Math,Number,String,Array,Set,Map,JSON,Date,structuredClone,esc,$:node,$$:selector=>{const n=node(selector);n.value='choice';return [n];},
+ ctx={requestAnimationFrame:()=>0,departureRangeText:(a,b)=>a+'–'+b,partyLabel:()=>'2 взрослых',Math,Number,String,Array,Set,Map,JSON,Date,structuredClone,esc,$:node,$$:selector=>{const n=node(selector);n.value='choice';return [n];},
   modalType:s.type||'offer',selectedOffer:s.noSelection?null:{key:'previous',raw:{}},savedSelection:null,
   hotels:[{id:7,photos:['p1']}],providerViews:new Map(s.noView?[]:[['o1',{...view,offer:s.rawMismatch?{...offer,raw:{identity:'old'}}:offer}]]),
   offerFromKey:call('offerFromKey',()=>s.noOffer?null:s.currentMismatch?{...offer,raw:{identity:'other'}}:offer),
@@ -52,6 +53,8 @@ function observe(source,s){
  ctx.restoreProviderView=call('restoreProviderView',()=>{ctx.modalType=s.restoredType||view.type;return !s.restoreFailed;});
  ctx.needsRefresh=call('needsRefresh',()=>true);ctx.hotelOffers=call('hotelOffers',()=>[]);
  for(const month of ['2026-10-01','2026-11-01','2026-12-01'])ctx.calendarLoads.set(month,s.phase||'complete');
+ ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ ctx.dateContext.filters=structuredClone(ctx.state.filters);ctx.dateText=day=>String(day);
  vm.createContext(ctx);vm.runInContext(owner(source,s.kind),ctx);let result;
  if(s.kind==='capture')result=ctx.uiRoute();
  else if(s.kind==='restore')result=ctx.reopenUIRoute({type:s.type,key:'o1',id:7,outbound:'choice',inbound:'choice',choice:'choice',scroll:s.invalidScroll?-1:83});
@@ -75,7 +78,8 @@ add('catalog loading',{kind:'price',catalogLoading:true,prices:[120]});add('cata
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after passive route/calendar observations');
-if(!process.argv.includes('--capture'))assert.equal(digest,'e4136b234fce6937d3cc6c341e5c4dab9d9832118619e9e6c4684dfa8de07648','original passive context observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,'66bca607101de11bc6028d1b927457e5f94f718510d919967640c4593e3232a3','approved calendar and retained provider context observations');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,203))).digest('hex'),'351941150be5e80e8a32a115c77132f8abb8563acf191ed81e99d66d4ce316cb','unchanged b74ac0 provider-view history records');
 const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
 assert(changed(source.replace('view.offer.raw===o.raw','true')),'retained raw identity mutation detected');
 assert(changed(source.replace("modalType==='andromeda-flights'&&!view.pending","modalType==='andromeda-flights'")),'pending history choice mutation detected');

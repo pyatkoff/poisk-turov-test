@@ -1,3 +1,4 @@
+// Site100 accepted always-open price tape/month/year and flat exact-offer markup replace v147 presentation. Independent grouping/note reference, data sequences, pagination/draft/ownership mutations remain.
 // Observe the actual result, calendar and offer-list owners at DOM/data boundaries.
 // Baseline is app blob 33bee027, before the combined structural extraction.
 // No application bootstrap, supplier transport, quote or lead submission executes.
@@ -34,8 +35,8 @@ function observe(source,s){
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:[0,17]};
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
  ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
-  state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
-  searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live'},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
+   selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
+   searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
@@ -71,6 +72,8 @@ function observe(source,s){
  ctx.setComparisonQuotes=value=>{ctx.comparisonQuotes=value;};
  const observedOwner=owner(source,s.kind);
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
+  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
+  node('#calendar-selected-date').parentElement=node('#calendar-selection');
  vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
@@ -102,7 +105,7 @@ const i=process.argv.indexOf('--compare');
 // O29 changes only two pure-work traces. Keep the original oracle and compare
 // every retained DOM/state write and every other collaborator. The comparison
 // removal below explicitly projects the verified historical oracle.
-const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold.indexOf('\n return {h,all,filtered,groups};',groupStart);
+const groupStart=cold.indexOf(' const groups=[],byKey=new Map();'),groupEnd=cold.indexOf('\n return {h,all,filtered,groups,sorted};',groupStart);
 assert(groupStart>=0&&groupEnd>groupStart,'current grouping boundary');
 const oldGrouping=' const groups=[...new Set(sorted.map(offerGroupKey))].map(key=>({key,offers:sorted.filter(o=>offerGroupKey(o)===key)}));';
 let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
@@ -134,7 +137,7 @@ const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').
 const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 if(process.argv.includes('--capture'))console.log('Retained historical reference digest: '+baselineDigest);
-else assert.equal(baselineDigest,'eca83cfc054c23a75d6464cf4a27167b950d5c4834789dd111dd627963257cb9','pinned original retained result/calendar/list observations');
+else assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','approved result/calendar/list observations');
 assert.deepEqual(actual,baseline,'only bounded pure grouping/note work and retired comparison observations may change');
 if(i>=0){
  const coldIndex=process.argv.indexOf('--compare-offer-list');
@@ -205,8 +208,9 @@ function previousCardSource(code){
 }
 function cardRatingOwner(code){
  const work={evaluations:0,reads:0},state={openHotel:null,photoIndexes:{},favorites:[]},ctx={Number,Intl,work,state,optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingFormatter:new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1}),
-  esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlights:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
+  esc,icon:name=>`<i>${name}</i>`,photoUrl:()=>'/hotel.jpg',hotelStarsHTML:h=>`<stars>${h.stars}</stars>`,hotelHighlightsHTML:()=> 'Пляж рядом',minimumOfferSummary:()=>'<minimum></minimum>',guestsText:()=> '2 взр.',money:value=>value+' ₽',cardPriceNote:()=> 'Цена подтверждена',offerActionLabel:()=> 'Выбрать'};
  const ratingLine=code.includes(currentRatingValue)?'const ratingValue=h=>{work.evaluations++;const rating=h.rating;return Number.isFinite(rating)&&rating>0&&rating<=5?rating:null;}':'const ratingValue=h=>{work.evaluations++;return Number.isFinite(h.rating)&&h.rating>0&&h.rating<=5?h.rating:null;}';
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(ratingLine+'\n'+(code.includes(currentRatingText)?currentRatingText:previousRatingText)+'\n'+section(code,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
  const render=(value,index=1,provided=false)=>{const hotel={id:index,name:'Hotel <& '+index,resort:'Кемер',country:'4',stars:5,photos:[]};Object.defineProperty(hotel,'rating',{get(){work.reads++;return value;}});const row={hotel,offers:[{key:'tour-'+index,total:100000}]};if(provided)row.rating=Number.isFinite(value)&&value>0&&value<=5?value:null;return ctx.cardHTML(row);};
  return {work,render};
@@ -249,10 +253,11 @@ function summaryDOM({full=false,code=source}={}){
   $:selector=>document.querySelector(selector),icon:name=>`<i data-icon="${name}"></i>`,
   state:{search:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},filters:{stars:[],meals:[],min:0,max:null}},
   appliedDestination:()=>ctx.state.search.country,destinationLabel:country=>({'4':'Турция','1':'Египет','9':'Направление <&"'}[country]||country),
-  departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
+  updateCompactSearch:()=>{},departureScopeLabel:()=> 'Вылет',departureScopeValue:s=>s.from+' — '+s.to,
   durationText:()=>ctx.state.search.minNights+'–'+ctx.state.search.maxNights+' ночей',guestsText:()=>ctx.state.search.adults+' взрослых · '+ctx.state.search.ages.join('/'),
   budgetLabel:f=>f.min+'–'+(f.max??'любой'),filterCount:()=>ctx.state.filters.stars.length+ctx.state.filters.meals.length+(ctx.state.filters.min?1:0)+(ctx.state.filters.max===null?0:1)};
  if(full)ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext((full?'':generatedRootOwner(code))+section(code,'function renderSummary(){','function editSearch(){'),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(summary,{childList:true});
  return {dom,ctx,summary,render:()=>{ctx.renderSummary();return observer.takeRecords();},parsed:()=>parsed,
@@ -273,14 +278,14 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
   roots.forEach((node,index)=>assert.strictEqual(current.summary.children[index],node));
   assert.strictEqual(current.ctx.document.activeElement,focused,'unchanged summary action focus survives');
   current.ctx.state.filters.max=150000;legacy.ctx.state.filters.max=150000;const changed=current.render();legacy.render();
-  assert.equal(changed.flatMap(record=>[...record.removedNodes]).length,1,'budget change replaces only extras');assert.equal(current.parsed(),1);assert.strictEqual(current.summary.firstElementChild,roots[0]);assert.strictEqual(current.ctx.document.activeElement,focused);
+  assert.equal(changed.flatMap(record=>[...record.removedNodes]).length,0,'approved compact summary keeps filter edits in chips and form');assert.equal(current.parsed(),0);assert.strictEqual(current.summary.firstElementChild,roots[0]);assert.strictEqual(current.ctx.document.activeElement,focused);
   assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'changed budget equals original full render');
-  current.summary.querySelector('[data-action="meals"] strong').firstChild.data='stale';current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'character-data edit is repaired');
+  current.summary.querySelector('.applied-route strong').firstChild.data='stale';current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'character-data edit is repaired');
   current.summary.querySelector('[data-action="edit-search"]').setAttribute('aria-expanded','true');current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'live attribute edit is repaired');
   current.summary.appendChild(current.ctx.document.createElement('aside'));current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'extra root is removed');
   current.summary.querySelector('.applied-route').remove();current.render();assert.equal(current.summary.innerHTML,legacy.summary.innerHTML,'missing subtree is repaired');
   current.ctx.collapseSearch();assert.equal(current.ctx.document.querySelector('#search-form').hidden,true);assert.equal(current.ctx.document.querySelector('.intro').hidden,true);assert.equal(current.summary.hidden,false);assert(current.ctx.document.querySelector('#search').classList.contains('search-collapsed'));
-  console.log(`PASS applied summary: ten unchanged refreshes remove/insert ${oldRemoved}→0/${oldInserted}→0 elements; budget change replaces one root; focus, collapse and live-DOM repair retained`);
+  console.log(`PASS applied summary: ten unchanged refreshes remove/insert ${oldRemoved}→0/${oldInserted}→0 elements; filter change retains the compact summary; focus, collapse and live-DOM repair retained`);
  }finally{current.close();legacy.close();}
 }
 {
@@ -294,7 +299,7 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
    markup.push(legacy.summary.innerHTML);
   }
   const digest=crypto.createHash('sha256').update(JSON.stringify(markup)).digest('hex');
-  assert.equal(digest,'10983625dddcf3d14ce59ed7cadb185f3039f97e119fe585827bbf621a8b2731','pre-O34 summary markup for 100 search/filter states');
+  assert.equal(digest,'8d70225f024d799e8be04095f7d1693906daee940ba212b594c1799e11458c01','approved compact summary for 100 search/filter states');
   console.log('PASS summary parity: 100 original search/filter/escaping/party states; digest '+digest+'; raw input order preserved');
  }finally{current.close();legacy.close();}
 }
@@ -302,6 +307,7 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
 // binding. Also prove that invalidation is needed, rather than testing a cache.
 {
  const dom=new JSDOM('<div id="a"></div><div id="b"></div>'),document=dom.window.document,ctx={document,Map,WeakMap,WeakSet,MutationObserver:dom.window.MutationObserver};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(generatedRootOwner(source),ctx);
  const a=document.querySelector('#a'),b=document.querySelector('#b'),entries=[{id:'same',markup:'<button id="same">Current</button>'}];
  try{
@@ -313,14 +319,14 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
   assert.equal(ctx.appendGeneratedRoots(document.createElement('div'),[]),false,'an unbound root fails closed');
  }finally{dom.window.close();}
  const mutated=summaryDOM({code:source.replace('previous&&!dirty.has(previous)&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)','previous&&known.get(previous)===markup?previous:parseGeneratedRoot(markup)')});
- try{mutated.render();mutated.summary.querySelector('[data-action="budget"] strong').textContent='stale';mutated.render();assert.equal(mutated.summary.querySelector('[data-action="budget"] strong').textContent,'stale','missing mutation invalidation is detected');}finally{mutated.close();}
+ try{mutated.render();mutated.summary.querySelector('.applied-route strong').textContent='stale';mutated.render();assert.equal(mutated.summary.querySelector('.applied-route strong').textContent,'stale','missing mutation invalidation is detected');}finally{mutated.close();}
 }
 
 // Progressive calendar updates keep exact full-render markup, but unchanged
 // date roots must survive provider/status refreshes. Live-only edits still
 // invalidate the generated-markup binding and are repaired on the next pass.
 function calendarDOM(code=source){
- const dom=new JSDOM('<p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
+ const dom=new JSDOM('<p id="calendar-units"></p><p id="calendar-month-label"></p><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
  let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
@@ -328,7 +334,8 @@ function calendarDOM(code=source){
   state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
   calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
-  loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
+  dateObj:day=>new Date(day+'T12:00:00Z'),loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(owner(code,'calendar'),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(strip,{childList:true});
  return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
@@ -383,6 +390,7 @@ function cardDOM(code=source){
   emptyResultsHTML:()=>'<p class="empty">Нет подходящих туров</p>'};
  dom.window.HTMLElement.prototype.getClientRects=function(){return [{}];};
  dom.window.HTMLElement.prototype.getBoundingClientRect=function(){return {top:100};};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(owner(code,'results')+'\n'+section(code,'function focusReference(','function capturePageReturn('),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(cards,{childList:true});
  return {dom,ctx,cards,render:items=>{ctx.renderResultCards(items);return observer.takeRecords();},parsed:()=>parsed,
@@ -452,6 +460,7 @@ function rankingOwner(code=source){
  const work={score:0,rank:0,offers:0,rating:0};
  const ctx={window:{AnyTourTopHotelLegacyIds:[5,2,9,5,0,'bad',7]},hotels:[],state:{sort:'recommended'},work,
   hotelOffers:h=>{work.offers++;return h.offers||[];}};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(popularityCode,ctx);ctx.popularity=ctx.window.AnyTourHotelPopularityV1;
  const ratingLine=code.match(/^const ratingValue=[^\n]+/m)[0].replace('const ratingValue=','const actualRatingValue=');
  vm.runInContext(ratingLine+'\nfunction ratingValue(h){work.rating++;return actualRatingValue(h)}\n'+section(code,'function recommendedHotelScore(','function calendarMinimums('),ctx);
@@ -521,6 +530,7 @@ console.log('PASS actual result ranking: '+rankingRecords.length+' independent o
 const previousTouristAgesKey='function touristAgesKey(){return null;}\nconst touristAgesFallback=ages=>JSON.stringify([...ages].sort());\n';
 function agePredicateOwner(code=source){
  const work={sorts:0},ctx={Array,JSON,Number,Object,String,work,matchesMeal:()=>true};
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);
  const owner=section(code,'function touristAgesKey(','function hotelOffers(').replace('const touristAgesFallback=ages=>JSON.stringify([...ages].sort());','const touristAgesFallback=ages=>{work.sorts++;return JSON.stringify([...ages].sort());};');
  vm.runInContext(owner+'\nglobalThis.ageKey=ages=>touristAgesKey(ages)??touristAgesFallback(ages);globalThis.agePredicate=hotelOfferPredicate;',ctx);
@@ -566,6 +576,7 @@ const previousResultSort=`function sortResultItems(items){
 function resultSortOwner(code=source){
  const work={total:0,rating:0},ctx={Array,Number,Object,state:{sort:'price'},work};
  const ratingLine=code.match(/^const ratingValue=[^\n]+/m)[0].replace('const ratingValue=','const actualRatingValue=');
+ ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
  vm.createContext(ctx);vm.runInContext(ratingLine+'\nfunction ratingValue(h){work.rating++;return actualRatingValue(h)}\n'+section(code,'function sortResultItems(','function resultInventory(')+'\nglobalThis.sortOwner=sortResultItems;',ctx);
  return {ctx,work,run:(items,sort)=>{work.total=work.rating=0;ctx.state.sort=sort;const actual=ctx.sortOwner(items);return {actual,work:{...work}};}};
 }
@@ -629,7 +640,8 @@ function observeMerge(code,{live=false,sparse=false,mutating=false,count=0}={}){
  if(count)fixture.event.hotels=[{id:3,offers:Array.from({length:count},(_,i)=>({key:'o'+i,operator:'Operator '+i%3,meal:i%2?'AI':'BB',mealPlanId:i%2?1:2,mealFacet:i%2?'Всё включено':'Завтрак'}))}];
  const ctx={hotels:fixture.initial,state:{favorites:[2]},data:{live},operators:['old'],mealNames:{'Из каталога':77},work,
   refreshOpenOfferList:()=>calls.push('offers'),refreshOpenHotelRooms:()=>calls.push('rooms')};
- const operatorsRef=ctx.operators,mealsRef=ctx.mealNames;vm.createContext(ctx);
+ const operatorsRef=ctx.operators,mealsRef=ctx.mealNames;ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
+ vm.createContext(ctx);
  vm.runInContext(`let mapCount=0;const NativeMap=Map;Map=class extends NativeMap{constructor(entries){super();this.search3MapIndex=++mapCount;if(entries)for(const entry of entries)this.set(entry[0],entry[1]);}set(key,hotel){if(this.search3MapIndex===2&&hotel?.offers)hotel.offers=new Proxy(hotel.offers,{get(target,key,receiver){if(typeof key==='string'&&/^[0-9]+$/.test(key))work.elementReads++;return Reflect.get(target,key,receiver);}});return super.set(key,hotel);}};
  const nativeFlatMap=Array.prototype.flatMap;Array.prototype.flatMap=function(...args){const result=nativeFlatMap.apply(this,args);work.intermediate+=result.length;return result;};`,ctx);
  vm.runInContext(code,ctx);ctx.mergeSearchResults(fixture.event);
@@ -661,3 +673,6 @@ for(const mutation of [
 ])assert.throws(()=>assert.deepEqual(observeMerge(mutation,{live:true}).snapshot,observeMerge(previousMergeOwner,{live:true}).snapshot),'reference guard rejects changed operators, conflicting meals or raw duplicate input');
 console.log('PASS final merge inventory: normalized duplicate/saved/sparse/inherited/getter-mutation parity; 1000 offers read 2000→1000, flatMap intermediate 1000→0 in preview/live; no supplier/lead HTTP');
 require('./search3-visual-rating-render-inventory.cjs');
+
+// Run the approved whole form and exact-offer return against actual runtime scripts.
+require('./search3-visual-approved-interface.cjs');

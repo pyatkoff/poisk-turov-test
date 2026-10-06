@@ -1,3 +1,4 @@
+// Site100 accepted form: city confirmation, explicit destination replacement, multi-hotel OR and return-age review change 15 dispatch scenarios; disabled/state-order/ownership mutations stay required.
 // Characterize the real delegated event owner without starting the application,
 // supplier transport or lead delivery. Pinned observations come from app blob
 // db413a559e1789057e82293d4cb4c1a7f7d89c8e before structural extraction.
@@ -83,7 +84,10 @@ function characterize(source, scenario) {
   for (const [,name] of code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)) {
     if (!keywords.has(name) && !(name in ctx)) ctx[name]=(...args)=>{trace.push([name,...args.map(x=>x&&typeof x==='object'?(x.focus?'DOM:'+x.id:copy(x)):x)]);checkpoints.push({name,state:copy(state),model:copy(model),draft:copy(ctx.draft),dateDraft:copy(ctx.dateDraft),guestDraft:copy(ctx.guestDraft)});};
   }
-  vm.createContext(ctx);vm.runInContext(code,ctx);
+  ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ ctx.agesNeedReview=false;ctx.formFiltersDraft=null;ctx.starsDraft=[];ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
+ ctx.pickerFilters=()=>ctx.state.filters;ctx.finishFilterPicker=ctx.applyQuickFilters;
+ vm.createContext(ctx);vm.runInContext(code,ctx);
   const t=node('target');Object.assign(t,{id:'',name:'',value:'new',max:'2000',checked:true,dataset:{}},scenario.target||{});
   if(scenario.type==='click') {
     t.dataset={action:scenario.action,id:'7',value:'Kazan',date:'2026-10-18',key:'key',source:'drawer',index:'0',...scenario.dataset};
@@ -165,9 +169,9 @@ const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='489f7e05a479fd524c3d77cacd59a79ca8253cf79ff377bfbb6a143062a41663';
+const BASELINE='79c27bc86f9ac4d7d0a11d40648922a68e5f76192268f3a80cbca6d1489035ec';
 assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
-if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original retained event observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
@@ -193,4 +197,4 @@ for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEq
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
 assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
-console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, original retained digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);
+console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, approved presentation digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);

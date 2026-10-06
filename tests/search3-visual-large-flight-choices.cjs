@@ -70,7 +70,7 @@ async function run(){
     const choose=async provider=>{
      await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
      const offer=page.locator('#modal-body [data-action="offer"][data-key^="'+provider+'%3A"]').first();
-     if(!await offer.isVisible())await offer.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+     await offer.waitFor({state:'visible'});
      await offer.click();
     };
     const application=async tag=>{
@@ -102,7 +102,7 @@ async function run(){
     await page.locator('[data-action="close-modal"]').click();
     await choose('anex');await page.locator('[data-action="refresh-hotel"]').click();
     const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
-    if(!await concrete.isVisible())await concrete.locator('xpath=ancestor::section[contains(@class,"offer-group")]').locator('[data-action="offer-group"]').click();
+    await concrete.waitFor({state:'visible'});
     await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
     await page.locator('[data-action="anex-application-preview"]').click();await application('anex-application');
     assert.match(await page.locator('.lead-message').textContent(),/Расчётная сумма.*требует подтверждения/);

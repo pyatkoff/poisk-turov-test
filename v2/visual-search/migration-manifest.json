@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "stage": "canonical-live-integration-published",
-  "visualVersion": 147,
+  "stage": "approved-sites100-presentation-candidate",
+  "visualVersion": 155,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
-  "functionalBase": "3b460f04b4f6262147c7e44b93fe32cefcfaf03c",
+  "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
   "liveConnected": true,
   "supplierRequests": "explicit-user-actions-only",
@@ -52,24 +52,47 @@
     "canonical-hotel-content"
   ],
   "acceptanceSupplierRequests": 0,
-  "publicationStatus": "published-bootstrap-calendar-verified",
+  "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "921af4ca0066d92029726bcdb56fdd2794f1bdd8e7ee84fa604403ca734c3b72",
+    "app.js": "75f35ce7ed7e02d2623d093887f9c930fd6b4dbabed1c9a040a2a6dc8fa14db0",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "a522d9edc87893abcb3336e7c32ecc236bb14d4e3b094752c7db6b797aceb5cb",
-    "styles.css": "018a59fbb88924885688e07078b33a68ef3da5a8c96fff22bc8787ac4c08fba2",
+    "index.html": "4453b81db9637b275ddb75986b7fff196e665037b3e79dc086e9fa80663e083e",
+    "styles.css": "835d4ac726cfadca1d1d0c79a87debe0e0cb1eef7fba317713fc000f0e7b5e40",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
     "flight-picker-v18.js": "fc495715806b068bbd76c01de9f72762b14716bb394e21222db8a84a6a7b05eb",
-    "offer-list-v1.js": "ef6b28416d1a5e3f91642d627e09af381e1c62c19a28ab4a19376033489e8d12",
-    "mobile-controls-v1.css": "26ab39aca1bd308d59f838fa0dcca1ebb4912042e6ba6e78f5c4199a6412fd56",
-    "hotel-details-v1.js": "f578a47a235bebe74d0e217693d89139dcd3cb78029dbaa01b1b80ddc1d8d1aa",
-    "filter-panel-v1.js": "06924e51df74c5aba4c1f99295b63be1c206be2c41bb6166a7c432c6ac5bcfd2",
+    "offer-list-v1.js": "5faacb2ac5cfbb49343693d5676e0029de91c079580e0b7a2b13ff3da89b9d57",
+    "mobile-controls-v1.css": "204e51256a7f2a21526c23204cf2f49c4ef5858c06e57c13de89cd7333b11c1f",
+    "hotel-details-v1.js": "0c8b20e61041e91a6c5e65a83c65a5c7d96984e3ce6d5d95ec63552f4d978759",
+    "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "070d73db6e0a1774d3a98f09b16bfe4bf5a99b89a9ffdb914674edf231b3fa14",
     "flight-picker-ui-v1.js": "22fbf658eff9c5a9e974067cb6d118f5cc5d1a97606fade8051fef3f5f5329f2",
     "lead-runtime-v1.js": "9e0e9e4393b0b019c51616acb4aff20231c911cf7f0426b49a1e9b8624bfc065"
   },
-  "publication": {
+  "quoteRecovery": {
+    "date": "2026-09-26",
+    "scope": "SAMO current-search initial quote and flight confirmation",
+    "noAutomaticReplay": true,
+    "safeBrowserFailureClassification": true,
+    "realSupplierAcceptance": false
+  },
+  "approvedPresentation": {
+    "site": 100,
+    "package": 34,
+    "visualVersion": 154,
+    "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+    "sourceSha": "05051662c25cf8258991475e2e7536a12f7248d4",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_c787e6e54144819197a0bbd94d678ad9",
+    "documentarySite": 102,
+    "documentarySourceSha": "a33878d9798e6f7c1a4ff0a3f245f27254580a27",
+    "designApproval": "DESIGN_APPROVED_FOR_PREVIEW_TRANSFER",
+    "mobilePhotoRatio": 1.8,
+    "resultsPriceTape": "always-open",
+    "transportOwners": "retained from current NEXT; no donor transport copied",
+    "physicalSafariAcceptance": false,
+    "keyboardSafeAreaText200Acceptance": false
+  },
+  "publicationHistory": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
     "releaseSha": "b4223e76ad716d354201a3c5f534db062f570aa7",
     "deployRun": 36171039351,
@@ -80,11 +103,20 @@
     "realTourAcceptance": false,
     "physicalSafariAcceptance": false
   },
-  "quoteRecovery": {
-    "date": "2026-09-26",
-    "scope": "SAMO current-search initial quote and flight confirmation",
-    "noAutomaticReplay": true,
-    "safeBrowserFailureClassification": true,
-    "realSupplierAcceptance": false
+  "acceptance": {
+    "runtimeScenarios": "saved snapshot and explicitly labelled demos only",
+    "widths": [
+      360,
+      390,
+      430,
+      768,
+      1280
+    ],
+    "sourceDom": "tests/search3-visual-approved-interface.cjs",
+    "compiledBrowser": "tests/search3-visual-offer-list-browser.cjs",
+    "finalShaCI": "required before preview publication",
+    "physicalSafariAcceptance": false,
+    "supplierRequests": 0,
+    "realLeads": 0
   }
 }

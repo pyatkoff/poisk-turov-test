@@ -10,6 +10,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const declarationCache=new Map();
 function functions(source,names){let declarations=declarationCache.get(source);if(!declarations){const selected=[];function walk(node){if(!node||typeof node!=='object')return;if(node.type==='FunctionDeclaration'&&node.id?.name)selected.push(node);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(walk);else if(value&&typeof value==='object')walk(value);}walk(acorn.parse(source,{ecmaVersion:'latest'}));declarations=selected;declarationCache.set(source,declarations);}return declarations.filter(n=>names.includes(n.id.name)).map(n=>source.slice(n.start,n.end)).join('\n');}
 function context(c){
+ c.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];c.destinationHotels||=new Map();c.destinationCountryList=false;
  c.getHotels=()=>c.hotels;c.getFilterDraft=()=>c.filterDraft;c.getViewportWidth=()=>c.innerWidth;
  if(c.countFacetOptions&&!c.countFacetOptionGroups)c.countFacetOptionGroups=(model,groups,selectedInventory,discover)=>{
   groups=new Map([...groups].map(([group,values])=>[group,[...values]]));
@@ -45,7 +46,7 @@ function amenities(source,selected){
  const fact={key:'pool',label:'Бассейн <&',groupId:1,group:'Удобства'},input=source.includes('function filterPresentationInventory(')?new Map([['pool',fact]]):[{amenities:[fact,{key:'hidden',label:'Нет данных',filterable:false}]}],html=c.amenityFilterGroups(input,filters);c.dom.window.close();return html;
 }
 function destination(source,s){
- const c=environment('<input id="destination-query"><button data-action="clear-destination-query"></button><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
+ const c=environment('<input id="destination-query"><button data-action="clear-destination-query"></button><div id="destination-country-context"></div><div id="destination-summary"></div><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
  const rows=Array.from({length:24},(_,i)=>({id:i+1,country:'4',name:i%3?'Hotel '+i:'Resort '+i+' hotel',resort:'Курорт <&',stars:i%6,photos:['x<&']}));
  let calls=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],destinationChoice:{country:'4',resorts:s.resorts?['Регион <&']:[],hotelId:s.hotel?2:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:s.ready,catalogError:s.error?'Ошибка <&':'',catalogDeparture:'Москва',destinationHotel:id=>rows.find(h=>h.id===id),recentDestinations:()=>[{country:'4',resorts:[],hotelId:0}],destinationLabel:()=> 'Турция <&',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[{parent:{country:'4',name:'Регион <&'},children:[]}],resortChoiceHTML:r=>'<button>'+esc(r.name)+'</button>',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:rows.slice(0,12),matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:s.status,rows:rows.slice(8)},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:s.resolved?s.query:'',photoUrl:h=>h.photos[0],rememberUIRoute:()=>{}});
@@ -54,12 +55,12 @@ function destination(source,s){
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
 function destinationPaginationWork(code,fast){
- const c=environment('<input id="destination-query" value="hotel"><button data-action="clear-destination-query"></button><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
+ const c=environment('<input id="destination-query" value="hotel"><button data-action="clear-destination-query"></button><div id="destination-country-context"></div><div id="destination-summary"></div><div id="destination-selection"></div><div id="destination-results"></div><button data-action="apply-destination"></button><div class="destination-apply-context"></div>');
  const rows=Array.from({length:1000},(_,i)=>({id:i+1,country:'4',name:'Hotel '+i,resort:'Курорт '+i,stars:i%6,photos:['photo-'+i]}));
  let calls=0,hotelMarkup=0,routes=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],__rows:rows,
-  destinationChoice:{country:'4',resorts:[],hotelId:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:true,catalogError:'',catalogDeparture:'Москва',destinationHotel:()=>null,recentDestinations:()=>[],destinationLabel:()=> 'Турция',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[],resortChoiceHTML:()=>'',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:[],matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:'complete',rows},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:'hotel',photoUrl:h=>{hotelMarkup++;return h.photos[0];},rememberUIRoute:()=>routes++});
- context(c);vm.runInContext(functions(code,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination']),c);c.renderDestination();
+  destinationChoice:{country:'4',resorts:[],hotelId:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:true,catalogError:'',catalogDeparture:'Москва',destinationHotel:()=>null,recentDestinations:()=>[],destinationLabel:()=> 'Турция',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[],resortChoiceHTML:()=>'',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:[],matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:'complete',rows},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:'hotel',photoUrl:h=>h.photos[0],rememberUIRoute:()=>routes++});
+ c.esc=value=>{if(/^Hotel [0-9]+$/.test(String(value)))hotelMarkup++;return esc(value);};context(c);vm.runInContext(functions(code,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination']),c);c.renderDestination();
  const retained=[...c.$$('.destination-hotel')];retained[0].querySelector('strong').textContent='stale';
  while(c.destinationHotelLimit<80){if(fast)c.renderMoreDestinationHotels();else{c.destinationHotelLimit+=c.destinationHotelPageSize;c.renderDestination();}}
  const live=[...c.$$('.destination-hotel')],result={calls,hotelMarkup,routes,count:live.length,html:c.$('#destination-results').innerHTML,order:live.map(node=>node.dataset.id),retained:retained.slice(1).every((node,index)=>live[index+1]===node),dirtyReplaced:live[0]!==retained[0],dirtyRepaired:live[0].querySelector('strong').textContent==='Hotel 0',rawIdentity:vm.runInContext('destinationMatchItems.every((row,index)=>row===__rows[index])',c)};
@@ -81,7 +82,7 @@ function facetRefresh(source,legacy=false){
 }
 function observations(source){const records=[];for(const group of ['resorts','operators','meals'])for(const n of [0,1,7,8,20])for(const query of ['', 'Вариант 1','елка','несуществующий'])for(const selected of [false,true])for(const expanded of [false,true])for(const focus of ['first','last','search'])records.push(facet(source,{group,n,query,selected,expanded,focus}));for(const selected of [false,true])records.push(amenities(source,selected));for(const query of ['', 'h','hotel','hot el','Ёлка'])for(const status of ['idle','loading','error','complete'])for(const ready of [false,true])for(const hotel of [false,true])for(const resorts of [false,true])for(const resolved of [false,true])records.push(destination(source,{query,status,ready,hotel,resorts,resolved,error:status==='error'}).result);return records;}
 const actual=observations(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
-if(!process.argv.includes('--capture'))assert.equal(digest,'7a16a4b0b373fe30821b8a2ba4299344b84dfab1df6b59388079b6535656dc9f','original filter/destination HTML, availability, ordering, selection and focus');
+if(!process.argv.includes('--capture'))assert.equal(digest,'dd2b334fdece6a13f9dbc6f3d2912e86e689f6da15a955151da6d68d45af7a24','original filter/destination HTML, availability, ordering, selection and focus');
 const i=process.argv.indexOf('--compare'),rootBaselineIndex=process.argv.indexOf('--root-baseline'),rootBaseline=rootBaselineIndex>=0?fs.readFileSync(process.argv[rootBaselineIndex+1],'utf8'):null;if(i>=0){const baseline=fs.readFileSync(process.argv[i+1],'utf8');assert.deepEqual(actual,observations(baseline),'before/after presentation');for(const query of ['hotel 1','hotel 22','hotel 0','???'])assert.deepEqual(destination(source,{query,status:'complete',ready:true}).result,destination(baseline,{query,status:'complete',ready:true}).result,'mixed name preference and empty-word query');}
 if(source.includes('function filterCheckRowHTML(')){
  const scenario={group:'operators',n:20,query:'Вариант 1',selected:true,expanded:false,focus:'first'};
@@ -104,7 +105,8 @@ if(source.includes('function filterCheckRowHTML(')){
 }
 {
  const normalize=value=>String(value).toLowerCase(),legacyMatch=(hotel,words)=>words.every(word=>normalize(hotel.name).includes(word));
- const rank=(rows,words)=>{const context={normalizeHotelQuery:normalize,preferenceCalls:0};vm.createContext(context);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels'])+'\nconst baseDestinationNameMatches=destinationNameMatches;destinationNameMatches=(...args)=>{preferenceCalls++;return baseDestinationNameMatches(...args)};',context);const input=[...rows],output=context.rankDestinationHotels(input,words);assert.deepEqual(input,rows,'ranking keeps the candidate array untouched');return {output,calls:context.preferenceCalls};};
+ const rank=(rows,words)=>{const context={normalizeHotelQuery:normalize,preferenceCalls:0};context.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ vm.createContext(context);vm.runInContext(functions(source,['destinationNameMatches','rankDestinationHotels'])+'\nconst baseDestinationNameMatches=destinationNameMatches;destinationNameMatches=(...args)=>{preferenceCalls++;return baseDestinationNameMatches(...args)};',context);const input=[...rows],output=context.rankDestinationHotels(input,words);assert.deepEqual(input,rows,'ranking keeps the candidate array untouched');return {output,calls:context.preferenceCalls};};
  for(let seed=0;seed<500;seed++){
   const words=seed%7===0?[]:seed%5===0?['hotel','preferred']:['preferred'],rows=Array.from({length:seed%31},(_,i)=>({id:seed*100+i,name:(i*17+seed)%4?'ordinary '+i:'preferred hotel '+i}));
   const expected=[...rows].sort((a,b)=>Number(legacyMatch(b,words))-Number(legacyMatch(a,words))),actual=rank(rows,words).output;
@@ -147,7 +149,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  const c=environment('<div id="host"></div>'),model={filters:{stars:[4]}};
  Object.assign(c,{hotels:[{country:'4',stars:2},{country:'4',stars:3}],state:{search:{country:'4'}},countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,value===2?5:0]))});
  context(c);vm.runInContext(functions(source,['filterStarOptions','filterStarButtons']),c);c.$('#host').innerHTML=c.filterStarButtons(model);
- assert.deepEqual(c.$$('button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','5'],['4','true','0']],'selected unavailable star stays visible');
+ assert.deepEqual(c.$$('button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small')?.textContent||'']),[['0','false',''],['3','false','0'],['4','true','0'],['5','false','0']],'selected unavailable star stays visible');
  c.dom.window.close();
 }
 {
@@ -158,7 +160,7 @@ console.log(`PASS filter/destination presentation: ${actual.length} original DOM
  assert.equal(inventories,1,'one complete star inventory per filter refresh');
  assert.equal(countryReads,100,'one canonical star option country pass per filter refresh');
  assert.equal(starReads,100,'one canonical star option value pass per filter refresh');
- assert.deepEqual(c.$$('.star-options button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small').textContent]),[['2','false','3'],['5','true','0']],'batched star inventory retains available and selected-unavailable buttons');
+ assert.deepEqual(c.$$('.star-options button').map(button=>[button.dataset.value,button.getAttribute('aria-pressed'),button.querySelector('small')?.textContent||'']),[['0','false',''],['3','false','0'],['4','false','0'],['5','true','0']],'batched star inventory retains available and selected-unavailable buttons');
  c.dom.window.close();
 }
 {
@@ -200,7 +202,7 @@ function facetOrderEnvironment(code,group,n){
  const c=environment('<div id="host"></div>'),filters={resorts:[],operators:[],meals:[],amenities:[]};
  Object.assign(c,{editingFilterModel:()=>({filters}),countMatchingHotels:model=>Number(model.filters[group][0]?.slice(1))%4||0,facetQueries:new Map(),expandedFacets:new Set(),amenityNames:new Map()});
  c.countFacetOptions=(model,key,values)=>new Map(values.map(value=>[value,c.countMatchingHotels({...model,filters:{...filters,[key]:[value]}})]));
- context(c);vm.runInContext(functions(code,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch']),c);
+ c.esc=value=>{if(/^Hotel [0-9]+$/.test(String(value)))hotelMarkup++;return esc(value);};context(c);vm.runInContext(functions(code,['compareMealLabels','comparePopularFacetOptions','filterCheckRowHTML','checkRows','fullCheckRows','applyFacetSearch']),c);
  c.$('#host').innerHTML=c.checkRows(group,Array.from({length:n},(_,j)=>['v'+j,'Вариант '+j]));
  const host=c.$('.facet-options'),more=host.querySelector('details');c.applyFacetSearch(host);
  const work={reads:0,moves:0};
@@ -249,7 +251,7 @@ function filterEditorMarkup(){return `\n <div class="filter-group"><h4>Назв�
 function filterPainter(code){
  const c=environment('<div id="filters"></div>'),filters={};
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,filterRootBindings:new WeakMap(),renderedFilterContext:null,filterDraft:null,filterEditorLease:null,filterEditorSelector:'[data-facet-search],#hotel-query,#min-price,#max-price,#price-range',state:{search:{country:'4'}},searchKey:()=> 'scope',editingFilterModel:()=>({filters}),applyFacetSearch:()=>{},syncAvailableFilterGroups:()=>{}});
- context(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
+ c.esc=value=>{if(/^Hotel [0-9]+$/.test(String(value)))hotelMarkup++;return esc(value);};context(c);vm.runInContext(functions(code,['filterRootBinding','filterRootMarkup','settleFilterRoots','reconcileFilterRoots','paintFilters']),c);
  return {c,filters,host:c.$('#filters'),paint:(markup,next=filters)=>c.paintFilters(markup,next)};
 }
 function paintIdentity(code,markup){
@@ -284,18 +286,18 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
 // Exercise the real factory, including its listeners and host input boundary.
 // A retained component must observe replacement inventories and draft models.
 {
- const c=environment('<aside id="filter-panel"><div class="filter-top"></div><select id="filter-section-jump"></select><div id="filters"></div></aside><span id="beach-chip"></span><span id="family-chip"></span>');
+ const c=environment('<aside id="filter-panel"><div class="filter-top"><h3>Фильтры</h3><button id="filter-detail-back"></button></div><select id="filter-section-jump"></select><div id="filters"></div></aside><span id="beach-chip"></span><span id="family-chip"></span>');
  const filters={q:'',min:0,max:null,stars:[],meals:[],resorts:[],operators:[],amenities:[],rating:false};
  Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:2}],filterDraft:null,innerWidth:390,
   editingFilterModel:()=>c.filterDraft||{filters},currentFilterBudgetEdit:()=>null,readBudgetFields:()=>({valid:true}),budgetLabel:()=> 'Без лимита',countMatchingHotels:()=>1,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>100000,mealNames:{},ratingValue:()=>null,hotelPlaces:()=>[],operators:Array.from({length:8},(_,i)=>'Оператор '+i),syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{}});
  context(c);vm.runInContext(panelSource,c);const panel=c.window.AnyTourFilterPanelV1.create(c);
- panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['2']);
- c.hotels=[{country:'4',stars:5}];panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['5'],'replacement hotel inventory is read by the retained owner');
+ panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5']);
+ c.hotels=[{country:'4',stars:5}];panel.renderFilters();assert.deepEqual(c.$$('.star-options button').map(b=>b.dataset.value),['0','3','4','5'],'replacement hotel inventory is read by the retained owner');
  c.filterDraft={filters:{...filters,q:'Новый запрос',stars:[5]}};panel.renderFilters();assert.equal(c.$('#hotel-query').value,'Новый запрос','replacement draft reaches presentation');
  const input=c.$('[data-facet-search="operators"]');input.value='Оператор 7';input.dispatchEvent(new c.dom.window.Event('input',{bubbles:true}));assert.equal(panel.facetQueries.get('operators'),'Оператор 7','real owner input listener records the query');
  assert.equal(c.$$('.facet-options .check-row:not([hidden])').length,1,'real owner input listener updates visible rows');
- const heading=c.$('.star-options').closest('.filter-group').querySelector('h4');panel.jumpToFilterSection(heading.id);assert(panel.expandedFilterSections.has('Категория отеля'),'current narrow viewport expands the jumped group');
- panel.setFilterSectionOpen(heading.closest('.filter-group'),false);c.innerWidth=1280;panel.jumpToFilterSection(heading.id);assert(!panel.expandedFilterSections.has('Категория отеля'),'replacement wide viewport is read at navigation time');
+ assert(c.$('.star-options').closest('.filter-group').classList.contains('core-filter-group'),'approved core stars stay open');const heading=c.$('.filter-operator-group').querySelector('h4');panel.jumpToFilterSection(heading.id);assert(panel.expandedFilterSections.has('Туроператор'),'current narrow viewport expands the jumped group');
+ panel.setFilterSectionOpen(heading.closest('.filter-group'),false);c.innerWidth=1280;panel.jumpToFilterSection(heading.id);assert(!panel.expandedFilterSections.has('Туроператор'),'replacement wide viewport is read at navigation time');
  c.filterDraft=null;panel.renderFilters();assert.equal(c.$('#hotel-query').value,'','closing the draft restores the applied model');c.dom.window.close();
  assert(!appSource.includes('function paintFilters(')&&!appSource.includes('function renderFilters('),'presentation has one owner');
  console.log('PASS real filter factory: replacement hotel/draft/viewport inputs, delegated facet query and applied-model restore; supplier/lead HTTP0');

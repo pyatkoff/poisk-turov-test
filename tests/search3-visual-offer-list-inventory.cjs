@@ -175,10 +175,10 @@ assert.equal(firstRenderValueReads,12000);assert.equal(repeatedRenderValueReads,
 assert(source.includes('<select id="offer-departure"><option value="">Все даты</option></select>'),'mount defers refinement enumeration to the render owner');
 // Render both actual owner variants against the same deterministic DOM boundary.
 // The reference restores the old repeated note, heading and refinement inventory work.
-const hoisted=" const commonNote=groups.length?sharedOfferNote(all):'';\n";
+const hoisted=" const commonNote=reuseRows?currentCommonNote:groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
-const legacyNotes=source.replace(hoisted," const commonNote='';\n")
- .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));');
+const legacyNotes=source.replace(hoisted," const commonNote=reuseRows?currentCommonNote:'';\n")
+ .replace('entry=offerRowEntry(o,commonNote);','entry=offerRowEntry(o,sharedOfferNote(all));');
 const legacyCounts=legacyNotes
  .replace('  const counts=currentRefinementInventory.get(field).counts;\n','')
  .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value)||0)}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
@@ -230,7 +230,7 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
  }
 }
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
-assert.equal(before.noteCalls,50);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,50000);assert.equal(after.noteVisits,1000);
+assert.equal(before.noteCalls,200);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,200000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);
 // Mount the actual public cold owner. A fresh render owns one inventory; later
 // prices and refinement changes must recalculate it instead of reusing old rows.
@@ -256,15 +256,12 @@ assert.equal(incrementalPagination.rowMarkupCalls+incrementalPaginationWork.rowM
 assert.equal(incrementalPagination.hotelCalls+incrementalPaginationWork.hotelCalls,1,'incremental owner retains only the immediately preceding full inventory');
 assert.deepEqual(incrementalPagination.currentSnapshot(),fullPagination.currentSnapshot(),'incremental and repeated full-render pagination finish with exact DOM/view/route output');
 console.log(`PASS cold group pagination: 500 rows, inventory visits 31500→500, row markups 15876→500; exact final public-owner DOM/view/route output`);
-const fullDisclosureWork=[fullPagination.toggle(paginationKey,false),fullPagination.toggle(paginationKey,false)],incrementalDisclosureWork=[incrementalPagination.toggle(paginationKey),incrementalPagination.toggle(paginationKey)];
-assert.equal(fullDisclosureWork.reduce((sum,work)=>sum+work.hotelCalls,0),2,'open and close previously repeated two full inventories');
-assert.equal(fullDisclosureWork.reduce((sum,work)=>sum+work.rowMarkupCalls,0),1000,'open and close previously rebuilt all 500 visible rows twice');
-assert.equal(incrementalDisclosureWork.reduce((sum,work)=>sum+work.hotelCalls,0),0,'disclosure reuses the exact latest full inventory');
-assert.equal(incrementalDisclosureWork.reduce((sum,work)=>sum+work.rowMarkupCalls,0),0,'disclosure regenerates no row markup');
-assert.equal(incrementalDisclosureWork.reduce((sum,work)=>sum+work.appendCalls,0),2,'each disclosure settles the existing generated roots through the shared appender');
-const closedGroup=incrementalPagination.currentSnapshot().dom.find(([selector])=>selector==='#group-'+paginationKey)[1];
-assert.equal(closedGroup.hidden,true);assert.equal(closedGroup.heading.expanded,'false');assert.equal(closedGroup.heading.scopeHidden,false);assert.equal(closedGroup.heading.minimumHidden,false);assert.deepEqual(closedGroup.heading.arrowClasses,[]);assert.deepEqual(incrementalPagination.currentSnapshot().view.open,[]);
-console.log('PASS cold group disclosure: open+close inventory visits 1000→0, row markups 1000→0; exact closed aria/body/scope/minimum/arrow/view state');
+// Approved Site100 exposes exact offers immediately. Room/meal groups and their
+// lazy pagination remain covered separately by hotel-details-rendering/browser.
+assert.equal(fullPagination.currentSnapshot().dom.find(([selector])=>selector==='#all-offers-list')[1].html.includes('offer-group-heading'),false,'flat list does not hide exact offers behind a group disclosure');
+assert.equal(incrementalPagination.currentSnapshot().dom.some(([selector])=>selector.startsWith('#group-')),false,'flat offer list has no obsolete group bodies');
+assert.equal(incrementalPagination.currentSnapshot().dom.find(([selector])=>selector==='#all-offers-list')[1].html.match(/data-offer-key=/g).length,500,'every paginated exact offer remains visible');
+console.log('PASS approved flat offer list: exact offers shown without room-group disclosures; independent hotel room groups retained');
 const forbiddenRefinementInventory=source.replace('function offerRefinementInventory(all){','function offerRefinementInventory(all){throw new Error("required list refinement inventory");');
 assert.throws(()=>render(forbiddenRefinementInventory,rows,baseView(),true),'list rendering still needs refinement inventory');
 const reversed=source.replace('groups.push(group)','groups.unshift(group)');assert.notEqual(reversed,source);

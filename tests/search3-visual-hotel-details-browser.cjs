@@ -10,11 +10,11 @@ const server=http.createServer((req,res)=>{
  const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
  if(file.endsWith('.php')){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]="mixed"; include $argv[1];',file]));return;}
- res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'application/octet-stream');res.end(fs.readFileSync(file));
+ res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(fs.readFileSync(file));
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
- try{browser=await chromium.launch({headless:true});for(const width of [390,1280]){
+ try{browser=await chromium.launch({headless:true});for(const width of [360,390,430,768,1280]){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
