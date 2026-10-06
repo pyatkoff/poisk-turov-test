@@ -1,0 +1,345 @@
+{
+  "schema": 1,
+  "date": "2026-10-03",
+  "timezone": "Europe/Kaliningrad",
+  "package": "retired inline offers, write-only expansion, empty verification residue and 145 unused CSS rules",
+  "status": "COMPLETE_STOP",
+  "repository": "pyatkoff/poisk-turov-test",
+  "owner_request": "Continue reducing and optimizing; explicit authorization of exact patch, GitHub branch, CI and NEXT on 2026-10-03 00:12 Europe/Kaliningrad.",
+  "source_pr": 4346,
+  "source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+  "source_tree": "347ea2981b65b5cc91352489a5e5c2c22b0ebcf3",
+  "approved_local_commit": "3264a076a08fb55dd667b3931bf5f3cf064b2db5",
+  "approved_local_tree_equal_remote": true,
+  "merged_release_sha": "481d04a2effd381baf9f108f169ba60b534d3a4e",
+  "baseline_release_sha": "6f6d4b9585d4a1f434bc7aa08fbcb5632adc160f",
+  "published_predecessor": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+  "main_unchanged": "d4ac6ee735d37bc2d24286f742abc9ce9be42e08",
+  "source_git_blobs": [
+    {
+      "path": "tests/search3-visual-event-dispatch.cjs",
+      "sha": "a07c994350d0a9b4bb62e522b24d0d870e9ce229"
+    },
+    {
+      "path": "tests/search3-visual-modal-history.cjs",
+      "sha": "b1308b48733b32439077ae26dbcaffe50c3a1bb5"
+    },
+    {
+      "path": "tests/search3-visual-offer-list-lazy.cjs",
+      "sha": "93851426ea228138a3f0abb561e826082a867115"
+    },
+    {
+      "path": "tests/search3-visual-results-rendering.cjs",
+      "sha": "0a8514b3596295cedca61face6fa7706d844da66"
+    },
+    {
+      "path": "v2/visual-search/app.js",
+      "sha": "f83caecd4f1ff58b662dc9c0e9e9431f29fd7517"
+    },
+    {
+      "path": "v2/visual-search/migration-manifest.json",
+      "sha": "504e9cd95e0b0d3d90e77bd1f47dc2a311ac5fce"
+    },
+    {
+      "path": "v2/visual-search/styles.css",
+      "sha": "99355f853ee0b16f7489ce2855eaf499fc3e1386"
+    }
+  ],
+  "js_css_bytes": {
+    "initial_live": {
+      "source_before": 761145,
+      "source_after": 749671,
+      "compiled_before": 617108,
+      "compiled_after": 605992,
+      "compiled_saving": 11116,
+      "sum_local_gzip_before": 163454,
+      "sum_local_gzip_after": 161480,
+      "gzip_saving": 1974
+    },
+    "complete_live": {
+      "source_before": 798507,
+      "source_after": 787033,
+      "compiled_before": 646903,
+      "compiled_after": 635787,
+      "compiled_saving": 11116,
+      "sum_local_gzip_before": 174822,
+      "sum_local_gzip_after": 172848,
+      "gzip_saving": 1974
+    },
+    "app": {
+      "raw_before": 261638,
+      "raw_after": 259705,
+      "compiled_before": 207420,
+      "compiled_after": 205832,
+      "local_gzip_before": 60840,
+      "local_gzip_after": 60405
+    },
+    "styles": {
+      "raw_before": 208262,
+      "raw_after": 198721,
+      "compiled_before": 197662,
+      "compiled_after": 188134,
+      "local_gzip_before": 34189,
+      "local_gzip_after": 32650
+    }
+  },
+  "measurement_definition": "UTF-8 source, deterministic current-compiler artifact and sum of separate local level-9 gzip streams; neither measured HTTP nor latency improvement.",
+  "protected_behavior": {
+    "protected_functions_AST_exact": 55,
+    "retained_function_declarations_AST_exact": 243,
+    "retired_css_whole_rules": 145,
+    "retired_css_selectors": 146,
+    "retired_class_families": 24,
+    "retained_css_AST_order_declarations_conditions_exact": true,
+    "favorites_functions_storage_retained": true,
+    "favorites_flag_enabled": false,
+    "prototype_unchanged": true,
+    "provider_price_fuel_flight_lead_current_tour_retained": true
+  },
+  "characterization": {
+    "events": 153,
+    "modal_history": 67,
+    "rendering_observations": 134,
+    "normalization": "Only retired openHotel state/checkpoints and empty cancellation callback traces; retained assertions and mutation detection preserved."
+  },
+  "ci": {
+    "security": 37071617561,
+    "lead_source": 37071617549,
+    "build": 37071617541,
+    "focused_and_full_visual": 37071617493,
+    "attempt": 1,
+    "all_five_checks": "SUCCESS",
+    "reviews": 0,
+    "unresolved_threads": 0
+  },
+  "source_artifact": {
+    "schema": 1,
+    "status": "PASS",
+    "source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+    "source_tree_sha": "347ea2981b65b5cc91352489a5e5c2c22b0ebcf3",
+    "build_run": 37071617541,
+    "source_artifact_id": 11254364476,
+    "ZIP_sha256": "a72d7d763ee06eb017273c8708f10097bed1f067f565533a7b3bd19995ecbb05",
+    "ZIP_bytes": 3524624,
+    "outer_files": [
+      "search3-site-release.txt",
+      "search3-site-release/control/manifest.json",
+      "search3-site-release/control/payload.sha256",
+      "search3-whole-site-preview.tar.gz",
+      "search3-whole-site-preview.tar.gz.sha256"
+    ],
+    "archive_sha256": "dd7d2bb3cad17096aafefd6dd4604a53906cc5cad50af5d3b5a283287b55326c",
+    "manifest_sha256": "11987c9f508e7fe3aa47f048ae1d6276040315999bc28833d919a4b0d53ce8a1",
+    "payload_checksums_sha256": "59d5fc191182ee6bc84ccef0c3cb2e000e1deb882af049c7f79eca8690ed3da7",
+    "safe_tar_members": 1091,
+    "payload_files_verified": 838,
+    "manifest_hashes_sizes_match": true,
+    "compiled_asset_files_verified": 27,
+    "readable_owners_hashes_match": true,
+    "graphs": {
+      "live": 17,
+      "offline": 8,
+      "ondemand": 3
+    },
+    "served_JS_CSS_bytes": {
+      "initial_live": 605992,
+      "complete_live": 635787
+    },
+    "sum_per_file_local_gzip": {
+      "initial_live": 161480,
+      "complete_live": 172848
+    },
+    "counter_zero": true,
+    "protected_transport_endpoints_absent": true,
+    "publication": "not performed by audit"
+  },
+  "visual_artifact": {
+    "id": 11255100142,
+    "ZIP_sha256": "caf0af9b97db560102c3031083e1dcfe33894df4571afde2799bc40fc6e1d5d0",
+    "safe_extract": true,
+    "PNG": 146,
+    "JSON": 12,
+    "baseline_artifact": 11229074817,
+    "deterministic_receipts_byte_exact": 11,
+    "PNG_byte_exact": 72,
+    "target_screenshots_inspected": 24,
+    "widths": [
+      360,
+      390,
+      430,
+      768,
+      1280
+    ],
+    "no_identified_regression": true,
+    "all_pixel_parity_claimed": false
+  },
+  "publisher": {
+    "run": 37072366374,
+    "attempt": 1,
+    "conclusion": "success",
+    "command_comment": 5962424985,
+    "replays": 0,
+    "ready_artifact": 11255014671,
+    "ready_ZIP_sha256": "97a473bfa35a168091f170bcb15727b9a1fafee4576c52f70d20c6ef8ea0be86",
+    "ready_TAR_sha256": "cd60bc62f0b5473930f010b0fd9b522d10b897c487daf1033a561e16084ce62b",
+    "ready_payload_files_verified": 838,
+    "NEXT_transform_only_site_path": true,
+    "ready_archive_reconstructed_byte_for_byte": true,
+    "deployment_artifact": 11255795116,
+    "deployment_ZIP_sha256": "7121fa1421dab3b9c1ec0a2d2d918e987b7b412ee5991b9b3ae465fb653a0e2f",
+    "receipt": {
+      "LOCAL_only_data_HTTP": 403,
+      "activation": {
+        "files": 838,
+        "predecessor_retained": true,
+        "status": "activated"
+      },
+      "completion": {
+        "existing_preview_unchanged": true,
+        "previous_source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+        "production_unchanged": true,
+        "rollback_retained": true,
+        "route": "/_preview/search3-next-candidate/",
+        "source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+        "status": "published"
+      },
+      "counter": 0,
+      "derived_artifact": 11255014671,
+      "existing_preview_unchanged": true,
+      "lead_HTTP": 403,
+      "noindex": true,
+      "predecessor_retained": true,
+      "previous_source_sha": "0f4563d5b40b8aaae0df81c789a6206ce7f176ae",
+      "production_unchanged": true,
+      "real_leads": 0,
+      "release_sha": "481d04a2effd381baf9f108f169ba60b534d3a4e",
+      "route": "/_preview/search3-next-candidate/",
+      "routes_200": 9,
+      "source_artifact": 11254364476,
+      "source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+      "status": "published_update",
+      "supplier_searches": 0,
+      "visual_assets_verified": 41,
+      "visual_live_connected": true,
+      "visual_route_200": true
+    }
+  },
+  "hosted_acceptance": {
+    "viewport": {
+      "width": 1363,
+      "height": 936
+    },
+    "snapshot_url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=snapshot&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-10-01&to=2026-10-07&minNights=7&maxNights=7&adults=2&ages=&searched=1",
+    "live_url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-10-16&to=2026-10-22&minNights=7&maxNights=7&adults=2&ages=",
+    "app_version": "3e7db210acf8",
+    "styles_version": "ca3fc1a6434d",
+    "results": {
+      "hotels": 1047,
+      "tours": 1453,
+      "cards": 24,
+      "checkboxes": 97,
+      "overflow": false,
+      "first_three_rectangles_and_text_exact": true
+    },
+    "filter_four_stars": {
+      "hotels": 395,
+      "tours": 522
+    },
+    "reset": {
+      "hotels": 1047,
+      "tours": 1453
+    },
+    "calendar_oct5": {
+      "hotels": 974,
+      "tours": 1122
+    },
+    "hotel": {
+      "name": "RIA SUITES HOTEL",
+      "photos": 4,
+      "room": "Standard",
+      "offers": 2
+    },
+    "offer_list": {
+      "prices": [
+        96953,
+        99938
+      ],
+      "operators": [
+        "Интурист",
+        "FUN&SUN"
+      ],
+      "back_preserved": true
+    },
+    "snapshot_selected": {
+      "price": 96953,
+      "fuel": "unknown",
+      "application": "blocked until actual quote/flight confirmation"
+    },
+    "demo": {
+      "pairs": 24,
+      "visible": 6,
+      "selected_variant": 2,
+      "delta": 1300,
+      "price": 187700,
+      "outbound": "06:05",
+      "inbound": "08:05",
+      "airport": "SVO",
+      "baggage_kg": 20,
+      "carry_on_kg": 5,
+      "fuel": "explicit zero",
+      "educational_application_open": true,
+      "application_back_preserved": true,
+      "contacts_filled": false,
+      "application_submitted": false
+    },
+    "pristine_live": {
+      "cards": 0,
+      "overflow": false,
+      "scriptCount": 17,
+      "searchEnabled": true,
+      "url": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/?scenario=live&origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-10-16&to=2026-10-22&minNights=7&maxNights=7&adults=2&ages="
+    },
+    "page_origin_errors": [],
+    "real_supplier_searches": 0,
+    "real_leads": 0
+  },
+  "screenshot": {
+    "name": "anytour-next-size-pass-1790980299233.jpg",
+    "library_file_id": "libfile_19cd91fde9bc8191aa365f2882965c46",
+    "file_id": "file_0000000075b481f59dd8116645c98422"
+  },
+  "claims": {
+    "source": [
+      5962158964,
+      5962159189
+    ],
+    "addendum": [
+      5962171826,
+      5962171986
+    ],
+    "integration_publisher": [
+      5962420080,
+      5962420271
+    ],
+    "terminal": [
+      5962545572,
+      5962545770
+    ],
+    "final_docs": [
+      5962546013,
+      5962546271
+    ]
+  },
+  "state_scope_proof": {
+    "outside_current_task_byte_equal": true,
+    "mask_marker": "<CURRENT_TASK>",
+    "outside_current_task_sha256": "0aff0719478881a6b7238cf8b398b45222cb2113908bdb96c845af00b60e90f9"
+  },
+  "separately_unverified": [
+    "physical Safari/iPhone",
+    "real supplier search/quote/flights",
+    "real lead delivery"
+  ],
+  "previous_audit": "docs/project/search3-comparison-removal-20261002.md",
+  "stop": "One bounded source package and one NEXT publication complete. No second publication, new microqueue or historical command replay."
+}

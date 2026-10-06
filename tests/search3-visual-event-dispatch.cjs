@@ -1,6 +1,11 @@
+// Site100 accepted form: city confirmation, explicit destination replacement, multi-hotel OR and return-age review change 15 dispatch scenarios; disabled/state-order/ownership mutations stay required.
 // Characterize the real delegated event owner without starting the application,
 // supplier transport or lead delivery. Pinned observations come from app blob
 // db413a559e1789057e82293d4cb4c1a7f7d89c8e before structural extraction.
+// The retained pin was recomputed from release 7a4e93b before removal, excluding
+// only eight comparison IDs and the comparison-focus change event.
+// O51 keeps those cases and projects only the discarded inline expansion field,
+// with direct before/after parity against the fresh 6f6d4b9585 source.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,7 +15,12 @@ const appPath = path.resolve(__dirname, '../v2/visual-search/app.js');
 const source = fs.readFileSync(appPath, 'utf8');
 function eventOwner(source) {
   const start = source.indexOf("searchLifecycle.bind();") + "searchLifecycle.bind();".length;
-  const end = source.indexOf("matchMedia('(max-width:760px)')", start);
+  // The original dispatcher ended before comparison media listeners; after
+  // their retirement the next live owner is keyboard handling. Keep the old
+  // delimiter for --compare so both versions execute the same three listeners.
+  const legacyEnd = source.indexOf("matchMedia('(max-width:760px)')", start);
+  const keyboardEnd = source.indexOf("document.addEventListener('keydown'", start);
+  const end = legacyEnd >= start && legacyEnd < keyboardEnd ? legacyEnd : keyboardEnd;
   assert(start > 0 && end > start, 'real event owner boundaries');
   return source.slice(start, end);
 }
@@ -63,6 +73,8 @@ function characterize(source, scenario) {
     searchLifecycle:{requestSubmit:()=>trace.push(['requestSubmit'])},
     getStored:()=>['Moscow','Kazan'],recentDestinations:()=>[{country:'Egypt',resorts:[],hotelId:0}],
     destinationHotel:()=>({id:7,country:'Turkey'}),normalizeSearch:s=>s.trim().toLowerCase(),
+    renderMoreDestinationHotels:()=>{trace.push(['renderMoreDestinationHotels']);return 4;},
+    renderOfferGroup:key=>{trace.push(['renderOfferGroup',key]);return scenario.groupHandled===true;},byId:id=>node('#'+id),
     dateObj:s=>new Date(s+'T00:00:00Z'),iso:d=>d.toISOString().slice(0,10),dateRangeError:()=>false,
     readBudget:()=>({valid:!scenario.invalidBudget,min:200,max:2000,invalidMin:true}),scrollBehavior:()=> 'instant'
   };
@@ -72,7 +84,10 @@ function characterize(source, scenario) {
   for (const [,name] of code.matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)) {
     if (!keywords.has(name) && !(name in ctx)) ctx[name]=(...args)=>{trace.push([name,...args.map(x=>x&&typeof x==='object'?(x.focus?'DOM:'+x.id:copy(x)):x)]);checkpoints.push({name,state:copy(state),model:copy(model),draft:copy(ctx.draft),dateDraft:copy(ctx.dateDraft),guestDraft:copy(ctx.guestDraft)});};
   }
-  vm.createContext(ctx);vm.runInContext(code,ctx);
+  ctx.destinationIds=f=>f?.hotelIds?.length?f.hotelIds:f?.hotelId?[f.hotelId]:[];
+ ctx.agesNeedReview=false;ctx.formFiltersDraft=null;ctx.starsDraft=[];ctx.ageChoice=null;ctx.departureChoice='Москва';ctx.destinationCountryList=false;ctx.destinationPending=null;ctx.destinationMatchItems=[];ctx.setDestinationIds=(f,ids)=>{f.hotelIds=ids;f.hotelId=ids.length===1?ids[0]:0;};
+ ctx.pickerFilters=()=>ctx.state.filters;ctx.finishFilterPicker=ctx.applyQuickFilters;
+ vm.createContext(ctx);vm.runInContext(code,ctx);
   const t=node('target');Object.assign(t,{id:'',name:'',value:'new',max:'2000',checked:true,dataset:{}},scenario.target||{});
   if(scenario.type==='click') {
     t.dataset={action:scenario.action,id:'7',value:'Kazan',date:'2026-10-18',key:'key',source:'drawer',index:'0',...scenario.dataset};
@@ -96,8 +111,8 @@ function characterize(source, scenario) {
 }
 const scenarios=[];
 const add=(name,s)=>scenarios.push({name,...s});
-for(const id of ['origin','sort','mobile-sort','filter-section-jump','min-price','max-price','hotel-room-meal','tour-differences-only','comparison-pair-0','comparison-pair-1','compare-differences','compare-left','compare-right','offer-departure','offer-flight','offer-room','offer-meal','offer-sort','compare-offer-day','compare-offer-nights'])add('change:'+id,{type:'change',target:{id,value:['sort','mobile-sort'].includes(id)?'price':'2',dataset:{id:'7'}}});
-for(const name of ['andromeda-outbound','andromeda-return','flight-pair','comparison-focus','anex-package-choice'])add('change:'+name,{type:'change',target:{name,value:'2'}});
+for(const id of ['origin','sort','mobile-sort','filter-section-jump','min-price','max-price','hotel-room-meal','offer-departure','offer-flight','offer-room','offer-meal','offer-sort'])add('change:'+id,{type:'change',target:{id,value:['sort','mobile-sort'].includes(id)?'price':'2',dataset:{id:'7'}}});
+for(const name of ['andromeda-outbound','andromeda-return','flight-pair','anex-package-choice'])add('change:'+name,{type:'change',target:{name,value:'2'}});
 for(const checked of [true,false])for(const value of ['old','new'])add('facet:'+checked+':'+value,{type:'change',target:{checked,value,dataset:{filter:'resorts'}}});
 add('boolean filter',{type:'change',target:{dataset:{filterBool:'family'},checked:false}});
 add('invalid sort stops later attributes',{type:'change',target:{id:'sort',value:'bad',dataset:{filterBool:'family',childAge:'1'}},meal:true});
@@ -146,13 +161,17 @@ add('star removed in drawer',{type:'click',action:'star',panel:true,filterDraft:
 add('recovery missing choice',{type:'click',action:'recover-filters',dataset:{value:'99'}});
 add('no draft filter',{type:'click',action:'remove-draft-filter'});
 add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setup:(c,t)=>t.closest=()=>null});
-function records(source){return scenarios.map(s=>({name:s.name,result:characterize(source,s)}));}
+// openHotel belonged to the retired inline result expansion. It never changed
+// connected markup. Project only that discarded field from each state snapshot;
+// all 153 retained actions, collaborator calls, DOM and ordering still compare.
+function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='a6496020851b3019f41d04b533f5b57dd75905cba37b468ca7af984860f07086';
-if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'pinned original event observations');
+const BASELINE='79c27bc86f9ac4d7d0a11d40648922a68e5f76192268f3a80cbca6d1489035ec';
+assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
+if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
@@ -161,8 +180,21 @@ assert.deepEqual(result('jump stops later attributes').trace,[['jumpToFilterSect
 assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
+assert.deepEqual(result('first new hotel focuses').trace.slice(-3),[['renderMoreDestinationHotels'],['focus','.destination-hotel[4]',{preventScroll:true}],['scrollIntoView','.destination-hotel[4]',{block:'nearest',behavior:'instant'}]],'destination page focuses and reveals the first appended hotel');
+const groupSetup=(c,t,node)=>{node('#group-room|AI').previousElementSibling=node('offer-group-heading');};
+const groupHandled=characterize(source,{type:'click',action:'offer-group',groupHandled:true,dataset:{value:'room|AI'},setup:groupSetup});
+assert.deepEqual(groupHandled.offerView.open,['room|AI']);assert.deepEqual(groupHandled.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['focus','offer-group-heading',{preventScroll:true}]],'handled disclosure updates view and restores heading focus without a full render');
+const groupFallback=characterize(source,{type:'click',action:'offer-group',dataset:{value:'room|AI'},setup:groupSetup});
+assert.deepEqual(groupFallback.trace,[['queueMicrotask'],['renderOfferGroup','room|AI'],['renderOfferList'],['focus','offer-group-heading',{preventScroll:true}]],'stale disclosure falls back to the full renderer and restores focus');
+// Stale comparison controls are unknown change events; they cannot mutate the
+// retained favorites, selected tour, provider, filter or flight state.
+const unknownChange=characterize(source,{type:'change',target:{id:'unknown',value:'2',dataset:{id:'7'}}});
+for(const id of ['tour-differences-only','comparison-pair-0','comparison-pair-1','compare-differences','compare-left','compare-right','compare-offer-day','compare-offer-nights'])assert.deepEqual(characterize(source,{type:'change',target:{id,value:'2',dataset:{id:'7'}}}),unknownChange,'retired comparison ID is inert: '+id);
+assert.deepEqual(characterize(source,{type:'change',target:{name:'comparison-focus',value:'2'}}),characterize(source,{type:'change',target:{name:'unknown',value:'2'}}),'retired comparison-focus is inert');
+const unknownClick=characterize(source,{type:'click',action:'unknown'});
+for(const action of ['toggle-offers','more-offers','accept-price'])assert.deepEqual(characterize(source,{type:'click',action}),unknownClick,'retired inline-offer/verification action is inert: '+action);
 // Prove these observations reject two plausible extraction regressions.
 assert.notDeepEqual(records(source.replace("queueMicrotask(()=>{if(actionTrigger===b)actionTrigger=null;});","queueMicrotask(()=>{actionTrigger=null;});")),actual,'trigger ownership mutation detected');
 assert.notDeepEqual(records(source.replace("if(!b||b.disabled)return;","if(!b)return;")),actual,'disabled-control mutation detected');
 assert.notDeepEqual(records(source.replace('state.sort=t.value;renderResults({keepFilters:true})','renderResults({keepFilters:true});state.sort=t.value')),actual,'state-before-render mutation detected');
-console.log(`PASS event dispatch: ${actual.length} scenarios, original digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);
+console.log(`PASS event dispatch: ${actual.length} retained scenarios + 9 retired inert changes + 3 retired inert clicks, approved presentation digest ${digest}, dispatch/state/DOM/focus/microtasks; transport HTTP 0`);

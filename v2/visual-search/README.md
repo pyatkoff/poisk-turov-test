@@ -1,4 +1,16 @@
-# Search3 v147 — isolated visual migration
+# Search3 v155 — approved Sites100 interface in the existing NEXT preview
+
+## Approved cumulative interface transfer — 2026-10-06
+
+This candidate adapts the entire accepted Sites100/package34/v154 interface through the current NEXT owners. Base: `b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f`. Donor source: `05051662c25cf8258991475e2e7536a12f7248d4`; documentary contract: Sites102 `a33878d9798e6f7c1a4ff0a3f245f27254580a27`, `qa/closing34/TRANSFER.md`. Existing PR4164 replaces its superseded Site14/O8 patch with implementation. This entry is a candidate, not a new publication receipt.
+
+The approved form has a unified direction picker (country, resorts and multiple exact hotels), explicit replacement/apply/cancel, return-age children, Any/3/4/5 stars, canonical meals and integer budget. The results price tape stays open with month/year and exact saved prices. Mobile hotel photos span the card at the approved 1.8 ratio; rooms are plain text and only confirmed flight types get a badge. Exact offers have independent rows and current-selection marking. The selected tour and application compose existing real fields and lead hooks; returning to the passive list preserves the selected flight instead of restoring an old listing.
+
+No donor data/fixture/parser/lead or live transport was copied. The existing lazy offer/hotel/flight owners, formatter instances, rating inventory, generated-root reconciler, pagination and month-local inventories remain in place. Canonical monetary values, quote eligibility, fuel, lifecycle, real lead transport and entry graph are unchanged.
+
+Source interaction checks use saved snapshot/marked demos. Actual layout must be inspected from the final compiled-browser artifact at 360/390/430/768/1280. `jsdom` proves behavior, not browser geometry. The existing CI gate invokes the new full interface check through results-rendering and captures compiled screens through offer-list-browser; workflows are unchanged. Physical iPhone/Safari, keyboard, safe area and 200% text remain unverified. No live completeness/speed/conversion or real lead acceptance is inferred from demos.
+
+Publication requires green applicable final-SHA CI, visual review and a separate exclusive exact-artifact publisher claim in #4217. Main/production and sibling previews are outside this transfer.
 
 ## Tourvisor fuel disclosure — 2026-09-29
 
@@ -40,7 +52,7 @@ responses; real supplier readiness is a separate acceptance step.
 
 Current-search SAMO verification retains the first pending, confirmed or failed attempt. Reopening the offer reuses that outcome; after flight confirmation it retains the flight outcome. An unconfirmed attempt returns to other offers with the listing price explicitly unconfirmed. It cannot silently submit the same quote again. A new explicit search invalidates previous receipts. Browser-local failure events retain only fixed public status/category codes, without response text, identities or private state.
 
-Focused fixtures cover duplicate selection, reopening, terminal HTTP/network/invalid responses, changed search, flight continuation and safe recovery at mobile/tablet/desktop widths. No supplier request is required for these checks. The last real SAMO acceptance remains UNKNOWN/unconfirmed; this recovery does not establish supplier readiness. Actual cause, direct ANEX acceptance and physical Safari remain open. Latest exact preview publication receipts are tracked in coordination #3419; previous publication records below are retained history.
+Focused fixtures cover duplicate selection, reopening, terminal HTTP/network/invalid responses, changed search, flight continuation and safe recovery at mobile/tablet/desktop widths. No supplier request is required for these checks. The last real SAMO acceptance remains UNKNOWN/unconfirmed; this recovery does not establish supplier readiness. Actual cause, direct ANEX acceptance and physical Safari remain open. Latest exact preview publication receipts are tracked in coordination #4217 (#3419 is archival); previous publication records below are retained history.
 
 ## Published stage 2 — 2026-09-25
 

@@ -5,6 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
+      - 'scripts/build/search3-js/**'
       - 'v2/prototype-search/config.js'
       - 'v2/runtime-v3.js'
       - 'v2/lead-search-context.js'
@@ -37,12 +38,23 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
+      - run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - run: npm install --prefix "$RUNNER_TEMP/facet-tools" --no-audit --no-fund --no-save jsdom@26.1.0
       - name: Verify affected presentation owners and CI restoration
         run: |
+          export NODE_PATH="$RUNNER_TEMP/facet-tools/node_modules"
+          node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
+          node tests/search3-visual-formatting.cjs
+          node tests/search3-visual-calendar-inventory.cjs
+          node tests/search3-visual-flight-filter-work.cjs
           node tests/search3-visual-results-rendering.cjs
+          node tests/search3-visual-offer-list-lazy.cjs
+          node tests/search3-visual-hotel-details-lazy.cjs
+          node tests/search3-visual-hotel-content-text.cjs
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
+          node tests/search3-visual-result-merge.cjs
   visual-migration:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
@@ -58,20 +70,35 @@ jobs:
           node-version: '22'
       - run: npm install --prefix "$RUNNER_TEMP/visual-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
       - run: "$RUNNER_TEMP/visual-tools/node_modules/.bin/playwright install --with-deps chromium"
+      - name: Build the exact compiled visual fixture graph
+        run: |
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          cp -a v2 "$RUNNER_TEMP/visual-compiled"
+          node scripts/build/search3-js/visual-entry.cjs "$RUNNER_TEMP/visual-compiled"
+          node tests/search3-visual-asset-size.cjs "$RUNNER_TEMP/visual-compiled"
       - name: Full transferred UI and isolated live integration
         run: |
           export NODE_PATH="$RUNNER_TEMP/visual-tools/node_modules"
+          node tests/search3-visual-facet-presentation.cjs
           node tests/search3-visual-ci-coverage.cjs
           node tests/search3-visual-lifecycle-scheduling.cjs
           node tests/search3-visual-flight-rendering.cjs
           node tests/search3-visual-data-orchestration.cjs
           node tests/search3-visual-event-dispatch.cjs
+          node tests/search3-visual-result-merge.cjs
           node tests/search3-visual-modal-history.cjs
+          node tests/search3-visual-offer-list-lazy.cjs
+          node tests/search3-visual-hotel-details-lazy.cjs
+          node tests/search3-visual-hotel-details-rendering.cjs
+          node tests/search3-visual-hotel-content-text.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
           node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs
           node tests/search3-visual-live-bridge.cjs
           node tests/search3-visual-anex-flight-continuation.cjs
-          node tests/search3-visual-live-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-live-browser.cjs
           node tests/search3-visual-v139-search-edit-tests.cjs
           node tests/search3-visual-v120-recorded-journey-tests.cjs
           php -l v2/visual-search/index.php

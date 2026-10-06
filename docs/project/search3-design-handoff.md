@@ -1,146 +1,23 @@
-# Search3 — работа с дизайном и передача в NEXT
+# Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
-## Текущая подготовка переноса Sites8–10 — 30.09.2026
+Date: 2026-10-06. Existing PR: [4164](https://github.com/pyatkoff/poisk-turov-test/pull/4164). Coordination: #4217; queue: #1646. #3419 is archival. Source writer claim: 6019886183.
 
-Владелец21:08МСК: «Ну давай готовить, там правда вроде еще занято было». Подготовка выполнена; рабочие NEXT-файлы не менялись. Датированные checkpoints ниже — история, их старые следующие действия не исполнять.
+The owner accepted the whole fixed interface for isolated preview transfer. Donor is the installed public [Site100](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site), package34/v154, source `05051662c25cf8258991475e2e7536a12f7248d4`, native version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_c787e6e54144819197a0bbd94d678ad9`. Documentary Site102/source `a33878d9798e6f7c1a4ff0a3f245f27254580a27` has identical runtime and `qa/closing34/TRANSFER.md`. Do not replay completed Site saves/deployments or the old prepared patch.
 
-База release: `2bfc5a243b31f7637015f842adcd16a54d90ba9c`; опубликованный runtime O8: `dfadc988a9dd811e0680d3b38c70ee72d0e9dfa8`. O8 terminal [5916482248](https://github.com/pyatkoff/poisk-turov-test/issues/3419#issuecomment-5916482248) и docs terminal5916525620 освобождают его runtime writer/publisher/release hold. Свежая координация повторно прочитана перед подготовкой; новых NEXT-claims на последней странице не было. Подготовка не резервирует NEXT/runtime/manifest/publisher и не мешает следующему SIZE-пакету.
+## Implemented scope
 
-Донор: Sites native14, source `5e4c844977a9d237c4bad724f990f2b98182b17c`, визуальные пакеты8–10. [Мобильный стенд](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390).
+Current release base is `b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f`. Target remains `v2/visual-search/index.php -> app.js` on `/_preview/search3-next-candidate/visual-search/`, UI v155. `index.php` and the live graph are unchanged. Existing app/index/styles/mobile-controls/filter-panel and lazy offer-list/hotel-details owners adapt the accepted cumulative form/full calendar, always-open price tape, large 1.8 mobile photos, filters, hotel/exact offers, selected tour/flights, application and return. There is no new design, CSS override layer or runtime renderer owner.
 
-Готовые входы: [patch](search3-sites-to-next-prepared.patch), [база/хеши/файлы](search3-sites-to-next-prepared.json). Патч применяется только к указанной базе либо после отдельной адаптации нового head; старый app.js Sites не копировать.
+The superseded Site14/O8 prepared patch/manifest are removed from this PR implementation; PR history is retained by incorporating the fresh release as an additional parent. No whole donor app/styles/preview-lead/fixture/parser/lab/mobile-preview transport is applied.
 
-Состав: существующие styles.css/mobile-controls-v1.css, две видимые подписи renderSummary в текущем app.js, заголовок/подсказка календаря index.html, только соответствующие adaptedFiles хеши migration-manifest. В styles удалены54 заменяемых правила и консолидированы102 изменённых selector/context владельца. Удалены два прежних мобильных правила: общий аспект фотографии и общий44px selector звёзд, которым теперь владеют более точные правила карточки/фильтра. CSS нетто+5165B; JS−30B; HTML+124B. Это рост для визуала, не оптимизация загрузки; gzip/compiled initial/full пока не измерены.
+## Verification and limits
 
-Подключение назначения доказано index.php/index.html: текущие canonical data/lifecycle/lead и ./app.js; styles.css затем mobile-controls-v1.css. index.php и O8 offer-list-v1 cold owner/loader/version locator сохранены. Supplier URLs/payload, offer identity, фильтры/черновики, арифметика цены/топлива, quote/flight/lead/Метка, logo и production не меняются.
+Local source and compiled-runtime DOM checks PASS 360/390/430/768/1280, date/child/meal/budget drafts and cancellation, multiple-hotel OR, saved calendar minima, empty/unknown dates, exact RIA 96953 vs 99938 offers and returning to the chosen offer. Existing canonical numeric/identity/quote/stale-response/lead and refactor work proofs remain required. Presentation golden traces change only for the approved markup, confirmation steps, multi-hotel scope and preserving a current flight on passive all-offers return; calendar/price/data oracles are unchanged. The provider-history slice retains its independent historical 203-record digest.
 
-Подготовка проверена: патч чисто применяется (git apply --check); JS syntax; исходные SHA256 совпадают с post-O8 migration-manifest; JS diff ограничен одной строкой renderSummary/двумя подписями; все102 CSS delta значения присутствуют в кандидате; manifest вне изменённых adaptedFiles байтово-значимому JSON равен прежнему; PHP graph неизменён. Это статическая подготовка, не NEXT CI/browser acceptance.
+Local final checks PASS: 19 existing semantic/transport/refactor suites, results/rating/summary/calendar owner work, live bridge, migration and compiled asset AST/size checks. The complete form and exact-offer return PASS both source and compiled scripts at all five widths. The form-filter history position loss was corrected in the existing owner. 237 other pinned files retain their original Git blob hashes. These DOM checks are not layout-engine evidence. The final CI and browser gate must execute on the actual final PR head. Compiled browser evidence is captured by `tests/search3-visual-offer-list-browser.cjs` in `visual-live-evidence/offer-list-lazy/` at all five widths. Screenshot/geometry review and exact installed-artifact readback are pending until their native receipts exist. Do not call this document a publication receipt.
 
-Sites evidence:360/390/430 и desktop; snapshot2окт→32/32; family до демозаявки/проверки с детьми0/8 и186400₽; flight-error не блокирует заявку; empty с восстановлением. Физический Safari/200% текста/live supplier/CRM не подтверждены. DESIGN_APPROVED не присвоен.
+Physical iPhone/Safari, keyboard, safe area and 200% text are UNVERIFIED. Demos do not establish live completeness, speed, conversion or real lead delivery. Supplier requests and real applications during these checks: 0.
 
-Следующий этап: свежие release/claims → один runtime writer на эти пять файлов → применить/адаптировать этот пакет → один финальный Security+exact build цикл и изменённые UI сценарии → штатная накопленная NEXT публикация по отдельной актуальной координации. Не создавать hold заранее; не повторять O8 publisher/старые artifact pins; не засчитывать Sites screenshots как NEXT acceptance.
+## Next authorized completion
 
-Решение владельца 30.09.2026: попробовать единый процесс разработки с визуальным прототипом в Sites. Уточнение: refactor pass выполняется в соседнем диалоге.
-
-Этот документ дополняет [anytour-development.md](anytour-development.md) и [search3-product-development-plan.md](search3-product-development-plan.md). Единственная координация — [#3419](https://github.com/pyatkoff/poisk-turov-test/issues/3419), продуктовая очередь SEARCH — [#1646](https://github.com/pyatkoff/poisk-turov-test/issues/1646). Здесь нет второго current_task, нового расписания или нового допуска к production.
-
-## Разделение работы
-
-| Участок | Ответственность | Результат |
-| --- | --- | --- |
-| Текущий refactor pass | Исполнитель соседнего диалога, действующий claim #3419 | Конечный согласованный refactor; поведение сохранено |
-| Визуальный прототип Sites | Этот дизайн-диалог, отдельный checkout | Кликабельная композиция на сохранённых данных и явно обозначенных демосценариях |
-| Внедрение визуала | SEARCH-владелец компонента после передачи exact paths | Изменение существующего NEXT, без второго renderer/формы |
-| Оптимизация скриптов | Отдельный этап после refactor pass | Измерения до/после и доказанное улучшение |
-| Production | Отдельный допуск владельца на конкретную версию | Сквозная приёмка и обратимая публикация |
-
-Чаты не меняют одновременно один общий файл. Перед передачей прочитать свежие claims; передать требование действующему владельцу или выбрать независимый участок. Этот документ не меняет runtime, workflows или AUTOPILOT_STATE. Внедрение выполняется отдельным ограниченным PR с точными CI и публикацией; переносить весь app.js стенда нельзя.
-
-## Визуальный стенд и честные данные
-
-Целевой рабочий интерфейс: https://anytoour.ru/_preview/search3-next-candidate/visual-search/ .
-Подключение доказано исходником v2/visual-search/index.php: LIVE использует visual-search/app.js и существующих владельцев data/lifecycle/lead; prototype-search/app.js — другой интерфейс.
-
-Первый стенд Sites — базовая копия проверенного release-source a2be4fd05b81e643f89ba9e6e3308c0cd93fcb10 (P9), переключённая на существующий offline graph. Это исходная точка для дизайна, не новый утверждённый дизайн и не доказательство равенства установленному NEXT: P9 на момент восстановления не был опубликован.
-
-Сохранённая выдача capturedAt/поездка берутся без изменения из fixtures/live-search-2026-09-23.json: Москва → Турция, вылет 1–7 октября 2026, 7 ночей, 2 взрослых. Ссылку владельца на 12–18 октября/Анталью не выдавать за содержание этой записи. Синтетические сценарии цены/рейсов/ошибки/семьи обозначены как демо. Исторические цены не становятся актуальными от изменения интерфейса.
-
-Стенд сохраняет официальный логотип, поля, offer identity, неизвестные значения и путь назад. Он не запускает поставщиков, не отправляет заявки и не принимает оплату. Изображения сохранённой выдачи могут загружаться с исходных CDN. Нет новой аналитики или формул цены/топлива.
-
-В Sites не создаём второй live transport. Переносится утверждённое визуальное решение, а не app.js со стенда целиком. В NEXT заменяются правила/компоненты действующего владельца; отдельный слой постоянных overrides не переносится.
-
-## Цикл визуального пакета
-
-1. Взять один участок из текущей SEARCH-очереди. Первым — мобильная выдача: иерархия фото/отеля/условий/цены и доступ к фильтрам. Следующий — форма и календарь; затем конкретный тур/заявка. Это порядок визуального разбора внутри существующего продуктового плана, не независимая исполняемая очередь.
-2. Записать наблюдаемую проблему, целевой эффект и затронутые экраны.
-3. Внести цельный пакет в Sites на том же корпусе. Для каждого важного состояния: заполнено, загрузка, пусто, ошибка; для затронутого окна — длинное содержимое и возврат.
-4. Дать владельцу конкретную ссылку/сценарий и описание изменений. Решение получает статус DESIGN_APPROVED только после прямого визуального утверждения.
-5. Передать SEARCH: версию Sites, исходный snapshot/source, изменения структуры/текстов/стилей, состояние взаимодействий, exact paths владельца, критерии приёмки, список известных ограничений.
-6. Внедрить в NEXT после освобождения компонента и применимых CI. Проверить установленную версию по затронутому сценарию.
-7. Зафиксировать результат в #1646/#3419. Прототип и NEXT имеют разные версии; не называть прототип опубликованной функцией рабочего поиска.
-
-Состояния: PROTOTYPE_READY → DESIGN_APPROVED → IMPLEMENTED → CI_CHECKED → NEXT_PUBLISHED → RUNTIME_VERIFIED. Каждый статус требует собственного доказательства.
-
-## Проверки по риску — действующая политика
-
-OWNER_PRIORITY.json.scoped_refactor_authorization.verification_policy уже задаёт облегчённый цикл draft. Этот документ не изменяет mandatory jobs, Security/owner/isolation guards или восстановление проверок на ready_for_review.
-
-| Изменение | Проверки |
-| --- | --- |
-| Документ процесса | Ссылки, согласованность с действующими инструкциями; applicable owner/security CI |
-| Стенд/стили | Локальные ресурсы и JS syntax; затронутые состояния на 390/768/1280, если доступен браузер |
-| Рабочий behavior-preserving refactor | Узкая проверка до/после и обязательные draft jobs на final SHA; без полного live journey после каждой правки |
-| Рабочие UI/поведение | Целевые regressions и визуальная проверка затронутых экранов; публикация в обоснованной точке |
-| Цена/поставщики/заявка | Контрактные проверки и ограниченный живой сценарий только когда изменение его затрагивает |
-| Production-кандидат | Восстановленные applicable workflows и единый сквозной путь на точной установленной версии |
-
-Недоступная проверка отмечается DEFERRED/UNVERIFIED. Ограничение времени не означает PASS. Готовность Sites не означает проверку реальных поставщиков, физического Safari, доставки менеджеру или production.
-
-## Отчёт после пакета
-
-Что изменилось; ссылка и версия; что проверено; ограничения; ближайший пакет. Написано, CI checked, merged и published сообщать раздельно. «Дальше» продолжает существующую очередь; не запускает новый roadmap или расписание.
-
-
-## Передача дизайн-пакета 7 — фактический checkpoint 30.09.2026
-
-Статус стенда: PROTOTYPE_READY / браузерная проверка перечисленных сценариев выполнена. Отдельный CSS-пакет нижней панели и быстрых полей внедрён и опубликован в NEXT через #4174; это не перенос всего пакета7 и не присвоение DESIGN_APPROVED всем структурным изменениям. Точные evidence ниже.
-
-Стенд: https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=360 .
-Sites source: `95d382d7f09f8d3ed0718171a842579a5024d6f2`; дизайн-пакет7, исходник v147, native version10 (`appgver_6af0dc1949888191a183ddd6867a56a4`). Публикация стенда подтверждена; это отдельная версия от NEXT. Прямой просмотр опубликованного стенда через браузер разрешён владельцем 30.09; прежний блокер визуальной проверки снят для этого способа.
-
-### Свежая рабочая точка и пересечения
-
-На30.09 после18:25MSK release — `418bdd3f1bb03ecf6666d39198154fa0a4a1cb34`. Авторитетный terminal journal: #3419/comment5914233309. NEXT source — `0d8ec3729c6af0fd710e2f2a66409b2308d323d8`, CSS#4174 опубликован. Старый current_task ещё описывает O6/ad790 и не отменяет более свежий terminal receipt. Единственная команда5914080881 завершилась stock run36734697791 SUCCESS; receipt11106168032 `published_update`. Reservation5914072729 и release hold сняты. Не повторять команду и не пересобирать опубликованный CSS.
-
-Соседний SIZE O7 claim5914176407/5914359127 владеет уменьшением JS в build-артефакте, workflow и optional fixture-root входом браузерных проверок. Дизайн-пакет не меняет эти файлы и не создаёт конкурирующую публикацию.
-
-P11 #4163 уже исправил галерею в NEXT и геометрию общей формы заявки. Галерейный фон пакета7 Sites не переносить повторно. Форма семейной заявки и «Перелёт позже» в Sites — проверка существующего поведения, а не новая функция и не повод менять lead-контракт.
-
-Подключение NEXT подтверждено свежим `v2/visual-search/index.php`: рабочая live-ветка использует `./app.js` и текущих владельцев transport/lifecycle/lead; `index.html` подключает `./styles.css`, затем `./mobile-controls-v1.css`. Старый `prototype-search/app.js` не является целевым renderer.
-
-### Минимальный пакет переноса
-
-| Участок | Изменение стенда и критерий | Точки назначения |
-| --- | --- | --- |
-| Нижняя панель конкретного тура/отеля | На360px целая цена со статусом; основная кнопка отдельной строкой на всю ширину. Проверить существующий каскад: `dialog.tour-dialog #modal-footer` может побеждать мобильный селектор без `dialog`. Цены96953 и1035282 ₽ читаются без разрыва числа | Существующие мобильные правила `v2/visual-search/styles.css` и `mobile-controls-v1.css`; изменить текущего владельца и удалить заменённые правила, без нового override-слоя |
-| Быстрые поля формы | Значение бюджета занимает всю ширину поля; «Без ограничений» не разрывается внутри слова, шеврон рядом с подписью. Пара маршрута, дата на всю строку, ночи/туристы попарно | Те же существующие CSS-владельцы; разметку менять только при доказанной необходимости |
-| Сводка применённого поиска | Звёзды, питание, бюджет за всех видны и открывают текущие контролы; значения берутся из применённых фильтров | `v2/visual-search/app.js`, текущий renderSummary; файл занять только после свежего claim и сравнения с оптимизированной release |
-| Мобильная карточка/фильтры | Фото → название/условия → цена/статус → кнопка; выбранное минимальное предложение сохраняет identity. Фильтры: отель, бюджет, питание, звёзды, курорт, рейтинг, оператор, удобства | Текущие renderer/CSS-владельцы `v2/visual-search/app.js`, `styles.css`, `mobile-controls-v1.css`; существующие handlers/черновики сохраняются |
-
-Связный CSS-пакет нижней панели и быстрых полей завершён#4174: существующие правила заменены, superseded<=374 block удалён; app.js и flight picker сохранены. CSS+52raw/−4gzip, фактический SHA256 `8ff290a0d5f9c784b1ab332e089c38993b6edd528a9a3faeff57c2245ed748b7`. Не копировать весь Site app.js поверх O1–O6, не переносить исторические overrides целиком. Изменения renderSummary/карточек — отдельный структурный пакет после сверки текущего владельца. Обновление migration-manifest и applicable tests принадлежит исполнителю реализации, не этому docs-only пакету.
-
-### Уже выполненные проверки стенда
-
-- Chromium iframe360/390/430: карточка/тур/другие номера, галерея и переключение фото; нижняя цена96953 ₽; на360 длинное название RIXOS PREMIUM BODRUM VILLAS и цена1035282 ₽.
-- Фильтры360: всё включено →291 отель/416 предложений; отмена бюджетного черновика сохраняет применённые условия. Даты2–4октября →7 отелей/11 предложений; бюджет120000 ₽ сохранён, все7 видимых минимальных цен ниже лимита.
-- Восстановление: при бюджете50000 ₽ предложен лимит106000 ₽ с сохранением питания/дат; применение возвращает1 тур105613 ₽. Сброс фильтров возвращает36 отелей/43 предложения для выбранных дат.
-- Туристы360: без возраста ребёнка «Применить» недоступно; возраст7 лет и Анталья сохраняются при повторном открытии поиска. Для этого запроса snapshot не содержит семейных предложений; отсутствие данных не выдано за live-дефект.
-- Отдельное family-демо: два взрослых и дети0/8 лет →тур →заявка без выбранного рейса →детали →выдача. Возраст, состав и186400 ₽ за всех сохранены; «Перелёт позже», фактической отправки нет.
-- Широкий первый viewport1348px: форма, левый блок фильтров, календарь и карточки просмотрены. Это не полный desktop-прогон всех окон.
-
-Эти проверки — сохранённый снимок23.09 и явно обозначенные демо. Нет supplier search, отправки реальной заявки или подтверждения актуальности цен. Скриншоты семейной карточки/заявки и большой цены сохранены как доказательства.
-
-### Проверенная реализация CSS#4174
-
-Source0d8ec3729c6af0fd710e2f2a66409b2308d323d8: Security36729493647, focused/FULL36729493430 и sourcebuild36729493386 SUCCESS. Точечная геометрия360/390: цена не разрывается, статус читается, CTA отдельной полной строкой; значение быстрого поля занимает полную ширину. Полный fixture-путь390/768/1280 прошёл. Мобильный screenshot tour-footer-360.png действительно просмотрен из exact artifact11105175428; это CI-доказательство, не скриншот публичного мобильного viewport.
-
-Sourceartifact11104295678 проверен независимо по всем833payload hashes/sizes. Stock publisher36734697791:833files,36visualassets,9routes200,noindex,counter0,lead403,supplier0/real_leads0; предыдущаяad790 сохранена, production и sibling unchanged. Receipt11106168032 ZIPdigest60771aa8c29bcc4020f55a70671e0c3bcb94cddec8a8e4270a4777724bad2c45 скачан и совпадает.
-
-Публичный NEXT после reload действительно загрузил styles.css?v=8ff290a0d5f9; app13042eb8d0b2 и flight87d00cdcf18d сохранены. Snapshot1047отелей/1453offers загрузился; конкретный тур открыт в браузере, desktop screenshot сохранён. Не приравнивать desktop readback к приёмке физического мобильного Safari.
-
-### Дополнительная мобильная приёмка стенда30.09 после18:25MSK
-
-В том же опубликованном Sites package7, Chromium iframe360, без изменения исходника:
-
-- Цена изменилась:186400→195400 ₽; сообщение о новой цене и195400 ₽ в нижней панели заявки. Переход без выбранного рейса показывает «Перелёт позже».
-- Ошибка загрузки рейсов: видимая ошибка и CTA «Оставить заявку · рейс уточнит менеджер»; переход открывает форму с186400 ₽ и «Рейс уточнит менеджер», возврат к деталям работает. На360 кнопка читаема в две строки, целая цена и статус остаются над ней.
-- Тур исчез: после проверки видимый отказ, форма заявки не открывается, «К результатам» возвращает в выдачу.
-- Срок тура истёк: после проверки видимый отказ и «К результатам»; отправка недоступна.
-
-Это демосценарии проверки UX. Не проверялись актуальные supplier quotes или доставка реального лида; ничего не отправлялось.
-
-### Следующий структурный пакет и оставшаяся приёмка
-
-CSS footer/quick-field и P11 gallery не повторять. Следующий полезный перенос — применённые звёзды/питание/бюджет в сводке поиска, затем иерархия карточки/фильтров. Сначала сравнить свежий установленный NEXT с Sites, доказать текущего владельца и занять точные paths в#3419; согласовать с SIZE O7 checked source, не менять чужой build/workflow/test scope. Sourceapp Sites целиком не копировать.
-
-После реализации применимых структурных изменений: exact CI, публичная установленная версия и изменённый путь. Физический iPhone/Safari, touch/safe-area и200% текста остаются DEFERRED. Проверку Sites не засчитывать как runtime-проверку перенесённого NEXT.
+Finish any confirmed regression within these existing owners; green applicable final-head checks -> inspect the compiled browser artifact -> fresh exclusive preview publisher claim -> normal exact-artifact NEXT preview update/readback -> terminal receipt and release claim. Production/main transfer requires a separate concrete owner decision. Preserve refactor/canonical data/price/fuel/auth/provider/lead/lifecycle/analytics, LOCAL#4191, sibling previews and shared AUTOPILOT state/workflows. Do not restart paused Sites automation or create a new cosmetic queue.

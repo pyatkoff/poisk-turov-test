@@ -1,15 +1,15 @@
 {
   "schema": 1,
-  "stage": "canonical-live-integration-published",
-  "visualVersion": 147,
+  "stage": "approved-sites100-presentation-candidate",
+  "visualVersion": 155,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
-  "functionalBase": "3b460f04b4f6262147c7e44b93fe32cefcfaf03c",
+  "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
   "liveConnected": true,
   "supplierRequests": "explicit-user-actions-only",
   "leadDelivery": false,
   "sourceFiles": {
-    "app.js": "b92c07b052d0b5acc3cce076bd01d84e3b07e82809eb0b91b38d37c2c1d2613b",
+    "app.js": "cba264ec609ba55d865c8692726cf2eddafc98b344ec45c1d11c5e98d9f5f0d1",
     "styles.css": "d86b84b04882a1b6d7ecbef338ae039e78dd6d5ee581675db3dcf8c97d29c816",
     "mobile-controls-v1.css": "8b5c50dd5e352ae95603801d0469a6f89d411365131fe1a4fdc44f20976f151c",
     "fixture-data.js": "1793005f8066fed74e3404ce633dba97fcae034b195d91ec2e11ef9cf92a75e3",
@@ -52,17 +52,47 @@
     "canonical-hotel-content"
   ],
   "acceptanceSupplierRequests": 0,
-  "publicationStatus": "published-bootstrap-calendar-verified",
+  "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "68af366631f99cd7acc96bd10a0c853bea64fa29aedadc4c1b50dec75e57b146",
-    "fixture-data.js": "176f25bac72ae889e6d73410873ceb330af133ec18da10d3695fa9eb9a80b389",
-    "index.html": "4de09aa30438b43be7a0dcbe7d6771e986c6af535629e67676457737ecbb38f9",
-    "styles.css": "c139968b7e5b5fbb5477def6c2bd51a9a84df733626964c5d95a4ef58d4a4831",
+    "app.js": "5b99fd2c5d72045b26deeaa2d6defed3bf199716cfbc3c162d4ef3a479304747",
+    "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
+    "index.html": "4453b81db9637b275ddb75986b7fff196e665037b3e79dc086e9fa80663e083e",
+    "styles.css": "a9c5d12cbd55a237ec5fb2f12e80ffee0ebb6448b4ccccdfbfa1154a68046ebd",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "919fc37599f8027c95f1b7d5e04bcff59dda754d1df61c0ef1e7d0e60039030c",
-    "flight-picker-v18.js": "e0abafb63d43724b02c93b2518d616608b694da6dd7247b4b706d4d1f1200792"
+    "flight-picker-v18.js": "fc495715806b068bbd76c01de9f72762b14716bb394e21222db8a84a6a7b05eb",
+    "offer-list-v1.js": "5faacb2ac5cfbb49343693d5676e0029de91c079580e0b7a2b13ff3da89b9d57",
+    "mobile-controls-v1.css": "204e51256a7f2a21526c23204cf2f49c4ef5858c06e57c13de89cd7333b11c1f",
+    "hotel-details-v1.js": "0c8b20e61041e91a6c5e65a83c65a5c7d96984e3ce6d5d95ec63552f4d978759",
+    "filter-panel-v1.js": "3f52492e13a1e54675d6c5de65e990af1d311e19f6d793488f66b0531bbf9d05",
+    "index.php": "070d73db6e0a1774d3a98f09b16bfe4bf5a99b89a9ffdb914674edf231b3fa14",
+    "flight-picker-ui-v1.js": "22fbf658eff9c5a9e974067cb6d118f5cc5d1a97606fade8051fef3f5f5329f2",
+    "lead-runtime-v1.js": "9e0e9e4393b0b019c51616acb4aff20231c911cf7f0426b49a1e9b8624bfc065"
   },
-  "publication": {
+  "quoteRecovery": {
+    "date": "2026-09-26",
+    "scope": "SAMO current-search initial quote and flight confirmation",
+    "noAutomaticReplay": true,
+    "safeBrowserFailureClassification": true,
+    "realSupplierAcceptance": false
+  },
+  "approvedPresentation": {
+    "site": 100,
+    "package": 34,
+    "visualVersion": 154,
+    "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+    "sourceSha": "05051662c25cf8258991475e2e7536a12f7248d4",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_c787e6e54144819197a0bbd94d678ad9",
+    "documentarySite": 102,
+    "documentarySourceSha": "a33878d9798e6f7c1a4ff0a3f245f27254580a27",
+    "designApproval": "DESIGN_APPROVED_FOR_PREVIEW_TRANSFER",
+    "mobilePhotoRatio": 1.8,
+    "resultsPriceTape": "always-open",
+    "transportOwners": "retained from current NEXT; no donor transport copied",
+    "physicalSafariAcceptance": false,
+    "keyboardSafeAreaText200Acceptance": false
+  },
+  "publicationHistory": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
     "releaseSha": "b4223e76ad716d354201a3c5f534db062f570aa7",
     "deployRun": 36171039351,
@@ -73,11 +103,20 @@
     "realTourAcceptance": false,
     "physicalSafariAcceptance": false
   },
-  "quoteRecovery": {
-    "date": "2026-09-26",
-    "scope": "SAMO current-search initial quote and flight confirmation",
-    "noAutomaticReplay": true,
-    "safeBrowserFailureClassification": true,
-    "realSupplierAcceptance": false
+  "acceptance": {
+    "runtimeScenarios": "saved snapshot and explicitly labelled demos only",
+    "widths": [
+      360,
+      390,
+      430,
+      768,
+      1280
+    ],
+    "sourceDom": "tests/search3-visual-approved-interface.cjs",
+    "compiledBrowser": "tests/search3-visual-offer-list-browser.cjs",
+    "finalShaCI": "required before preview publication",
+    "physicalSafariAcceptance": false,
+    "supplierRequests": 0,
+    "realLeads": 0
   }
 }

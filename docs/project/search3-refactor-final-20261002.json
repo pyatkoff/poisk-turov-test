@@ -1,0 +1,850 @@
+{
+  "schema_version": 1,
+  "date_utc": "2026-10-02",
+  "status": "REFACTOR_PASS_COMPLETE",
+  "scope": "Owner-bounded final three-stage Search3 NEXT pass; no automatic additional micro-optimization queue.",
+  "stages": [
+    {
+      "stage": 1,
+      "status": "COMPLETE",
+      "result": "Measured mergeSearchResults inventory implemented and behavior checked."
+    },
+    {
+      "stage": 2,
+      "status": "COMPLETE",
+      "result": "Large-script inventory, aggregate bytes, same-scenario browser comparisons and finite deferred backlog recorded."
+    },
+    {
+      "stage": 3,
+      "status": "COMPLETE",
+      "result": "One cumulative guarded NEXT publication accepted with fixture and hosted snapshot evidence."
+    }
+  ],
+  "source": {
+    "sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "tree": "04fefe66c0cc5a9be754152e3d600d3c49af3ccf",
+    "release_sha": "4a88cdd02dd609ecf1eaf35cae2241c807d0a706",
+    "pr": 4338
+  },
+  "merge_inventory": {
+    "offers": 1000,
+    "final_offer_element_reads_before": 2000,
+    "final_offer_element_reads_after": 1000,
+    "flatmap_intermediate_elements_before": 1000,
+    "flatmap_intermediate_elements_after": 0,
+    "coverage": [
+      "preview",
+      "live",
+      "duplicate hotel overwrite",
+      "saved hotel placeholder",
+      "sparse and inherited array elements",
+      "source getter mutations",
+      "meal-facet conflict and normalization",
+      "operator order"
+    ],
+    "step_only_bytes": {
+      "readable_app": 26,
+      "readable_app_gzip": 14,
+      "compiled_served": -15,
+      "compiled_gzip": -2
+    },
+    "latency_claim": false
+  },
+  "provenance": {
+    "security_run": 36982752970,
+    "lead_contract_run": 36982753066,
+    "build_run": 36982753004,
+    "build_artifact": 11215797301,
+    "build_artifact_sha256": "9105989aee93fd347ba1fffc322eb7fdb415707e1615ba365785447ef6efa12c",
+    "final_browser_run": 36982752961,
+    "final_browser_artifact": 11216740715,
+    "final_browser_sha256": "1bdba7cd28ac28b57a740bc54d33af27827f86461561b4038bfc4a19be291699",
+    "baseline_browser_run": 36931907793,
+    "baseline_browser_artifact": 11196617160,
+    "baseline_browser_sha256": "83c5d7e5fc2efe388ee67175c497c80826ae4f1b3316ac6a0c2dbf0cdc39476a",
+    "publisher_command_comment": 5948130210,
+    "publisher_run": 36983822609,
+    "publisher_attempt": 1,
+    "deployment_artifact": 11216885537,
+    "deployment_artifact_sha256": "a3c8b2816e3a0de068e2525f9e8738ccc872cd19b2fdde15419b3a13c2b6c35d",
+    "publisher_terminal_comment": 5948222518,
+    "artifact_digests_verified": true,
+    "required_exact_source_checks": "SUCCESS"
+  },
+  "size_audit": {
+    "node": "v24.19.0",
+    "gzip": "sum per asset, level 9",
+    "baselineSource": "30b003c0972f76cabdc8cbaf194684cf97eeddf5",
+    "candidateSource": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "before": {
+      "live": {
+        "raw": 577773,
+        "served": 438324,
+        "gzip_before": 160684,
+        "gzip_after": 133388
+      },
+      "offline": {
+        "raw": 373407,
+        "served": 293835,
+        "gzip_before": 108730,
+        "gzip_after": 91726
+      },
+      "ondemand": {
+        "raw": 33154,
+        "served": 27174,
+        "gzip_before": 10777,
+        "gzip_after": 9761
+      },
+      "complete_live": {
+        "raw": 610927,
+        "served": 465498,
+        "gzip_before": 171461,
+        "gzip_after": 143149
+      },
+      "complete_offline": {
+        "raw": 406561,
+        "served": 321009,
+        "gzip_before": 119507,
+        "gzip_after": 101487
+      }
+    },
+    "after": {
+      "live": {
+        "raw": 580847,
+        "served": 439841,
+        "gzip_before": 161481,
+        "gzip_after": 133901
+      },
+      "offline": {
+        "raw": 376481,
+        "served": 295352,
+        "gzip_before": 109527,
+        "gzip_after": 92239
+      },
+      "ondemand": {
+        "raw": 33425,
+        "served": 27197,
+        "gzip_before": 10884,
+        "gzip_after": 9837
+      },
+      "complete_live": {
+        "raw": 614272,
+        "served": 467038,
+        "gzip_before": 172365,
+        "gzip_after": 143738
+      },
+      "complete_offline": {
+        "raw": 409906,
+        "served": 322549,
+        "gzip_before": 120411,
+        "gzip_after": 102076
+      }
+    },
+    "delta": {
+      "live": {
+        "raw": 3074,
+        "served": 1517,
+        "gzip_before": 797,
+        "gzip_after": 513
+      },
+      "offline": {
+        "raw": 3074,
+        "served": 1517,
+        "gzip_before": 797,
+        "gzip_after": 513
+      },
+      "ondemand": {
+        "raw": 271,
+        "served": 23,
+        "gzip_before": 107,
+        "gzip_after": 76
+      },
+      "complete_live": {
+        "raw": 3345,
+        "served": 1540,
+        "gzip_before": 904,
+        "gzip_after": 589
+      },
+      "complete_offline": {
+        "raw": 3345,
+        "served": 1540,
+        "gzip_before": 904,
+        "gzip_after": 589
+      }
+    },
+    "files": [
+      {
+        "file": "visual-search/app.js",
+        "rawBefore": 299735,
+        "rawAfter": 302809,
+        "servedBefore": 236337,
+        "servedAfter": 237854,
+        "gzipBefore": 68987,
+        "gzipAfter": 69500
+      },
+      {
+        "file": "prototype-search/data.js",
+        "rawBefore": 126244,
+        "rawAfter": 126244,
+        "servedBefore": 87876,
+        "servedAfter": 87876,
+        "gzipBefore": 24372,
+        "gzipAfter": 24372
+      },
+      {
+        "file": "tour-controller-v4.js",
+        "rawBefore": 33956,
+        "rawAfter": 33956,
+        "servedBefore": 26479,
+        "servedAfter": 26479,
+        "gzipBefore": 8872,
+        "gzipAfter": 8872
+      },
+      {
+        "file": "visual-search/offer-list-v1.js",
+        "rawBefore": 20381,
+        "rawAfter": 20652,
+        "servedBefore": 16278,
+        "servedAfter": 16301,
+        "gzipBefore": 5657,
+        "gzipAfter": 5733
+      },
+      {
+        "file": "visual-search/flight-picker-v18.js",
+        "rawBefore": 17957,
+        "rawAfter": 17957,
+        "servedBefore": 13448,
+        "servedAfter": 13448,
+        "gzipBefore": 4866,
+        "gzipAfter": 4866
+      },
+      {
+        "file": "search3-canonical-profiles-v1.js",
+        "rawBefore": 16810,
+        "rawAfter": 16810,
+        "servedBefore": 11466,
+        "servedAfter": 11466,
+        "gzipBefore": 4038,
+        "gzipAfter": 4038
+      },
+      {
+        "file": "lead-form-guard-v1.js",
+        "rawBefore": 16809,
+        "rawAfter": 16809,
+        "servedBefore": 15365,
+        "servedAfter": 15365,
+        "gzipBefore": 4483,
+        "gzipAfter": 4483
+      },
+      {
+        "file": "search3-local-db-provider-v1.js",
+        "rawBefore": 15777,
+        "rawAfter": 15777,
+        "servedBefore": 11258,
+        "servedAfter": 11258,
+        "gzipBefore": 4185,
+        "gzipAfter": 4185
+      },
+      {
+        "file": "prototype-search/lead.js",
+        "rawBefore": 15395,
+        "rawAfter": 15395,
+        "servedBefore": 12735,
+        "servedAfter": 12735,
+        "gzipBefore": 4014,
+        "gzipAfter": 4014
+      },
+      {
+        "file": "visual-search/fixture-data.js",
+        "rawBefore": 14808,
+        "rawAfter": 14808,
+        "servedBefore": 11806,
+        "servedAfter": 11806,
+        "gzipBefore": 4932,
+        "gzipAfter": 4932
+      },
+      {
+        "file": "visual-search/local-db-parser.js",
+        "rawBefore": 13497,
+        "rawAfter": 13497,
+        "servedBefore": 9862,
+        "servedAfter": 9862,
+        "gzipBefore": 3775,
+        "gzipAfter": 3775
+      },
+      {
+        "file": "visual-search/hotel-details-v1.js",
+        "rawBefore": 12773,
+        "rawAfter": 12773,
+        "servedBefore": 10896,
+        "servedAfter": 10896,
+        "gzipBefore": 4104,
+        "gzipAfter": 4104
+      },
+      {
+        "file": "visual-search/recorded-data.js",
+        "rawBefore": 11702,
+        "rawAfter": 11702,
+        "servedBefore": 10280,
+        "servedAfter": 10280,
+        "gzipBefore": 4223,
+        "gzipAfter": 4223
+      },
+      {
+        "file": "prototype-search/search-lifecycle-v1.js",
+        "rawBefore": 10384,
+        "rawAfter": 10384,
+        "servedBefore": 6293,
+        "servedAfter": 6293,
+        "gzipBefore": 2222,
+        "gzipAfter": 2222
+      }
+    ],
+    "css": [
+      {
+        "file": "styles.css",
+        "bytes": 244221
+      },
+      {
+        "file": "mobile-controls-v1.css",
+        "bytes": 2691
+      }
+    ]
+  },
+  "large_script_structure": [
+    {
+      "path": "v2/visual-search/app.js",
+      "sourceBytes": 302809,
+      "lines": 2373,
+      "declarations": 299,
+      "largest": [
+        {
+          "name": "renderDestination",
+          "bytes": 8368,
+          "line": 391,
+          "lines": 35
+        },
+        {
+          "name": "handleSearchParameterAction",
+          "bytes": 7887,
+          "line": 2149,
+          "lines": 43
+        },
+        {
+          "name": "renderCompare",
+          "bytes": 4975,
+          "line": 2020,
+          "lines": 13
+        },
+        {
+          "name": "renderSearchStatus",
+          "bytes": 4555,
+          "line": 2052,
+          "lines": 18
+        },
+        {
+          "name": "cardHTML",
+          "bytes": 4519,
+          "line": 803,
+          "lines": 4
+        },
+        {
+          "name": "emptyResultsHTML",
+          "bytes": 3531,
+          "line": 526,
+          "lines": 3
+        },
+        {
+          "name": "renderFilters",
+          "bytes": 3486,
+          "line": 749,
+          "lines": 12
+        },
+        {
+          "name": "handleResultFilterAction",
+          "bytes": 3460,
+          "line": 2192,
+          "lines": 24
+        }
+      ]
+    },
+    {
+      "path": "v2/prototype-search/data.js",
+      "sourceBytes": 126244,
+      "lines": 1647,
+      "declarations": 107,
+      "largest": [
+        {
+          "name": "expandAnexGroup",
+          "bytes": 4476,
+          "line": 1163,
+          "lines": 49
+        },
+        {
+          "name": "verifyAnexPackage",
+          "bytes": 4239,
+          "line": 1314,
+          "lines": 49
+        },
+        {
+          "name": "verifyAndromeda",
+          "bytes": 4216,
+          "line": 1551,
+          "lines": 56
+        },
+        {
+          "name": "observedCalendar",
+          "bytes": 3787,
+          "line": 1055,
+          "lines": 36
+        },
+        {
+          "name": "applyDirectAnex",
+          "bytes": 3627,
+          "line": 457,
+          "lines": 44
+        },
+        {
+          "name": "applyDirectAndromeda",
+          "bytes": 3020,
+          "line": 669,
+          "lines": 36
+        },
+        {
+          "name": "directAndromedaOffer",
+          "bytes": 2871,
+          "line": 598,
+          "lines": 29
+        },
+        {
+          "name": "continueDirectAndromeda",
+          "bytes": 2648,
+          "line": 761,
+          "lines": 43
+        }
+      ]
+    },
+    {
+      "path": "v2/visual-search/offer-list-v1.js",
+      "sourceBytes": 20652,
+      "lines": 145,
+      "declarations": 14,
+      "largest": [
+        {
+          "name": "create",
+          "bytes": 20501,
+          "line": 4,
+          "lines": 140
+        },
+        {
+          "name": "renderOfferList",
+          "bytes": 4940,
+          "line": 113,
+          "lines": 25
+        },
+        {
+          "name": "renderTourComparison",
+          "bytes": 4915,
+          "line": 22,
+          "lines": 15
+        },
+        {
+          "name": "mountOfferList",
+          "bytes": 2287,
+          "line": 138,
+          "lines": 4
+        },
+        {
+          "name": "renderOfferRefinements",
+          "bytes": 1643,
+          "line": 57,
+          "lines": 20
+        },
+        {
+          "name": "comparisonDecisionHTML",
+          "bytes": 1018,
+          "line": 17,
+          "lines": 5
+        },
+        {
+          "name": "offerListInventory",
+          "bytes": 1008,
+          "line": 81,
+          "lines": 14
+        },
+        {
+          "name": "offerRefinementRecovery",
+          "bytes": 769,
+          "line": 77,
+          "lines": 4
+        }
+      ]
+    },
+    {
+      "path": "v2/visual-search/hotel-details-v1.js",
+      "sourceBytes": 12773,
+      "lines": 108,
+      "declarations": 10,
+      "largest": [
+        {
+          "name": "create",
+          "bytes": 12691,
+          "line": 3,
+          "lines": 104
+        },
+        {
+          "name": "openHotelDetails",
+          "bytes": 4171,
+          "line": 83,
+          "lines": 22
+        },
+        {
+          "name": "renderHotelRooms",
+          "bytes": 3998,
+          "line": 53,
+          "lines": 30
+        },
+        {
+          "name": "hotelDetailFacts",
+          "bytes": 959,
+          "line": 32,
+          "lines": 13
+        },
+        {
+          "name": "roomOfferChoiceHTML",
+          "bytes": 910,
+          "line": 50,
+          "lines": 3
+        },
+        {
+          "name": "hotelDescriptionHTML",
+          "bytes": 625,
+          "line": 10,
+          "lines": 6
+        },
+        {
+          "name": "hotelFactHTML",
+          "bytes": 525,
+          "line": 16,
+          "lines": 6
+        },
+        {
+          "name": "hotelAmenitiesHTML",
+          "bytes": 476,
+          "line": 45,
+          "lines": 5
+        }
+      ]
+    }
+  ],
+  "browser_comparison": {
+    "baseline_source": "30b003c0972f76cabdc8cbaf194684cf97eeddf5",
+    "final_source": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "baseline_run": 36931907793,
+    "final_run": 36982752961,
+    "engine": "Chromium",
+    "widths": [
+      390,
+      768,
+      1280
+    ],
+    "same_fixture": true,
+    "measurements": [
+      {
+        "name": "receipt.json",
+        "same": true
+      },
+      {
+        "name": "card-price-360.json",
+        "same": true
+      },
+      {
+        "name": "card-price-390.json",
+        "same": true
+      },
+      {
+        "name": "card-price-430.json",
+        "same": true
+      },
+      {
+        "name": "hotel-scroll-layout-390.json",
+        "same": true
+      },
+      {
+        "name": "hotel-scroll-layout-768.json",
+        "same": true
+      },
+      {
+        "name": "hotel-scroll-layout-1280.json",
+        "same": true
+      }
+    ],
+    "latency_measured": false,
+    "latency_limitation": "No browser page-latency/p50/p95 measurement is exposed by the current harness; operation counts and DOM geometry must not be presented as latency.",
+    "physical_device": false,
+    "real_supplier": false
+  },
+  "compiled_fixture_receipt": {
+    "published": false,
+    "live_data": false,
+    "engine": "Chromium",
+    "physical_device": false,
+    "results": [
+      {
+        "width": 390,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": true,
+        "mobile_filter_resize_state": true,
+        "initial_invalid_budget_blocked": false,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      },
+      {
+        "width": 768,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": true,
+        "mobile_filter_resize_state": true,
+        "initial_invalid_budget_blocked": false,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      },
+      {
+        "width": 1280,
+        "three_sources_one_hotel": true,
+        "progressive_hotel_rooms": true,
+        "progressive_hotel_meal": true,
+        "progressive_hotel_back": true,
+        "hotel_more_back": true,
+        "hotel_more_forward": true,
+        "hotel_moved_offer_back": true,
+        "progressive_offer_list": true,
+        "progressive_offer_filter_preserved": true,
+        "calendar_database_observation": true,
+        "search_before_submit": 0,
+        "total": 133500.5,
+        "tv_fuel_disclosed": 20686,
+        "tv_unknown_fuel_preserved": true,
+        "tv_explicit_zero_fuel_preserved": true,
+        "samo_total": 125500,
+        "samo_terminal_recovery": true,
+        "samo_no_replay": true,
+        "departure_recovery_no_search": true,
+        "departure_calendar_context": true,
+        "provider_return_no_replay": true,
+        "tv_chosen_flight_retained": true,
+        "tv_reopen_no_replay": true,
+        "tv_new_search_invalidation": true,
+        "contact_draft_retained": true,
+        "anex_estimate_retained": true,
+        "local_application": true,
+        "progressive_facet_focus": true,
+        "late_facet_choice": true,
+        "mobile_facet_cancel_query_reset": false,
+        "mobile_filter_resize_state": false,
+        "initial_invalid_budget_blocked": true,
+        "facet_query_scope_reset": true,
+        "supplier_requests": 0,
+        "lead_requests": 0
+      }
+    ]
+  },
+  "hosted_same_scenario": {
+    "scenario": "snapshot",
+    "viewport": {
+      "width": 1363,
+      "height": 936
+    },
+    "baseline_source": "30b003c0972f76cabdc8cbaf194684cf97eeddf5",
+    "published_source": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "baseline_app": "./app.js?v=730b21cf8040",
+    "published_app": "./app.js?v=c07fb409d3f6",
+    "identical_before_after": {
+      "total_hotels": 1047,
+      "total_offers": 1453,
+      "rendered_cards": 24,
+      "calendar_days": 7,
+      "filter_rows": 97,
+      "horizontal_overflow": false,
+      "first_cards": [
+        {
+          "id": "hotel-3678",
+          "title": "RIA SUITES HOTEL",
+          "width": 1024,
+          "height": 341.1875,
+          "price_rub": 96953
+        },
+        {
+          "id": "hotel-5227",
+          "title": "FOUR-G HOTEL",
+          "width": 1024,
+          "height": 298.4375,
+          "price_rub": 133353
+        },
+        {
+          "id": "hotel-4999",
+          "title": "COSTA BODRUM CITY HOTEL (EX. RED LION)",
+          "width": 1024,
+          "height": 308.4375,
+          "price_rub": 136582
+        }
+      ]
+    },
+    "hosted_acceptance_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-5948222518",
+    "star_filter": {
+      "stars": 4,
+      "hotels": 395,
+      "offers": 522,
+      "reset_hotels": 1047,
+      "reset_offers": 1453
+    },
+    "date_filter": {
+      "date": "2026-10-05",
+      "hotels": 974,
+      "offers": 1122
+    },
+    "hotel_detail": {
+      "snapshot_offers": 2,
+      "photos_about_rooms_loaded": true
+    },
+    "selected_tour": {
+      "depart": "2026-10-05",
+      "return": "2026-10-12",
+      "room": "Standard",
+      "meal": "Завтраки",
+      "operator": "Интурист",
+      "price_rub": 96953,
+      "fuel": "уточняется",
+      "application_blocked_on_stand": true
+    },
+    "page_origin_console_errors": 0,
+    "real_supplier_acceptance": false
+  },
+  "guarded_publication": {
+    "LOCAL_only_data_HTTP": 403,
+    "activation": {
+      "files": 836,
+      "predecessor_retained": true,
+      "status": "activated"
+    },
+    "completion": {
+      "existing_preview_unchanged": true,
+      "previous_source_sha": "30b003c0972f76cabdc8cbaf194684cf97eeddf5",
+      "production_unchanged": true,
+      "rollback_retained": true,
+      "route": "/_preview/search3-next-candidate/",
+      "source_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+      "status": "published"
+    },
+    "counter": 0,
+    "derived_artifact": 11216498401,
+    "existing_preview_unchanged": true,
+    "lead_HTTP": 403,
+    "noindex": true,
+    "predecessor_retained": true,
+    "previous_source_sha": "30b003c0972f76cabdc8cbaf194684cf97eeddf5",
+    "production_unchanged": true,
+    "real_leads": 0,
+    "release_sha": "4a88cdd02dd609ecf1eaf35cae2241c807d0a706",
+    "route": "/_preview/search3-next-candidate/",
+    "routes_200": 9,
+    "source_artifact": 11215797301,
+    "source_sha": "1525640b410ab602960f9e6cf2e427b8ecc5293e",
+    "status": "published_update",
+    "supplier_searches": 0,
+    "visual_assets_verified": 39,
+    "visual_live_connected": true,
+    "visual_route_200": true
+  },
+  "finite_deferred_backlog": [
+    {
+      "id": "F1",
+      "status": "DEFERRED_NEW_SCOPE_REQUIRED",
+      "component": "v2/visual-search/app.js",
+      "problem": "Form, results/facets, calendar, selected tour, gallery and history still share one large owner.",
+      "evidence": "302809 source bytes, 237854 served bytes, 299 function declarations; renderDestination 8368 B, handleSearchParameterAction 7887 B.",
+      "future_boundary": "Choose one coherent responsibility and explicit state/API boundary with behavior/history/recovery acceptance. Do not move code solely to change file sizes."
+    },
+    {
+      "id": "F2",
+      "status": "DEFERRED_INT_TO_SEARCH_HANDOFF_REQUIRED",
+      "component": "v2/prototype-search/data.js",
+      "problem": "Provider search windows, continuations, normalization and quote/package verification remain in the shared data owner.",
+      "evidence": "126244 source bytes, 87876 served bytes, 107 declarations; expandAnexGroup 4476 B, verifyAnexPackage 4239 B, verifyAndromeda 4216 B.",
+      "future_boundary": "Bounded INT → SEARCH handoff with source/provider ownership and public API proof before structural changes. Retain protected direct ANEX/auth/URL/payload/price/fuel contracts."
+    },
+    {
+      "id": "F3",
+      "status": "DEFERRED_MEASUREMENT_BEFORE_IMPLEMENTATION",
+      "component": "Initial LIVE dependency graph",
+      "problem": "Selected-tour, lead and provider dependencies remain eager; current cold split covers only offer-list and hotel-details presentation.",
+      "evidence": "439841 initial served JS bytes; 27197 cold served JS bytes; app.js + data.js account for 325730 B (74.06%) of the initial JS.",
+      "future_boundary": "Profile the bootstrap/request graph and first/cold/warm interaction timings under one scenario before any additional lazy boundary. Preserve ordering, failure/retry and recovery."
+    }
+  ],
+  "unverified": [
+    "Physical Safari/iPhone",
+    "Real supplier search/flight/quote scenarios",
+    "Real lead delivery",
+    "Browser latency p50/p95"
+  ],
+  "production_authorized_by_this_report": false,
+  "stop_rule": "Current pass complete. F1-F3 and low-impact single-call ideas do not reopen it; subsequent structural work requires a separate bounded scope."
+}

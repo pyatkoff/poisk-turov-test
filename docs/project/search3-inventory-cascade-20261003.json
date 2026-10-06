@@ -1,0 +1,365 @@
+{
+  "schema": 1,
+  "updated_at_utc": "2026-10-02T23:33:12.474836+00:00",
+  "status": "CURRENT_PACKAGE_PUBLISHED_ACCEPTED_GENERAL_REFACTOR_IN_PROGRESS",
+  "source": {
+    "pr": 4348,
+    "sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+    "release_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+    "tree": "fe5cfab388fb7384490d7e0f0e63692bf5b985dd",
+    "local_commit_same_tree": "179e67398c63333c8ba595213a21d399f4c78982",
+    "source_paths": 6
+  },
+  "changes": {
+    "css_declarations_removed": 351,
+    "empty_rules_removed": 80,
+    "retained_css_AST_exact": true,
+    "retained_only_witnesses": true,
+    "media_frontiers": [
+      0,
+      0.01,
+      320,
+      358.99,
+      359,
+      359.01,
+      360,
+      373.99,
+      374,
+      374.01,
+      375,
+      390,
+      430,
+      559.99,
+      560,
+      560.01,
+      599.99,
+      600,
+      600.01,
+      759.99,
+      760,
+      760.01,
+      760.99,
+      761,
+      761.01,
+      768,
+      899.99,
+      900,
+      900.01,
+      999.99,
+      1000,
+      1000.01,
+      1049.99,
+      1050,
+      1050.01,
+      1099.99,
+      1100,
+      1100.01,
+      1100.99,
+      1101,
+      1101.01,
+      1280,
+      1299.99,
+      1300,
+      1300.01
+    ],
+    "exclusions": [
+      "custom property declarations",
+      "different var/env values",
+      "changed shorthand values",
+      "shorthand footprint expansion",
+      "non-identical selector inference",
+      "non-identical nonnumeric condition coverage",
+      "fallback value guessing",
+      "selector or declaration order rewrite",
+      "new CSS owners or async CSS"
+    ],
+    "introduced_empty_line_spaces_trimmed": 14,
+    "app_exact_other_functions": 255,
+    "cold_exact_other_functions": 8,
+    "fresh_inventory_each_call": true,
+    "cross_render_cache": false,
+    "favorites_and_paused_flag_retained": true
+  },
+  "sizes": {
+    "initial": {
+      "raw_before": 749671,
+      "raw_after": 742355,
+      "compiled_before": 605992,
+      "compiled_after": 598638,
+      "compiled_delta": -7354,
+      "local_gzip_before": 161480,
+      "local_gzip_after": 160686,
+      "local_gzip_delta": -794
+    },
+    "complete": {
+      "raw_before": 787033,
+      "raw_after": 779735,
+      "compiled_before": 635787,
+      "compiled_after": 628442,
+      "compiled_delta": -7345,
+      "local_gzip_before": 172848,
+      "local_gzip_after": 172063,
+      "local_gzip_delta": -785
+    },
+    "JS_source_delta": 32,
+    "JS_compiled_delta": 16,
+    "CSS_compiled_delta": -7361,
+    "gzip_measure": "sum of independent local Node level9 streams, not measured HTTP",
+    "page_latency_claim": false
+  },
+  "work": {
+    "cases": 32,
+    "budgets": [
+      {
+        "restored": false,
+        "before": {
+          "inventories": 3,
+          "filterVisits": 3000,
+          "sortComparisons": 25599
+        },
+        "after": {
+          "inventories": 1,
+          "filterVisits": 1000,
+          "sortComparisons": 8533
+        }
+      },
+      {
+        "restored": true,
+        "before": {
+          "inventories": 3,
+          "filterVisits": 3000,
+          "sortComparisons": 25599
+        },
+        "after": {
+          "inventories": 2,
+          "filterVisits": 2000,
+          "sortComparisons": 17066
+        }
+      }
+    ],
+    "exactDOM": true,
+    "exactView": true,
+    "currentRawIdentities": true,
+    "freshLaterResults": true,
+    "repoEdits": false,
+    "supplierRequests": 0,
+    "leadRequests": 0
+  },
+  "CI": {
+    "Security": 37075599965,
+    "lead": 37075599949,
+    "build": 37075599968,
+    "focused_and_full_visual": 37075599951,
+    "all_five_exact_head_checks": "SUCCESS"
+  },
+  "source_artifact": {
+    "id": 11256626238,
+    "ZIP_sha256": "fe5dfe5bb294b1b641c51a0231afc6fa4e8d52b576060367d7596513acc345ab",
+    "payload_files_verified": 838,
+    "compiled_owners_verified": 27,
+    "local_candidate_all_compiled_bytes_exact": true
+  },
+  "visual_artifact": {
+    "id": 11256616926,
+    "ZIP_sha256": "055107b3e46c2150520d9e4faee694b0d399baec0384d16d15645b47eae5a28e",
+    "PNG_count": 146,
+    "JSON_count": 12,
+    "deterministic_receipts_exact": 11,
+    "PNG_byte_equal": 70,
+    "all_pixel_parity_claim": false,
+    "manually_inspected": {
+      "screenshots": 24,
+      "result": "PASS",
+      "families": [
+        "results",
+        "progressive-offer-filter",
+        "progressive-hotel",
+        "calendar-budget",
+        "anex-flights",
+        "application",
+        "fuel-zero",
+        "card-price"
+      ],
+      "widths": [
+        360,
+        390,
+        430,
+        768,
+        1280
+      ],
+      "observations": "Responsive forms, result cards, filtered offers, hotel and calendar dialogs, flight recovery controls, application fields and seven-digit prices remain readable with no observed clipping, overlap or overflow in the selected views."
+    }
+  },
+  "publication": {
+    "status": "PASS",
+    "publisher": {
+      "run": 37076627937,
+      "attempt": 1,
+      "trusted_main_sha": "d4ac6ee735d37bc2d24286f742abc9ce9be42e08",
+      "command_comment": 5962942732,
+      "conclusion": "success",
+      "completed_at": "2026-10-02T23:16:43Z"
+    },
+    "ready": {
+      "artifact_id": 11256418291,
+      "ZIP_sha256": "c3a6cd4eeafdb832ee9a9d39062fe627a49f08b6b3f2151052aa9f01354e907b",
+      "ZIP_path": "/workspace/scratch/a0ed96084d95/attachments/8232a224-3c9f-4dc1-9e20-3c39b2661b3d/inventory-ready-11256418291.zip",
+      "request": {
+        "archive_sha256": "8f786f33a47e19f858d1388e6935ce44b1e3c4154ce76f42e364009d77cf8e89",
+        "artifact_id": 11256626238,
+        "attempt": 1,
+        "build_run": 37075599968,
+        "deploy_run": 37076627937,
+        "file_count": 838,
+        "manifest_sha256": "4178f83850b91f07d943b862ebd0a4182f8fbbde6e29e1be7bf9772b724b3dc6",
+        "operation": "update",
+        "payload_sha256": "1158d74bf256d89c3ed98994232e274d68aef0060437d997f2769b2dcd9006ac",
+        "preview_target": "next",
+        "previous_source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+        "release_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+        "source_ZIP_sha256": "fe5dfe5bb294b1b641c51a0231afc6fa4e8d52b576060367d7596513acc345ab",
+        "source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+        "source_tree": "fe5cfab388fb7384490d7e0f0e63692bf5b985dd"
+      },
+      "safe_paths": true,
+      "TAR_members": 840,
+      "payload_files_verified": 838,
+      "changed_payload_files": [
+        "site-path-v1.php"
+      ],
+      "NEXT_transform_exact": true,
+      "archive_reconstructed_byte_for_byte": true
+    },
+    "deployment": {
+      "artifact_id": 11256323822,
+      "ZIP_sha256": "b864683cef212e1139fd0aecf27eacca74739451c765894b819d416f8b294e5a",
+      "ZIP_path": "/workspace/scratch/a0ed96084d95/attachments/e8cf7e4b-860b-4195-9478-40cc345905fd/inventory-deployment-11256323822.zip",
+      "safe_ZIP_paths": true,
+      "evidence": {
+        "LOCAL_only_data_HTTP": 403,
+        "activation": {
+          "files": 838,
+          "predecessor_retained": true,
+          "status": "activated"
+        },
+        "completion": {
+          "existing_preview_unchanged": true,
+          "previous_source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+          "production_unchanged": true,
+          "rollback_retained": true,
+          "route": "/_preview/search3-next-candidate/",
+          "source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+          "status": "published"
+        },
+        "counter": 0,
+        "derived_artifact": 11256418291,
+        "existing_preview_unchanged": true,
+        "lead_HTTP": 403,
+        "noindex": true,
+        "predecessor_retained": true,
+        "previous_source_sha": "2bc09af35eb706178f58dd984e0cd2bb2af7cebb",
+        "production_unchanged": true,
+        "real_leads": 0,
+        "release_sha": "83e5d637fbf3d4e45f13743aa50c17f2df61ef4b",
+        "route": "/_preview/search3-next-candidate/",
+        "routes_200": 9,
+        "source_artifact": 11256626238,
+        "source_sha": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+        "status": "published_update",
+        "supplier_searches": 0,
+        "visual_assets_verified": 41,
+        "visual_live_connected": true,
+        "visual_route_200": true
+      }
+    }
+  },
+  "hosted": {
+    "source": "6ddeb4a88b9c05966f0e5682bc6418752fd5bf46",
+    "publisher": 37076627937,
+    "styles": [
+      "https://anytoour.ru/_preview/search3-next-candidate/visual-search/styles.css?v=26c4ad81ce45",
+      "https://anytoour.ru/_preview/search3-next-candidate/visual-search/mobile-controls-v1.css?v=5baf1dc2cdb8"
+    ],
+    "app": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/app.js?v=f4279f196830",
+    "cardsCount": 24,
+    "firstThreeCardsTextDimensionsSpacingExact": true,
+    "allOffersTextRectAndControlsExact": true,
+    "historyReturnExact": true,
+    "filtered": "Отели и туры · Турция\n\n395 отелей · 522 варианта тура\n\nЦена за всех туристов\nуточняется при выборе\nФильтры\nСбросить\nНазвание отеля или курорт\nБюджет на всех тур",
+    "reset": "Отели и туры · Турция\n\n1047 отелей · 1453 варианта тура\n\nЦена за всех туристов\nуточняется при выборе\nФильтры\nСбросить\nНазвание отеля или курорт\nБюджет на всех т",
+    "liveFormEnabled": true,
+    "liveCards": 0,
+    "liveScripts": 17,
+    "noSupplierSearchOrLeadSubmission": true,
+    "physicalDevice": false,
+    "page_origin_errors": 0,
+    "page_origin_error_evidence": {
+      "operation": "TabDevAPI.logs on snapshot and pristineLIVE",
+      "filter": "URLs beginning https://anytoour.ru/",
+      "returned_page_origin_errors": 0,
+      "other_entries": "chrome-extension browser metadata errors only"
+    },
+    "snapshot_unconfirmed_application_honestly_blocked": true,
+    "snapshot_application_evidence": {
+      "visible_dialog": "Ваш тур в деталях",
+      "visible_region": "Доступность тура",
+      "heading": "Цена и рейсы пока не подтверждены",
+      "text": "У этого предложения на стенде нет проверки цены и рейсов. Перейти к заявке здесь нельзя.",
+      "price": "96 953 ₽",
+      "fuel": "Сбор уточняется",
+      "source": "Actual hosted DOM snapshot after Смотреть условия, before history Back"
+    }
+  },
+  "scheduler": {
+    "id": "6a936eb5226081919fb7ec372e05d2e0",
+    "title": "AnyTour NEXT Refactor",
+    "is_enabled": true,
+    "schedule": "BEGIN:VEVENT\nDTSTART:20261001T000000\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "timezone": "Europe/Kaliningrad",
+    "last_run_time": "2026-10-02T09:05:54.727834+00:00",
+    "updated_at": "2026-10-02T23:01:03.696520+00:00",
+    "first_background_run_after_resume_verified": false,
+    "prompt_unchanged": true,
+    "schedule_unchanged": true
+  },
+  "next_task": {
+    "id": "S3_NEXT_HOTEL_DETAILS_INVOCATION_INVENTORY",
+    "status": "READ_ONLY_READY_NOT_IMPLEMENTED",
+    "paths": [
+      "v2/visual-search/hotel-details-v1.js",
+      "tests/search3-visual-hotel-details-rendering.cjs",
+      "v2/visual-search/migration-manifest.json"
+    ],
+    "benefit": "Same synchronous opening computes matching/sorted offers and meal inventory twice; reuse within that invocation only. Later filters/results keep fresh computation.",
+    "evidence": "20 existing raw+served observations retain digest d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5, plus20 later-price states; actual1000-offer host direct/warm calls2->1, filter visits2000->1000, comparisons17066->8533; subsequent renders1->1.",
+    "cost": {
+      "source_delta": 75,
+      "compiled_delta": 55,
+      "local_gzip_delta": 30
+    },
+    "execution": "Read fresh release/current_task/claims; claim exact paths; implement bounded same-call optional inventory; preserve all assertions and fresh defaults. Existing rendering/lazy/newest/failure/history plus exact CI/compiled responsive checks before merge. Accumulate compatible work before one guarded NEXT publish; no replay or per-micro-change deploy.",
+    "protected": "No app.js/data.js/provider/price/fuel/lead/Metrika/prototype change; favorites current paused flag retained."
+  },
+  "state_scope": {
+    "outside_current_task_byte_equal": true,
+    "marker": "<CURRENT_TASK>",
+    "outside_current_task_sha256": "0aff0719478881a6b7238cf8b398b45222cb2113908bdb96c845af00b60e90f9"
+  },
+  "claims": {
+    "source": 5962738970,
+    "source_mirror": 5962741113,
+    "addendum": 5962752176,
+    "addendum_mirror": 5962752336,
+    "integration_publisher_state": 5962916920,
+    "integration_mirror": 5962917043,
+    "runtime_terminal": 5963032384,
+    "runtime_terminal_mirror": 5963032566,
+    "only_final_audit_state_claim_active_until_docs_merge": true
+  },
+  "unverified": [
+    "physical Safari/iPhone",
+    "actual supplier search/quote/flights",
+    "actual lead delivery"
+  ],
+  "no_second_publication": true
+}

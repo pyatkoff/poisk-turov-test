@@ -4,9 +4,21 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day}=require('./search3-visual-live-fixture.cjs');
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
+// Transport fixtures install the presentation owner; cold loading has its own probe.
+scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+// Outside-only JSDOM does not fetch script elements. Service the real third
+// cold loader with a bounded local file, keeping transport fixture calls apart.
+const coldScripts=[],append=d.head.append.bind(d.head);
+d.head.append=(...nodes)=>{
+ append(...nodes);
+ for(const node of nodes)if(node.tagName==='SCRIPT'){
+  assert.equal(new URL(node.src).pathname,'/_preview/search3-next-candidate/visual-search/flight-picker-ui-v1.js','only the declared cold flight owner is executable');coldScripts.push(node.src);
+  queueMicrotask(()=>{w.eval(source('visual-search/flight-picker-ui-v1.js'));node.onload();});
+ }
+};
 Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
 w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
 w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
@@ -21,23 +33,54 @@ for(const file of scripts){
   const canonical=w.AnyTourPrototypeData;
   w.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{quote:{value:async(...args)=>{const control=quoteControl,tour=await canonical.quote(...args);if(control){control.started=true;await control.pending;if(control.error)throw control.error;}return tour;}},verifyAndromeda:{value:(...args)=>{lastSamoOffer=args[0];return canonical.verifyAndromeda(...args);}}}));
  }
- w.eval(source(file));
+ let code=source(file);
+ if(file==='visual-search/app.js'){
+  const marker=`function offerFromKey(key){\n for(let i=0,length=hotels.length;i<length;i++){\n  if(!(i in hotels))continue;\n  const offers=hotels[i].offers||[];\n  for(let j=0,count=offers.length;j<count;j++)if(j in offers&&offers[j].key===key)return offers[j];\n }\n return null;\n}`;
+  assert.equal(code.split(marker).length,2,'one actual offer-key lookup owner');
+  code=code.replace(marker,marker+`\nwindow.__offerLookupProbe={find:offerFromKey,swap(value){const previous=hotels;hotels=value;return previous;}};`);
+ }
+ w.eval(code);
 }
+function offerLookupWork(){
+ const probe=w.__offerLookupProbe;assert(probe);delete w.__offerLookupProbe;
+ const make=()=>{
+  const work={hotelOfferReads:0,keyReads:0},offers=[];
+  const rows=Array.from({length:500},(_,i)=>{
+   const hotelOffers=Array.from({length:10},(_,j)=>{const offer={id:i+'-'+j};Object.defineProperty(offer,'key',{configurable:true,get(){work.keyReads++;return i+'-'+j;}});offers.push(offer);return offer;});
+   return Object.defineProperty({id:i},'offers',{get(){work.hotelOfferReads++;return hotelOffers;}});
+  });
+  return {work,offers,rows};
+ };
+ const previous=(rows,key)=>{const flat=rows.flatMap(h=>h.offers||[]);return {value:flat.find(o=>o.key===key)||null,flattened:flat.length};};
+ const cases=[['0-0',{hotelOfferReads:1,keyReads:1}],['250-0',{hotelOfferReads:251,keyReads:2501}],['missing',{hotelOfferReads:500,keyReads:5000}]];
+ const results=[];
+ for(const [key,expected] of cases){
+  const before=make(),old=previous(before.rows,key),after=make(),restore=probe.swap(after.rows),value=probe.find(key);probe.swap(restore);
+  assert.strictEqual(value,key==='missing'?null:after.offers.find(o=>o.id===key));assert.deepEqual(after.work,expected);
+  assert.equal(old.flattened,5000);assert.deepEqual(before.work,{hotelOfferReads:500,keyReads:expected.keyReads});
+  results.push({key,previous:{...before.work,flattened:old.flattened},current:{...after.work,flattened:0}});
+ }
+ const duplicate=make(),first=duplicate.rows[0].offers[0],second=duplicate.rows[1].offers[0];Object.defineProperty(first,'key',{value:'duplicate'});Object.defineProperty(second,'key',{value:'duplicate'});
+ const restore=probe.swap(duplicate.rows);assert.strictEqual(probe.find('duplicate'),first,'first duplicate-key offer identity is retained');probe.swap(restore);
+ return results;
+}
+const offerLookupEvidence=offerLookupWork();
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
 const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
 const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
  if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();}
- else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="choose-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ assert.equal(coldScripts.length,0,'catalogue bootstrap leaves the flight UI cold');
  // Form pickers preserve canonical values and spend no supplier searches.
  click('[data-action="departure"]');
- assert.deepEqual([...d.querySelectorAll('[data-action="choose-departure"]')].map(x=>x.dataset.value),['Москва','Екатеринбург','Казань']);
+ assert.deepEqual([...d.querySelectorAll('[data-action="choose-departure"]')].map(x=>x.dataset.value),['Москва','Казань','Екатеринбург']);
  q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
  click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
@@ -47,7 +90,29 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  const regions=w.AnyTourPrototypeData.catalog.regions['4'];
  w.AnyTourPrototypeData.catalog.regions['4']=[...regions,{id:'121',kind:'subregion',parentId:'21',country:'4',name:'Кадрие',tourvisorIds:['121']}];
  click('#search-form [data-action="destination"]');
- assert(q('.destination-region details [data-action="destination-resort"][data-value="Кадрие"]'),'subresort stays under the LOCAL region');
+ q('#destination-query').value='Кадрие';q('#destination-query').dispatchEvent(new w.Event('input',{bubbles:true}));await wait(()=>q('[data-action="destination-resort"][data-value="Кадрие"]'));
+ assert(q('[data-action="destination-resort"][data-value="Кадрие"]'),'saved LOCAL subresort is reachable through the unified direction search');click('[data-action="clear-destination-query"]');
+ const hierarchyRows=[];
+ for(let i=0;i<40;i++){
+  const suffix=String(i).padStart(2,'0');
+  hierarchyRows.push({id:'perf-'+i,kind:'region',country:'4',name:'Группа '+suffix,tourvisorIds:[]});
+  hierarchyRows.push({id:'perf-child-'+i,kind:'subregion',parentId:'perf-'+i,country:'4',name:'Курорт '+suffix,tourvisorIds:[]});
+ }
+ const previousHierarchy=hierarchyRows.filter(r=>r.kind!=='subregion').map(parent=>({
+  parent,
+  children:hierarchyRows.filter(r=>r.kind==='subregion'&&r.country===parent.country&&String(r.parentId)===String(parent.id))
+ })).filter(group=>group.parent.country==='4').sort((a,b)=>a.parent.name.localeCompare(b.parent.name,'ru'));
+ let hierarchyKindReads=0;
+ const observedHierarchy=hierarchyRows.map(row=>new Proxy(row,{get(target,key,receiver){if(key==='kind')hierarchyKindReads++;return Reflect.get(target,key,receiver);}}));
+ w.AnyTourPrototypeData.catalog.regions['4']=observedHierarchy;
+ hierarchyKindReads=0;click('[data-action="clear-destination-query"]');const firstHierarchyReads=hierarchyKindReads;click('[data-action="toggle-destination-resorts"]');
+ const renderedParents=[...d.querySelectorAll('[data-action="destination-resort"] strong')].map(el=>el.textContent);
+ assert.deepEqual(renderedParents,previousHierarchy.map(group=>group.parent.name),'approved compact direction list keeps exact saved region order');assert.equal(firstHierarchyReads,hierarchyRows.length,'one destination render classifies each region once');
+ q('#destination-query').value='Группа';q('#destination-query').dispatchEvent(new w.Event('input',{bubbles:true}));
+ const renderedHierarchy=[...d.querySelectorAll('[data-action="destination-resort"] strong')].map(el=>el.textContent);
+ assert.deepEqual(renderedHierarchy,previousHierarchy.flatMap(group=>[group.parent.name,...group.children.map(row=>row.name).sort((a,b)=>a.localeCompare(b,'ru'))]),'saved children follow their parent in matching unified direction results');
+ const previousKindReads=hierarchyRows.length+previousHierarchy.length*hierarchyRows.length;
+ console.log('PASS destination hierarchy: '+hierarchyRows.length+' rows, kind reads '+previousKindReads+' → '+firstHierarchyReads+', saved parent/child order preserved');
  click('[data-action="close-modal"]');await settle();w.AnyTourPrototypeData.catalog.regions['4']=regions;
  assert.equal(starts(),0,'city/meal/destination pickers never start suppliers');
  w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));
@@ -76,7 +141,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  w.history.back();await settle();assert(!q('#modal').open,'browser Back closes the destination picker without applying its draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('[data-action="destination-resort"][data-value="Белек"]').getAttribute('aria-pressed'),'true','browser Forward restores the un-applied resort choice');
- assert.match(q('.destination-apply-context').textContent,/Белек/,'restored destination action describes the same resort draft');
+ assert.match(q('.destination-apply-context').textContent,/Любой из выбранных курортов/,'restored destination action describes the same resort draft');
  click('[data-action="close-modal"]');await settle();
  click('#search-form [data-action="nights"]');click('[data-action="night-pick"][data-value="10"]');click('[data-action="night-pick"][data-value="12"]');
  w.history.back();await settle();assert(!q('#modal').open,'browser Back closes the nights picker without applying its draft');
@@ -86,11 +151,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert(q('[data-action="night-pick"][data-value="12"]').classList.contains('active'),'browser Forward restores the second night boundary');
  click('[data-action="close-modal"]');await settle();
  click('#search-form [data-action="guests"]');click('[data-action="adults-plus"]');click('[data-action="children-plus"]');
- const childAge=q('[data-child-age="0"]');childAge.value='8';childAge.dispatchEvent(new w.Event('change',{bubbles:true}));
+ click('[data-action="child-age"][data-index="0"]');click('[data-action="age-pick"][data-value="8"]');click('[data-action="apply-age"]');
  w.history.back();await settle();assert(!q('#modal').open,'browser Back closes the guest picker without applying its draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('[aria-label="Количество взрослых"]').textContent,'3','browser Forward restores the un-applied adult count');
- assert.equal(q('[data-child-age="0"]').value,'8','browser Forward restores the un-applied child age');
+ assert.match(q('[data-action="child-age"][data-index="0"]').textContent,/8 лет/,'browser Forward restores the un-applied child age');
  assert.equal(starts(),0,'primary picker Back/Forward never starts a supplier search');
  click('[data-action="close-modal"]');await settle();
  click('#search-form [data-action="meals"]');
@@ -107,16 +172,16 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.equal(q('#budget-min').value,'111 000','browser Forward restores the un-applied minimum budget text');
  assert.equal(q('#budget-max').value,'222 000','browser Forward restores the un-applied maximum budget text');
  click('[data-action="close-modal"]');await settle();
- click('.search-section [data-action="filters"]');const drawerDraft=q('#hotel-query');drawerDraft.value='Draft Hotel';q('#filter-panel').scrollTop=131;drawerDraft.dispatchEvent(new w.Event('input',{bubbles:true}));
- w.history.back();await settle();assert(!q('#filter-panel').classList.contains('open'),'browser Back closes the mobile filters without applying their draft');
- w.history.forward();await settle();await wait(()=>q('#filter-panel').classList.contains('open'));
- assert.equal(q('#hotel-query').value,'Draft Hotel','browser Forward restores the un-applied mobile filter draft');
- assert.equal(q('#filter-panel').scrollTop,131,'browser Forward restores the mobile filter position');
+ click('#search-form [data-action="form-filters"]');click('#modal [data-action="stars"]');click('[data-action="picker-star"][data-value="5"]');click('[data-action="apply-stars"]');q('#modal-body').scrollTop=131;
+ w.history.back();await settle();assert(!q('#modal').open,'browser Back closes form filters without applying their draft');
+ w.history.forward();await settle();await wait(()=>q('#modal').open);
+ assert.match(q('#modal-body [data-action="stars"]').textContent,/5★/,'browser Forward restores the un-applied category draft');
+ assert.equal(q('#modal-body').scrollTop,131,'browser Forward restores the form filter position');
  assert.equal(starts(),0,'filter picker Back/Forward never starts a supplier search');
- click('[data-action="close-filters"]');await settle();
+ click('[data-action="close-modal"]');await settle();
  let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
  click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));await settle();
- click('#applied-search [data-action="filters"]');
+ click('.results-toolbar [data-action="filters"]');
  const hotelEditor=q('#hotel-query');hotelEditor.focus();hotelEditor.value='Вымышленный';hotelEditor.dispatchEvent(new w.Event('input',{bubbles:true}));hotelEditor.setSelectionRange(3,8);
  releaseSamoSearch();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  assert.equal(q('#hotel-query'),hotelEditor,'late initial-source results preserve the attached filter editor');
@@ -392,7 +457,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  transport.state.failAnex=false;transport.state.wideFacets=true;
  let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
  click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('10 вариантов'));
- click('#applied-search [data-action="filters"]');
+ click('.results-toolbar [data-action="filters"]');
  const facetEditor=q('[data-facet-search="operators"]'),facetStarts=starts();
  facetEditor.closest('.filter-group').querySelector('.filter-section-toggle').click();
  facetEditor.focus();facetEditor.value='Тестовый';facetEditor.dispatchEvent(new w.Event('input',{bubbles:true}));facetEditor.setSelectionRange(3,8);
@@ -403,17 +468,17 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.match(q('[data-facet-options="operators"] .facet-search-status').textContent,/Найдено в списке: 8/);
  assert(q('[data-filter="operators"][value="FUN&SUN"]'),'late-source operator joins the current facet choices');
  click('.mobile-close[data-action="close-filters"]');await settle();
- click('#applied-search [data-action="filters"]');
+ click('.results-toolbar [data-action="filters"]');
  const reopenedFacetEditor=q('[data-facet-search="operators"]');
  reopenedFacetEditor.closest('.filter-group').querySelector('.filter-section-toggle').click();
  assert.equal(reopenedFacetEditor.value,'','cancelling the drawer discards its transient list query');
- const resizeStar=q('#filters [data-action="star"]'),resizeStarValue=resizeStar.dataset.value;resizeStar.click();
+ const resizeStar=q('#filters [data-action="star"][data-value="5"]'),resizeStarValue=resizeStar.dataset.value;resizeStar.click();
  q('#max-price').value='abc';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));await settle();
  assert.match(q('#active-filters').textContent,new RegExp(resizeStarValue+' ★'),'widening promotes valid mobile draft choices');
  assert(!q('#filter-panel').classList.contains('open'));assert.equal(q('#max-price').value,'abc');assert.equal(q('#max-price').getAttribute('aria-invalid'),'true');assert.equal(d.activeElement,q('#max-price'));
  assert.equal(d.body.style.overflow,'');assert.equal(d.querySelectorAll('[inert]').length,0,'desktop remains interactive after widening with invalid budget text');
  q('#max-price').value='';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));assert.equal(q('#max-price').getAttribute('aria-invalid'),'false');w.innerWidth=390;w.dispatchEvent(new w.Event('resize'));
- click('#applied-search [data-action="filters"]');const resizedFacetEditor=q('[data-facet-search="operators"]');resizedFacetEditor.closest('.filter-group').querySelector('.filter-section-toggle').click();
+ click('.results-toolbar [data-action="filters"]');const resizedFacetEditor=q('[data-facet-search="operators"]');resizedFacetEditor.closest('.filter-group').querySelector('.filter-section-toggle').click();
  resizedFacetEditor.value='FUN';resizedFacetEditor.dispatchEvent(new w.Event('input',{bubbles:true}));
  assert(!q('[data-filter="operators"][value="FUN&SUN"]').closest('label').hidden);
  click('[data-filter="operators"][value="FUN&SUN"]');click('#apply-filters');await settle();
@@ -433,21 +498,16 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  releaseOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  assert.equal(q('#offer-room'),roomChoice);assert.equal(d.activeElement,roomChoice);assert.equal(roomChoice.value,'STANDARD SEA VIEW');
  assert([...roomChoice.options].some(o=>o.value==='SAMO STANDARD'),'late source adds its new room option to the open list');
- assert.equal(q('#offer-count').textContent,'1 тур','the selected room filter remains applied');assert.equal(q('[data-action="offer-group"]').getAttribute('aria-expanded'),'true');
+ assert.equal(q('#offer-count').textContent,'1 тур','the selected room filter remains applied');assert.equal(d.querySelectorAll('.grouped-offer').length,1,'filtered exact offer is visible immediately');
  roomChoice.value='';roomChoice.dispatchEvent(new w.Event('change',{bubbles:true}));assert.equal(q('#offer-count').textContent,'3 тура');
- const collapsedOfferGroup=[...d.querySelectorAll('[data-action="offer-group"]')].find(button=>button.getAttribute('aria-expanded')==='false');
- assert(collapsedOfferGroup,'multiple concrete-tour groups expose a collapsed group');
- const expandedOfferGroupKey=collapsedOfferGroup.dataset.value,callsBeforeOfferGroupForward=transport.calls.length;
- collapsedOfferGroup.click();q('#modal-body').scrollTop=157;
+ const callsBeforeOfferGroupForward=transport.calls.length,visibleKeys=()=>[...d.querySelectorAll('.grouped-offer')].map(row=>row.dataset.offerKey),keysBeforeForward=visibleKeys();
+ assert.equal(d.querySelectorAll('[data-action="offer-group"]').length,0,'approved exact list does not collapse room groups');q('#modal-body').scrollTop=157;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
- const restoredOfferGroup=[...d.querySelectorAll('[data-action="offer-group"]')].find(button=>button.dataset.value===expandedOfferGroupKey);
- assert.equal(restoredOfferGroup?.getAttribute('aria-expanded'),'true','browser Forward restores the expanded concrete-tour group');
- assert.equal(q('#modal-body').scrollTop,157,'browser Forward restores the expanded concrete-tour group position');
- assert.equal(transport.calls.length,callsBeforeOfferGroupForward,'concrete-tour group Back/Forward never starts a supplier or offer request');
- const uiHistoryKey='anytour.prototype.v18.ui.v1',forgedRoute={...w.history.state[uiHistoryKey],open:['forged|group']};
+ assert.deepEqual(visibleKeys(),keysBeforeForward,'Forward restores the same visible exact offers');assert.equal(q('#modal-body').scrollTop,157);
+ assert.equal(transport.calls.length,callsBeforeOfferGroupForward,'offer-list history never starts a supplier or offer request');
+ const uiHistoryKey='anytour.prototype.v18.ui.v1',forgedRoute={...w.history.state[uiHistoryKey],open:Array.from({length:20},(_,i)=>'forged|group|'+i)};
  w.history.replaceState({...w.history.state,[uiHistoryKey]:forgedRoute},'',w.location.href);w.history.back();await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
- assert([...d.querySelectorAll('[data-action="offer-group"]')].every(button=>button.getAttribute('aria-expanded')==='false'),'unknown history group keys are ignored');
- assert.equal(transport.calls.length,callsBeforeOfferGroupForward,'invalid group history never starts a supplier or offer request');
+ assert.deepEqual(visibleKeys(),keysBeforeForward,'unknown group history leaves exact offers unchanged');assert.equal(transport.calls.length,callsBeforeOfferGroupForward);
  click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');assert.match(q('#modal-body').textContent,/SAMO STANDARD/);
  assert.equal(starts(),beforeOfferSearch+1,'late list updates and choosing its offer do not start another search');
  click('[data-action="close-modal"]');await settle();
@@ -510,21 +570,20 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  // Browser Back/Forward must retain how many concrete offers the user revealed.
  click('[data-action="all-offers"][data-id="501"]');
  const deepGroupMore=q('[data-action="group-more"]');assert(deepGroupMore,'a nine-offer group exposes the bounded show-more action');
- const deepGroupKey=deepGroupMore.dataset.value,deepGroupBody=()=>d.getElementById('group-'+deepGroupKey);
- q(`[data-action="offer-group"][data-value="${deepGroupKey}"]`).click();
- assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,4);
- deepGroupBody().querySelector('[data-action="group-more"]').click();assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,9);
+ const deepGroupKey=deepGroupMore.dataset.value,[deepRoomValue,deepMealValue]=decodeURIComponent(deepGroupKey).split('|');const deepRoom=q('#offer-room');deepRoom.value=deepRoomValue;deepRoom.dispatchEvent(new w.Event('change',{bubbles:true}));const deepMeal=q('#offer-meal');deepMeal.value=deepMealValue;deepMeal.dispatchEvent(new w.Event('change',{bubbles:true}));const deepGroupBody=()=>q('#all-offers-list');const deepRows=()=>[...deepGroupBody().querySelectorAll('.grouped-offer')];
+ assert.equal(deepRows().length,4);
+ deepGroupBody().querySelector('[data-action="group-more"]').click();assert.equal(deepRows().length,9);
  assert(!deepGroupBody().querySelector('[data-action="group-more"]'));
  const callsBeforeOfferDepthForward=transport.calls.length;q('#modal-body').scrollTop=143;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
- assert.equal(q(`[data-action="offer-group"][data-value="${deepGroupKey}"]`)?.getAttribute('aria-expanded'),'true');
- assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,9,'browser Forward restores all concrete offers already revealed by the user');
+ assert.equal(d.querySelectorAll('[data-action="offer-group"]').length,0);
+ assert.equal(deepRows().length,9,'browser Forward restores all concrete offers already revealed by the user');
  assert(!deepGroupBody().querySelector('[data-action="group-more"]'),'restored offer depth does not bring the consumed show-more action back');
  assert.equal(q('#modal-body').scrollTop,143);assert.equal(transport.calls.length,callsBeforeOfferDepthForward);
  const depthRouteKey='anytour.prototype.v18.ui.v1',depthRoute=w.history.state[depthRouteKey];
  w.history.replaceState({...w.history.state,[depthRouteKey]:{...depthRoute,limits:{[deepGroupKey]:9999,'forged-group':12}}},'',w.location.href);
  w.history.back();await settle();w.history.forward();await settle();await wait(()=>q('#all-offers-list'));
- assert.equal(deepGroupBody().querySelectorAll('.grouped-offer').length,4,'oversized and unknown history limits fall back to the initial bounded offer depth');
+ assert.equal(deepRows().length,4,'oversized and unknown history limits fall back to the initial bounded offer depth');
  assert.equal(transport.calls.length,callsBeforeOfferDepthForward,'restoring concrete-offer depth never starts a supplier or offer request');
  click('[data-action="close-modal"]');await settle();
  // A late cheaper offer can move the exact returning choice into the nested list.
@@ -546,6 +605,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('[data-action="close-modal"]');await settle();transport.state.samoRoom='SAMO STANDARD';
  const url=w.location.href;w.history.replaceState(null,'','/poisk-turov/');assert.equal(w.Search3CanonicalProfilesV1.create(()=>{}),null,'production consumer stays denied');w.history.replaceState(null,'',url);
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
+ console.log('PASS offer-key lookup work '+JSON.stringify(offerLookupEvidence));
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
  dom.window.close();
 })().catch(e=>{console.error(e);console.error(transport.calls.slice(-8));dom.window.close();process.exitCode=1;});
