@@ -34,6 +34,13 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
  }finally{await amount.evaluate((el,text)=>{el.textContent=text;},original);await card.locator('.hotel-price').evaluate((el,wide)=>el.classList.toggle('price-wide',wide),wasWide);await page.setViewportSize({width,height:900});}
  assert.equal(await amount.textContent(),original,'layout stress restores the fictional fixture price');
 };
+const openResultFilters=async(page,width)=>{
+ if(width<=1100){await page.locator('[data-action="filters"]:visible').first().click();return;}
+ const panel=page.locator('#filter-panel');
+ assert(await panel.isVisible(),'desktop result filters are already visible in the sidebar');
+ assert.equal(await page.locator('[data-action="filters"]:visible').count(),0,'desktop sidebar needs no duplicate drawer trigger');
+ await panel.scrollIntoViewIfNeeded();
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -231,7 +238,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
   let releaseSamoSearch;transport.state.samoSearchGate=new Promise(resolve=>releaseSamoSearch=resolve);
   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
-  await page.locator('[data-action="filters"]:visible').first().click();
+  await openResultFilters(page,width);
   const filterEditor=page.locator(width<=1100?'#max-price':'#hotel-query'),filterText=width<=1100?'180000':'Вымышленный',filterSuffix=width<=1100?'0':' отель',selectionEnd=width<=1100?5:8;
   if(width<=1100){assert.equal(await page.locator('#hotel-query').isVisible(),false,'approved mobile destination stays in the unified Куда picker');assert.match(await page.locator('.filter-destination-note').textContent(),/Курорты и отели/);}
   await filterEditor.fill(filterText);await filterEditor.evaluate((el,end)=>{el.setSelectionRange(3,end);window.activeFilterEditor=el;},selectionEnd);
@@ -512,7 +519,7 @@ const server=http.createServer((req,res)=>{
   let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
   await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('10 вариантов'));
-  await page.locator('[data-action="filters"]:visible').first().click();
+  await openResultFilters(page,width);
   if(width<=1100){await page.locator('.filter-operator-group>.filter-section-toggle').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Туроператор');assert.equal(await page.locator('#filter-detail-back').evaluate(el=>document.activeElement===el),true);assert.equal(await page.locator('#apply-filters').isVisible(),false,'operator choices return to the complete filter draft before application');}
   const facetEditor=page.locator('[data-facet-search="operators"]'),facetStarts=transport.calls.filter(c=>c.action==='search_start').length;
   await facetEditor.fill('Тестовый');await facetEditor.evaluate(el=>{el.setSelectionRange(3,8);window.activeFacetEditor=el;});
@@ -524,7 +531,7 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('[data-facet-options="operators"] .facet-search-status').textContent(),/Найдено в списке: 8/);
   await page.screenshot({path:path.join(evidence,`progressive-facet-${width}.png`)});
   if(width<=1100){
-   await page.locator('.mobile-close[data-action="close-filters"]').click();await page.locator('[data-action="filters"]:visible').first().click();
+   await page.locator('.mobile-close[data-action="close-filters"]').click();await openResultFilters(page,width);
    await page.locator('.filter-operator-group>.filter-section-toggle').click();
    assert.equal(await facetEditor.inputValue(),'','cancelling the drawer discards its transient list query');
    await page.locator('#filter-detail-back').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Фильтры');assert.equal(await page.locator('.filter-operator-group>.filter-section-toggle').evaluate(el=>document.activeElement===el),true);
@@ -534,7 +541,7 @@ const server=http.createServer((req,res)=>{
    assert.match(await page.locator('#active-filters').textContent(),new RegExp(resizeStarValue+' ★'),'widening promotes valid mobile draft choices');
    assert.equal(await page.locator('#filter-panel').evaluate(el=>el.classList.contains('open')),false);assert.equal(await page.locator('#max-price').inputValue(),'abc');assert.equal(await page.locator('#max-price').getAttribute('aria-invalid'),'true');
    assert.equal(await page.locator('[inert]').count(),0);assert.equal(await page.evaluate(()=>document.body.style.overflow),'');assert.equal(await page.locator('#max-price').evaluate(el=>document.activeElement===el),true);
-   await page.locator('#max-price').fill('');await page.setViewportSize({width,height:900});await page.locator('[data-action="filters"]:visible').first().click();
+   await page.locator('#max-price').fill('');await page.setViewportSize({width,height:900});await openResultFilters(page,width);
    await page.locator('.filter-operator-group>.filter-section-toggle').click();
   }
   await facetEditor.fill('FUN');await page.locator('[data-filter="operators"][value="FUN&SUN"]').check();
@@ -544,7 +551,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
-  await page.locator('[data-action="filters"]:visible').first().click();
+  await openResultFilters(page,width);
   const visibleReset=page.locator('#filter-panel [data-action="reset"]:visible');assert.equal(await visibleReset.count(),1,'one reset action is visible in the approved mobile/desktop filter layout');await visibleReset.click();
   if(width<=1100)await page.locator('#apply-filters').click();
   Object.assign(transport.state,{failAnex:false,samoFailure:null,samoFlightChoice:false,wideFacets:false});
