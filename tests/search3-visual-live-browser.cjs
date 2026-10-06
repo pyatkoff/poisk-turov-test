@@ -189,7 +189,7 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`destination-compact-${width}.png`)});
   await page.locator('[data-action="destination-countries"]').click();assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),11,'all saved countries are reachable');
   await page.locator('[data-action="destination-country"][data-value="107"]').click();
-  assert.match(await page.locator('.destination-current-country').textContent(),/Австрия/,'country choice updates the draft context');
+  assert.match(await page.locator('.destination-current-country').textContent(),/Россия/,'country choice updates the draft context');
   await page.locator('#destination-query').fill('сауд');
   assert.equal(await page.locator('[data-action="destination-country"]:visible').count(),1,'unified search includes all saved countries');
   assert.match(await page.locator('[data-action="destination-country"]:visible').textContent(),/Саудовская Аравия/);

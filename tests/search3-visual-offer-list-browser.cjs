@@ -10,7 +10,7 @@ const server=http.createServer((req,res)=>{
  const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
  if(file.endsWith('.php')){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]="mixed"; include $argv[1];',file]));return;}
- res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'application/octet-stream');res.end(fs.readFileSync(file));
+ res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(fs.readFileSync(file));
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
@@ -56,10 +56,10 @@ const server=http.createServer((req,res)=>{
    assert.equal(await page.locator('[data-action="offer-group"]').count(),0,'approved exact offers appear without room disclosures');await shot('offers');
    const list=page.locator('#all-offers-list'),more=page.locator('[data-action="group-more"]').first();assert(await more.count(),'controlled pagination demo exposes a bounded page');
    const before=await list.locator('.grouped-offer').count();
-   await list.evaluate(body=>{const rows=body.querySelectorAll('.grouped-offer');window.__cleanRow=rows[0];window.__dirtyRow=rows[1];rows[1].setAttribute('data-external-dirty','1');rows[1].querySelector('strong').textContent='DIRTY';});
+   await list.evaluate(body=>{const rows=body.querySelectorAll('.grouped-offer');window.__shownKeys=[...rows].map(row=>row.dataset.offerKey);window.__cleanRow=rows[0];window.__dirtyRow=rows[1];rows[1].setAttribute('data-external-dirty','1');rows[1].querySelector('strong').textContent='DIRTY';});
    await more.click();await page.waitForFunction(before=>document.querySelectorAll('#all-offers-list .grouped-offer').length>before,before);
-   const pagination=await list.evaluate((body,before)=>{const rows=body.querySelectorAll('.grouped-offer'),active=document.activeElement;return {before,after:rows.length,cleanRetained:rows[0]===window.__cleanRow,dirtyReplaced:rows[1]!==window.__dirtyRow,dirtyRestored:!rows[1].hasAttribute('data-external-dirty')&&!rows[1].textContent.includes('DIRTY'),focusedNew:active?.dataset.action==='offer'&&active.closest('.grouped-offer')===rows[before]};},before);
-   assert(pagination.after>before&&pagination.after<=before+8);assert.equal(pagination.cleanRetained,true);assert.equal(pagination.dirtyReplaced,true);assert.equal(pagination.dirtyRestored,true);assert.equal(pagination.focusedNew,true);
+   const pagination=await list.evaluate((body,before)=>{const rows=body.querySelectorAll('.grouped-offer'),active=document.activeElement;return {before,after:rows.length,cleanRetained:rows[0]===window.__cleanRow,dirtyReplaced:rows[1]!==window.__dirtyRow,dirtyRestored:!rows[1].hasAttribute('data-external-dirty')&&!rows[1].textContent.includes('DIRTY'),focusedNew:active?.dataset.action==='offer'&&!window.__shownKeys.includes(active.closest('.grouped-offer')?.dataset.offerKey)};},before);
+   assert(pagination.after>before&&pagination.after<=before+8);assert.equal(pagination.cleanRetained,true);assert.equal(pagination.dirtyReplaced,true);assert.equal(pagination.dirtyRestored,true);assert.equal(pagination.focusedNew,true,'show-more focuses a newly revealed exact offer');
    if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    const room=page.locator('#offer-room'),choices=await room.locator('option').count();assert(choices>=3);const selected=await room.locator('option').nth(1).getAttribute('value');await room.selectOption(selected);assert(await list.locator('.grouped-offer').count()>0);
    await page.evaluate(()=>window.__ownerInventories=0);await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);await page.waitForTimeout(150);await page.goForward();await room.waitFor();assert.equal(await room.inputValue(),selected);assert.equal(await page.evaluate(()=>window.__ownerInventories),0,'warm Forward uses the validated history inventory');assert.equal(requests,2);
