@@ -101,9 +101,10 @@ async function run(){
     await page.locator('[data-action="confirm-tour"]').click();await application('tourvisor-application');
     await page.locator('[data-action="close-modal"]').click();
     await choose('anex');await page.locator('[data-action="refresh-hotel"]').click();
-    const concrete=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
-    await concrete.waitFor({state:'visible'});
-    await concrete.click();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
+    await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Ваш тур в деталях'&&document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
+    assert.equal(await page.locator('#all-offers-list').count(),0,'single expanded ANEX offer opens directly');
+    assert.equal(transport.calls.filter(c=>c.action==='offer').length,0,'direct entry retains explicit concrete verification');
+    await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-additional-prices"]').click();
     await page.locator('[data-action="anex-application-preview"]').click();await application('anex-application');
     assert.match(await page.locator('.lead-message').textContent(),/Расчётная сумма.*требует подтверждения/);
     assert((await page.locator('.lead-message').textContent()).replace(/\s/g,'').includes(String(anexEstimate)),'evidenced zero surcharge keeps the search amount and permits preview application');
@@ -127,3 +128,4 @@ async function run(){
 }
 module.exports=run;
 if(require.main===module)run().catch(e=>{console.error(e);process.exitCode=1;});
+
