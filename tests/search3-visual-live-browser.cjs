@@ -41,10 +41,17 @@ const openResultFilters=async(page,width)=>{
  assert.equal(await page.locator('[data-action="filters"]:visible').count(),0,'desktop sidebar needs no duplicate drawer trigger');
  await panel.scrollIntoViewIfNeeded();
 };
+const editResultSearch=async(page,width)=>{
+ // Closing a modal restores browser history and page scroll on later frames.
+ // Use the persistent layout control after the passive return has finished.
+ await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+ await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
+ assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
- await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
+ await editResultSearch(page,width);
  await page.locator('#quick-stars [data-value="5"]').click();
  assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'true','approved form displays selected stars');
  await page.locator('#quick-meal').click();
@@ -258,7 +265,7 @@ const server=http.createServer((req,res)=>{
   await mobileCardPriceLayout(page,width,evidence);
   await appliedSummaryControls(page,width,transport,evidence);
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();
+  await editResultSearch(page,width);transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();
   await page.locator('#catalog-error [data-action="retry-countries"]').waitFor();assert(await page.locator('.search-submit').isDisabled());
   await page.screenshot({path:path.join(evidence,`departure-error-${width}.png`)});
   await page.locator('[data-action="destination"]').click();assert(await page.locator('[data-action="apply-destination"]').isDisabled());await page.locator('[data-action="close-modal"]').click();
@@ -457,7 +464,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   // Actual user order: expanding ANEX must leave another source's visible offer usable.
   await page.locator('[data-action="close-modal"]').click();
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('3 варианта'));
   const beforeCrossSource=transport.calls.length;
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
@@ -477,7 +484,7 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="close-modal"]').click();
    transport.state.samoFailure='supplier_auth';transport.state.samoFlightChoice=flightChoice;
    transport.state.tvFlightFuel=flightChoice?{value:'0'}:width===390?' \t ':width===768?{value:null}:false;
-   await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+   await editResultSearch(page,width);await page.locator('.search-submit').click();
    await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('3 варианта'));
    await page.locator('[data-action="all-offers"][data-id="501"]').first().click();
    {
@@ -517,7 +524,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(failures.length,2);assert(failures.every(f=>f.httpStatus===502&&f.failureCategory==='supplier_auth'));
   await page.locator('[data-action="close-modal"]').click();transport.state.wideFacets=true;
   let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('10 вариантов'));
   await openResultFilters(page,width);
   if(width<=1100){await page.locator('.filter-operator-group>.filter-section-toggle').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Туроператор');assert.equal(await page.locator('#filter-detail-back').evaluate(el=>document.activeElement===el),true);assert.equal(await page.locator('#apply-filters').isVisible(),false,'operator choices return to the complete filter draft before application');}
@@ -548,7 +555,7 @@ const server=http.createServer((req,res)=>{
   if(width<=1100){await page.locator('#filter-detail-back').click();await page.locator('#apply-filters').click();}
   assert.match(await page.locator('#results-summary').textContent(),/1 вариант/);
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts,'facet editing never starts another search');
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('1 вариант'));
   assert.equal(await facetEditor.inputValue(),'');assert.equal(transport.calls.filter(c=>c.action==='search_start').length,facetStarts+1);
   await openResultFilters(page,width);
@@ -557,7 +564,7 @@ const server=http.createServer((req,res)=>{
   Object.assign(transport.state,{failAnex:false,samoFailure:null,samoFlightChoice:false,wideFacets:false});
   let releaseOfferSource;transport.state.samoSearchGate=new Promise(resolve=>releaseOfferSource=resolve);
   const beforeOfferSearch=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();assert.equal(await page.locator('#offer-count').textContent(),'2 тура');
   if(await page.locator('.offer-filter-disclosure:not([open])').count())await page.locator('.offer-filter-disclosure>summary').click();
@@ -579,7 +586,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();
   transport.state.samoMeal='BB';let releaseHotelSource;transport.state.samoSearchGate=new Promise(resolve=>releaseHotelSource=resolve);
   const beforeHotelSearch=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   assert.equal(await page.locator('#hotel-room-count').textContent(),'Номера: 2 · Туры: 2');
@@ -603,7 +610,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();
   transport.state.samoMeal='BB';let releaseHotelBackSource;transport.state.samoSearchGate=new Promise(resolve=>releaseHotelBackSource=resolve);
   const beforeHotelBackSearch=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const backRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await backRoom.locator(':scope>summary').click();
@@ -621,7 +628,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeHotelBackSearch+1);
   await page.locator('[data-action="close-modal"]').click();transport.state.wideFacets=true;
   const beforeMoreBackSearch=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const manyRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await manyRoom.locator(':scope>summary').click();
@@ -648,7 +655,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="close-modal"]').click();transport.state.samoMeal='AI';transport.state.samoRoom='STANDARD SEA VIEW';
   let releaseMovedOfferSource;transport.state.samoSearchGate=new Promise(resolve=>releaseMovedOfferSource=resolve);
   const beforeMovedOfferSearch=transport.calls.filter(c=>c.action==='search_start').length;
-  await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('.search-submit').click();
+  await editResultSearch(page,width);await page.locator('.search-submit').click();
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('10 вариантов'));
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const movingRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await movingRoom.locator(':scope>summary').click();
