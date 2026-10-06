@@ -11,7 +11,8 @@ async function run(width,monthRange=null){
  const vc=new VirtualConsole();vc.on('jsdomError',error=>errors.push(error.message));
  const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://site.test/?scenario=snapshot&searched=1'+(monthRange?'&from='+monthRange[0]+'&to='+monthRange[1]:''),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
  const w=dom.window,d=w.document;
- w.CSS||={escape:require('css.escape')};
+ // Use the same quoted-selector shim as the existing saved/live DOM harnesses.
+ w.CSS||={escape:value=>String(value).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
  w.IntersectionObserver=class{constructor(callback){this.callback=callback;}observe(target){if(target.classList.contains('calendar-month'))queueMicrotask(()=>this.callback([{target,isIntersecting:true}]));}disconnect(){}unobserve(){}};w.innerWidth=width;w.structuredClone=structuredClone;w.scrollTo=()=>{};w.scrollY=0;
  w.HTMLElement.prototype.scrollIntoView=function(){};
  w.matchMedia=query=>({matches:/max-width/.test(query)?width<=Number(query.match(/\d+/)?.[0]||0):/min-width/.test(query)?width>=Number(query.match(/\d+/)?.[0]||0):false,addEventListener(){},removeEventListener(){}});
