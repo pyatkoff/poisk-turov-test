@@ -1,0 +1,36 @@
+name: MATCH passive Oct4 frontier readonly v1
+
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py'
+      - 'scripts/diagnostics/fixtures/hotel_match_passive_oct4_frontier_readonly_v1.json'
+      - 'tests/hotel_match_passive_oct4_frontier_readonly_v1_test.py'
+      - '.github/workflows/hotel-match-passive-oct4-frontier-readonly-v1.yml'
+      - 'app/integrations/andromeda-hotel-observations.php'
+      - 'v2/data/db-v1.php'
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    env:
+      MATCH_REQUIRE_REAL_PHP: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile reader
+        run: python3 -m py_compile scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py
+      - name: Require real PHP and PDO SQLite
+        run: |
+          php -v
+          php -r 'if (!in_array("sqlite", PDO::getAvailableDrivers(), true)) { fwrite(STDERR, "mandatory PDO SQLite missing\n"); exit(1); }'
+      - name: Exact source CLI and readonly transaction tests
+        run: python3 tests/hotel_match_passive_oct4_frontier_readonly_v1_test.py
+      - name: Offline immutable scope self test
+        run: python3 scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py --self-test
+      - name: No supplier or Python DB client imports
+        run: |
+          ! grep -E 'import (requests|socket|pymysql)|from (requests|socket|pymysql)' scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py
