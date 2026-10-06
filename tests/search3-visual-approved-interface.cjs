@@ -37,6 +37,12 @@ async function run(width,monthRange=null){
   assert.deepEqual(errors,[]);dom.window.close();return {width,from,to,label,status:'PASS',local_fetches:reads,provider_requests:0};
  }
  assert.match($('#results-summary').textContent,/1047/);
+ if(width<=1100){
+  action('filters','.results-toolbar');$('#filter-panel').scrollTop=42;click('.filter-operator-group>.filter-section-toggle');
+  assert.equal($('.filter-top h3').textContent,'Туроператор');assert.equal($('#filter-panel').classList.contains('filter-detail-open'),true);assert.equal($('#filter-panel').scrollTop,0);assert.equal(d.activeElement,$('#filter-detail-back'));
+  click('#filter-detail-back');assert.equal($('.filter-top h3').textContent,'Фильтры');assert.equal($('#filter-panel').classList.contains('filter-detail-open'),false);assert.equal($('#filter-panel').scrollTop,42);assert.equal(d.activeElement,$('.filter-operator-group>.filter-section-toggle'));
+  action('close-filters','#filter-panel');await pause();assert.equal($('#filter-panel').classList.contains('open'),false);
+ }
  // Approved results header retains the search range while one departure is selected.
  assert.equal($('#compact-search').hidden,width<=760?false:$('#search').getBoundingClientRect().bottom>88);
  assert.equal(d.body.classList.contains('mobile-results'),width<=760);

@@ -35,9 +35,10 @@ function syncFilterSections(){
  const summary=$('.filter-operator-context');if(summary)summary.textContent=f.operators.length?`Выбрано: ${f.operators.length}. Вернитесь в фильтры, чтобы применить все условия.`:'Можно выбрать несколько. Условия применятся вместе с остальными фильтрами.';
 }
 function setFilterSectionOpen(group,open){
- if(!group?.dataset.filterSection)return;
+ if(!group?.dataset.filterSection||!group.querySelector('.filter-section-toggle'))return;
  const key=group.dataset.filterSection;if(open)expandedFilterSections.add(key);else expandedFilterSections.delete(key);
  group.classList.toggle('section-open',open);group.querySelector('.filter-section-toggle').setAttribute('aria-expanded',String(open));
+ if(key==='Туроператор'&&getFilterDraft()&&getViewportWidth()<=1100){const panel=$('#filter-panel');if(open)panel.dataset.overviewScroll=String(panel.scrollTop);syncFilterSections();panel.scrollTop=open?0:Number(panel.dataset.overviewScroll)||0;(open?$('#filter-detail-back'):group.querySelector('.filter-section-toggle')).focus({preventScroll:true});}
 }
 function compareMealLabels(a,b){
  const order=['Всё включено','Ультра всё включено','Завтраки','Полупансион','Полный пансион','Без питания'],rank=label=>order.includes(label)?order.indexOf(label):100;
