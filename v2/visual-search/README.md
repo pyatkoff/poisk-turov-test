@@ -1,5 +1,15 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Customer journey block — 2026-10-07
+
+The primary current concrete ANEX action goes through the existing exact-context verification directly into package flight/price calculation. It skips the context-only screen; the existing no-flight/APD estimate path stays secondary. The same single-pair/four-stage authority and retained outcomes apply.
+
+Tourvisor's flight picker now applies its authoritative pair total and opens the existing application in one action. Back retains the selected pair and price. A SAMO response with exactly one flight per direction continues the existing pair operation only after an explicit customer verification; passive reopen/Forward and late inventory do not authorize this continuation. Multiple choices retain explicit confirmation.
+
+SAMO and ANEX confirmed-price screens reuse the current tour composition with exact room/meal/party, full returned total and listing-to-confirmed change. Their applications reuse the current responsive review/contact composition and receipt-based lead binding. Estimates remain labelled, missing transport facts remain unknown, contacts/consent/expiry/no-replay are unchanged. No supplier contract, money/fuel formula, lead transport or production change.
+
+Required coverage: direct and legacy ANEX paths; sole SAMO success/failure/duplicates/late inventory/late price; direct TV application and Back; source guards and compiled 390/768/1280 journey screenshots. Controlled fixtures do not certify physical iPhone/Safari or live supplier availability.
+
 ## Approved cumulative interface transfer — 2026-10-06
 
 This candidate adapts the entire accepted Sites100/package34/v154 interface through the current NEXT owners. Base: `b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f`. Donor source: `05051662c25cf8258991475e2e7536a12f7248d4`; documentary contract: Sites102 `a33878d9798e6f7c1a4ff0a3f245f27254580a27`, `qa/closing34/TRANSFER.md`. Existing PR4164 replaces its superseded Site14/O8 patch with implementation. This entry is a candidate, not a new publication receipt.

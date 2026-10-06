@@ -71,7 +71,7 @@ async function expansionEntryScenario(count,late=false){
   assert.deepEqual(errors,[]);
  }finally{releaseExpansion?.();await settle();dom.window.close();}
 }
-async function solePackagePriceScenario(mode){
+async function solePackagePriceScenario(mode,direct=false){
  const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
  transport.state.anexPackageChoiceCount=1;transport.state.anexCurrentAdditional=true;transport.state.anexQuoteFailure=mode==='failed';
  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
@@ -97,7 +97,7 @@ async function solePackagePriceScenario(mode){
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');
   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
   reopen();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
-  click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));click('[data-action="anex-package-quote"]');
+  if(direct){click('[data-action="select-anex-tour"]');assert.equal(q('[data-action="anex-package-quote"]'),null,'primary path skips context-only screen');}else{click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));click('[data-action="anex-package-quote"]');}
   if(mode==='late-start'){
    await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();reopen();
    releaseStart();await wait(()=>q('[name="anex-package-choice"]'));
@@ -128,7 +128,7 @@ async function solePackagePriceScenario(mode){
    click('[data-action="close-modal"]');await settle();reopen();assert.equal(count('quote_calculate'),1,'failure stays consumed on reopen');
   }else{
    await wait(()=>q('[data-action="anex-application-preview"]'));
-   assert.match(q('.verification-tour').textContent.replace(/\s/g,''),/135678,9/);
+   assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/);
    const before=transport.calls.length;click('[data-action="anex-application-preview"]');assert(q('#prototype-lead-form'));
    assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 1 OUT/);assert.equal(transport.calls.length,before);
    assert.equal(q('#modal-body [name="consent"]').checked,false);
@@ -136,8 +136,68 @@ async function solePackagePriceScenario(mode){
   assert.equal(count('quote_start'),1);assert.equal(count('quote_calculate'),1);assert.deepEqual(errors,[]);
  }finally{releaseStart?.();releaseCalc?.();await settle();dom.window.close();}
 }
+async function soleSamoPriceScenario(mode){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ transport.state.samoFlightChoice=true;transport.state.samoFailure=mode==='failed'?'supplier_auth':null;
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ let releaseStart,releaseCalc;
+ w.fetch=async(url,options={})=>{
+  const value=await transport.json(url,options),action=options.body&&JSON.parse(options.body).action;
+  if(String(url).includes('api-andromeda-quote')&&action==='quote'&&mode==='late-start')await new Promise(resolve=>releaseStart=resolve);
+  if(action==='quote_select_flights')await new Promise(resolve=>releaseCalc=resolve);
+  return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});
+ };
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
+ const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Sole SAMO price timeout: '+d.body.textContent.slice(-1500));};
+ const count=action=>transport.calls.filter(c=>c.action===action&&c.url.includes('api-andromeda-quote')).length;
+ const reopen=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="andromeda%3A"]');};
+ try{
+  for(const file of scripts)w.eval(source(file));
+  await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  reopen();click('[data-action="refresh-hotel"]');
+  if(mode==='late-start'){
+   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();reopen();releaseStart();
+   await wait(()=>q('[data-action="apply-andromeda-flights"]'));
+   assert.equal(count('quote_select_flights'),0,'passive reopen never calculates a newly received sole pair');
+   click('[data-action="apply-andromeda-flights"]');
+  }
+  await wait(()=>releaseCalc);
+  assert.equal(count('quote'),1);assert.equal(count('quote_select_flights'),1,'one explicit verification confirms the sole pair once');
+  const request=transport.calls.find(c=>c.action==='quote_select_flights').body;
+  assert.equal(request.flight_selection.outbound_ref,'flight_'+'1'.repeat(32));assert.equal(request.flight_selection.return_ref,'flight_'+'2'.repeat(32));
+  assert(q('[data-action="apply-andromeda-flights"]').disabled);assert(q('[name="andromeda-outbound"]').disabled);
+  assert.match(q('#andromeda-flight-price-status').textContent,/Уточняем полную цену/);assert.equal(q('#prototype-lead-form'),null);
+  click('[data-action="apply-andromeda-flights"]');assert.equal(count('quote_select_flights'),1);
+  if(mode==='late-calc'){
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+   const body=q('#modal-body').innerHTML;releaseCalc();await settle();assert.equal(q('#modal-body').innerHTML,body,'late total cannot replace another selected tour');
+   click('[data-action="close-modal"]');await settle();reopen();
+  }else releaseCalc();
+  if(mode==='failed'){
+   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   assert.equal(q('[data-action="andromeda-application-preview"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
+   click('[data-action="close-modal"]');await settle();reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
+  }else{
+   await wait(()=>q('[data-action="andromeda-application-preview"]'));
+   assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/125500/);assert(q('.chosen-stay'));
+   assert.match(q('.quote-price-change').textContent.replace(/\s/g,''),/119000.*125500/,'listing versus exact verified total is visible');
+   const before=transport.calls.length;click('[data-action="andromeda-application-preview"]');assert(q('#prototype-lead-form'));assert(q('.application-layout'));
+   assert.match(q('.application-choice').textContent,/SAMO STANDARD/);assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/125500/);
+   assert.equal(q('[name="consent"]').checked,false);click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back retains the confirmed receipt');
+  }
+  assert.equal(count('quote'),1);assert.equal(count('quote_select_flights'),1);assert.deepEqual(errors,[]);
+ }finally{releaseStart?.();releaseCalc?.();await settle();dom.window.close();}
+}
 (async()=>{
- for(const mode of ['verified','failed','late-start','late-calc'])await solePackagePriceScenario(mode);
+ for(const mode of ['verified','failed','late-start','late-calc'])await soleSamoPriceScenario(mode);
+ console.log('VISUAL_SAMO_SOLE_PAIR_JOURNEY_OK verified/failure/late inventory/late total/duplicate/application Back; supplier HTTP 0');
+ for(const mode of ['verified','failed','late-start','late-calc']){await solePackagePriceScenario(mode);await solePackagePriceScenario(mode,true);}
  console.log('VISUAL_ANEX_SOLE_PAIR_PRICE_OK verified/failed/late inventory/late price/history/duplicate; supplier calls 0');
  for(const count of [0,1,2])await expansionEntryScenario(count);
  await expansionEntryScenario(1,true);

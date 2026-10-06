@@ -70,8 +70,8 @@ const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}thro
 const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
- if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();}
- else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();}
+ if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
@@ -290,6 +290,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#modal-body').textContent,/STANDARD SEA VIEW/);
  click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();
+ assert(q('#prototype-lead-form'),'chosen flight proceeds directly to application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();
  assert(q('#prototype-lead-form'),'canonical TV lead form connected');
  assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт','a selected flight keeps the normal step label');
@@ -400,11 +401,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.match(q('#anex-flight-inventory').textContent,/не выбранные рейсы/);assert.match(q('#anex-flight-inventory').textContent,/Расписание уточняется/);
  assert.equal(transport.calls.filter(c=>c.action==='flights'&&c.url.includes('anex')).length,1);
  const anexCallsBefore=transport.calls.length;click('[data-action="anex-application-preview"]');await settle();
- assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/Расчётная сумма/);assert.match(q('#modal-body').textContent,/Итоговая стоимость требует подтверждения/);
+ assert(q('#prototype-lead-form'));assert.match(q('#modal-footer').textContent,/Расчётная стоимость/);assert.match(q('#modal-body').textContent,/Расчётная стоимость требует подтверждения оператором/);
  q('[name="phone"]').value='+7 999 123-45-67';q('[name="phone"]').dispatchEvent(new w.Event('input',{bubbles:true}));q('[name="consent"]').checked=true;
  q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();assert.equal(q('#prototype-lead-form').dataset.checked,'1');
  assert.match(q('.lead-message').textContent,/Расчётная сумма/);assert.match(q('.lead-message').textContent,/требует подтверждения/);assert.equal(transport.calls.length,anexCallsBefore,'ANEX application preview adds no provider request');
- click('#modal-footer [data-action="all-offers"]');await settle();
+ if(q('#prototype-lead-form'))click('#modal-back');click('#modal-footer [data-action="all-offers"]');await settle();
  assert(q('[data-action="offer"][data-key^="anex%3A"]'),'ANEX application returns to this hotel’s offer list');
  const callsBeforeAnexReturn=transport.calls.length;click('[data-action="offer"][data-key^="anex%3A"]');await settle();
  assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/123000/);
@@ -412,7 +413,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('#modal-back');await settle();assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');
  click('[data-action="anex-application-preview"]');await settle();
  assert.equal(transport.calls.length,callsBeforeAnexReturn,'ANEX quote and APD never replay on list/reopen/application/Back');
- click('#modal-footer [data-action="all-offers"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ if(q('#prototype-lead-form'))click('#modal-back');click('#modal-footer [data-action="all-offers"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn,'cross-provider return reuses the same completed TV receipt');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/,'cross-provider return keeps the chosen TV price');
  const callsBeforeCrossReturn=transport.calls.length;click('#modal-back');click('#modal-back');await settle();
@@ -464,7 +465,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
   assert.match(q('#modal-footer').textContent,/Выбрать другой тур/);assert(!q('[data-action="refresh-hotel"]'));
   assert.equal(quoteCount(),before+(flightChoice?2:1));
   assert.equal(quoteFailures.at(-1).failureCategory,'supplier_auth');assert.equal(quoteFailures.at(-1).httpStatus,502);
-  click('#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
+  if(q('#prototype-lead-form'))click('#modal-back');click('#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
   assert.match(q('#modal-body .error-text').textContent,/Подтверждение тура не получено/);
   assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening must never resubmit a sealed attempt');
   click('[data-action="close-modal"]');await settle();
