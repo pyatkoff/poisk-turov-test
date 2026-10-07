@@ -1,0 +1,75 @@
+{
+  "schema": "match-operator115-only2-retained-fields-fixture/1",
+  "operation": "int-andromeda-match-operator115-only2-retained-fields-20261007-v1",
+  "batch": "operator115-only2-retained-20261007",
+  "mode": "match-operator115-only2-retained-fields-readonly",
+  "source_namespace": "operator_115",
+  "requested_rows": 2,
+  "raw_source": {
+    "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-2.json",
+    "sha256": "62ceed4d65121c12ef5882cd0b06d9a8f7c78d8b7878b17aea5f34522a4298c8",
+    "maximum_bytes": 2097152
+  },
+  "lineage": {
+    "v77_result_sha256": "d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7",
+    "v77_receipt_comment": 5855442122,
+    "preparation_claim": 6045338961
+  },
+  "projection_fields": [
+    "row.hotel",
+    "row.hotelKey",
+    "row.operatorKey",
+    "row.isOperatorHotelKey",
+    "row.town",
+    "row.townKey",
+    "row.stateKey",
+    "row.countryKey",
+    "row.starKey",
+    "row.latitude",
+    "row.longitude",
+    "row.address",
+    "row.hotelUrl",
+    "original.hotelKey",
+    "original.operatorKey",
+    "original.isOperatorHotelKey",
+    "original.tourKey"
+  ],
+  "rows": [
+    {
+      "retained_catalog_label": "610284976",
+      "source_native_id": "610284976",
+      "json_pointer": "/PRICES/3"
+    },
+    {
+      "retained_catalog_label": "610274422",
+      "source_native_id": "610274422",
+      "json_pointer": "/PRICES/19"
+    }
+  ],
+  "target_namespace": "not_established",
+  "current_readiness": "not_evaluated",
+  "provider_http_calls": 0,
+  "physical_http_attempts": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "maximum_writes": 0,
+  "safe_to_write_now": false,
+  "acceptance_evaluated": false,
+  "global_uniqueness_evaluated": false,
+  "namespace_bridge_verified": false,
+  "limits": {
+    "unique_raw_files": 1,
+    "selected_rows": 2,
+    "private_capture_bytes": 6291456,
+    "public_result_bytes": 524288
+  },
+  "guards": [
+    "fixed_page2_and_two_typed_locators",
+    "labels_not_catalog_admission",
+    "preserve_exact_original_before_optional_projection",
+    "optional_field_hold_per_row",
+    "no_numeric_namespace_conversion",
+    "no_old_consumed_roster_or_supplier_call"
+  ]
+}
