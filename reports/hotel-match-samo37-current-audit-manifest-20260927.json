@@ -1,0 +1,12 @@
+{
+  "schema": "match_samo37_current_audit_manifest_v1",
+  "source": "v65 strict_multi_lane candidates intersected with fresh 220 missing-SAMO queue",
+  "input_strict_count": 38,
+  "excluded_known_collision": [{"tv_hotel_id":1772,"reason":"andromeda_catalog 37255 is also the exact candidate for local 1773 MARHABA SALEM; 1772 stays HOLD"}],
+  "audit_count": 37,
+  "exact_name_count": 19,
+  "direct_anex_operator5_corroborated_count": 21,
+  "acceptance_rule": "one exact same-operator proof is sufficient only after fresh CURRENT source/target/manual/live30 guards; no blind insert",
+  "provider_http_calls": 0,
+  "safe_to_write_now": false
+}

@@ -1,0 +1,465 @@
+{
+  "schema": "match_pending_identity_review_receipt_v1",
+  "state": "completed_offline_review_not_server_acceptance",
+  "coordination_claim": 5853680040,
+  "source_branch": "match/dual-live30-full-union-20260927",
+  "source_code_commit": "c82b85ef6f7678f7c09838dd01b46d96af757e98",
+  "source_report_sha256": "51e215bff5a8dfa54925a6a4d4a8f3607100a1411071a3314efb181d0fc979fa",
+  "source_registry_at": "2026-09-26T23:12:33+00:00",
+  "scope": {
+    "samo_nontriple": 487,
+    "samo_operator_only": 283,
+    "samo_without_local_identity": 125,
+    "scope_sets_overlap": true,
+    "tv_nontriple": 1674
+  },
+  "summary": {
+    "additional_geographic_review_count": 2,
+    "catalog_holds_reviewed": 24,
+    "database_writes": 0,
+    "newly_accepted_identities": 0,
+    "other_holds_preserved": 16,
+    "pending_transition_dossiers": 8,
+    "potential_tv_triple_completions_not_committed": 8,
+    "provider_http_calls": 0,
+    "unmapped_samo_next_steps": {
+      "exact_pair_has_specific_review_hold": 1,
+      "missing_retained_metadata_bind_before_acquisition": 3,
+      "needs_missing_operator_identity_not_local_mapping_prerequisite": 117,
+      "protected_conflict_no_automatic_acquisition": 2,
+      "retained_native_needs_tv_or_namespace_proof": 2
+    }
+  },
+  "pending_dossiers": [
+    {
+      "local_hotel_id": 55945,
+      "andromeda_catalog_id": "2000037585",
+      "name": "HAWTHORN SUITES BY WYNDHAM",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "cc17302539a9d6461be2080c3a0d7c576e389fcc4c1895bff56615f89406934e",
+      "expected_evidence_sha256": "505d2d466e8678fbc65d7dbf36c7bca3ee1a5a50423d0d155261be602d0b2c41",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "295561"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "16014"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Абу-Даби",
+        "local_subregion": null,
+        "supplier_town": "Абу-Даби",
+        "supplier_town_id": 138
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 56479,
+      "andromeda_catalog_id": "2000093384",
+      "name": "BLUESOTEL KRABI",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "e24c0092249a5d9cc6e7f1f9f4c91668f8d764032cf5b884f744d508bd9cbc5a",
+      "expected_evidence_sha256": "77f00311b36d2637d4a97faea07452820db48c1f1eb99b946f825b048ed1da5e",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "399654"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "21869"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Краби",
+        "local_subregion": "Краби",
+        "supplier_town": "Краби",
+        "supplier_town_id": 747
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 57552,
+      "andromeda_catalog_id": "2000040084",
+      "name": "REETHI FARU RESORT",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "2205b985049bc646df6fc0a8ad1f720bd27bccfe0731a75ca921dd5c43fdcb32",
+      "expected_evidence_sha256": "2eb0dab2810e40876c9fcbe86e02ba268facffe96379033c1a857f2b88b86298",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "352338"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "17424"
+      ],
+      "geography": {
+        "additional_geographic_review_required": true,
+        "exact_town_label_agrees": false,
+        "local_region": "Мальдивы",
+        "local_subregion": null,
+        "supplier_town": "Раа Атолл",
+        "supplier_town_id": 6959
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 63524,
+      "andromeda_catalog_id": "304393",
+      "name": "YUNAK EVLERI",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_country_name",
+      "expected_catalog_sha256": "6d881964267edf37b6a04877a6f5c7da9fe237e7f699dc6ea8766639d7609d99",
+      "expected_evidence_sha256": "21218dfaf8af253b05716e9d3bbf9cfdaa04f8b160bcc7db1496bf04115f7589",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_342",
+          "native_id": "23771"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "23082",
+        "34797"
+      ],
+      "geography": {
+        "additional_geographic_review_required": true,
+        "exact_town_label_agrees": false,
+        "local_region": "Каппадокия",
+        "local_subregion": "Ургуп",
+        "supplier_town": "Ургюп",
+        "supplier_town_id": 2000008451
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 65714,
+      "andromeda_catalog_id": "2000072730",
+      "name": "VILLA BOUNTY (EX. HOTEL BOUNTY)",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "2d9f655e14687e71840c39c7d6ddf233ba08ad3f869d7318b89d41c399420aa6",
+      "expected_evidence_sha256": "6414878632e2f3bff78071588f8e8868dbf340abd5815910ab1dadcee87f00d0",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "840211"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "24330",
+        "26414"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Хиккадува",
+        "local_subregion": null,
+        "supplier_town": "Хиккадува",
+        "supplier_town_id": 191261
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 76753,
+      "andromeda_catalog_id": "2000087342",
+      "name": "BORG EL ARAB BEACH RESORT",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "01030bb9e23e0c87f8bed7c50628c8f56243b89f3e55a24151430766c1576641",
+      "expected_evidence_sha256": "548e8fe57f6c49d55b217812aab512d02bfda81b66f596d8b44f90d53b04a0aa",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "859965"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "45333"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Александрия",
+        "local_subregion": null,
+        "supplier_town": "Александрия",
+        "supplier_town_id": 3228
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 116886,
+      "andromeda_catalog_id": "2000103169",
+      "name": "THE SIGNATURE HOTEL NHA TRANG",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "227a4702c4ac10e0569b6092cc26a703a6249042dcb8179a946e88e69a8acccf",
+      "expected_evidence_sha256": "c87f9c4b8b31f0e45b6ceba3689f643631fc3f8b1ec3d2959904ce849153aa90",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "851935"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "42178"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Нячанг",
+        "local_subregion": "Нячанг - центр",
+        "supplier_town": "Нячанг",
+        "supplier_town_id": 2601
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    },
+    {
+      "local_hotel_id": 121109,
+      "andromeda_catalog_id": "2000090159",
+      "name": "THE MORNING GLOW HANDWRITTEN COLLECTION",
+      "prior_status": "pending",
+      "prior_local_hotel_id": null,
+      "prior_reason": "no_unique_name",
+      "expected_catalog_sha256": "227a4702c4ac10e0569b6092cc26a703a6249042dcb8179a946e88e69a8acccf",
+      "expected_evidence_sha256": "b47b208e00e912987e128b8699aa9198fcee22186e2b68ce7800640a379db247",
+      "exact_operator_ids": [
+        {
+          "namespace": "operator_315",
+          "native_id": "853672"
+        },
+        {
+          "namespace": "operator_342",
+          "native_id": "48617"
+        }
+      ],
+      "effective_direct_anex_ids_in_snapshot": [
+        "43295"
+      ],
+      "geography": {
+        "additional_geographic_review_required": false,
+        "exact_town_label_agrees": true,
+        "local_region": "Нячанг",
+        "local_subregion": "Нячанг - центр",
+        "supplier_town": "Нячанг",
+        "supplier_town_id": 2601
+      },
+      "status": "pending_transition_review_not_writer_ready",
+      "safe_to_write_now": false,
+      "existing_hold_cleared": false
+    }
+  ],
+  "all125_samo_source_ids_by_next_step": {
+    "exact_pair_has_specific_review_hold": [
+      "2000123210"
+    ],
+    "missing_retained_metadata_bind_before_acquisition": [
+      "2000086118",
+      "2000109036",
+      "2000123445"
+    ],
+    "needs_missing_operator_identity_not_local_mapping_prerequisite": [
+      "650",
+      "1045",
+      "3060",
+      "3888",
+      "5906",
+      "7660",
+      "8984",
+      "9180",
+      "9501",
+      "13293",
+      "35425",
+      "49144",
+      "60328",
+      "67775",
+      "84071",
+      "118706",
+      "125393",
+      "149710",
+      "150674",
+      "155330",
+      "163887",
+      "175606",
+      "182522",
+      "201859",
+      "205729",
+      "218356",
+      "240679",
+      "280064",
+      "283712",
+      "324106",
+      "341022",
+      "372134",
+      "379202",
+      "391481",
+      "450092",
+      "475947",
+      "2000022017",
+      "2000023232",
+      "2000025151",
+      "2000027371",
+      "2000027381",
+      "2000029745",
+      "2000034103",
+      "2000034121",
+      "2000034136",
+      "2000034174",
+      "2000034214",
+      "2000034238",
+      "2000034247",
+      "2000035221",
+      "2000037261",
+      "2000037973",
+      "2000038843",
+      "2000039701",
+      "2000039995",
+      "2000041008",
+      "2000041090",
+      "2000041289",
+      "2000044772",
+      "2000048736",
+      "2000049502",
+      "2000049855",
+      "2000050217",
+      "2000052316",
+      "2000052591",
+      "2000055468",
+      "2000057636",
+      "2000059209",
+      "2000060100",
+      "2000060910",
+      "2000061716",
+      "2000062084",
+      "2000062239",
+      "2000062548",
+      "2000062557",
+      "2000064940",
+      "2000065268",
+      "2000065684",
+      "2000067202",
+      "2000068203",
+      "2000069006",
+      "2000070128",
+      "2000071512",
+      "2000071830",
+      "2000072249",
+      "2000072753",
+      "2000072804",
+      "2000073045",
+      "2000073063",
+      "2000073592",
+      "2000079689",
+      "2000081107",
+      "2000086021",
+      "2000086129",
+      "2000087863",
+      "2000088259",
+      "2000090661",
+      "2000091587",
+      "2000092528",
+      "2000093823",
+      "2000095339",
+      "2000098416",
+      "2000101065",
+      "2000103241",
+      "2000103831",
+      "2000104596",
+      "2000105435",
+      "2000105597",
+      "2000108645",
+      "2000109038",
+      "2000112070",
+      "2000117376",
+      "2000121312",
+      "2000121380",
+      "2000121381",
+      "2000121504",
+      "2000121515"
+    ],
+    "protected_conflict_no_automatic_acquisition": [
+      "150867",
+      "2000073714"
+    ],
+    "retained_native_needs_tv_or_namespace_proof": [
+      "3126",
+      "299499"
+    ]
+  },
+  "all125_still_accounted": true,
+  "old83_preserved_unchanged": true,
+  "tv942_historical_reconciliation": {
+    "artifact_id": 10738100659,
+    "run_id": 35831869532,
+    "zip_sha256": "7b36605ef793ff9ba3e432f206dc4afa25b55733b501b4eca0fb7e68bd31769f",
+    "outer_result_sha256": "15b0be860009cb6c1c604b0591a3d159fc2cf6300e6caea1f4902da2fbc37a5e",
+    "child_result_sha256": "57245b9020beefb3760c3bf65696f3fc4a33485c8b4ec74f2058f40b363e1700",
+    "historical_writer_ready_rows_read": 88,
+    "same_target_in_later_saved_registry": 88,
+    "new_candidates_from_this_subset": 0,
+    "raw_child_results_consumed": false,
+    "remaining_four_of92_unique_pairs_not_in_this_outer_subset": 4,
+    "old_safe_to_write_flags_not_current_authority": true
+  },
+  "tests": {
+    "new_pending_review_tests": 52,
+    "prior_operator_binding_and_join_tests": 54,
+    "total_passed": 106,
+    "skipped": 0,
+    "live_database_tests": 0
+  },
+  "code_blobs": {
+    "hotel_match_pending_identity_review.py": "4d74c57367e94ede147f456374cc403ef8a19f13",
+    "test_hotel_match_pending_identity_review.py": "f972fbd913e6e256f6df9947c7733c37e589130d"
+  },
+  "full_review_sha256": "a1e15301f91ad789524e3af7354960ccae94cb001369fdf3b22c53a10093fca3",
+  "test_log_sha256": "b7ada1b4635a05ae0050c8449d9cd442a2a135f6ffae69efab9afeb97b80b6e9",
+  "provider_calls": 0,
+  "database_writes": 0,
+  "new_accepted_links": 0,
+  "new_full_triples": 0,
+  "execution": "No server run attempted. Prior workflow-write denial5853460802 remains unbypassed. Only permitted source and evidence review writes.",
+  "limitations": [
+    "Sanitized prior evidence is not a substitute for a fresh full evidence/manual-origin check.",
+    "The historical92 pending updater is an example of existing semantics, not permission to rerun or generalize it.",
+    "No earlier HOLD is cleared and no writer-ready or acceptance authority is emitted.",
+    "Native lookup can be planned for an unmapped SAMO source; supplier context and permission must still be bound."
+  ],
+  "last_verified_census": {
+    "full_triples": 2725,
+    "tv_live30": 4399,
+    "remaining": 1674,
+    "fresh_census_this_pass": false
+  },
+  "next_step": "Permitted fresh CURRENT validation and explicit guarded pending-transition scope for these8; prior83 remains separate. No old acquisition/writer replay.",
+  "no_background_worker": true
+}
