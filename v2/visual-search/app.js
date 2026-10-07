@@ -2255,10 +2255,12 @@ function handleSearchParameterAction(action,b,id){
 
  case 'clear-destination-query':cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#destination-query').value='';renderDestination();$('#modal-body').scrollTop=0;$('#destination-query').focus({preventScroll:true});break;
  case 'destination-remove':{
-  const focused=document.activeElement===b,index=$$('#destination-selection [data-action="destination-remove"]').indexOf(b);
+  const focused=document.activeElement===b,index=focused?$$('#destination-selection [data-action="destination-remove"]').indexOf(b):-1;
   if(b.dataset.id)setDestinationIds(destinationChoice,destinationIds(destinationChoice).filter(x=>x!==id));else destinationChoice.resorts=destinationChoice.resorts.filter(r=>r!==b.dataset.value);
-  renderDestination();const remaining=$$('#destination-selection [data-action="destination-remove"]');
-  if(focused)restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action="apply-destination"]'));
+  renderDestination();if(focused){
+   const remaining=$$('#destination-selection [data-action="destination-remove"]');
+   restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action="apply-destination"]'));
+  }
   break
  }
 

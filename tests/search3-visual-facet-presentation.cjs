@@ -112,7 +112,7 @@ function destinationFocus(code){
 }
 destinationFocus(source);
 assert.throws(()=>destinationFocus(source.replace("restoreFocus(focus,null,root);",'')),/select retains exact hotel row focus/,'focus-loss mutation is caught');
-assert.throws(()=>destinationFocus(source.replace("if(focused)restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action=\"apply-destination\"]'));",'')),/removing a middle chip keeps focus/,'chip-removal focus mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action=\"apply-destination\"]'));",'')),/removing a middle chip keeps focus/,'chip-removal focus mutation is caught');
 console.log('PASS destination keyboard focus: actual select/deselect/multi-ID action, later paint, input caret, external focus and removed row; supplier/lead HTTP0');
 // Approved hotel photos, country scope and confirmation wording; ordinary
 // facet availability, ordering, selection and focus remain characterized.
