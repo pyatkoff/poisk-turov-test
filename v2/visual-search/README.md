@@ -102,7 +102,9 @@ Next acceptance: the separately coordinated functional owner checks actual curre
 The existing picker restores every selected own hotel ID through the canonical
 profile and verified legacy-link reader, including a `hotels=…|…` URL. Pending
 or unavailable links keep the exact selection and block a partial or whole-country
-search. The existing error/retry action rereads only unresolved hotels; query,
+search. The existing form status owner shows loading or a visible error/retry
+above the submit action, including mobile layouts which hide the initial results.
+Retry rereads only unresolved hotels; query,
 country or selection changes cannot accept a former restoration response.
 
 Focused source checks cover partial failure/retry, duplicate work, stale selection

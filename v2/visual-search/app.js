@@ -306,8 +306,10 @@ function updateSearchUI(){
 function renderCatalogError(){
  let node=$('#catalog-error');
  if(!node){node=document.createElement('p');node.id='catalog-error';node.className='error-text';node.setAttribute('role','alert');$('#search-form .search-actions').before(node);}
- node.hidden=!catalogError||!catalogDeparture;
- node.innerHTML=node.hidden?'':`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`;
+ const countryFailed=!!catalogError&&!!catalogDeparture,hotelMissing=urlStateHydrated&&!data.preview&&destinationIds(currentDraftDestination()).some(id=>!destinationHotel(id)?.legacyIds.length);
+ const restoring=hotelMissing&&hotelRestorePending&&!countryFailed;
+ node.hidden=!countryFailed&&!hotelMissing;node.setAttribute('role',restoring?'status':'alert');node.classList.toggle('error-text',!restoring);node.classList.toggle('picker-caption',restoring);
+ node.innerHTML=node.hidden?'':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
 }
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();

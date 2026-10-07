@@ -208,8 +208,8 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
    try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){errors.push(error.message);await route.abort();}
   });
   const url=origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',hotels:'2001|2002'}),detail=page.locator('#destination-detail'),submit=page.locator('.search-submit');
-  await page.goto(url);await page.locator('#cards').getByText('Восстанавливаем выбранные отели…',{exact:true}).waitFor();
-  assert(await submit.isDisabled(),'pending second identity blocks submit at '+width);assert.match(await page.locator('#cards').textContent(),/Восстанавливаем выбранные отели/);
+  await page.goto(url);await page.locator('#catalog-error').getByText('Восстанавливаем выбранные отели…',{exact:true}).waitFor();
+  assert(await submit.isDisabled(),'pending second identity blocks submit at '+width);assert.match(await page.locator('#catalog-error').textContent(),/Восстанавливаем выбранные отели/);
   assert.equal(submitted.length,0);releaseProfile();await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
   assert(await submit.isEnabled());assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');
   await page.locator('#search-form [data-action="destination"]').click();await page.locator('#destination-query').fill('Rix');await page.locator('.destination-hotel[data-id="2003"]').click();await page.locator('[data-action="close-modal"]').click();
@@ -217,12 +217,12 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   await page.reload();await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));assert(await submit.isEnabled());assert.equal(submitted.length,0,'passive reload never starts suppliers');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-${width}.png`)});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false);
-  failProfile=true;await page.goto(url+'&searched=1');await page.locator('[data-action="retry-hotel-restore"]').waitFor();
+  failProfile=true;await page.goto(url+'&searched=1');await page.locator('#catalog-error [data-action="retry-hotel-restore"]').waitFor();
   assert(await submit.isDisabled());assert.match(await detail.textContent(),/Fictional Belek 01/);assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');assert.equal(submitted.length,0,'searched URL with one unresolved own ID must not broaden to whole-country search');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-error-${width}.png`)});
   await page.locator('#search-form [data-action="destination"]').click();assert.equal(await page.locator('[data-action="destination-remove"][data-id="2002"]').getAttribute('aria-label'),'Убрать выбранный отель','unresolved selection has a usable accessible name, not undefined');
   await page.locator('[data-action="destination-remove"][data-id="2002"]').click();await page.locator('[data-action="close-modal"]').click();assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002','Cancel preserves the unresolved ID too');
-  const profileCount=profiles.length;failProfile=false;await page.locator('[data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
+  const profileCount=profiles.length;failProfile=false;await page.locator('#catalog-error [data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
   assert.deepEqual(profiles.slice(profileCount),['2002'],'retry rereads only the unresolved own ID');assert.match(await detail.textContent(),/Fictional Belek 01.*Fictional Belek 02/);assert.equal(submitted.length,0,'retry restores the form without supplier replay');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-retry-${width}.png`)});
   const started=page.waitForResponse(response=>new URL(response.url()).searchParams.get('action')==='search_start');await submit.click();await started;assert.deepEqual(submitted,[['7001','7002']],'explicit search submits both verified legacy links with OR identity');
