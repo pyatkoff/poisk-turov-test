@@ -447,7 +447,7 @@ function renderMoreDestinationHotels(){
  appendGeneratedRoots(section,destinationHotelEntries(destinationMatchItems,next,destinationHotelLimit),more);rememberUIRoute();return next;
 }
 function renderDestination(){
- const root=$('#destination-selection').contains(document.activeElement)?$('#destination-selection'):$('#destination-results'),focus=focusReference(document.activeElement,root);
+ const root=$('#destination-selection').contains(document.activeElement)?$('#destination-selection'):$('#destination-country-context').contains(document.activeElement)?$('#destination-country-context'):$('#destination-results'),focus=focusReference(document.activeElement,root);
  destinationMatchItems=[];
  const d=destinationChoice,q=normalizeSearch($('#destination-query').value),ids=destinationIds(d);
  $('#destination-query').setAttribute('aria-busy',String(destinationLookup.status==='loading'));

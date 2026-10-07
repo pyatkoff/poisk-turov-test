@@ -94,6 +94,13 @@ function destinationFocus(code){
  const active=()=>c.document.activeElement.id,choose=id=>{const button=c.$('#destination-hotel-'+id);button.focus();c.handleSearchParameterAction('destination-hotel',button,id);};
  try{
   choose(1);assert.equal(active(),'destination-hotel-1','select retains exact hotel row focus');assert.equal(c.$('#destination-hotel-1').getAttribute('aria-pressed'),'true');
+  const countries=()=>c.$('[data-action="destination-countries"]');
+  countries().focus();c.handleSearchParameterAction('destination-countries',countries());
+  assert.strictEqual(c.document.activeElement,countries(),'opening countries retains disclosure focus');assert.equal(countries().getAttribute('aria-expanded'),'true');
+  c.renderDestination();assert.strictEqual(c.document.activeElement,countries(),'later catalogue paint retains country disclosure focus');
+  c.handleSearchParameterAction('destination-countries',countries());assert.strictEqual(c.document.activeElement,countries(),'closing countries retains disclosure focus');assert.equal(countries().getAttribute('aria-expanded'),'false');
+  assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1],'country disclosure preserves exact selected hotel');assert.equal(c.$('#destination-query').value,'hotel','country disclosure preserves query');
+  c.$('#destination-hotel-1').focus();
   c.renderDestination();assert.equal(active(),'destination-hotel-1','later catalogue/resort paint retains row focus');
   choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1,2]);assert.equal(active(),'destination-hotel-2','second exact selection retains its row');
   choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);assert.equal(active(),'destination-hotel-2','deselect retains its row');assert.equal(c.$('#destination-hotel-2').getAttribute('aria-pressed'),'false');
@@ -113,6 +120,7 @@ function destinationFocus(code){
 destinationFocus(source);
 assert.throws(()=>destinationFocus(source.replace("restoreFocus(focus,null,root);",'')),/select retains exact hotel row focus/,'focus-loss mutation is caught');
 assert.throws(()=>destinationFocus(source.replace("restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action=\"apply-destination\"]'));",'')),/removing a middle chip keeps focus/,'chip-removal focus mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("$('#destination-country-context').contains(document.activeElement)?$('#destination-country-context'):",'')),/opening countries retains disclosure focus/,'country-disclosure focus mutation is caught');
 console.log('PASS destination keyboard focus: actual select/deselect/multi-ID action, later paint, input caret, external focus and removed row; supplier/lead HTTP0');
 // Approved hotel photos, country scope and confirmation wording; ordinary
 // facet availability, ordering, selection and focus remain characterized.

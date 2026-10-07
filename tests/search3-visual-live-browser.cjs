@@ -354,6 +354,13 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard deselection retains its row');
  for(const id of [2001,2002,2003])await page.locator('#destination-hotel-'+id).press('Space');
+ const countryDisclosure=page.locator('[data-action="destination-countries"]');
+ await countryDisclosure.press('Space');
+ assert.equal(await countryDisclosure.getAttribute('aria-expanded'),'true');assert.equal(await countryDisclosure.evaluate(el=>document.activeElement===el),true,'opening country disclosure retains keyboard focus');
+ assert.equal(await page.locator('#destination-query').inputValue(),'Rix');assert.deepEqual(await page.locator('[data-action="destination-remove"]').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2001','2002','2003'],'country disclosure preserves exact draft IDs');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-country-disclosure-focus-${width}.png`)});
+ await countryDisclosure.press('Space');
+ assert.equal(await countryDisclosure.getAttribute('aria-expanded'),'false');assert.equal(await countryDisclosure.evaluate(el=>document.activeElement===el),true,'closing country disclosure retains keyboard focus');
  const chip=id=>page.locator('[data-action="destination-remove"][data-id="'+id+'"]');
  let releaseHotelLookup;transport.state.hotelLookupGates['4']=new Promise(resolve=>{releaseHotelLookup=resolve;});
  try{
