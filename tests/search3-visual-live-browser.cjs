@@ -436,7 +436,7 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'ANEX CONCRETE','123000');
   await page.screenshot({path:path.join(evidence,`anex-application-forward-${width}.png`)});
-  await page.locator('#modal-back').click();await page.locator('#modal-footer [data-action="all-offers"]').click();
+  await page.locator('#modal-body [data-action="all-offers"]').click();
   const retainedAnex=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
   await retainedAnex.waitFor({state:'visible'});
   await retainedAnex.click();assert.equal(await page.locator('#modal-title').textContent(),'Доплаты ANEX рассчитаны');
@@ -444,7 +444,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#modal-back').click();
   await page.locator('[data-action="anex-application-preview"]').click();assert.equal(transport.calls.length,callsBeforeAnexApplication);
   await page.screenshot({path:path.join(evidence,`anex-return-${width}.png`)});
-  await page.locator('#modal-back').click();await page.locator('#modal-footer [data-action="all-offers"]').click();
+  await page.locator('#modal-body [data-action="all-offers"]').click();
   await retainedAnex.waitFor({state:'visible'});
   await retainedAnex.click();await page.locator('[data-action="anex-package-quote"]').click();
   await page.locator('[name="anex-package-choice"]').nth(1).check();
@@ -714,7 +714,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('#modal-back').click();assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,beforeSoleCalc+1,'application Back never recalculates');
   await page.locator('[data-action="close-modal"]').click();
   // Exactly one SAMO option per direction continues only the explicit quote.
-  transport.state.samoFlightChoice=true;transport.state.samoSolePair=true;
+  transport.state.samoFailure=null;transport.state.samoFlightChoice=true;transport.state.samoSolePair=true;
   samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);const samoPairPending=new Promise(resolve=>markSamoPairPending=resolve);
   const beforeSamoPair=transport.calls.filter(c=>c.action==='quote_select_flights').length;
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));

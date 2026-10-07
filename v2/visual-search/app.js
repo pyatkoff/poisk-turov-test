@@ -1576,8 +1576,8 @@ function providerTourBodyHTML(o,h,flights,price,status){
  const changed=price===null?'':quotePriceChangeHTML({...o,quoteListingTotal:o.total,total:price,loading:false,quoteError:'',pricePending:false});
  return `${selectionStepsHTML(1)}${tourHeroHTML(h)}${changed}<div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o)}<section class="tour-section flight-summary"><h3>${icon('plane')} Перелёт</h3>${flights}</section></div><aside class="tour-price-details"><div class="price-breakdown"><h3>Цена тура</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${esc(status)}</span><strong>${price===null?'Цена уточняется':money(price)}</strong></div><p class="price-assurance">${price===null?'Полную стоимость получим для выбранного перелёта.':'Подтверждённая стоимость этого тура.'}</p></div></aside></div>`;
 }
-function providerApplicationBodyHTML(receipt,flights){
- return `${selectionStepsHTML(2,{flightDeferred:!receipt.flights.length})}<div class="application-layout"><div class="application-review"><section class="application-choice" aria-label="Выбранный тур"><h3>${esc(receipt.hotel)}</h3><section class="chosen-stay"><p class="chosen-trip"><strong>${rangeText(receipt.day,addDays(receipt.day,receipt.nights))} · ${nightsText(receipt.nights)}</strong><span>${guestsText(receipt)}${receipt.ages.length?' · '+esc(childAgesLabel(receipt.ages,true)):''}</span></p><dl class="saved-stay-summary"><div><dt>Номер</dt><dd>${esc(receipt.room)}</dd></div><div><dt>Питание</dt><dd>${esc(receipt.meal)}</dd></div><div><dt>Оператор</dt><dd>${esc(receipt.operator)}</dd></div></dl></section></section>${flights?`<details class="summary-flight-details" ${innerWidth>760?'open':''}><summary>Рейсы и багаж</summary>${flights}</details>`:'<p class="saved-flight-fallback">Рейс уточнит менеджер.</p>'}${receipt.finalPriceVerified?'':'<p class="tour-selection-hint">Расчётная стоимость требует подтверждения оператором.</p>'}</div><div class="application-contact">${window.AnyTourPrototypeLead.markup()}</div></div>`;
+function providerApplicationBodyHTML(receipt,flights,hotelId){
+ return `${selectionStepsHTML(2,{flightDeferred:!receipt.flights.length})}<div class="application-layout"><div class="application-review"><section class="application-choice" aria-label="Выбранный тур"><h3>${esc(receipt.hotel)}</h3><section class="chosen-stay"><p class="chosen-trip"><strong>${rangeText(receipt.day,addDays(receipt.day,receipt.nights))} · ${nightsText(receipt.nights)}</strong><span>${guestsText(receipt)}${receipt.ages.length?' · '+esc(childAgesLabel(receipt.ages,true)):''}</span></p><dl class="saved-stay-summary"><div><dt>Номер</dt><dd>${esc(receipt.room)}</dd></div><div><dt>Питание</dt><dd>${esc(receipt.meal)}</dd></div><div><dt>Оператор</dt><dd>${esc(receipt.operator)}</dd></div></dl></section>${Number.isSafeInteger(hotelId)&&hotelId>0?`<button class="secondary" data-action="all-offers" data-id="${hotelId}">Другие туры этого отеля</button>`:''}</section>${flights?`<details class="summary-flight-details" ${innerWidth>760?'open':''}><summary>Рейсы и багаж</summary>${flights}</details>`:'<p class="saved-flight-fallback">Рейс уточнит менеджер.</p>'}${receipt.finalPriceVerified?'':'<p class="tour-selection-hint">Расчётная стоимость требует подтверждения оператором.</p>'}</div><div class="application-contact">${window.AnyTourPrototypeLead.markup()}</div></div>`;
 }
 function providerApplicationFooterHTML(receipt){return offerDetailFooterHTML({total:receipt.price},window.AnyTourPrototypeLead.action(),receipt.finalPriceVerified?'Подтверждённая цена выбранного тура':'Расчётная стоимость · требует подтверждения');}
 function renderRealOffer(){
@@ -1716,7 +1716,7 @@ function openAndromedaApplicationPreview(){
  const receipt=andromedaApplicationDraft;if(!receipt||modalType!=='andromeda-verified')return;
  if(!andromedaQuoteCurrent(receipt)){showAndromedaExpired(selectedOffer);return;}
  const flights=receipt.flights.length?receipt.flights.map(f=>andromedaFlightRoute(f)).join(''):'<p class="tour-missing">Рейсы не указаны поставщиком в подтверждённом ответе.</p>';
- showModal('provider-application','Заявка на тур','ПРОВЕРКА БЕЗ ОТПРАВКИ',providerApplicationBodyHTML(receipt,flights),true);
+ showModal('provider-application','Заявка на тур','ПРОВЕРКА БЕЗ ОТПРАВКИ',providerApplicationBodyHTML(receipt,flights,selectedTourHotel(selectedOffer)?.id),true);
  $('#modal').classList.add('application-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=providerApplicationFooterHTML(receipt);
  window.AnyTourPrototypeLead.bindProviderApplication(receipt);
 }
@@ -1761,11 +1761,11 @@ function openAnexApplicationPreview(){
  const receipt=anexApplicationDraft;if(!receipt)return;
  if(receipt.finalPriceVerified===true){
   if(receipt.expiresAt*1000<=Date.now()){openAnexPackageQuote(selectedOffer,null,'Срок подтверждённой цены истёк.');return;}
-  showModal('anex-application','Заявка на тур','ПРОВЕРКА БЕЗ ОТПРАВКИ',providerApplicationBodyHTML(receipt,receipt.flights.map(f=>`<p><strong>${f.direction==='0'?'Туда':'Обратно'}</strong><br>${esc(f.name)}</p>`).join('')),true);
+  showModal('anex-application','Заявка на тур','ПРОВЕРКА БЕЗ ОТПРАВКИ',providerApplicationBodyHTML(receipt,receipt.flights.map(f=>`<p><strong>${f.direction==='0'?'Туда':'Обратно'}</strong><br>${esc(f.name)}</p>`).join(''),selectedTourHotel(selectedOffer)?.id),true);
   $('#modal').classList.add('application-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=providerApplicationFooterHTML(receipt);
   window.AnyTourPrototypeLead.bindProviderApplication(receipt);return;
  }
- showModal('anex-application','Заявка на тур','ANEX · РАСЧЁТНАЯ СТОИМОСТЬ',providerApplicationBodyHTML(receipt,''),true);
+ showModal('anex-application','Заявка на тур','ANEX · РАСЧЁТНАЯ СТОИМОСТЬ',providerApplicationBodyHTML(receipt,'',selectedTourHotel(selectedOffer)?.id),true);
  $('#modal').classList.add('application-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=providerApplicationFooterHTML(receipt);
  window.AnyTourPrototypeLead.bindProviderApplication(receipt);
 }
