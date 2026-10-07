@@ -1,0 +1,205 @@
+name: MATCH retained14 guarded acceptance
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - .github/workflows/hotel-match-retained14-accept.yml
+      - scripts/diagnostics/hotel_match_retained14_accept.php
+      - tests/hotel_match_retained14_accept_test.php
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+
+concurrency:
+  group: hotel-match-retained14-accept-1971-20260927-v1
+  cancel-in-progress: false
+
+env:
+  OP: hotel-match-retained14-accept-1971-20260927-v1
+  BASE: 273033189ff0602fd2ef69372e393e0cb882d6f2
+  OWNER_CONSENT: '5850009886'
+  RESERVATION: match-retained14-accept-v1-reservation
+
+jobs:
+  guarded:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.number == 4000 && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'match/live234-v65-current-audit-v66-20260926'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: match_test_only
+          MYSQL_DATABASE: match_retained14_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmatch_test_only"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Exact source, owner consent and Security guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p input terminal reservation package/scripts/diagnostics package/app/integrations
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          git merge-base --is-ancestor "$BASE" HEAD
+          test "$(git diff --name-only "$BASE" HEAD)" = "$(printf '%s\n' .github/workflows/hotel-match-retained14-accept.yml scripts/diagnostics/hotel_match_retained14_accept.php tests/hotel_match_retained14_accept_test.php)"
+          test "$(git hash-object scripts/diagnostics/hotel_match_retained14_accept.php)" = 4a6ae1ca73b7ba2064d0d6eff4ed4221ff9491aa
+          test "$(git hash-object tests/hotel_match_retained14_accept_test.php)" = 84380d66215b7832a52cf7726227c587e56178de
+          test "$(git hash-object scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php)" = 9aaae6deab79fdbf26e116eabc02c5b9fc2fd7c0
+          test "$(git hash-object scripts/diagnostics/hotel_match_anex_effective_coverage.php)" = 1b5190727690f50a4cdd606c48afa575978ec48e
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          test "$(git hash-object tests/hotel_match_live234_v65_current_audit_v66_test.php)" = d308d3b3ac6e38b9045b60c68d30902e0f098d5f
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$OWNER_CONSENT" >input/consent.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/consent.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/3419')
+          for phrase in ('owner explicitly replied «Разрешаю»','fresh CURRENT validation','NOT permission to disable security gates'): assert phrase in c['body']
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              checks=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if checks:
+                  check=max(checks,key=lambda r:r['id'])
+                  if check['status']=='completed':
+                      assert check['conclusion']=='success','security_not_success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Load immutable evidence and terminal audit, never replay suppliers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10909959597/zip" -o input/source.zip
+          curl -fsSL --max-time 60 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/10915714601/zip" -o input/audit.zip
+          python3 - <<'PY'
+          import hashlib,pathlib,zipfile
+          groups=[('source.zip','033d372e5aeb4d495b9fe542c148c2d4eb080889b5eb5ca08a5642837e2dbaf8',[
+              ('result.json','source.json','42829f8f7a7988f3f033bfd8e377758b537ccb95c3ace9a09d953191bfe17810'),
+              ('receipt.json','source_receipt.json','46792a26c166c597602814afc217e08e07709d2ed3aa6941ab291a418e28c626')]),
+              ('audit.zip','f4da8ad7c4e0ac513c2bdd83e96ddb5899c753b26fa12003eb2c28a08a138054',[
+              ('terminal/result.json','audit.json','0b592a30a5c301d9631433042c5239baf9cc7f7f427cac5895c9de9300ed4eb9'),
+              ('terminal/receipt.json','audit_receipt.json','636f24b549f4e7aa96c5d3d0e151fe167e37d793f01cf4afbe4b12fb03be3ad3'),
+              ('input/retained-plan.json','plan.json','048523ef5a1d8440e39c6341afb531db6346b8786a63312c6328d70f2c1f70b8')])]
+          for archive,sha,members in groups:
+              path=pathlib.Path('input')/archive
+              assert hashlib.sha256(path.read_bytes()).hexdigest()==sha,'archive_hash'
+              with zipfile.ZipFile(path) as z:
+                  for name,dest,pin in members:
+                      found=[i for i in z.infolist() if i.filename==name]
+                      assert len(found)==1 and found[0].file_size<=8388608,'archive_member'
+                      raw=z.read(found[0]);assert hashlib.sha256(raw).hexdigest()==pin,'member_hash'
+                      (pathlib.Path('input')/dest).write_bytes(raw)
+          PY
+      - name: Pure rules and real isolated MySQL transaction regressions before any server access
+        env:
+          MATCH_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=match_retained14_test;charset=utf8mb4
+        run: |
+          set -euo pipefail
+          php -r 'if(!extension_loaded("pdo_mysql") || !extension_loaded("mbstring")) exit(1);'
+          php -l scripts/diagnostics/hotel_match_retained14_accept.php
+          php -l tests/hotel_match_retained14_accept_test.php
+          php tests/hotel_match_retained14_accept_test.php input pure | tee terminal/pure-tests.txt
+          php tests/hotel_match_live234_v65_current_audit_v66_test.php input/source.json input/plan.json | tee terminal/classifier-tests.txt
+          php tests/hotel_match_retained14_accept_test.php input mysql | tee terminal/mysql-tests.txt
+          cp scripts/diagnostics/hotel_match_retained14_accept.php scripts/diagnostics/hotel_match_live234_v65_current_audit_v66.php scripts/diagnostics/hotel_match_anex_effective_coverage.php package/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php package/app/integrations/
+          cp input/source.json input/source_receipt.json input/audit.json input/audit_receipt.json input/plan.json package/
+          php -r 'require $argv[1]; $s=mra_inputs(file_get_contents($argv[2]),file_get_contents($argv[3]),file_get_contents($argv[4]),file_get_contents($argv[5])); if(count($s["selected"])!==14 || count($s["excluded"])!==15)exit(1); echo "COMPLETE_SERVER_PACKAGE_PASS\n";' package/scripts/diagnostics/hotel_match_retained14_accept.php package/source.json package/plan.json package/audit.json package/audit_receipt.json
+          (cd package && find . -type f -print0 | sort -z | xargs -0 sha256sum) >input/package-sha256.txt
+      - name: Reserve the distinct maximum14 append-only operation once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$RESERVATION&per_page=100" >input/prior-reservations.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          assert json.load(open('input/prior-reservations.json'))['total_count']==0,'reservation_exists_no_replay'
+          r={'operation':os.environ['OP'],'state':'reserved_before_write','source_sha':os.environ['HEAD'],'run_id':int(os.environ['RUN_ID']),
+             'owner_consent_comment':int(os.environ['OWNER_CONSENT']),'expected_max_writes':14,'excluded_hold_count':15,
+             'prior_audit_result_sha256':'0b592a30a5c301d9631433042c5239baf9cc7f7f427cac5895c9de9300ed4eb9',
+             'provider_http_calls':0,'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ${{ env.RESERVATION }}
+          path: reservation/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute once in isolated operation directory, then read committed identities back
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/match-retained14-key"; known="$RUNNER_TEMP/match-retained14-known"
+          trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' >"$key"; else printf '%s' "$KEY" | base64 --decode >"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST" >"$known" 2>/dev/null
+          remote="$USER@$HOST"; rel=".anytoour-match/operations/$OP"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu; umask 077; test ! -e \"\$HOME/$rel\"; mkdir \"\$HOME/$rel\"; mkdir -p \"\$HOME/$rel/payload/scripts/diagnostics\" \"\$HOME/$rel/payload/app/integrations\""
+          scp "${opts[@]}" reservation/reservation.json input/package-sha256.txt "$remote:$rel/"
+          scp "${opts[@]}" package/*.json "$remote:$rel/payload/"
+          scp "${opts[@]}" package/scripts/diagnostics/*.php "$remote:$rel/payload/scripts/diagnostics/"
+          scp "${opts[@]}" package/app/integrations/anex-search-mapping-registry.php "$remote:$rel/payload/app/integrations/"
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$rel/payload\" && sha256sum --check ../package-sha256.txt" >terminal/package-verified.txt
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$rel\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$rel/payload/scripts/diagnostics/hotel_match_retained14_accept.php\" --execute" >input/remote.stdout 2>input/remote.stderr
+          rc=$?
+          for name in result receipt write-plan pre-commit commit-attempt; do
+            ssh "${opts[@]}" "$remote" "if test -f \"\$HOME/$rel/$name.json\"; then cat \"\$HOME/$rel/$name.json\"; fi" >"terminal/$name.json"
+          done
+          set -e
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          raw=pathlib.Path('terminal/result.json').read_bytes();r=json.loads(raw);q=json.load(open('terminal/receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+          assert q['result_sha256']==hashlib.sha256(raw).hexdigest() and q['artifact_readback_verified'] is True
+          assert r['no_replay'] is True and q['no_replay'] is True and r['provider_http_calls']==q['provider_http_calls']==0
+          assert r['database_writes']==q['database_writes']==r['mapping_writes']==q['mapping_writes']
+          print(json.dumps({k:r.get(k) for k in ('state','failure_stage','reason','database_writes','readback_verified','current_hold_count','already_resolved_count','preexisting_rows_preserved')},ensure_ascii=False,sort_keys=True))
+          if r['state']=='committed_verified':
+              allowed={11742:'183505',11748:'191231',11771:'364948',11773:'364934',27691:'246797',45455:'2000034442',60000:'2000055823',64351:'2000042345',64355:'2000056913',64722:'2000055559',71376:'2000061777',113617:'2000090568',117800:'2000090560',119844:'2000106853'}
+              assert r['readback_verified'] is True and q['readback_verified'] is True and r['committed'] is True
+              assert r['inserted']==r['database_writes']==len(r['rows']) and 0<=r['inserted']<=14
+              assert r['inserted']+r['current_hold_count']+r['already_resolved_count']==14 and r['excluded_hold_count']==15
+              seen=set()
+              for row in r['rows']:
+                  i=row['local_hotel_id'];assert i not in seen and allowed[i]==row['andromeda_catalog_id']
+                  assert row['decision_status']=='accepted' and row['runtime_resolves'] is True;seen.add(i)
+          else: raise SystemExit('terminal_not_verified_do_not_replay')
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-retained14-accept-v1-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: warn
