@@ -67,12 +67,16 @@ class AnexSecretTransportTest(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     # Extend the already-required stock check; do not add another workflow.
-    path = Path(__file__).with_name('int_server_executor_local_profile_phase3_inspection_test.py')
-    spec = importlib.util.spec_from_file_location('local_phase3_inspection_regressions', path)
-    assert spec is not None and spec.loader is not None
-    suite = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(suite)
-    tests.addTests(loader.loadTestsFromModule(suite))
+    for name, module_name in (
+        ('int_server_executor_local_profile_phase3_inspection_test.py', 'local_phase3_inspection_regressions'),
+        ('int_server_executor_local_profile_recovery_plan_test.py', 'local_profile_recovery_regressions'),
+    ):
+        path = Path(__file__).with_name(name)
+        spec = importlib.util.spec_from_file_location(module_name, path)
+        assert spec is not None and spec.loader is not None
+        suite = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(suite)
+        tests.addTests(loader.loadTestsFromModule(suite))
     return tests
 
 
