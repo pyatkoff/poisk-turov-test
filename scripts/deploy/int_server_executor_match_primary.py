@@ -95,6 +95,16 @@ NR5_SOURCE_FILES = (
     *NU5_SOURCE_FILES,
 )
 
+OP1152_MODE = 'match-operator115-only2-retained-fields-readonly'
+OP1152_OPERATION = 'int-andromeda-match-operator115-only2-retained-fields-20261007-v1'
+OP1152_BATCH = 'operator115-only2-retained-20261007'
+OP1152_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_operator115_only2_retained_fields_readonly_v1.json',
+    'scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py',
+    'scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py',
+)
+
 ALIAS3_MODE = 'match-alias3-retained-fields-readonly'
 ALIAS3_OPERATION = 'int-andromeda-match-alias3-retained-fields-20261007-v1'
 ALIAS3_BATCH = 'alias3-retained-fields-20261007'
@@ -224,11 +234,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE, OP1152_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == OP1152_MODE:
+            core.need(operation == OP1152_OPERATION and batch == OP1152_BATCH, 'operator115_only2_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                    'batch': OP1152_BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == ALIAS3_METADATA_MODE:
             core.need(operation == ALIAS3_METADATA_OPERATION and batch == ALIAS3_METADATA_BATCH, 'alias3_metadata_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -3368,6 +3382,123 @@ REMOTE_SOURCE3_DISPATCH = r'''    if mode=='match-source3-native-current':
 '''
 
 
+REMOTE_OP1152_HANDLER = r'''
+def validate_match_operator115_only2_fields(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-operator115-only2-retained-fields-result/1',
+           'operation':'int-andromeda-match-operator115-only2-retained-fields-20261007-v1',
+           'batch':'operator115-only2-retained-20261007','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'namespace_bridge_verified':False,'no_replay':True,
+           'source_namespace':'operator_115','requested_rows':2}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or type(data.get('database_reads')) is not int or data['database_reads']!=0
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('operator115_only2_fields_terminal_binding')
+    for k,v in receipt.items():
+        if k not in ('result_sha256','private_input_sha256') and (k not in data or type(v) is not type(data[k]) or v!=data[k]):fail('operator115_only2_fields_receipt_binding')
+    if set(receipt)!={'operation','batch','source_sha','state','result_sha256','private_input_sha256',
+                     'provider_http_calls','physical_http_attempts','database_reads','database_writes',
+                     'mapping_writes','booking_calls','lead_calls','accepted','written',
+                     'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated','namespace_bridge_verified','no_replay'}:fail('operator115_only2_fields_receipt_shape')
+    try:validate_source(data)
+    except Exception:fail('operator115_only2_fields_source_validation')
+    if data['state'] not in ('completed_read_only_operator115_only2_fields','completed_read_only_operator115_only2_fields_incomplete','terminal_failed_no_replay'):fail('operator115_only2_fields_terminal_state')
+    return data
+
+def run_match_operator115_only2_fields(stage):
+    if (operation!='int-andromeda-match-operator115-only2-retained-fields-20261007-v1'
+            or payload.get('batch')!='operator115-only2-retained-20261007'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('operator115_only2_fields_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_operator115_only2_retained_fields_readonly_v1.json'
+    if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
+            or hashlib.sha256(manifest.read_bytes()).hexdigest()!='40df08d71eb09f6185bdb31213686e4771262871205c3329025a75150f1f11df'):fail('operator115_only2_fields_source_binding')
+    pins={"scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py":"fe1b27a57155a3097e0073b6e8654aba5c2aa295ba9e851305f8c5ae08d4a3fc","scripts/diagnostics/fixtures/hotel_match_operator115_only2_retained_fields_readonly_v1.json":"40df08d71eb09f6185bdb31213686e4771262871205c3329025a75150f1f11df","scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py":"89f900e8e3342524419b4972cb27aad2b7e917c53e10df1db9475dcd852b1128","scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py":"c9133f53e44bd8263f185626a78ce38013a0ee1ad758a477d7a1824b6213e196"}
+    for relative,digest in pins.items():
+        path=stage/relative
+        if path.resolve()!=path or not safe_file(path,2*1024*1024) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('operator115_only2_fields_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('operator115_only2_fields_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('operator115_only2_fields_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'operator115-only2-retained-20261007',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('operator115_only2_fields_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('operator115_only2_fields_reservation_readback')
+    exclusive(parent/'operator115_only2-retained-fields-batch-20261007.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_OPERATION_DIR':str(child),'MATCH_MANIFEST_PATH':str(manifest),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    if (not safe_file(result_path,2*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,6*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('operator115_only2_fields_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_operator115_only2_fields_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    data=safe_json(result_path,2*1024*1024);receipt=safe_json(receipt_path,65536)
+    digest=hashlib.sha256(result_path.read_bytes()).hexdigest()
+    input_digest=hashlib.sha256(input_path.read_bytes()).hexdigest()
+    private_raw=module.n.file_bytes(input_path,6*1024*1024)
+    if hashlib.sha256(private_raw).hexdigest()!=input_digest:fail('operator115_only2_fields_private_snapshot_drift')
+    private_data=module.n.parsed(private_raw)
+    summary=validate_match_operator115_only2_fields(data,receipt,digest,input_digest,source,
+        lambda value:module.validate_result(value,receipt,source,private_data))
+    if summary['original_bytes_preserved']:
+        original_path=child/'retained-original.json'
+        if not safe_file(original_path,2*1024*1024):fail('operator115_only2_fields_original_missing')
+        original_raw=module.n.file_bytes(original_path,2*1024*1024)
+        if (len(original_raw)!=summary['raw_bytes_read']
+                or hashlib.sha256(original_raw).hexdigest()!=summary['original_source_sha256']):fail('operator115_only2_fields_original_binding')
+        if summary['state']!='terminal_failed_no_replay':
+            original_data=module.n.parsed(original_raw)
+            for entry,spec in zip(private_data['rows'],module.manifest()['rows']):
+                try:original_row=module.n.pointer(original_data,spec['json_pointer'])
+                except Exception:original_row=None
+                if not module.n.equal_typed(entry['original_row'],original_row):fail('operator115_only2_fields_original_row_binding')
+    successful=summary['state'] in ('completed_read_only_operator115_only2_fields','completed_read_only_operator115_only2_fields_incomplete')
+    if run.returncode!=(0 if successful else 2):fail('operator115_only2_fields_exit_binding')
+    try:stdout=module.n.parsed(run.stdout.encode())
+    except Exception:fail('operator115_only2_fields_stdout_binding')
+    stdout_keys=('state','rows_examined','accepted','written')
+    if set(stdout)!=set(stdout_keys) or any(type(stdout[k]) is not type(data[k]) or stdout[k]!=data[k] for k in stdout_keys):fail('operator115_only2_fields_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_OP1152_DISPATCH = r'''    if mode=='match-operator115-only2-retained-fields-readonly':
+        lane=run_match_operator115_only2_fields(stage)
+        result['match_operator115_only2_retained_fields']=lane
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+'''
+
 REMOTE_ALIAS3_HANDLER = r'''
 def validate_match_alias3_fields(data,receipt,digest,input_digest,expected_source,validate_source):
     fixed={'schema':'match-alias3-retained-fields-result/1',
@@ -3610,7 +3741,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False, passive_oct4: bool = False, alias3: bool = False, alias3_metadata: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False, passive_oct4: bool = False, alias3: bool = False, alias3_metadata: bool = False, operator115_only2: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -3674,6 +3805,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_ALIAS3_HANDLER, REMOTE_ALIAS3_DISPATCH, ALIAS3_MODE
     if alias3_metadata:
         handler, mode_dispatch, selected_mode = REMOTE_ALIAS3_METADATA_HANDLER, REMOTE_ALIAS3_DISPATCH, ALIAS3_METADATA_MODE
+    if operator115_only2:
+        handler, mode_dispatch, selected_mode = REMOTE_OP1152_HANDLER, REMOTE_OP1152_DISPATCH, OP1152_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -3697,14 +3830,14 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE, OP1152_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
         str(command.get('operation_id','')), str(command.get('batch','')),
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
-    if command['mode'] in (OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
+    if command['mode'] in (OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE, OP1152_MODE):
         core.need(type(command.get('maximum_writes')) is int
                   and type(command.get('provider_http_calls')) is int,
                   'observed_page1_authorized_counter_type')
@@ -3735,8 +3868,9 @@ def activate(core, command: dict) -> None:
     passive_oct4 = command['mode'] == PASSIVE_OCT4_MODE
     alias3 = command['mode'] == ALIAS3_MODE
     alias3_metadata = command['mode'] == ALIAS3_METADATA_MODE
+    operator115_only2 = command['mode'] == OP1152_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1, passive_oct4, alias3, alias3_metadata)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1, passive_oct4, alias3, alias3_metadata, operator115_only2)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -3780,6 +3914,8 @@ def activate(core, command: dict) -> None:
         selected_files = PASSIVE_OCT4_SOURCE_FILES
     if alias3 or alias3_metadata:
         selected_files = ALIAS3_SOURCE_FILES
+    if operator115_only2:
+        selected_files = OP1152_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
