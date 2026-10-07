@@ -531,6 +531,8 @@ async function safeAndromedaFailureDiagnostics(source){
   'quote_validate','quote_checkpoint','flight_continuation'];
  const guards=['ANDROMEDA_SELECTION_CONTEXT_MISMATCH','ANDROMEDA_SELECTION_MAPPING_UNAVAILABLE','ANDROMEDA_QUOTE_ATTEMPT_INVALID',
   'ANDROMEDA_QUOTE_RESULT_INVALID','ANDROMEDA_QUOTE_MONEY_INVALID','ANDROMEDA_QUOTE_PRIVATE_STATE','ANDROMEDA_QUOTE_PROVENANCE_INVALID'];
+ const embeddedGuards=['ANDROMEDA_QUOTE_REPLAY_REFUSED','ANDROMEDA_FLIGHT_REPRICE_BUDGET',
+  'ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID','ANDROMEDA_FLIGHT_REPRICE_CURRENCY'];
  const raw='RAW_SUPPLIER_TEXT_SENTINEL: login=fictional-secret';let cases=0;
  const check=async(reason,category='supplier_response',expectedReason=null,extra={},expectedPhase=null)=>{
   const h=quoteHarness(source,'andromeda');
@@ -566,6 +568,7 @@ async function safeAndromedaFailureDiagnostics(source){
  for(const phase of [null,0,{},['quote_resolve'],raw,'quote_resolve_suffix','prefix_quote_resolve','quote_resolve\n'+raw,' quote_resolve','QUOTE_RESOLVE'])
   await check(undefined,'internal',null,{failure_phase:phase});
  for(const guard of guards){await check(guard,'quote_state',guard);await check(guard,'supplier_response');}
+ for(const guard of embeddedGuards)await check(guard,'quote_state');
  for(const guard of [null,{},[guards[0]],'SELECTION_CONTEXT_MISMATCH','PREFIX_'+guards[0],guards[0]+' '+raw,guards[0]+'\n'+raw])
   await check(guard,'quote_state');
  {
@@ -623,10 +626,12 @@ async function safeAndromedaFailureDiagnostics(source){
  };
  for(const category of ['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'])
   await embedded({failure_category:category},{failureCategory:category});
- for(const reason of [...guards,'ANDROMEDA_FLIGHT_REFS_INVALID','ANDROMEDA_SELECTED_FLIGHTS_INVALID'])
+ for(const reason of [...guards,...embeddedGuards,'ANDROMEDA_FLIGHT_REFS_INVALID','ANDROMEDA_SELECTED_FLIGHTS_INVALID'])
   await embedded({failure_category:'quote_state',failure_reason:reason},{failureCategory:'quote_state',failureReason:reason});
  for(const reason of allowed)
   await embedded({failure_category:'supplier_response',failure_reason:reason},{failureCategory:'supplier_response',failureReason:reason});
+ for(const reason of embeddedGuards)for(const category of ['supplier_response','internal'])
+  await embedded({failure_category:category,failure_reason:reason},{failureCategory:category});
  for(const stage of ['broninit','get_flights','changeservice','calc'])
   await embedded({failure_category:'supplier_rejected',failure_stage:stage,supplier_code:'FIXED_17'},
    {failureCategory:'supplier_rejected',failureStage:stage,supplierCode:'FIXED_17'});

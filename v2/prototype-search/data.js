@@ -1594,7 +1594,10 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     const responseCategory=status===200&&kind==='invalid_response'&&allowed.includes(payload?.failure_category)?payload.failure_category:null;
     const responseFailure=responseCategory?{failureCategory:responseCategory}:null,diagnosticFacts=responseFailure||facts;
     const diagnosticCategory=responseCategory||category;
-    const reason=diagnosticCategory==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):diagnosticCategory==='supplier_response'&&[
+    const reason=diagnosticCategory==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason)
+      ||(responseCategory==='quote_state'&&['ANDROMEDA_QUOTE_REPLAY_REFUSED','ANDROMEDA_FLIGHT_REPRICE_BUDGET',
+        'ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID','ANDROMEDA_FLIGHT_REPRICE_CURRENCY'].includes(payload?.failure_reason)?payload.failure_reason:null)
+      :diagnosticCategory==='supplier_response'&&[
       'ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_INVALID_PACKAGE_RESPONSE','ANDROMEDA_INVALID_CLAIM_RESPONSE',
       'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SECRET_ECHO'
     ].includes(payload?.failure_reason)?payload.failure_reason:null;
