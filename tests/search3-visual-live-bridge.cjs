@@ -7,6 +7,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
 const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 // Outside-only JSDOM does not fetch script elements. Service the real third
@@ -70,8 +71,8 @@ const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}thro
 const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
- if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();}
- else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();}
+ if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 (async()=>{
@@ -115,6 +116,39 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  console.log('PASS destination hierarchy: '+hierarchyRows.length+' rows, kind reads '+previousKindReads+' → '+firstHierarchyReads+', saved parent/child order preserved');
  click('[data-action="close-modal"]');await settle();w.AnyTourPrototypeData.catalog.regions['4']=regions;
  assert.equal(starts(),0,'city/meal/destination pickers never start suppliers');
+ // Real catalogue adapter: photos and exact IDs; country changes retain query
+ // and reject a response from a request whose AbortSignal was ignored.
+ transport.state.hotelCatalogue=require('./search3-visual-live-fixture.cjs').hotelCatalogue();
+ const beforePicker=starts(),tripFields=['#dates-label','#nights-label','#guests-label','#origin'].map(s=>q(s).value||q(s).textContent);
+ const typeHotel=value=>{q('#destination-query').value=value;q('#destination-query').dispatchEvent(new w.Event('input',{bubbles:true}));};
+ click('#search-form [data-action="destination"]');typeHotel('Rix');await wait(()=>d.querySelectorAll('.destination-hotel').length===8&&q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.match(q('#destination-scope').textContent,/Турция/);assert.equal(d.querySelectorAll('.destination-hotel img').length,7,'available photos are shown, missing photo uses its own placeholder');
+ const missing=q('.destination-hotel-image[src$="/test-missing-photo.svg"]');missing.dispatchEvent(new w.Event('error'));assert.equal(missing.hidden,true,'broken photo cannot cover the fallback');
+ click('[data-action="destination-more-hotels"]');assert.equal(d.querySelectorAll('.destination-hotel').length,10);
+ assert.equal(d.querySelector('[data-action="destination-more-hotels"]'),null);assert.match(q('#destination-hotels-heading').textContent,/10 в списке/);
+ click('[data-action="destination-hotel"][data-id="2002"]');assert.equal(q('[data-action="destination-hotel"][data-id="2002"]').getAttribute('aria-pressed'),'true');assert.match(q('[data-action="apply-destination"]').textContent,/Выбрать отель/);
+ assert.match(q('#destination-summary').textContent,/Rixos Fictional Belek 02/);click('[data-action="close-modal"]');await settle();
+ assert.deepEqual(['#dates-label','#nights-label','#guests-label','#origin'].map(s=>q(s).value||q(s).textContent),tripFields,'hotel draft cancel preserves trip');assert.match(q('#country').textContent,/Турция/);
+ w.history.forward();await wait(()=>q('#modal').open&&q('[data-action="destination-hotel"][data-id="2002"]'));assert.equal(q('[data-action="destination-hotel"][data-id="2002"]').getAttribute('aria-pressed'),'true','Forward retains the exact un-applied hotel');click('[data-action="close-modal"]');await settle();
+ let releaseHotel;transport.state.hotelLookupGates['4']=new Promise(resolve=>releaseHotel=resolve);
+ const lookupCount=()=>transport.calls.filter(c=>c.url==='/data/hotel-search-v1.php').length,beforeLookup=lookupCount();
+ click('#search-form [data-action="destination"]');typeHotel('Rix');await wait(()=>lookupCount()>beforeLookup);
+ click('[data-action="destination-countries"]');assert.equal(d.querySelectorAll('[data-action="destination-country"]').length,2,'typed hotel query does not hide country switching');
+ click('[data-action="destination-country"][data-value="100"]');await wait(()=>d.querySelectorAll('.destination-hotel').length===3&&q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(q('#destination-query').value,'Rix');assert([...d.querySelectorAll('.destination-hotel strong')].every(el=>el.textContent.includes('Egypt')));assert.match(q('#destination-scope').textContent,/Египет/);
+ const egypt=q('#destination-results').innerHTML;releaseHotel();delete transport.state.hotelLookupGates['4'];await settle();assert.equal(q('#destination-results').innerHTML,egypt,'late other-country response cannot replace or populate this list');
+ click('[data-action="destination-countries"]');click('[data-action="destination-country"][data-value="4"]');await wait(()=>q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(d.querySelectorAll('.destination-hotel').length,8);assert([...d.querySelectorAll('.destination-hotel strong')].every(el=>el.textContent.includes('Belek')),'other-country cached hotels never enter the current country');
+ transport.state.hotelLookupError=true;typeHotel('Rixos');await wait(()=>q('[data-action="retry-destination"]'));assert.equal(q('#destination-query').value,'Rixos');assert.match(q('.destination-current-country').textContent,/Турция/);
+ transport.state.hotelLookupError=false;click('[data-action="retry-destination"]');await wait(()=>q('#destination-query').getAttribute('aria-busy')==='false'&&!q('[data-action="retry-destination"]'));
+ assert.equal(d.querySelectorAll('.destination-hotel').length,8);
+ transport.state.catalogueAliases={2004:['контрольный псевдоним'],2005:['контрольный псевдоним']};typeHotel('контрольный псевдоним');await wait(()=>d.querySelectorAll('.destination-hotel').length===2&&q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.deepEqual([...d.querySelectorAll('.destination-hotel')].map(el=>el.dataset.id),['2004','2005'],'current server-accepted alternate label retains both exact canonical IDs');
+ click('[data-action="destination-hotel"][data-id="2004"]');click('[data-action="destination-hotel"][data-id="2005"]');assert.match(q('[data-action="apply-destination"]').textContent,/Выбрать отели \(2\)/);click('[data-action="close-modal"]');await settle();assert.match(q('#country').textContent,/Турция/);
+ w.history.forward();await wait(()=>q('#modal').open&&d.querySelectorAll('.destination-hotel').length===2&&q('#destination-query').getAttribute('aria-busy')==='false');assert.equal(d.querySelectorAll('.destination-hotel[aria-pressed="true"]').length,2,'Forward reloads the exact alias query and retains the two-ID draft');click('[data-action="close-modal"]');await settle();
+ let releaseAlias;transport.state.hotelLookupGates['4']=new Promise(resolve=>releaseAlias=resolve);const beforeAlias=lookupCount();click('#search-form [data-action="destination"]');typeHotel('контрольный псевдоним');await wait(()=>lookupCount()>beforeAlias);typeHotel('неизвестное контрольное название');await wait(()=>lookupCount()>beforeAlias+1);releaseAlias();delete transport.state.hotelLookupGates['4'];await wait(()=>q('#destination-query').getAttribute('aria-busy')==='false');assert.equal(d.querySelectorAll('.destination-hotel').length,0,'old alias response and cached display names are not current matches');click('[data-action="close-modal"]');await settle();transport.state.catalogueAliases={};transport.state.hotelCatalogue=[];
+ assert.equal(starts(),beforePicker,'hotel catalogue typing, country switch, retry, cancel and Forward never start suppliers');
+ console.log('PASS hotel picker block: catalogue photos/fallback, 8+2 rows, exact draft IDs, country-query retention, stale country/query responses, accepted alias/Forward and retry; supplier HTTP0');
  w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));
  q('#max-price').value='abc';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(q('#max-price').getAttribute('aria-invalid'),'true');click('.search-submit');await settle();
@@ -290,6 +324,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#modal-body').textContent,/STANDARD SEA VIEW/);
  click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();
+ assert(q('#prototype-lead-form'),'chosen flight proceeds directly to application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();
  assert(q('#prototype-lead-form'),'canonical TV lead form connected');
  assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт','a selected flight keeps the normal step label');
@@ -365,7 +400,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();assert.equal(q('#prototype-lead-form').dataset.checked,'1');assert.match(q('.lead-message').textContent,/не отправлена/);
  const beforeSamoApplicationForward=transport.calls.length;q('#modal-body').scrollTop=87;
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open);
- assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/SAMO STANDARD/);assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
+ assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/SAMO STANDARD/);assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/125500/);
  assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');assert.equal(q('[name="consent"]').checked,false);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
  assert.equal(q('#modal-body').scrollTop,87);assert.equal(transport.calls.length,beforeSamoApplicationForward,'SAMO Forward never requotes or submits');
  w.Date.now=()=>realNow()+901000;
@@ -400,11 +435,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.match(q('#anex-flight-inventory').textContent,/не выбранные рейсы/);assert.match(q('#anex-flight-inventory').textContent,/Расписание уточняется/);
  assert.equal(transport.calls.filter(c=>c.action==='flights'&&c.url.includes('anex')).length,1);
  const anexCallsBefore=transport.calls.length;click('[data-action="anex-application-preview"]');await settle();
- assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/Расчётная сумма/);assert.match(q('#modal-body').textContent,/Итоговая стоимость требует подтверждения/);
+ assert(q('#prototype-lead-form'));assert.match(q('#modal-footer').textContent,/Расчётная стоимость/);assert.match(q('#modal-body').textContent,/Расчётная стоимость требует подтверждения оператором/);
  q('[name="phone"]').value='+7 999 123-45-67';q('[name="phone"]').dispatchEvent(new w.Event('input',{bubbles:true}));q('[name="consent"]').checked=true;
  q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();assert.equal(q('#prototype-lead-form').dataset.checked,'1');
  assert.match(q('.lead-message').textContent,/Расчётная сумма/);assert.match(q('.lead-message').textContent,/требует подтверждения/);assert.equal(transport.calls.length,anexCallsBefore,'ANEX application preview adds no provider request');
- click('#modal-footer [data-action="all-offers"]');await settle();
+ click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');await settle();
  assert(q('[data-action="offer"][data-key^="anex%3A"]'),'ANEX application returns to this hotel’s offer list');
  const callsBeforeAnexReturn=transport.calls.length;click('[data-action="offer"][data-key^="anex%3A"]');await settle();
  assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/123000/);
@@ -412,11 +447,11 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('#modal-back');await settle();assert.equal(q('#modal-title').textContent,'Доплаты ANEX рассчитаны');
  click('[data-action="anex-application-preview"]');await settle();
  assert.equal(transport.calls.length,callsBeforeAnexReturn,'ANEX quote and APD never replay on list/reopen/application/Back');
- click('#modal-footer [data-action="all-offers"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
+ click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.equal(tvRequests(),beforeTvReturn,'cross-provider return reuses the same completed TV receipt');
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/,'cross-provider return keeps the chosen TV price');
  const callsBeforeCrossReturn=transport.calls.length;click('#modal-back');click('#modal-back');await settle();
- assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);assert.match(q('#modal-body').textContent.replace(/\s/g,''),/123000/);
+ assert(q('#prototype-lead-form'));assert.match(q('#modal-body').textContent,/ANEX CONCRETE/);assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/123000/);
  q('[name="phone"]').value='+7 999 123-45-67';q('[name="phone"]').dispatchEvent(new w.Event('input',{bubbles:true}));q('[name="consent"]').checked=true;
  q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();assert.equal(q('#prototype-lead-form').dataset.checked,'1','restored provider application is bound to its own receipt');
  assert.equal(transport.calls.length,callsBeforeCrossReturn);
@@ -464,7 +499,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
   assert.match(q('#modal-footer').textContent,/Выбрать другой тур/);assert(!q('[data-action="refresh-hotel"]'));
   assert.equal(quoteCount(),before+(flightChoice?2:1));
   assert.equal(quoteFailures.at(-1).failureCategory,'supplier_auth');assert.equal(quoteFailures.at(-1).httpStatus,502);
-  click('#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
+  click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
   assert.match(q('#modal-body .error-text').textContent,/Подтверждение тура не получено/);
   assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening must never resubmit a sealed attempt');
   click('[data-action="close-modal"]');await settle();

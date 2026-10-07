@@ -29,7 +29,7 @@ function visualOwner(){
  const source=fs.readFileSync(path.join(root,'visual-search/app.js'),'utf8');
  const context=vm.createContext({Date,structuredClone,state:{search:{origin:'Москва'}},countryNames:{4:'Турция'},
   mealLabel:o=>o.meal,selectedTourHotel:o=>o.testHotel,rememberProviderView(){},retainedProviderView:()=>null,
-  showModal(){},$:()=>({}),esc:String,dateText:String,nightsText:String,guestsText:()=>'',money:String,
+  showModal(){},$:()=>({classList:{add(){}}}),providerTourBodyHTML:()=>'',offerDetailFooterHTML:()=>'',esc:String,dateText:String,nightsText:String,guestsText:()=>'',money:String,
   anexApplicationDraft:null,selectedOffer:null});
  for(const name of ['andromedaQuoteCurrent','andromedaApplicationReceipt','anexApplicationReceipt','openAnexPackageQuote']){
   const marker='function '+name+'(',start=source.indexOf(marker);

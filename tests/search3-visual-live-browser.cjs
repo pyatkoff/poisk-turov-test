@@ -2,7 +2,7 @@
 // CI browser acceptance. Every data request is intercepted with fictional fixtures.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
-const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
 const mobileCardPriceLayout=async(page,width,evidence)=>{
  if(width!==390){
   const boxes=await page.locator('.hotel-card').first().evaluate(el=>({photo:el.querySelector('.hotel-image-wrap').getBoundingClientRect().width,thumbs:[...el.querySelectorAll('.card-thumb')].map(t=>t.getBoundingClientRect().width)}));
@@ -114,6 +114,50 @@ const mobileQuickFieldLayout=async(page,width)=>{
   assert(boxes.value.x>=boxes.field.x&&boxes.value.right<=boxes.field.right&&boxes.value.bottom<=boxes.field.bottom,'whole budget value stays inside its field');
  }finally{await page.setViewportSize({width,height:900});}
 };
+const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
+ transport.state.hotelCatalogue=hotelCatalogue();
+ await page.addInitScript(()=>{const viewport=new EventTarget();viewport.height=innerHeight;viewport.offsetTop=0;Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});window.__hotelViewport=viewport;});
+ await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+ await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length,beforeStarts=starts();
+ const fields=()=>page.evaluate(()=>['#dates-label','#nights-label','#guests-label','#origin'].map(s=>{const el=document.querySelector(s);return el.value||el.textContent;}));
+ const beforeTrip=await fields();
+ await page.locator('#search-form [data-action="destination"]').click();await page.locator('#destination-query').fill('Rix');
+ await page.waitForFunction(()=>document.querySelectorAll('.destination-hotel').length===8&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(await page.locator('.destination-hotel img').count(),7);assert.match(await page.locator('#destination-scope').textContent(),/Турция/);
+ await page.waitForFunction(()=>document.querySelector('.destination-hotel-image[src$="/test-missing-photo.svg"]')?.hidden===true);
+ assert.equal(await page.locator('.destination-hotel[data-id="2003"] img').count(),0,'absent photo uses the placeholder');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-photos-${width}.png`)});
+ if(width<=760){
+  const viewport=async(height,offsetTop=0)=>page.evaluate(({height,offsetTop})=>{Object.assign(window.__hotelViewport,{height,offsetTop});window.__hotelViewport.dispatchEvent(new Event('resize'));},{height,offsetTop});
+  const geometry=()=>page.locator('#modal').evaluate(modal=>{const rect=el=>{const b=el.getBoundingClientRect();return{top:b.top,bottom:b.bottom,height:b.height,right:b.right,left:b.left};};return{modal:rect(modal),body:rect(document.querySelector('#modal-body')),footer:rect(document.querySelector('#modal-footer')),action:rect(document.querySelector('[data-action="apply-destination"]')),input:rect(document.querySelector('#destination-query')),rows:[...document.querySelectorAll('.destination-hotel')].slice(0,3).map(rect),width:modal.clientWidth,scrollWidth:modal.scrollWidth};});
+  await viewport(460);await page.waitForFunction(()=>document.querySelector('#modal').classList.contains('destination-keyboard'));
+  const boxes=await geometry();assert(boxes.modal.top>=0&&boxes.modal.bottom<=460,'picker stays wholly above the simulated keyboard');assert(boxes.footer.bottom<=460&&boxes.action.height>=44,'confirmation remains visible with a touch target');assert(boxes.input.height>=44);assert(boxes.rows.every(row=>row.bottom<=boxes.body.bottom),'three exact hotel rows remain visible above the keyboard');assert.equal(boxes.scrollWidth<=boxes.width+1,true);
+  await page.screenshot({path:path.join(evidence,`hotel-picker-keyboard-${width}.png`)});
+  await viewport(460,24);const moved=await geometry();assert(moved.modal.top>=24&&moved.modal.bottom<=484,'panned visual viewport remains bounded');
+  await viewport(900);assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('destination-keyboard')),false);
+  fs.writeFileSync(path.join(evidence,`hotel-picker-keyboard-${width}.json`),JSON.stringify({simulated:true,physicalSafari:false,boxes,panned:moved},null,2));
+ }
+ await page.locator('[data-action="destination-more-hotels"]').click();assert.equal(await page.locator('.destination-hotel').count(),10);
+ transport.state.catalogueAliases={2004:['контрольный псевдоним'],2005:['контрольный псевдоним']};await page.locator('#destination-query').fill('контрольный псевдоним');await page.waitForFunction(()=>document.querySelectorAll('.destination-hotel').length===2&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ assert.deepEqual(await page.locator('.destination-hotel').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2004','2005'],'server alias matches retain exact canonical identities');await page.locator('[data-action="destination-hotel"][data-id="2004"]').click();await page.locator('[data-action="destination-hotel"][data-id="2005"]').click();assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отели \(2\)/);
+ await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.deepEqual(await fields(),beforeTrip);await page.goForward();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelectorAll('.destination-hotel[aria-pressed="true"]').length===2&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-alias-${width}.png`)});await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');await page.locator('#search-form [data-action="destination"]').click();await page.locator('#destination-query').fill('Rix');await page.waitForFunction(()=>document.querySelectorAll('.destination-hotel').length===8&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ await page.locator('[data-action="destination-countries"]').click();assert.equal(await page.locator('[data-action="destination-country"]').count(),11,'country menu opens with the hotel query retained');
+ await page.locator('[data-action="destination-country"][data-value="100"]').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.destination-hotel').length===3&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(await page.locator('#destination-query').inputValue(),'Rix');assert((await page.locator('.destination-hotel strong').allTextContents()).every(name=>name.includes('Egypt')));assert.match(await page.locator('#destination-scope').textContent(),/Египет/);
+ await page.screenshot({path:path.join(evidence,`hotel-picker-country-${width}.png`)});
+ await page.locator('[data-action="destination-countries"]').click();await page.locator('[data-action="destination-country"][data-value="4"]').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.destination-hotel').length===8&&document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+ assert((await page.locator('.destination-hotel strong').allTextContents()).every(name=>name.includes('Belek')));
+ await page.locator('[data-action="destination-hotel"][data-id="2002"]').click();assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отель/);await page.locator('[data-action="apply-destination"]').click();
+ await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+ assert.match(await page.locator('#country').textContent(),/Rixos Fictional Belek 02/);assert.deepEqual(await fields(),beforeTrip);assert.equal(starts(),beforeStarts,'all picker actions leave suppliers untouched');
+ await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.length>0);for(let i=0;i<100&&starts()===beforeStarts;i++)await page.waitForTimeout(20);
+ assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
+ fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+};
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -132,7 +176,7 @@ const forwardProviderApplication=async(page,transport,room,price)=>{
  const scroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=83;return el.scrollTop;});
  await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
  await page.evaluate(()=>history.forward());await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#prototype-lead-form'));
- assert((await page.locator('#modal-body').textContent()).includes(room));assert((await page.locator('.verification-tour').textContent()).replace(/\s/g,'').includes(price));
+ assert((await page.locator('#modal-body').textContent()).includes(room));assert((await page.locator('#modal-footer').textContent()).replace(/\s/g,'').includes(price));
  assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');assert.equal(await page.locator('[name="consent"]').isChecked(),false);
  assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null);
  const position=await page.locator('#modal-body').evaluate(el=>({top:el.scrollTop,max:el.scrollHeight-el.clientHeight}));
@@ -143,9 +187,11 @@ const continueToFlights=async page=>{
  if(await page.locator('[data-action="start-tour-flights"]').count()){
   await page.locator('[data-action="start-tour-flights"]').click();
   await page.locator('[data-action="apply-flight"]').click();
+  await page.locator('#prototype-lead-form').waitFor();await page.locator('#modal-back').click();
  }else if(await page.locator('[data-action="retry-flights"]').count()){
   await page.locator('[data-action="retry-flights"]').click();
   await page.locator('[data-action="apply-flight"]').click();
+  await page.locator('#prototype-lead-form').waitFor();await page.locator('#modal-back').click();
  }
 };
 const server=http.createServer((req,res)=>{
@@ -170,12 +216,13 @@ const server=http.createServer((req,res)=>{
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
   let releaseAnexQuote,markAnexQuotePending;let anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
-  let releaseSamoPair;const samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
+  let releaseSamoPair,markSamoPairPending;let samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
+   if(u.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
-   try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required')value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights')await samoPairGate;if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
+   try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required'&&!transport.state.samoSolePair)value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights'){markSamoPairPending?.();await samoPairGate;}if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
@@ -319,7 +366,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(flightDownloads.length,0,'catalogue, results and quote without flights leave the picker cold');
   await page.locator('#modal-back').click();await continueToFlights(page);await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
   assert.equal(flightDownloads.length,1,'first actual picker open downloads one UI owner');assert.match(new URL(flightDownloads[0]).search,/^\?v=[0-9a-f]{12}$/,'PHP binds the exact compiled picker hash');
-  await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();assert.equal(flightDownloads.length,1,'warm picker has no second download');
+  await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/133500/);await page.locator('#modal-back').click();assert.equal(flightDownloads.length,1,'warm picker has no second download');
   assert((await page.locator('#detail-total').textContent()).replace(/\s/g,'').includes('133500'));
   await page.locator('[data-action="confirm-tour"]').click();
   assert.equal((await page.locator('.selection-steps li').nth(1).textContent()).trim(),'2Перелёт');
@@ -425,16 +472,16 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#anex-flight-inventory').evaluate(el=>el.scrollWidth>el.clientWidth),false,'ANEX flight facts fit the target viewport');
   await page.screenshot({path:path.join(evidence,`anex-flights-${width}.png`)});
   const callsBeforeAnexApplication=transport.calls.length;await page.locator('[data-action="anex-application-preview"]').click();
-  assert((await page.locator('#modal-body').textContent()).includes('Расчётная сумма'));assert((await page.locator('#modal-body').textContent()).includes('Итоговая стоимость требует подтверждения'));
+  assert((await page.locator('#modal-footer').textContent()).includes('Расчётная стоимость'));assert((await page.locator('#modal-body').textContent()).includes('Расчётная стоимость требует подтверждения оператором'));
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
-  await page.locator('.verification-tour').scrollIntoViewIfNeeded();
+  await page.locator('.application-choice').scrollIntoViewIfNeeded();
   await contactLayout(page,width,'ANEX');
   await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'ANEX CONCRETE','123000');
   await page.screenshot({path:path.join(evidence,`anex-application-forward-${width}.png`)});
-  await page.locator('#modal-footer [data-action="all-offers"]').click();
+  await page.locator('#modal-body [data-action="all-offers"]').click();
   const retainedAnex=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
   await retainedAnex.waitFor({state:'visible'});
   await retainedAnex.click();assert.equal(await page.locator('#modal-title').textContent(),'Доплаты ANEX рассчитаны');
@@ -442,7 +489,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="anex-application-preview"]').click();await page.locator('#modal-back').click();
   await page.locator('[data-action="anex-application-preview"]').click();assert.equal(transport.calls.length,callsBeforeAnexApplication);
   await page.screenshot({path:path.join(evidence,`anex-return-${width}.png`)});
-  await page.locator('#modal-footer [data-action="all-offers"]').click();
+  await page.locator('#modal-body [data-action="all-offers"]').click();
   await retainedAnex.waitFor({state:'visible'});
   await retainedAnex.click();await page.locator('[data-action="anex-package-quote"]').click();
   await page.locator('[name="anex-package-choice"]').nth(1).check();
@@ -453,7 +500,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('[data-action="anex-application-preview"]').count(),0);
   await page.screenshot({path:path.join(evidence,`anex-package-pending-${width}.png`)});
   releaseAnexQuote();await page.locator('[data-action="anex-application-preview"]').waitFor();
-  assert.match((await page.locator('.verification-tour').textContent()).replace(/\s/g,''),/135678,9/);
+  assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/135678,9/);
   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 2 OUT/);
   await page.screenshot({path:path.join(evidence,`anex-package-verified-${width}.png`)});
   await page.locator('[data-action="anex-application-preview"]').click();await page.locator('[name="consent"]').check();
@@ -693,7 +740,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();
   await page.locator('[data-action="refresh-hotel"]').click();await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
-  await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="anex-package-quote"]').click();await anexQuotePending;
+  await page.locator('[data-action="select-anex-tour"]').click();await anexQuotePending;assert.equal(await page.locator('[data-action="anex-package-quote"]').count(),0,'primary entry skips the context-only screen');
   assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,beforeSoleCalc+1,'unique supplier pair calculates without another click');
   assert.equal(await page.locator('[name="anex-package-choice"]').count(),1);
   assert.equal(await page.locator('[data-action="anex-package-calculate"]').isDisabled(),true);
@@ -702,10 +749,35 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);
   await page.screenshot({path:path.join(evidence,`anex-sole-pair-pending-${width}.png`)});
   releaseAnexQuote();await page.locator('[data-action="anex-application-preview"]').waitFor();
-  assert.match((await page.locator('.verification-tour').textContent()).replace(/\s/g,''),/135678,9/);
+  assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/135678,9/);
   assert.match(await page.locator('#modal-body').textContent(),/TEST ANEX PACKAGE 1 OUT/);
   assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,beforeSoleStart+1);
   await page.screenshot({path:path.join(evidence,`anex-sole-pair-verified-${width}.png`)});
+  await page.locator('[data-action="anex-application-preview"]').click();await contactLayout(page,width,'ANEX');
+  assert.equal(await page.locator('[name="consent"]').isChecked(),false);assert.match(await page.locator('.application-choice').textContent(),/ANEX CONCRETE/);
+  await page.screenshot({path:path.join(evidence,`anex-direct-application-${width}.png`)});
+  await page.locator('#modal-back').click();assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,beforeSoleCalc+1,'application Back never recalculates');
+  await page.locator('[data-action="close-modal"]').click();
+  // Exactly one SAMO option per direction continues only the explicit quote.
+  transport.state.samoFailure=null;transport.state.samoFlightChoice=true;transport.state.samoSolePair=true;
+  samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);const samoPairPending=new Promise(resolve=>markSamoPairPending=resolve);
+  const beforeSamoPair=transport.calls.filter(c=>c.action==='quote_select_flights').length;
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').click();
+  await page.locator('[data-action="refresh-hotel"]').click();await samoPairPending;
+  assert.equal(transport.calls.filter(c=>c.action==='quote_select_flights').length,beforeSamoPair+1,'sole SAMO pair needs no extra confirmation click');
+  assert.equal(await page.locator('[data-action="apply-andromeda-flights"]').isDisabled(),true);assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0);
+  await page.screenshot({path:path.join(evidence,`samo-sole-pair-pending-${width}.png`)});
+  releaseSamoPair();await page.locator('[data-action="andromeda-application-preview"]').waitFor();
+  assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/125500/);assert.match(await page.locator('.quote-price-change').textContent(),/Цена изменилась/);
+  await page.screenshot({path:path.join(evidence,`samo-sole-pair-verified-${width}.png`)});
+  await page.locator('[data-action="andromeda-application-preview"]').click();await contactLayout(page,width,'SAMO');
+  assert.match(await page.locator('.application-choice').textContent(),/SAMO STANDARD/);assert.equal(await page.locator('[name="consent"]').isChecked(),false);
+  await page.screenshot({path:path.join(evidence,`samo-sole-pair-application-${width}.png`)});
+  await page.locator('#modal-back').click();assert.equal(transport.calls.filter(c=>c.action==='quote_select_flights').length,beforeSamoPair+1);
+  await hotelPickerBlock(page,width,transport,origin,base,evidence);
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }

@@ -9,7 +9,7 @@ function observe(source,s){
  const calls=[],dom=new Map();const o={key:'offer<&"',provider:s.provider,hotelId:7,total:133500.5,operator:'Operator<&',room:'Room<&',ages:[0,17],day:'2026-10-14',returnDay:'2026-10-21',nights:7,
   loading:!!(s.flags&1),flightsLoading:!!(s.flags&2),quoteError:s.flags&4?'Ошибка<&':'',pricePending:!!(s.flags&8),
   tour:s.flags&16?{price:133500.5}:null,variants:s.flags&32?[{id:'pair'}]:[],flightChoiceId:s.flags&32?'0':'',
-  quoteErrorTerminal:!!(s.flags&64),quoteErrorCode:s.flags&128?'offer_expired':'',flightsError:s.flags&256?'flight error':'',raw:{anexKind:s.group?'group_minimum':'concrete'}};
+  quoteErrorTerminal:!!(s.flags&64),quoteErrorCode:s.flags&128?'offer_expired':'',flightsError:s.flags&256?'flight error':'',raw:{anexKind:s.group?'group_minimum':'concrete',...(s.session?{anexSessionCurrent:true}:{})}};
  const hotel={id:7,name:'Hotel<&"',resort:'Resort<&',country:'4',photos:s.noPhoto?[]:['photo<&']};
  const call=(name,fn)=>(...args)=>{calls.push([name,...args.map(x=>x===o?'OFFER':x===hotel?'HOTEL':x)]);return fn?fn(...args):'['+name+']';};
  const node=key=>{if(!dom.has(key))dom.set(key,{innerHTML:'initial',hidden:true,classList:{add:name=>calls.push(['classAdd',key,name])}});return dom.get(key);};
@@ -35,7 +35,7 @@ const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stri
 const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
 assert(source.includes(flightGuard),'terminal flight presentation guard');
 const baseline=records(source.replace(flightGuard,'${flightSummaryHTML(o)}'));
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'56912ddd980b629a3b7e8bb934460be1823ec76fe05476680f7adde33363d5e5','approved frame unchanged outside the intentional flight-summary delta');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'b622b57c5d36aa7ea230bb5828db319698b24f151fac260e318a19ee8b0b26ad','approved journey frame and terminal flight-summary policy');
 function expectedDelta(before){return before.map((record,index)=>{
  const s=scenarios[index];if(!s.unavailable&&!(s.flags&64)&&!(s.flags&128))return record;
  const expected=JSON.parse(JSON.stringify(record));expected.calls=expected.calls.filter(c=>c[0]!=='flightSummaryHTML');
@@ -47,6 +47,13 @@ if(i>=0)assert.deepEqual(actual,expectedDelta(records(fs.readFileSync(process.ar
 const verified=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:16});
 assert(verified.calls.some(c=>c[0]==='rememberProviderView'));
 assert(verified.calls.find(c=>c[0]==='showModal')[4].includes('tour-layout'));
+for(const flags of [0,1]){
+ const direct=observe(source,{provider:'anex',live:true,unavailable:true,flags,session:true});
+ const footer=direct.dom.find(([key])=>key==='#modal-footer')[1].html;
+ assert.match(footer,/data-action="select-anex-tour"/,'current concrete ANEX has one primary flight-price path');
+ assert.equal(footer.includes('disabled'),!!flags,'pending context blocks duplicate primary clicks');
+ assert.match(direct.calls.find(c=>c[0]==='showModal')[4],/Уточнить цену без выбора рейсов/,'optional no-flight route remains separate');
+}
 const loading=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:17});
 assert(!loading.calls.some(c=>c[0]==='rememberProviderView'));
 const terminal=observe(source,{provider:'anex',live:true,unavailable:true,flags:64});

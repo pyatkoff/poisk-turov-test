@@ -108,7 +108,7 @@ async function run(){
     await choose('tourvisor');assert.equal(transport.calls.filter(c=>c.action==='tour'||c.action==='flights').length,0,'opening the tour only shows its exact conditions');
     await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
     assert.equal(transport.calls.filter(c=>c.action==='tour').length,1);assert.equal(transport.calls.filter(c=>c.action==='flights').length,1);
-    await page.locator('[data-action="confirm-tour"]').click();await application('tourvisor-application');
+    await page.locator('#prototype-lead-form').waitFor();await application('tourvisor-application');
     await page.locator('[data-action="close-modal"]').click();
     await choose('anex');await page.locator('[data-action="refresh-hotel"]').click();
     await page.waitForFunction(()=>document.querySelector('#modal-title').textContent==='Ваш тур в деталях'&&document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
