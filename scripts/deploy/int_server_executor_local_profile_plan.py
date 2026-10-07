@@ -27,6 +27,7 @@ MASS_PARENT_SHA = '0b0a8807bf4b7b07172561537eafe1bc865265ef926c91fa117eed1c9f618
 MASS3_BATCH = 'local4191-mass-retained3-20261002'
 MASS3_OPERATION = 'int-andromeda-local-profile-mass-plan3-4191-20261002-v1'
 MASS3_RUNNER = 'scripts/diagnostics/local_profile_mass_plan3_4191.php'
+RECOVERY_RUNNER = 'scripts/diagnostics/local_profile_mass_recovery_plan_4191.php'
 MASS2_PARENT_SHA = 'aafbc0aa015d485817ae9d851a6200f677488ea5538ab73447f2ee1dc67c84e1'
 SOURCE_FILES = (
     'v2/data/anytour-profile-enrichment-v1.php',
@@ -35,7 +36,7 @@ SOURCE_FILES = (
     'v2/data/hotel-presentation-read-v1.php',
     'v2/data/hotel-details-v1.php',
 )
-BUNDLE_FILES = SOURCE_FILES + (RUNNER, MASS_RUNNER, MASS2_RUNNER, MASS3_RUNNER)
+BUNDLE_FILES = SOURCE_FILES + (RUNNER, MASS_RUNNER, MASS2_RUNNER, MASS3_RUNNER, RECOVERY_RUNNER)
 
 
 def need(value: bool, reason: str) -> None:
@@ -72,7 +73,7 @@ def bundle_source(source_root: Path) -> tuple[bytes, dict[str, str]]:
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
         for relative in BUNDLE_FILES:
-            base = control_root if relative in (RUNNER, MASS_RUNNER, MASS2_RUNNER, MASS3_RUNNER) else root
+            base = control_root if relative in (RUNNER, MASS_RUNNER, MASS2_RUNNER, MASS3_RUNNER, RECOVERY_RUNNER) else root
             path = base / relative
             need(path.is_file() and not path.is_symlink()
                  and path.resolve() == path, 'local_profile_source_path')
