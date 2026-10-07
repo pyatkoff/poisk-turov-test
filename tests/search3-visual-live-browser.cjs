@@ -343,6 +343,16 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  await page.waitForFunction(()=>document.querySelector('.destination-hotel-image[src$="/test-missing-photo.svg"]')?.hidden===true);
  assert.equal(await page.locator('.destination-hotel[data-id="2003"] img').count(),0,'absent photo uses the placeholder');
  await page.screenshot({path:path.join(evidence,`hotel-picker-photos-${width}.png`)});
+ const focusedHotel=page.locator('#destination-hotel-2001');
+ await focusedHotel.focus();await focusedHotel.press('Space');
+ await page.waitForFunction(()=>document.querySelector('#destination-hotel-2001')?.getAttribute('aria-pressed')==='true');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard selection and later region paint retain exact row focus');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-focus-${width}.png`)});
+ await focusedHotel.press('Space');
+ await page.waitForFunction(()=>document.querySelector('#destination-hotel-2001')?.getAttribute('aria-pressed')==='false');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard deselection retains its row');
  if(width<=760){
   const viewport=async(height,offsetTop=0)=>page.evaluate(({height,offsetTop})=>{Object.assign(window.__hotelViewport,{height,offsetTop});window.__hotelViewport.dispatchEvent(new Event('resize'));},{height,offsetTop});
   const geometry=()=>page.locator('#modal').evaluate(modal=>{const rect=el=>{const b=el.getBoundingClientRect();return{top:b.top,bottom:b.bottom,height:b.height,right:b.right,left:b.left};};return{modal:rect(modal),body:rect(document.querySelector('#modal-body')),footer:rect(document.querySelector('#modal-footer')),action:rect(document.querySelector('[data-action="apply-destination"]')),input:rect(document.querySelector('#destination-query')),rows:[...document.querySelectorAll('.destination-hotel')].slice(0,3).map(rect),width:modal.clientWidth,scrollWidth:modal.scrollWidth};});
@@ -371,7 +381,7 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.match(await page.locator('#country').textContent(),/Rixos Fictional Belek 02/);assert.deepEqual(await fields(),beforeTrip);assert.equal(starts(),beforeStarts,'all picker actions leave suppliers untouched');
  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.length>0);for(let i=0;i<100&&starts()===beforeStarts;i++)await page.waitForTimeout(20);
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
- fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+ fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames

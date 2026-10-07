@@ -447,6 +447,7 @@ function renderMoreDestinationHotels(){
  appendGeneratedRoots(section,destinationHotelEntries(destinationMatchItems,next,destinationHotelLimit),more);rememberUIRoute();return next;
 }
 function renderDestination(){
+ const focus=focusReference(document.activeElement,$('#destination-results'));
  destinationMatchItems=[];
  const d=destinationChoice,q=normalizeSearch($('#destination-query').value),ids=destinationIds(d);
  $('#destination-query').setAttribute('aria-busy',String(destinationLookup.status==='loading'));
@@ -468,6 +469,7 @@ function renderDestination(){
  if(destinationLookup.status==='error')html+='<div class="destination-empty" role="status"><p>Не удалось загрузить отели. Запрос и выбранное направление сохранены.</p><button class="secondary" data-action="retry-destination">Повторить</button></div>';
  $('#destination-results').innerHTML=html||'<div class="destination-empty" role="status"><h3>Совпадений нет</h3><p>Проверьте название или сократите запрос. Выбранное направление сохранено.</p><button class="text-button" data-action="clear-destination-query">Очистить запрос</button></div>';
  if(matches.length)paintGeneratedRoots($('#destination-hotel-results'),[{id:'destination-hotels-heading',markup:`<h3 id="destination-hotels-heading">Отели · ${matches.length} в списке</h3>`},...destinationHotelEntries(matches)],false);
+ restoreFocus(focus,null,$('#destination-results'));
  $('#destination-summary').textContent=destinationLabel(d,true);$('.destination-apply-context').textContent=ids.length?'Только выбранные отели':d.resorts.length?'Любой из выбранных курортов':'Все курорты и отели страны';const apply=$('[data-action="apply-destination"]');apply.textContent=ids.length===1?'Выбрать отель':ids.length?'Выбрать отели ('+ids.length+')':d.resorts.length?'Выбрать курорты':'Выбрать страну';apply.disabled=!catalogReady||!countryNames[d.country];rememberUIRoute();
 }
 function updateNav(){
