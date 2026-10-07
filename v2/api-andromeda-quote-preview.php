@@ -504,9 +504,9 @@ function anytour_andromeda_quote_supplier_failure(Throwable $error): array
         'error' => 'supplier_unavailable',
         'failure_category' => anytour_andromeda_quote_failure_category($error),
     ];
-    // quote_state is reachable only through the fixed-message map above. Keep
-    // its exact guard distinguishable without exposing arbitrary exception text.
-    if ($response['failure_category'] === 'quote_state') {
+    // These categories are reachable only through the exact fixed-message map
+    // above. Its five supplier_response reasons expose no raw exception details.
+    if (in_array($response['failure_category'], ['quote_state', 'supplier_response'], true)) {
         $response['failure_reason'] = $error->getMessage();
     }
     if (method_exists($error, 'diagnosticFacts')) {
