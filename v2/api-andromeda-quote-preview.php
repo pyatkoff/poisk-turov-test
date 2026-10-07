@@ -293,14 +293,14 @@ function anytour_andromeda_quote_reprice_continue(array $resolved, array $meta, 
         if (!$reserved) {
             if ($error->getMessage()!=='ANDROMEDA_FLIGHT_REPRICE_BUDGET') throw $error;
             $result=anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
-            return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error),['ok'=>true,'error'=>true]);
+            return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error, 'flight_continuation'),['ok'=>true,'error'=>true]);
         }
         try {
             $current=anytour_andromeda_quote_read($path,3000000)['state'];
             anytour_andromeda_quote_reprice_persist($path,AnyTourAndromedaFlightRepricingState::unknown($current,$token),$current);
         } catch (Throwable $ignored) { /* A surviving reserved envelope also seals the context. */ }
         $result=anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
-        return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error),['ok'=>true,'error'=>true]);
+        return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error, 'flight_continuation'),['ok'=>true,'error'=>true]);
     } finally { flock($execution,LOCK_UN); fclose($execution); }
 }
 
@@ -322,9 +322,12 @@ function anytour_andromeda_quote_supplier(array $config): array
         static fn() => anytour_andromeda_search3_budget($budgetDirectory))];
 }
 
-function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, array $config, string $session, array $listingPrices = []): array
+function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, array $config, string $session,
+    array $listingPrices = [], ?string &$failurePhase = null): array
 {
+    $failurePhase = 'quote_resolve';
     $resolved = anytour_andromeda_quote_resolve($request, $pdo, $saved, $config, $session, $listingPrices);
+    $failurePhase = 'quote_reserve';
     $meta = anytour_andromeda_quote_meta($resolved, $config);
     $checkpoint = $meta['prefix'] . '-quote-v1.json';
     $flightState = $meta['prefix'] . '-quote-flight-state-v1.json';
@@ -335,9 +338,11 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
     $attempt = $reserved['attempt'];
 
     try {
+        $failurePhase = 'quote_bootstrap';
         [$client, $actions] = anytour_andromeda_quote_supplier($config);
         $repriceClaim=null; $retainedState=null;
-        $retain = static function(array $claim, array $options) use ($flightState, $meta, &$repriceClaim, &$retainedState): array {
+        $retain = static function(array $claim, array $options) use ($flightState, $meta, &$repriceClaim, &$retainedState, &$failurePhase): array {
+            $failurePhase = 'flight_state';
             if (file_exists($flightState) || is_link($flightState)) {
                 throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_CHANGED');
             }
@@ -349,20 +354,25 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
                 throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_FAILED');
             }
             $repriceClaim=$claim; $retainedState=$built['state'];
+            $failurePhase = 'quote_bootstrap';
             return $built['refs'];
         };
         $result = AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions, $retain);
+        $failurePhase = 'quote_validate';
         $result = anytour_andromeda_quote_with_expiry($result, $resolved);
         if (is_array($repriceClaim) && is_array($retainedState) && $result['state']==='flight_selection_required') {
+            $failurePhase = 'flight_state';
             $privateSession=$client->privateSession();
             $state=AnyTourAndromedaFlightRepricingState::create($meta['context_sha256'],
                 hash('sha256',json_encode($retainedState,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)),
                 $privateSession['sid'] ?? '',$repriceClaim,$result,$resolved['expires_at']);
             $state=anytour_andromeda_quote_reprice_persist($meta['prefix'].'-quote-flight-context-v2.json',$state,[]);
             $result['repricing']=AnyTourAndromedaFlightRepricingState::metadata($state);
+            $failurePhase = 'quote_validate';
         }
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
             $resolved['listing_price_receipt'] ?? null, $result, time());
+        $failurePhase = 'quote_checkpoint';
         anytour_andromeda_quote_finish($checkpoint, $meta['lock_path'], $attempt, $result);
         return $result;
     } catch (Throwable $error) {
@@ -465,6 +475,13 @@ function anytour_andromeda_quote_failure_category(Throwable $error): string
         'ANDROMEDA_OPERATOR_CREDENTIALS_PAIR_REQUIRED' => 'supplier_auth',
         'ANDROMEDA_OPERATOR_CREDENTIALS_INVALID' => 'supplier_auth',
         'ANDROMEDA_QUOTE_CONTEXT_MISMATCH' => 'quote_state',
+        'ANDROMEDA_SELECTION_CONTEXT_MISMATCH' => 'quote_state',
+        'ANDROMEDA_SELECTION_MAPPING_UNAVAILABLE' => 'quote_state',
+        'ANDROMEDA_QUOTE_ATTEMPT_INVALID' => 'quote_state',
+        'ANDROMEDA_QUOTE_RESULT_INVALID' => 'quote_state',
+        'ANDROMEDA_QUOTE_MONEY_INVALID' => 'quote_state',
+        'ANDROMEDA_QUOTE_PRIVATE_STATE' => 'quote_state',
+        'ANDROMEDA_QUOTE_PROVENANCE_INVALID' => 'quote_state',
         'ANDROMEDA_QUOTE_REPLAY_REFUSED' => 'quote_state',
         'ANDROMEDA_FLIGHT_REPRICE_BUDGET' => 'quote_state',
         'ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID' => 'quote_state',
@@ -497,13 +514,19 @@ function anytour_andromeda_quote_failure_category(Throwable $error): string
     return $map[$error->getMessage()] ?? 'internal';
 }
 
-function anytour_andromeda_quote_supplier_failure(Throwable $error): array
+function anytour_andromeda_quote_supplier_failure(Throwable $error, ?string $failurePhase = null): array
 {
     $response = [
         'ok' => false,
         'error' => 'supplier_unavailable',
         'failure_category' => anytour_andromeda_quote_failure_category($error),
     ];
+    // Diagnostic only: neither arbitrary exception text nor private state is a phase.
+    if (in_array($failurePhase, ['request', 'database', 'catalog', 'criteria', 'quote_resolve',
+        'quote_reserve', 'quote_bootstrap', 'flight_state', 'quote_validate', 'quote_checkpoint',
+        'flight_continuation'], true)) {
+        $response['failure_phase'] = $failurePhase;
+    }
     // These categories are reachable only through the exact fixed-message map
     // above. Its five supplier_response reasons expose no raw exception details.
     if (in_array($response['failure_category'], ['quote_state', 'supplier_response'], true)) {
@@ -552,27 +575,34 @@ function anytour_andromeda_quote_http(): void
         ? $_SESSION['andromeda_listing_prices_v1'] : [];
     session_write_close();
 
+    $failurePhase = 'request';
     try {
         $request = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
         if (!is_array($request)
             || !in_array($request['action'] ?? null, ['quote', 'quote_select_flights'], true)) {
             throw new InvalidArgumentException();
         }
+        $failurePhase = 'database';
         $root = realpath($_SERVER['DOCUMENT_ROOT'] ?? '');
         if (!$root || basename($root) !== 'anytoour.ru') throw new RuntimeException();
         require_once $root . (is_file($root.'/data/db-v1.php') ? '/data/db-v1.php' : '/v2/data/db-v1.php');
         $pdo = v2_data_db();
+        $failurePhase = 'catalog';
         $saved = anytour_andromeda_search3_catalog($config, $request);
         $saved['excluded_operator_ids'] = $config['excluded_operator_ids'] ?? [];
+        $failurePhase = 'criteria';
         anytour_andromeda_search3_params($request, $pdo, $saved);
-        $data = ($request['action'] === 'quote_select_flights')
-            ? anytour_andromeda_quote_continue($request, $pdo, $saved, $config, $session, $listingPrices)
-            : anytour_andromeda_quote_run($request, $pdo, $saved, $config, $session, $listingPrices);
+        if ($request['action'] === 'quote_select_flights') {
+            $failurePhase = 'flight_continuation';
+            $data = anytour_andromeda_quote_continue($request, $pdo, $saved, $config, $session, $listingPrices);
+        } else {
+            $data = anytour_andromeda_quote_run($request, $pdo, $saved, $config, $session, $listingPrices, $failurePhase);
+        }
         anytour_anex_search3_out(['ok'=>true,'data'=>$data],200);
     } catch (OverflowException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'monthly_quota_exhausted'],429);
     } catch (DomainException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'quote_not_available'],422);
     } catch (InvalidArgumentException $e) { anytour_anex_search3_out(['ok'=>false,'error'=>'invalid_request'],400);
-    } catch (Throwable $e) { anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502); }
+    } catch (Throwable $e) { anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e, $failurePhase),502); }
 }
 
 if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') === __FILE__) anytour_andromeda_quote_http();
