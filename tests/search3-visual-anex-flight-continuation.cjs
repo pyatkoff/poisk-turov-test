@@ -194,7 +194,109 @@ async function soleSamoPriceScenario(mode){
   assert.equal(count('quote'),1);assert.equal(count('quote_select_flights'),1);assert.deepEqual(errors,[]);
  }finally{releaseStart?.();releaseCalc?.();await settle();dom.window.close();}
 }
+async function boundedRepriceScenario(provider,mode,width=390){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ Object.assign(transport.state,{samoFlightChoice:true,repricingEnabled:true,anexPackageChoiceCount:4});
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+ w.innerWidth=width;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+ w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ const used=new Set();let release,aborts=0;
+ w.fetch=async(url,options={})=>{
+  const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},action=body.action;
+  const calculation=provider==='anex'?u.pathname.endsWith('/api-anex-search3-preview.php')&&action==='quote_calculate':u.pathname.endsWith('/api-andromeda-quote-preview.php')&&action==='quote_select_flights';
+  const n=calculation?provider==='anex'?Number(body.choice_ref?.slice('anex_quote:'.length,'anex_quote:'.length+1)):(Number(body.flight_selection?.outbound_ref?.slice('flight_'.length,'flight_'.length+1))+1)/2:0;
+  if(calculation){assert(n>=1&&n<=4);used.add(n);assert(used.size<=3,'fourth uncached pair must be rejected before HTTP');if(['unknown','late-unknown'].includes(mode)&&n===2)transport.state.repricingFailure='unknown';}
+  const value=await transport.json(url,options);
+  if(calculation){options.signal?.addEventListener('abort',()=>aborts++);if(mode==='coalesce'&&n===1||['unknown','late','late-unknown'].includes(mode)&&n===2)await new Promise(resolve=>release=resolve);}
+  if(mode==='initial-busy'&&u.pathname.endsWith('/api-andromeda-quote-preview.php')&&action==='quote_select_flights'){
+   options.signal?.addEventListener('abort',()=>aborts++);await new Promise(resolve=>release=resolve);
+  }
+  return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});
+ };
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,80));
+ const wait=async fn=>{for(let i=0;i<100;i++){if(fn())return;await settle();}assert.fail('Bounded '+provider+' '+mode+' timeout: '+d.body.textContent.slice(-2200));};
+ const operation=provider==='anex'?'quote_calculate':'quote_select_flights',app=provider==='anex'?'anex-application-preview':'andromeda-application-preview',apply=provider==='anex'?'anex-package-calculate':'apply-andromeda-flights',edit=provider==='anex'?'edit-anex-flights':'edit-andromeda-flights';
+ const ref=n=>provider==='anex'?'anex_quote:'+String(n).repeat(64):'flight_'+String(n*2-1).repeat(32);
+ const radio=n=>'[name="'+(provider==='anex'?'anex-package-choice':'andromeda-outbound')+'"][value="'+ref(n)+'"]';
+ const count=()=>transport.calls.filter(c=>c.action===operation).length;
+ const price=n=>assert.match(q('#modal-footer').textContent.replace(/\s/g,''),new RegExp(String(100000+n*1000)));
+ const reopen=async(target=provider)=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="'+target+'%3A"]');};
+ try{
+  for(const file of scripts)w.eval(source(file));
+  await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  await reopen();click('[data-action="refresh-hotel"]');
+  if(provider==='anex'){
+   await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+   if(mode==='initial-busy'){
+    const starts=()=>transport.calls.filter(c=>c.action==='quote_start').length,samoCalculations=()=>transport.calls.filter(c=>c.action==='quote_select_flights').length;
+    click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));
+    click('[data-action="close-modal"]');await settle();await reopen('andromeda');click('[data-action="refresh-hotel"]');
+    await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');await wait(()=>release);
+    click('[data-action="close-modal"]');await settle();await reopen();
+    const before=transport.calls.length;click('[data-action="anex-package-quote"]');await settle();
+    assert(q('[data-action="anex-package-quote"]'),'known initial busy restores the existing explicit ANEX start action');
+    assert.equal(transport.calls.length,before,'initial busy cannot spend HTTP or abort the other context');assert.equal(starts(),0);assert.equal(count(),0);assert.equal(samoCalculations(),1);
+    assert.equal(q('[data-action="anex-application-preview"]'),null);
+    click('[data-action="close-modal"]');await settle();await reopen();
+    assert(q('[data-action="anex-package-quote"]'),'passive reopen retains manual recovery');assert.equal(starts(),0);
+    click('[data-action="anex-package-quote"]');await settle();assert(q('[data-action="anex-package-quote"]'));assert.equal(starts(),0);assert.equal(aborts,0);
+    release();click('[data-action="close-modal"]');await settle();await reopen('andromeda');await wait(()=>q('[data-action="andromeda-application-preview"]'));
+    assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/101000/);assert.equal(samoCalculations(),1,'the original context settles healthy without replay');
+    click('[data-action="close-modal"]');await settle();await reopen();assert(q('[data-action="anex-package-quote"]'));assert.equal(starts(),0,'settling the other context does not automatically start ANEX');
+    click('[data-action="anex-package-quote"]');await wait(()=>q(radio(1)));assert.equal(starts(),1);
+    click('[data-action="anex-package-calculate"]');await wait(()=>q('[data-action="anex-application-preview"]'));price(1);assert.equal(count(),1);
+    assert.equal(aborts,0);assert.deepEqual(errors,[]);return;
+   }
+   click('[data-action="select-anex-tour"]');
+  }
+  await wait(()=>q(radio(1)));click('[data-action="'+apply+'"]');
+  if(mode==='coalesce'){
+   await wait(()=>release);assert(!q(radio(2)).disabled,'fresh capability allows drafts while mutation stays active');click(radio(2));click(radio(3));
+   assert(!q('[data-action="'+app+'"]'));assert.match(q('#modal-footer').textContent,/Цена уточняется/);assert.equal(count(),1);
+   release();await wait(()=>q('[data-action="'+app+'"]'));price(3);assert.equal(q(radio(3)).checked,true);assert.equal(count(),2,'A/B/C coalesces unsent B');
+   const refs=transport.calls.filter(c=>c.action===operation).map(c=>provider==='anex'?c.body.choice_ref:c.body.flight_selection.outbound_ref);assert.deepEqual(refs,[ref(1),ref(3)]);
+  }else{
+   await wait(()=>q('[data-action="'+app+'"]'));price(1);click('[data-action="'+edit+'"]');assert(q(radio(1)));
+   click(radio(2));assert(!q('[data-action="'+app+'"]'),'draft change immediately clears application authority');
+   if(['unknown','late','late-unknown'].includes(mode)){
+    await wait(()=>release);
+    if(mode==='unknown'){
+     click(radio(1));assert(!q('[data-action="'+app+'"]'),'cached A cannot authorize application while B mutates');assert.match(q('#modal-footer').textContent,/Цена уточняется/);assert.equal(count(),2);
+     release();await wait(()=>q(radio(1))?.disabled||!q(radio(1))&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert(!q('[data-action="'+app+'"]'));assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);
+     if(!q('#modal-back').hidden){click('#modal-back');await settle();assert(!q('[data-action="'+app+'"]'));assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);}
+     const before=transport.calls.length;click('[data-action="close-modal"]');await settle();w.history.forward();await settle();assert.equal(transport.calls.length,before,'UNKNOWN history is passive and sealed');
+    }else{
+     click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+     const body=q('#modal-body').innerHTML;release();await settle();assert.equal(q('#modal-body').innerHTML,body,'late pair total cannot replace another tour');
+     click('[data-action="close-modal"]');await settle();await reopen();
+     if(mode==='late-unknown'){await wait(()=>!q('[data-action="'+app+'"]')&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);const before=transport.calls.length;click('[data-action="close-modal"]');await settle();w.history.forward();await settle();assert.equal(transport.calls.length,before);assert(!q('[data-action="'+app+'"]'));}
+     else{await wait(()=>q('[data-action="'+app+'"]'));price(2);}assert.equal(count(),2);
+    }
+   }else{
+    await wait(()=>q('[data-action="'+app+'"]'));price(2);assert(q(radio(2)),'editing remains on the same picker screen');assert.equal(q(radio(2)).checked,true);
+    click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),2,'A/B/A uses two mutable operations');
+    click('[data-action="'+app+'"]');assert(q('#prototype-lead-form'));price(1);assert.match(q('#modal-body').textContent,new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
+    const before=transport.calls.length;click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back reuses selected receipt');price(1);
+    click(radio(3));await wait(()=>q('[data-action="'+app+'"]'));price(3);assert.equal(count(),3);
+    click(radio(4));await wait(()=>!q('[data-action="'+app+'"]')&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert.equal(count(),3,'fourth pair spends no HTTP');
+    click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),3,'healthy budget exhaustion keeps cached pairs');
+   }
+  }
+  assert.equal(aborts,0,'changing or leaving the picker never aborts mutable supplier work');assert.deepEqual(errors,[]);
+ }finally{release?.();await settle();dom.window.close();}
+}
 (async()=>{
+ await boundedRepriceScenario('anex','initial-busy');
+ console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
+ for(const provider of ['anex','andromeda']){
+  for(const width of [360,390,430,768,1280])await boundedRepriceScenario(provider,'cache',width);
+  for(const mode of ['coalesce','unknown','late','late-unknown'])await boundedRepriceScenario(provider,mode);
+ }
+ console.log('VISUAL_BOUNDED_REPRICE_JOURNEY_OK ANEX/SAMO A/B/A and cap at five widths, serialized coalescing, global UNKNOWN, late price/application; supplier HTTP 0');
  for(const mode of ['verified','failed','late-start','late-calc'])await soleSamoPriceScenario(mode);
  console.log('VISUAL_SAMO_SOLE_PAIR_JOURNEY_OK verified/failure/late inventory/late total/duplicate/application Back; supplier HTTP 0');
  for(const mode of ['verified','failed','late-start','late-calc']){await solePackagePriceScenario(mode);await solePackagePriceScenario(mode,true);}

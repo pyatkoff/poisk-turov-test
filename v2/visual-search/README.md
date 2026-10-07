@@ -1,5 +1,13 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Bounded flight repricing — 2026-10-07
+
+New supplier quote contexts explicitly carrying `repricing.enabled=true` can reopen their retained flight inventory from the verified tour and calculate another exact pair. The existing flight screen shows the returned whole-party total and its change; returning to a previously verified pair reuses the immutable cached result. Native transport markup remains informational and is never summed into a tour price.
+
+Changing the pair clears displayed price/application authority immediately. The current mutable supplier request finishes; only the latest unsent draft proceeds through the canonical data adapter. Late responses cannot replace a newer pair or another tour. A cached pair stays pending while another mutation is active. A healthy three-pair limit keeps earlier verified pairs usable; UNKNOWN or expiry removes all current price/application authority, including on Back/Forward. Legacy contexts retain their original single-pair path.
+
+`tests/search3-visual-anex-flight-continuation.cjs` keeps its original ANEX/SAMO journeys and adds opt-in actual-adapter fixtures for A/B/A and the pair cap at 360/390/430/768/1280, A/B/C coalescing, UNKNOWN after cached return, late responses, exact application and passive history. The existing compiled browser runner adds both providers at all five widths, with edited verified/pending/cached-pending/application/UNKNOWN screenshots and measured overflow, footer, contact and touch-target guards. Exact compiled CI and image inspection remain required before publication. Real supplier/session acceptance and physical Safari are separate evidence.
+
 ## Customer journey block — 2026-10-07
 
 The primary current concrete ANEX action goes through the existing exact-context verification directly into package flight/price calculation. It skips the context-only screen; the existing no-flight/APD estimate path stays secondary. The same single-pair/four-stage authority and retained outcomes apply.
