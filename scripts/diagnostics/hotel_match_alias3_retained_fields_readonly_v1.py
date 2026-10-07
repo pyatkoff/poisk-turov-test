@@ -227,8 +227,8 @@ def validate_result(data, receipt=None, expected_source=None, private_input=None
 
 def execute(project_root, opdir, fixture_path):
     project_root, opdir = pathlib.Path(project_root), pathlib.Path(opdir)
-    private_root = project_root.parent / ".anytoour-match"
-    if project_root.resolve() != project_root or opdir.resolve() != opdir or opdir != private_root / "operations" / OP or fixture_path != FIXTURE or not opdir.is_dir() or opdir.is_symlink() or (opdir.stat().st_mode & 0o077):
+    private_root = project_root.parent.parent / ".anytoour-match"
+    if project_root != private_root.parent / "www" / "anytoour.ru" or project_root.resolve() != project_root or opdir.resolve() != opdir or opdir != private_root / "operations" / OP or fixture_path != FIXTURE or not opdir.is_dir() or opdir.is_symlink() or (opdir.stat().st_mode & 0o077):
         raise ValueError("execution_paths")
     head = os.environ.get("MATCH_SOURCE_SHA", "")
     if not re.fullmatch(r"[0-9a-f]{40}", head):
