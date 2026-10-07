@@ -1,0 +1,80 @@
+{
+  "schema": "match-alias3-retained-fields-fixture/1",
+  "operation": "int-andromeda-match-alias3-retained-fields-20261007-v1",
+  "batch": "alias3-retained-fields-20261007",
+  "mode": "match-alias3-retained-fields-readonly",
+  "source_namespace": "operator_115",
+  "requested_rows": 3,
+  "raw_source": {
+    "source_file": "operations/hotel-match-common4-broad-recovery-acquire-1971-20260925-v21/evidence-private/context-5-115-10-page-1.json",
+    "sha256": "13f6925cc37dcf8bbcdb7588192489c7ebda2fbbbc88346fe3df2fe24c70f0d1",
+    "maximum_bytes": 2097152
+  },
+  "lineage": {
+    "v77_operation": "hotel-match-live30-retained-native-union-1971-20260927-v77",
+    "v77_result_sha256": "d40fbe2e0240a5df194ac838376a3425a8f4e80f2426a757560fe369011107f7",
+    "v77_receipt_comment": 5855442122,
+    "bg_retained_result_sha256": "3917d36c7b665d1b44b84e7c009ced24321982367aa155e35554c5dd2f27515a",
+    "native110_fixture_blob": "5b70c713aabdab4a11ed8c04e2f4761f95d0fa9b"
+  },
+  "projection_fields": [
+    "row.hotelUrl",
+    "original.tourKey"
+  ],
+  "rows": [
+    {
+      "catalog_id": "49144",
+      "source_native_id": "625265955",
+      "json_pointer": "/PRICES/44",
+      "retained_local_hotel_id": 41073,
+      "retained_accepted_catalog_id": "2000026213",
+      "retained_bgoperator_code": null,
+      "independent_tv_hotel_id": null
+    },
+    {
+      "catalog_id": "2000034103",
+      "source_native_id": "625076456",
+      "json_pointer": "/PRICES/22",
+      "retained_local_hotel_id": 1039,
+      "retained_accepted_catalog_id": "2000072738",
+      "retained_bgoperator_code": "102625076456",
+      "independent_tv_hotel_id": null
+    },
+    {
+      "catalog_id": "2000044772",
+      "source_native_id": "625076464",
+      "json_pointer": "/PRICES/31",
+      "retained_local_hotel_id": 1328,
+      "retained_accepted_catalog_id": "2000071984",
+      "retained_bgoperator_code": "102625076464",
+      "independent_tv_hotel_id": null
+    }
+  ],
+  "target_namespace": "anytour_local",
+  "current_readiness": "not_evaluated",
+  "provider_http_calls": 0,
+  "physical_http_attempts": 0,
+  "database_reads": 0,
+  "database_writes": 0,
+  "mapping_writes": 0,
+  "maximum_writes": 0,
+  "safe_to_write_now": false,
+  "acceptance_evaluated": false,
+  "global_uniqueness_evaluated": false,
+  "namespace_bridge_verified": false,
+  "limits": {
+    "unique_raw_files": 1,
+    "selected_rows": 3,
+    "private_capture_bytes": 6291456,
+    "public_result_bytes": 524288
+  },
+  "guards": [
+    "fixed_source_file_and_three_pointers",
+    "preserve_original_bytes_before_projection",
+    "optional_field_hold_per_row",
+    "no_numeric_namespace_conversion",
+    "no_accepted_overwrite",
+    "no_sealed_page1_or_bg8_rows",
+    "no_old_operation_execution"
+  ]
+}
