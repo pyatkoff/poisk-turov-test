@@ -160,7 +160,7 @@
         const priceLabel=accepted.finalPriceVerified?'Подтверждённая стоимость':'Расчётная сумма';
         message.textContent='Данные проверены. '+accepted.operator+' · '+accepted.hotel+' · '+priceLabel+': '+new Intl.NumberFormat('ru-RU').format(accepted.price)+' ₽. '+(!accepted.finalPriceVerified?'Итоговая стоимость требует подтверждения. ':'')+'Заявка не отправлена.';
         message.scrollIntoView({block:'nearest'});
-      }catch(error){message.textContent=error.message;message.setAttribute('role','alert');}
+      }catch(error){message.textContent=error.message;message.setAttribute('role','alert');message.scrollIntoView({block:'nearest'});}
     });
   }
   function reset(){providerRevision++;draftRevision++;draft={name:'',phone:'',comment:''};}
