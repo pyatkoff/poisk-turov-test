@@ -463,12 +463,195 @@ function verifiedFlightPairBinding(source){
  const native=verified();native.flights[0].transport_markup_reported={amount:'18.25',currency:'USD',source:'andromeda_transport_detail',aggregation:'unknown'};
  const reported=read(native);assert.equal(reported.finalPrice.amount,'125500');assert.equal(reported.flights[0].transportMarkupReported.currency,'USD','native markup never enters whole-tour arithmetic');
  console.log(JSON.stringify({verifiedPairCases:20,supplierHTTP:0,legacyCompatible:true,priceArithmeticChanged:false}));
+ const fresh=()=>({...verified(),verified_at:Math.floor(Date.now()/1000),repricing:{enabled:true,max_pairs:3,used_pairs:1,remaining_pairs:2}});
+ const freshQuote=fresh();assert.equal(read(freshQuote).verifiedAt,freshQuote.verified_at,'fresh verification time is retained');
+ for(const metadata of [null,{},[],{enabled:true,max_pairs:3,used_pairs:1},{enabled:true,max_pairs:'3',used_pairs:1,remaining_pairs:2},
+  {enabled:true,max_pairs:3,used_pairs:-1,remaining_pairs:4},{enabled:true,max_pairs:3,used_pairs:1,remaining_pairs:1},
+  {enabled:false,max_pairs:3,used_pairs:1,remaining_pairs:2}]){
+  const value=fresh();value.repricing=metadata;assert.equal(read(value),null,'partial or malformed capability never promotes a receipt');
+ }
+ for(const timestamp of [undefined,0,-1,String(Math.floor(Date.now()/1000)),Math.floor(Date.now()/1000)+10]){
+  const value=fresh();value.verified_at=timestamp;assert.equal(read(value),null,'fresh verification timestamp must be current and typed');
+ }
+ const initial=fresh();assert.equal(context.normalizeAndromedaQuote(initial,101),null,'a fresh capability is issued by pending inventory, never an invented immediate verified pair');
+ const missing=fresh();for(const f of missing.flights)delete f.flight_ref;assert.equal(read(missing),null,'fresh verified pair requires both refs');
+ console.log(JSON.stringify({freshCapabilityParserCases:16,supplierHTTP:0,legacyCompatible:true}));
+}
+function quoteHarness(source,provider,{enabled=true}={}){
+ const transport=require('./search3-visual-live-fixture.cjs').fixture(),calls=[],timers=new Map();
+ Object.assign(transport.state,{repricingEnabled:enabled,anexPackageChoiceCount:enabled?4:2,samoFlightChoice:true});
+ let clock=Date.now(),onReply=null,hold=null,active=0,maxActive=0,timerId=0,quoteDeadline=null,initialPublic=null;
+ const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
+  V2_CONFIG:{anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php',andromedaQuoteApi:'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'},
+  V2Runtime:{},console:{warn(){}},Search3CanonicalProfilesV1:{create(){return{};}}};
+ const context=vm.createContext({window,URL,URLSearchParams,AbortController,Map,Set,WeakMap,Promise,structuredClone,
+  Date:class extends Date{static now(){return clock;}},setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},
+  fetch:async(url,options)=>{
+   const body=JSON.parse(options.body),call={url:String(url),body,signal:options.signal};calls.push(call);active++;maxActive=Math.max(maxActive,active);
+   try{
+    let value=await transport.json(url,options);
+    if(['quote_start','quote'].includes(body.action))initialPublic=copy(value.data);
+    if(enabled&&value.data?.repricing&&['quote_start','quote'].includes(body.action))quoteDeadline=value.data.expires_at||Math.floor(clock/1000)+600;
+    if(enabled&&(value.data?.state==='quote_verified'||value.data?.status==='quote_verified')){
+     value.data.verified_at=Math.floor(clock/1000);value.data.expires_at=quoteDeadline;
+    }
+    if(onReply)value=await onReply(value,body);
+    if(hold&&hold.when(body))await hold.gate.promise;
+    return {ok:value.httpStatus?value.httpStatus<400:value.ok!==false,status:value.httpStatus||200,json:async()=>value};
+   }finally{active--;}
+  }});
+ const marker='  root.AnyTourPrototypeData=Object.freeze(';
+ vm.runInContext(source.replace(marker,'  generation=1;\n'+marker),context);
+ const offer=provider==='anex'?{provider,cached:false,raw:{selectionEnabled:false,anexKind:'concrete',anexSessionCurrent:true,
+  anexLocalHotelId:101,anexGeneration:1,offerRef:'anex_online:'+'1'.repeat(64),searchRef:'b'.repeat(32)}}
+  :{provider,cached:false,raw:{selectionEnabled:false,quoteRequired:true,andromedaLocalHotelId:101,offerRef:'offer_'+'d'.repeat(64),
+   offer_context:{provider:'andromeda',generation:1,page:1,offer_ref:'offer_'+'d'.repeat(64),search_ref:'c'.repeat(64)},
+   andromedaSearchParams:{dateFrom:'2026-10-13',dateTo:'2026-10-19',nightsFrom:7,nightsTo:7,adults:2,childs:[],countryId:'4'}}};
+ const api=window.AnyTourPrototypeData,pair=n=>provider==='anex'?'anex_quote:'+String(n).repeat(64)
+  :{provider:'andromeda',outbound_ref:'flight_'+String(n*2-1).repeat(32),return_ref:'flight_'+'2'.repeat(32)};
+ const calculate=n=>provider==='anex'?api.verifyAnexPackage(offer,pair(n)):api.verifyAndromeda(offer,pair(n));
+ const latest=()=>provider==='anex'?api.verifyAnexPackage(offer):api.verifyAndromeda(offer);
+ const isCalc=body=>['quote_calculate','quote_select_flights'].includes(body.action);
+ const pairNumber=body=>body.choice_ref?Number(body.choice_ref.slice(-1)):(Number(body.flight_selection?.outbound_ref.slice(-1))+1)/2;
+ return {api,offer,calls,transport,context,pair,calculate,latest,pairNumber,isCalc,
+  async start(){if(provider==='anex'){await api.verifyAnexConcrete(offer);return api.verifyAnexPackage(offer);}return api.verifyAndromeda(offer);},
+  setReply:fn=>onReply=fn,advance:ms=>clock+=ms,
+  hold(n){const pending=gate();hold={when:body=>isCalc(body)&&pairNumber(body)===n,gate:pending};return pending;},
+  timeout(){const fn=[...timers.values()].at(-1);assert(fn);fn();},
+  get initialPublic(){return copy(initialPublic);},get maxActive(){return maxActive;},get calcCalls(){return calls.filter(call=>isCalc(call.body));},
+  amount:quote=>quote.finalPrice.amount,
+  tuple:quote=>copy({price:quote.finalPrice,choice:quote.choice,flights:quote.flights,verifiedAt:quote.verifiedAt,expiresAt:quote.expiresAt})};
+}
+async function boundedFlightRepricing(source){
+ let cases=0;
+ for(const provider of ['anex','andromeda']){
+  const check=async(name,run)=>{await run();cases++;console.log('PASS '+provider+' bounded quote: '+name);};
+  await check('A/B/A immutable exact tuple, current counts, cap and expiry',async()=>{
+   const h=quoteHarness(source,provider),inventory=await h.start();
+   assert.equal(inventory.repricing.remaining_pairs,3);
+   const a=await h.calculate(1),tuple=h.tuple(a);assert.equal(h.amount(a),'101000');
+   h.advance(12000);const b=await h.calculate(2);assert.equal(h.amount(b),'102000');
+   assert.notEqual(a.verifiedAt,b.verifiedAt,'different source tuples detect verification timestamp replacement');assert.equal(a.expiresAt,b.expiresAt,'one context deadline never renews');
+   const cached=await h.calculate(1);assert.deepEqual(h.tuple(cached),tuple);assert.equal(cached.repricing.used_pairs,2);assert.equal(h.calcCalls.length,2);
+   assert(Object.isFrozen(cached));assert(Object.isFrozen(cached.finalPrice));
+   if(provider==='andromeda'){assert.equal(cached.flightChoices.length,5);assert.equal(cached.flights.length,2);assert.equal(cached.flights[0].flightRef,h.pair(1).outbound_ref);}
+   else assert.equal(cached.choices.length,4);
+   await h.calculate(3);const before=h.calls.length;
+   await assert.rejects(h.calculate(4),error=>error.code==='quote_pair_budget_exhausted'&&error.retryable===true);
+   assert.equal(h.calls.length,before,'fourth pair consumes no transport');
+   assert.equal((await h.calculate(1)).repricing.used_pairs,3);
+   assert.equal((await h.latest()).repricing.used_pairs,3,'passive latest reports current healthy counts');
+   h.advance((a.expiresAt*1000-Date.now())+1000);
+   await assert.rejects(h.calculate(1));assert.equal(h.calls.length,before,'expired cached pair cannot reprice');
+  });
+  await check('cached A supersedes unsent C, waits active B and retains A timestamps',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const a=await h.calculate(1),tuple=h.tuple(a);h.advance(12000);
+   const pending=h.hold(2),b=h.calculate(2);await flush();let finished=false;
+   const c=h.calculate(3).then(()=>assert.fail('superseded C cannot dispatch'),error=>error);
+   const back=h.calculate(1).then(value=>{finished=true;return value;});await flush();
+   assert.equal(finished,false);assert.equal(h.calcCalls.length,2);assert.equal(h.calcCalls[1].signal.aborted,false);
+   pending.resolve();await b;const cached=await back;assert.equal((await c).code,'quote_superseded');
+   assert.deepEqual(h.tuple(cached),tuple);assert.equal(cached.repricing.used_pairs,2);assert.equal(h.maxActive,1);assert.equal(h.calcCalls.length,2);
+  });
+  await check('A/B/C latest unsent choice only; duplicate queued choice joins',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const pending=h.hold(1),a=h.calculate(1);await flush();
+   const b=h.calculate(2).then(()=>assert.fail('superseded B cannot verify'),error=>error);
+   const duplicateB=h.calculate(2).then(()=>assert.fail('superseded duplicate B cannot verify'),error=>error);
+   const c=h.calculate(3);await flush();assert.equal(h.calcCalls.length,1);assert.equal(h.calcCalls[0].signal.aborted,false);
+   pending.resolve();await a;assert.equal((await b).code,'quote_superseded');assert.equal((await duplicateB).code,'quote_superseded');
+   assert.equal(h.amount(await c),'103000');assert.deepEqual(h.calcCalls.map(call=>h.pairNumber(call.body)),[1,3]);assert.equal(h.maxActive,1);
+  });
+  await check('A/B/A cancels unsent B; duplicate active and queued promises join',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const pending=h.hold(1),a=h.calculate(1);await flush();
+   const b=h.calculate(2).then(()=>assert.fail('B cannot dispatch'),error=>error),same=h.calculate(1),sameAgain=h.calculate(1);
+   pending.resolve();const results=await Promise.all([a,same,sameAgain]);assert.equal((await b).code,'quote_superseded');
+   assert(results.every(value=>h.amount(value)==='101000'));assert.equal(h.calcCalls.length,1);
+   const pendingC=h.hold(3),c=h.calculate(3);await flush();const firstB=h.calculate(2),secondB=h.calculate(2);pendingC.resolve();await c;
+   assert.equal(h.amount(await firstB),'102000');assert.equal(h.amount(await secondB),'102000');
+   assert.deepEqual(h.calcCalls.map(call=>h.pairNumber(call.body)),[1,3,2]);assert.equal(h.maxActive,1);
+  });
+  await check('UNKNOWN seals active, queued and cached authority without replay',async()=>{
+   const h=quoteHarness(source,provider);await h.start();await h.calculate(1);h.transport.state.repricingFailure='unknown';
+   const pending=h.hold(2),b=h.calculate(2).catch(error=>error);await flush();const back=h.calculate(1).catch(error=>error);
+   pending.resolve();assert.notEqual((await b).retryable,true);assert.notEqual((await back).retryable,true);
+   const before=h.calls.length;await assert.rejects(h.calculate(1));await assert.rejects(h.latest());assert.equal(h.calls.length,before);
+  });
+  await check('new generation rejects late A and never dispatches queued B',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const pending=h.hold(1),a=h.calculate(1).catch(error=>error);await flush();
+   const b=h.calculate(2).catch(error=>error);h.api.stop();pending.resolve();await a;await b;
+   assert.equal(h.calcCalls.length,1);await assert.rejects(h.calculate(1));assert.equal(h.calcCalls.length,1);
+  });
+  await check('healthy server budget refusal drains cached A without replay',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const a=await h.calculate(1),tuple=h.tuple(a);
+   h.setReply((value,body)=>{
+    if(!h.isCalc(body))return value;
+    value.data=h.initialPublic;value.data.repricing={enabled:true,max_pairs:3,used_pairs:3,remaining_pairs:0};
+    if(provider==='anex')Object.assign(value.data,{status:'quote_selection_locked',final_price_verified:false,selection_state:'disabled',price:null});
+    else value.data.failure_reason='ANDROMEDA_FLIGHT_REPRICE_BUDGET';
+    return value;
+   });
+   const pending=h.hold(2),b=h.calculate(2).catch(error=>error);await flush();const back=h.calculate(1);pending.resolve();
+   assert.equal((await b).code,'quote_pair_budget_exhausted');const cached=await back;assert.deepEqual(h.tuple(cached),tuple);
+   assert.equal(cached.repricing.used_pairs,3);assert.equal((await h.latest()).repricing.used_pairs,3);
+   const before=h.calls.length;await assert.rejects(h.calculate(2),error=>error.code==='quote_pair_budget_exhausted');assert.equal(h.calls.length,before);
+  });
+  await check('another ANEX verification/expansion cannot abort active quote',async()=>{
+   const h=quoteHarness(source,provider);await h.start();const pending=h.hold(1),a=h.calculate(1);await flush();
+   const other={provider:'anex',cached:false,raw:{selectionEnabled:false,anexKind:'concrete',anexSessionCurrent:true,
+    anexLocalHotelId:101,anexGeneration:1,offerRef:'anex_online:'+'9'.repeat(64),searchRef:'b'.repeat(32)}};
+   const before=h.calls.length;
+   await assert.rejects(h.api.verifyAnexConcrete(other),error=>error.code==='quote_operation_pending'&&error.retryable===true);
+   await assert.rejects(h.api.expandAnexGroup({...other,raw:{...other.raw,anexKind:'group_minimum'}}),error=>error.code==='quote_operation_pending');
+   assert.equal(h.calls.length,before);assert.equal(h.calcCalls[0].signal.aborted,false);pending.resolve();await a;
+  });
+  await check('legacy one-pair and sealed cache retain authority',async()=>{
+   const h=quoteHarness(source,provider,{enabled:false}),inventory=await h.start();assert.equal(inventory.repricing,undefined);
+   const a=await h.calculate(1),before=h.calls.length;assert.equal((await h.calculate(1)).finalPrice.amount,a.finalPrice.amount);
+   await assert.rejects(h.calculate(2));assert.equal(h.calls.length,before);
+  });
+  for(const malformed of ['missing-cap','disabled-cap','bad-count','stale-coherent-count','invalid-time','invalid-deadline','unsafe-expiry','http-budget','foreign-budget',...(provider==='andromeda'?['missing-refs']:[])]){
+   await check(malformed+' response cannot keep cached authority',async()=>{
+    const h=quoteHarness(source,provider);await h.start();await h.calculate(1);
+    h.setReply((value,body)=>{
+     if(!h.isCalc(body))return value;
+     const v=value.data;
+     if(malformed==='missing-cap')delete v.repricing;
+     if(malformed==='disabled-cap')v.repricing={enabled:false,max_pairs:3,used_pairs:2,remaining_pairs:0};
+     if(malformed==='bad-count')v.repricing={enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:2};
+     if(malformed==='stale-coherent-count')v.repricing={enabled:true,max_pairs:3,used_pairs:1,remaining_pairs:2};
+     if(malformed==='invalid-time')v.verified_at=v.expires_at;
+     if(malformed==='invalid-deadline')v.expires_at++;
+     if(malformed==='unsafe-expiry')v.expires_at=1e20;
+     if(malformed==='missing-refs')for(const flight of v.flights)delete flight.flight_ref;
+     if(malformed==='http-budget'||malformed==='foreign-budget'){
+      const initial=h.transport.state.repricingEnabled;assert(initial);
+      if(provider==='anex')Object.assign(v,{status:'quote_selection_locked',final_price_verified:false,selection_state:'disabled',price:null});
+      else Object.assign(v,{state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,
+       flight_selection_required:true,failure_reason:'ANDROMEDA_FLIGHT_REPRICE_BUDGET'});
+      v.repricing={enabled:true,max_pairs:3,used_pairs:3,remaining_pairs:0};
+      if(malformed==='http-budget')value.httpStatus=503;
+      else if(provider==='anex')v.offer_ref='anex_online:'+'9'.repeat(64);else v.local_id=102;
+     }
+     return value;
+    });
+    await assert.rejects(h.calculate(2));const before=h.calls.length;await assert.rejects(h.calculate(1));
+    if(malformed==='stale-coherent-count'){await assert.rejects(h.calculate(3));await assert.rejects(h.calculate(4));assert.equal(h.calcCalls.length,2,'contradictory coherent count seals before C/D transport');}
+    assert.equal(h.calls.length,before);
+   });
+  }
+ }
+ const h=quoteHarness(source,'andromeda',{enabled:false});h.transport.state.samoFlightChoice=false;
+ h.setReply(value=>{if(value.data?.state==='quote_verified')value.data.flights=[];return value;});
+ const direct=await h.start();assert.equal(direct.finalPrice.amount,'125500');assert.deepEqual(copy(direct.flights),[]);assert.equal(direct.repricing,undefined);
+ const before=h.calls.length;await h.latest();assert.equal(h.calls.length,before);cases++;
+ console.log(JSON.stringify({boundedQuoteCases:cases,actualOwner:true,supplierHTTP:0,realLeads:0}));
 }
 (async()=>{
  await selectedHotelRestoration();
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
  const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
  verifiedFlightPairBinding(source);
+ await boundedFlightRepricing(source);
  const digest=crypto.createHash('sha256').update(JSON.stringify(records)).digest('hex');
  // Pinned before the refactor on full data owner blob 931fb024951b6d69ce84e635e61ddd8112501623.
  assert.equal(digest,'f2a89681027398304bf0f9c4c55434e8447c01b591f0f1b07130eac0174f461a','observable orchestration trace changed from the characterized baseline');

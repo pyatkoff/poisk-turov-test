@@ -154,6 +154,78 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
  }
  console.log('PASS compiled verified-pair journey: five widths, exact/swapped/foreign/legacy, application gate and passive reopen');
 };
+const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
+ for(const width of [360,390,430,768,1280])for(const provider of ['anex','andromeda']){
+  const transport=fixture(),errors=[],forbidden=[],aborts=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+  Object.assign(transport.state,{repricingEnabled:true,anexPackageChoiceCount:4,samoFlightChoice:true});
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  page.on('requestfailed',request=>{if(request.url().includes('api-'+(provider==='anex'?'anex-search3':'andromeda-quote')+'-preview.php'))aborts.push(request.failure()?.errorText);});
+  let releaseB,releaseUnknown,markB,markUnknown;
+  const pendingB=new Promise(resolve=>markB=resolve),pendingUnknown=new Promise(resolve=>markUnknown=resolve);
+  const action=provider==='anex'?'quote_calculate':'quote_select_flights',app=provider==='anex'?'anex-application-preview':'andromeda-application-preview',apply=provider==='anex'?'anex-package-calculate':'apply-andromeda-flights',edit=provider==='anex'?'edit-anex-flights':'edit-andromeda-flights';
+  const count=()=>transport.calls.filter(call=>call.action===action).length;
+  const ref=n=>provider==='anex'?'anex_quote:'+String(n).repeat(64):'flight_'+String(n*2-1).repeat(32);
+  const radio=n=>'[name="'+(provider==='anex'?'anex-package-choice':'andromeda-outbound')+'"][value="'+ref(n)+'"]';
+  const price=async n=>assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(String(100000+n*1000)));
+  const geometry=async()=>{
+   const boxes=await page.locator('#modal').evaluate(modal=>{
+    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};},footer=document.querySelector('#modal-footer'),total=footer.querySelector('.footer-total'),amount=total.querySelector('strong'),button=footer.querySelector('.primary')||footer.querySelector('.secondary'),body=document.querySelector('#modal-body');
+    return{modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth,footer:rect(footer),total:rect(total),amount:rect(amount),button:rect(button),choices:[...document.querySelectorAll('.flight-option')].map(rect)};
+   });
+   assert.equal(boxes.modalOverflow,false);assert.equal(boxes.bodyOverflow,false);assert.equal(boxes.documentOverflow,false);
+   assert(boxes.amount.x>=boxes.total.x-1&&boxes.amount.right<=boxes.total.right+1,'whole pending/verified total fits at '+width);
+   assert(boxes.button.x>=boxes.footer.x-1&&boxes.button.right<=boxes.footer.right+1&&boxes.button.height>=44,'current action stays in footer with touch target at '+width);
+   assert(boxes.button.x>=boxes.total.right-1||boxes.button.y>=boxes.total.bottom-1,'price and action never overlap at '+width);
+   assert(boxes.choices.every(choice=>choice.height>=44),'flight choices keep touch targets at '+width);
+   return boxes;
+  };
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     const body=JSON.parse(request.postData()||'{}'),own=body.action===action,n=own?provider==='anex'?Number(body.choice_ref?.slice('anex_quote:'.length,'anex_quote:'.length+1)):(Number(body.flight_selection?.outbound_ref?.slice('flight_'.length,'flight_'.length+1))+1)/2:0;
+     if(own&&n===3)transport.state.repricingFailure='unknown';
+     const value=await transport.json(request.url(),{body:request.postData()});
+     if(own&&n===2){markB();await new Promise(resolve=>releaseB=resolve);}
+     if(own&&n===3){markUnknown();await new Promise(resolve=>releaseUnknown=resolve);}
+     await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);assert.equal(count(),0);
+   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта')&&document.querySelector('#search-status').hidden);
+   await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();
+   await page.locator('#modal-body [data-action="offer"][data-key^="'+provider+'%3A"]').click();await page.locator('[data-action="refresh-hotel"]').click();
+   if(provider==='anex'){await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));await page.locator('[data-action="select-anex-tour"]').click();}
+   await page.locator(radio(1)).waitFor();await page.locator('[data-action="'+apply+'"]').click();await page.locator('[data-action="'+app+'"]').waitFor();await price(1);
+   await page.locator('[data-action="'+edit+'"]').click();await page.locator(radio(2)).check();await pendingB;
+   assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'changed pending pair removes application immediately');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(await page.locator(radio(2)).isDisabled(),false);
+   const pendingBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-pending-'+width+'.png')});
+   releaseB();await page.locator('[data-action="'+app+'"]').waitFor();await price(2);assert.equal(await page.locator(radio(2)).isChecked(),true);
+   const verifiedBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-edit-verified-'+width+'.png')});
+   await page.locator(radio(1)).check();await page.locator('[data-action="'+app+'"]').waitFor();await price(1);assert.equal(count(),2,'A/B/A uses two mutations');
+   await page.locator('[data-action="'+app+'"]').click();await page.locator('#prototype-lead-form').waitFor();await price(1);assert.match(await page.locator('#modal-body').textContent(),new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
+   const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom};}));
+   assert.equal(fields.length,2);if(width<=760)assert(fields[1].y>=fields[0].bottom-1,'contacts stack on mobile');else assert(fields[1].x>=fields[0].right-1,'contacts keep separate columns on desktop');
+   await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-application-'+width+'.png')});
+   const beforeBack=transport.calls.length;await page.locator('#modal-back').click();await page.locator(radio(1)).waitFor();assert.equal(transport.calls.length,beforeBack,'application return is passive');
+   await page.locator(radio(3)).check();await pendingUnknown;await page.locator(radio(1)).check();
+   assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'cached A remains unavailable while C mutates');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(count(),3);
+   const cachedPendingBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-cached-pending-'+width+'.png')});
+   releaseUnknown();await page.waitForFunction(({app,error})=>!document.querySelector('[data-action="'+app+'"]')&&document.querySelector(error)?.textContent.length>0,{app,error:provider==='anex'?'#anex-package-status':'#andromeda-quote-error'});
+   assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
+   await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-unknown-'+width+'.png')});
+   if(await page.locator('#modal-back').isVisible()){await page.locator('#modal-back').click();assert.equal(await page.locator('[data-action="'+app+'"]').count(),0);assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);}
+   const beforeHistory=transport.calls.length;await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');await page.goForward();await page.waitForFunction(()=>document.querySelector('#modal').open);
+   assert.equal(transport.calls.length,beforeHistory,'UNKNOWN Forward does not replay');assert.equal(await page.locator('[data-action="'+app+'"]').count(),0);assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(aborts,[]);
+   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,pendingBoxes,verifiedBoxes,cachedPendingBoxes,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  }finally{releaseB?.();releaseUnknown?.();await context.close();}
+ }
+ console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -939,6 +1011,7 @@ const server=http.createServer((req,res)=>{
  }
  await chosenDepartureJourney(browser,origin,base,evidence);
  await verifiedPairJourney(browser,origin,base,evidence);
+ await boundedRepriceJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}

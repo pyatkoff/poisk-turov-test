@@ -1161,6 +1161,7 @@
     }finally{clearTimeout(timeout);}
   }
   async function expandAnexGroup(o){
+    if(activeVerification?.quoteMutation)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
     const rawOffer=o&&o.raw,localHotelId=Number(rawOffer?.anexLocalHotelId),targetRef=String(rawOffer?.offerRef||''),searchRef=String(rawOffer?.searchRef||'');
     if(!o||o.cached||o.provider!=='anex'||rawOffer?.selectionEnabled!==false||rawOffer?.anexKind!=='group_minimum'
       ||rawOffer.anexGeneration!==generation||!Number.isSafeInteger(localHotelId)||localHotelId<1
@@ -1261,6 +1262,7 @@
       invalid:'ANEX не вернул применимый расчёт обязательных доплат.'}
   });
   async function verifyAnexFollowUp(o,action){
+    if(activeVerification?.quoteMutation)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
     const operation=anexFollowUps[action],identity=anexConcreteKey(o);
     if(!identity||action!=='offer'&&!anexCurrentReceipts.has(identity.key))throw new Error(operation.stale);
     if(operation.receipts?.has(identity.key))return operation.receipts.get(identity.key);
@@ -1287,26 +1289,34 @@
   }
   async function verifyAnexConcrete(o){return verifyAnexFollowUp(o,'offer');}
   function normalizeAnexPackage(value,o,choiceRef){
-    const identity=anexConcreteKey(o);
-    if(!identity||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef)return null;
+    const identity=anexConcreteKey(o),repricing=quoteRepricing(value?.repricing);
+    if(!identity||repricing===null||value?.provider!=='anex'||value.generation!==identity.epoch||value.search_ref!==identity.searchRef||value.offer_ref!==identity.offerRef)return null;
     const choice=item=>{
       if(!item||!(/^anex_quote:[a-f0-9]{64}$/).test(item.choice_ref)||!Array.isArray(item.legs)||item.legs.length!==2
         ||item.legs.some(leg=>typeof leg?.label!=='string'||!leg.label.trim()||leg.label.length>6000))throw Error();
       return Object.freeze({choiceRef:item.choice_ref,legs:Object.freeze(item.legs.map(leg=>Object.freeze({label:leg.label}))),current:item.current===true});
     };
     try{
-      if(value.status==='quote_choices'&&!choiceRef&&value.final_price_verified===false&&value.selection_state==='disabled'
-        &&Array.isArray(value.choices)&&value.choices.length>0&&value.choices.length<=40){
-        const choices=value.choices.map(choice);if(new Set(choices.map(c=>c.choiceRef)).size!==choices.length)return null;
-        return Object.freeze({state:'quote_choices',finalPriceVerified:false,choices:Object.freeze(choices)});
+      let choices;
+      if(value.choices!==undefined){
+        if(!Array.isArray(value.choices)||value.choices.length<1||value.choices.length>40)return null;
+        choices=value.choices.map(choice);if(new Set(choices.map(c=>c.choiceRef)).size!==choices.length)return null;
+        choices=Object.freeze(choices);
+      }
+      if(value.status==='quote_choices'&&!choiceRef&&value.final_price_verified===false&&value.selection_state==='disabled'&&choices){
+        if(repricing?.enabled===false)return null;
+        return Object.freeze({state:'quote_choices',finalPriceVerified:false,choices,...(repricing?{repricing}:{})});
       }
       const price=anexMoneyFact(value.price),selected=choice(value.choice);
       if(value.status!=='quote_verified'||value.final_price_verified!==true||value.selection_state!=='preview_only'
         ||value.price?.basis!=='supplier_gross_package'||!price||selected.choiceRef!==choiceRef
         ||!Number.isInteger(value.verified_at)||!Number.isInteger(value.expires_at)||value.verified_at>value.expires_at
-        ||value.expires_at*1000<=Date.now())return null;
+        ||value.expires_at*1000<=Date.now()||repricing?.enabled===false)return null;
+      if(repricing&&(!Number.isSafeInteger(value.expires_at)||!Number.isSafeInteger(value.verified_at)||value.verified_at<=0||value.verified_at>Math.floor(Date.now()/1000)
+        ||value.verified_at>=value.expires_at||repricing.used_pairs<1||!choices||!choices.some(item=>item.choiceRef===selected.choiceRef
+        &&item.legs.every((leg,index)=>leg.label===selected.legs[index].label))))return null;
       return Object.freeze({state:'quote_verified',finalPriceVerified:true,finalPrice:Object.freeze({amount:price.amount,currency:'RUB'}),
-        choice:selected,verifiedAt:value.verified_at,expiresAt:value.expires_at});
+        choice:selected,verifiedAt:value.verified_at,expiresAt:value.expires_at,...(choices?{choices}:{}),...(repricing?{repricing}:{})});
     }catch{return null;}
   }
   function safeQuoteFailureReason(provider,value){
@@ -1333,21 +1343,47 @@
     const identity=anexConcreteKey(o);
     if(!identity||!anexCurrentReceipts.has(identity.key))throw new Error('Предложение ANEX устарело. Откройте актуальные варианты.');
     let receipt=anexPackageReceipts.get(identity.key);
-    if(!receipt){receipt={result:null,chosen:null,error:null,pending:null};anexPackageReceipts.set(identity.key,receipt);}
+    if(!receipt){receipt={result:null,inventory:null,chosen:null,error:null,pending:null,pendingChoice:null,queuedChoice:null,queueRevision:0,quotes:new Map(),repricing:null};anexPackageReceipts.set(identity.key,receipt);}
     if(receipt.error)throw receipt.error;
-    if(receipt.chosen&&choiceRef&&receipt.chosen!==choiceRef)throw new Error('Расчёт выбранного перелёта уже выполнен.');
-    if(receipt.pending)return receipt.pending;
-    if(receipt.result?.state==='quote_verified'){
-      if(receipt.result.expiresAt*1000<=Date.now())throw new Error('Срок подтверждённой цены истёк.');
-      return receipt.result;
+    if(receipt.repricing?.enabled&&receipt.expiresAt*1000<=Date.now())throw new Error('Срок подтверждённой цены истёк.');
+    if(receipt.pending){
+      const same=!choiceRef||receipt.pendingChoice===choiceRef;
+      if(!same&&(!receipt.repricing?.enabled||!receipt.inventory?.choices.some(c=>c.choiceRef===choiceRef)))
+        throw new Error('Расчёт выбранного перелёта уже выполнен.');
+      if(choiceRef&&(same?receipt.queuedChoice!==null:receipt.queuedChoice!==choiceRef)){
+        receipt.queuedChoice=same?null:choiceRef;receipt.queueRevision++;
+      }
+      const revision=receipt.queueRevision;
+      let result;
+      try{result=await receipt.pending;}catch(error){if(same||error.code!=='quote_pair_budget_exhausted')throw error;}
+      if(receipt.error)throw receipt.error;
+      if(!same&&choiceRef&&revision!==receipt.queueRevision)throw Object.assign(new Error('Выбран другой перелёт.'),{code:'quote_superseded',retryable:true});
+      if(!anexConcreteKey(o)||identity.epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
+      if(same)return result;
+      return verifyAnexPackage(o,choiceRef);
     }
-    if(!choiceRef&&receipt.result)return receipt.result;
-    if(choiceRef&&!receipt.result?.choices?.some(c=>c.choiceRef===choiceRef))throw new Error('Выберите перелёт из ответа ANEX.');
-    if(choiceRef)receipt.chosen=choiceRef;
+    if(!choiceRef&&receipt.result){
+      if(receipt.result.state==='quote_verified'&&receipt.result.expiresAt*1000<=Date.now())throw new Error('Срок подтверждённой цены истёк.');
+      return receipt.result.repricing?Object.freeze({...receipt.result,repricing:receipt.repricing}):receipt.result;
+    }
+    if(choiceRef){
+      if(!receipt.inventory?.choices.some(c=>c.choiceRef===choiceRef))throw new Error('Выберите перелёт из ответа ANEX.');
+      if(!receipt.repricing?.enabled&&receipt.chosen&&receipt.chosen!==choiceRef)throw new Error('Расчёт выбранного перелёта уже выполнен.');
+      const cached=receipt.quotes.get(choiceRef);
+      if(cached){
+        if(cached.expiresAt*1000<=Date.now())throw new Error('Срок подтверждённой цены истёк.');
+        return cached.repricing?Object.freeze({...cached,repricing:receipt.repricing}):cached;
+      }
+      if(receipt.repricing?.enabled&&(receipt.repricing.remaining_pairs===0||receipt.quotes.size>=3))
+        throw Object.assign(new Error('Проверены три варианта перелёта. Выберите один из них.'),{code:'quote_pair_budget_exhausted',retryable:true});
+    }
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
-    const timeout=setTimeout(()=>controller.abort(),65000);
+    // A browser abort cannot cancel a supplier mutation. Do not replace an active operation.
+    if(activeVerification)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
+    if(choiceRef)receipt.chosen=choiceRef;
+    const controller=new AbortController();controller.quoteMutation=true;activeVerification=controller;
+    const timeout=setTimeout(()=>controller.abort(),65000);receipt.pendingChoice=choiceRef;receipt.queuedChoice=null;
     receipt.pending=(async()=>{
       try{
         const body={action:choiceRef?'quote_calculate':'quote_start',generation:identity.epoch,search_ref:identity.searchRef,
@@ -1356,8 +1392,27 @@
           headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
         const payload=await response.json().catch(()=>null);
         if(controller.signal.aborted||identity.epoch!==generation)throw new Error('Проверка прервана. Повторный запрос автоматически не выполняется.');
+        const capability=quoteRepricing(payload?.data?.repricing);
+        if(choiceRef&&receipt.repricing?.enabled&&response.ok&&payload?.ok===true
+          &&payload.data?.status==='quote_selection_locked'&&payload.data.provider==='anex'
+          &&payload.data.generation===identity.epoch&&payload.data.search_ref===identity.searchRef&&payload.data.offer_ref===identity.offerRef
+          &&payload.data.final_price_verified===false&&payload.data.selection_state==='disabled'
+          &&Array.isArray(payload.data.choices)&&payload.data.choices.length===receipt.inventory.choices.length
+          &&payload.data.choices.every((item,index)=>item?.choice_ref===receipt.inventory.choices[index].choiceRef
+            &&Array.isArray(item.legs)&&item.legs.length===2&&item.legs.every((leg,n)=>leg?.label===receipt.inventory.choices[index].legs[n].label))
+          &&capability?.enabled&&capability.remaining_pairs===0){
+          receipt.repricing=capability;
+          throw Object.assign(new Error('Проверены три варианта перелёта. Выберите один из них.'),{code:'quote_pair_budget_exhausted',retryable:true});
+        }
         const result=response.ok&&payload?.ok===true?normalizeAnexPackage(payload.data,o,choiceRef):null;
-        if(!result){
+        const sameInventory=!choiceRef||!result?.repricing||result.choices?.length===receipt.inventory?.choices.length
+          &&result.choices.every((item,index)=>item.choiceRef===receipt.inventory.choices[index].choiceRef
+            &&item.legs.every((leg,n)=>leg.label===receipt.inventory.choices[index].legs[n].label));
+        const sameCapability=!choiceRef||Boolean(receipt.repricing)===Boolean(result?.repricing)
+          &&(!result?.repricing||result.repricing.used_pairs>=receipt.repricing.used_pairs
+            &&result.repricing.used_pairs>=receipt.quotes.size+1);
+        const sameDeadline=!choiceRef||!result?.repricing||receipt.expiresAt===undefined||result.expiresAt===receipt.expiresAt;
+        if(!result||!sameInventory||!sameCapability||!sameDeadline){
           const reason=safeQuoteFailureReason('anex',payload?.data?.reason);
           const detail={provider:'anex',action:body.action,code:'quote_unconfirmed',
             httpStatus:Number.isInteger(response.status)?response.status:0,...(reason?{failureReason:reason}:{})};
@@ -1372,9 +1427,13 @@
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
           throw new Error('ANEX не подтвердил расчёт выбранного тура. Цена и наличие требуют уточнения.');
         }
-        receipt.result=result;return result;
-      }catch(error){receipt.error=error;throw error;}
-      finally{clearTimeout(timeout);receipt.pending=null;if(activeVerification===controller)activeVerification=null;}
+        receipt.result=result;
+        if(result.state==='quote_choices')receipt.inventory=result;
+        if(result.repricing)receipt.repricing=result.repricing;
+        if(choiceRef){receipt.quotes.set(choiceRef,result);if(result.repricing)receipt.expiresAt=result.expiresAt;}
+        return result;
+      }catch(error){if(error.code!=='quote_pair_budget_exhausted')receipt.error=error;throw error;}
+      finally{clearTimeout(timeout);receipt.pending=null;receipt.pendingChoice=null;if(activeVerification===controller)activeVerification=null;}
     })();
     return receipt.pending;
   }
@@ -1473,6 +1532,14 @@
       ||typeof value.currency!=='string'||!(/^[A-Z0-9_]{2,8}$/).test(value.currency))return null;
     return Object.freeze({amount:value.amount,currency:value.currency,source:value.source,aggregation:value.aggregation});
   }
+  function quoteRepricing(value){
+    if(value===undefined)return undefined;
+    if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.enabled!=='boolean'||value.max_pairs!==3
+      ||!Number.isInteger(value.used_pairs)||value.used_pairs<0||value.used_pairs>3
+      ||!Number.isInteger(value.remaining_pairs)||value.remaining_pairs<0||value.remaining_pairs>3
+      ||(value.enabled?value.used_pairs+value.remaining_pairs!==3:value.remaining_pairs!==0))return null;
+    return Object.freeze({enabled:value.enabled,max_pairs:3,used_pairs:value.used_pairs,remaining_pairs:value.remaining_pairs});
+  }
   function andromedaQuoteFlight(value,pending,seen){
     if(!value||!['0','1'].includes(String(value.direction||'')))return null;
     const row={direction:String(value.direction),name:typeof value.name==='string'?value.name.slice(0,160):null,
@@ -1488,7 +1555,8 @@
   }
   function andromedaQuoteCurrent(quote){return Number.isSafeInteger(quote?.expiresAt)&&quote.expiresAt*1000>Date.now();}
   function normalizeAndromedaQuote(value,localId,selection=null){
-    if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
+    const repricing=quoteRepricing(value?.repricing);
+    if(repricing===null||repricing?.enabled===false||!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
       ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)
       ||!Number.isSafeInteger(value.expires_at)||value.expires_at*1000<=Date.now()
       ||value.flights.length>(value.state==='flight_selection_required'?1000:100))return null;
@@ -1496,11 +1564,13 @@
       &&value.flight_selection_required===false;
     const pending=value.state==='flight_selection_required'&&value.quote_state==='unverified'&&value.final_price_verified===false
       &&value.flight_selection_required===true&&value.final_price===null;
-    if(!verified&&!pending)return null;
+    if(!verified&&!pending||repricing&&verified&&!selection)return null;
     let finalPrice=null;
     if(verified){
       const amount=String(value.final_price?.amount??''),currency=String(value.final_price?.currency??'');
-      if(currency!=='RUB'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0)return null;
+      if(currency!=='RUB'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(amount)||Number(amount)<=0
+        ||repricing&&(!Number.isSafeInteger(value.verified_at)||value.verified_at<=0||value.verified_at>Math.floor(Date.now()/1000)
+          ||value.verified_at>=value.expires_at||repricing.used_pairs<1))return null;
       finalPrice=Object.freeze({amount,currency});
     }
     const seen=new Set(),flights=[];
@@ -1508,11 +1578,11 @@
     if(pending&&(!flights.some(row=>row.direction==='0')||!flights.some(row=>row.direction==='1')))return null;
     // Legacy completed receipts have no refs; retain their sealed outcome.
     // When the server supplies refs, a total must belong to the submitted pair.
-    if(verified&&selection&&flights.some(row=>row.flightRef)
+    if(verified&&selection&&(repricing||flights.some(row=>row.flightRef))
       &&(flights.length!==2||flights.find(row=>row.direction==='0')?.flightRef!==selection.outbound_ref
         ||flights.find(row=>row.direction==='1')?.flightRef!==selection.return_ref))return null;
     return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
-      flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.expires_at});
+flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.expires_at,...(verified&&Number.isSafeInteger(value.verified_at)?{verifiedAt:value.verified_at}:{}),...(repricing?{repricing}:{})});
   }
   function hasAndromedaQuoteAttempt(o){const prepared=andromedaQuoteRequest(o);return !!prepared&&andromedaQuoteAttempts.has(prepared.key);}
   function andromedaQuoteFailure(status=0,payload=null,kind=''){
@@ -1542,26 +1612,59 @@
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.andromedaQuoteApi,'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php');
     if(!base||!url)throw Object.assign(new Error('Предложение Andromeda устарело. Повторите поиск.'),{code:'offer_expired',retryable:false});
     const retained=andromedaQuoteAttempts.get(base.key),phase=flightSelection?'continuation':'initial';
-    // Once flights were submitted, reopening must retain that outcome, not restart the initial choice.
-    const previous=flightSelection?retained?.continuation:retained?.continuation||retained?.initial;
+    if(retained?.error)throw retained.error;
+    let pairKey=null;
+    if(flightSelection){
+      if(Object.keys(flightSelection).sort().join(',')!=='outbound_ref,provider,return_ref'||flightSelection.provider!=='andromeda'
+        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.outbound_ref||''))
+        ||!(/^flight_[a-f0-9]{32}$/).test(String(flightSelection.return_ref||'')))throw andromedaQuoteFailure(0,null,'unavailable');
+      pairKey=flightSelection.outbound_ref+'|'+flightSelection.return_ref;
+    }
+    if(retained?.active){
+      const active=retained.active,same=!flightSelection||active.selection?.outbound_ref===flightSelection.outbound_ref
+        &&active.selection?.return_ref===flightSelection.return_ref;
+      if(!same&&(!retained.repricing?.enabled||!andromedaQuoteRequest(o,flightSelection)))throw andromedaQuoteFailure(0,null,'unavailable');
+      if(flightSelection&&(same?retained.queuedChoice!==null:retained.queuedChoice!==pairKey)){
+        retained.queuedChoice=same?null:pairKey;retained.queueRevision++;
+      }
+      const revision=retained.queueRevision;
+      let quote;
+      try{quote=await active.promise;}catch(error){if(same||error.code!=='quote_pair_budget_exhausted')throw error;}
+      if(retained.error)throw retained.error;
+      if(!same&&flightSelection&&revision!==retained.queueRevision)throw Object.assign(new Error('Выбран другой перелёт.'),{code:'quote_superseded',retryable:true});
+      if(!andromedaQuoteRequest(o)||same&&!andromedaQuoteCurrent(quote))throw andromedaQuoteFailure(0,null,'expired');
+      if(same)return quote;
+      return verifyAndromeda(o,flightSelection);
+    }
+    // Legacy receipts retain one continuation. Only an explicit fresh capability enables a pair cache.
+    const previous=flightSelection?(retained?.repricing?.enabled?retained.pairs?.get(pairKey):retained?.continuation)
+      :retained?.continuation||retained?.initial;
     if(previous){
       if(flightSelection){
         const expected=previous.selection;
-        if(Object.keys(flightSelection).sort().join(',')!=='outbound_ref,provider,return_ref'
-          ||Object.keys(expected).some(key=>expected[key]!==flightSelection[key]))throw andromedaQuoteFailure(0,null,'unavailable');
+        if(Object.keys(expected).some(key=>expected[key]!==flightSelection[key])
+          ||retained.repricing?.enabled&&!andromedaQuoteRequest(o,flightSelection))throw andromedaQuoteFailure(0,null,'unavailable');
       }
       const quote=await previous.promise;
+      if(retained.error)throw retained.error;
       if(!andromedaQuoteCurrent(quote))throw andromedaQuoteFailure(0,null,'expired');
-      return quote;
+      return quote.repricing?Object.freeze({...quote,repricing:retained.repricing}):quote;
     }
     if(flightSelection&&!andromedaQuoteCurrent(andromedaQuoteChoices.get(base.key)))throw andromedaQuoteFailure(0,null,'expired');
     const prepared=flightSelection?andromedaQuoteRequest(o,flightSelection):base;
     if(!prepared)throw Object.assign(new Error('Предложение Andromeda устарело. Повторите поиск.'),{code:'offer_expired',retryable:false});
-    activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    if(flightSelection&&retained?.repricing?.enabled&&(retained.repricing.remaining_pairs===0||retained.pairs.size>=3))
+      throw Object.assign(new Error('Проверены три варианта перелёта. Выберите один из них.'),{code:'quote_pair_budget_exhausted',retryable:true});
+    // Keep the supplier mutation alive; its completion or UNKNOWN seal governs all queued selections.
+    if(activeVerification)throw Object.assign(new Error('Дождитесь текущей проверки тура.'),{code:'quote_operation_pending',retryable:true});
+    const controller=new AbortController();controller.quoteMutation=true;activeVerification=controller;
     const epoch=generation;let timedOut=false;
     const timeout=setTimeout(()=>{timedOut=true;controller.abort();},45000);
-    const attempts=retained||{},attempt={selection:flightSelection?structuredClone(flightSelection):null};
-    attempts[phase]=attempt;andromedaQuoteAttempts.set(base.key,attempts);
+    const attempts=retained||{pairs:new Map(),queueRevision:0,queuedChoice:null,repricing:null,error:null},attempt={selection:flightSelection?structuredClone(flightSelection):null};
+    const priorContinuation=attempts.continuation;
+    attempts[phase]=attempt;attempts.active=attempt;attempts.queuedChoice=null;
+    if(flightSelection&&attempts.repricing?.enabled)attempts.pairs.set(pairKey,attempt);
+    andromedaQuoteAttempts.set(base.key,attempts);
     attempt.promise=(async()=>{
       let status=0;
       try{
@@ -1570,14 +1673,38 @@
         status=response.status;
         const payload=await response.json().catch(()=>null);
         if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw andromedaQuoteFailure(status,null,timedOut?'timeout':'stale');
+        const capability=quoteRepricing(payload?.data?.repricing),reason=payload?.data?.failure_reason||payload?.failure_reason;
+        const projectedBudget=flightSelection&&attempts.repricing?.enabled&&response.ok&&payload?.ok===true
+          &&reason==='ANDROMEDA_FLIGHT_REPRICE_BUDGET'?normalizeAndromedaQuote(payload?.data,prepared.localId):null;
+        if(projectedBudget?.state==='flight_selection_required'&&capability?.enabled&&capability.remaining_pairs===0
+          &&projectedBudget.expiresAt===andromedaQuoteChoices.get(base.key)?.expiresAt
+          &&projectedBudget.flights.length===andromedaQuoteChoices.get(base.key)?.flights.length
+          &&projectedBudget.flights.every((flight,index)=>flight.direction===andromedaQuoteChoices.get(base.key).flights[index].direction
+            &&flight.flightRef===andromedaQuoteChoices.get(base.key).flights[index].flightRef)){
+          attempts.repricing=capability;
+          throw Object.assign(new Error('Проверены три варианта перелёта. Выберите один из них.'),{code:'quote_pair_budget_exhausted',retryable:true});
+        }
         if(!response.ok||payload?.ok!==true||!payload.data)throw andromedaQuoteFailure(status,payload);
-        const quote=normalizeAndromedaQuote(payload.data,prepared.localId,prepared.body.flight_selection);
-        if(!quote)throw andromedaQuoteFailure(status,null,'invalid_response');
-        if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
+        let quote=normalizeAndromedaQuote(payload.data,prepared.localId,prepared.body.flight_selection);
+        if(!quote||flightSelection&&attempts.repricing?.enabled&&(!quote.repricing
+          ||quote.repricing.used_pairs<attempts.repricing.used_pairs||quote.repricing.used_pairs<attempts.pairs.size||quote.state!=='quote_verified'))
+          throw andromedaQuoteFailure(status,null,'invalid_response');
+        const inventory=andromedaQuoteChoices.get(base.key);
+        if(quote.repricing){
+          if(flightSelection&&!attempts.repricing)throw andromedaQuoteFailure(status,null,'invalid_response');
+          if(flightSelection&&(!inventory||quote.expiresAt!==inventory.expiresAt))throw andromedaQuoteFailure(status,null,'invalid_response');
+          attempts.repricing=quote.repricing;
+          if(quote.state==='quote_verified'&&inventory)quote=Object.freeze({...quote,flightChoices:inventory.flights});
+        }
+        if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);
+        else if(!quote.repricing)andromedaQuoteChoices.delete(prepared.key);
         return quote;
       }catch(error){
+        if(error.code==='quote_pair_budget_exhausted'){attempts.pairs.delete(pairKey);attempts.continuation=priorContinuation;throw error;}
         if(flightSelection)andromedaQuoteChoices.delete(prepared.key);
         const failure=error?.retryable===false?error:andromedaQuoteFailure(status,null,epoch!==generation?'stale':timedOut?'timeout':'network');
+        attempts.error=failure;
+        if(attempts.repricing)attempts.repricing=Object.freeze({...attempts.repricing,enabled:false,remaining_pairs:0});
         // Browser-local diagnostics retain bounded public failure facts, never response text or identities.
         if(epoch===generation){
           const detail=Object.freeze({provider:'andromeda',action:prepared.body.action,code:failure.code,
@@ -1589,7 +1716,7 @@
           if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
         throw failure;
-      }finally{clearTimeout(timeout);if(activeVerification===controller)activeVerification=null;}
+      }finally{clearTimeout(timeout);attempts.active=null;if(activeVerification===controller)activeVerification=null;}
     })();
     return attempt.promise;
   }

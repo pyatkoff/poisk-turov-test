@@ -11,7 +11,38 @@ const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaR
 function hotelCatalogue(){return [...Array.from({length:10},(_,i)=>({id:2001+i,legacyId:7001+i,name:'Rixos Fictional Belek '+String(i+1).padStart(2,'0'),country:'4',countryName:'Турция',images:i===2?[]:i===3?['/test-missing-photo.svg']:['/test-photo.svg']})),...Array.from({length:3},(_,i)=>({id:3001+i,legacyId:8001+i,name:'Rixos Fictional Egypt '+(i+1),country:'100',countryName:'Египет',images:['/test-photo.svg']}))];}
 function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}){
  const anexWindows=new Map();
- const calls=[],state={hold:false,failAnex:false,extended:false,anexCurrentAdditional:false,anexPackageChoiceCount:2,samoFailure:null,samoFlightChoice:false,samoSolePair:false,samoSearchGate:null,samoMeal:'AI',samoRoom:'SAMO STANDARD',wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null,tvFlightFuel:tvFuel,hotelCatalogue:[],catalogueCountries:[],catalogueAliases:{},hotelLookupGates:{},hotelLookupError:false};
+ const calls=[],state={hold:false,failAnex:false,extended:false,anexCurrentAdditional:false,anexPackageChoiceCount:2,samoFailure:null,samoFlightChoice:false,samoSolePair:false,samoSearchGate:null,samoMeal:'AI',samoRoom:'SAMO STANDARD',wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null,tvFlightFuel:tvFuel,hotelCatalogue:[],catalogueCountries:[],catalogueAliases:{},hotelLookupGates:{},hotelLookupError:false,repricingEnabled:false,repricingFailure:''};
+ const repriceContexts=new Map();
+ const repriceMeta=context=>({enabled:!context.sealed,max_pairs:3,used_pairs:context.used,remaining_pairs:context.sealed?0:3-context.used});
+ function reprice(value,provider,body,pairKey=null){
+  if(!state.repricingEnabled)return value;
+  const key=provider+'|'+body.generation+'|'+JSON.stringify(body.offer_context||[body.search_ref,body.offer_ref,body.local_hotel_id]);
+  let context=repriceContexts.get(key);
+  if(!context){context={used:0,sealed:false,quotes:new Map(),initial:structuredClone(value),expiresAt:value.expires_at||Math.floor(Date.now()/1000)+600};repriceContexts.set(key,context);}
+  const unverified=budget=>{
+   const result=structuredClone(context.initial);
+   if(provider==='anex')Object.assign(result,{status:budget?'quote_selection_locked':'quote_unknown',final_price_verified:false,selection_state:'disabled',price:null});
+   else Object.assign(result,{state:budget?'flight_selection_required':'quote_unknown',quote_state:'unverified',final_price:null,final_price_verified:false,
+    flight_selection_required:budget,failure_reason:budget?'ANDROMEDA_FLIGHT_REPRICE_BUDGET':'ANDROMEDA_FLIGHT_REPRICE_STATE_UNKNOWN',failure_category:'quote_state'});
+   result.repricing=repriceMeta(context);return result;
+  };
+  if(context.sealed)return unverified(false);
+  if(!pairKey)return {...value,repricing:repriceMeta(context)};
+  if(context.quotes.has(pairKey))return {...structuredClone(context.quotes.get(pairKey)),repricing:repriceMeta(context)};
+  if(context.used===3)return unverified(true);
+  context.used++;
+  if(state.repricingFailure==='unknown'){context.sealed=true;return unverified(false);}
+  const result=structuredClone(value),now=Math.floor(Date.now()/1000);
+  const number=provider==='anex'?Number(body.choice_ref.slice(-1)):(Number(body.flight_selection.outbound_ref.slice(-1))+1)/2;
+  if(provider==='anex'){result.choices=structuredClone(context.initial.choices);result.price.amount=String(100000+number*1000);}
+  else{
+   result.final_price.amount=String(100000+number*1000);
+   result.flights=['0','1'].map(direction=>structuredClone(context.initial.flights.find(f=>f.direction===direction
+    &&f.flight_ref===(direction==='0'?body.flight_selection.outbound_ref:body.flight_selection.return_ref))));
+  }
+  result.verified_at=now;result.expires_at=context.expiresAt;result.repricing=repriceMeta(context);
+  context.quotes.set(pairKey,structuredClone(result));return result;
+ }
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
@@ -45,13 +76,13 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    if(state.failAnex)throw Error('Test provider unavailable');
    if(['quote_start','quote_calculate'].includes(action)){
     const common={provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref};
-    const choices=[1,2].slice(0,state.anexPackageChoiceCount).map(n=>({choice_ref:'anex_quote:'+String(n).repeat(64),current:n===1,
+    const choices=(state.repricingEnabled?[1,2,3,4]:[1,2]).slice(0,state.anexPackageChoiceCount).map(n=>({choice_ref:'anex_quote:'+String(n).repeat(64),current:n===1,
      legs:[{label:`TEST ANEX PACKAGE ${n} OUT · Москва SVO → Анталья AYT · ${day} 10:00`},{label:`TEST ANEX PACKAGE ${n} BACK · Анталья AYT → Москва SVO · ${back} 14:00`}]}));
-    if(action==='quote_start')return {ok:true,data:{...common,status:'quote_choices',final_price_verified:false,selection_state:'disabled',choices}};
+    if(action==='quote_start')return {ok:true,data:reprice({...common,status:'quote_choices',final_price_verified:false,selection_state:'disabled',choices},'anex',body)};
     if(state.anexQuoteFailure)return {ok:true,data:{...common,status:'quote_failed',final_price_verified:false,selection_state:'disabled'}};
     const choice=choices.find(c=>c.choice_ref===body.choice_ref);if(!choice)throw Error('Foreign fixture ANEX pair');
-    return {ok:true,data:{...common,status:'quote_verified',final_price_verified:true,selection_state:'preview_only',choice,
-     price:{amount:'135678.90',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:Math.floor(Date.now()/1000)+600}};
+    return {ok:true,data:reprice({...common,status:'quote_verified',final_price_verified:true,selection_state:'preview_only',choice,
+     price:{amount:'135678.90',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:Math.floor(Date.now()/1000)+600},'anex',body,body.choice_ref)};
    }
    const nativeTour={price:{amount:'121000',currency:'RUB'},checkin:day,nights:7,adults:2,children:0,meal:'AI',room:'ANEX STANDARD',kind:'group_minimum',flight_type:'charter',final_price_verified:false,search_ref:searchRef,offer_ref:offerRef,selection_enabled:false};
    const h={local_id:101,name:profile.name,category:5,country:'Турция',region:'Белек',catalog:{hotel_id:101,source:'tourvisor'},tours:[nativeTour]};
@@ -70,7 +101,12 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
   if(u.pathname.endsWith('/api-andromeda-quote-preview.php')){
    if(state.samoFailure&&(!state.samoFlightChoice||action==='quote_select_flights'))return {ok:false,error:'supplier_unavailable',failure_category:state.samoFailure};
    const result={ok:true,data:{schema_version:1,provider:'andromeda',expires_at:Math.floor(Date.now()/1000)+900,local_id:101,selection_enabled:true,booking_enabled:false,state:'quote_verified',quote_state:'verified',final_price:{amount:'125500',currency:'RUB'},final_price_verified:true,flight_selection_required:false,flights:[{direction:'0',name:'TEST SAMO OUT',datebeg:day,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},{direction:'1',name:'TEST SAMO BACK',datebeg:back,class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}]}};
-   if(state.samoFlightChoice&&action==='quote')Object.assign(result.data,{state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,flights:result.data.flights.map((f,i)=>({...f,flight_ref:'flight_'+String(i+1).repeat(32),transport_markup_reported:{amount:'2000',currency:'RUB',source:'andromeda_transport_detail',aggregation:'unknown'}}))});
+   if((state.samoFlightChoice||state.repricingEnabled)&&action==='quote'){
+    const originals=result.data.flights;
+    Object.assign(result.data,{state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,
+     flights:(state.repricingEnabled?[1,3,5,7,2]:[1,2]).map(n=>({...originals[n===2?1:0],...(state.repricingEnabled?{name:'TEST SAMO '+n}:{}),flight_ref:'flight_'+String(n).repeat(32),
+      transport_markup_reported:{amount:'2000',currency:'RUB',source:'andromeda_transport_detail',aggregation:'unknown'}}))});
+   }
    if(action==='quote_select_flights'&&state.samoVerifiedPair!=='legacy'){
     const pair=body.flight_selection;
     result.data.flights=result.data.flights.map(f=>({...f,flight_ref:state.samoVerifiedPair==='swapped'
@@ -78,6 +114,7 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
       :state.samoVerifiedPair==='foreign'?'flight_'+(f.direction==='0'?'9':'8').repeat(32)
       :f.direction==='0'?pair.outbound_ref:pair.return_ref}));
    }
+   result.data=reprice(result.data,'andromeda',body,action==='quote_select_flights'?body.flight_selection.outbound_ref+'|'+body.flight_selection.return_ref:null);
    return result;
   }
   if(u.pathname==='/api-v2.php'){
