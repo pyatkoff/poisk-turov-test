@@ -91,15 +91,15 @@ async function solePackagePriceScenario(mode,direct=false){
  const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
  const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Sole price timeout: '+d.body.textContent.slice(-2000));};
  const count=action=>transport.calls.filter(c=>c.action===action).length;
- const reopen=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="anex%3A"]');};
+ const reopen=async()=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');};
  try{
   for(const file of scripts)w.eval(source(file));
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');
   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
-  reopen();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
+  await reopen();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
   if(direct){click('[data-action="select-anex-tour"]');assert.equal(q('[data-action="anex-package-quote"]'),null,'primary path skips context-only screen');}else{click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="anex-package-quote"]'));click('[data-action="anex-package-quote"]');}
   if(mode==='late-start'){
-   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();reopen();
+   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();await reopen();
    releaseStart();await wait(()=>q('[name="anex-package-choice"]'));
    assert.equal(count('quote_calculate'),0,'passive reopen cannot turn a late inventory response into a calculation');
    click('[data-action="anex-package-calculate"]');
@@ -112,11 +112,11 @@ async function solePackagePriceScenario(mode,direct=false){
   assert.equal(q('[data-action="anex-application-preview"]'),null,'a pending price cannot enter application');
   click('[data-action="anex-package-calculate"]');assert.equal(count('quote_calculate'),1,'duplicate pending click is inert');
   if(mode==='late-calc'){
-   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
    const body=q('#modal-body').innerHTML;releaseCalc();await settle();assert.equal(q('#modal-body').innerHTML,body,'late price cannot replace another selected tour');
-   click('[data-action="close-modal"]');await settle();reopen();
+   click('[data-action="close-modal"]');await settle();await reopen();
   }else{
-   click('[data-action="close-modal"]');await settle();reopen();
+   click('[data-action="close-modal"]');await settle();await reopen();
    assert(q('[data-action="anex-package-calculate"]').disabled,'pending reopen keeps the same reservation');
    click('[data-action="close-modal"]');await settle();w.history.forward();await settle();
    assert.equal(count('quote_calculate'),1,'Back/reopen/Forward never repeats calculation');
@@ -125,7 +125,7 @@ async function solePackagePriceScenario(mode,direct=false){
   if(mode==='failed'){
    await wait(()=>q('#anex-package-status')?.getAttribute('role')==='alert');
    assert.equal(q('[data-action="anex-application-preview"]'),null);assert.equal(q('[data-action="anex-package-calculate"]'),null);
-   click('[data-action="close-modal"]');await settle();reopen();assert.equal(count('quote_calculate'),1,'failure stays consumed on reopen');
+   click('[data-action="close-modal"]');await settle();await reopen();assert.equal(count('quote_calculate'),1,'failure stays consumed on reopen');
   }else{
    await wait(()=>q('[data-action="anex-application-preview"]'));
    assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/);
@@ -156,13 +156,13 @@ async function soleSamoPriceScenario(mode){
  const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
  const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Sole SAMO price timeout: '+d.body.textContent.slice(-1500));};
  const count=action=>transport.calls.filter(c=>c.action===action&&c.url.includes('api-andromeda-quote')).length;
- const reopen=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key^="andromeda%3A"]');};
+ const reopen=async()=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');};
  try{
   for(const file of scripts)w.eval(source(file));
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
-  reopen();click('[data-action="refresh-hotel"]');
+  await reopen();click('[data-action="refresh-hotel"]');
   if(mode==='late-start'){
-   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();reopen();releaseStart();
+   await wait(()=>releaseStart);click('[data-action="close-modal"]');await settle();await reopen();releaseStart();
    await wait(()=>q('[data-action="apply-andromeda-flights"]'));
    assert.equal(count('quote_select_flights'),0,'passive reopen never calculates a newly received sole pair');
    click('[data-action="apply-andromeda-flights"]');
@@ -175,14 +175,14 @@ async function soleSamoPriceScenario(mode){
   assert.match(q('#andromeda-flight-price-status').textContent,/Уточняем полную цену/);assert.equal(q('#prototype-lead-form'),null);
   click('[data-action="apply-andromeda-flights"]');assert.equal(count('quote_select_flights'),1);
   if(mode==='late-calc'){
-   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');
    const body=q('#modal-body').innerHTML;releaseCalc();await settle();assert.equal(q('#modal-body').innerHTML,body,'late total cannot replace another selected tour');
-   click('[data-action="close-modal"]');await settle();reopen();
+   click('[data-action="close-modal"]');await settle();await reopen();
   }else releaseCalc();
   if(mode==='failed'){
    await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
    assert.equal(q('[data-action="andromeda-application-preview"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
-   click('[data-action="close-modal"]');await settle();reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
+   click('[data-action="close-modal"]');await settle();await reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
   }else{
    await wait(()=>q('[data-action="andromeda-application-preview"]'));
    assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/125500/);assert(q('.chosen-stay'));
