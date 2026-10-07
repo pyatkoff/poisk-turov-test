@@ -1480,14 +1480,14 @@
       class:typeof value.class==='string'?value.class.slice(0,80):null,departure:andromedaPoint(value.departure),arrival:andromedaPoint(value.arrival),
       transportMarkupReported:andromedaTransportMarkup(value.transport_markup_reported)};
     if(value.departure!==null&&value.departure!==undefined&&!row.departure||value.arrival!==null&&value.arrival!==undefined&&!row.arrival)return null;
-    if(pending){
-      const ref=String(value.flight_ref||'');if(!(/^flight_[a-f0-9]{32}$/).test(ref)||seen.has(ref))return null;
+    if(pending||Object.prototype.hasOwnProperty.call(value,'flight_ref')){
+      const ref=value.flight_ref;if(typeof ref!=='string'||!(/^flight_[a-f0-9]{32}$/).test(ref)||seen.has(ref))return null;
       seen.add(ref);row.flightRef=ref;
     }
     return Object.freeze(row);
   }
   function andromedaQuoteCurrent(quote){return Number.isSafeInteger(quote?.expiresAt)&&quote.expiresAt*1000>Date.now();}
-  function normalizeAndromedaQuote(value,localId){
+  function normalizeAndromedaQuote(value,localId,selection=null){
     if(!value||value.schema_version!==1||value.provider!=='andromeda'||Number(value.local_id)!==localId
       ||value.selection_enabled!==true||value.booking_enabled!==false||!Array.isArray(value.flights)
       ||!Number.isSafeInteger(value.expires_at)||value.expires_at*1000<=Date.now()
@@ -1506,6 +1506,11 @@
     const seen=new Set(),flights=[];
     for(const raw of value.flights){const flight=andromedaQuoteFlight(raw,pending,seen);if(!flight)return null;flights.push(flight);}
     if(pending&&(!flights.some(row=>row.direction==='0')||!flights.some(row=>row.direction==='1')))return null;
+    // Legacy completed receipts have no refs; retain their sealed outcome.
+    // When the server supplies refs, a total must belong to the submitted pair.
+    if(verified&&selection&&flights.some(row=>row.flightRef)
+      &&(flights.length!==2||flights.find(row=>row.direction==='0')?.flightRef!==selection.outbound_ref
+        ||flights.find(row=>row.direction==='1')?.flightRef!==selection.return_ref))return null;
     return Object.freeze({state:pending?'flight_selection_required':'quote_verified',finalPrice,finalPriceVerified:verified,
       flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.expires_at});
   }
@@ -1566,7 +1571,7 @@
         const payload=await response.json().catch(()=>null);
         if(controller.signal.aborted||epoch!==generation||!andromedaQuoteRequest(o,flightSelection))throw andromedaQuoteFailure(status,null,timedOut?'timeout':'stale');
         if(!response.ok||payload?.ok!==true||!payload.data)throw andromedaQuoteFailure(status,payload);
-        const quote=normalizeAndromedaQuote(payload.data,prepared.localId);
+        const quote=normalizeAndromedaQuote(payload.data,prepared.localId,prepared.body.flight_selection);
         if(!quote)throw andromedaQuoteFailure(status,null,'invalid_response');
         if(quote.flightSelectionRequired)andromedaQuoteChoices.set(prepared.key,quote);else andromedaQuoteChoices.delete(prepared.key);
         return quote;

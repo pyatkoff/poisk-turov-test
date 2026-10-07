@@ -71,6 +71,13 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    if(state.samoFailure&&(!state.samoFlightChoice||action==='quote_select_flights'))return {ok:false,error:'supplier_unavailable',failure_category:state.samoFailure};
    const result={ok:true,data:{schema_version:1,provider:'andromeda',expires_at:Math.floor(Date.now()/1000)+900,local_id:101,selection_enabled:true,booking_enabled:false,state:'quote_verified',quote_state:'verified',final_price:{amount:'125500',currency:'RUB'},final_price_verified:true,flight_selection_required:false,flights:[{direction:'0',name:'TEST SAMO OUT',datebeg:day,class:'ECONOM',departure:{town:'Москва',port:'SVO'},arrival:{town:'Анталья',port:'AYT'}},{direction:'1',name:'TEST SAMO BACK',datebeg:back,class:'ECONOM',departure:{town:'Анталья',port:'AYT'},arrival:{town:'Москва',port:'SVO'}}]}};
    if(state.samoFlightChoice&&action==='quote')Object.assign(result.data,{state:'flight_selection_required',quote_state:'unverified',final_price:null,final_price_verified:false,flight_selection_required:true,flights:result.data.flights.map((f,i)=>({...f,flight_ref:'flight_'+String(i+1).repeat(32),transport_markup_reported:{amount:'2000',currency:'RUB',source:'andromeda_transport_detail',aggregation:'unknown'}}))});
+   if(action==='quote_select_flights'&&state.samoVerifiedPair!=='legacy'){
+    const pair=body.flight_selection;
+    result.data.flights=result.data.flights.map(f=>({...f,flight_ref:state.samoVerifiedPair==='swapped'
+      ?f.direction==='0'?pair.return_ref:pair.outbound_ref
+      :state.samoVerifiedPair==='foreign'?'flight_'+(f.direction==='0'?'9':'8').repeat(32)
+      :f.direction==='0'?pair.outbound_ref:pair.return_ref}));
+   }
    return result;
   }
   if(u.pathname==='/api-v2.php'){

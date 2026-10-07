@@ -432,10 +432,43 @@ async function selectedHotelRestoration(){
  assert.equal(restored({country:'javascript:4',hotelIds:[2001],resorts:[]}).country,'4');
  console.log('PASS selected hotel URL restoration: multi-ID, partial failure/retry, duplicate and stale context, exact ID/country; supplierHTTP0');
 }
+function verifiedFlightPairBinding(source){
+ const start=source.indexOf('  function andromedaPoint('),end=source.indexOf('  function hasAndromedaQuoteAttempt(',start);
+ assert(start>=0&&end>start,'the connected canonical quote projector is exercised');
+ const context=vm.createContext({Date,Object,Set,Number,String});vm.runInContext(source.slice(start,end),context);
+ const ref=n=>'flight_'+String(n).repeat(32),selection={provider:'andromeda',outbound_ref:ref(3),return_ref:ref(4)};
+ const verified=()=>({schema_version:1,provider:'andromeda',local_id:101,selection_enabled:true,booking_enabled:false,
+  expires_at:Math.floor(Date.now()/1000)+900,state:'quote_verified',quote_state:'verified',final_price_verified:true,
+  flight_selection_required:false,final_price:{amount:'125500',currency:'RUB'},
+  flights:[{direction:'0',flight_ref:ref(3)},{direction:'1',flight_ref:ref(4)}]});
+ const read=value=>context.normalizeAndromedaQuote(value,101,selection);
+ const exact=read(verified());assert(exact);assert.equal(exact.finalPrice.amount,'125500');
+ assert.deepEqual(Array.from(exact.flights,f=>f.flightRef),[ref(3),ref(4)],'the final total retains the exact requested pair');
+ const reversed=verified();reversed.flights.reverse();assert(read(reversed),'directions, not response array order, bind the pair');
+ const invalid=[
+  value=>{value.flights[0].flight_ref=ref(4);value.flights[1].flight_ref=ref(3);},
+  value=>{value.flights[0].flight_ref=ref(9);},value=>{value.flights[1].flight_ref=ref(8);},
+  value=>{value.flights[1].flight_ref=ref(3);},value=>{value.flights[1].direction='0';},
+  value=>{delete value.flights[1].flight_ref;},value=>{value.flights[0].flight_ref=null;},
+  value=>{value.flights[0].flight_ref='not-an-opaque-ref';},
+  value=>{value.flights.push({direction:'0',flight_ref:ref(7)});},value=>{value.flights.pop();},
+  value=>{value.local_id=102;},value=>{value.expires_at=Math.floor(Date.now()/1000)-1;},
+  value=>{value.final_price_verified=false;},value=>{value.final_price=null;}
+ ];
+ for(const change of invalid){const value=verified();change(value);assert.equal(read(value),null,'foreign/malformed/expired or unverified totals never replace the chosen pair');}
+ const legacy=verified();for(const f of legacy.flights)delete f.flight_ref;
+ const old=read(legacy);assert(old);assert(old.flights.every(f=>!Object.hasOwn(f,'flightRef')),'legacy completed cache has no invented refs');
+ const pending=verified();Object.assign(pending,{state:'flight_selection_required',quote_state:'unverified',final_price_verified:false,flight_selection_required:true,final_price:null});
+ assert.equal(read(pending).finalPrice,null,'pending choices remain unpriced');delete pending.flights[0].flight_ref;assert.equal(read(pending),null);
+ const native=verified();native.flights[0].transport_markup_reported={amount:'18.25',currency:'USD',source:'andromeda_transport_detail',aggregation:'unknown'};
+ const reported=read(native);assert.equal(reported.finalPrice.amount,'125500');assert.equal(reported.flights[0].transportMarkupReported.currency,'USD','native markup never enters whole-tour arithmetic');
+ console.log(JSON.stringify({verifiedPairCases:20,supplierHTTP:0,legacyCompatible:true,priceArithmeticChanged:false}));
+}
 (async()=>{
  await selectedHotelRestoration();
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
  const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
+ verifiedFlightPairBinding(source);
  const digest=crypto.createHash('sha256').update(JSON.stringify(records)).digest('hex');
  // Pinned before the refactor on full data owner blob 931fb024951b6d69ce84e635e61ddd8112501623.
  assert.equal(digest,'f2a89681027398304bf0f9c4c55434e8447c01b591f0f1b07130eac0174f461a','observable orchestration trace changed from the characterized baseline');
