@@ -51,7 +51,8 @@ function destination(source,s){
  let calls=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],destinationChoice:{country:'4',resorts:s.resorts?['Регион <&']:[],hotelId:s.hotel?2:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:s.ready,catalogError:s.error?'Ошибка <&':'',catalogDeparture:'Москва',destinationHotel:id=>rows.find(h=>h.id===id),recentDestinations:()=>[{country:'4',resorts:[],hotelId:0}],destinationLabel:()=> 'Турция <&',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[{parent:{country:'4',name:'Регион <&'},children:[]}],resortChoiceHTML:r=>'<button>'+esc(r.name)+'</button>',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:rows.slice(0,12),matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:s.status,rows:rows.slice(8)},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:s.resolved?s.query:'',photoUrl:h=>h.photos[0],rememberUIRoute:()=>{}});
  c.$('#destination-query').value=s.query;
- context(c);vm.runInContext(functions(source,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination']),c);c.renderDestination();
+ context(c);vm.runInContext(functions(source,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination','focusReference','restoreFocus']),c);c.renderDestination();
+ if(s.retain)return {c,calls};
  const result={html:c.document.body.innerHTML,disabled:c.$('[data-action="apply-destination"]').disabled};c.dom.window.close();return {result,calls};
 }
 function destinationPaginationWork(code,fast){
@@ -60,7 +61,7 @@ function destinationPaginationWork(code,fast){
  let calls=0,hotelMarkup=0,routes=0;
  Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),destinationMatchItems:[],__rows:rows,
   destinationChoice:{country:'4',resorts:[],hotelId:0},countryNames:{'4':'Турция','5':'Египет'},catalogReady:true,catalogError:'',catalogDeparture:'Москва',destinationHotel:()=>null,recentDestinations:()=>[],destinationLabel:()=> 'Турция',destinationOrder:(a,b)=>a.localeCompare(b,'ru'),resortGroups:()=>[],resortChoiceHTML:()=>'',destinationResortsExpanded:false,destinationResortPreviewLimit:6,resortLoads:new Map(),data:{catalog:{regions:{'4':[]}}},hotels:[],matchesHotelQuery:()=>true,normalizeHotelQuery:value=>{calls++;return c.normalizeSearch(value).replace(/[^\p{L}\p{N}]+/gu,' ').trim();},destinationLookup:{status:'complete',rows},destinationHotelLimit:8,destinationHotelPageSize:8,destinationResolvedQuery:'hotel',photoUrl:h=>h.photos[0],rememberUIRoute:()=>routes++});
- c.esc=value=>{if(/^Hotel [0-9]+$/.test(String(value)))hotelMarkup++;return esc(value);};context(c);vm.runInContext(functions(code,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination']),c);c.renderDestination();
+ c.esc=value=>{if(/^Hotel [0-9]+$/.test(String(value)))hotelMarkup++;return esc(value);};context(c);vm.runInContext(functions(code,['parseGeneratedRoot','paintGeneratedRoots','appendGeneratedRoots','destinationNameMatches','rankDestinationHotels','destinationHotelEntries','renderMoreDestinationHotels','renderDestination','focusReference','restoreFocus']),c);c.renderDestination();
  const retained=[...c.$$('.destination-hotel')];retained[0].querySelector('strong').textContent='stale';
  while(c.destinationHotelLimit<80){if(fast)c.renderMoreDestinationHotels();else{c.destinationHotelLimit+=c.destinationHotelPageSize;c.renderDestination();}}
  const live=[...c.$$('.destination-hotel')],result={calls,hotelMarkup,routes,count:live.length,html:c.$('#destination-results').innerHTML,order:live.map(node=>node.dataset.id),retained:retained.slice(1).every((node,index)=>live[index+1]===node),dirtyReplaced:live[0]!==retained[0],dirtyRepaired:live[0].querySelector('strong').textContent==='Hotel 0',rawIdentity:vm.runInContext('destinationMatchItems.every((row,index)=>row===__rows[index])',c)};
@@ -82,6 +83,45 @@ function facetRefresh(source,legacy=false){
 }
 function observations(source){const records=[];for(const group of ['resorts','operators','meals'])for(const n of [0,1,7,8,20])for(const query of ['', 'Вариант 1','елка','несуществующий'])for(const selected of [false,true])for(const expanded of [false,true])for(const focus of ['first','last','search'])records.push(facet(source,{group,n,query,selected,expanded,focus}));for(const selected of [false,true])records.push(amenities(source,selected));for(const query of ['', 'h','hotel','hot el','Ёлка'])for(const status of ['idle','loading','error','complete'])for(const ready of [false,true])for(const hotel of [false,true])for(const resorts of [false,true])for(const resolved of [false,true])records.push(destination(source,{query,status,ready,hotel,resorts,resolved,error:status==='error'}).result);return records;}
 const actual=observations(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+// Actual destination action owner must retain the focused exact row across
+// selection and later inventory paints. Geometry is covered by compiled CI.
+function destinationFocus(code){
+ const {c}=destination(code,{query:'hotel',status:'complete',ready:true,retain:true});
+ c.CSS={escape:value=>String(value).replace(/[^a-zA-Z0-9_-]/g,char=>'\\'+char)};
+ c.dom.window.HTMLElement.prototype.getClientRects=function(){return this.isConnected&&!this.hidden?[{top:0}]:[];};
+ Object.assign(c,{validIds:values=>[...new Set(values.filter(value=>Number.isSafeInteger(value)&&value>0))],loadResorts:()=>{}});
+ vm.runInContext(functions(code,['setDestinationIds','requestDestination','settleDestinationChoice','handleSearchParameterAction']),c);
+ const active=()=>c.document.activeElement.id,choose=id=>{const button=c.$('#destination-hotel-'+id);button.focus();c.handleSearchParameterAction('destination-hotel',button,id);};
+ try{
+  choose(1);assert.equal(active(),'destination-hotel-1','select retains exact hotel row focus');assert.equal(c.$('#destination-hotel-1').getAttribute('aria-pressed'),'true');
+  const countries=()=>c.$('[data-action="destination-countries"]');
+  countries().focus();c.handleSearchParameterAction('destination-countries',countries());
+  assert.strictEqual(c.document.activeElement,countries(),'opening countries retains disclosure focus');assert.equal(countries().getAttribute('aria-expanded'),'true');
+  c.renderDestination();assert.strictEqual(c.document.activeElement,countries(),'later catalogue paint retains country disclosure focus');
+  c.handleSearchParameterAction('destination-countries',countries());assert.strictEqual(c.document.activeElement,countries(),'closing countries retains disclosure focus');assert.equal(countries().getAttribute('aria-expanded'),'false');
+  assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1],'country disclosure preserves exact selected hotel');assert.equal(c.$('#destination-query').value,'hotel','country disclosure preserves query');
+  c.$('#destination-hotel-1').focus();
+  c.renderDestination();assert.equal(active(),'destination-hotel-1','later catalogue/resort paint retains row focus');
+  choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1,2]);assert.equal(active(),'destination-hotel-2','second exact selection retains its row');
+  choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);assert.equal(active(),'destination-hotel-2','deselect retains its row');assert.equal(c.$('#destination-hotel-2').getAttribute('aria-pressed'),'false');
+  const remove=id=>{const button=c.$('[data-action="destination-remove"][data-id="'+id+'"]');button.focus();c.handleSearchParameterAction('destination-remove',button,id);};
+  choose(2);choose(3);remove(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1,3]);assert.equal(c.document.activeElement.dataset.id,'3','removing a middle chip keeps focus on the next chip');
+  c.renderDestination();assert.equal(c.document.activeElement.dataset.id,'3','later inventory paint keeps the remaining chip focused');
+  remove(3);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);assert.equal(c.document.activeElement.dataset.id,'1','removing the trailing chip keeps focus on the preceding chip');
+  const input=c.$('#destination-query');input.focus();input.setSelectionRange(2,4);c.renderDestination();
+  assert.strictEqual(c.document.activeElement,input,'typing keeps the original input');assert.deepEqual([input.value,input.selectionStart,input.selectionEnd],['hotel',2,4],'paint preserves query and caret');
+  choose(2);input.focus();c.handleSearchParameterAction('destination-remove',c.$('[data-action="destination-remove"][data-id="2"]'),2);assert.strictEqual(c.document.activeElement,input,'removing an unfocused chip does not steal query focus');assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);
+  const apply=c.$('[data-action="apply-destination"]');apply.focus();c.renderDestination();assert.strictEqual(c.document.activeElement,apply,'later paint does not steal footer focus');
+  c.$('#destination-hotel-1').focus();c.destinationLookup={status:'complete',rows:[]};c.hotels=[];c.renderDestination();assert.equal(active(),'','a removed row cannot force focus into the input');
+  assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1],'inventory paint never changes exact selection');
+  remove(1);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[]);assert.strictEqual(c.document.activeElement,apply,'removing the final chip keeps focus on confirmation');
+ }finally{c.dom.window.close();}
+}
+destinationFocus(source);
+assert.throws(()=>destinationFocus(source.replace("restoreFocus(focus,null,root);",'')),/select retains exact hotel row focus/,'focus-loss mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action=\"apply-destination\"]'));",'')),/removing a middle chip keeps focus/,'chip-removal focus mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("$('#destination-country-context').contains(document.activeElement)?$('#destination-country-context'):",'')),/opening countries retains disclosure focus/,'country-disclosure focus mutation is caught');
+console.log('PASS destination keyboard focus: actual select/deselect/multi-ID action, later paint, input caret, external focus and removed row; supplier/lead HTTP0');
 // Approved hotel photos, country scope and confirmation wording; ordinary
 // facet availability, ordering, selection and focus remain characterized.
 if(!process.argv.includes('--capture'))assert.equal(digest,'e17632718b1d1f2bca649f019dd7e3c7b67733cfed1c4d5ed8e81b98d1b04078','filter/destination HTML, availability, ordering, selection and focus');

@@ -343,6 +343,42 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  await page.waitForFunction(()=>document.querySelector('.destination-hotel-image[src$="/test-missing-photo.svg"]')?.hidden===true);
  assert.equal(await page.locator('.destination-hotel[data-id="2003"] img').count(),0,'absent photo uses the placeholder');
  await page.screenshot({path:path.join(evidence,`hotel-picker-photos-${width}.png`)});
+ const focusedHotel=page.locator('#destination-hotel-2001');
+ await focusedHotel.focus();await focusedHotel.press('Space');
+ await page.waitForFunction(()=>document.querySelector('#destination-hotel-2001')?.getAttribute('aria-pressed')==='true');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard selection and later region paint retain exact row focus');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-focus-${width}.png`)});
+ await focusedHotel.press('Space');
+ await page.waitForFunction(()=>document.querySelector('#destination-hotel-2001')?.getAttribute('aria-pressed')==='false');
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard deselection retains its row');
+ for(const id of [2001,2002,2003])await page.locator('#destination-hotel-'+id).press('Space');
+ const countryDisclosure=page.locator('[data-action="destination-countries"]');
+ await countryDisclosure.press('Space');
+ assert.equal(await countryDisclosure.getAttribute('aria-expanded'),'true');assert.equal(await countryDisclosure.evaluate(el=>document.activeElement===el),true,'opening country disclosure retains keyboard focus');
+ assert.equal(await page.locator('#destination-query').inputValue(),'Rix');assert.deepEqual(await page.locator('[data-action="destination-remove"]').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2001','2002','2003'],'country disclosure preserves exact draft IDs');
+ await page.screenshot({path:path.join(evidence,`hotel-picker-country-disclosure-focus-${width}.png`)});
+ await countryDisclosure.press('Space');
+ assert.equal(await countryDisclosure.getAttribute('aria-expanded'),'false');assert.equal(await countryDisclosure.evaluate(el=>document.activeElement===el),true,'closing country disclosure retains keyboard focus');
+ const chip=id=>page.locator('[data-action="destination-remove"][data-id="'+id+'"]');
+ let releaseHotelLookup;transport.state.hotelLookupGates['4']=new Promise(resolve=>{releaseHotelLookup=resolve;});
+ try{
+  await page.locator('#destination-query').fill('Rixo');
+  await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='true');
+  await chip(2002).press('Space');
+  assert.equal(await chip(2003).evaluate(el=>document.activeElement===el),true,'removing a middle chip retains focus on the next chip');
+  releaseHotelLookup();
+  await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+  assert.equal(await chip(2003).evaluate(el=>document.activeElement===el),true,'late catalogue completion retains the remaining exact chip focus');
+ }finally{releaseHotelLookup();delete transport.state.hotelLookupGates['4'];}
+ assert.deepEqual(await page.locator('[data-action="destination-remove"]').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2001','2003']);
+ await chip(2003).press('Space');
+ assert.equal(await chip(2001).evaluate(el=>document.activeElement===el),true,'removing the trailing chip retains focus on the preceding chip');
+ await chip(2001).press('Space');
+ assert.equal(await page.locator('[data-action="apply-destination"]').evaluate(el=>document.activeElement===el),true,'removing the final chip keeps confirmation focused');
+ assert.equal(await page.locator('[data-action="destination-remove"]').count(),0);
+ await page.locator('#destination-query').fill('Rix');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
  if(width<=760){
   const viewport=async(height,offsetTop=0)=>page.evaluate(({height,offsetTop})=>{Object.assign(window.__hotelViewport,{height,offsetTop});window.__hotelViewport.dispatchEvent(new Event('resize'));},{height,offsetTop});
   const geometry=()=>page.locator('#modal').evaluate(modal=>{const rect=el=>{const b=el.getBoundingClientRect();return{top:b.top,bottom:b.bottom,height:b.height,right:b.right,left:b.left};};return{modal:rect(modal),body:rect(document.querySelector('#modal-body')),footer:rect(document.querySelector('#modal-footer')),action:rect(document.querySelector('[data-action="apply-destination"]')),input:rect(document.querySelector('#destination-query')),rows:[...document.querySelectorAll('.destination-hotel')].slice(0,3).map(rect),width:modal.clientWidth,scrollWidth:modal.scrollWidth};});
@@ -371,7 +407,7 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.match(await page.locator('#country').textContent(),/Rixos Fictional Belek 02/);assert.deepEqual(await fields(),beforeTrip);assert.equal(starts(),beforeStarts,'all picker actions leave suppliers untouched');
  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.length>0);for(let i=0;i<100&&starts()===beforeStarts;i++)await page.waitForTimeout(20);
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
- fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+ fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,keyboard_chip_removal_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
@@ -476,7 +512,7 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
- try{for(const width of [390,768,1280]){
+ try{for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
@@ -489,6 +525,12 @@ const server=http.createServer((req,res)=>{
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
    try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required'&&!transport.state.samoSolePair)value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights'){markSamoPairPending?.();await samoPairGate;}if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
+  if(width===360||width===430){
+   releaseInitialCatalog();delete transport.state.countryGates['1'];
+   await hotelPickerBlock(page,width,transport,origin,base,evidence);
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   receipts.push({width,targeted_hotel_picker:true,supplier_requests:0,lead_requests:0});await context.close();continue;
+  }
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
