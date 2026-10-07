@@ -36,6 +36,14 @@ local_profile_plan = importlib.util.module_from_spec(local_spec)
 local_spec.loader.exec_module(local_profile_plan)
 local_profile_plan.register_parser(core)
 
+LOCAL_PHASE3_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_phase3_inspection.py')
+local_phase3_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_phase3_inspection', LOCAL_PHASE3_SCRIPT)
+if local_phase3_spec is None or local_phase3_spec.loader is None:
+    raise RuntimeError('local_phase3_inspection_registration_import')
+local_phase3_inspection = importlib.util.module_from_spec(local_phase3_spec)
+local_phase3_spec.loader.exec_module(local_phase3_inspection)
+local_phase3_inspection.register_parser(core)
+
 LOCAL_APPLY_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_apply.py')
 local_apply_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_apply', LOCAL_APPLY_SCRIPT)
 if local_apply_spec is None or local_apply_spec.loader is None:
@@ -191,6 +199,13 @@ def execute_direct_anex(command: dict, source_root: Path) -> dict:
         known.unlink(missing_ok=True)
 
 
+def activate_local_plan(command: dict) -> None:
+    if command.get('mode') == local_phase3_inspection.MODE and command.get('operation_id') == local_phase3_inspection.OPERATION:
+        local_phase3_inspection.activate(core, command, local_profile_plan)
+    else:
+        local_profile_plan.activate(core, command)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--parse-only', action='store_true')
@@ -205,7 +220,7 @@ def main() -> None:
             print(f'{key}={value}')
         return
     match_primary.activate(core, command)
-    local_profile_plan.activate(core, command)
+    activate_local_plan(command)
     local_profile_apply.activate(core, command)
     local_profile_acquire.activate(core, command)
     local_profile_apply_source320.activate(core, command)
