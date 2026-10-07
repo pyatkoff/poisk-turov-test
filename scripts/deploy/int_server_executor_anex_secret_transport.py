@@ -242,7 +242,7 @@ def main() -> None:
     else:
         result = core.execute(command, Path(args.source_root))
     print(json.dumps(result, sort_keys=True))
-    if result.get('status') not in ('complete', 'reconciled_read_only', 'installed'):
+    if not core.completed_result(command, result):
         raise SystemExit(1)
 
 
