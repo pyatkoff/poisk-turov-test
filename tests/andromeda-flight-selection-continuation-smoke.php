@@ -254,6 +254,13 @@ try{
     if($completedGateway['status']!=='completed'||$completedGateway['result']!==$gatewayFinal)throw new RuntimeException('VERIFIED_REFS_NOT_PERSISTED');
     $gatewayReplay=anytour_andromeda_quote_continue($gatewayRequest,$gatewayPdo,[],$gatewayConfig,'fixture-session');
     if($gatewayReplay!==$gatewayFinal||$gatewayFactoryCalls!==1||count($gatewayCalls)!==3)throw new RuntimeException('PAIR_REPLAY_LOST_REFS_OR_SPENT');
+    // Older completed receipts remain local and valid until their existing deadline.
+    $legacyCompleted=$completedGateway;
+    foreach($legacyCompleted['result']['flights'] as &$flight)unset($flight['flight_ref']);
+    unset($flight);
+    anytour_andromeda_search3_save($checkpoint,['state'=>$legacyCompleted]);
+    $legacyReplay=anytour_andromeda_quote_continue($gatewayRequest,$gatewayPdo,[],$gatewayConfig,'fixture-session');
+    if($legacyReplay!==$legacyCompleted['result']||$gatewayFactoryCalls!==1||count($gatewayCalls)!==3)throw new RuntimeException('LEGACY_PAIR_REOPENED_OR_CHANGED');
     $otherSelection=$selection;$otherSelection['outbound_ref']=$initial['flights'][0]['flight_ref'];
     try{
         anytour_andromeda_quote_continue(['flight_selection'=>$otherSelection],$gatewayPdo,[],$gatewayConfig,'fixture-session');
