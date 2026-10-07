@@ -105,4 +105,45 @@ assert.ok(anexStart>=0&&anexEnd>anexStart,'ANEX provider-current block exists');
 const anexSource=appSource.slice(anexStart,anexEnd);
 assert.doesNotMatch(anexSource,/bindProviderPreview|andromeda-application-preview/,'ANEX non-final money cannot enter the verified Andromeda application preview path');
 
+// A receipt can expire after the contact form opens. Its recovery instruction
+// must be revealed without losing the draft or attempting any delivery.
+function previewForm(receipt){
+ let now=Date.now(),requests=0;
+ const listeners={},scrolls=[],attributes={};
+ const message={textContent:'',setAttribute:(key,value)=>{attributes[key]=value;},scrollIntoView:options=>scrolls.push(options)};
+ const elements={name:{value:''},phone:{value:''},comment:{value:''},consent:{checked:false}};
+ const form={elements,dataset:{},querySelector:()=>message,reportValidity:()=>true,addEventListener:(name,handler)=>{listeners[name]=handler;}};
+ const button={disabled:false};
+ const root={V2_CONFIG:{leadApi:'/_preview/search3-next-candidate/preview-lead-disabled.php'},location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/'},
+  V2LeadFormGuard:{validatePhone:input=>input.value.replace(/\D/g,'').length===11}};
+ class Clock extends Date{static now(){return now;}}
+ const context={window:root,URL,structuredClone,Intl,Date:Clock,
+  document:{getElementById:()=>form,querySelector:()=>button},
+  fetch(){requests++;throw new Error('Preview feedback must not deliver a lead');},
+  FormData:function(){this.get=key=>key==='consent'?(elements.consent.checked?'1':null):elements[key]?.value??null;}};
+ vm.createContext(context);vm.runInContext(leadSource,context,{filename:'lead.js'});
+ const accepted={...structuredClone(receipt),expiresAt:Math.floor(now/1000)+60};
+ root.AnyTourPrototypeLead.bindProviderPreview(accepted);
+ for(const key of ['name','phone','comment'])elements[key].value=values[key];
+ elements.consent.checked=true;listeners.input();
+ return {form,elements,message,attributes,scrolls,advance:()=>{now+=61000;},submit:()=>listeners.submit({preventDefault(){}}),requests:()=>requests};
+}
+const verifiedAnex={...anexReceipt,priceKind:'verified',finalPriceVerified:true,choiceRef:'anex_quote:'+'d'.repeat(64),
+ flights:[{direction:'0',name:'ANEX fixture outbound'},{direction:'1',name:'ANEX fixture return'}]};
+for(const r of [receipt,verifiedAnex]){
+ const expired=previewForm(r);expired.advance();expired.submit();
+ assert.equal(expired.attributes.role,'alert');
+ assert.match(expired.message.textContent,/Срок|неполный/);
+ assert.equal(expired.form.dataset.checked,undefined,'expired price cannot be accepted');
+ assert.equal(expired.scrolls.length,1,'late-expiry recovery message must be revealed above the mobile footer');
+ assert.equal(expired.scrolls[0].block,'nearest','reveal the message without an unnecessary page jump');
+ for(const key of ['name','phone','comment'])assert.equal(expired.elements[key].value,values[key],'expiry preserves '+key);
+ assert.equal(expired.elements.consent.checked,true,'failed preview validation keeps the current form draft');
+ assert.equal(expired.requests(),0,'expiry feedback does not invoke lead transport');
+ const current=previewForm(r);current.submit();
+ assert.equal(current.attributes.role,'status');assert.equal(current.form.dataset.checked,'1');
+ assert.match(current.message.textContent,/Заявка не отправлена/);
+ assert.equal(current.scrolls.length,1);assert.equal(current.requests(),0);
+}
+
 console.log('SEARCH3_PROVIDER_APPLICATION_PREVIEW_OK');
