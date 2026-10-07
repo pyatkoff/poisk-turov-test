@@ -1830,7 +1830,7 @@ function openAnexApplicationPreview(){
 const anexFlightViews=new WeakMap();
 function openAnexPackageQuote(o,result,error='',pending=false){
  const h=selectedTourHotel(o);if(!h)return;
- const previous=retainedProviderView(o),body=$('#modal-body'),samePicker=modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&previous?.result?.repricing?.enabled===true&&!previous.sealed&&!!body.querySelector('[name="anex-package-choice"]');
+ const previous=retainedProviderView(o),body=$('#modal-body'),samePicker=typeof modalType!=='undefined'&&modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&previous?.result?.repricing?.enabled===true&&!previous.sealed&&!!body.querySelector('[name="anex-package-choice"]');
  const focused=samePicker?document.activeElement:null,focusName=focused?.name,focusValue=focused?.value,scroll=body.scrollTop;let anchor=null;
  if(samePicker){
   const bounds=body.getBoundingClientRect(),bottom=Math.min(bounds.bottom,$('#modal-footer').getBoundingClientRect().top);
