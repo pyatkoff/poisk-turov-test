@@ -3026,6 +3026,29 @@ class Alias3RetainedFieldsRegistrationTest(unittest.TestCase):
             with patch.object(subprocess,'run',side_effect=child):
                 with self.assertRaisesRegex(RuntimeError,'alias3_fields_source_validation'):self.run_case(c)
 
+    def test_private_and_public_forgery_rehashed_together_cannot_replace_original_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c=self.stage(tmp);real_run=subprocess.run
+            def child(*args,**kwargs):
+                out=real_run(*args,**kwargs)
+                runner=c['stage']/registration.ALIAS3_SOURCE_FILES[0]
+                spec=importlib.util.spec_from_file_location('forged_alias3_test_source',runner)
+                module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+                private_path=c['opdir']/'current-input.json';private=json.loads(private_path.read_bytes())
+                private['rows'][1]['original_row']['hotelUrl']='https://bgoperator.ru/hotel?code=999'
+                private_raw=module.n.enc(private);private_path.write_bytes(private_raw)
+                private_sha=hashlib.sha256(private_raw).hexdigest()
+                result_path=c['opdir']/'result.json';data=json.loads(result_path.read_bytes())
+                data['private_input_sha256']=private_sha
+                data['rows']=module.project(private,module.manifest(),private_sha)
+                result_raw=module.n.enc(data);result_path.write_bytes(result_raw)
+                receipt_path=c['opdir']/'receipt.json';receipt=json.loads(receipt_path.read_bytes())
+                receipt.update(private_input_sha256=private_sha,result_sha256=hashlib.sha256(result_raw).hexdigest())
+                receipt_path.write_bytes(module.n.enc(receipt))
+                return out
+            with patch.object(subprocess,'run',side_effect=child):
+                with self.assertRaisesRegex(RuntimeError,'alias3_fields_original_row_binding'):self.run_case(c)
+
     def test_original_bytes_and_stdout_boolean_counters_are_bound(self):
         for kind in ('original','stdout_bool'):
             with tempfile.TemporaryDirectory() as tmp:

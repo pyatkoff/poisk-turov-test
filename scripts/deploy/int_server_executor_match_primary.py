@@ -3449,6 +3449,12 @@ def run_match_alias3_fields(stage):
         original_raw=module.n.file_bytes(original_path,2*1024*1024)
         if (len(original_raw)!=summary['raw_bytes_read']
                 or hashlib.sha256(original_raw).hexdigest()!=summary['original_source_sha256']):fail('alias3_fields_original_binding')
+        if summary['state']!='terminal_failed_no_replay':
+            original_data=module.n.parsed(original_raw)
+            for entry,spec in zip(private_data['rows'],module.manifest()['rows']):
+                try:original_row=module.n.pointer(original_data,spec['json_pointer'])
+                except Exception:original_row=None
+                if not module.n.equal_typed(entry['original_row'],original_row):fail('alias3_fields_original_row_binding')
     successful=summary['state'] in ('completed_read_only_alias3_fields','completed_read_only_alias3_fields_incomplete')
     if run.returncode!=(0 if successful else 2):fail('alias3_fields_exit_binding')
     try:stdout=module.n.parsed(run.stdout.encode())
