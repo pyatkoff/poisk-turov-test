@@ -104,6 +104,54 @@ const chosenDepartureJourney=async(browser,origin,base,evidence)=>{
   console.log('PASS compiled chosen-departure journey: five widths, selected/empty/reset/Cancel, exact cards/URL and no extra fixture supplier starts');
  }finally{await context.close();}
 };
+const verifiedPairJourney=async(browser,origin,base,evidence)=>{
+ for(const width of [360,390,430,768,1280]){
+  const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],receipts=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0);
+   const quoteCount=()=>transport.calls.filter(c=>c.url.endsWith('/api-andromeda-quote-preview.php')).length;
+   for(const mode of ['exact','swapped','foreign','legacy']){
+    Object.assign(transport.state,{samoFlightChoice:true,samoVerifiedPair:mode});
+    if(mode!=='exact')await editResultSearch(page,width);
+    await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+    const openList=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
+    const choose=async()=>{const row=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();await row.waitFor({state:'visible'});await row.click();};
+    await openList();await choose();const before=quoteCount();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="apply-andromeda-flights"]').waitFor();
+    await page.locator('[data-action="apply-andromeda-flights"]').click();
+    if(mode==='exact'||mode==='legacy'){
+     await page.locator('[data-action="andromeda-application-preview"]').waitFor();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/125500/);
+    }else{
+     await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+     assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0);
+     assert.match(await page.locator('#modal-footer').textContent(),/Цена из выдачи · не подтверждена/);
+     assert.equal((await page.evaluate(()=>window.quoteFailures)).at(-1).failureCategory,'invalid_response');
+    }
+    await page.screenshot({path:path.join(evidence,`samo-pair-${mode}-${width}.png`)});
+    assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);
+    assert.equal(quoteCount(),before+2);
+    await page.locator('[data-action="close-modal"]').click();await openList();await choose();
+    if(mode==='exact'||mode==='legacy')await page.locator('[data-action="andromeda-application-preview"]').waitFor();
+    else await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+    assert.equal(quoteCount(),before+2,'reopen retains confirmed or rejected pair without replay');
+    await page.locator('[data-action="close-modal"]').click();await openList();
+    assert(await page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').isVisible(),'independent other offer remains available');
+    await page.locator('[data-action="close-modal"]').click();receipts.push({mode,application_allowed:mode==='exact'||mode==='legacy',passive_replay_requests:0,overflow:false});
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   fs.writeFileSync(path.join(evidence,`samo-pair-${width}.json`),JSON.stringify({width,receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  }finally{await context.close();}
+ }
+ console.log('PASS compiled verified-pair journey: five widths, exact/swapped/foreign/legacy, application gate and passive reopen');
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -888,6 +936,7 @@ const server=http.createServer((req,res)=>{
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
  await chosenDepartureJourney(browser,origin,base,evidence);
+ await verifiedPairJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}

@@ -408,6 +408,9 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  click('[data-action="apply-andromeda-flights"]');assert.match(q('#andromeda-flight-price-status').textContent,/Уточняем полную цену/);await wait(()=>q('#modal-title').textContent==='Тур подтверждён');assert.match(q('#modal-body').textContent.replace(/\s/g,''),/125500/);
  const submittedPair=transport.calls.findLast(call=>call.action==='quote_select_flights').body.flight_selection;
  assert.equal(submittedPair.outbound_ref,flightRef);assert.equal(submittedPair.return_ref,alternativeReturn.value);
+ const pairCalls=transport.calls.length,acceptedPair=await w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer,submittedPair);
+ assert.deepEqual(Array.from(acceptedPair.flights,f=>f.flightRef),[submittedPair.outbound_ref,submittedPair.return_ref]);
+ assert.equal(acceptedPair.finalPrice.amount,'125500');assert.equal(transport.calls.length,pairCalls,'verified exact-pair cache does not spend another request');
  const beforeSamoReturn=transport.calls.length;click('#modal-back');await settle();
  assert(q('#all-offers-list'),'Back from a reopened SAMO quote returns to its offer list');
  [...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key===samo.dataset.key).click();await wait(()=>q('#modal-title').textContent==='Тур подтверждён');
@@ -527,6 +530,28 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
   click('[data-action="close-modal"]');await settle();
  }
  assert.equal(quoteFailures.length,2,'only the first failure emits a local diagnostic');
+ // Explicitly foreign pairs cannot unlock an application; old completed no-ref receipts remain sealed.
+ for(const mode of ['swapped','foreign','legacy']){
+  Object.assign(transport.state,{samoFailure:null,samoFlightChoice:true,samoVerifiedPair:mode});
+  click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>!q('[data-action="stop-search"]')&&q('#results-summary').textContent.includes('2 варианта'));
+  click('[data-action="all-offers"][data-id="501"]');
+  const choose=()=>[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A')).click();
+  choose();await settle();const before=quoteCount();click('[data-action="refresh-hotel"]');await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');
+  if(mode==='legacy'){
+   await wait(()=>q('[data-action="andromeda-application-preview"]'));assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/125500/);
+   const prior=transport.calls.length,legacy=await w.AnyTourPrototypeData.verifyAndromeda(lastSamoOffer);
+   assert(legacy.flights.every(f=>!Object.hasOwn(f,'flightRef')));assert.equal(transport.calls.length,prior);
+   click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');choose();await wait(()=>q('[data-action="andromeda-application-preview"]'));
+  }else{
+   await wait(()=>q('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+   assert(!q('[data-action="andromeda-application-preview"]'));assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
+   assert.equal(quoteFailures.at(-1).failureCategory,'invalid_response');
+   click('#modal-footer [data-action="all-offers"]');choose();await settle();assert.match(q('#modal-body .error-text').textContent,/некорректное подтверждение/);
+  }
+  assert.equal(quoteCount(),before+2,'passive return retains exact/legacy or failed pair outcome without retry');
+  click('[data-action="close-modal"]');await settle();
+ }
+ Object.assign(transport.state,{samoVerifiedPair:undefined,samoFlightChoice:false});
  // Long facet lists must refresh their choices without interrupting typing.
  transport.state.failAnex=false;transport.state.wideFacets=true;
  let releaseFacetSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFacetSource=resolve);
