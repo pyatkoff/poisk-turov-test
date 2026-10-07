@@ -280,7 +280,9 @@ async function boundedRepriceScenario(provider,mode,width=390){
     await wait(()=>q('[data-action="'+app+'"]'));price(2);assert(q(radio(2)),'editing remains on the same picker screen');assert.equal(q(radio(2)).checked,true);
     click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),2,'A/B/A uses two mutable operations');
     click('[data-action="'+app+'"]');assert(q('#prototype-lead-form'));price(1);assert.match(q('#modal-body').textContent,new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
-    const before=transport.calls.length;click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back reuses selected receipt');price(1);
+    const before=transport.calls.length;click('[data-action="close-modal"]');await settle();w.history.forward();await wait(()=>q('#modal').open&&q('#prototype-lead-form'));
+    assert.equal(transport.calls.length,before,'fresh-cap application Forward reuses the current cached receipt');price(1);
+    click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back reuses selected receipt');price(1);
     click(radio(3));await wait(()=>q('[data-action="'+app+'"]'));price(3);assert.equal(count(),3);
     click(radio(4));await wait(()=>!q('[data-action="'+app+'"]')&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert.equal(count(),3,'fourth pair spends no HTTP');
     click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),3,'healthy budget exhaustion keeps cached pairs');
