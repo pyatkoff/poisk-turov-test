@@ -77,7 +77,7 @@ foreach ($cases as $message => $expected) {
         throw new RuntimeException('FAILURE_CATEGORY_' . $message);
     }
     $public = anytour_andromeda_quote_supplier_failure(new RuntimeException($message));
-    if ($expected === 'quote_state') {
+    if (in_array($expected, ['quote_state', 'supplier_response'], true)) {
         if (($public['failure_reason'] ?? null) !== $message) {
             throw new RuntimeException('FAILURE_REASON_LOST_' . $message);
         }
@@ -115,6 +115,30 @@ if ($payload !== $expectedPayload) throw new RuntimeException('FAILURE_PAYLOAD_S
 $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
 foreach (['secret', 'sid=abc', 'gateway.samo.ru', 'RuntimeException'] as $forbidden) {
     if (str_contains($encoded, $forbidden)) throw new RuntimeException('FAILURE_PAYLOAD_LEAK');
+}
+
+// Each response guard exposes only its exact enum, even with a private cause.
+// Similar messages with raw details must retain the internal fallback shape.
+foreach ($cases as $reason => $category) {
+    if ($category !== 'supplier_response') continue;
+    $public = anytour_andromeda_quote_supplier_failure(
+        new RuntimeException($reason, 0, new RuntimeException($secret)));
+    $expectedResponse = [
+        'ok' => false,
+        'error' => 'supplier_unavailable',
+        'failure_category' => 'supplier_response',
+        'failure_reason' => $reason,
+    ];
+    if ($public !== $expectedResponse) throw new RuntimeException('RESPONSE_REASON_PAYLOAD_' . $reason);
+    $encoded = json_encode($public, JSON_THROW_ON_ERROR);
+    foreach (['secret', 'sid=abc', 'gateway.samo.ru', 'RuntimeException'] as $forbidden) {
+        if (str_contains($encoded, $forbidden)) throw new RuntimeException('RESPONSE_REASON_PRIVATE_CAUSE_LEAK');
+    }
+    foreach ([$reason . ' ' . $secret, $secret . ' ' . $reason, $reason . "\n" . $secret] as $raw) {
+        if (anytour_andromeda_quote_supplier_failure(new RuntimeException($raw)) !== $expectedPayload) {
+            throw new RuntimeException('RESPONSE_REASON_RAW_DETAILS_EXPOSED');
+        }
+    }
 }
 
 if (!str_contains($source, 'anytour_anex_search3_out(anytour_andromeda_quote_supplier_failure($e),502)')) {
