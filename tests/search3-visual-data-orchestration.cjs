@@ -533,6 +533,8 @@ async function safeAndromedaFailureDiagnostics(source){
   'ANDROMEDA_QUOTE_RESULT_INVALID','ANDROMEDA_QUOTE_MONEY_INVALID','ANDROMEDA_QUOTE_PRIVATE_STATE','ANDROMEDA_QUOTE_PROVENANCE_INVALID'];
  const embeddedGuards=['ANDROMEDA_QUOTE_REPLAY_REFUSED','ANDROMEDA_FLIGHT_REPRICE_BUDGET',
   'ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID','ANDROMEDA_FLIGHT_REPRICE_CURRENCY'];
+ const selectedDetails=['selected_pair_missing','existing_direction_duplicate','existing_uid_invalid','returned_direction_invalid',
+  'selected_directions_mismatch','selected_uid_mismatch','public_pair_invalid'];
  const raw='RAW_SUPPLIER_TEXT_SENTINEL: login=fictional-secret';let cases=0;
  const check=async(reason,category='supplier_response',expectedReason=null,extra={},expectedPhase=null)=>{
   const h=quoteHarness(source,'andromeda');
@@ -544,6 +546,7 @@ async function safeAndromedaFailureDiagnostics(source){
   assert.equal(failure.failureReason,expectedReason||undefined);
   assert.equal(failure.failurePhase,expectedPhase||undefined);
   assert.equal(failure.responseFailure,undefined,'outer HTTP502 keeps its existing diagnostic fields');
+  assert.equal(failure.failureDetail,undefined,'selected-pair detail never enters the outer Error');
   assert.equal(h.warnings.length,1);assert(h.warnings[0].startsWith('[AnyTour quote] '));
   const detail=JSON.parse(h.warnings[0].slice('[AnyTour quote] '.length));
   const existingDetail={provider:'andromeda',action:'quote',code:'quote_unconfirmed',httpStatus:502,failureCategory:category,
@@ -569,6 +572,7 @@ async function safeAndromedaFailureDiagnostics(source){
   await check(undefined,'internal',null,{failure_phase:phase});
  for(const guard of guards){await check(guard,'quote_state',guard);await check(guard,'supplier_response');}
  for(const guard of embeddedGuards)await check(guard,'quote_state');
+ for(const detail of selectedDetails)await check('ANDROMEDA_SELECTED_FLIGHTS_INVALID','quote_state','ANDROMEDA_SELECTED_FLIGHTS_INVALID',{failure_detail:detail});
  for(const guard of [null,{},[guards[0]],'SELECTION_CONTEXT_MISMATCH','PREFIX_'+guards[0],guards[0]+' '+raw,guards[0]+'\n'+raw])
   await check(guard,'quote_state');
  {
@@ -597,7 +601,7 @@ async function safeAndromedaFailureDiagnostics(source){
   assert.equal(h.events.at(-1).detail.failurePhase,undefined);cases++;
  }
  let embeddedCases=0;
- const embedded=async(fields,expected)=>{
+ const embedded=async(fields,expected,expectedPhase='flight_continuation')=>{
   const h=quoteHarness(source,'andromeda');await h.start();const a=await h.calculate(1),tuple=h.tuple(a);
   h.setReply((value,body)=>h.isCalc(body)?{ok:true,data:{...h.initialPublic,state:'quote_unknown',selection_enabled:false,
    repricing:{enabled:false,max_pairs:3,used_pairs:2,remaining_pairs:0},failure_phase:'flight_continuation',
@@ -607,12 +611,13 @@ async function safeAndromedaFailureDiagnostics(source){
   const failure=await b;
   assert.equal(failure.failureCategory,'invalid_response');assert.equal(failure.code,'quote_unconfirmed');
   assert.equal(failure.message,'Andromeda вернул некорректное подтверждение. Цена и наличие пока неизвестны.');
-  assert.equal(failure.retryable,false);assert.equal(failure.httpStatus,200);assert.equal(failure.failurePhase,'flight_continuation');
+  assert.equal(failure.retryable,false);assert.equal(failure.httpStatus,200);assert.equal(failure.failurePhase,expectedPhase||undefined);
   assert.equal(failure.failureReason,undefined);assert.equal(failure.failureStage,undefined);assert.equal(failure.supplierCode,undefined);
+  assert.equal(failure.failureDetail,undefined,'detail stays inside the existing nested console carrier');
   assert.deepEqual(failure.responseFailure&&copy(failure.responseFailure),expected);
   if(expected)assert(Object.isFrozen(failure.responseFailure));
   const existingDetail={provider:'andromeda',action:'quote_select_flights',code:'quote_unconfirmed',httpStatus:200,failureCategory:'invalid_response'};
-  assert.deepEqual(JSON.parse(h.warnings.at(-1).slice('[AnyTour quote] '.length)),{...existingDetail,failurePhase:'flight_continuation',
+  assert.deepEqual(JSON.parse(h.warnings.at(-1).slice('[AnyTour quote] '.length)),{...existingDetail,...(expectedPhase?{failurePhase:expectedPhase}:{}),
    ...(expected?{responseFailure:expected}:{})});
   assert.deepEqual(h.events.at(-1),{type:'anytour:quote-failure',detail:existingDetail},'embedded diagnostics never change the public event');
   assert(!JSON.stringify(failure).includes(raw));assert(!h.warnings.at(-1).includes(raw));
@@ -649,6 +654,25 @@ async function safeAndromedaFailureDiagnostics(source){
  await embedded({failure_category:'supplier_rejected',failure_stage:'calc',supplier_code:'CODE_.:-123'},
   {failureCategory:'supplier_rejected',failureStage:'calc',supplierCode:'CODE_.:-123'});
  await embedded({failure_category:'internal',failure_reason:guards[0],failure_stage:'calc',supplier_code:'FIXED_17'},{failureCategory:'internal'});
+ const selectedFailure={failureCategory:'quote_state',failureReason:'ANDROMEDA_SELECTED_FLIGHTS_INVALID'};
+ for(const detail of selectedDetails)
+  await embedded({failure_category:'quote_state',failure_reason:selectedFailure.failureReason,failure_detail:detail},{...selectedFailure,failureDetail:detail});
+ for(const detail of [undefined,null,101,'101',{},[selectedDetails[0]],raw,'prefix_'+selectedDetails[0],selectedDetails[0]+'_suffix',
+  selectedDetails[0]+'\n'+raw,selectedDetails[0].toUpperCase(),' '+selectedDetails[0],selectedDetails[0]+' '])
+  await embedded({failure_category:'quote_state',failure_reason:selectedFailure.failureReason,failure_detail:detail},selectedFailure);
+ for(const category of ['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','internal'])
+  await embedded({failure_category:category,failure_reason:selectedFailure.failureReason,failure_detail:selectedDetails[0]},{failureCategory:category});
+ for(const category of [undefined,null,{},['quote_state'],'quote_state_suffix',raw])
+  await embedded({failure_category:category,failure_reason:selectedFailure.failureReason,failure_detail:selectedDetails[0]},undefined);
+ for(const reason of ['ANDROMEDA_FLIGHT_REFS_INVALID',...embeddedGuards])
+  await embedded({failure_category:'quote_state',failure_reason:reason,failure_detail:selectedDetails[0]},
+   {failureCategory:'quote_state',failureReason:reason});
+ for(const reason of [undefined,null,{},[selectedFailure.failureReason],selectedFailure.failureReason+'_suffix',raw])
+  await embedded({failure_category:'quote_state',failure_reason:reason,failure_detail:selectedDetails[0]},{failureCategory:'quote_state'});
+ await embedded({failure_category:'quote_state',failure_reason:selectedFailure.failureReason,failure_detail:selectedDetails[0],failure_phase:'catalog'},
+  {...selectedFailure,failureDetail:selectedDetails[0]},'catalog');
+ await embedded({failure_category:'quote_state',failure_reason:selectedFailure.failureReason,failure_detail:selectedDetails[0],failure_phase:raw},
+  {...selectedFailure,failureDetail:selectedDetails[0]},null);
  console.log(JSON.stringify({safeSupplierResponseDiagnosticCases:cases,embeddedResponseFailureCases:embeddedCases,
   actualOwner:true,supplierHTTP:0,terminalReplayHTTP:0,publicCopyChanged:false}));
 }
