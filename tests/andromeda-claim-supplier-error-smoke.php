@@ -119,4 +119,75 @@ if (($success['value']['claimDocument'][0]['condition'] ?? null) !== 'ccOffer'
 }
 ++$checks;
 
+// Exercise the real response decoder for every allowed action. No failed reply
+// is retried, and syntax details or a private body never become an exception cause.
+$malformedBodies = [
+    'truncated' => '{"claimDocument":[{"private":"private@example.com"}',
+    'non_json' => 'private supplier HTML private@example.com',
+    'invalid_utf8' => "{\"private\":\"\xB1\"}",
+    'depth' => str_repeat('[', 65) . '0' . str_repeat(']', 65),
+    'null' => 'null',
+    'number' => '42',
+];
+$rawReplyRun = static function(string $stage, string $body, int $status = 200) use ($claim): array {
+    $reserved = 0; $requests = 0;
+    $actions = new AnyTourAndromedaClaimActions('SID_parser_test',
+        static function() use (&$reserved): void { ++$reserved; },
+        static function(string $url, string $post) use ($stage, $body, $status, &$requests, $claim): array {
+            ++$requests;
+            parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+            parse_str($post, $form);
+            if (($query['action'] ?? null) !== $stage
+                || json_decode($form['claim'] ?? '', true, 16, JSON_THROW_ON_ERROR) !== $claim) {
+                throw new RuntimeException('parser_request_shape');
+            }
+            return ['status' => $status, 'body' => $body];
+        });
+    try {
+        if ($stage === 'get_flights') $actions->getFlights($claim);
+        elseif ($stage === 'changeservice') $actions->changeService($claim, 'NEW_UID');
+        else $actions->calc($claim);
+    } catch (Throwable $error) {
+        return ['error' => $error, 'reserved' => $reserved, 'requests' => $requests];
+    }
+    throw new RuntimeException('parser_failure_not_thrown');
+};
+foreach (['get_flights', 'changeservice', 'calc'] as $stage) {
+    foreach ($malformedBodies as $shape => $body) {
+        $failed = $rawReplyRun($stage, $body);
+        $error = $failed['error'];
+        if (get_class($error) !== RuntimeException::class
+            || $error->getMessage() !== 'ANDROMEDA_INVALID_RESPONSE'
+            || $error->getPrevious() !== null || $error->getCode() !== 0
+            || $failed['reserved'] !== 1 || $failed['requests'] !== 1) {
+            throw new RuntimeException('parser_boundary_' . $stage . '_' . $shape);
+        }
+        ++$checks;
+    }
+    foreach ([
+        ['not JSON', 503, 'ANDROMEDA_HTTP_ERROR'],
+        [str_repeat('x', 2097153), 200, 'ANDROMEDA_RESPONSE_TOO_LARGE'],
+    ] as [$body, $status, $reason]) {
+        $failed = $rawReplyRun($stage, $body, $status);
+        if ($failed['error']->getMessage() !== $reason
+            || $failed['reserved'] !== 1 || $failed['requests'] !== 1) {
+            throw new RuntimeException('parser_precedence_' . $stage);
+        }
+        ++$checks;
+    }
+}
+
+// Request JSON encoding is a separate pre-transport boundary, not supplier JSON.
+$requestReserved = 0; $requestCalls = 0;
+$requestActions = new AnyTourAndromedaClaimActions('SID_request_test',
+    static function() use (&$requestReserved): void { ++$requestReserved; },
+    static function() use (&$requestCalls): array { ++$requestCalls; return []; });
+try {
+    $requestActions->getFlights(['claimDocument' => [['private' => "\xB1"]]]);
+    throw new RuntimeException('request_json_failure_not_thrown');
+} catch (JsonException $error) {
+    if ($requestReserved !== 0 || $requestCalls !== 0) throw new RuntimeException('request_json_reserved');
+    ++$checks;
+}
+
 echo "andromeda supplier error facts checks={$checks}\n";

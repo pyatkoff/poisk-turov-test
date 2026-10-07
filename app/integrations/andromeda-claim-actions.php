@@ -88,7 +88,11 @@ final class AnyTourAndromedaClaimActions
         }
         if ($response['status'] !== 200) throw new RuntimeException('ANDROMEDA_HTTP_ERROR');
         if (strlen($response['body']) > 2097152) throw new RuntimeException('ANDROMEDA_RESPONSE_TOO_LARGE');
-        $reply = json_decode($response['body'], true, 64, JSON_THROW_ON_ERROR);
+        try {
+            $reply = json_decode($response['body'], true, 64, JSON_THROW_ON_ERROR);
+        } catch (JsonException $ignored) {
+            throw new RuntimeException('ANDROMEDA_INVALID_RESPONSE');
+        }
         if (!is_array($reply)) throw new RuntimeException('ANDROMEDA_INVALID_RESPONSE');
         $this->rejectSessionEcho($reply);
         if (array_key_exists('error', $reply)) {
