@@ -208,7 +208,7 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
    try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){errors.push(error.message);await route.abort();}
   });
   const url=origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',hotels:'2001|2002'}),detail=page.locator('#destination-detail'),submit=page.locator('.search-submit');
-  await page.goto(url);await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 01'));
+  await page.goto(url);await page.locator('#cards').getByText('Восстанавливаем выбранные отели…',{exact:true}).waitFor();
   assert(await submit.isDisabled(),'pending second identity blocks submit at '+width);assert.match(await page.locator('#cards').textContent(),/Восстанавливаем выбранные отели/);
   assert.equal(submitted.length,0);releaseProfile();await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
   assert(await submit.isEnabled());assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');
