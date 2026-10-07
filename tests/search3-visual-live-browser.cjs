@@ -66,8 +66,10 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
   await page.locator('#clear-date').click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);
   await page.locator(`#price-strip [data-date="${emptyDay}"]`).click();assert.equal(await page.locator('.hotel-card').count(),0);
   assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1],'empty results still describe the applied exact day');
-  await page.locator('[data-action="remove-filter"][data-key="date"]').click();assert.equal(await scope(),allDates);
-  fs.writeFileSync(path.join(evidence,`chosen-date-${viewport}.json`),JSON.stringify({width:viewport,chosenDay:day,emptyDay,compact_matches_applied:true,clear_and_chip_restore:true,overflow:false,supplier_HTTP:0,physicalSafari:false},null,2));
+  const chip=page.locator('[data-action="remove-filter"][data-key="date"]'),chipVisible=await chip.isVisible();
+  if(chipVisible)await chip.click();else await page.locator('#clear-date').click();
+  assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);
+  fs.writeFileSync(path.join(evidence,`chosen-date-${viewport}.json`),JSON.stringify({width:viewport,chosenDay:day,emptyDay,compact_matches_applied:true,clear_restores:true,empty_day_reset:chipVisible?'visible-chip':'calendar-clear',overflow:false,supplier_HTTP:0,physicalSafari:false},null,2));
  }
  await page.setViewportSize({width,height:900});
  await page.locator(`#price-strip [data-date="${day}"]`).click();const chosenURL=page.url(),chosenCards=await page.locator('#cards').innerHTML();
