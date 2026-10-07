@@ -122,7 +122,7 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
    for(const mode of ['exact','swapped','foreign','legacy']){
     Object.assign(transport.state,{samoFlightChoice:true,samoVerifiedPair:mode});
     if(mode!=='exact')await editResultSearch(page,width);
-    await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+    await page.locator('.search-submit').click();await page.waitForFunction(()=>(document.querySelector('#search-status').hidden||!document.querySelector('[data-action="stop-search"]'))&&document.querySelector('#results-summary').textContent.includes('3 варианта'));
     const openList=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
     const choose=async()=>{const row=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();await row.waitFor({state:'visible'});await row.click();};
     // This fixture has one exact pair: the existing explicit refresh continues it automatically.
@@ -144,7 +144,8 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
     else await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
     assert.equal(quoteCount(),before+2,'reopen retains confirmed or rejected pair without replay');
     await page.locator('[data-action="close-modal"]').click();await openList();
-    assert(await page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').isVisible(),'independent other offer remains available');
+    await page.screenshot({path:path.join(evidence,`samo-pair-other-${mode}-${width}.png`)});
+    await page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').waitFor({state:'visible'});
     await page.locator('[data-action="close-modal"]').click();receipts.push({mode,application_allowed:mode==='exact'||mode==='legacy',passive_replay_requests:0,overflow:false});
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
