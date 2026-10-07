@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import importlib.util
+import copy
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -453,6 +455,141 @@ class CoordinatorTest(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('direction_journal',SCRIPT.parents[2]/'scripts/diagnostics/int_funsun_direction_store_server_readback.py')
         direction=importlib.util.module_from_spec(spec);spec.loader.exec_module(direction)
         self.assertEqual(direction.ISSUE,m.ISSUE)
+
+
+class CompletionTest(unittest.TestCase):
+    ENTRYPOINT = m
+    CONTROL = m
+
+    def command(self):
+        return {
+            'source_sha': SHA, 'mode': 'andromeda-operator-preflight',
+            'operation_id': 'int-andromeda-preflight-fixture-20261008-v1',
+            'operator_id': 43,
+        }
+
+    def receipt(self):
+        command = self.command()
+        return {
+            'schema_version': 1,
+            **{key: command[key] for key in ('source_sha', 'mode', 'operation_id')},
+            'status': 'preflight_complete',
+            'operator_preflight': {
+                'status': 'resolved', 'operator_id': '43',
+                'operator_name': None, 'dictionary_operator_id': None,
+                'andromeda_operators': '342',
+                'supplier_calls': 0, 'database_writes': 0,
+            },
+            'supplier_calls': 0, 'database_writes': 0,
+            'booking_calls': 0, 'lead_calls': 0,
+            'before_db': {'rows_total': 57}, 'after_db': {'rows_total': 57},
+            'production_before': {'index.php': 'b' * 64},
+            'production_after': {'index.php': 'b' * 64},
+            'production_unchanged': True,
+        }
+
+    def run_main(self, receipt, command=None):
+        command = self.command() if command is None else command
+        original = copy.deepcopy(receipt)
+        output = io.StringIO()
+        with patch.dict(os.environ, {
+                'GH_TOKEN': 'fixture', 'GITHUB_SHA': 'a' * 40,
+                'GITHUB_EVENT_PATH': '/unused-fixture-event.json',
+            }), patch('sys.argv', ['executor', '--source-root', 'fixture-source']), \
+                patch.object(Path, 'read_text', return_value='{}'), \
+                patch.object(self.CONTROL, 'checked_event', return_value=command) as checked, \
+                patch.object(self.CONTROL, 'execute', return_value=receipt) as execute, \
+                patch.object(self.CONTROL, 'ensure_supplier_slot',
+                             side_effect=AssertionError('unexpected supplier slot')) as slot, \
+                patch('sys.stdout', output):
+            try:
+                self.ENTRYPOINT.main()
+            except SystemExit as exc:
+                code = exc.code
+            else:
+                code = 0
+        checked.assert_called_once_with('fixture', {}, 'a' * 40)
+        execute.assert_called_once_with(command, Path('fixture-source'))
+        slot.assert_not_called()
+        self.assertEqual(json.dumps(original, sort_keys=True) + '\n', output.getvalue())
+        self.assertEqual(original, receipt)
+        return code
+
+    def test_resolved_preflight_prints_unchanged_receipt_once(self):
+        self.assertEqual(0, self.run_main(self.receipt()))
+        receipt = self.receipt()
+        receipt['operator_preflight']['andromeda_operators'] = '342,115'
+        self.assertEqual(0, self.run_main(receipt))
+
+    def test_failed_or_unproven_preflight_still_exits_one(self):
+        cases = []
+        for status in ('blocked', 'unknown_no_replay', 'reserved'):
+            cases.append((('status',), status))
+        for status in ('failed', 'unknown', 'reserved'):
+            cases.append((('operator_preflight', 'status'), status))
+        cases.extend([
+            (('source_sha',), 'd' * 40),
+            (('operation_id',), 'int-andromeda-other-fixture-20261008-v1'),
+            (('mode',), 'local-readback'),
+            (('schema_version',), 2), (('schema_version',), True),
+            (('operator_preflight', 'operator_id'), '44'),
+            (('operator_preflight', 'operator_id'), 43),
+            (('production_unchanged',), False),
+            (('production_unchanged',), 1),
+            (('after_db',), {'rows_total': 58}),
+            (('production_after',), {'index.php': 'c' * 64}),
+            (('before_db',), {}), (('after_db',), None),
+            (('production_before',), {}), (('production_after',), None),
+        ])
+        for native in (None, 342, '', '0', '342,0', '342,', '-342', '3.42', ' 342'):
+            cases.append((('operator_preflight', 'andromeda_operators'), native))
+        for parent, keys in (
+            ((), ('supplier_calls', 'database_writes', 'booking_calls', 'lead_calls')),
+            (('operator_preflight',), ('supplier_calls', 'database_writes')),
+        ):
+            for key in keys:
+                with self.subTest(missing_counter=parent + (key,)):
+                    receipt = self.receipt()
+                    target = receipt
+                    for part in parent:
+                        target = target[part]
+                    del target[key]
+                    self.assertEqual(1, self.run_main(receipt))
+                for value in (1, None, False, 0.0):
+                    cases.append((parent + (key,), value))
+        for path, value in cases:
+            with self.subTest(path=path, value=value):
+                receipt = self.receipt()
+                target = receipt
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                self.assertEqual(1, self.run_main(receipt))
+        for key in ('operator_preflight', 'source_sha', 'operation_id', 'mode',
+                    'schema_version', 'production_unchanged'):
+            with self.subTest(missing=key):
+                receipt = self.receipt()
+                del receipt[key]
+                self.assertEqual(1, self.run_main(receipt))
+        command = self.command()
+        command['mode'] = 'local-readback'
+        receipt = self.receipt()
+        receipt['mode'] = 'local-readback'
+        self.assertEqual(1, self.run_main(receipt, command))
+        for key, value in (('operator_id', 0), ('operator_id', True),
+                           ('source_sha', None), ('operation_id', None)):
+            with self.subTest(invalid_command_key=key, value=value):
+                command = self.command()
+                command[key] = value
+                receipt = self.receipt()
+                if key != 'operator_id':
+                    receipt[key] = value
+                self.assertEqual(1, self.run_main(receipt, command))
+
+    def test_existing_success_statuses_are_unchanged(self):
+        for status in ('complete', 'reconciled_read_only', 'installed'):
+            with self.subTest(status=status):
+                self.assertEqual(0, self.run_main({'status': status}))
 
 
 class BundleTest(unittest.TestCase):

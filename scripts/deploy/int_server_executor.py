@@ -3271,6 +3271,43 @@ def execute(command: dict, source_root: Path) -> dict:
         )
         key.unlink(missing_ok=True); known.unlink(missing_ok=True)
 
+def completed_result(command: dict, result: dict) -> bool:
+    if result.get('status') in ('complete', 'reconciled_read_only', 'installed'):
+        return True
+    if (command.get('mode') != 'andromeda-operator-preflight'
+            or result.get('status') != 'preflight_complete'
+            or any(result.get(key) != command.get(key)
+                   for key in ('mode', 'source_sha', 'operation_id'))):
+        return False
+    source, operation = command.get('source_sha'), command.get('operation_id')
+    if (not isinstance(source, str) or SHA_RE.fullmatch(source) is None
+            or not isinstance(operation, str) or OP_RE.fullmatch(operation) is None
+            or type(result.get('schema_version')) is not int
+            or result['schema_version'] != 1):
+        return False
+    preflight = result.get('operator_preflight')
+    operator_id = command.get('operator_id')
+    if (not isinstance(preflight, dict) or preflight.get('status') != 'resolved'
+            or type(operator_id) is not int or operator_id < 1
+            or preflight.get('operator_id') != str(operator_id)):
+        return False
+    native_ids = preflight.get('andromeda_operators')
+    if (not isinstance(native_ids, str)
+            or re.fullmatch(r'[1-9][0-9]*(?:,[1-9][0-9]*)*', native_ids) is None):
+        return False
+    for receipt, keys in (
+            (result, ('supplier_calls', 'database_writes', 'booking_calls', 'lead_calls')),
+            (preflight, ('supplier_calls', 'database_writes'))):
+        if any(type(receipt.get(key)) is not int or receipt[key] != 0 for key in keys):
+            return False
+    for before, after in (('before_db', 'after_db'), ('production_before', 'production_after')):
+        if (not isinstance(result.get(before), dict) or not result[before]
+                or not isinstance(result.get(after), dict) or not result[after]
+                or result[before] != result[after]):
+            return False
+    return result.get('production_unchanged') is True
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--parse-only', action='store_true')
@@ -3288,7 +3325,7 @@ def main() -> None:
         ensure_supplier_slot(token)
     result = execute(command, Path(args.source_root))
     print(json.dumps(result,sort_keys=True))
-    if result.get('status') not in ('complete','reconciled_read_only','installed'):
+    if not completed_result(command, result):
         raise SystemExit(1)
 
 if __name__ == '__main__':

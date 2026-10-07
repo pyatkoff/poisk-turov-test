@@ -14,6 +14,17 @@ assert spec is not None and spec.loader is not None
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
+completion_spec = importlib.util.spec_from_file_location(
+    'int_executor_completion_regressions', Path(__file__).with_name('int_server_executor_test.py'))
+assert completion_spec is not None and completion_spec.loader is not None
+completion_tests = importlib.util.module_from_spec(completion_spec)
+completion_spec.loader.exec_module(completion_tests)
+
+
+class WrappedCompletionTest(completion_tests.CompletionTest):
+    ENTRYPOINT = m
+    CONTROL = m.core
+
 
 class AnexSecretTransportTest(unittest.TestCase):
     def test_existing_secret_names_are_encoded_without_value_logging(self):
