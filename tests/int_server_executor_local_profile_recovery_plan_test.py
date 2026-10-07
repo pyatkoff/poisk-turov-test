@@ -80,7 +80,10 @@ class RecoveryContractTest(unittest.TestCase):
     def test_activation_changes_only_exact_stock_dispatch(self):
         baseline="prefix\nresult['local_profile_plan']=run_local_profile_plan_4191(stage)\nsuffix\n"
         plan=types.SimpleNamespace(remote_with_plan=mock.Mock(return_value=baseline),bundle_source=object())
-        core,_=self.core();m.register_parser(core);core.REMOTE='unchanged';core.bundle_source=None
+        previous=mock.Mock(side_effect=ValueError('previous_parser'))
+        core=types.SimpleNamespace(PREFIX='/run-int-server-v1 ',SHA_RE=re.compile(r'\A[a-f0-9]{40}\Z'),
+                                   parse_command=previous,REMOTE='unchanged',bundle_source=None)
+        m.register_parser(core)
         command=core.parse_command(f'{core.PREFIX}{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
         m.activate(core,command,plan)
         self.assertTrue(core.REMOTE.startswith(m.REMOTE_HANDLER+'\n'))
