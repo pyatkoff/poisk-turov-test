@@ -478,12 +478,12 @@ function verifiedFlightPairBinding(source){
  console.log(JSON.stringify({freshCapabilityParserCases:16,supplierHTTP:0,legacyCompatible:true}));
 }
 function quoteHarness(source,provider,{enabled=true}={}){
- const transport=require('./search3-visual-live-fixture.cjs').fixture(),calls=[],timers=new Map();
+ const transport=require('./search3-visual-live-fixture.cjs').fixture(),calls=[],warnings=[],timers=new Map();
  Object.assign(transport.state,{repricingEnabled:enabled,anexPackageChoiceCount:enabled?4:2,samoFlightChoice:true});
  let clock=Date.now(),onReply=null,hold=null,active=0,maxActive=0,timerId=0,quoteDeadline=null,initialPublic=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
   V2_CONFIG:{anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php',andromedaQuoteApi:'/_preview/search3-anex-candidate/api-andromeda-quote-preview.php'},
-  V2Runtime:{},console:{warn(){}},Search3CanonicalProfilesV1:{create(){return{};}}};
+  V2Runtime:{},console:{warn(value){warnings.push(String(value));}},Search3CanonicalProfilesV1:{create(){return{};}}};
  const context=vm.createContext({window,URL,URLSearchParams,AbortController,Map,Set,WeakMap,Promise,structuredClone,
   Date:class extends Date{static now(){return clock;}},setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},
   fetch:async(url,options)=>{
@@ -513,7 +513,7 @@ function quoteHarness(source,provider,{enabled=true}={}){
  const latest=()=>provider==='anex'?api.verifyAnexPackage(offer):api.verifyAndromeda(offer);
  const isCalc=body=>['quote_calculate','quote_select_flights'].includes(body.action);
  const pairNumber=body=>body.choice_ref?Number(body.choice_ref.slice(-1)):(Number(body.flight_selection?.outbound_ref.slice(-1))+1)/2;
- return {api,offer,calls,transport,context,pair,calculate,latest,pairNumber,isCalc,
+ return {api,offer,calls,warnings,transport,context,pair,calculate,latest,pairNumber,isCalc,
   async start(){if(provider==='anex'){await api.verifyAnexConcrete(offer);return api.verifyAnexPackage(offer);}return api.verifyAndromeda(offer);},
   setReply:fn=>onReply=fn,advance:ms=>clock+=ms,
   hold(n){const pending=gate();hold={when:body=>isCalc(body)&&pairNumber(body)===n,gate:pending};return pending;},
@@ -521,6 +521,37 @@ function quoteHarness(source,provider,{enabled=true}={}){
   get initialPublic(){return copy(initialPublic);},get maxActive(){return maxActive;},get calcCalls(){return calls.filter(call=>isCalc(call.body));},
   amount:quote=>quote.finalPrice.amount,
   tuple:quote=>copy({price:quote.finalPrice,choice:quote.choice,flights:quote.flights,verifiedAt:quote.verifiedAt,expiresAt:quote.expiresAt})};
+}
+async function safeAndromedaFailureDiagnostics(source){
+ const allowed=['ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_INVALID_PACKAGE_RESPONSE','ANDROMEDA_INVALID_CLAIM_RESPONSE',
+  'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SECRET_ECHO'];
+ const raw='RAW_SUPPLIER_TEXT_SENTINEL: login=fictional-secret';let cases=0;
+ const check=async(reason,category='supplier_response',expectedReason=null,extra={})=>{
+  const h=quoteHarness(source,'andromeda');
+  h.setReply(()=>({ok:false,httpStatus:502,failure_category:category,failure_reason:reason,message:raw,raw_response:raw,...extra}));
+  const failure=await h.start().catch(error=>error);
+  assert.equal(failure.code,'quote_unconfirmed');assert.equal(failure.retryable,false);
+  assert.equal(failure.httpStatus,502);assert.equal(failure.failureCategory,category);
+  assert.equal(failure.message,'Подтверждение тура не получено. Цена и наличие пока неизвестны.','diagnostic facts do not change public copy');
+  assert.equal(failure.failureReason,expectedReason||undefined);
+  assert.equal(h.warnings.length,1);assert(h.warnings[0].startsWith('[AnyTour quote] '));
+  const detail=JSON.parse(h.warnings[0].slice('[AnyTour quote] '.length));
+  assert.deepEqual(detail,{provider:'andromeda',action:'quote',code:'quote_unconfirmed',httpStatus:502,failureCategory:category,
+   ...(expectedReason?{failureReason:expectedReason}:{}),
+   ...(category==='supplier_rejected'?{failureStage:'broninit',supplierCode:'FIXED_17'}:{})});
+  assert(!h.warnings[0].includes(raw));assert(!JSON.stringify(failure).includes(raw));
+  assert.equal(h.calls.length,1,'one initial intercepted quote request');
+  await assert.rejects(h.start(),error=>error===failure,'reopening retains the same terminal failure');
+  await assert.rejects(h.latest(),error=>error===failure,'passive replay retains the same terminal failure');
+  assert.equal(h.calls.length,1,'the diagnostic never reopens supplier transport');cases++;
+ };
+ for(const reason of allowed)await check(reason,'supplier_response',reason);
+ for(const reason of [undefined,null,0,{},[allowed[0]],raw,'INVALID_RESPONSE',allowed[0]+' '+raw,
+  ' '+allowed[0],allowed[0].toLowerCase(),'ANDROMEDA_QUOTE_CONTEXT_MISMATCH'])await check(reason);
+ for(const category of ['quote_state','supplier_http','supplier_transport','supplier_auth','internal'])await check(allowed[0],category);
+ await check('ANDROMEDA_QUOTE_CONTEXT_MISMATCH','quote_state','ANDROMEDA_QUOTE_CONTEXT_MISMATCH');
+ await check(undefined,'supplier_rejected',null,{failure_stage:'broninit',supplier_code:'FIXED_17'});
+ console.log(JSON.stringify({safeSupplierResponseDiagnosticCases:cases,actualOwner:true,supplierHTTP:0,terminalReplayHTTP:0,publicCopyChanged:false}));
 }
 async function boundedFlightRepricing(source){
  let cases=0;
@@ -651,6 +682,7 @@ async function boundedFlightRepricing(source){
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
  const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
  verifiedFlightPairBinding(source);
+ await safeAndromedaFailureDiagnostics(source);
  await boundedFlightRepricing(source);
  const digest=crypto.createHash('sha256').update(JSON.stringify(records)).digest('hex');
  // Pinned before the refactor on full data owner blob 931fb024951b6d69ce84e635e61ddd8112501623.
