@@ -41,7 +41,7 @@ function observe(source,s){
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
   __items:items,searchKey:call('searchKey',()=> 'current'),clearSearchTimers:call('clearSearchTimers'),resultInventory:call('results',()=>{if(s.inventoryVisits)for(const item of items)record('inventoryItem',item.hotel.id);return {items,total:items.reduce((sum,row)=>sum+row.offers.length,0),ratingCounts:undefined};}),
   appliedDestination:call('appliedDestination',()=>({kind:'resort',id:9})),destinationLabel:call('destinationLabel',()=> 'Кемер'),countryNames:{'4':'Турция'},
-  dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),
+  dateText:call('dateText',d=>'date:'+d),dateLong:call('dateLong',d=>'long:'+d),rangeText:call('rangeText',(a,b)=>a+' — '+b),durationText:call('durationText',()=> '7–10 ночей'),guestsText:call('guestsText',()=> '2 взрослых · дети 0/17'),departureScopeText:call('departureScopeText',()=> 'даты поиска'),departureScopeValue:call('departureScopeValue',()=>s.selected?ctx.dateText('2026-10-15'):ctx.rangeText(search.from,search.to)),
   responseFor:call('responseFor',()=>({phase:s.phase||'complete'})),hotelCountText:call('hotelCountText',n=>n+' отелей'),
   cardHTML:call('cardHTML',r=>`<card id="${r.hotel.id}">${r.offers.length}</card>`),emptyResultsHTML:call('emptyResultsHTML',()=>'<empty>'),
   focusReference:call('focusReference',()=>({selector:'#old',top:17})),restoreFocus:call('restoreFocus'),
@@ -137,7 +137,7 @@ const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').
 // Keep the historical digest intact; the owner-authorized departure fix changes
 // only the compact heading and its existing scope collaborator. Do not rebaseline
 // unrelated result/calendar/list observations from the new output.
-const appliedCompact='${departureScopeText()} · ${durationText()} · ${partyLabel(state.search)}';
+const appliedCompact='Вылет ${departureScopeValue()} · ${durationText()} · ${partyLabel(state.search)}';
 const historicalCompact='Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}';
 assert.equal(source.split(appliedCompact).length,2,'one compact applied departure owner');
 const historicalSource=source.replace(appliedCompact,historicalCompact);
@@ -151,9 +151,9 @@ for(const [index,row] of expected.entries()){
  const trace=row.result.trace,write=trace.findIndex(call=>call[0]==='write'&&call[1]==='#compact-details'&&call[2]==='textContent');
  const range=trace.findIndex(call=>call[0]==='rangeText');
  assert(range>=0&&range<write,'historical compact date collaborator precedes its write');
- trace[range]=['departureScopeText'];
- trace[write][3]='даты поиска'+trace[write][3].slice(trace[write][3].indexOf(' · '));
- const node=row.result.dom.find(([key])=>key==='#compact-details');node[1].textContent=trace[write][3];
+ trace[write][3]='Вылет '+(scenarios[index].selected?'date:2026-10-15':'2026-10-14 — 2026-10-16')+trace[write][3].slice(trace[write][3].indexOf(' · '));
+ trace.splice(range,1,['departureScopeValue'],scenarios[index].selected?['dateText','2026-10-15']:trace[range]);
+ const node=row.result.dom.find(([key])=>key==='#compact-details');node[1].textContent=trace[write+1][3];
 }
 assert.deepEqual(actual,expected,'only the authorized compact departure context and bounded pure grouping/note work may change');
 if(i>=0){
