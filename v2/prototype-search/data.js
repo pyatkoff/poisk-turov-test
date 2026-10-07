@@ -1591,18 +1591,22 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'];
     const category=kind|| (status===429?'limit':status===422?'unavailable':status===403?'access':status===400?'invalid_request':allowed.includes(payload?.failure_category)?payload.failure_category:'internal');
     const facts={};
-    const reason=category==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):category==='supplier_response'&&[
+    const responseCategory=status===200&&kind==='invalid_response'&&allowed.includes(payload?.failure_category)?payload.failure_category:null;
+    const responseFailure=responseCategory?{failureCategory:responseCategory}:null,diagnosticFacts=responseFailure||facts;
+    const diagnosticCategory=responseCategory||category;
+    const reason=diagnosticCategory==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):diagnosticCategory==='supplier_response'&&[
       'ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_INVALID_PACKAGE_RESPONSE','ANDROMEDA_INVALID_CLAIM_RESPONSE',
       'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SECRET_ECHO'
     ].includes(payload?.failure_reason)?payload.failure_reason:null;
-    if(reason)facts.failureReason=reason;
+    if(reason)diagnosticFacts.failureReason=reason;
     if(['request','database','catalog','criteria','quote_resolve','quote_reserve','quote_bootstrap','flight_state',
       'quote_validate','quote_checkpoint','flight_continuation'].includes(payload?.failure_phase))facts.failurePhase=payload.failure_phase;
-    if(category==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
-      facts.failureStage=payload.failure_stage;
+    if(diagnosticCategory==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
+      diagnosticFacts.failureStage=payload.failure_stage;
       const code=payload.supplier_code;
-      if(typeof code==='string'&&code.length>0&&code.length<=64&&!/[^A-Za-z0-9_.:-]/.test(code))facts.supplierCode=code;
+      if(typeof code==='string'&&code.length>0&&code.length<=64&&!/[^A-Za-z0-9_.:-]/.test(code))diagnosticFacts.supplierCode=code;
     }
+    if(responseFailure)facts.responseFailure=Object.freeze(responseFailure);
     const message=category==='limit'?'Сейчас проверка этого поставщика недоступна. Выберите другое предложение или вернитесь позже.':
       category==='unavailable'?'Не удалось подтвердить этот тур. Выберите другое предложение.':
       category==='access'?'Проверка этого тура временно недоступна.':
@@ -1719,7 +1723,9 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
             ...(failure.failureReason?{failureReason:failure.failureReason}:{}),
             ...(failure.failureStage?{failureStage:failure.failureStage}:{}),
             ...(failure.supplierCode?{supplierCode:failure.supplierCode}:{})});
-          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(failure.failurePhase?{...detail,failurePhase:failure.failurePhase}:detail));
+          root.console?.warn?.('[AnyTour quote] '+JSON.stringify({...detail,
+            ...(failure.failurePhase?{failurePhase:failure.failurePhase}:{}),
+            ...(failure.responseFailure?{responseFailure:failure.responseFailure}:{})}));
           if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
         throw failure;
