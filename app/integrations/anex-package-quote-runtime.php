@@ -203,37 +203,136 @@ function anytour_anex_quote_price(array $doc): array
     return ['amount' => $rub[0], 'currency' => 'RUB', 'basis' => 'supplier_gross_package'];
 }
 
+/** Fresh versioned attempts may reuse exact, already verified pair quotes. */
+function anytour_anex_quote_reprice_ready(array $attempt): bool
+{
+    foreach (['start', 'transports', 'SetTransport', 'calcfull'] as $stage) {
+        if (($attempt['stages'][$stage] ?? null) === 'unknown') return false;
+    }
+    if (($attempt['version'] ?? null) !== 2 || !is_int($attempt['expires_at'] ?? null)
+        || $attempt['expires_at'] < 1 || ($attempt['sealed'] ?? null) !== false || !array_key_exists('active_pair', $attempt)
+        || $attempt['active_pair'] !== null || !is_array($attempt['pairs'] ?? null)
+        || count($attempt['pairs']) > 3 || !is_array($attempt['choices'] ?? null)
+        || ($attempt['stages']['start'] ?? null) !== 'complete'
+        || ($attempt['stages']['transports'] ?? null) !== 'complete'
+        || !is_int($attempt['reserved_calls'] ?? null)
+        || $attempt['reserved_calls'] !== 2 + 2 * count($attempt['pairs'])) return false;
+    foreach ($attempt['pairs'] as $ref => $pair) {
+        if (!is_string($ref) || !is_array($pair) || !isset($attempt['choices'][$ref]['public'])
+            || ($pair['stages']['SetTransport'] ?? null) !== 'complete'
+            || ($pair['stages']['calcfull'] ?? null) !== 'complete' || !is_array($pair['public'] ?? null)) return false;
+        $public = $pair['public'];
+        try {
+            $price = anytour_anex_quote_price(['moneys' => ['money' => [[
+                'currency' => $public['price']['currency'] ?? null, 'price' => $public['price']['amount'] ?? null,
+            ]]]]);
+        } catch (Throwable $ignored) { return false; }
+        if ($public !== ['status' => 'quote_verified', 'final_price_verified' => true,
+                'selection_state' => 'preview_only', 'price' => $price, 'choice' => $attempt['choices'][$ref]['public'],
+                'verified_at' => $public['verified_at'] ?? null, 'expires_at' => $attempt['expires_at']]
+            || !is_int($public['verified_at'] ?? null) || $public['verified_at'] < 1
+            || $public['verified_at'] >= $attempt['expires_at']) return false;
+    }
+    $last = $attempt['public'] ?? null;
+    if (!is_array($last)) return false;
+    if ($attempt['pairs'] === []) return ($last['status'] ?? null) === 'quote_choices';
+    $lastRef = $last['choice']['choice_ref'] ?? null;
+    return is_string($lastRef) && isset($attempt['pairs'][$lastRef]['public']) && $last === $attempt['pairs'][$lastRef]['public'];
+}
+
+/** Capability counts are current; cached money and its evidence times stay untouched. */
+function anytour_anex_quote_reply(array $public, array $attempt, bool $healthy): array
+{
+    if (($attempt['version'] ?? null) !== 2) return $public;
+    $used = is_array($attempt['pairs'] ?? null) ? min(3, count($attempt['pairs'])) : 0;
+    $public['repricing'] = ['enabled' => $healthy, 'max_pairs' => 3, 'used_pairs' => $used,
+        'remaining_pairs' => $healthy ? 3 - $used : 0];
+    if ($healthy && is_array($attempt['choices'] ?? null)) {
+        $public['choices'] = array_values(array_column($attempt['choices'], 'public'));
+    }
+    return $public;
+}
+
 /** Called only after the existing gateway has validated live search/offer/local-hotel identity. */
 function anytour_anex_quote_run(array $request, array &$state, array $offer, array $known,
-    array $savedEntry, callable $factory, callable $checkpoint, int $now): array
+    array $savedEntry, callable $factory, callable $checkpoint, int $now, ?callable $clock = null): array
 {
     $key = $request['offer_ref'];
     $base = ['status' => 'quote_unavailable', 'final_price_verified' => false, 'selection_state' => 'disabled'];
     if (($offer['kind'] ?? null) !== 'concrete') return $base;
     $attempt = $state['package_quotes'][$key] ?? null;
     if ($attempt !== null && (!is_array($attempt) || ($attempt['expires_at'] ?? 0) <= $now)) {
-        return array_replace($base, ['status' => 'quote_expired']);
+        return is_array($attempt) ? anytour_anex_quote_reply(array_replace($base, ['status' => 'quote_expired']), $attempt, false)
+            : array_replace($base, ['status' => 'quote_expired']);
     }
+    if (is_array($attempt) && array_key_exists('version', $attempt) && $attempt['version'] !== 2) {
+        return array_replace($base, ['status' => 'quote_unknown']);
+    }
+    $repeat = is_array($attempt) && ($attempt['version'] ?? null) === 2;
+    $binding = null;
+    if ($attempt === null || $repeat) {
+        $binding = hash('sha256', json_encode([
+            'generation' => $request['generation'], 'search_ref' => $request['search_ref'], 'offer_ref' => $key,
+            'offer' => $offer, 'supplier_offer_id' => $known['supplier_offer_id'] ?? null,
+            'currency_id' => $savedEntry['supplier_currency_id'] ?? null,
+            'child_ages' => $state['gateway']['search']['context']['child_ages'] ?? [],
+        ], JSON_THROW_ON_ERROR));
+    }
+    if ($repeat) {
+        if (($attempt['context_digest'] ?? null) !== $binding) {
+            return anytour_anex_quote_reply(array_replace($base, ['status' => 'quote_unknown']), $attempt, false);
+        }
+        if (!anytour_anex_quote_reprice_ready($attempt)) {
+            // A retained active/UNKNOWN reservation seals every pair, including older cache hits.
+            $public = ($attempt['sealed'] ?? null) === true
+                && in_array($attempt['public']['status'] ?? null, ['quote_failed', 'quote_expired'], true)
+                ? $attempt['public'] : array_replace($base, ['status' => 'quote_unknown']);
+            return anytour_anex_quote_reply($public, $attempt, false);
+        }
+    }
+    $clock = $clock ?? static fn(): int => $now;
+    $checkpointing = false;
+    $reservation = null;
+    $ref = null;
     if ($request['action'] === 'quote_start') {
-        if (is_array($attempt)) return $attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']);
+        if (is_array($attempt)) return anytour_anex_quote_reply($attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']), $attempt, $repeat);
         $currency = $savedEntry['supplier_currency_id'] ?? null;
         $claim = $known['supplier_offer_id'] ?? null;
         if (!is_string($currency) || !is_string($claim) || $currency === '' || $claim === '') return $base;
-        // Client-owned numeric calculation id, separate from a real booked claim.
+        // Client-owned numeric calculation id, separate from a real booked claim. Never replace it.
         $id = (string) random_int(1000000000000, 9999999999999);
-        $state['package_quotes'][$key] = ['id' => $id, 'expires_at' => min($now + 600, $state['gateway']['saved_offers']['expires_at']), 'stages' => []];
+        $state['package_quotes'][$key] = ['version' => 2, 'context_digest' => $binding, 'reserved_calls' => 0,
+            'pairs' => [], 'active_pair' => null, 'sealed' => false,
+            'id' => $id, 'expires_at' => min($now + 600, $state['gateway']['saved_offers']['expires_at']), 'stages' => []];
+        $repeat = true;
         $attempt =& $state['package_quotes'][$key];
         $stages = ['start', 'transports'];
     } else {
         $ref = $request['choice_ref'] ?? null;
-        if (!is_array($attempt) || !is_string($ref) || !isset($attempt['choices'][$ref])) return $base;
-        if (isset($attempt['chosen'])) {
-            if ($attempt['chosen'] !== $ref) return array_replace($base, ['status' => 'quote_selection_locked']);
-            return $attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']);
+        if (!is_array($attempt) || !is_string($ref) || !isset($attempt['choices'][$ref])) {
+            return is_array($attempt) ? anytour_anex_quote_reply($base, $attempt, $repeat) : $base;
         }
-        if (($attempt['stages']['transports'] ?? null) !== 'complete') return $base;
-        $attempt =& $state['package_quotes'][$key];
-        $attempt['chosen'] = $ref;
+        if ($repeat) {
+            if (isset($attempt['pairs'][$ref])) {
+                // Read only: cached A does not move the mutable supplier head back from B.
+                return anytour_anex_quote_reply($attempt['pairs'][$ref]['public'], $attempt, true);
+            }
+            if (count($attempt['pairs']) >= 3 || $attempt['reserved_calls'] > 6) {
+                return anytour_anex_quote_reply(array_replace($base, ['status' => 'quote_selection_locked']), $attempt, true);
+            }
+            $attempt =& $state['package_quotes'][$key];
+            $attempt['pairs'][$ref] = ['stages' => [], 'diagnostics' => []];
+            $attempt['active_pair'] = $ref;
+        } else {
+            // Unversioned retained attempts keep their original one-pair budget and receipts.
+            if (isset($attempt['chosen'])) {
+                if ($attempt['chosen'] !== $ref) return array_replace($base, ['status' => 'quote_selection_locked']);
+                return $attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']);
+            }
+            if (($attempt['stages']['transports'] ?? null) !== 'complete') return $base;
+            $attempt =& $state['package_quotes'][$key];
+            $attempt['chosen'] = $ref;
+        }
         unset($attempt['public']);
         $stages = ['SetTransport', 'calcfull'];
     }
@@ -241,15 +340,32 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     $identityMismatches = [];
     try {
         foreach ($stages as $stage) {
-            // Durable reservation precedes EACH supplier request. A crash cannot grant a replay.
+            $stageNow = $clock();
+            if (!is_int($stageNow) || $stageNow < 1) throw new RuntimeException('ANEX_QUOTE_UNKNOWN');
+            if ($stageNow >= $attempt['expires_at']) throw new RuntimeException('ANEX_QUOTE_EXPIRED');
+            // The pair decision, active marker and each call debit precede supplier HTTP together.
+            if ($repeat) {
+                if ($attempt['reserved_calls'] >= 8) throw new RuntimeException('ANEX_QUOTE_REQUEST_LIMIT');
+                ++$attempt['reserved_calls'];
+                if ($ref !== null) $attempt['pairs'][$ref]['stages'][$stage] = 'unknown';
+            }
             $attempt['stages'][$stage] = 'unknown';
+            $reservation = $attempt;
+            $checkpointing = true;
             $checkpoint($state);
+            $checkpointing = false;
+            $stageNow = $clock();
+            if (!is_int($stageNow) || $stageNow < 1) throw new RuntimeException('ANEX_QUOTE_UNKNOWN');
+            if ($stageNow >= $attempt['expires_at']) throw new RuntimeException('ANEX_QUOTE_EXPIRED');
             if ($client === null) $client = $factory();
             if (!$client instanceof AnyTourAnexPackageQuoteClient) throw new RuntimeException('ANEX_QUOTE_CLIENT_UNAVAILABLE');
             if ($stage === 'start') $response = $client->start($claim, $attempt['id'], $currency);
             elseif ($stage === 'transports') $response = $client->transports($attempt['id']);
             elseif ($stage === 'SetTransport') $response = $client->select($attempt['id'], $attempt['choices'][$ref]['selection']);
             else $response = $client->calculate($attempt['id']);
+            $stageNow = $clock();
+            if (!is_int($stageNow) || $stageNow < 1) throw new RuntimeException('ANEX_QUOTE_UNKNOWN');
+            if ($stageNow >= $attempt['expires_at']) throw new RuntimeException('ANEX_QUOTE_EXPIRED');
             $doc = anytour_anex_quote_identity($response, $offer, $identityMismatches);
             if (in_array($stage, ['SetTransport', 'calcfull'], true)
                 && anytour_anex_quote_transport_map(anytour_anex_quote_rows($doc['transports']['transport'] ?? null)) !== $attempt['choices'][$ref]['selection']) {
@@ -257,6 +373,10 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
             }
             $attempt['stages'][$stage] = 'complete';
             $attempt['diagnostics'][$stage] = $client->lastRequestDiagnostics();
+            if ($repeat && $ref !== null) {
+                $attempt['pairs'][$ref]['stages'][$stage] = 'complete';
+                $attempt['pairs'][$ref]['diagnostics'][$stage] = $client->lastRequestDiagnostics();
+            }
             if ($stage === 'transports') {
                 $attempt['choices'] = anytour_anex_quote_choices($response, $attempt['id']);
                 $attempt['public'] = array_replace($base, ['status' => 'quote_choices',
@@ -265,16 +385,35 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
                 $price = anytour_anex_quote_price($doc);
                 $attempt['public'] = ['status' => 'quote_verified', 'final_price_verified' => true,
                     'selection_state' => 'preview_only', 'price' => $price, 'choice' => $attempt['choices'][$ref]['public'],
-                    'verified_at' => $now, 'expires_at' => $attempt['expires_at']];
+                    'verified_at' => $stageNow, 'expires_at' => $attempt['expires_at']];
+                if ($repeat) {
+                    $attempt['pairs'][$ref]['public'] = $attempt['public'];
+                    $attempt['active_pair'] = null;
+                }
             }
+            $checkpointing = true;
             $checkpoint($state);
+            $checkpointing = false;
+            $stageNow = $clock();
+            if (!is_int($stageNow) || $stageNow < 1) throw new RuntimeException('ANEX_QUOTE_UNKNOWN');
+            if ($stageNow >= $attempt['expires_at']) throw new RuntimeException('ANEX_QUOTE_EXPIRED');
         }
     } catch (Throwable $error) {
+        // A lost session CAS must never retry a stale checkpoint over a newer context.
+        if ($repeat && $checkpointing) {
+            if ($error->getMessage() !== 'ANEX_SESSION_CHANGED') {
+                if (is_array($reservation)) $attempt = $reservation;
+                $attempt['sealed'] = true;
+                $attempt['public'] = array_replace($base, ['status' => 'quote_unknown']);
+            }
+            throw $error;
+        }
         $code = $error->getMessage();
         $allowed = ['ANEX_QUOTE_IDENTITY_UNCONFIRMED', 'ANEX_QUOTE_TRANSPORT_UNCONFIRMED', 'ANEX_QUOTE_PRICE_UNCONFIRMED',
             'ANEX_QUOTE_SUPPLIER_REJECTED', 'ANEX_QUOTE_HTTP_ERROR', 'ANEX_QUOTE_TRANSPORT_ERROR', 'ANEX_QUOTE_INVALID_RESPONSE',
-            'ANEX_QUOTE_CLIENT_UNAVAILABLE', 'ANEX_QUOTE_RATE_LIMIT'];
-        $attempt['public'] = array_replace($base, ['status' => 'quote_failed', 'reason' => in_array($code, $allowed, true) ? $code : 'ANEX_QUOTE_UNKNOWN']);
+            'ANEX_QUOTE_CLIENT_UNAVAILABLE', 'ANEX_QUOTE_RATE_LIMIT', 'ANEX_QUOTE_EXPIRED'];
+        $attempt['public'] = array_replace($base, ['status' => $code === 'ANEX_QUOTE_EXPIRED' ? 'quote_expired' : 'quote_failed',
+            'reason' => in_array($code, $allowed, true) ? $code : 'ANEX_QUOTE_UNKNOWN']);
         if (in_array($stage, ['start', 'transports', 'SetTransport', 'calcfull'], true)) {
             $attempt['public']['failure_stage'] = $stage;
         }
@@ -286,8 +425,18 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
         if ($code === 'ANEX_QUOTE_HTTP_ERROR' && is_int($httpStatus) && $httpStatus >= 100 && $httpStatus <= 599) {
             $attempt['public']['supplier_http_status'] = $httpStatus;
         }
-        // If checkpoint itself fails, leave the durable reservation UNKNOWN; never send a success.
+        if ($repeat) {
+            $attempt['sealed'] = true;
+            if ($ref !== null) {
+                $attempt['pairs'][$ref]['public'] = $attempt['public'];
+                if ($client instanceof AnyTourAnexPackageQuoteClient) {
+                    $attempt['pairs'][$ref]['diagnostics'][$stage] = $client->lastRequestDiagnostics();
+                }
+            }
+        }
+        // A failed failure-checkpoint escapes too. It cannot reauthorize a reserved operation.
         $checkpoint($state);
     }
-    return $attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']);
+    return anytour_anex_quote_reply($attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']), $attempt,
+        $repeat && anytour_anex_quote_reprice_ready($attempt));
 }

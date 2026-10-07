@@ -165,6 +165,146 @@ function anytour_andromeda_quote_unknown(string $checkpoint, string $lockPath, a
     }
 }
 
+function anytour_andromeda_quote_reprice_persist(string $path, array $next, array $expected): array
+{
+    AnyTourAndromedaFlightRepricingState::validate($next);
+    $disk=anytour_andromeda_quote_read($path,3000000,true);
+    if (($disk['state'] ?? [])!==$expected || ($disk!==[] && array_keys($disk)!==['state'])
+        || strlen(json_encode(['state'=>$next],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR))>3000000) {
+        throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_CHANGED');
+    }
+    anytour_andromeda_search3_save($path,['state'=>$next]);
+    $written=anytour_andromeda_quote_read($path,3000000);
+    if (array_keys($written)!==['state'] || $written['state']!==$next) {
+        throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_FAILED');
+    }
+    return $written['state'];
+}
+
+/** Only a fresh initial run can issue this private capability. Never promote a replay. */
+function anytour_andromeda_quote_reprice_projection(array $result, array $resolved, array $meta): array
+{
+    if (!array_key_exists('repricing',$result)) return anytour_andromeda_quote_with_expiry($result,$resolved);
+    if ($result['repricing']!==['enabled'=>true,'max_pairs'=>3,'used_pairs'=>0,'remaining_pairs'=>3]) {
+        throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+    }
+    $envelope=anytour_andromeda_quote_read($meta['prefix'].'-quote-flight-context-v2.json',3000000);
+    if (array_keys($envelope)!==['state']) throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+    $state=$envelope['state'];
+    AnyTourAndromedaFlightRepricingState::current($state,$meta['context_sha256'],time());
+    if ($state['expires_at']!==$resolved['expires_at']) throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+    $executionPath=$meta['prefix'].'-quote-flight-context-v2.lock';
+    if (is_link($executionPath)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+    if (is_file($executionPath)) {
+        if (filesize($executionPath)>32) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        $marker=file_get_contents($executionPath);
+        if (!is_string($marker)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        if ($marker!=='') $state['status']='unknown';
+    }
+    if ($state['status']!=='ready') {
+        $result['state']='quote_unknown'; $result['quote_state']='unverified';
+        $result['final_price']=null; $result['final_price_verified']=false;
+        $result['flight_selection_required']=false; $result['price_observation']=null;
+        $result['served_price_observation']=null;
+    }
+    $result['repricing']=AnyTourAndromedaFlightRepricingState::metadata($state);
+    return anytour_andromeda_quote_with_expiry($result,$resolved);
+}
+
+/** Called by the action's one existing reservation hook before transport dispatch. */
+function anytour_andromeda_quote_reprice_spend(string $path, string $context, string $token,
+    string $budgetDirectory, ?int $nowMs=null): int
+{
+    $envelope=anytour_andromeda_quote_read($path,3000000);
+    if (array_keys($envelope)!==['state']) throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+    $state=$envelope['state'];
+    AnyTourAndromedaFlightRepricingState::current($state,$context,time());
+    $spent=AnyTourAndromedaFlightRepricingState::spend($state,$token,$nowMs ?? (int)floor(microtime(true)*1000));
+    anytour_andromeda_quote_reprice_persist($path,$spent['state'],$state);
+    anytour_andromeda_search3_budget($budgetDirectory);
+    return $spent['wait_ms'];
+}
+
+function anytour_andromeda_quote_reprice_actions(array $state, string $path, string $token, array $config): AnyTourAndromedaClaimActions
+{
+    return new AnyTourAndromedaClaimActions($state['session_sid'],
+        static function() use($state,$path,$token,$config): void {
+            $wait=anytour_andromeda_quote_reprice_spend($path,$state['context_sha256'],$token,dirname($config['catalog_path']));
+            if ($wait>0) usleep($wait*1000);
+            AnyTourAndromedaFlightRepricingState::current(
+                anytour_andromeda_quote_read($path,3000000)['state'],$state['context_sha256'],time());
+        });
+}
+
+function anytour_andromeda_quote_reprice_continue(array $resolved, array $meta, array $initialResult,
+    array $flightState, array $selection, array $selected, array $config): array
+{
+    $path=$meta['prefix'].'-quote-flight-context-v2.json';
+    $executionPath=$meta['prefix'].'-quote-flight-context-v2.lock';
+    if (is_link($executionPath)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+    $execution=fopen($executionPath,'c');
+    if (!$execution) throw new RuntimeException('ANDROMEDA_QUOTE_LOCK_FAILED');
+    if (!flock($execution,LOCK_EX|LOCK_NB)) { fclose($execution); throw new RuntimeException('ANDROMEDA_QUOTE_REPLAY_REFUSED'); }
+    $reserved=false; $token=bin2hex(random_bytes(16));
+    try {
+        $envelope=anytour_andromeda_quote_read($path,3000000);
+        if (array_keys($envelope)!==['state']) throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+        $state=$envelope['state'];
+        AnyTourAndromedaFlightRepricingState::current($state,$meta['context_sha256'],time());
+        if ($state['expires_at']!==$resolved['expires_at']
+            || !hash_equals($state['flight_state_sha256'],hash('sha256',json_encode($flightState,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)))) {
+            throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+        }
+        $marker=stream_get_contents($execution,33);
+        if (!is_string($marker) || strlen($marker)>32) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        if ($marker!=='') return anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
+        if ($state['status']!=='ready') return anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
+        $begun=AnyTourAndromedaFlightRepricingState::begin($state,$meta['context_sha256'],$selection,$selected,$token,time());
+        if (is_array($begun['replay'])) {
+            $result=$begun['replay']; $result['repricing']=AnyTourAndromedaFlightRepricingState::metadata($state);
+            return anytour_andromeda_quote_with_expiry($result,$resolved);
+        }
+        $state=anytour_andromeda_quote_reprice_persist($path,$begun['state'],$state); $reserved=true;
+        // This durable marker survives a crash or an unacknowledged final write,
+        // even if a completed envelope happened to reach disk before readback failed.
+        if (fwrite($execution,$token)!==32 || !fflush($execution)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_FAILED');
+        $actions=anytour_andromeda_quote_reprice_actions($state,$path,$token,$config);
+        $calculated=null;
+        $result=AnyTourAndromedaSelectedQuote::continueWithFlights(
+            $resolved,$state['claim'],$selected,$actions,$state['initial_pricing'],
+            static function(array $claim) use(&$calculated): void { $calculated=$claim; });
+        if (!is_array($calculated) || count($result['flights'])!==2
+            || ($result['flights'][0]['direction'] ?? null)!=='0' || ($result['flights'][1]['direction'] ?? null)!=='1') {
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+        }
+        $result['flights'][0]['flight_ref']=$selection['outbound_ref'];
+        $result['flights'][1]['flight_ref']=$selection['return_ref'];
+        $result['verified_at']=time();
+        $result=anytour_andromeda_quote_with_expiry($result,$resolved);
+        $result['served_price_observation']=AnyTourAndromedaPriceObservation::compareServed(
+            $resolved['listing_price_receipt'] ?? null,$result,time());
+        $current=anytour_andromeda_quote_read($path,3000000)['state'];
+        $completed=AnyTourAndromedaFlightRepricingState::completed($current,$token,$calculated,$result,time());
+        $completed=anytour_andromeda_quote_reprice_persist($path,$completed,$current);
+        $result['repricing']=AnyTourAndromedaFlightRepricingState::metadata($completed);
+        $result=anytour_andromeda_quote_with_expiry($result,$resolved);
+        if (!ftruncate($execution,0)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_FAILED');
+        return $result;
+    } catch (Throwable $error) {
+        if (!$reserved) {
+            if ($error->getMessage()!=='ANDROMEDA_FLIGHT_REPRICE_BUDGET') throw $error;
+            $result=anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
+            return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error),['ok'=>true,'error'=>true]);
+        }
+        try {
+            $current=anytour_andromeda_quote_read($path,3000000)['state'];
+            anytour_andromeda_quote_reprice_persist($path,AnyTourAndromedaFlightRepricingState::unknown($current,$token),$current);
+        } catch (Throwable $ignored) { /* A surviving reserved envelope also seals the context. */ }
+        $result=anytour_andromeda_quote_reprice_projection($initialResult,$resolved,$meta);
+        return $result+array_diff_key(anytour_andromeda_quote_supplier_failure($error),['ok'=>true,'error'=>true]);
+    } finally { flock($execution,LOCK_UN); fclose($execution); }
+}
+
 function anytour_andromeda_quote_supplier(array $config): array
 {
     [$operatorLogin, $operatorPassword] = anytour_andromeda_operator_credentials_from_config($config);
@@ -192,12 +332,13 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
     $operationSha256 = hash('sha256', 'andromeda-selected-quote-v1');
     $reserved = anytour_andromeda_quote_reserve(
         $checkpoint, $meta['lock_path'], $meta['context_sha256'], $operationSha256);
-    if (is_array($reserved['replay'])) return anytour_andromeda_quote_with_expiry($reserved['replay'], $resolved);
+    if (is_array($reserved['replay'])) return anytour_andromeda_quote_reprice_projection($reserved['replay'], $resolved, $meta);
     $attempt = $reserved['attempt'];
 
     try {
         [$client, $actions] = anytour_andromeda_quote_supplier($config);
-        $retain = static function(array $claim, array $options) use ($flightState, $meta): array {
+        $repriceClaim=null; $retainedState=null;
+        $retain = static function(array $claim, array $options) use ($flightState, $meta, &$repriceClaim, &$retainedState): array {
             if (file_exists($flightState) || is_link($flightState)) {
                 throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_CHANGED');
             }
@@ -208,10 +349,19 @@ function anytour_andromeda_quote_run(array $request, PDO $pdo, array $saved, arr
             if (array_keys($written) !== ['state'] || ($written['state'] ?? null) !== $built['state']) {
                 throw new RuntimeException('ANDROMEDA_FLIGHT_STATE_FAILED');
             }
+            $repriceClaim=$claim; $retainedState=$built['state'];
             return $built['refs'];
         };
         $result = AnyTourAndromedaSelectedQuote::run($resolved, $client, $actions, $retain);
         $result = anytour_andromeda_quote_with_expiry($result, $resolved);
+        if (is_array($repriceClaim) && is_array($retainedState) && $result['state']==='flight_selection_required') {
+            $privateSession=$client->privateSession();
+            $state=AnyTourAndromedaFlightRepricingState::create($meta['context_sha256'],
+                hash('sha256',json_encode($retainedState,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)),
+                $privateSession['sid'] ?? '',$repriceClaim,$result,$resolved['expires_at']);
+            $state=anytour_andromeda_quote_reprice_persist($meta['prefix'].'-quote-flight-context-v2.json',$state,[]);
+            $result['repricing']=AnyTourAndromedaFlightRepricingState::metadata($state);
+        }
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
             $resolved['listing_price_receipt'] ?? null, $result, time());
         anytour_andromeda_quote_finish($checkpoint, $meta['lock_path'], $attempt, $result);
@@ -246,6 +396,17 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
     if (!is_array($selection)) throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
     $resolvedSelection = AnyTourAndromedaFlightSelection::select(
         $flightEnvelope['state'], $meta['context_sha256'], $selection);
+
+    if (array_key_exists('repricing',$initialResult)) {
+        if ($initialResult['repricing']!==['enabled'=>true,'max_pairs'=>3,'used_pairs'=>0,'remaining_pairs'=>3]) {
+            throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+        }
+        return anytour_andromeda_quote_reprice_continue($resolved,$meta,$initialResult,
+            $flightEnvelope['state'],$selection,$resolvedSelection['selected'],$config);
+    }
+    if (file_exists($meta['prefix'].'-quote-flight-context-v2.json') || is_link($meta['prefix'].'-quote-flight-context-v2.json')) {
+        throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+    }
 
     // One continuation attempt per initial quote. A different later selection cannot create a new supplier operation.
     $continuationCheckpoint = $meta['prefix'] . '-quote-flight-v1.json';
@@ -305,6 +466,10 @@ function anytour_andromeda_quote_failure_category(Throwable $error): string
         'ANDROMEDA_OPERATOR_CREDENTIALS_PAIR_REQUIRED' => 'supplier_auth',
         'ANDROMEDA_OPERATOR_CREDENTIALS_INVALID' => 'supplier_auth',
         'ANDROMEDA_QUOTE_CONTEXT_MISMATCH' => 'quote_state',
+        'ANDROMEDA_QUOTE_REPLAY_REFUSED' => 'quote_state',
+        'ANDROMEDA_FLIGHT_REPRICE_BUDGET' => 'quote_state',
+        'ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID' => 'quote_state',
+        'ANDROMEDA_FLIGHT_REPRICE_CURRENCY' => 'quote_state',
         'ANDROMEDA_QUOTE_CHECKPOINT_INVALID' => 'quote_state',
         'ANDROMEDA_QUOTE_CHECKPOINT_CHANGED' => 'quote_state',
         'ANDROMEDA_QUOTE_CHECKPOINT_FAILED' => 'quote_state',

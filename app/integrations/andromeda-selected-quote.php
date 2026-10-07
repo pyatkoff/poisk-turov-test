@@ -101,7 +101,8 @@ final class AnyTourAndromedaSelectedQuote
      * exactly one outbound and one return. This method cannot call package/get_flights.
      */
     public static function continueWithFlights(array $resolved, array $claim, array $selected,
-        AnyTourAndromedaClaimActions $actions): array
+        AnyTourAndromedaClaimActions $actions, ?array $initialPricing = null,
+        ?callable $retainCalculatedClaim = null): array
     {
         if (!isset($resolved['offer']) || !is_array($resolved['offer'])) {
             throw new InvalidArgumentException('ANDROMEDA_QUOTE_SELECTION_INVALID');
@@ -113,8 +114,26 @@ final class AnyTourAndromedaSelectedQuote
         if (array_keys($selected) !== [0, 1]) {
             throw new InvalidArgumentException('ANDROMEDA_FLIGHT_SELECTION_INVALID');
         }
-        $packagePrice = self::touristPrice($claim);
-        $searchPriceEstimate = self::searchPriceEstimate($claim, $resolved['offer']);
+        $packagePrice = $initialPricing === null ? self::touristPrice($claim) : null;
+        $searchPriceEstimate = $initialPricing === null ? self::searchPriceEstimate($claim, $resolved['offer']) : null;
+        if ($initialPricing !== null) {
+            if (array_keys($initialPricing) !== ['search_price','package_price','search_price_estimate']
+                || $initialPricing['search_price'] !== self::base($resolved, null)['search_price']) {
+                throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+            }
+            foreach (['package_price','search_price_estimate'] as $key) {
+                $fact=$initialPricing[$key];
+                if ($fact === null) continue;
+                if (!is_array($fact) || self::moneyFactValue($fact['amount'] ?? null) === null
+                    || preg_match('/[1-9]/',(string)$fact['amount']) !== 1
+                    || !is_string($fact['currency'] ?? null) || preg_match('/^[A-Z0-9_]{2,8}$/D',$fact['currency']) !== 1
+                    || ($key === 'search_price_estimate' && ($fact['source'] ?? null) !== 'derived_search_estimate')) {
+                    throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_STATE_INVALID');
+                }
+            }
+            $packagePrice=$initialPricing['package_price'];
+            $searchPriceEstimate=$initialPricing['search_price_estimate'];
+        }
         foreach (['0', '1'] as $direction) {
             $item = $selected[$direction] ?? null;
             if (!is_array($item)
@@ -130,11 +149,12 @@ final class AnyTourAndromedaSelectedQuote
             throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
         }
         self::assertSameFlights($selected, $selectedFlights);
-        return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions);
+        return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions, $retainCalculatedClaim);
     }
 
     private static function finalize(array $resolved, array $claim, ?array $packagePrice,
-        ?array $searchPriceEstimate, array $selectedFlights, AnyTourAndromedaClaimActions $actions): array
+        ?array $searchPriceEstimate, array $selectedFlights, AnyTourAndromedaClaimActions $actions,
+        ?callable $retainCalculatedClaim = null): array
     {
         self::assertSameFlights($selectedFlights, $selectedFlights);
         $calculated = $actions->calc($claim);
@@ -143,9 +163,17 @@ final class AnyTourAndromedaSelectedQuote
         $calculatedFlights = self::selectedFlights($calculated);
         self::assertSameFlights($selectedFlights ?: $calculatedFlights, $calculatedFlights);
         $selectedFlights = $calculatedFlights;
+        if ($retainCalculatedClaim !== null) {
+            if ((self::document($calculated)['condition'] ?? null) !== 'ccOffer') {
+                throw new RuntimeException('ANDROMEDA_QUOTE_NOT_OFFER');
+            }
+            if ($finalPrice['currency'] !== (self::base($resolved, null)['search_price']['currency'] ?? null)) {
+                throw new RuntimeException('ANDROMEDA_FLIGHT_REPRICE_CURRENCY');
+            }
+        }
         $priceObservation = AnyTourAndromedaPriceObservation::build($searchPriceEstimate, $finalPrice);
 
-        return self::base($resolved, $packagePrice) + [
+        $result = self::base($resolved, $packagePrice) + [
             'search_price_estimate' => $searchPriceEstimate,
             'price_observation' => $priceObservation,
             'state' => 'quote_verified',
@@ -159,6 +187,8 @@ final class AnyTourAndromedaSelectedQuote
             'calc_money_facts_reported' => self::calcMoneyFacts($calculated),
             'booking_enabled' => false,
         ];
+        if ($retainCalculatedClaim !== null) $retainCalculatedClaim($calculated);
+        return $result;
     }
 
     private static function searchPriceEstimate(array $claim, array $offer): ?array
