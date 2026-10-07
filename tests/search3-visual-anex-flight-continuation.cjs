@@ -204,7 +204,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
  w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
  w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
  w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
- const used=new Set();let release,aborts=0;
+ const used=new Set();let release,aborts=0,retainedList=null;
  w.fetch=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},action=body.action;
   const calculation=provider==='anex'?u.pathname.endsWith('/api-anex-search3-preview.php')&&action==='quote_calculate':u.pathname.endsWith('/api-andromeda-quote-preview.php')&&action==='quote_select_flights';
@@ -224,7 +224,15 @@ async function boundedRepriceScenario(provider,mode,width=390){
  const radio=n=>'[name="'+(provider==='anex'?'anex-package-choice':'andromeda-outbound')+'"][value="'+ref(n)+'"]';
  const count=()=>transport.calls.filter(c=>c.action===operation).length;
  const price=n=>assert.match(q('#modal-footer').textContent.replace(/\s/g,''),new RegExp(String(100000+n*1000)));
- const reopen=async(target=provider)=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="'+target+'%3A"]');};
+ const reopen=async(target=provider)=>{
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));
+  if(provider==='andromeda'&&mode==='unknown'&&!retainedList){
+   q('#offer-room').value='SAMO STANDARD';q('#offer-room').dispatchEvent(new w.Event('change',{bubbles:true}));
+   q('.offer-filter-disclosure').open=true;q('#modal-body').scrollTop=37;
+   retainedList={room:q('#offer-room').value,sort:q('#offer-sort').value,scroll:37};
+  }
+  click('#modal-body [data-action="offer"][data-key^="'+target+'%3A"]');
+ };
  try{
   for(const file of scripts)w.eval(source(file));
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
@@ -267,6 +275,17 @@ async function boundedRepriceScenario(provider,mode,width=390){
     if(mode==='unknown'){
      click(radio(1));assert(!q('[data-action="'+app+'"]'),'cached A cannot authorize application while B mutates');assert.match(q('#modal-footer').textContent,/Цена уточняется/);assert.equal(count(),2);
      release();await wait(()=>q(radio(1))?.disabled||!q(radio(1))&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert(!q('[data-action="'+app+'"]'));assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);
+     if(provider==='andromeda'){
+      assert.equal(q('#modal-body').firstElementChild.id,'andromeda-quote-error','terminal reason precedes the long flight inventory');
+      const reason=q('#andromeda-quote-error').textContent;assert.match(reason,/Цена и наличие пока неизвестны/);
+      assert(q('#modal-footer').textContent.includes(reason),'sticky status shows the terminal reason');assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
+      const before=transport.calls.length;click('#modal-footer [data-action="all-offers"]');await wait(()=>q('#all-offers-list'));await settle();
+      assert.equal(q('#offer-room').value,retainedList.room);assert.equal(q('#offer-sort').value,retainedList.sort);assert.equal(q('.offer-filter-disclosure').open,true);assert.equal(q('#modal-body').scrollTop,retainedList.scroll);
+      assert.equal(q('#modal-back').hidden,true,'passive exit removes the sealed picker frames');assert.equal(transport.calls.length,before);
+      w.history.back();await settle();assert.equal(q('#modal').open,false,'browser Back does not reopen the sealed picker');w.history.forward();await wait(()=>q('#modal').open&&q('#all-offers-list'));
+      click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');await wait(()=>q('#modal-body').firstElementChild?.id==='andromeda-quote-error');
+      assert.equal(q('[data-action="'+app+'"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);assert.equal(transport.calls.length,before,'explicit passive return and sealed reopen spend no HTTP');
+     }
      if(!q('#modal-back').hidden){click('#modal-back');await settle();assert(!q('[data-action="'+app+'"]'));assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);}
      const before=transport.calls.length;click('[data-action="close-modal"]');await settle();w.history.forward();await settle();assert.equal(transport.calls.length,before,'UNKNOWN history is passive and sealed');
     }else{
