@@ -31,12 +31,12 @@ class ControlTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as tmp:
                 fake=Path(tmp)/'control';source=Path(tmp)/'source'
                 control.__file__=str(fake/'scripts/deploy/int_server_executor_local_profile_plan.py')
-                for rel in (control.RUNNER,control.MASS_RUNNER,control.MASS2_RUNNER,control.MASS3_RUNNER):
+                for rel in (control.RUNNER,control.MASS_RUNNER,control.MASS2_RUNNER,control.MASS3_RUNNER,control.RECOVERY_RUNNER):
                     p=fake/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(rel)
                 for rel in control.SOURCE_FILES:
                     p=source/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(rel)
                 data,hashes=control.bundle_source(source)
-                self.assertEqual(set(control.SOURCE_FILES)|{control.RUNNER,control.MASS_RUNNER,control.MASS2_RUNNER,control.MASS3_RUNNER},set(hashes))
+                self.assertEqual(set(control.SOURCE_FILES)|{control.RUNNER,control.MASS_RUNNER,control.MASS2_RUNNER,control.MASS3_RUNNER,control.RECOVERY_RUNNER},set(hashes))
                 with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as z:
                     self.assertEqual(set(hashes)|{'manifest.json'},set(z.getnames()))
         finally:control.__file__=original
