@@ -50,7 +50,10 @@ const editResultSearch=async(page,width)=>{
 };
 const chosenDepartureContext=async(page,width,transport,evidence)=>{
  if(width!==390)return;
- const starts=transport.calls.filter(c=>c.action==='search_start').length,originalURL=page.url(),originalCards=await page.locator('#cards').innerHTML();
+ // classList.remove during responsive price layout can retain a trailing space;
+ // compare all card markup with only insignificant class whitespace normalized.
+ const cards=()=>page.locator('#cards').evaluate(el=>{const copy=el.cloneNode(true);for(const node of copy.querySelectorAll('[class]'))node.setAttribute('class',node.getAttribute('class').trim().replace(/\s+/g,' '));return copy.innerHTML;});
+ const starts=transport.calls.filter(c=>c.action==='search_start').length,originalURL=page.url(),originalCards=await cards();
  const day=trip.from,emptyDay=new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10);
  const scope=async()=> (await page.locator('#compact-details').textContent()).split(' · ')[0];
  const allDates=await scope();assert.match(allDates,/ — /);
@@ -72,13 +75,13 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
   fs.writeFileSync(path.join(evidence,`chosen-date-${viewport}.json`),JSON.stringify({width:viewport,chosenDay:day,emptyDay,compact_matches_applied:true,clear_restores:true,empty_day_reset:chipVisible?'visible-chip':'calendar-clear',overflow:false,supplier_HTTP:0,physicalSafari:false},null,2));
  }
  await page.setViewportSize({width,height:900});
- await page.locator(`#price-strip [data-date="${day}"]`).click();const chosenURL=page.url(),chosenCards=await page.locator('#cards').innerHTML();
+ await page.locator(`#price-strip [data-date="${day}"]`).click();const chosenURL=page.url(),chosenCards=await cards();
  await editResultSearch(page,width);await page.locator('#search-form [data-action="dates"]').click();
  await page.locator(`[data-action="day-pick"][data-date="${emptyDay}"]`).click();await page.locator('[data-action="apply-dates"]').click();
- assert.equal(await page.locator('#cards').innerHTML(),chosenCards,'unsubmitted date edit leaves applied results intact');
- await page.locator('#search-return').click();assert.equal(page.url(),chosenURL);assert.equal(await page.locator('#cards').innerHTML(),chosenCards);
+ assert.equal(await cards(),chosenCards,'unsubmitted date edit leaves applied results intact');
+ await page.locator('#search-return').click();assert.equal(page.url(),chosenURL);assert.equal(await cards(),chosenCards);
  assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
- await page.locator(`#price-strip [data-date="${day}"]`).click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);assert.equal(await page.locator('#cards').innerHTML(),originalCards);
+ await page.locator(`#price-strip [data-date="${day}"]`).click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);assert.equal(await cards(),originalCards);
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'local dates and Cancel never start another supplier search');
 };
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
