@@ -353,6 +353,25 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  await page.waitForFunction(()=>document.querySelector('#destination-hotel-2001')?.getAttribute('aria-pressed')==='false');
  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
  assert.equal(await focusedHotel.evaluate(el=>document.activeElement===el),true,'keyboard deselection retains its row');
+ for(const id of [2001,2002,2003])await page.locator('#destination-hotel-'+id).press('Space');
+ const chip=id=>page.locator('[data-action="destination-remove"][data-id="'+id+'"]');
+ let releaseHotelLookup;transport.state.hotelLookupGates['4']=new Promise(resolve=>{releaseHotelLookup=resolve;});
+ try{
+  await page.locator('#destination-query').fill('Rixo');
+  await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='true');
+  await chip(2002).press('Space');
+  assert.equal(await chip(2003).evaluate(el=>document.activeElement===el),true,'removing a middle chip retains focus on the next chip');
+  releaseHotelLookup();
+  await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+  assert.equal(await chip(2003).evaluate(el=>document.activeElement===el),true,'late catalogue completion retains the remaining exact chip focus');
+ }finally{releaseHotelLookup();delete transport.state.hotelLookupGates['4'];}
+ assert.deepEqual(await page.locator('[data-action="destination-remove"]').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2001','2003']);
+ await chip(2003).press('Space');
+ assert.equal(await chip(2001).evaluate(el=>document.activeElement===el),true,'removing the trailing chip retains focus on the preceding chip');
+ await chip(2001).press('Space');
+ assert.equal(await page.locator('[data-action="apply-destination"]').evaluate(el=>document.activeElement===el),true,'removing the final chip keeps confirmation focused');
+ assert.equal(await page.locator('[data-action="destination-remove"]').count(),0);
+ await page.locator('#destination-query').fill('Rix');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
  if(width<=760){
   const viewport=async(height,offsetTop=0)=>page.evaluate(({height,offsetTop})=>{Object.assign(window.__hotelViewport,{height,offsetTop});window.__hotelViewport.dispatchEvent(new Event('resize'));},{height,offsetTop});
   const geometry=()=>page.locator('#modal').evaluate(modal=>{const rect=el=>{const b=el.getBoundingClientRect();return{top:b.top,bottom:b.bottom,height:b.height,right:b.right,left:b.left};};return{modal:rect(modal),body:rect(document.querySelector('#modal-body')),footer:rect(document.querySelector('#modal-footer')),action:rect(document.querySelector('[data-action="apply-destination"]')),input:rect(document.querySelector('#destination-query')),rows:[...document.querySelectorAll('.destination-hotel')].slice(0,3).map(rect),width:modal.clientWidth,scrollWidth:modal.scrollWidth};});
@@ -381,7 +400,7 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.match(await page.locator('#country').textContent(),/Rixos Fictional Belek 02/);assert.deepEqual(await fields(),beforeTrip);assert.equal(starts(),beforeStarts,'all picker actions leave suppliers untouched');
  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.length>0);for(let i=0;i<100&&starts()===beforeStarts;i++)await page.waitForTimeout(20);
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
- fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+ fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,keyboard_chip_removal_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames

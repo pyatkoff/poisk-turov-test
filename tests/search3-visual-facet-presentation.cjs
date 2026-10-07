@@ -97,15 +97,22 @@ function destinationFocus(code){
   c.renderDestination();assert.equal(active(),'destination-hotel-1','later catalogue/resort paint retains row focus');
   choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1,2]);assert.equal(active(),'destination-hotel-2','second exact selection retains its row');
   choose(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);assert.equal(active(),'destination-hotel-2','deselect retains its row');assert.equal(c.$('#destination-hotel-2').getAttribute('aria-pressed'),'false');
+  const remove=id=>{const button=c.$('[data-action="destination-remove"][data-id="'+id+'"]');button.focus();c.handleSearchParameterAction('destination-remove',button,id);};
+  choose(2);choose(3);remove(2);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1,3]);assert.equal(c.document.activeElement.dataset.id,'3','removing a middle chip keeps focus on the next chip');
+  c.renderDestination();assert.equal(c.document.activeElement.dataset.id,'3','later inventory paint keeps the remaining chip focused');
+  remove(3);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);assert.equal(c.document.activeElement.dataset.id,'1','removing the trailing chip keeps focus on the preceding chip');
   const input=c.$('#destination-query');input.focus();input.setSelectionRange(2,4);c.renderDestination();
   assert.strictEqual(c.document.activeElement,input,'typing keeps the original input');assert.deepEqual([input.value,input.selectionStart,input.selectionEnd],['hotel',2,4],'paint preserves query and caret');
+  choose(2);input.focus();c.handleSearchParameterAction('destination-remove',c.$('[data-action="destination-remove"][data-id="2"]'),2);assert.strictEqual(c.document.activeElement,input,'removing an unfocused chip does not steal query focus');assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1]);
   const apply=c.$('[data-action="apply-destination"]');apply.focus();c.renderDestination();assert.strictEqual(c.document.activeElement,apply,'later paint does not steal footer focus');
   c.$('#destination-hotel-1').focus();c.destinationLookup={status:'complete',rows:[]};c.hotels=[];c.renderDestination();assert.equal(active(),'','a removed row cannot force focus into the input');
   assert.deepEqual([...c.destinationIds(c.destinationChoice)],[1],'inventory paint never changes exact selection');
+  remove(1);assert.deepEqual([...c.destinationIds(c.destinationChoice)],[]);assert.strictEqual(c.document.activeElement,apply,'removing the final chip keeps focus on confirmation');
  }finally{c.dom.window.close();}
 }
 destinationFocus(source);
-assert.throws(()=>destinationFocus(source.replace("restoreFocus(focus,null,$('#destination-results'));",'')),/select retains exact hotel row focus/,'focus-loss mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("restoreFocus(focus,null,root);",'')),/select retains exact hotel row focus/,'focus-loss mutation is caught');
+assert.throws(()=>destinationFocus(source.replace("if(focused)restoreFocus(focusReference(remaining[Math.max(0,Math.min(index,remaining.length-1))]),$('[data-action=\"apply-destination\"]'));",'')),/removing a middle chip keeps focus/,'chip-removal focus mutation is caught');
 console.log('PASS destination keyboard focus: actual select/deselect/multi-ID action, later paint, input caret, external focus and removed row; supplier/lead HTTP0');
 // Approved hotel photos, country scope and confirmation wording; ordinary
 // facet availability, ordering, selection and focus remain characterized.
