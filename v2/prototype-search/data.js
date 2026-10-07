@@ -1330,7 +1330,9 @@
       'FLIGHT_SELECTION_INVALID','FLIGHT_UID_INVALID','FLIGHT_OPTIONS_INVALID','FLIGHT_REF_INVALID',
       'FLIGHT_REFS_INVALID','FLIGHT_CONTEXT_INVALID','FLIGHT_ALREADY_SELECTED','SELECTED_FLIGHTS_INVALID',
       'FINAL_PRICE_MISSING','CLAIM_SHAPE_INVALID','CLAIM_TOO_LARGE','CLAIM_REQUEST_BUDGET',
-      'CLAIM_ACTION_NOT_ALLOWED','PACKAGE_DISABLED','PACKAGE_REPLAY_REFUSED','INVALID_PACKAGE_ID'
+      'CLAIM_ACTION_NOT_ALLOWED','PACKAGE_DISABLED','PACKAGE_REPLAY_REFUSED','INVALID_PACKAGE_ID',
+      'SELECTION_CONTEXT_MISMATCH','SELECTION_MAPPING_UNAVAILABLE','QUOTE_ATTEMPT_INVALID','QUOTE_RESULT_INVALID',
+      'QUOTE_MONEY_INVALID','QUOTE_PRIVATE_STATE','QUOTE_PROVENANCE_INVALID'
     ]:[];
     return typeof value==='string'&&codes.some(code=>value===provider.toUpperCase()+'_'+code)?value:null;
   }
@@ -1594,6 +1596,8 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
       'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SECRET_ECHO'
     ].includes(payload?.failure_reason)?payload.failure_reason:null;
     if(reason)facts.failureReason=reason;
+    if(['request','database','catalog','criteria','quote_resolve','quote_reserve','quote_bootstrap','flight_state',
+      'quote_validate','quote_checkpoint','flight_continuation'].includes(payload?.failure_phase))facts.failurePhase=payload.failure_phase;
     if(category==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
       facts.failureStage=payload.failure_stage;
       const code=payload.supplier_code;
@@ -1691,7 +1695,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
         let quote=normalizeAndromedaQuote(payload.data,prepared.localId,prepared.body.flight_selection);
         if(!quote||flightSelection&&attempts.repricing?.enabled&&(!quote.repricing
           ||quote.repricing.used_pairs<attempts.repricing.used_pairs||quote.repricing.used_pairs<attempts.pairs.size||quote.state!=='quote_verified'))
-          throw andromedaQuoteFailure(status,null,'invalid_response');
+          throw andromedaQuoteFailure(status,payload.data,'invalid_response');
         const inventory=andromedaQuoteChoices.get(base.key);
         if(quote.repricing){
           if(flightSelection&&!attempts.repricing)throw andromedaQuoteFailure(status,null,'invalid_response');
@@ -1715,7 +1719,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
             ...(failure.failureReason?{failureReason:failure.failureReason}:{}),
             ...(failure.failureStage?{failureStage:failure.failureStage}:{}),
             ...(failure.supplierCode?{supplierCode:failure.supplierCode}:{})});
-          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(detail));
+          root.console?.warn?.('[AnyTour quote] '+JSON.stringify(failure.failurePhase?{...detail,failurePhase:failure.failurePhase}:detail));
           if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
         throw failure;
