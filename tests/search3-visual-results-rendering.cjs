@@ -134,11 +134,28 @@ function visibleRecords(rows){return rows.map((row,index)=>{
  return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)&&!key.startsWith('#group-')).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(key==='#all-offers-list'?listHTML:dom.innerHTML)}]),trace}};
  });}
 const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
-const baseline=visibleRecords(records(source.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
+// Keep the historical digest intact; the owner-authorized departure fix changes
+// only the compact heading and its existing scope collaborator. Do not rebaseline
+// unrelated result/calendar/list observations from the new output.
+const appliedCompact='${departureScopeText()} · ${durationText()} · ${partyLabel(state.search)}';
+const historicalCompact='Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}';
+assert.equal(source.split(appliedCompact).length,2,'one compact applied departure owner');
+const historicalSource=source.replace(appliedCompact,historicalCompact);
+const baseline=visibleRecords(records(historicalSource.replace(section(cold,'function offerListInventory(','function mountOfferList('),()=>section(oldCold,'function offerListInventory(','function mountOfferList('))));
 const baselineDigest=crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex');
 if(process.argv.includes('--capture'))console.log('Retained historical reference digest: '+baselineDigest);
 else assert.equal(baselineDigest,'c0e286c389ad802506a675500cfd7ce6f684de941c9674309ab141d357c4fd24','approved result/calendar/list observations');
-assert.deepEqual(actual,baseline,'only bounded pure grouping/note work and retired comparison observations may change');
+const expected=copy(baseline);
+for(const [index,row] of expected.entries()){
+ if(scenarios[index].kind!=='results'||scenarios[index].draft)continue;
+ const trace=row.result.trace,write=trace.findIndex(call=>call[0]==='write'&&call[1]==='#compact-details'&&call[2]==='textContent');
+ const range=trace.findIndex(call=>call[0]==='rangeText');
+ assert(range>=0&&range<write,'historical compact date collaborator precedes its write');
+ trace[range]=['departureScopeText'];
+ trace[write][3]='даты поиска'+trace[write][3].slice(trace[write][3].indexOf(' · '));
+ const node=row.result.dom.find(([key])=>key==='#compact-details');node[1].textContent=trace[write][3];
+}
+assert.deepEqual(actual,expected,'only the authorized compact departure context and bounded pure grouping/note work may change');
 if(i>=0){
  const coldIndex=process.argv.indexOf('--compare-offer-list');
  const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList('):'');
