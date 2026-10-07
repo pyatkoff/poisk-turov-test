@@ -48,6 +48,62 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
+const chosenDepartureContext=async(page,width,transport,evidence)=>{
+ if(width!==390)return;
+ // classList.remove during responsive price layout can retain a trailing space;
+ // compare all card markup with only insignificant class whitespace normalized.
+ const cards=()=>page.locator('#cards').evaluate(el=>{const copy=el.cloneNode(true);for(const node of copy.querySelectorAll('[class]'))node.setAttribute('class',node.getAttribute('class').trim().replace(/\s+/g,' '));return copy.innerHTML;});
+ const starts=transport.calls.filter(c=>c.action==='search_start').length,originalURL=page.url(),originalCards=await cards();
+ const day=trip.from,emptyDay=new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+ const scope=async()=> (await page.locator('#compact-details').textContent()).split(' · ')[0];
+ const allDates=await scope();assert.match(allDates,/ — /);
+ for(const viewport of [360,390,430,768,1280]){
+  await page.setViewportSize({width:viewport,height:900});
+  await page.locator(`#price-strip [data-date="${day}"]`).click();
+  assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
+  assert.doesNotMatch(await scope(),/ — /);assert.equal(new URL(page.url()).searchParams.get('date'),day);
+  assert.equal(await page.locator('.hotel-card').count(),1);
+  if(viewport<=760){await page.locator('#results').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.body.classList.contains('mobile-results'));assert(await page.locator('#compact-search').isVisible());}
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:path.join(evidence,`chosen-date-${viewport}.png`)});
+  await page.locator('#clear-date').click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);
+  await page.locator(`#price-strip [data-date="${emptyDay}"]`).click();assert.equal(await page.locator('.hotel-card').count(),0);
+  assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1],'empty results still describe the applied exact day');
+  const chip=page.locator('[data-action="remove-filter"][data-key="date"]'),chipVisible=await chip.isVisible();
+  if(chipVisible)await chip.click();else await page.locator('#clear-date').click();
+  assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);
+  fs.writeFileSync(path.join(evidence,`chosen-date-${viewport}.json`),JSON.stringify({width:viewport,chosenDay:day,emptyDay,compact_matches_applied:true,clear_restores:true,empty_day_reset:chipVisible?'visible-chip':'calendar-clear',overflow:false,supplier_HTTP:0,physicalSafari:false},null,2));
+ }
+ await page.setViewportSize({width,height:900});
+ await page.locator(`#price-strip [data-date="${day}"]`).click();const chosenURL=page.url(),chosenCards=await cards();
+ await editResultSearch(page,width);await page.locator('#search-form [data-action="dates"]').click();
+ await page.locator(`[data-action="day-pick"][data-date="${emptyDay}"]`).click();await page.locator('[data-action="apply-dates"]').click();
+ assert.equal(await cards(),chosenCards,'unsubmitted date edit leaves applied results intact');
+ await page.locator('#search-return').click();assert.equal(page.url(),chosenURL);assert.equal(await cards(),chosenCards);
+ assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
+ await page.locator(`#price-strip [data-date="${day}"]`).click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);assert.equal(await cards(),originalCards);
+ assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'local dates and Cancel never start another supplier search');
+};
+const chosenDepartureJourney=async(browser,origin,base,evidence)=>{
+ const width=390,transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  const to=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to,ages:'',searched:'1'}));
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0);
+  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  await chosenDepartureContext(page,width,transport,evidence);
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  console.log('PASS compiled chosen-departure journey: five widths, selected/empty/reset/Cancel, exact cards/URL and no extra fixture supplier starts');
+ }finally{await context.close();}
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -831,6 +887,7 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
+ await chosenDepartureJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}

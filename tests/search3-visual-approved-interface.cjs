@@ -43,21 +43,24 @@ async function run(width,monthRange=null){
   click('#filter-detail-back');assert.equal($('.filter-top h3').textContent,'Фильтры');assert.equal($('#filter-panel').classList.contains('filter-detail-open'),false);assert.equal($('#filter-panel').scrollTop,42);assert.equal(d.activeElement,$('.filter-operator-group>.filter-section-toggle'));
   action('close-filters','#filter-panel');await pause();assert.equal($('#filter-panel').classList.contains('open'),false);
  }
- // Approved results header retains the search range while one departure is selected.
+ // The compact header describes the applied day; the seven-date rail and base
+ // form range remain available so clearing it can restore the complete search.
  assert.equal($('#compact-search').hidden,width<=760?false:$('#search').getBoundingClientRect().bottom>88);
  assert.equal(d.body.classList.contains('mobile-results'),width<=760);
  assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');
  const headerRange=$('#compact-details').textContent;
  assert.match(headerRange,/Вылет.*1.*7/);
  click('#price-strip [data-date="2026-10-05"]');
- assert.equal($('#compact-details').textContent,headerRange);
+ assert.equal($('#compact-details').textContent,'Вылет 5 окт · 7 ночей · 2 взрослых');
+ assert.equal(new URL(w.location.href).searchParams.get('date'),'2026-10-05');
+ assert.match($('#applied-search').textContent,/Вылет5 окт/);
  assert.equal($('#price-strip').children.length,7);
  assert.equal($('#calendar-month-label').textContent,'Октябрь 2026','Selected departure keeps the month of the search range');
  assert.equal($('#price-strip [data-date="2026-10-05"] strong').textContent,'78,1');
  assert.match($('#calendar-minimum-legend').textContent.replace(/\s/g,''),/78087₽/);
  assert.match($('#calendar-selected-date').textContent,/5 октября/);
  assert.match($('#results-summary').textContent,/974/);
- click('#clear-date');assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');assert.equal($('#calendar-selected-date').parentElement.hidden,true);
+ click('#clear-date');assert.equal($('#compact-details').textContent,headerRange);assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');assert.equal($('#calendar-selected-date').parentElement.hidden,true);
  assert.match($('#results-summary').textContent,/1047/);
  // The price rail is always open; an unknown price never disables its date.
  assert.equal($('#price-calendar').tagName,'SECTION');assert.ok($('#price-strip').children.length>1);
