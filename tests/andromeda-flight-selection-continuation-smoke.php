@@ -290,6 +290,10 @@ $seedGateway=static function()use(&$gatewayResolved,$gatewayConfig,$retained,$in
     return $meta;
 };
 $gatewayRequest=['flight_selection'=>$selection];
+// A gateway stream notice is a regression even when a later guard declines.
+set_error_handler(static function(int $severity,string $message,string $file,int $line):never{
+    throw new ErrorException($message,0,$severity,$file,$line);
+},E_WARNING|E_NOTICE);
 try{
     $gatewayMeta=$seedGateway();
     $gatewayFinal=anytour_andromeda_quote_continue($gatewayRequest,$gatewayPdo,[],$gatewayConfig,'fixture-session');
@@ -452,6 +456,8 @@ try{
     file_put_contents($fixture['meta']['prefix'].'-quote-flight-context-v2.lock',str_repeat('c',33));
     try{$continue($fixture['a']);throw new RuntimeException('OVERSIZE_MARKER_ACCEPTED');}
     catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_CHECKPOINT_INVALID')throw $e;}
+    try{anytour_andromeda_quote_run([],$gatewayPdo,[],$gatewayConfig,'fixture-session');throw new RuntimeException('OVERSIZE_MARKER_INITIAL_REPLAY_ACCEPTED');}
+    catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_CHECKPOINT_INVALID')throw $e;}
     if($repriceBudget!==$baseBudget)throw new RuntimeException('OVERSIZE_MARKER_SPENT');
 
     foreach(['changeservice','calc'] as $expireAt){
@@ -470,6 +476,7 @@ try{
         if(str_contains($publicReprice,$private))throw new RuntimeException('REPRICE_PRIVATE_LEAK_'.$private);
     }
 }finally{
+    restore_error_handler();
     foreach(glob($gatewayFixtureDirectory.'/searches/*')?:[] as $path)unlink($path);
     rmdir($gatewayFixtureDirectory.'/searches');rmdir($gatewayFixtureDirectory);
 }

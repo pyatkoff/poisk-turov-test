@@ -196,9 +196,8 @@ function anytour_andromeda_quote_reprice_projection(array $result, array $resolv
     $executionPath=$meta['prefix'].'-quote-flight-context-v2.lock';
     if (is_link($executionPath)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
     if (is_file($executionPath)) {
-        if (filesize($executionPath)>32) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
-        $marker=file_get_contents($executionPath);
-        if (!is_string($marker)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
+        $marker=file_get_contents($executionPath,false,null,0,33);
+        if (!is_string($marker) || strlen($marker)>32) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
         if ($marker!=='') $state['status']='unknown';
     }
     if ($state['status']!=='ready') {
@@ -242,7 +241,7 @@ function anytour_andromeda_quote_reprice_continue(array $resolved, array $meta, 
     $path=$meta['prefix'].'-quote-flight-context-v2.json';
     $executionPath=$meta['prefix'].'-quote-flight-context-v2.lock';
     if (is_link($executionPath)) throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_INVALID');
-    $execution=fopen($executionPath,'c');
+    $execution=fopen($executionPath,'c+');
     if (!$execution) throw new RuntimeException('ANDROMEDA_QUOTE_LOCK_FAILED');
     if (!flock($execution,LOCK_EX|LOCK_NB)) { fclose($execution); throw new RuntimeException('ANDROMEDA_QUOTE_REPLAY_REFUSED'); }
     $reserved=false; $token=bin2hex(random_bytes(16));
