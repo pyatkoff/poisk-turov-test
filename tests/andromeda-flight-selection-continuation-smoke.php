@@ -7,6 +7,7 @@ final class AnyTourAndromedaClient {
         if ($id !== 'opaque-claiminc') throw new RuntimeException('BAD_ID');
         return $this->package;
     }
+    public function privateSession():array{return ['sid'=>'SID_gateway_initial'];}
 }
 require_once __DIR__.'/../app/integrations/andromeda-claim-actions.php';
 require_once __DIR__.'/../app/integrations/andromeda-selected-quote.php';
@@ -183,7 +184,11 @@ $extractGateway=static function(string $name)use($gatewaySource):string{
 };
 foreach(['anytour_andromeda_quote_with_expiry','anytour_andromeda_quote_meta',
     'anytour_andromeda_quote_read','anytour_andromeda_quote_persist','anytour_andromeda_quote_reserve',
-    'anytour_andromeda_quote_finish','anytour_andromeda_quote_unknown','anytour_andromeda_quote_continue'] as $name){
+    'anytour_andromeda_quote_finish','anytour_andromeda_quote_unknown',
+    'anytour_andromeda_quote_reprice_persist','anytour_andromeda_quote_reprice_projection',
+    'anytour_andromeda_quote_reprice_spend','anytour_andromeda_quote_reprice_continue',
+    'anytour_andromeda_quote_run','anytour_andromeda_quote_continue',
+    'anytour_andromeda_quote_failure_category','anytour_andromeda_quote_supplier_failure'] as $name){
     eval($extractGateway($name));
 }
 $gatewayFixtureDirectory=sys_get_temp_dir().'/andromeda-ref-binding-'.bin2hex(random_bytes(6));
@@ -195,20 +200,34 @@ $gatewayResolved=$resolved+[
 ];
 $gatewayConfig=['catalog_path'=>$gatewayFixtureDirectory.'/catalog.json'];
 $gatewayFactoryCalls=0;$gatewayCalls=[];$gatewayFailure=false;
+$gatewayNewInitial=false;$gatewaySaveFailure=false;
 function anytour_andromeda_quote_resolve(array $request,PDO $pdo,array $saved,array $config,string $session,array $listingPrices=[]):array{
     global $gatewayResolved;
     if(time()>=$gatewayResolved['expires_at'])throw new DomainException('offer_expired');
     return $gatewayResolved;
 }
 function anytour_andromeda_search3_save(string $path,array $data):void{
-    global $gatewayFixtureDirectory;
+    global $gatewayFixtureDirectory,$gatewaySaveFailure;
     if(!str_starts_with($path,$gatewayFixtureDirectory.'/searches/'))throw new RuntimeException('GATEWAY_FIXTURE_WRITE_OUTSIDE');
     if(file_put_contents($path.'.tmp',json_encode($data,JSON_THROW_ON_ERROR))===false
         ||!rename($path.'.tmp',$path))throw new RuntimeException('GATEWAY_FIXTURE_WRITE');
+    // Model a write that reaches disk but is not acknowledged to its caller.
+    if($gatewaySaveFailure&&str_ends_with($path,'-quote-flight-context-v2.json')
+        &&($data['state']['status']??null)==='ready'&&($data['state']['head_pair']??null)!==null){
+        $gatewaySaveFailure=false;throw new RuntimeException('ANDROMEDA_QUOTE_CHECKPOINT_FAILED');
+    }
 }
 function anytour_andromeda_quote_supplier(array $config):array{
-    global $gatewayFactoryCalls,$gatewayCalls,$gatewayFailure,$money;
+    global $gatewayFactoryCalls,$gatewayCalls,$gatewayFailure,$money,$gatewayNewInitial,$repriceInventory,$package;
     ++$gatewayFactoryCalls;
+    if($gatewayNewInitial){
+        return [new AnyTourAndromedaClient($package),new AnyTourAndromedaClaimActions('SID_gateway_initial',static function(){},
+            static function(string $url,string $post)use(&$gatewayCalls,$repriceInventory):array{
+                parse_str((string)parse_url($url,PHP_URL_QUERY),$query);$gatewayCalls[]=$query['action']??null;
+                if(($query['action']??null)!=='get_flights')throw new RuntimeException('REPRICE_INITIAL_UNEXPECTED_ACTION');
+                return ['status'=>200,'body'=>json_encode($repriceInventory,JSON_THROW_ON_ERROR)];
+            })];
+    }
     $actions=new AnyTourAndromedaClaimActions('SID_gateway_fixture',static function(){},
         static function(string $url,string $post)use(&$gatewayCalls,&$gatewayFailure,$money):array{
             parse_str((string)parse_url($url,PHP_URL_QUERY),$query);
@@ -225,6 +244,41 @@ function anytour_andromeda_quote_supplier(array $config):array{
         });
     return [null,$actions];
 }
+function anytour_andromeda_search3_budget(string $directory):void{
+    global $gatewayFixtureDirectory,$repriceBudget;
+    if($directory!==$gatewayFixtureDirectory)throw new RuntimeException('REPRICE_BUDGET_DIRECTORY');
+    ++$repriceBudget;
+}
+// Only the supplier transport/clock are seams. Reservation, durable pacing,
+// latest-head selection, public projection and commit are extracted production.
+function anytour_andromeda_quote_reprice_actions(array $state,string $path,string $token,array $config):AnyTourAndromedaClaimActions{
+    global $repriceClockMs,$repriceCalls,$repriceExpectedHead,$repriceNextHead,$repriceAmount,
+        $repriceFailure,$repriceReentry,$repriceExpire,$gatewayResolved,$money;
+    return new AnyTourAndromedaClaimActions($state['session_sid'],
+        static function()use($state,$path,$token,$config,&$repriceClockMs):void{
+            $repriceClockMs+=1100;
+            anytour_andromeda_quote_reprice_spend($path,$state['context_sha256'],$token,dirname($config['catalog_path']),$repriceClockMs);
+            AnyTourAndromedaFlightRepricingState::current(anytour_andromeda_quote_read($path,3000000)['state'],$state['context_sha256'],time());
+        },
+        static function(string $url,string $post)use(&$repriceCalls,&$repriceExpectedHead,&$repriceNextHead,&$repriceAmount,
+            &$repriceFailure,&$repriceReentry,&$repriceExpire,&$gatewayResolved,$money):array{
+            parse_str((string)parse_url($url,PHP_URL_QUERY),$query);parse_str($post,$form);
+            $claim=json_decode($form['claim']??'',true,64,JSON_THROW_ON_ERROR);$action=$query['action']??null;
+            $repriceCalls[]=['action'=>$action,'sid'=>$query['sid']??null,'old'=>$query['OLD_UID']??null,
+                'new'=>$query['NEW_UID']??null,'head'=>$claim['fixture_head']??null];
+            if(($query['sid']??null)!=='SID_gateway_initial'||($claim['fixture_head']??null)!==$repriceExpectedHead)throw new RuntimeException('REPRICE_SID_OR_LATEST_HEAD_LOST');
+            if(is_callable($repriceReentry)){$reentry=$repriceReentry;$repriceReentry=null;$reentry();}
+            if($action==='calc'){
+                $claim['fixture_head']=$repriceNextHead;$claim['variants']=[];
+                $claim['claimDocument'][0]['buyerMoneys']=$money($repriceAmount);
+                if($repriceFailure==='uid')$claim['claimDocument'][0]['transports'][0]['transport'][0]['uid']='supplier_wrong';
+                if($repriceFailure==='currency')$claim['claimDocument'][0]['buyerMoneys'][0]['buyerClaimMoney'][0]['currency']='USD';
+                if($repriceFailure==='rejection')return ['status'=>200,'body'=>json_encode(['error'=>['code'=>'SID_EXPIRED','message'=>'private supplier text']],JSON_THROW_ON_ERROR)];
+            }elseif($action!=='changeservice')throw new RuntimeException('REPRICE_UNEXPECTED_ACTION');
+            if($repriceExpire!==null&&$action===$repriceExpire)usleep(2100000);
+            return ['status'=>200,'body'=>json_encode($claim,JSON_THROW_ON_ERROR)];
+        });
+}
 $gatewayPdo=new class extends PDO{public function __construct(){}};
 $seedGateway=static function()use(&$gatewayResolved,$gatewayConfig,$retained,$initial):array{
     $meta=anytour_andromeda_quote_meta($gatewayResolved,$gatewayConfig);
@@ -236,6 +290,10 @@ $seedGateway=static function()use(&$gatewayResolved,$gatewayConfig,$retained,$in
     return $meta;
 };
 $gatewayRequest=['flight_selection'=>$selection];
+// A gateway stream notice is a regression even when a later guard declines.
+set_error_handler(static function(int $severity,string $message,string $file,int $line):never{
+    throw new ErrorException($message,0,$severity,$file,$line);
+},E_WARNING|E_NOTICE);
 try{
     $gatewayMeta=$seedGateway();
     $gatewayFinal=anytour_andromeda_quote_continue($gatewayRequest,$gatewayPdo,[],$gatewayConfig,'fixture-session');
@@ -302,9 +360,125 @@ try{
         'detail-request-private','detail-offer-private','detail-external-offer-private'] as $private){
         if(str_contains($publicGateway,$private))throw new RuntimeException('GATEWAY_PRIVATE_LEAK_'.$private);
     }
+
+    // Mint through the actual initial gateway, then exercise three different
+    // pairs and local replay through its production continuation/ledger code.
+    $repriceInventory=$getFlights;$repriceInventory['fixture_head']='initial';
+    $rows=&$repriceInventory['variants'][0]['transports'][0]['transport'];
+    $extra=$rows[0];$extra['uid']='supplier_out_c';$extra['name']='OUT C';$rows[]=$extra;
+    $extra=$rows[2];$extra['uid']='supplier_back_b';$extra['name']='BACK B';$rows[]=$extra;
+    foreach($rows as &$row){$row['details'][0]['detail'][0]['markup']='1500';$row['details'][0]['detail'][0]['currency']='RUB';}
+    unset($row,$rows);
+    $repriceBudget=0;$repriceCalls=[];$repriceClockMs=(int)floor(microtime(true)*1000);
+    $repriceFailure=null;$repriceReentry=null;$repriceExpire=null;
+    $newContext=static function(string $label,int $ttl=600)use(&$gatewayResolved,&$gatewayNewInitial,
+        &$repriceClockMs,&$repriceExpectedHead,&$repriceNextHead,&$repriceAmount,&$repriceFailure,&$repriceExpire,
+        $gatewayPdo,$gatewayConfig):array{
+        $gatewayNewInitial=true;$gatewayResolved['context']['offer_ref']='offer_'.hash('sha256',$label);
+        $gatewayResolved['expires_at']=time()+$ttl;$repriceClockMs=(int)floor(microtime(true)*1000);
+        $repriceExpectedHead='initial';$repriceNextHead='head_a';$repriceAmount='81234';$repriceFailure=null;$repriceExpire=null;
+        $preview=anytour_andromeda_quote_run([],$gatewayPdo,[],$gatewayConfig,'fixture-session');
+        $meta=anytour_andromeda_quote_meta($gatewayResolved,$gatewayConfig);
+        $inventory=anytour_andromeda_quote_read($meta['prefix'].'-quote-flight-state-v1.json',3000000)['state'];
+        $refs=[];foreach($inventory['items'] as $ref=>$record)$refs[$record['item']['uid']]=$ref;
+        $selection=static fn(string $out,string $back):array=>['provider'=>'andromeda','outbound_ref'=>$refs[$out],'return_ref'=>$refs[$back]];
+        return ['preview'=>$preview,'meta'=>$meta,
+            'a'=>$selection('supplier_out_b','supplier_back_a'),'b'=>$selection('supplier_out_a','supplier_back_b'),
+            'c'=>$selection('supplier_out_c','supplier_back_a'),'d'=>$selection('supplier_out_a','supplier_back_a')];
+    };
+    $continue=static fn(array $selected):array=>anytour_andromeda_quote_continue(
+        ['flight_selection'=>$selected],$gatewayPdo,[],$gatewayConfig,'fixture-session');
+    $unknown=static function(array $response,int $used):void{
+        if(($response['state']??null)!=='quote_unknown'||($response['quote_state']??null)!=='unverified'
+            ||($response['final_price']??null)!==null||($response['final_price_verified']??null)!==false
+            ||($response['booking_enabled']??null)!==false||($response['flight_selection_required']??null)!==false
+            ||($response['repricing']??null)!==['enabled'=>false,'max_pairs'=>3,'used_pairs'=>$used,'remaining_pairs'=>0])throw new RuntimeException('GLOBAL_UNKNOWN_NOT_SAFE');
+    };
+    $fresh=$newContext('three-pairs');$factoryAfterInitial=$gatewayFactoryCalls;$initialActionsAfter=$gatewayCalls;
+    if(($fresh['preview']['repricing']??null)!==['enabled'=>true,'max_pairs'=>3,'used_pairs'=>0,'remaining_pairs'=>3]
+        ||($fresh['preview']['search_price_estimate']??null)!==['amount'=>'74592.00','currency'=>'RUB','source'=>'derived_search_estimate'])throw new RuntimeException('FRESH_REPRICE_CAPABILITY_OR_BASELINE');
+    $repriceReentry=static function()use($continue,$fresh):void{
+        try{$continue($fresh['b']);throw new RuntimeException('CONCURRENT_PAIR_ENTERED');}
+        catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_REPLAY_REFUSED')throw $e;}
+        $state=anytour_andromeda_quote_read($fresh['meta']['prefix'].'-quote-flight-context-v2.json',3000000)['state'];
+        if($state['status']!=='reserved'||$state['action_count']!==1)throw new RuntimeException('CONCURRENT_REENTRY_SEALED_ACTIVE_OWNER');
+    };
+    $a=$continue($fresh['a']);$repriceExpectedHead='head_a';$repriceNextHead='head_b';$repriceAmount='82345';
+    $b=$continue($fresh['b']);
+    if($a['repricing']['used_pairs']!==1||$b['repricing']['used_pairs']!==2||$repriceBudget!==6||count($repriceCalls)!==6)throw new RuntimeException('A_B_ACTION_BUDGET');
+    $aReordered=['return_ref'=>$fresh['a']['return_ref'],'provider'=>'andromeda','outbound_ref'=>$fresh['a']['outbound_ref']];
+    $aReplay=$continue($aReordered);$aExpected=$a;$aExpected['repricing']=$b['repricing'];
+    if($aReplay!==$aExpected||$repriceBudget!==6||count($repriceCalls)!==6)throw new RuntimeException('A_B_A_CACHE_PRICE_REFS_TIME_OR_SPEND');
+    $headAfterCache=anytour_andromeda_quote_read($fresh['meta']['prefix'].'-quote-flight-context-v2.json',3000000)['state'];
+    if(($headAfterCache['claim']['fixture_head']??null)!=='head_b')throw new RuntimeException('CACHED_A_REWOUND_RAW_B');
+    $previewReplay=anytour_andromeda_quote_run([],$gatewayPdo,[],$gatewayConfig,'fixture-session');
+    if($previewReplay['repricing']!==$b['repricing']||$gatewayFactoryCalls!==$factoryAfterInitial)throw new RuntimeException('INITIAL_REPLAY_FROZEN_METADATA_OR_AUTH');
+    $repriceExpectedHead='head_b';$repriceNextHead='head_c';$repriceAmount='83456';$c=$continue($fresh['c']);
+    if($c['repricing']!==['enabled'=>true,'max_pairs'=>3,'used_pairs'=>3,'remaining_pairs'=>0]
+        ||$repriceBudget!==9||count($repriceCalls)!==9||$gatewayFactoryCalls!==$factoryAfterInitial||$gatewayCalls!==$initialActionsAfter)throw new RuntimeException('THREE_PAIR_CAP_OR_REAUTH_DISCOVERY');
+    if($repriceCalls[6]['old']!=='supplier_out_a'||$repriceCalls[7]['old']!=='supplier_back_b'
+        ||$repriceCalls[6]['head']!=='head_b'||$repriceCalls[8]['sid']!=='SID_gateway_initial')throw new RuntimeException('C_DID_NOT_EVOLVE_B_SUPPLIER_HEAD');
+    foreach([$a,$b,$c] as $index=>$quote){
+        $selection=[$fresh['a'],$fresh['b'],$fresh['c']][$index];
+        if($quote['package_price']!==$fresh['preview']['package_price']||$quote['search_price']!==$fresh['preview']['search_price']
+            ||$quote['search_price_estimate']!==$fresh['preview']['search_price_estimate']
+            ||$quote['expires_at']!==$fresh['preview']['expires_at']||!is_int($quote['verified_at']??null)
+            ||$quote['flights'][0]['flight_ref']!==$selection['outbound_ref']||$quote['flights'][1]['flight_ref']!==$selection['return_ref'])throw new RuntimeException('PAIR_PRICE_BASELINE_REFS_OR_EXPIRY_CHANGED');
+        if(($quote['price_observation']['search_price_estimate']??null)!==$fresh['preview']['search_price_estimate']
+            ||($quote['price_observation']['signed_delta_amount']??null)!==['6642.00','7753.00','8864.00'][$index])throw new RuntimeException('OBSERVATION_USED_MUTABLE_PREVIOUS_PRICE');
+    }
+    $cap=$continue($fresh['d']);
+    if(($cap['final_price_verified']??null)!==false||($cap['final_price']??null)!==null||$cap['repricing']!==$c['repricing']
+        ||($cap['failure_reason']??null)!=='ANDROMEDA_FLIGHT_REPRICE_BUDGET'||($cap['failure_category']??null)!=='quote_state'
+        ||$repriceBudget!==9||count($repriceCalls)!==9)throw new RuntimeException('FOURTH_PAIR_NOT_BOUNDED_REVIEWABLE_REFUSAL');
+    $cachedAtCap=$continue($fresh['a']);if($cachedAtCap['final_price']!==$a['final_price']||$cachedAtCap['repricing']!==$c['repricing']||$repriceBudget!==9)throw new RuntimeException('CAP_DISABLED_EXACT_CACHE');
+
+    foreach(['uid','currency','rejection','write'] as $failure){
+        $fixture=$newContext('failed-'.$failure);$baseBudget=$repriceBudget;$baseCalls=count($repriceCalls);
+        $a=$continue($fixture['a']);$repriceExpectedHead='head_a';$repriceNextHead='head_b';$repriceAmount='82345';
+        $repriceFailure=$failure;$gatewaySaveFailure=$failure==='write';$failed=$continue($fixture['b']);$unknown($failed,2);
+        if($repriceBudget!==$baseBudget+6||count($repriceCalls)!==$baseCalls+6)throw new RuntimeException('FAILED_NEW_PAIR_BUDGET');
+        $failedState=anytour_andromeda_quote_read($fixture['meta']['prefix'].'-quote-flight-context-v2.json',3000000)['state'];
+        if($failedState['status']!=='unknown'||($failure!=='write'&&$failedState['claim']['fixture_head']!=='head_a'))throw new RuntimeException('FAILED_RESPONSE_PROMOTED_RAW_HEAD');
+        if($failure!=='write'){
+            $active=$failedState['pairs'][$failedState['active_pair']];
+            if($active['result']!==null||$active['status']!=='reserved')throw new RuntimeException('FAILED_PAIR_GAINED_VERIFIED_REFS');
+        }
+        if($failure==='rejection'&&(($failed['failure_category']??null)!=='supplier_rejected'
+            ||($failed['failure_stage']??null)!=='calc'||($failed['supplier_code']??null)!=='SID_EXPIRED'))throw new RuntimeException('SANITIZED_REJECTION_FACTS_LOST');
+        $unknown($continue($fixture['a']),2);$unknown(anytour_andromeda_quote_run([],$gatewayPdo,[],$gatewayConfig,'fixture-session'),2);
+        if($repriceBudget!==$baseBudget+6||count($repriceCalls)!==$baseCalls+6)throw new RuntimeException('GLOBAL_UNKNOWN_REPLAY_SPENT');
+    }
+    $fixture=$newContext('crash-ready-marker');$a=$continue($fixture['a']);$baseBudget=$repriceBudget;
+    file_put_contents($fixture['meta']['prefix'].'-quote-flight-context-v2.lock',str_repeat('c',32));
+    $unknown($continue($fixture['a']),1);$unknown($continue($fixture['b']),1);
+    if($repriceBudget!==$baseBudget)throw new RuntimeException('CRASH_MARKER_REOPENED_READY_CACHE');
+    file_put_contents($fixture['meta']['prefix'].'-quote-flight-context-v2.lock',str_repeat('c',33));
+    try{$continue($fixture['a']);throw new RuntimeException('OVERSIZE_MARKER_ACCEPTED');}
+    catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_CHECKPOINT_INVALID')throw $e;}
+    try{anytour_andromeda_quote_run([],$gatewayPdo,[],$gatewayConfig,'fixture-session');throw new RuntimeException('OVERSIZE_MARKER_INITIAL_REPLAY_ACCEPTED');}
+    catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_CHECKPOINT_INVALID')throw $e;}
+    if($repriceBudget!==$baseBudget)throw new RuntimeException('OVERSIZE_MARKER_SPENT');
+
+    foreach(['changeservice','calc'] as $expireAt){
+        $fixture=$newContext('expiry-'.$expireAt,2);$repriceClockMs=(int)floor(microtime(true)*1000)-10000;
+        $repriceExpire=$expireAt;$baseBudget=$repriceBudget;
+        try{$continue($fixture['a']);throw new RuntimeException('EXPIRED_MUTABLE_RESPONSE_VERIFIED');}
+        catch(DomainException $e){if($e->getMessage()!=='offer_expired')throw $e;}
+        $expiredState=anytour_andromeda_quote_read($fixture['meta']['prefix'].'-quote-flight-context-v2.json',3000000)['state'];
+        $expectedSpend=$expireAt==='changeservice'?1:3;
+        if($repriceBudget!==$baseBudget+$expectedSpend||$expiredState['status']!=='unknown'
+            ||$expiredState['head_pair']!==null)throw new RuntimeException('EXPIRY_DID_NOT_SEAL_BEFORE_NEXT_CALL_OR_AFTER_CALC');
+    }
+    $publicReprice=json_encode([$fresh['preview'],$aReplay,$b,$c,$failed],JSON_THROW_ON_ERROR);
+    foreach(['SID_gateway_initial','supplier_out_a','supplier_out_b','supplier_out_c','supplier_back_b','catalog-private',
+        'fixture_head','head_a','head_b','private supplier text'] as $private){
+        if(str_contains($publicReprice,$private))throw new RuntimeException('REPRICE_PRIVATE_LEAK_'.$private);
+    }
 }finally{
+    restore_error_handler();
     foreach(glob($gatewayFixtureDirectory.'/searches/*')?:[] as $path)unlink($path);
     rmdir($gatewayFixtureDirectory.'/searches');rmdir($gatewayFixtureDirectory);
 }
 
-echo "Andromeda flight selection continuation: PASS; exact verified refs/replay/expiry/sealed guards, supplier/DB=0\n";
+echo "Andromeda flight selection continuation: PASS; legacy refs, cap3 A/B/A/C latest-head/SID, durable budget/expiry/global seal, supplier/DB=0\n";

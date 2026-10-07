@@ -47,12 +47,57 @@ fare changes are outside this adapter's allowlist and authorization.
 
 The isolated ANEX endpoint adds quote_start and quote_calculate. Existing
 generation/search/offer/local-hotel validation runs first; native references stay
-server-side. Every supplier stage has a durable UNKNOWN reservation before HTTP,
-a finite four-call per-offer budget and no retry. Only one selected flight pair
-can consume the calculation. Terminal/cache/history reads cannot spend again.
+server-side. Every supplier stage has a durable UNKNOWN reservation before HTTP
+and no retry. Unversioned retained attempts preserve their original four-call,
+one-selected-pair contract; they are never upgraded or reopened. Unsupported or
+malformed versions fail closed.
 Returned package identity and selected transport UIDs must match at every stage.
 Only calcfull can produce quote_verified, with expiry no later than the search
 context. Personal/raw supplier documents are neither persisted nor projected.
+
+## Bounded repeated pricing — owner authorization 2026-10-07
+
+Only newly created version-2 attempts have repeated-pricing capability. The same
+temporary calculation id may allocate at most three distinct retained flight
+pairs: two initialization calls, then SetTransport + calcfull for each new pair,
+at most eight durably reserved calls. The pair decision, active-pair marker and
+call debit are saved together before HTTP. Failed or unknown decisions consume
+their slots; the budget, initialization and temporary id are never reset.
+
+The existing PHP session lock serializes mutable work. Its checkpoint releases
+and reacquires that lock, then verifies the complete expected retained state.
+Concurrent reentry sees the active reservation and cannot mutate it. A checkpoint
+failure does not trigger a second stale write; a lost session comparison escapes.
+For other failed final checkpoints, in-memory promotion is replaced by the pending
+reservation before the endpoint can close its session.
+
+Any supplier/stage failure seals the entire mutable context. Retained active,
+UNKNOWN or incomplete stages also block every new pair and cached-price promotion.
+No replacement session, replay, auth change or booking call recovers such a seal.
+The immutable binding includes the exact offer, search/generation, supplier claim,
+selected currency and retained child ages. Foreign bindings cannot spend calls.
+The current clock is checked before every HTTP call, after its response and after
+the result checkpoint; expiry never grants a renewed budget or a verified result.
+
+An open-context A -> B -> A cache hit returns A's original exact gross total,
+pair reference, verified_at and expires_at. It makes no supplier/factory/checkpoint
+call, spends no pair slot and leaves the mutable supplier head at B. A healthy
+quote_start therefore returns the last completed supplier calculation plus the
+retained safe choices inventory. The fourth uncached pair is locked; already
+verified pairs remain readable until expiry while the context stays open.
+
+Fresh version-2 responses add only the capability marker
+`repricing={enabled,max_pairs:3,used_pairs,remaining_pairs}` and retain the existing
+choices projection in verified responses. Counts are derived from durable pair
+decisions; disabled contexts report remaining_pairs=0. Legacy responses have no
+marker. Receipts project up to eight sanitized stage facts with pair ordinals,
+without private supplier ids or opaque choice references.
+
+This bounded source contract uses the existing frontend endpoints and unchanged
+gross/identity/selected-UID authority. Offline repeated-pair fixtures do not prove
+that the installed token and live supplier session accept repeated SetTransport
+and calcfull; that requires separately reserved runtime acceptance. No APD, fuel,
+transport markup, FX or price-delta arithmetic is introduced.
 
 Target: NEXT visual-search -> shared prototype-search/data.js -> existing
 isolated ANEX endpoint. This source package alone does not publish UI or establish

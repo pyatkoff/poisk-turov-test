@@ -821,7 +821,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         $selectedCurrency = $state['gateway']['search']['context']['currency_id'] ?? null;
         $quoteEntry['supplier_currency_id'] = is_int($selectedCurrency) || is_string($selectedCurrency) ? (string) $selectedCurrency : null;
         return array_replace($reply, anytour_anex_quote_run($request, $state, $offer, $known[$key],
-            $quoteEntry, $quoteFactory, $checkpoint, $now));
+            $quoteEntry, $quoteFactory, $checkpoint, $now, $clock));
     }
     if ($request['action'] === 'additional_prices') {
         if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
@@ -1023,19 +1023,48 @@ function anytour_anex_search3_quote_receipt(array $session): array
     $reasons = ['ANEX_QUOTE_IDENTITY_UNCONFIRMED', 'ANEX_QUOTE_TRANSPORT_UNCONFIRMED',
         'ANEX_QUOTE_PRICE_UNCONFIRMED', 'ANEX_QUOTE_SUPPLIER_REJECTED', 'ANEX_QUOTE_HTTP_ERROR',
         'ANEX_QUOTE_TRANSPORT_ERROR', 'ANEX_QUOTE_INVALID_RESPONSE', 'ANEX_QUOTE_CLIENT_UNAVAILABLE',
-        'ANEX_QUOTE_RATE_LIMIT', 'ANEX_QUOTE_UNKNOWN'];
+        'ANEX_QUOTE_RATE_LIMIT', 'ANEX_QUOTE_UNKNOWN', 'ANEX_QUOTE_EXPIRED'];
     foreach (array_slice(is_array($attempts) ? $attempts : [], 0, 40) as $attempt) {
         if (!is_array($attempt)) continue;
         $status = $attempt['public']['status'] ?? 'quote_unknown';
-        if (!in_array($status, ['quote_choices', 'quote_verified', 'quote_failed', 'quote_unknown'], true)) $status = 'quote_unknown';
+        $versioned = ($attempt['version'] ?? null) === 2;
+        $statuses = ['quote_choices', 'quote_verified', 'quote_failed', 'quote_unknown'];
+        if ($versioned) $statuses[] = 'quote_expired';
+        if (!in_array($status, $statuses, true)) $status = 'quote_unknown';
         $record = ['status' => $status, 'reason' => null, 'stages' => []];
+        if ($versioned) {
+            $calls = $attempt['reserved_calls'] ?? null;
+            $record['version'] = 2;
+            $record['reserved_calls'] = is_int($calls) && $calls >= 0 && $calls <= 8 ? $calls : null;
+            $record['sealed'] = !anytour_anex_quote_reprice_ready($attempt);
+            if ($record['sealed'] && !in_array($status, ['quote_failed', 'quote_expired'], true)) $record['status'] = 'quote_unknown';
+        }
         $reason = $attempt['public']['reason'] ?? null;
         if (in_array($reason, $reasons, true)) $record['reason'] = $reason;
-        foreach (['start', 'transports', 'SetTransport', 'calcfull'] as $stage) {
-            $state = $attempt['stages'][$stage] ?? null;
+        $stageFacts = [];
+        foreach ($versioned ? ['start', 'transports'] : ['start', 'transports', 'SetTransport', 'calcfull'] as $stage) {
+            $stageFacts[] = ['stage' => $stage, 'state' => $attempt['stages'][$stage] ?? null,
+                'diagnostics' => $attempt['diagnostics'][$stage] ?? []];
+        }
+        if ($versioned) {
+            $pairs = is_array($attempt['pairs'] ?? null) ? array_slice($attempt['pairs'], 0, 3) : [];
+            $pairIndex = 0;
+            foreach ($pairs as $pair) {
+                ++$pairIndex;
+                if (!is_array($pair)) continue;
+                foreach (['SetTransport', 'calcfull'] as $stage) {
+                    $stageFacts[] = ['stage' => $stage, 'state' => $pair['stages'][$stage] ?? null,
+                        'diagnostics' => $pair['diagnostics'][$stage] ?? [], 'pair_index' => $pairIndex];
+                }
+            }
+        }
+        foreach ($stageFacts as $fact) {
+            $stage = $fact['stage'];
+            $state = $fact['state'];
             if (!in_array($state, ['unknown', 'complete'], true)) continue;
             $row = ['stage' => $stage, 'state' => $state];
-            $diagnostics = $attempt['diagnostics'][$stage] ?? [];
+            if (isset($fact['pair_index'])) $row['pair_index'] = $fact['pair_index'];
+            $diagnostics = is_array($fact['diagnostics']) ? $fact['diagnostics'] : [];
             foreach (['http_status' => 599, 'response_bytes' => 2097152] as $field => $max) {
                 $value = $diagnostics[$field] ?? null;
                 if (is_int($value) && $value >= 0 && $value <= $max) $row[$field] = $value;
