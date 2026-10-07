@@ -125,8 +125,9 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
     await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
     const openList=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
     const choose=async()=>{const row=page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').first();await row.waitFor({state:'visible'});await row.click();};
-    await openList();await choose();const before=quoteCount();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('[data-action="apply-andromeda-flights"]').waitFor();
-    await page.locator('[data-action="apply-andromeda-flights"]').click();
+    // This fixture has one exact pair: the existing explicit refresh continues it automatically.
+    // The original broad matrix separately selects both alternative directions.
+    await openList();await choose();const before=quoteCount();await page.locator('[data-action="refresh-hotel"]').click();
     if(mode==='exact'||mode==='legacy'){
      await page.locator('[data-action="andromeda-application-preview"]').waitFor();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/125500/);
     }else{
