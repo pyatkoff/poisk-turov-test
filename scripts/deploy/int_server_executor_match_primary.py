@@ -95,6 +95,15 @@ NR5_SOURCE_FILES = (
     *NU5_SOURCE_FILES,
 )
 
+PASSIVE_OCT4_MODE = 'match-passive-oct4-frontier'
+PASSIVE_OCT4_OPERATION = 'int-andromeda-match-passive-oct4-frontier-20261005-v1'
+PASSIVE_OCT4_BATCH = 'passive-oct4-before175942'
+PASSIVE_OCT4_SOURCE_FILES = (
+    'scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py',
+    'scripts/diagnostics/fixtures/hotel_match_passive_oct4_frontier_readonly_v1.json',
+    'tests/hotel_match_passive_oct4_frontier_readonly_v1_test.py',
+)
+
 OBSERVED_PAGE1_MODE = 'match-observed-page1-identity'
 OBSERVED_PAGE1_OPERATION = 'int-andromeda-match-observed-page1-identity-20261005-v1'
 OBSERVED_PAGE1_BATCH = 'observed-page1-20261004-175945'
@@ -202,11 +211,16 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == PASSIVE_OCT4_MODE:
+            core.need(operation == PASSIVE_OCT4_OPERATION and batch == PASSIVE_OCT4_BATCH,
+                      'passive_oct4_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': PASSIVE_OCT4_OPERATION,
+                    'batch': PASSIVE_OCT4_BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == OBSERVED_PAGE1_MODE:
             core.need(operation == OBSERVED_PAGE1_OPERATION and batch == OBSERVED_PAGE1_BATCH,
                       'observed_page1_fixed_scope')
@@ -2203,6 +2217,122 @@ REMOTE_NR5_DISPATCH = r'''    if mode=='match-nonbg5-url-paths-terminal-readback
 
 '''
 
+REMOTE_PASSIVE_OCT4_HANDLER = r'''
+def validate_match_passive_oct4(data,receipt,digest,input_digest,expected_source,validate_source):
+    fixed={'schema':'match-passive-oct4-frontier-result/1',
+           'operation':'int-andromeda-match-passive-oct4-frontier-20261005-v1',
+           'batch':'passive-oct4-before175942','source_sha':expected_source,
+           'provider_http_calls':0,'physical_http_attempts':0,'database_writes':0,
+           'mapping_writes':0,'booking_calls':0,'lead_calls':0,'accepted':0,'written':0,
+           'safe_to_write_now':False,'acceptance_evaluated':False,
+           'global_uniqueness_evaluated':False,'original_event_verified':False,
+           'session_identity_verified':False,'route_identity_verified':False,
+           'raw_samo_evidence_verified':False,'independent_tv_identity_verified':False,
+           'current_registry_verified':False,'no_replay':True}
+    if (not isinstance(data,dict) or not isinstance(receipt,dict)
+            or any(type(data.get(k)) is not type(v) or data.get(k)!=v for k,v in fixed.items())
+            or data.get('private_input_sha256')!=input_digest
+            or receipt.get('private_input_sha256')!=input_digest
+            or receipt.get('result_sha256')!=digest):fail('passive_oct4_terminal_binding')
+    receipt_keys={'operation','batch','source_sha','state','private_input_sha256','result_sha256',
+                  'provider_http_calls','physical_http_attempts','database_writes','mapping_writes',
+                  'booking_calls','lead_calls','accepted','written','database_reads',
+                  'database_read_attempts','read_transaction_rolled_back','php_invocations',
+                  'safe_to_write_now','acceptance_evaluated','global_uniqueness_evaluated',
+                  'original_event_verified','session_identity_verified','route_identity_verified',
+                  'raw_samo_evidence_verified','independent_tv_identity_verified',
+                  'current_registry_verified','no_replay'}
+    if set(receipt)!=receipt_keys:fail('passive_oct4_receipt_shape')
+    for key,value in receipt.items():
+        if key not in ('result_sha256','private_input_sha256') and (key not in data or type(value) is not type(data[key]) or value!=data[key]):fail('passive_oct4_receipt_binding')
+    try:validate_source(data)
+    except Exception:fail('passive_oct4_source_validation')
+    if data['state'] not in ('completed_read_only','completed_with_holds','held_overflow_no_replay','terminal_failed_no_replay'):fail('passive_oct4_terminal_state')
+    return data
+
+def run_match_passive_oct4(stage):
+    if (operation!='int-andromeda-match-passive-oct4-frontier-20261005-v1'
+            or payload.get('batch')!='passive-oct4-before175942'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('passive_oct4_scope')
+    runner=stage/'scripts/diagnostics/hotel_match_passive_oct4_frontier_readonly_v1.py'
+    manifest=stage/'scripts/diagnostics/fixtures/hotel_match_passive_oct4_frontier_readonly_v1.json'
+    source_test=stage/'tests/hotel_match_passive_oct4_frontier_readonly_v1_test.py'
+    checked=[(runner,'c86a8b34ef288303f19d93599ff842d7e8b99299231b3dbeb37e364f618af4b3',2*1024*1024),
+             (manifest,'64d4b3e497988068676d29b8c6318f6b02ef042f109cef3dda118cfcf164b3d2',65536),
+             (source_test,'2b4fabfe3472cb58ad2bf21db5faabd023dd2c2f9b7a3c4bbbf148cf7347486e',2*1024*1024)]
+    for path,digest,maximum in checked:
+        if path.resolve()!=path or not safe_file(path,maximum) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('passive_oct4_source_binding')
+    parent=home/'.anytoour-match';root=parent/'operations'
+    for folder in (parent,root):
+        if not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder:fail('passive_oct4_private_root')
+    child=root/operation
+    if child.exists() or child.is_symlink():fail('passive_oct4_child_exists_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'passive-oct4-before175942',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_database_read'}
+    def exclusive(path,value):
+        raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(fd,'wb') as stream:
+            if stream.write(raw)!=len(raw):fail('passive_oct4_reservation_short_write')
+            stream.flush();os.fsync(stream.fileno())
+        fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(fd)
+        finally:os.close(fd)
+        if path.read_bytes()!=raw:fail('passive_oct4_reservation_readback')
+    exclusive(parent/'passive-oct4-before175942-batch.json',reservation)
+    child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    exclusive(child/'reservation.json',reservation)
+    result_path=child/'result.json';receipt_path=child/'receipt.json';input_path=child/'current-input.json'
+    env={key:os.environ[key] for key in ('PATH','HOME','LANG','LC_ALL') if key in os.environ}
+    env.update({'ANYTOUR_ROOT':str(project),'MATCH_SOURCE_ROOT':str(stage),
+                'MATCH_PRIVATE_DIRECTORY':str(child),'MATCH_CURRENT_MANIFEST_PATH':str(manifest),
+                'MATCH_RESULT_PATH':str(result_path),'MATCH_SOURCE_SHA':source})
+    run=subprocess.run(['python3',str(runner),'--execute'],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    if (not safe_file(result_path,32*1024*1024) or not safe_file(receipt_path,65536)
+            or not safe_file(input_path,136*1024*1024) or run.stderr.strip()
+            or len(run.stdout.encode())>65536):fail('passive_oct4_terminal_missing_no_replay')
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('checked_passive_oct4_source',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    try:
+        result_raw=module.file_bytes(result_path,32*1024*1024)
+        receipt_raw=module.file_bytes(receipt_path,65536)
+        input_raw=module.file_bytes(input_path,136*1024*1024)
+        data=module.parsed(result_raw);receipt=module.parsed(receipt_raw)
+    except Exception:fail('passive_oct4_terminal_artifact_parse')
+    digest=hashlib.sha256(result_raw).hexdigest();input_digest=hashlib.sha256(input_raw).hexdigest()
+    summary=validate_match_passive_oct4(data,receipt,digest,input_digest,source,
+                                      lambda value:module.validate_result(value,receipt,source))
+    successful=summary['state'] in ('completed_read_only','completed_with_holds')
+    if run.returncode!=(0 if successful else 2):fail('passive_oct4_exit_binding')
+    try:stdout=module.parsed(run.stdout)
+    except Exception:fail('passive_oct4_stdout_binding')
+    stdout_types={'state':str,'rows_examined':int,'accepted':int,'written':int}
+    if (not isinstance(stdout,dict) or set(stdout)!=set(stdout_types)
+            or any(type(stdout[key]) is not kind or stdout[key]!=data[key] for key,kind in stdout_types.items())):fail('passive_oct4_stdout_binding')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':successful,'no_replay':True,'summary':summary}
+
+'''
+
+REMOTE_PASSIVE_OCT4_DISPATCH = r'''    if mode=='match-passive-oct4-frontier':
+        lane=run_match_passive_oct4(stage)
+        result['match_passive_oct4_frontier']=lane
+        result['supplier_calls']=0
+        for key in ('database_reads','database_read_attempts','read_transaction_rolled_back','php_invocations'):
+            result[key]=lane['summary'][key]
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
+
+'''
+
 REMOTE_OBSERVED_PAGE1_HANDLER = r'''
 def validate_match_observed_page1_identity(data,receipt,digest,input_digest,expected_source,validate_source):
     fixed={'schema':'match-observed-page1-identity-result/1',
@@ -3222,7 +3352,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False, passive_oct4: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -3280,6 +3410,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_NR5_HANDLER, REMOTE_NR5_DISPATCH, NR5_MODE
     if observed_page1:
         handler, mode_dispatch, selected_mode = REMOTE_OBSERVED_PAGE1_HANDLER, REMOTE_OBSERVED_PAGE1_DISPATCH, OBSERVED_PAGE1_MODE
+    if passive_oct4:
+        handler, mode_dispatch, selected_mode = REMOTE_PASSIVE_OCT4_HANDLER, REMOTE_PASSIVE_OCT4_DISPATCH, PASSIVE_OCT4_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -3303,14 +3435,14 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
         str(command.get('operation_id','')), str(command.get('batch','')),
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
-    if command['mode'] == OBSERVED_PAGE1_MODE:
+    if command['mode'] in (OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE):
         core.need(type(command.get('maximum_writes')) is int
                   and type(command.get('provider_http_calls')) is int,
                   'observed_page1_authorized_counter_type')
@@ -3338,8 +3470,9 @@ def activate(core, command: dict) -> None:
     nu5 = command['mode'] == NU5_MODE
     nr5 = command['mode'] == NR5_MODE
     observed_page1 = command['mode'] == OBSERVED_PAGE1_MODE
+    passive_oct4 = command['mode'] == PASSIVE_OCT4_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1, passive_oct4)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -3379,6 +3512,8 @@ def activate(core, command: dict) -> None:
         selected_files = NR5_SOURCE_FILES
     if observed_page1:
         selected_files = OBSERVED_PAGE1_SOURCE_FILES
+    if passive_oct4:
+        selected_files = PASSIVE_OCT4_SOURCE_FILES
     for path in selected_files:
         if path not in files:
             files.append(path)
