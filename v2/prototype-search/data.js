@@ -1589,7 +1589,10 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     const allowed=['supplier_transport','supplier_http','supplier_rejected','supplier_response','supplier_auth','quote_state','internal'];
     const category=kind|| (status===429?'limit':status===422?'unavailable':status===403?'access':status===400?'invalid_request':allowed.includes(payload?.failure_category)?payload.failure_category:'internal');
     const facts={};
-    const reason=category==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):null;
+    const reason=category==='quote_state'?safeQuoteFailureReason('andromeda',payload?.failure_reason):category==='supplier_response'&&[
+      'ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_INVALID_PACKAGE_RESPONSE','ANDROMEDA_INVALID_CLAIM_RESPONSE',
+      'ANDROMEDA_RESPONSE_TOO_LARGE','ANDROMEDA_SECRET_ECHO'
+    ].includes(payload?.failure_reason)?payload.failure_reason:null;
     if(reason)facts.failureReason=reason;
     if(category==='supplier_rejected'&&['broninit','get_flights','changeservice','calc'].includes(payload?.failure_stage)){
       facts.failureStage=payload.failure_stage;
