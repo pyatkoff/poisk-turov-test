@@ -44,6 +44,14 @@ local_phase3_inspection = importlib.util.module_from_spec(local_phase3_spec)
 local_phase3_spec.loader.exec_module(local_phase3_inspection)
 local_phase3_inspection.register_parser(core)
 
+LOCAL_RECOVERY_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_recovery_plan.py')
+local_recovery_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_recovery_plan', LOCAL_RECOVERY_SCRIPT)
+if local_recovery_spec is None or local_recovery_spec.loader is None:
+    raise RuntimeError('local_profile_recovery_registration_import')
+local_profile_recovery = importlib.util.module_from_spec(local_recovery_spec)
+local_recovery_spec.loader.exec_module(local_profile_recovery)
+local_profile_recovery.register_parser(core)
+
 LOCAL_APPLY_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_apply.py')
 local_apply_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_apply', LOCAL_APPLY_SCRIPT)
 if local_apply_spec is None or local_apply_spec.loader is None:
@@ -200,7 +208,9 @@ def execute_direct_anex(command: dict, source_root: Path) -> dict:
 
 
 def activate_local_plan(command: dict) -> None:
-    if command.get('mode') == local_phase3_inspection.MODE and command.get('operation_id') == local_phase3_inspection.OPERATION:
+    if command.get('mode') == local_profile_recovery.MODE and command.get('operation_id') == local_profile_recovery.OPERATION:
+        local_profile_recovery.activate(core, command, local_profile_plan)
+    elif command.get('mode') == local_phase3_inspection.MODE and command.get('operation_id') == local_phase3_inspection.OPERATION:
         local_phase3_inspection.activate(core, command, local_profile_plan)
     else:
         local_profile_plan.activate(core, command)
