@@ -35,7 +35,7 @@ def raw_response():
 def cli_case(base, raw=None):
     """Freeze only synthetic bytes; never modify a runtime/repository fixture."""
     home = Path(base).resolve() / "home"
-    project = home / "anytoour.ru"
+    project = home / "www" / "anytoour.ru"
     project.mkdir(parents=True)
     private_root = home / ".anytoour-match"
     opdir = private_root / "operations" / m.OP
@@ -75,6 +75,20 @@ def run_case(case):
 
 
 class Alias3RetainedFieldsTest(unittest.TestCase):
+    def test_nonstock_project_layout_is_rejected_before_retained_read(self):
+        with tempfile.TemporaryDirectory() as temp:
+            c = cli_case(temp)
+            wrong_project = c["home"] / "anytoour.ru"
+            wrong_project.mkdir()
+            c["env"]["ANYTOUR_ROOT"] = str(wrong_project)
+            reservation = (c["opdir"] / "reservation.json").read_bytes()
+            result = run_case(c)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("ValueError: execution_paths", result.stderr)
+            self.assertEqual((c["opdir"] / "reservation.json").read_bytes(), reservation)
+            self.assertEqual(c["original"].read_bytes(), c["raw"])
+            self.assertEqual({p.name for p in c["opdir"].iterdir()}, {"reservation.json"})
+
     def test_fixed_roster_namespaces_and_no_old_scope(self):
         f = m.manifest()
         self.assertEqual(len(f["rows"]), 3)
