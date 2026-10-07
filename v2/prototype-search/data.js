@@ -1612,6 +1612,9 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(responseCategory==='quote_state'&&responseFailure.failureReason==='ANDROMEDA_SELECTED_FLIGHTS_INVALID'
       &&['selected_pair_missing','existing_direction_duplicate','existing_uid_invalid','returned_direction_invalid',
         'selected_directions_mismatch','selected_uid_mismatch','public_pair_invalid'].includes(payload?.failure_detail))responseFailure.failureDetail=payload.failure_detail;
+    if(status===502&&category==='supplier_response'&&facts.failureReason==='ANDROMEDA_INVALID_PACKAGE_RESPONSE'
+      &&facts.failurePhase==='quote_bootstrap'&&['package_document_invalid','package_document_layout_invalid',
+        'package_document_item_invalid','package_catalog_key_invalid','package_catalog_key_empty'].includes(payload?.failure_detail))facts.failureDetail=payload.failure_detail;
     if(responseFailure)facts.responseFailure=Object.freeze(responseFailure);
     const message=category==='limit'?'Сейчас проверка этого поставщика недоступна. Выберите другое предложение или вернитесь позже.':
       category==='unavailable'?'Не удалось подтвердить этот тур. Выберите другое предложение.':
@@ -1731,6 +1734,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
             ...(failure.supplierCode?{supplierCode:failure.supplierCode}:{})});
           root.console?.warn?.('[AnyTour quote] '+JSON.stringify({...detail,
             ...(failure.failurePhase?{failurePhase:failure.failurePhase}:{}),
+            ...(failure.failureDetail?{failureDetail:failure.failureDetail}:{}),
             ...(failure.responseFailure?{responseFailure:failure.responseFailure}:{})}));
           if(typeof root.CustomEvent==='function'&&typeof root.dispatchEvent==='function')root.dispatchEvent(new root.CustomEvent('anytour:quote-failure',{detail}));
         }
