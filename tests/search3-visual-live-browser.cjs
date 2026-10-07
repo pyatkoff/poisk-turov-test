@@ -220,6 +220,8 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   failProfile=true;await page.goto(url+'&searched=1');await page.locator('[data-action="retry-hotel-restore"]').waitFor();
   assert(await submit.isDisabled());assert.match(await detail.textContent(),/Fictional Belek 01/);assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');assert.equal(submitted.length,0,'searched URL with one unresolved own ID must not broaden to whole-country search');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-error-${width}.png`)});
+  await page.locator('#search-form [data-action="destination"]').click();assert.equal(await page.locator('[data-action="destination-remove"][data-id="2002"]').getAttribute('aria-label'),'Убрать выбранный отель','unresolved selection has a usable accessible name, not undefined');
+  await page.locator('[data-action="destination-remove"][data-id="2002"]').click();await page.locator('[data-action="close-modal"]').click();assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002','Cancel preserves the unresolved ID too');
   const profileCount=profiles.length;failProfile=false;await page.locator('[data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
   assert.deepEqual(profiles.slice(profileCount),['2002'],'retry rereads only the unresolved own ID');assert.match(await detail.textContent(),/Fictional Belek 01.*Fictional Belek 02/);assert.equal(submitted.length,0,'retry restores the form without supplier replay');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-retry-${width}.png`)});

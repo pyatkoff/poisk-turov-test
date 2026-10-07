@@ -9,7 +9,7 @@
   "supplierRequests": "explicit-user-actions-only",
   "leadDelivery": false,
   "sourceFiles": {
-    "app.js": "7fb94eda69428fa369161afd3165dfded5ed0ce365f0020d544434f0d60cd5a4",
+    "app.js": "cba264ec609ba55d865c8692726cf2eddafc98b344ec45c1d11c5e98d9f5f0d1",
     "styles.css": "d86b84b04882a1b6d7ecbef338ae039e78dd6d5ee581675db3dcf8c97d29c816",
     "mobile-controls-v1.css": "8b5c50dd5e352ae95603801d0469a6f89d411365131fe1a4fdc44f20976f151c",
     "fixture-data.js": "1793005f8066fed74e3404ce633dba97fcae034b195d91ec2e11ef9cf92a75e3",
@@ -54,7 +54,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "dc7bca8f00560430aa63be65cc9655b65700328f9fbcd5e4106c254cc45eb45b",
+    "app.js": "2655e3ce8c8dd3b3dd107ef6db35f55187d3f174910c9d8fcd746950a386c5ef",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "4453b81db9637b275ddb75986b7fff196e665037b3e79dc086e9fa80663e083e",
     "styles.css": "94a2f03376bd9b0df51b82b9501b1266429b6f56a8aa58e4d7ac5d79a8e9c7d1",
