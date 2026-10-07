@@ -2,6 +2,9 @@ name: HOTEL MATCH alias3 retained fields readonly v1
 on:
   pull_request:
     paths:
+      - scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py
+      - scripts/diagnostics/fixtures/hotel_match_native_absent3_retained_fields_readonly_v1.json
+      - tests/hotel_match_native_absent3_retained_fields_readonly_v1_test.py
       - scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py
       - scripts/diagnostics/fixtures/hotel_match_operator115_only2_retained_fields_readonly_v1.json
       - tests/hotel_match_operator115_only2_retained_fields_readonly_v1_test.py
@@ -13,6 +16,9 @@ on:
       - .github/workflows/hotel-match-alias3-retained-fields-readonly-v1.yml
   push:
     paths:
+      - scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py
+      - scripts/diagnostics/fixtures/hotel_match_native_absent3_retained_fields_readonly_v1.json
+      - tests/hotel_match_native_absent3_retained_fields_readonly_v1_test.py
       - scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py
       - scripts/diagnostics/fixtures/hotel_match_operator115_only2_retained_fields_readonly_v1.json
       - tests/hotel_match_operator115_only2_retained_fields_readonly_v1_test.py
@@ -38,3 +44,6 @@ jobs:
       - run: python -m py_compile scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py
       - run: python tests/hotel_match_operator115_only2_retained_fields_readonly_v1_test.py
       - run: python scripts/diagnostics/hotel_match_operator115_only2_retained_fields_readonly_v1.py --self-test
+      - run: python -m py_compile scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py
+      - run: python tests/hotel_match_native_absent3_retained_fields_readonly_v1_test.py
+      - run: python scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py --self-test
