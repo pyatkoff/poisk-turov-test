@@ -199,6 +199,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    await page.locator('.search-submit').click();await page.waitForFunction(expected=>document.querySelector('#results-summary').textContent.includes(expected)&&document.querySelector('#search-status').hidden,provider==='andromeda'?'11 вариантов':'3 варианта');
    await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();
    if(provider==='andromeda'){
+    await page.locator('.offer-filter-disclosure>summary').waitFor();
     if(await page.locator('.offer-filter-disclosure:not([open])').count())await page.locator('.offer-filter-disclosure>summary').click();
     await page.locator('#offer-room').selectOption('STANDARD SEA VIEW');await page.locator('[data-action="group-more"]').click();
     await page.waitForFunction(()=>Object.values(history.state?.['anytour.prototype.v18.ui.v1']?.limits||{}).includes(12));
