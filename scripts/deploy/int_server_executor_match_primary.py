@@ -98,6 +98,9 @@ NR5_SOURCE_FILES = (
 ALIAS3_MODE = 'match-alias3-retained-fields-readonly'
 ALIAS3_OPERATION = 'int-andromeda-match-alias3-retained-fields-20261007-v1'
 ALIAS3_BATCH = 'alias3-retained-fields-20261007'
+ALIAS3_METADATA_MODE = 'match-alias3-terminal-metadata-readback'
+ALIAS3_METADATA_OPERATION = 'int-andromeda-match-alias3-terminal-metadata-20261007-v1'
+ALIAS3_METADATA_BATCH = 'alias3-terminal-metadata-20261007'
 ALIAS3_SOURCE_FILES = (
     'scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py',
     'scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json',
@@ -221,11 +224,15 @@ def register_parser(core) -> None:
         if not body.startswith(core.PREFIX):
             return original(body)
         parts = body[len(core.PREFIX):].split()
-        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE):
+        if len(parts) < 2 or parts[1] not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
             return original(body)
         core.need(len(parts) == 4, 'primary_command_shape')
         source, mode, operation, batch = parts
         core.need(core.SHA_RE.fullmatch(source) is not None, 'source_sha')
+        if mode == ALIAS3_METADATA_MODE:
+            core.need(operation == ALIAS3_METADATA_OPERATION and batch == ALIAS3_METADATA_BATCH, 'alias3_metadata_fixed_scope')
+            return {'source_sha': source, 'mode': mode, 'operation_id': operation,
+                    'batch': ALIAS3_METADATA_BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
         if mode == ALIAS3_MODE:
             core.need(operation == ALIAS3_OPERATION and batch == ALIAS3_BATCH, 'alias3_fields_fixed_scope')
             return {'source_sha': source, 'mode': mode, 'operation_id': operation,
@@ -3397,7 +3404,7 @@ def run_match_alias3_fields(stage):
     manifest=stage/'scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json'
     if (not safe_file(runner,2*1024*1024) or not safe_file(manifest,65536)
             or hashlib.sha256(manifest.read_bytes()).hexdigest()!='758f38da8a9d57f9e770a8b422f4115ea28650bc0fe97164e96c319c467cc36a'):fail('alias3_fields_source_binding')
-    pins={"scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py":"f47fa828f1f6aa6393376fb800850ea405a4949d579acefa67ca026fab138002","scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json":"758f38da8a9d57f9e770a8b422f4115ea28650bc0fe97164e96c319c467cc36a","scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py":"89f900e8e3342524419b4972cb27aad2b7e917c53e10df1db9475dcd852b1128","scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py":"c9133f53e44bd8263f185626a78ce38013a0ee1ad758a477d7a1824b6213e196"}
+    pins={"scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py":"47a5d0a03a85fbeae046eddc6ca8033ac30500c0491aefe362d7aa11f8cfb695","scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json":"758f38da8a9d57f9e770a8b422f4115ea28650bc0fe97164e96c319c467cc36a","scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py":"89f900e8e3342524419b4972cb27aad2b7e917c53e10df1db9475dcd852b1128","scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py":"c9133f53e44bd8263f185626a78ce38013a0ee1ad758a477d7a1824b6213e196"}
     for relative,digest in pins.items():
         path=stage/relative
         if path.resolve()!=path or not safe_file(path,2*1024*1024) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('alias3_fields_source_binding')
@@ -3465,6 +3472,112 @@ def run_match_alias3_fields(stage):
 
 '''
 
+REMOTE_ALIAS3_METADATA_HANDLER = r'''
+alias3_terminal_target_pins={"scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py":"f47fa828f1f6aa6393376fb800850ea405a4949d579acefa67ca026fab138002","scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json":"758f38da8a9d57f9e770a8b422f4115ea28650bc0fe97164e96c319c467cc36a","scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py":"89f900e8e3342524419b4972cb27aad2b7e917c53e10df1db9475dcd852b1128","scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py":"c9133f53e44bd8263f185626a78ce38013a0ee1ad758a477d7a1824b6213e196"}
+
+def run_match_alias3_terminal_metadata(stage):
+    # This operation never executes the consumed reader or opens supplier/capture bodies.
+    if (operation!='int-andromeda-match-alias3-terminal-metadata-20261007-v1'
+            or payload.get('batch')!='alias3-terminal-metadata-20261007'
+            or type(payload.get('maximum_writes')) is not int or payload['maximum_writes']!=0
+            or type(payload.get('provider_http_calls')) is not int or payload['provider_http_calls']!=0):fail('alias3_metadata_scope')
+    pins={"scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py":"47a5d0a03a85fbeae046eddc6ca8033ac30500c0491aefe362d7aa11f8cfb695","scripts/diagnostics/fixtures/hotel_match_alias3_retained_fields_readonly_v1.json":"758f38da8a9d57f9e770a8b422f4115ea28650bc0fe97164e96c319c467cc36a","scripts/diagnostics/hotel_match_nonbg7_unexported_fields_readonly_v1.py":"89f900e8e3342524419b4972cb27aad2b7e917c53e10df1db9475dcd852b1128","scripts/diagnostics/hotel_match_bg5_unexported_fields_readonly_v1.py":"c9133f53e44bd8263f185626a78ce38013a0ee1ad758a477d7a1824b6213e196"}
+    for relative,digest in pins.items():
+        path=stage/relative
+        if path.resolve()!=path or not safe_file(path,2*1024*1024) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:fail('alias3_metadata_source_binding')
+    import importlib.util,stat
+    runner=stage/'scripts/diagnostics/hotel_match_alias3_retained_fields_readonly_v1.py'
+    spec=importlib.util.spec_from_file_location('checked_alias3_metadata_helpers',runner)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    parent=home/'.anytoour-match';root=parent/'operations'
+    old_operation='int-andromeda-match-alias3-retained-fields-20261007-v1'
+    old_source='c35d9972c14d7f19aa8539e214217a8c0d5f2a7d'
+    old_mode='match-alias3-retained-fields-readonly';old_batch='alias3-retained-fields-20261007'
+    old_child=root/old_operation;old_outer=home/'.anytoour-int-executor'/old_operation
+    if project!=home/'www'/'anytoour.ru':fail('alias3_metadata_project_layout')
+    for folder in (parent,root,old_child,old_outer.parent,old_outer):
+        if (not folder.is_dir() or folder.is_symlink() or folder.resolve()!=folder
+                or stat.S_IMODE(folder.stat().st_mode)!=0o700):fail('alias3_metadata_private_root')
+    child=root/operation;marker=parent/'alias3-terminal-metadata-batch-20261007.json'
+    if child.exists() or child.is_symlink() or marker.exists() or marker.is_symlink():fail('alias3_metadata_consumed_no_replay')
+    reservation={'operation':operation,'source_sha':source,'batch':'alias3-terminal-metadata-20261007',
+                 'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_terminal_metadata_read'}
+    module.n.save(marker,reservation);child.mkdir(mode=0o700)
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+    module.n.save(child/'reservation.json',reservation)
+    targets=(('outer_reservation',old_outer/'reservation.json',65536),
+             ('installed_source',old_outer/'installed-source.json',131072),
+             ('outer_result',old_outer/'result.json',1048576),
+             ('consumed_batch',parent/'alias3-retained-fields-batch-20261007.json',65536),
+             ('child_reservation',old_child/'reservation.json',65536))
+    originals={};records=[];total=0
+    for label,path,cap in targets:
+        if path.is_symlink() or not path.is_file() or stat.S_IMODE(path.stat().st_mode)!=0o600:fail('alias3_metadata_file_security')
+        raw=module.n.file_bytes(path,cap);total+=len(raw)
+        if total>2*1024*1024:fail('alias3_metadata_total_cap')
+        digest=module.durable_bytes(child/('metadata-original-'+label+'.json'),raw)
+        originals[label]=raw;records.append({'role':label,'sha256':digest,'size_bytes':len(raw)})
+    # Preserve all exact originals before even parsing the first identity/receipt record.
+    values={label:module.n.parsed(raw) for label,raw in originals.items()}
+    outer_res=values['outer_reservation']
+    if (set(outer_res)!={'operation_id','source_sha','mode','reserved_at'}
+            or type(outer_res['reserved_at']) is not int or outer_res['reserved_at']<=0):fail('alias3_metadata_outer_reservation')
+    module.n.require_fields(outer_res,{'operation_id':old_operation,'source_sha':old_source,'mode':old_mode})
+    installed=values['installed_source']
+    if (set(installed)!={'source_sha','files'} or installed.get('source_sha')!=old_source
+            or not isinstance(installed['files'],dict) or len(installed['files'])<20):fail('alias3_metadata_installed_source')
+    for relative,digest in installed['files'].items():
+        if (not isinstance(relative,str) or not re.fullmatch(r'[A-Za-z0-9_./-]+',relative)
+                or relative.startswith('/') or '..' in relative.split('/')
+                or not isinstance(digest,str) or not re.fullmatch(r'[0-9a-f]{64}',digest)):fail('alias3_metadata_installed_source')
+    module.n.require_fields(installed['files'],alias3_terminal_target_pins)
+    expected_old_result={'schema_version':1,'operation_id':old_operation,'source_sha':old_source,'mode':old_mode,
+        'status':'unknown_no_replay','reason':'alias3_fields_terminal_missing_no_replay',
+        'supplier_calls':'unknown','database_writes':'unknown','booking_calls':0,'lead_calls':0,
+        'production_before':{'index.php':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
+                             'v2/index.php':None,'v2/api-v2.php':None,'v2/lead-adapter-v2.php':None}}
+    if not module.n.equal_typed(values['outer_result'],expected_old_result):fail('alias3_metadata_outer_result')
+    expected_old_res={'operation':old_operation,'source_sha':old_source,'batch':old_batch,
+        'provider_http_calls':0,'maximum_writes':0,'state':'reserved_before_retained_read'}
+    for label in ('consumed_batch','child_reservation'):
+        if not module.n.equal_typed(values[label],expected_old_res):fail('alias3_metadata_consumed_binding')
+    presence={}
+    for name in ('retained-original.json','current-input.json','result.json','receipt.json'):
+        path=old_child/name
+        if path.is_symlink() or (path.exists() and not path.is_file()):fail('alias3_metadata_capture_path_security')
+        presence[name]=path.exists()  # No capture-body open or read is permitted.
+    private_data={'schema':'match-alias3-terminal-metadata-private-input/1','operation':operation,
+        'batch':'alias3-terminal-metadata-20261007','source_sha':source,'target_operation':old_operation,
+        'target_source_sha':old_source,'metadata_records':records,'metadata_values':values,'capture_file_presence':presence}
+    input_digest=module.n.save(child/'current-input.json',private_data)
+    data={'schema':'match-alias3-terminal-metadata-result/1','operation':operation,'source_sha':source,
+        'batch':'alias3-terminal-metadata-20261007','state':'completed_read_only_terminal_metadata',
+        'target_operation':old_operation,'target_source_sha':old_source,
+        'target_status':'unknown_no_replay','target_reason':'alias3_fields_terminal_missing_no_replay',
+        'target_supplier_calls':'unknown','target_database_writes':'unknown','capture_file_presence':presence,
+        'metadata_records':records,'metadata_files_read':5,'metadata_bytes_read':total,
+        'private_input_sha256':input_digest,'original_raw_files_read':0,'old_capture_bodies_read':0,
+        'old_operation_replayed':False,'provider_http_calls':0,'physical_http_attempts':0,
+        'database_reads':0,'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,
+        'accepted':0,'written':0,'acceptance_evaluated':False,'current_readiness':'not_evaluated','no_replay':True}
+    digest=module.n.save(child/'result.json',data)
+    receipt={key:data[key] for key in ('operation','batch','source_sha','state','target_operation','target_source_sha',
+        'target_status','private_input_sha256','provider_http_calls','physical_http_attempts','database_reads',
+        'database_writes','mapping_writes','booking_calls','lead_calls','accepted','written','acceptance_evaluated','no_replay')}
+    receipt['result_sha256']=digest;module.n.save(child/'receipt.json',receipt)
+    def checked(path,limit,expected,sha=None):
+        raw=module.n.file_bytes(path,limit)
+        if (sha is not None and hashlib.sha256(raw).hexdigest()!=sha) or not module.n.equal_typed(module.n.parsed(raw),expected):fail('alias3_metadata_terminal_readback')
+    checked(child/'current-input.json',2*1024*1024,private_data,input_digest)
+    checked(child/'result.json',65536,data,digest);checked(child/'receipt.json',65536,receipt)
+    for record in records:
+        raw=module.n.file_bytes(child/('metadata-original-'+record['role']+'.json'),record['size_bytes'])
+        if hashlib.sha256(raw).hexdigest()!=record['sha256']:fail('alias3_metadata_original_readback')
+    return {'result_sha256':digest,'private_input_sha256':input_digest,'successful':True,'no_replay':True,'summary':data}
+'''
+
 REMOTE_ALIAS3_DISPATCH = r'''    if mode=='match-alias3-retained-fields-readonly':
         lane=run_match_alias3_fields(stage)
         result['match_alias3_retained_fields_readonly']=lane
@@ -3477,6 +3590,18 @@ REMOTE_ALIAS3_DISPATCH = r'''    if mode=='match-alias3-retained-fields-readonly
         result['production_unchanged']=True
         result['status']='complete' if lane['successful'] else 'terminal_nonzero_no_replay'
 
+    if mode=='match-alias3-terminal-metadata-readback':
+        lane=run_match_alias3_terminal_metadata(stage)
+        result['match_alias3_terminal_metadata']=lane
+        result['supplier_calls']=0
+        result['database_reads']=0
+        result['database_writes']=0
+        result['mapping_writes']=0
+        result['production_after']=fingerprints()
+        if result['production_after']!=before:fail('production_drift')
+        result['production_unchanged']=True
+        result['status']='complete'
+
 '''
 
 
@@ -3485,7 +3610,7 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
                         target_catalog: bool = False, target_readback: bool = False,
                         target_preflight: bool = False, target_preflight_readback: bool = False,
                         target_v2: bool = False, source3: bool = False, intourist4: bool = False,
-                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False, passive_oct4: bool = False, alias3: bool = False) -> str:
+                        intourist4_readback: bool = False, funsun2: bool = False, anex2: bool = False, delta: bool = False, bf8: bool = False, bp8: bool = False, bf5: bool = False, nf7: bool = False, nu5: bool = False, nr5: bool = False, observed_page1: bool = False, passive_oct4: bool = False, alias3: bool = False, alias3_metadata: bool = False) -> str:
     remote = core.REMOTE
     definition = 'def run_match942(stage, mode, offset, limit):\n'
     dispatch = "    if mode=='match-tv942-write':\n"
@@ -3547,6 +3672,8 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
         handler, mode_dispatch, selected_mode = REMOTE_PASSIVE_OCT4_HANDLER, REMOTE_PASSIVE_OCT4_DISPATCH, PASSIVE_OCT4_MODE
     if alias3:
         handler, mode_dispatch, selected_mode = REMOTE_ALIAS3_HANDLER, REMOTE_ALIAS3_DISPATCH, ALIAS3_MODE
+    if alias3_metadata:
+        handler, mode_dispatch, selected_mode = REMOTE_ALIAS3_METADATA_HANDLER, REMOTE_ALIAS3_DISPATCH, ALIAS3_METADATA_MODE
     if intourist4 or intourist4_readback or funsun2 or anex2:
         # These fixed Tourvisor operations are authorized by the registered parser.
         # Bind the emitted first guard to the exact triple, before any reservation;
@@ -3570,14 +3697,14 @@ def remote_with_primary(core, proof: bool = False, native: bool = False, guarded
 
 
 def activate(core, command: dict) -> None:
-    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE):
+    if command.get('mode') not in (MODE, READBACK_MODE, NATIVE_MODE, GUARDED_MODE, BG_MODE, SHAMS_GEO_MODE, SHAMS_GEO_READBACK_MODE, SHAMS_WRITE_MODE, TARGET_MODE, TARGET_READBACK_MODE, TARGET_PREFLIGHT_MODE, TARGET_PREFLIGHT_READBACK_MODE, TARGET_V2_MODE, SOURCE3_MODE, INTOURIST4_MODE, INTOURIST4_READBACK_MODE, FUNSUN2_MODE, ANEX2_MODE, DELTA_MODE, BF8_MODE, BP8_MODE, BF5_MODE, NF7_MODE, NU5_MODE, NR5_MODE, OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
         return
     expected = core.parse_command(core.PREFIX + ' '.join([
         str(command.get('source_sha','')), command['mode'],
         str(command.get('operation_id','')), str(command.get('batch','')),
     ]))
     core.need(command == expected, 'primary_authorized_command_shape')
-    if command['mode'] in (OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE):
+    if command['mode'] in (OBSERVED_PAGE1_MODE, PASSIVE_OCT4_MODE, ALIAS3_MODE, ALIAS3_METADATA_MODE):
         core.need(type(command.get('maximum_writes')) is int
                   and type(command.get('provider_http_calls')) is int,
                   'observed_page1_authorized_counter_type')
@@ -3607,8 +3734,9 @@ def activate(core, command: dict) -> None:
     observed_page1 = command['mode'] == OBSERVED_PAGE1_MODE
     passive_oct4 = command['mode'] == PASSIVE_OCT4_MODE
     alias3 = command['mode'] == ALIAS3_MODE
+    alias3_metadata = command['mode'] == ALIAS3_METADATA_MODE
     bf8 = command['mode'] == BF8_MODE
-    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1, passive_oct4, alias3)
+    remote = remote_with_primary(core, proof, native, guarded, bg, shams_geo, shams_geo_readback, shams_write, target_catalog, target_readback, target_preflight, target_preflight_readback, target_v2, source3, intourist4, intourist4_readback, funsun2, anex2, delta, bf8, bp8, bf5, nf7, nu5, nr5, observed_page1, passive_oct4, alias3, alias3_metadata)
     if source3 or intourist4 or funsun2 or anex2:
         # activate is reached only after stock checked_event; parse-only exits before it.
         token = os.environ.get('GH_TOKEN', '')
@@ -3650,7 +3778,7 @@ def activate(core, command: dict) -> None:
         selected_files = OBSERVED_PAGE1_SOURCE_FILES
     if passive_oct4:
         selected_files = PASSIVE_OCT4_SOURCE_FILES
-    if alias3:
+    if alias3 or alias3_metadata:
         selected_files = ALIAS3_SOURCE_FILES
     for path in selected_files:
         if path not in files:
