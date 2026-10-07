@@ -96,3 +96,9 @@ This first packet contains the exact v147 presentation files from Site commit `3
 New route: `/_preview/search3-next-candidate/visual-search/`. Existing Site, functional prototype and existing preview routes are preserved. `migration-manifest.json` records byte hashes for parity. This is the first staged migration, not a second design workstream.
 
 Next acceptance: the separately coordinated functional owner checks actual current TV/SAMO/ANEX offers. Reuse exact canonical identities, price/flight receipts and lead owner; do not substitute historical DB offers into live results. Keep the public Site reference unchanged. Physical-phone/Safari and real end-to-end acceptance remain open; mocked fixtures are not evidence of real availability.
+
+### Hotel picker usability block
+
+The same canonical hotel catalogue supplies available thumbnails, stable own IDs and verified legacy links. Missing or failed photos show a placeholder. Hotel matches stay within the selected country; countries remain reachable while a hotel name is typed. Accepting a country change repeats only the bounded catalogue lookup, keeps the query and rejects obsolete responses. Supplier search still requires the form submit.
+
+The mobile picker uses the visual viewport height above an open keyboard, with a compact header, three visible fixture rows and an accessible confirmation action. Chromium checks at 390/768/1280 include a simulated keyboard and viewport pan; these are not physical iPhone/Safari acceptance. Query errors, retry, draft cancel/Forward, 8+2 pagination, current-country cache and verified hotel ID submission are covered with fictional responses and no live supplier or lead HTTP.

@@ -1509,6 +1509,10 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 .form-picker .choice-check:has(svg){background:var(--brand);border-color:var(--brand)}
 .form-picker .choice-check svg{width:18px;height:18px}
 .form-picker .destination-row .chevron{margin:0;font-size:24px}
+.form-picker .destination-hotel-thumb{position:relative;display:grid;place-items:center;flex:none;width:64px;height:52px;overflow:hidden;border-radius:8px;background:#e9edf3;color:var(--muted)}
+.form-picker .destination-hotel-thumb>svg{width:22px;height:22px}
+.form-picker .destination-hotel-thumb>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.form-picker .destination-hotel-label{flex:1;min-width:0}
 .form-picker .destination-current-country{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:4px 14px;background:white;margin-top:12px}
 .form-picker .destination-current-country .text-button{font-size:12px;min-height:44px}
 .form-picker .replacement-value{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;font-size:14px;margin:8px 0 16px}
@@ -1641,7 +1645,23 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  .destination-dialog .destination-selection-heading .text-button{min-height:44px}
  .destination-dialog.destination-keyboard .destination-selection{padding:7px 0}
  .destination-dialog.destination-keyboard .destination-selection-heading{margin-bottom:4px}
- .destination-dialog.destination-keyboard .destination-apply-context{font-size:12px}
+ dialog.form-picker.destination-keyboard{inset:var(--destination-top) 0 auto;margin:0;height:var(--destination-height);max-height:var(--destination-height)}
+ dialog.form-picker.destination-keyboard .modal-header{min-height:52px;padding:4px 16px}
+ dialog.form-picker.destination-keyboard #modal-body{padding:8px 16px;scroll-padding-top:60px}
+ dialog.form-picker.destination-keyboard .destination-search-sticky{top:-8px;padding:0 0 4px}
+ dialog.form-picker.destination-keyboard .destination-search input{height:44px;min-height:44px}
+ dialog.form-picker.destination-keyboard .destination-search>svg{top:12px}
+ dialog.form-picker.destination-keyboard .destination-search-sticky>.picker-caption{display:none}
+ dialog.form-picker.destination-keyboard .destination-current-country{min-height:40px;margin-top:0;padding:0 8px;background:transparent;border:0}
+ dialog.form-picker.destination-keyboard .destination-current-country .text-button{min-height:40px}
+ dialog.form-picker.destination-keyboard .destination-section{margin-top:8px}
+ dialog.form-picker.destination-keyboard .destination-hotel-thumb{width:50px;height:42px}
+ dialog.form-picker.destination-keyboard .destination-hotel-thumb>img{width:100%;height:100%}
+ dialog.form-picker.destination-keyboard #modal-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 16px}
+ dialog.form-picker.destination-keyboard #modal-footer .picker-summary{min-width:0}
+ dialog.form-picker.destination-keyboard #modal-footer .picker-summary strong{font-size:12px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+ dialog.form-picker.destination-keyboard .destination-apply-context{display:none}
+ dialog.form-picker.destination-keyboard #modal-footer .primary{min-height:44px;max-width:none;width:auto;font-size:14px;padding:9px 12px}
 }
 /* v144: keep the actual price scope with the calendar, without an always-open filter list. */
 .dates-dialog .calendar-context{margin:0;font-size:14px;line-height:1.4}

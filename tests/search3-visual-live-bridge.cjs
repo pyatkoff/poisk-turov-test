@@ -7,6 +7,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
 const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 // Outside-only JSDOM does not fetch script elements. Service the real third
@@ -115,6 +116,34 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  console.log('PASS destination hierarchy: '+hierarchyRows.length+' rows, kind reads '+previousKindReads+' → '+firstHierarchyReads+', saved parent/child order preserved');
  click('[data-action="close-modal"]');await settle();w.AnyTourPrototypeData.catalog.regions['4']=regions;
  assert.equal(starts(),0,'city/meal/destination pickers never start suppliers');
+ // Real catalogue adapter: photos and exact IDs; country changes retain query
+ // and reject a response from a request whose AbortSignal was ignored.
+ transport.state.hotelCatalogue=require('./search3-visual-live-fixture.cjs').hotelCatalogue();
+ const beforePicker=starts(),tripFields=['#dates-label','#nights-label','#guests-label','#origin'].map(s=>q(s).value||q(s).textContent);
+ const typeHotel=value=>{q('#destination-query').value=value;q('#destination-query').dispatchEvent(new w.Event('input',{bubbles:true}));};
+ click('#search-form [data-action="destination"]');typeHotel('Rix');await wait(()=>d.querySelectorAll('.destination-hotel').length===8&&q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.match(q('#destination-scope').textContent,/Турция/);assert.equal(d.querySelectorAll('.destination-hotel img').length,7,'available photos are shown, missing photo uses its own placeholder');
+ const missing=q('.destination-hotel-image[src$="/test-missing-photo.svg"]');missing.dispatchEvent(new w.Event('error'));assert.equal(missing.hidden,true,'broken photo cannot cover the fallback');
+ click('[data-action="destination-more-hotels"]');assert.equal(d.querySelectorAll('.destination-hotel').length,10);
+ assert.equal(d.querySelector('[data-action="destination-more-hotels"]'),null);assert.match(q('#destination-hotels-heading').textContent,/10 в списке/);
+ click('[data-action="destination-hotel"][data-id="2002"]');assert.equal(q('[data-action="destination-hotel"][data-id="2002"]').getAttribute('aria-pressed'),'true');assert.match(q('[data-action="apply-destination"]').textContent,/Выбрать отель/);
+ assert.match(q('#destination-summary').textContent,/Rixos Fictional Belek 02/);click('[data-action="close-modal"]');await settle();
+ assert.deepEqual(['#dates-label','#nights-label','#guests-label','#origin'].map(s=>q(s).value||q(s).textContent),tripFields,'hotel draft cancel preserves trip');assert.match(q('#country').textContent,/Турция/);
+ w.history.forward();await wait(()=>q('#modal').open&&q('[data-action="destination-hotel"][data-id="2002"]'));assert.equal(q('[data-action="destination-hotel"][data-id="2002"]').getAttribute('aria-pressed'),'true','Forward retains the exact un-applied hotel');click('[data-action="close-modal"]');await settle();
+ let releaseHotel;transport.state.hotelLookupGates['4']=new Promise(resolve=>releaseHotel=resolve);
+ const lookupCount=()=>transport.calls.filter(c=>c.url==='/data/hotel-search-v1.php').length,beforeLookup=lookupCount();
+ click('#search-form [data-action="destination"]');typeHotel('Rix');await wait(()=>lookupCount()>beforeLookup);
+ click('[data-action="destination-countries"]');assert.equal(d.querySelectorAll('[data-action="destination-country"]').length,2,'typed hotel query does not hide country switching');
+ click('[data-action="destination-country"][data-value="100"]');await wait(()=>d.querySelectorAll('.destination-hotel').length===3&&q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(q('#destination-query').value,'Rix');assert([...d.querySelectorAll('.destination-hotel strong')].every(el=>el.textContent.includes('Egypt')));assert.match(q('#destination-scope').textContent,/Египет/);
+ const egypt=q('#destination-results').innerHTML;releaseHotel();delete transport.state.hotelLookupGates['4'];await settle();assert.equal(q('#destination-results').innerHTML,egypt,'late other-country response cannot replace or populate this list');
+ click('[data-action="destination-countries"]');click('[data-action="destination-country"][data-value="4"]');await wait(()=>q('#destination-query').getAttribute('aria-busy')==='false');
+ assert.equal(d.querySelectorAll('.destination-hotel').length,8);assert([...d.querySelectorAll('.destination-hotel strong')].every(el=>el.textContent.includes('Belek')),'other-country cached hotels never enter the current country');
+ transport.state.hotelLookupError=true;typeHotel('Rixos');await wait(()=>q('[data-action="retry-destination"]'));assert.equal(q('#destination-query').value,'Rixos');assert.match(q('.destination-current-country').textContent,/Турция/);
+ transport.state.hotelLookupError=false;click('[data-action="retry-destination"]');await wait(()=>q('#destination-query').getAttribute('aria-busy')==='false'&&!q('[data-action="retry-destination"]'));
+ assert.equal(d.querySelectorAll('.destination-hotel').length,8);click('[data-action="close-modal"]');await settle();transport.state.hotelCatalogue=[];
+ assert.equal(starts(),beforePicker,'hotel catalogue typing, country switch, retry, cancel and Forward never start suppliers');
+ console.log('PASS hotel picker block: catalogue photos/fallback, 8+2 rows, exact draft ID, country-query retention, stale response, cached country scope and retry; supplier HTTP0');
  w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));
  q('#max-price').value='abc';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(q('#max-price').getAttribute('aria-invalid'),'true');click('.search-submit');await settle();
