@@ -84,6 +84,26 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
  await page.locator(`#price-strip [data-date="${day}"]`).click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);assert.equal(await cards(),originalCards);
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'local dates and Cancel never start another supplier search');
 };
+const chosenDepartureJourney=async(browser,origin,base,evidence)=>{
+ const width=390,transport=fixture({tvFuel:20686}),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  const to=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to,ages:'',searched:'1'}));
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0);
+  await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
+  await chosenDepartureContext(page,width,transport,evidence);
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  console.log('PASS compiled chosen-departure journey: five widths, selected/empty/reset/Cancel, exact cards/URL and no extra fixture supplier starts');
+ }finally{await context.close();}
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -310,8 +330,7 @@ const server=http.createServer((req,res)=>{
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
    try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required'&&!transport.state.samoSolePair)value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights'){markSamoPairPending?.();await samoPairGate;}if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
-  const resultRangeTo=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
-  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to:resultRangeTo,ages:'',searched:'1',stars:'4'}));
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
@@ -397,7 +416,6 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
   await mobileCardPriceLayout(page,width,evidence);
-  await chosenDepartureContext(page,width,transport,evidence);
   await appliedSummaryControls(page,width,transport,evidence);
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
   await editResultSearch(page,width);transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();
@@ -869,6 +887,7 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
+ await chosenDepartureJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}
