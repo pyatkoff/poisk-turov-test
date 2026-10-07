@@ -857,7 +857,7 @@ function refreshResultPickerPreviews(){
 function renderResultHeadings(items,total,pristine){
  $('#results').classList.toggle('results-pristine',pristine);document.body.classList.toggle('results-pristine-active',pristine);
  $('#compact-route').textContent=`${state.search.origin} → ${destinationLabel(appliedDestination())}`;
- $('#compact-details').textContent=`Вылет ${rangeText(state.search.from,state.search.to)} · ${durationText()} · ${partyLabel(state.search)}`;
+ $('#compact-details').textContent=`${departureScopeText()} · ${durationText()} · ${partyLabel(state.search)}`;
 
  $('#route-label').textContent=`${esc(state.search.origin)} → ${esc(countryNames[state.search.country]||'')} · ${departureScopeText()}`;
  $('#results-title').textContent=pristine?'Ваш следующий отдых':state.onlyFavorites?'Ваши избранные отели':`Отели и туры · ${countryNames[state.search.country]||'Выберите направление'}`;

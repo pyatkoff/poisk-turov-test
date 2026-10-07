@@ -97,6 +97,16 @@ New route: `/_preview/search3-next-candidate/visual-search/`. Existing Site, fun
 
 Next acceptance: the separately coordinated functional owner checks actual current TV/SAMO/ANEX offers. Reuse exact canonical identities, price/flight receipts and lead owner; do not substitute historical DB offers into live results. Keep the public Site reference unchanged. Physical-phone/Safari and real end-to-end acceptance remain open; mocked fixtures are not evidence of real availability.
 
+### Applied departure day in results
+
+The compact result header uses the same applied departure scope as the result
+filter and trip summary. Selecting a day in the open price tape shows that exact
+day, including when no loaded offers match it. Clearing the day, removing its
+filter chip or tapping it again restores the original range. Cancelling a date
+edit preserves the applied day, cards and URL. These local actions do not start
+supplier searches. Fictional DOM and compiled Chromium coverage distinguishes
+this from live supplier or physical iPhone/Safari acceptance.
+
 ### Multiple selected hotels after a full URL reload
 
 The existing picker restores every selected own hotel ID through the canonical

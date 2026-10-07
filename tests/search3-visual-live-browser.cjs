@@ -48,6 +48,37 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
+const chosenDepartureContext=async(page,width,transport,evidence)=>{
+ if(width!==390)return;
+ const starts=transport.calls.filter(c=>c.action==='search_start').length,originalURL=page.url(),originalCards=await page.locator('#cards').innerHTML();
+ const day=trip.from,emptyDay=new Date(Date.parse(day+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+ const scope=async()=> (await page.locator('#compact-details').textContent()).split(' · ')[0];
+ const allDates=await scope();assert.match(allDates,/ — /);
+ for(const viewport of [360,390,430,768,1280]){
+  await page.setViewportSize({width:viewport,height:900});
+  await page.locator(`#price-strip [data-date="${day}"]`).click();
+  assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
+  assert.doesNotMatch(await scope(),/ — /);assert.equal(new URL(page.url()).searchParams.get('date'),day);
+  assert.equal(await page.locator('.hotel-card').count(),1);
+  if(viewport<=760){await page.locator('#results').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.body.classList.contains('mobile-results'));assert(await page.locator('#compact-search').isVisible());}
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+  await page.screenshot({path:path.join(evidence,`chosen-date-${viewport}.png`)});
+  await page.locator('#clear-date').click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);
+  await page.locator(`#price-strip [data-date="${emptyDay}"]`).click();assert.equal(await page.locator('.hotel-card').count(),0);
+  assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1],'empty results still describe the applied exact day');
+  await page.locator('[data-action="remove-filter"][data-key="date"]').click();assert.equal(await scope(),allDates);
+  fs.writeFileSync(path.join(evidence,`chosen-date-${viewport}.json`),JSON.stringify({width:viewport,chosenDay:day,emptyDay,compact_matches_applied:true,clear_and_chip_restore:true,overflow:false,supplier_HTTP:0,physicalSafari:false},null,2));
+ }
+ await page.setViewportSize({width,height:900});
+ await page.locator(`#price-strip [data-date="${day}"]`).click();const chosenURL=page.url(),chosenCards=await page.locator('#cards').innerHTML();
+ await editResultSearch(page,width);await page.locator('#search-form [data-action="dates"]').click();
+ await page.locator(`[data-action="day-pick"][data-date="${emptyDay}"]`).click();await page.locator('[data-action="apply-dates"]').click();
+ assert.equal(await page.locator('#cards').innerHTML(),chosenCards,'unsubmitted date edit leaves applied results intact');
+ await page.locator('#search-return').click();assert.equal(page.url(),chosenURL);assert.equal(await page.locator('#cards').innerHTML(),chosenCards);
+ assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
+ await page.locator(`#price-strip [data-date="${day}"]`).click();assert.equal(await scope(),allDates);assert.equal(page.url(),originalURL);assert.equal(await page.locator('#cards').innerHTML(),originalCards);
+ assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'local dates and Cancel never start another supplier search');
+};
 const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
@@ -274,7 +305,8 @@ const server=http.createServer((req,res)=>{
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
    try{const value=await transport.json(req.url(),{body:req.postData()});if(value.kind==='country'&&value.items)value.items.push(...['Египет','ОАЭ','Таиланд','Вьетнам','Мальдивы','Шри-Ланка','Китай','Россия','Австрия','Саудовская Аравия'].map((name,i)=>({id:100+i,kind:'country',parentId:null,name,slug:'test-country-'+i,revision:1,tourvisorIds:[String(100+i)]})));if(value.data?.state==='flight_selection_required'&&!transport.state.samoSolePair)value.data.flights.push(...value.data.flights.map((f,i)=>({...f,name:'TEST SAMO ALTERNATIVE '+i,flight_ref:'flight_'+String(i+3).repeat(32)})));if(JSON.parse(req.postData()||'{}').action==='quote_select_flights'){markSamoPairPending?.();await samoPairGate;}if(u.pathname.includes('anex')&&value.data?.status==='quote_verified')await new Promise(resolve=>{releaseAnexQuote=resolve;markAnexQuotePending();});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(e){forbidden.push(e.message);await route.abort();}
   });
-  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
+  const resultRangeTo=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to:resultRangeTo,ages:'',searched:'1',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');
@@ -360,6 +392,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:path.join(evidence,`results-${width}.png`)});
   await mobileCardPriceLayout(page,width,evidence);
+  await chosenDepartureContext(page,width,transport,evidence);
   await appliedSummaryControls(page,width,transport,evidence);
   const cardsBeforeDeparture=await page.locator('#cards').innerHTML(),urlBeforeDeparture=page.url(),startsBeforeDeparture=transport.calls.filter(c=>c.action==='search_start').length;
   await editResultSearch(page,width);transport.state.countriesFailure='2';await page.locator('[data-action="departure"]').click();await page.locator('[data-action="choose-departure"][data-value="Казань"]').click();await page.locator('[data-action="apply-departure"]').click();

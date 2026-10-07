@@ -2,13 +2,14 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day}=require('./search3-visual-live-fixture.cjs');
+const resultRangeTo=new Date(Date.parse(day+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
-const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,to:resultRangeTo,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 // Outside-only JSDOM does not fetch script elements. Service the real third
 // cold loader with a bounded local file, keeping transport fixture calls apart.
@@ -237,6 +238,27 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.equal(starts(),2);assert.equal(d.querySelectorAll('.hotel-card').length,1,'three sources use one canonical hotel');
  assert.equal(w.AnyTourPrototypeData.searchId,123,'live bridge retains dynamic searchId getter');
  assert(w.AnyTourPrototypeData.currentSupplierScope,'live bridge retains current supplier coverage');
+ // Applied date context follows the real local offer filter, including empty days.
+ const dateStarts=starts(),dateCards=q('#cards').innerHTML,dateURL=w.location.search;
+ const dateScope=()=>q('#compact-details').textContent.split(' · ')[0];
+ const allDates=dateScope();assert.match(allDates,/ — /);
+ click(`#price-strip [data-date="${day}"]`);
+ assert.equal(dateScope(),q('#route-label').textContent.split(' · ')[1],'compact context matches the actual chosen departure');
+ assert.doesNotMatch(dateScope(),/ — /);assert.equal(new URL(w.location.href).searchParams.get('date'),day);
+ assert.equal(d.querySelectorAll('.hotel-card').length,1);
+ const chosenCards=q('#cards').innerHTML,chosenURL=w.location.search;
+ click('#applied-search [data-action="edit-search"]');click('#search-form [data-action="dates"]');
+ click(`[data-action="day-pick"][data-date="${calendarDraftDay}"]`);click('[data-action="apply-dates"]');await settle();
+ assert.equal(q('#cards').innerHTML,chosenCards,'date draft leaves applied results intact');
+ click('#search-return');await settle();assert.equal(w.location.search,chosenURL);assert.equal(q('#cards').innerHTML,chosenCards);
+ assert.equal(dateScope(),q('#route-label').textContent.split(' · ')[1],'Cancel restores the chosen date context');
+ click('#clear-date');assert.equal(dateScope(),allDates);assert.equal(w.location.search,dateURL);
+ click(`#price-strip [data-date="${calendarDraftDay}"]`);assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ assert.equal(dateScope(),q('#route-label').textContent.split(' · ')[1],'empty results retain the exact chosen day');
+ click('[data-action="remove-filter"][data-key="date"]');assert.equal(dateScope(),allDates);assert.equal(q('#cards').innerHTML,dateCards);
+ click(`#price-strip [data-date="${day}"]`);click(`#price-strip [data-date="${day}"]`);
+ assert.equal(dateScope(),allDates);assert.equal(w.location.search,dateURL);assert.equal(starts(),dateStarts,'local date selection/clear/Cancel never starts suppliers');
+ console.log('PASS applied departure context: exact-day/empty-day narrowing, clear/chip/toggle, date edit Cancel and URL/card restoration; supplier HTTP0');
  const changeOrigin=value=>{q('#origin').value=value;q('#origin').dispatchEvent(new w.Event('change',{bubbles:true}));};
  const frozenCards=q('#cards').innerHTML,frozenURL=w.location.search,searchesBeforeRecovery=starts();
  click('#applied-search [data-action="edit-search"]');transport.state.countriesFailure='2';let releaseFailedCountries;transport.state.countryGates['2']=new Promise(resolve=>releaseFailedCountries=resolve);changeOrigin('Казань');
