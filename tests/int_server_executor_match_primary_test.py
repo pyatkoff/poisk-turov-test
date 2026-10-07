@@ -3069,4 +3069,177 @@ class Alias3RetainedFieldsRegistrationTest(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError,'alias3_fields_original_binding' if kind=='original' else 'alias3_fields_stdout_binding'):self.run_case(c)
 
 
+class Alias3TerminalMetadataRegistrationTest(unittest.TestCase):
+    def setUp(self):
+        self.core=fresh_core();registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX+SOURCE+' '+registration.ALIAS3_METADATA_MODE+' '+registration.ALIAS3_METADATA_OPERATION+' '+registration.ALIAS3_METADATA_BATCH
+
+    def stage(self,tmp):
+        c=Alias3RetainedFieldsRegistrationTest.stage(self,tmp)
+        runner=c['stage']/registration.ALIAS3_SOURCE_FILES[0]
+        fixture=c['stage']/registration.ALIAS3_SOURCE_FILES[1]
+        handler=registration.REMOTE_ALIAS3_METADATA_HANDLER.replace(FROZEN_ALIAS3_FILES[0][2],hashlib.sha256(runner.read_bytes()).hexdigest())
+        handler=handler.replace(FROZEN_ALIAS3_FILES[1][2],hashlib.sha256(fixture.read_bytes()).hexdigest())
+        ns=c['ns'];ns.update(operation=registration.ALIAS3_METADATA_OPERATION,re=re,
+            payload=dict(batch=registration.ALIAS3_METADATA_BATCH,maximum_writes=0,provider_http_calls=0))
+        exec(handler,ns)
+        for folder in (c['root'],c['opdir'].parent):folder.chmod(0o700)
+        old_child=c['opdir'];old_child.mkdir(mode=0o700)
+        outer=c['home']/'.anytoour-int-executor';outer.mkdir(mode=0o700)
+        old_outer=outer/registration.ALIAS3_OPERATION;old_outer.mkdir(mode=0o700)
+        old_source='c35d9972c14d7f19aa8539e214217a8c0d5f2a7d'
+        old_res=dict(operation=registration.ALIAS3_OPERATION,source_sha=old_source,batch=registration.ALIAS3_BATCH,
+                     provider_http_calls=0,maximum_writes=0,state='reserved_before_retained_read')
+        files={path:'d'*64 for path in self.core.FIXED};files.update(ns['alias3_terminal_target_pins'])
+        records={
+            'outer_reservation':(old_outer/'reservation.json',dict(operation_id=registration.ALIAS3_OPERATION,
+                source_sha=old_source,mode=registration.ALIAS3_MODE,reserved_at=1791370250)),
+            'installed_source':(old_outer/'installed-source.json',dict(source_sha=old_source,files=files)),
+            'outer_result':(old_outer/'result.json',dict(schema_version=1,operation_id=registration.ALIAS3_OPERATION,
+                source_sha=old_source,mode=registration.ALIAS3_MODE,status='unknown_no_replay',
+                reason='alias3_fields_terminal_missing_no_replay',supplier_calls='unknown',database_writes='unknown',
+                booking_calls=0,lead_calls=0,production_before={'index.php':'80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f',
+                'v2/index.php':None,'v2/api-v2.php':None,'v2/lead-adapter-v2.php':None})),
+            'consumed_batch':(c['marker'],copy.deepcopy(old_res)),
+            'child_reservation':(old_child/'reservation.json',copy.deepcopy(old_res))}
+        # Real stock metadata formatting differs from the artifact formatter; originals stay exact.
+        for label,(path,value) in records.items():
+            raw=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+            path.write_bytes(raw);path.chmod(0o600)
+        c.update(old_child=old_child,old_outer=old_outer,records=records,
+                 opdir=old_child.parent/registration.ALIAS3_METADATA_OPERATION,
+                 marker=c['root']/'alias3-terminal-metadata-batch-20261007.json',metadata_handler=handler)
+        return c
+
+    def run_case(self,c):
+        return c['ns']['run_match_alias3_terminal_metadata'](c['stage'])
+
+    def change(self,c,label,mutate):
+        path,value=c['records'][label];value=copy.deepcopy(value);mutate(value)
+        path.write_text(json.dumps(value));path.chmod(0o600)
+
+    def test_fixed_parser_source_contract_and_both_collector_guards(self):
+        command=self.core.parse_command(self.body())
+        self.assertEqual((command['maximum_writes'],command['provider_http_calls']),(0,0))
+        for body in (self.body()+' 1',self.body().replace(registration.ALIAS3_METADATA_OPERATION,registration.ALIAS3_OPERATION),
+                     self.body().replace(registration.ALIAS3_METADATA_BATCH,registration.ALIAS3_BATCH)):
+            with self.assertRaises(ValueError):self.core.parse_command(body)
+        for key,value in (('maximum_writes',True),('maximum_writes',1),('provider_http_calls',False),('provider_http_calls',1)):
+            changed=command.copy();changed[key]=value
+            with self.assertRaises(ValueError):registration.activate(self.core,changed)
+        fixed=list(self.core.FIXED)
+        with patch.object(self.core,'ensure_supplier_slot') as slot:
+            registration.activate(self.core,command);slot.assert_not_called()
+        self.assertEqual(self.core.FIXED,fixed+list(registration.ALIAS3_SOURCE_FILES))
+        self.assertIn('def run_match_alias3_terminal_metadata(stage):',self.core.REMOTE)
+        self.assertNotIn('def run_match_alias3_fields(stage):',self.core.REMOTE)
+        guards=[node.test for node in ast.walk(ast.parse(self.core.REMOTE)) if isinstance(node,ast.If)
+                and isinstance(node.test,ast.Compare) and isinstance(node.test.left,ast.Name)
+                and node.test.left.id=='mode' and isinstance(node.test.ops[0],ast.NotIn)]
+        self.assertEqual(len(guards),2)
+        for guard in guards:self.assertFalse(eval(compile(ast.Expression(guard),'<collector>','eval'),{},dict(mode=registration.ALIAS3_METADATA_MODE)))
+        self.assertLess(len(base64.b64encode(zlib.compress(self.core.REMOTE.encode(),9)))+100,65536)
+
+    def test_exact_metadata_originals_are_private_no_capture_body_or_subprocess(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c=self.stage(tmp);originals={label:path.read_bytes() for label,(path,_) in c['records'].items()}
+            poison=b'not-json and never-read capture secret'
+            for name in ('retained-original.json','current-input.json','result.json','receipt.json'):
+                path=c['old_child']/name;path.write_bytes(poison);path.chmod(0o600)
+            # Neither original supplier response nor any child capture may be reopened.
+            c['raw_path'].unlink();c['raw_path'].symlink_to(Path(tmp)/'missing-supplier-source')
+            real_open=os.open;real_path_open=Path.open
+            prohibited={c['raw_path']}|{c['old_child']/name for name in ('retained-original.json','current-input.json','result.json','receipt.json')}
+            def guarded_open(path,*args,**kwargs):
+                self.assertNotIn(Path(path),prohibited);return real_open(path,*args,**kwargs)
+            def guarded_path_open(path,*args,**kwargs):
+                self.assertNotIn(path,prohibited);return real_path_open(path,*args,**kwargs)
+            with patch.object(subprocess,'run',side_effect=AssertionError('no subprocess')),patch.object(os,'open',side_effect=guarded_open),patch.object(Path,'open',guarded_path_open):
+                lane=self.run_case(c)
+            data=lane['summary'];self.assertTrue(lane['successful'])
+            self.assertEqual(data['target_status'],'unknown_no_replay')
+            self.assertEqual((data['target_supplier_calls'],data['target_database_writes']),('unknown','unknown'))
+            self.assertEqual((data['metadata_files_read'],data['original_raw_files_read'],data['old_capture_bodies_read']),(5,0,0))
+            self.assertTrue(all(data['capture_file_presence'].values()))
+            self.assertEqual((data['provider_http_calls'],data['database_reads'],data['database_writes'],data['mapping_writes'],data['accepted'],data['written']),(0,0,0,0,0,0))
+            self.assertIs(data['acceptance_evaluated'],False);self.assertEqual(data['current_readiness'],'not_evaluated')
+            for label,raw in originals.items():
+                copy_path=c['opdir']/('metadata-original-'+label+'.json')
+                self.assertEqual(copy_path.read_bytes(),raw);self.assertEqual(copy_path.stat().st_mode&0o777,0o600)
+                self.assertEqual(c['records'][label][0].read_bytes(),raw)
+            self.assertEqual(c['opdir'].stat().st_mode&0o777,0o700)
+            self.assertNotIn('never-read',json.dumps(lane))
+
+    def test_missing_captures_stays_unknown_and_either_consumed_marker_blocks_replay(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c=self.stage(tmp);data=self.run_case(c)['summary']
+            self.assertFalse(any(data['capture_file_presence'].values()))
+            self.assertEqual(data['target_supplier_calls'],'unknown')
+            self.assertEqual(data['target_database_writes'],'unknown')
+            with self.assertRaisesRegex(RuntimeError,'alias3_metadata_consumed_no_replay'):self.run_case(c)
+            shutil.rmtree(c['opdir'])
+            with self.assertRaisesRegex(RuntimeError,'alias3_metadata_consumed_no_replay'):self.run_case(c)
+
+    def test_source_pins_and_wrong_layout_fail_before_metadata_reservation(self):
+        for relative in (*registration.ALIAS3_SOURCE_FILES,'wrong-layout'):
+            with tempfile.TemporaryDirectory() as tmp:
+                c=self.stage(tmp)
+                if relative=='wrong-layout':c['ns']['project']=c['home']/'anytoour.ru'
+                else:
+                    path=c['stage']/relative;path.write_bytes(path.read_bytes()+b'\n')
+                with patch.object(subprocess,'run',side_effect=AssertionError('no subprocess')):
+                    with self.assertRaisesRegex(RuntimeError,'alias3_metadata_(source_binding|project_layout)'):self.run_case(c)
+                self.assertFalse(c['marker'].exists());self.assertFalse(c['opdir'].exists())
+
+    def test_all_original_metadata_durable_before_parse_and_optional_copy_filtering(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            c=self.stage(tmp);real_load=importlib.util.module_from_spec;seen=[]
+            def load_checked(spec):
+                module=real_load(spec);real_exec=spec.loader.exec_module
+                if spec.name!='checked_alias3_metadata_helpers':return module
+                def execute(value):
+                    real_exec(value);real_parse=value.n.parsed
+                    def parse(raw):
+                        self.assertEqual(len(list(c['opdir'].glob('metadata-original-*.json'))),5)
+                        seen.append(True);return real_parse(raw)
+                    value.n.parsed=parse
+                spec.loader.exec_module=execute;return module
+            with patch.object(importlib.util,'module_from_spec',side_effect=load_checked):self.run_case(c)
+            self.assertTrue(seen)
+
+    def test_identity_receipt_and_unknown_counters_are_closed_typed_and_consumed(self):
+        cases=(('outer_reservation',lambda d:d.update(reserved_at=True)),
+               ('outer_reservation',lambda d:d.update(source_sha=SOURCE)),
+               ('installed_source',lambda d:d['files'].update({registration.ALIAS3_SOURCE_FILES[0]:'1'*64})),
+               ('outer_result',lambda d:d.update(supplier_calls=0)),
+               ('outer_result',lambda d:d.update(database_writes=0)),
+               ('outer_result',lambda d:d.update(booking_calls=False)),
+               ('outer_result',lambda d:d.update(extra='forbidden')),
+               ('consumed_batch',lambda d:d.update(maximum_writes=False)),
+               ('child_reservation',lambda d:d.update(operation=registration.ALIAS3_METADATA_OPERATION)))
+        for label,mutate in cases:
+            with tempfile.TemporaryDirectory() as tmp:
+                c=self.stage(tmp);self.change(c,label,mutate)
+                with self.assertRaises((RuntimeError,ValueError)):self.run_case(c)
+                self.assertTrue(c['marker'].exists());self.assertTrue((c['opdir']/'reservation.json').exists())
+                self.assertEqual(len(list(c['opdir'].glob('metadata-original-*.json'))),5)
+                with self.assertRaisesRegex(RuntimeError,'alias3_metadata_consumed_no_replay'):self.run_case(c)
+
+    def test_duplicate_keys_caps_and_private_path_security_fail_closed(self):
+        for kind in ('duplicate','oversize','metadata_symlink','public_mode','capture_symlink'):
+            with tempfile.TemporaryDirectory() as tmp:
+                c=self.stage(tmp);path=c['records']['outer_reservation'][0]
+                if kind=='duplicate':path.write_bytes(b'{"operation_id":"x","operation_id":"y"}')
+                elif kind=='oversize':path.write_bytes(b' '*65537)
+                elif kind=='metadata_symlink':
+                    moved=path.with_suffix('.moved');path.rename(moved);path.symlink_to(moved)
+                elif kind=='public_mode':path.chmod(0o644)
+                else:(c['old_child']/'receipt.json').symlink_to(Path(tmp)/'missing-child-receipt')
+                with self.assertRaises((RuntimeError,ValueError)):self.run_case(c)
+                self.assertTrue(c['marker'].exists());self.assertFalse((c['opdir']/'result.json').exists())
+                with self.assertRaisesRegex(RuntimeError,'alias3_metadata_consumed_no_replay'):self.run_case(c)
+
+
 if __name__=='__main__':unittest.main()
