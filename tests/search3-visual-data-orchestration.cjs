@@ -420,6 +420,16 @@ async function selectedHotelRestoration(){
  assert.equal(cache.size,0,'a different own ID cannot substitute the requested selection');
  context.data.restoreHotel=async()=>({id:2002,country:'100',legacyIds:['7002']});await context.restoreURLHotel();
  assert.equal(cache.size,0,'a different country cannot substitute the requested selection');
+ const choiceStart=app.indexOf('function restoredDestinationChoice(value){'),choiceEnd=app.indexOf('\nfunction openDeparture(',choiceStart);
+ Object.assign(context,{structuredClone,countryNames:{'4':'Турция'},catalogReady:true});vm.runInContext(app.slice(choiceStart,choiceEnd),context);
+ cache.clear();selected.country='4';selected.hotelIds=[2001,2002];selected.hotelId=0;
+ const restored=value=>JSON.parse(JSON.stringify(context.restoredDestinationChoice(value)));
+ assert.deepEqual(restored({...selected,resorts:[]}).hotelIds,[2001,2002],'unresolved draft IDs survive passive history recovery');
+ context.countryNames={};context.catalogReady=false;
+ assert.deepEqual(restored({...selected,resorts:[]}).hotelIds,[2001,2002],'initial catalogue pending does not discard the saved draft');
+ context.countryNames={'4':'Турция'};context.catalogReady=true;cache.set(2002,{id:2002,country:'100',legacyIds:['7002']});
+ assert.deepEqual(restored({...selected,resorts:[]}).hotelIds,[2001],'known foreign-country metadata never joins the restored draft');
+ assert.equal(restored({country:'javascript:4',hotelIds:[2001],resorts:[]}).country,'4');
  console.log('PASS selected hotel URL restoration: multi-ID, partial failure/retry, duplicate and stale context, exact ID/country; supplierHTTP0');
 }
 (async()=>{

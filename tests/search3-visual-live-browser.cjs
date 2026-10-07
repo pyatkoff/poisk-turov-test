@@ -226,9 +226,22 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   const profileCount=profiles.length;failProfile=false;await page.locator('#catalog-error [data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
   assert.deepEqual(profiles.slice(profileCount),['2002'],'retry rereads only the unresolved own ID');assert.match(await detail.textContent(),/Fictional Belek 01.*Fictional Belek 02/);assert.equal(submitted.length,0,'retry restores the form without supplier replay');
   await page.screenshot({path:path.join(evidence,`multi-hotel-reload-retry-${width}.png`)});
+  await page.goto(url);await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
+  await page.locator('#search-form [data-action="destination"]').click();failProfile=true;await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelectorAll('[data-action="destination-remove"]').length===2&&document.querySelector('#catalog-error [data-action="retry-hotel-restore"]'));
+  assert.deepEqual(await page.locator('[data-action="destination-remove"]').evaluateAll(rows=>rows.map(row=>row.dataset.id)),['2001','2002'],'open-modal reload preserves the unresolved exact draft IDs');
+  assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отели \(2\)/);
+  assert.equal(await page.locator('[data-action="destination-all"]').getAttribute('aria-pressed'),'false','missing metadata does not turn the draft into Whole country');
+  await page.screenshot({path:path.join(evidence,`multi-hotel-history-${width}.png`)});
+  await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');
+  await page.goForward();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelectorAll('[data-action="destination-remove"]').length===2);
+  await page.locator('[data-action="apply-destination"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+  assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');assert.equal(submitted.length,0,'reload/Forward/Apply never starts a supplier search');
+  assert(await submit.isDisabled(),'keeping unresolved draft IDs does not authorize a broad search');
+  failProfile=false;await page.locator('#catalog-error [data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
   const started=page.waitForResponse(response=>new URL(response.url()).searchParams.get('action')==='search_start');await submit.click();await started;assert.deepEqual(submitted,[['7001','7002']],'explicit search submits both verified legacy links with OR identity');
   assert.deepEqual(errors,[]);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));
-  fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
+  fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
 const server=http.createServer((req,res)=>{

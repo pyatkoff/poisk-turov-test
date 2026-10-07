@@ -372,8 +372,8 @@ function recentDestinations(){const v=getStored('anytour.prototype.v18.destinati
 function rememberDestination(){const d=appliedDestination(),key=x=>JSON.stringify([x.country,[...x.resorts].sort(),destinationIds(x)]);saveStored('anytour.prototype.v18.destinations.v1',[d,...recentDestinations().filter(x=>key(x)!==key(d))].slice(0,3));}
 function restoredDestinationChoice(value){
  const fallback=structuredClone(currentDraftDestination());if(!value||typeof value!=='object')return fallback;
- const country=String(value.country||'');if(!countryNames[country])return fallback;
- const ids=destinationIds(value).filter(id=>destinationHotel(id)?.country===country),resorts=Array.isArray(value.resorts)?[...new Set(value.resorts.filter(v=>typeof v==='string'&&v.length<=120))].slice(0,20):[];
+ const country=String(value.country||'');if(!/^[1-9][0-9]*$/.test(country)||catalogReady&&!countryNames[country])return fallback;
+ const ids=destinationIds(value).filter(id=>!destinationHotel(id)||destinationHotel(id).country===country),resorts=Array.isArray(value.resorts)?[...new Set(value.resorts.filter(v=>typeof v==='string'&&v.length<=120))].slice(0,20):[];
  return {country,resorts:ids.length?[]:resorts,hotelId:ids.length===1?ids[0]:0,hotelIds:ids};
 }
 function openDeparture(restore=null){
