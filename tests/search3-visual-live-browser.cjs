@@ -201,6 +201,7 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   let releaseProfile,failProfile=false;const profileGate=new Promise(resolve=>releaseProfile=resolve);
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
+   if(u.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
    if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
    if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52"><rect fill="#bacad5" width="64" height="52"/></svg>'});return;}
    const own=u.searchParams.get('anytourHotelId');if(own){profiles.push(own);if(own==='2002'){await profileGate;if(failProfile){await route.fulfill({status:502,contentType:'application/json',body:'{"ok":false}'});return;}}}
