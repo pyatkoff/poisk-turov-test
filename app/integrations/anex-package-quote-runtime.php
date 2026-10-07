@@ -77,6 +77,20 @@ function anytour_anex_quote_identity(array $response, array $offer, ?array &$mis
         elseif ((string) $actual !== (string) $offer[$to]
             || ($party !== null && (string) $actual !== (string) $party[$to])) $mismatches[$to] = 'mismatch';
     }
+    // Nonzero infants have no verified traveller contract in the search normalizer.
+    // Matching adult/child counters must not hide an explicit supplier infant.
+    if (array_key_exists('infant', $doc)) {
+        $infants = $doc['infant'];
+        if ((!is_string($infants) && !is_int($infants))
+            || preg_match('/\A[0-9]+\z/D', (string) $infants) !== 1) $mismatches['infants'] = 'format';
+        elseif ((string) $infants !== '0') $mismatches['infants'] = 'mismatch';
+    }
+    foreach (anytour_anex_quote_rows($doc['peoples']['people'] ?? null) as $person) {
+        if (is_array($person)
+            && (($person['age'] ?? null) === 'INF' || ($person['human'] ?? null) === 'INF')) {
+            $mismatches['infants'] = 'mismatch';
+        }
+    }
     $hotels = anytour_anex_quote_rows($doc['hotels']['hotel'] ?? null);
     if (count($hotels) !== 1 || !is_array($hotels[0])
         || (string) ($hotels[0]['key'] ?? '') !== (string) ($offer['hotel']['external_id'] ?? '')) {

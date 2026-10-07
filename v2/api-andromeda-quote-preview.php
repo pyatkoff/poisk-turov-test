@@ -265,6 +265,15 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
         [, $actions] = anytour_andromeda_quote_supplier($config);
         $result = AnyTourAndromedaSelectedQuote::continueWithFlights(
             $resolved, $resolvedSelection['claim'], $resolvedSelection['selected'], $actions);
+        // The calc has already verified the selected supplier UIDs. Preserve the
+        // accepted opaque pair in its public result and completed replay.
+        if (count($result['flights']) !== 2
+            || ($result['flights'][0]['direction'] ?? null) !== '0'
+            || ($result['flights'][1]['direction'] ?? null) !== '1') {
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+        }
+        $result['flights'][0]['flight_ref'] = $selection['outbound_ref'];
+        $result['flights'][1]['flight_ref'] = $selection['return_ref'];
         $result = anytour_andromeda_quote_with_expiry($result, $resolved);
         $result['served_price_observation'] = AnyTourAndromedaPriceObservation::compareServed(
             $resolved['listing_price_receipt'] ?? null, $result, time());

@@ -11,7 +11,7 @@ function qp_fixture(string $mode = ''): array
     $key = 'anex_online:' . str_repeat('b', 64); $ref = str_repeat('a', 32);
     $offer = ['offer_key' => $key, 'provider' => 'anex', 'supplier_namespace' => 'anex_online', 'kind' => 'concrete',
         'hotel' => ['external_id' => '469', 'local_id' => 245, 'mapping_status' => 'resolved', 'name' => 'Fixture hotel', 'star' => '4'],
-        'checkin' => '2026-10-10', 'checkout' => '2026-10-17', 'nights' => 7, 'adults' => 2, 'children' => 0,
+        'checkin' => '2026-10-10', 'checkout' => '2026-10-17', 'nights' => 7, 'adults' => 2, 'children' => 0, 'infants' => 0,
         'meal' => 'AI', 'room' => 'STANDARD', 'external_room_id' => '10', 'hotel_place' => 'DBL',
         'price' => ['amount' => '100000', 'currency' => 'RUB'], 'converted_price' => null,
         'availability' => [], 'supplier_booking_flag' => true, 'final_price_verified' => false];
@@ -51,6 +51,23 @@ function qp_fixture(string $mode = ''): array
                 'peoples' => ['people' => [['name' => 'PRIVATE_NAME', 'passport' => 'PRIVATE_PASSPORT']]]];
             if ($mode === 'hotel') $doc['hotels']['hotel'][0]['key'] = '470';
             if ($mode === 'party') $doc['adult'] = '3';
+            if ($mode === 'infant-counter') $doc['infant'] = '1';
+            if ($mode === 'infant-counter-invalid') $doc['infant'] = 'unknown';
+            if ($mode === 'infant-counter-array') $doc['infant'] = ['PRIVATE_INFANT_VALUE'];
+            if ($mode === 'infant-counter-null') $doc['infant'] = null;
+            if ($mode === 'infant-counter-bool') $doc['infant'] = false;
+            if ($mode === 'infant-counter-negative') $doc['infant'] = -1;
+            if ($mode === 'infant-final-counter' && $stage === 'calcfull') $doc['infant'] = '1';
+            if ($mode === 'infant-final-human' && $stage === 'calcfull') $doc['peoples']['people'][] = ['key' => '3', 'human' => 'INF'];
+            if ($mode === 'infant-zero-string') $doc['infant'] = '0';
+            if ($mode === 'infant-zero-int') $doc['infant'] = 0;
+            if (in_array($mode, ['infant-typed-age', 'infant-typed-human', 'infant-conflicting-counters'], true)) {
+                $infant = ['key' => '3'];
+                $infant[$mode === 'infant-typed-age' ? 'age' : 'human'] = 'INF';
+                $doc['peoples']['people'] = [['key' => '1', 'age' => 'ADL'], ['key' => '2', 'human' => 'ADL'],
+                    $infant];
+                if ($mode === 'infant-conflicting-counters') $doc['infant'] = '0';
+            }
             if ($mode === 'identity-detail') {
                 $doc['datebeg'] = '20261010'; $doc['dateend'] = '20261017';
                 unset($doc['child']);
@@ -121,7 +138,9 @@ foreach (['private-catclaim', 'private-alt-out', 'fixture-bearer-secret', 'PRIVA
 }
 qp_assert(strpos(json_encode($state), 'PRIVATE_NAME') === false && strpos(json_encode($state), 'PRIVATE_PASSPORT') === false, 'personal fields never persisted');
 foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 'transports', 'SetTransport', 'calcfull', 'net-only', 'ambiguous', 'changed-flight',
-    'party-conflict', 'party-counter-versus-people', 'party-wrong-count', 'party-unknown', 'party-infant', 'party-conflicting-types', 'party-duplicate', 'party-absent', 'party-final-mismatch'] as $mode) {
+    'party-conflict', 'party-counter-versus-people', 'party-wrong-count', 'party-unknown', 'party-infant', 'party-conflicting-types', 'party-duplicate', 'party-absent', 'party-final-mismatch',
+    'infant-counter', 'infant-counter-invalid', 'infant-counter-array', 'infant-counter-null', 'infant-counter-bool', 'infant-counter-negative', 'infant-final-counter', 'infant-final-human',
+    'infant-typed-age', 'infant-typed-human', 'infant-conflicting-counters'] as $mode) {
     [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture($mode);
     $failed = qp_run($r, $s, $fac, $cp);
     if ($failed['status'] === 'quote_choices') {
@@ -129,14 +148,25 @@ foreach (['hotel', 'party', 'room', 'meal', '401', 'supplier', 'echo', 'start', 
         $failed = qp_run($r, $s, $fac, $cp);
     }
     qp_assert($failed['status'] === 'quote_failed' && !$failed['final_price_verified'] && !isset($failed['price']), 'failure cannot promote price: ' . $mode);
+    if (str_starts_with($mode, 'infant-')) {
+        $classification = in_array($mode, ['infant-counter-invalid', 'infant-counter-array', 'infant-counter-null', 'infant-counter-bool', 'infant-counter-negative'], true)
+            ? 'format' : 'mismatch';
+        qp_assert($failed['reason'] === 'ANEX_QUOTE_IDENTITY_UNCONFIRMED'
+            && $failed['identity_mismatches'] === ['infants' => $classification]
+            && $failed['failure_stage'] === (in_array($mode, ['infant-final-counter', 'infant-final-human'], true) ? 'calcfull' : 'start'),
+            'explicit infant cannot be hidden by matching adult/child counters: ' . $mode);
+    }
     $count = count($f->calls); $s = unserialize(serialize($s));
     qp_assert(qp_run($r, $s, $fac, $cp) === $failed && count($f->calls) === $count, 'terminal failure not replayed: ' . $mode);
     qp_assert(strpos(json_encode($failed), 'private') === false, 'failure redacted');
+    if ($mode === 'infant-counter-array') {
+        qp_assert(strpos(json_encode([$failed, $s]), 'PRIVATE_INFANT_VALUE') === false, 'malformed infant value never retained or public');
+    }
 }
-foreach (['party-participants', 'party-single-counter'] as $mode) {
+foreach (['party-participants', 'party-single-counter', 'infant-zero-string', 'infant-zero-int'] as $mode) {
     [$s, $r, $o, $k, $e, $f, $fac, $cp] = qp_fixture($mode);
     $choices = qp_run($r, $s, $fac, $cp);
-    qp_assert($choices['status'] === 'quote_choices' && !$choices['final_price_verified'], 'explicit participants replace missing counters: ' . $mode);
+    qp_assert($choices['status'] === 'quote_choices' && !$choices['final_price_verified'], 'compatible party retains choices: ' . $mode);
     $r = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $choices['choices'][0]['choice_ref']]);
     $verified = qp_run($r, $s, $fac, $cp);
     qp_assert($verified['status'] === 'quote_verified' && $verified['price']['amount'] === '123456.78'
