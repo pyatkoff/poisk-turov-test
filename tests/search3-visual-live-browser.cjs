@@ -194,6 +194,40 @@ const continueToFlights=async page=>{
   await page.locator('#prototype-lead-form').waitFor();await page.locator('#modal-back').click();
  }
 };
+const multiHotelReload=async(browser,origin,base,evidence)=>{
+ for(const width of [360,390,430,768,1280]){
+  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),transport=fixture(),errors=[],submitted=[],profiles=[];
+  transport.state.hotelCatalogue=hotelCatalogue();page.on('pageerror',e=>errors.push(e.message));
+  let releaseProfile,failProfile=false;const profileGate=new Promise(resolve=>releaseProfile=resolve);
+  await page.route('**/*',async route=>{
+   const req=route.request(),u=new URL(req.url());
+   if(u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
+   if(u.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52"><rect fill="#bacad5" width="64" height="52"/></svg>'});return;}
+   const own=u.searchParams.get('anytourHotelId');if(own){profiles.push(own);if(own==='2002'){await profileGate;if(failProfile){await route.fulfill({status:502,contentType:'application/json',body:'{"ok":false}'});return;}}}
+   if(u.searchParams.get('action')==='search_start')submitted.push(u.searchParams.getAll('hotelIds[]'));
+   try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){errors.push(error.message);await route.abort();}
+  });
+  const url=origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',hotels:'2001|2002'}),detail=page.locator('#destination-detail'),submit=page.locator('.search-submit');
+  await page.goto(url);await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 01'));
+  assert(await submit.isDisabled(),'pending second identity blocks submit at '+width);assert.match(await page.locator('#cards').textContent(),/Восстанавливаем выбранные отели/);
+  assert.equal(submitted.length,0);releaseProfile();await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
+  assert(await submit.isEnabled());assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');
+  await page.locator('#search-form [data-action="destination"]').click();await page.locator('#destination-query').fill('Rix');await page.locator('.destination-hotel[data-id="2003"]').click();await page.locator('[data-action="close-modal"]').click();
+  assert.match(await detail.textContent(),/Fictional Belek 01.*Fictional Belek 02/);assert.doesNotMatch(await detail.textContent(),/Fictional Belek 03/,'Cancel leaves both applied IDs intact');
+  await page.reload();await page.waitForFunction(()=>document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));assert(await submit.isEnabled());assert.equal(submitted.length,0,'passive reload never starts suppliers');
+  await page.screenshot({path:path.join(evidence,`multi-hotel-reload-${width}.png`)});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false);
+  failProfile=true;await page.goto(url+'&searched=1');await page.locator('[data-action="retry-hotel-restore"]').waitFor();
+  assert(await submit.isDisabled());assert.match(await detail.textContent(),/Fictional Belek 01/);assert.equal(new URL(page.url()).searchParams.get('hotels'),'2001|2002');assert.equal(submitted.length,0,'searched URL with one unresolved own ID must not broaden to whole-country search');
+  await page.screenshot({path:path.join(evidence,`multi-hotel-reload-error-${width}.png`)});
+  const profileCount=profiles.length;failProfile=false;await page.locator('[data-action="retry-hotel-restore"]').click();await page.waitForFunction(()=>document.querySelector('.search-submit').disabled===false);
+  assert.deepEqual(profiles.slice(profileCount),['2002'],'retry rereads only the unresolved own ID');assert.match(await detail.textContent(),/Fictional Belek 01.*Fictional Belek 02/);assert.equal(submitted.length,0,'retry restores the form without supplier replay');
+  await page.screenshot({path:path.join(evidence,`multi-hotel-reload-retry-${width}.png`)});
+  await submit.click();await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length>0);assert.deepEqual(submitted,[['7001','7002']],'explicit search submits both verified legacy links with OR identity');
+  assert.deepEqual(errors,[]);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));
+  fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
+ }
+};
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -781,6 +815,7 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
+ await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));

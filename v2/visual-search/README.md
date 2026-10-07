@@ -97,6 +97,21 @@ New route: `/_preview/search3-next-candidate/visual-search/`. Existing Site, fun
 
 Next acceptance: the separately coordinated functional owner checks actual current TV/SAMO/ANEX offers. Reuse exact canonical identities, price/flight receipts and lead owner; do not substitute historical DB offers into live results. Keep the public Site reference unchanged. Physical-phone/Safari and real end-to-end acceptance remain open; mocked fixtures are not evidence of real availability.
 
+### Multiple selected hotels after a full URL reload
+
+The existing picker restores every selected own hotel ID through the canonical
+profile and verified legacy-link reader, including a `hotels=…|…` URL. Pending
+or unavailable links keep the exact selection and block a partial or whole-country
+search. The existing error/retry action rereads only unresolved hotels; query,
+country or selection changes cannot accept a former restoration response.
+
+Focused source checks cover partial failure/retry, duplicate work, stale selection
+and country, and exact ID/country rejection. Compiled browser acceptance covers
+full reload, pending/partial-failure gates, Cancel, retry without supplier replay
+and both verified legacy IDs on explicit submission at 360/390/430/768/1280.
+Fixtures are fictional intercepted responses, not live availability or physical
+iPhone/Safari acceptance. No data, supplier, money or lead owner changes.
+
 ### Hotel picker usability block
 
 Current successful catalogue rows remain authoritative for that exact query and country, including server-accepted aliases whose display name differs. Cached suggestions still use local name matching; a changed query/country or ignored abort cannot reuse the old alias response. Forward restores the query and exact multi-ID draft through a fresh catalogue read, without starting suppliers.

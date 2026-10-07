@@ -385,7 +385,45 @@ async function characterize(source){
  });
  return records;
 }
+async function selectedHotelRestoration(){
+ const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ const start=app.indexOf('async function restoreURLHotel(){'),end=app.indexOf('\nasync function bootRealData()',start);
+ assert(start>=0&&end>start,'existing URL hotel restoration owner');
+ const calls=[],cache=new Map(),selected={country:'4',hotelId:0,hotelIds:[2001,2002]},context={
+  state:{filters:selected,search:{country:'4'}},draft:{origin:'Москва'},catalogLoadGeneration:0,
+  currentDraftDestination:()=>selected,destinationIds:d=>d.hotelIds?.length?d.hotelIds:d.hotelId?[d.hotelId]:[],
+  destinationHotel:id=>cache.get(id),destinationHotels:cache,hotelRestorePending:false,modalType:'',
+  updateSearchUI(){},renderResults(){},renderDestination(){},
+  data:{restoreHotel:async(id,country)=>{calls.push([id,country]);return {id,country,legacyIds:[String(id+5000)]};}}
+ };
+ vm.createContext(context);vm.runInContext(app.slice(start,end),context);
+ await context.restoreURLHotel();
+ assert.deepEqual(calls,[[2001,'4'],[2002,'4']],'multi-own-ID reload restores every exact canonical link');
+ assert.deepEqual([...cache.keys()],[2001,2002]);assert.equal(context.hotelRestorePending,false);
+ calls.length=0;cache.delete(2002);context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);throw Error('fixture partial failure');};
+ await context.restoreURLHotel();assert.deepEqual(calls,[[2002,'4']],'retry does not reread verified selections');
+ assert.deepEqual(selected.hotelIds,[2001,2002],'partial failure never drops an exact selected ID');
+ const rhs=app.match(/\$\('\.search-submit'\)\.disabled=([^;]+);\n renderCatalogError/)[1];
+ const disabled=()=>vm.runInNewContext(rhs,{...context,place:selected,catalogReady:true,data:{preview:false}});
+ assert.equal(disabled(),true,'one unresolved selected hotel blocks broad or partial supplier search');
+ context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);return {id,country,legacyIds:[String(id+5000)]};};
+ await context.restoreURLHotel();assert.equal(disabled(),false,'successful explicit retry restores submit');
+ cache.clear();calls.length=0;let pending=gate();context.data.restoreHotel=async(id,country)=>{calls.push([id,country]);await pending.promise;return {id,country,legacyIds:[String(id+5000)]};};
+ const restoring=context.restoreURLHotel();await flush();const duplicated=context.restoreURLHotel();await duplicated;
+ assert.equal(calls.length,2,'duplicate restoration shares the bounded in-progress work');
+ selected.country='100';selected.hotelIds=[3001];pending.resolve();await restoring;
+ assert.equal(cache.size,0,'late former-country profiles never enter the current selection cache');
+ selected.country='4';selected.hotelIds=[2001];selected.hotelId=2001;pending=gate();
+ const changedSelection=context.restoreURLHotel();await flush();selected.hotelIds=[2002];selected.hotelId=2002;pending.resolve();await changedSelection;
+ assert.equal(cache.size,0,'late former-selection profiles never enter the current selection cache');
+ context.data.restoreHotel=async()=>({id:9999,country:'4',legacyIds:['8999']});await context.restoreURLHotel();
+ assert.equal(cache.size,0,'a different own ID cannot substitute the requested selection');
+ context.data.restoreHotel=async()=>({id:2002,country:'100',legacyIds:['7002']});await context.restoreURLHotel();
+ assert.equal(cache.size,0,'a different country cannot substitute the requested selection');
+ console.log('PASS selected hotel URL restoration: multi-ID, partial failure/retry, duplicate and stale context, exact ID/country; supplierHTTP0');
+}
 (async()=>{
+ await selectedHotelRestoration();
  const options=process.argv.slice(2),sourcePath=options[0]&&options[0]!=='--compare'?path.resolve(options.shift()):target;
  const source=fs.readFileSync(sourcePath,'utf8'),work=dataWorkOracles(source),records=await characterize(source);
  const digest=crypto.createHash('sha256').update(JSON.stringify(records)).digest('hex');
