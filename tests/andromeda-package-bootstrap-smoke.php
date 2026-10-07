@@ -94,4 +94,62 @@ checkPackageBootstrap($malformedCalls === 2);
 expectPackageError(static fn() => $malformed->package('opaque-2'), 'ANDROMEDA_PACKAGE_REPLAY_REFUSED');
 checkPackageBootstrap($malformedCalls === 2);
 
+// Execute the actual parser and package guard on every rejected structural boundary.
+// The same instance must remain sealed after the single attempted package.
+$shapeCases = [
+    [[], 201],
+    [['claimDocument' => null], 201],
+    [['claimDocument' => 'private-structural-value'], 201],
+    [['claimDocument' => []], 202],
+    [['claimDocument' => [1 => ['catalogKey' => 'synthetic-key']]], 202],
+    [['claimDocument' => [['catalogKey' => 'synthetic-key'], ['catalogKey' => 'second-key']]], 202],
+    [['claimDocument' => [null]], 203],
+    [['claimDocument' => ['private-document-value']], 203],
+    [['claimDocument' => [[]]], 204],
+    [['claimDocument' => [['catalogKey' => null]]], 204],
+    [['claimDocument' => [['catalogKey' => 123]]], 204],
+    [['claimDocument' => [['catalogKey' => []]]], 204],
+    [['claimDocument' => [['catalogKey' => '']]], 205],
+];
+foreach ($shapeCases as [$reply, $expectedCode]) {
+    $shapeCalls = [];
+    $shapeTransport = static function(string $url, array $options) use (&$shapeCalls, $reply): array {
+        parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+        $shapeCalls[] = $query['action'] ?? null;
+        return ['status' => 200, 'body' => json_encode(
+            ($query['action'] ?? null) === 'login' ? ['sid' => 'sid_package_shape'] : $reply,
+            JSON_THROW_ON_ERROR)];
+    };
+    $shapeClient = new AnyTourAndromedaClient($shapeTransport, true, true);
+    $shapeClient->login('user', 'secret');
+    try {
+        $shapeClient->package('synthetic-package-shape');
+        throw new LogicException('INVALID_PACKAGE_ACCEPTED');
+    } catch (RuntimeException $error) {
+        checkPackageBootstrap(get_class($error) === RuntimeException::class);
+        checkPackageBootstrap($error->getMessage() === 'ANDROMEDA_INVALID_PACKAGE_RESPONSE');
+        checkPackageBootstrap($error->getCode() === $expectedCode);
+    }
+    checkPackageBootstrap($shapeCalls === ['login', 'broninit']);
+    expectPackageError(static fn() => $shapeClient->package('synthetic-package-shape'),
+        'ANDROMEDA_PACKAGE_REPLAY_REFUSED');
+    checkPackageBootstrap($shapeCalls === ['login', 'broninit']);
+}
+// Existing nonempty-string acceptance is unchanged; do not add coercion or trimming.
+foreach (['synthetic-key', '0', ' '] as $catalogKey) {
+    $reply = ['claimDocument' => [['catalogKey' => $catalogKey]]];
+    $validCalls = [];
+    $validTransport = static function(string $url, array $options) use (&$validCalls, $reply): array {
+        parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
+        $validCalls[] = $query['action'] ?? null;
+        return ['status' => 200, 'body' => json_encode(
+            ($query['action'] ?? null) === 'login' ? ['sid' => 'sid_package_valid'] : $reply,
+            JSON_THROW_ON_ERROR)];
+    };
+    $validClient = new AnyTourAndromedaClient($validTransport, true, true);
+    $validClient->login('user', 'secret');
+    checkPackageBootstrap($validClient->package('synthetic-valid-package') === $reply);
+    checkPackageBootstrap($validCalls === ['login', 'broninit']);
+}
+
 fwrite(STDOUT, "andromeda-package-bootstrap: {$checks} checks OK\n");
