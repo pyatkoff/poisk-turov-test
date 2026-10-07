@@ -1609,6 +1609,9 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
       const code=payload.supplier_code;
       if(typeof code==='string'&&code.length>0&&code.length<=64&&!/[^A-Za-z0-9_.:-]/.test(code))diagnosticFacts.supplierCode=code;
     }
+    if(responseCategory==='quote_state'&&responseFailure.failureReason==='ANDROMEDA_SELECTED_FLIGHTS_INVALID'
+      &&['selected_pair_missing','existing_direction_duplicate','existing_uid_invalid','returned_direction_invalid',
+        'selected_directions_mismatch','selected_uid_mismatch','public_pair_invalid'].includes(payload?.failure_detail))responseFailure.failureDetail=payload.failure_detail;
     if(responseFailure)facts.responseFailure=Object.freeze(responseFailure);
     const message=category==='limit'?'Сейчас проверка этого поставщика недоступна. Выберите другое предложение или вернитесь позже.':
       category==='unavailable'?'Не удалось подтвердить этот тур. Выберите другое предложение.':
