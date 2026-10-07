@@ -274,7 +274,7 @@ function anytour_andromeda_quote_reprice_continue(array $resolved, array $meta, 
             static function(array $claim) use(&$calculated): void { $calculated=$claim; });
         if (!is_array($calculated) || count($result['flights'])!==2
             || ($result['flights'][0]['direction'] ?? null)!=='0' || ($result['flights'][1]['direction'] ?? null)!=='1') {
-            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 107);
         }
         $result['flights'][0]['flight_ref']=$selection['outbound_ref'];
         $result['flights'][1]['flight_ref']=$selection['return_ref'];
@@ -440,7 +440,7 @@ function anytour_andromeda_quote_continue(array $request, PDO $pdo, array $saved
         if (count($result['flights']) !== 2
             || ($result['flights'][0]['direction'] ?? null) !== '0'
             || ($result['flights'][1]['direction'] ?? null) !== '1') {
-            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 107);
         }
         $result['flights'][0]['flight_ref'] = $selection['outbound_ref'];
         $result['flights'][1]['flight_ref'] = $selection['return_ref'];
@@ -531,6 +531,22 @@ function anytour_andromeda_quote_supplier_failure(Throwable $error, ?string $fai
     // above. Its five supplier_response reasons expose no raw exception details.
     if (in_array($response['failure_category'], ['quote_state', 'supplier_response'], true)) {
         $response['failure_reason'] = $error->getMessage();
+    }
+    // Fixed local predicate labels only; exception codes and private causes stay private.
+    static $failureDetails = [
+        101 => 'selected_pair_missing',
+        102 => 'existing_direction_duplicate',
+        103 => 'existing_uid_invalid',
+        104 => 'returned_direction_invalid',
+        105 => 'selected_directions_mismatch',
+        106 => 'selected_uid_mismatch',
+        107 => 'public_pair_invalid',
+    ];
+    $detailCode = $error->getCode();
+    if (get_class($error) === RuntimeException::class
+        && $error->getMessage() === 'ANDROMEDA_SELECTED_FLIGHTS_INVALID'
+        && is_int($detailCode) && array_key_exists($detailCode, $failureDetails)) {
+        $response['failure_detail'] = $failureDetails[$detailCode];
     }
     if (method_exists($error, 'diagnosticFacts')) {
         $facts = $error->diagnosticFacts();
