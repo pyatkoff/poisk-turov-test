@@ -129,3 +129,7 @@ $db->exec("UPDATE catalog_hotel_details SET source_hash=REPEAT('0',64) WHERE hot
 $lp=$engine->plan(1,$through,$ls,true);sync_need($lp['selected']===[] && $lp['held'][$legacy]['profile']==='SYNC_SOURCE_INTEGRITY','invalid-source-held');
 
 echo "ANYTOUR_CONTENT_SYNC_OK checks=$checks legacy_default_preserved=1 object_content=1 imported_updates=1 manual_protected=1 full_gallery=240 supplier_calls=0\n";
+
+// Explicitly requested fictional batch10 crash experiment; no production operation.
+require_once __DIR__.'/anytour-profile-enrichment-batch10-test.php';
+run_batch10_mysql_tests($db,$make,$rawFor,$saveRaw);
