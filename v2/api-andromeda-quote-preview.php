@@ -548,6 +548,18 @@ function anytour_andromeda_quote_supplier_failure(Throwable $error, ?string $fai
         && is_int($detailCode) && array_key_exists($detailCode, $failureDetails)) {
         $response['failure_detail'] = $failureDetails[$detailCode];
     }
+    static $packageFailureDetails = [
+        201 => 'package_document_invalid',
+        202 => 'package_document_layout_invalid',
+        203 => 'package_document_item_invalid',
+        204 => 'package_catalog_key_invalid',
+        205 => 'package_catalog_key_empty',
+    ];
+    if (get_class($error) === RuntimeException::class
+        && $error->getMessage() === 'ANDROMEDA_INVALID_PACKAGE_RESPONSE'
+        && is_int($detailCode) && array_key_exists($detailCode, $packageFailureDetails)) {
+        $response['failure_detail'] = $packageFailureDetails[$detailCode];
+    }
     if (method_exists($error, 'diagnosticFacts')) {
         $facts = $error->diagnosticFacts();
         $action = is_array($facts) ? ($facts['action'] ?? null) : null;

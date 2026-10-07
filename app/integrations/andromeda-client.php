@@ -263,7 +263,12 @@ final class AnyTourAndromedaClient
             || !is_array($reply['claimDocument'][0])
             || !is_string($reply['claimDocument'][0]['catalogKey'] ?? null)
             || $reply['claimDocument'][0]['catalogKey'] === '') {
-            throw new RuntimeException('ANDROMEDA_INVALID_PACKAGE_RESPONSE');
+            // Preserve acceptance; distinguish only the first rejected local predicate.
+            $detailCode = !isset($reply['claimDocument']) || !is_array($reply['claimDocument']) ? 201
+                : (array_keys($reply['claimDocument']) !== [0] ? 202
+                : (!is_array($reply['claimDocument'][0]) ? 203
+                : (!is_string($reply['claimDocument'][0]['catalogKey'] ?? null) ? 204 : 205)));
+            throw new RuntimeException('ANDROMEDA_INVALID_PACKAGE_RESPONSE', $detailCode);
         }
         return $reply;
     }

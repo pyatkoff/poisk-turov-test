@@ -197,6 +197,57 @@ foreach ([$flightMessage . ' ' . $secret, $secret . ' ' . $flightMessage,
     }
 }
 
+// Package rejection details identify fixed local predicates, never supplier values.
+$packageMessage = 'ANDROMEDA_INVALID_PACKAGE_RESPONSE';
+$packageDetails = [
+    201 => 'package_document_invalid', 202 => 'package_document_layout_invalid',
+    203 => 'package_document_item_invalid', 204 => 'package_catalog_key_invalid',
+    205 => 'package_catalog_key_empty',
+];
+$legacyPackageFailure = anytour_andromeda_quote_supplier_failure(new RuntimeException($packageMessage));
+foreach ($packageDetails as $code => $detail) {
+    $error = new RuntimeException($packageMessage, $code, new RuntimeException($secret));
+    $public = anytour_andromeda_quote_supplier_failure($error, 'quote_bootstrap');
+    $expected = [
+        'ok' => false, 'error' => 'supplier_unavailable', 'failure_category' => 'supplier_response',
+        'failure_phase' => 'quote_bootstrap', 'failure_reason' => $packageMessage, 'failure_detail' => $detail,
+    ];
+    if ($public !== $expected) throw new RuntimeException('FAILURE_PACKAGE_DETAIL_' . $code);
+    $encoded = json_encode($public, JSON_THROW_ON_ERROR);
+    foreach ([$secret, (string)$code, 'RuntimeException', 'gateway.samo.ru', 'sid=abc'] as $private) {
+        if (str_contains($encoded, $private)) throw new RuntimeException('FAILURE_PACKAGE_DETAIL_LEAK');
+    }
+    if (anytour_andromeda_quote_supplier_failure($error, 'quote_bootstrap ' . $secret)
+        !== $legacyPackageFailure + ['failure_detail' => $detail]) {
+        throw new RuntimeException('FAILURE_PACKAGE_UNSAFE_PHASE');
+    }
+    if (anytour_andromeda_quote_supplier_failure(new RuntimeException($flightMessage, $code))
+        !== $legacyFlightFailure) throw new RuntimeException('FAILURE_PACKAGE_CODE_CROSS_MESSAGE');
+}
+foreach ([0, 101, 107, 200, 206, -1, PHP_INT_MAX] as $code) {
+    if (anytour_andromeda_quote_supplier_failure(new RuntimeException($packageMessage, $code))
+        !== $legacyPackageFailure) throw new RuntimeException('UNLISTED_PACKAGE_DETAIL_CODE');
+}
+$foreignPackageError = new class($packageMessage, 201) extends RuntimeException {};
+if (anytour_andromeda_quote_supplier_failure($foreignPackageError) !== $legacyPackageFailure) {
+    throw new RuntimeException('FOREIGN_PACKAGE_DETAIL_CLASS');
+}
+$nonIntegerPackageCode = new RuntimeException($packageMessage);
+$packageCodeProperty = new ReflectionProperty(Exception::class, 'code');
+$packageCodeProperty->setValue($nonIntegerPackageCode, '201');
+if (anytour_andromeda_quote_supplier_failure($nonIntegerPackageCode) !== $legacyPackageFailure) {
+    throw new RuntimeException('NON_INTEGER_PACKAGE_DETAIL_CODE');
+}
+foreach ([$packageMessage . ' ' . $secret, $secret . ' ' . $packageMessage,
+    $packageMessage . "\n/private/path", 'ANDROMEDA_INVALID_RESPONSE', ''] as $message) {
+    $public = anytour_andromeda_quote_supplier_failure(new RuntimeException($message, 201,
+        new RuntimeException($secret)));
+    if (array_key_exists('failure_detail', $public)
+        || str_contains(json_encode($public, JSON_THROW_ON_ERROR), $secret)) {
+        throw new RuntimeException('UNLISTED_PACKAGE_DETAIL_MESSAGE');
+    }
+}
+
 // A phase is a fixed execution boundary, never a message, supplier action or path.
 $phases = ['request', 'database', 'catalog', 'criteria', 'quote_resolve', 'quote_reserve',
     'quote_bootstrap', 'flight_state', 'quote_validate', 'quote_checkpoint', 'flight_continuation'];
@@ -447,4 +498,5 @@ echo "andromeda quote failure category: OK\n";
 echo "andromeda quote native failure phase checks={$phaseChecks}\n";
 echo "andromeda quote public pair detail checks={$publicPairChecks}\n";
 // Stock quote CI already executes this file; keep the real parser smoke on that path.
+require_once __DIR__ . '/andromeda-package-bootstrap-smoke.php';
 require_once __DIR__ . '/andromeda-claim-supplier-error-smoke.php';
