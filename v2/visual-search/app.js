@@ -1830,7 +1830,16 @@ function openAnexApplicationPreview(){
 const anexFlightViews=new WeakMap();
 function openAnexPackageQuote(o,result,error='',pending=false){
  const h=selectedTourHotel(o);if(!h)return;
- const focused=typeof modalType!=='undefined'&&modalType==='anex-quote'?document.activeElement:null,focusName=focused?.name,focusValue=focused?.value,scroll=$('#modal-body').scrollTop;
+ const previous=retainedProviderView(o),body=$('#modal-body'),samePicker=modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&previous?.result?.repricing?.enabled===true&&!previous.sealed&&!!body.querySelector('[name="anex-package-choice"]');
+ const focused=samePicker?document.activeElement:null,focusName=focused?.name,focusValue=focused?.value,scroll=body.scrollTop;let anchor=null;
+ if(samePicker){
+  const bounds=body.getBoundingClientRect(),bottom=Math.min(bounds.bottom,$('#modal-footer').getBoundingClientRect().top);
+  for(const input of [focused,$('[name="anex-package-choice"]:checked')]){
+   if(!input?.matches('[name="anex-package-choice"]'))continue;
+   const row=input.closest('.flight-option'),rect=row?.getBoundingClientRect(),control=input.getBoundingClientRect();
+   if(rect?.height>0&&control.height>0&&control.top>=bounds.top&&control.bottom<=bottom){anchor={value:input.value,top:rect.top};break;}
+  }
+ }
  if(result?.state==='quote_verified'&&result.expiresAt*1000<=Date.now()){result=null;error='Срок подтверждённой цены истёк.';}
  rememberProviderView(o,'anex-quote',result,error,pending);selectedOffer={...o,loading:false};anexApplicationDraft=null;
  const view=retainedProviderView(o),repricing=result?.repricing?.enabled===true&&!view?.sealed;
@@ -1852,7 +1861,12 @@ function openAnexPackageQuote(o,result,error='',pending=false){
  const content=providerTourBodyHTML(o,h,flights,price,status);
  showModal('anex-quote',verified?'Тур подтверждён':'Перелёт и цена тура','ANEX · АКТУАЛИЗАЦИЯ',content,true);
  $('#modal').classList.add('tour-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=offerDetailFooterHTML({total:price,pricePending:price===null},verified?(repricing&&!view?.editing&&result.choices?.length>1?'<button class="secondary" data-action="edit-anex-flights">Изменить рейсы</button>':'')+'<button class="primary" data-action="anex-application-preview">К заявке</button>':choices.length&&(repricing||!error)&&!view?.sealed?`<button class="primary" data-action="anex-package-calculate" ${pending?'disabled':''}>Уточнить цену с этими рейсами</button>`:`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button>`,status);
- if(repricing&&view?.editing&&focusName){$$('[name="'+focusName+'"]')?.find(input=>input.value===focusValue)?.focus({preventScroll:true});$('#modal-body').scrollTop=scroll;}
+ if(samePicker&&repricing&&view?.editing){
+  if(focusName)$$('[name="'+focusName+'"]')?.find(input=>input.value===focusValue)?.focus({preventScroll:true});
+  body.scrollTop=scroll;
+  const input=anchor&&$$('[name="anex-package-choice"]').find(input=>input.value===anchor.value);
+  if(input)body.scrollTop+=input.closest('.flight-option').getBoundingClientRect().top-anchor.top;
+ }
 }
 async function loadAnexPackageQuote(calculate=false,{fromOffer=false}={}){
  const o=selectedOffer,view=retainedProviderView(o),repricing=view?.result?.repricing?.enabled===true;if(!o||o.provider!=='anex'||view?.sealed||view?.pending&&!repricing)return;

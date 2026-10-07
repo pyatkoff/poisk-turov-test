@@ -170,7 +170,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
   const geometry=async()=>{
    const boxes=await page.locator('#modal').evaluate(modal=>{
     const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};},footer=document.querySelector('#modal-footer'),total=footer.querySelector('.footer-total'),amount=total.querySelector('strong'),button=footer.querySelector('.primary')||footer.querySelector('.secondary'),body=document.querySelector('#modal-body');
-    const radios=[...body.querySelectorAll('[name="andromeda-outbound"],[name="andromeda-return"]')],focused=radios.find(input=>input===document.activeElement),choice=input=>({name:input.name,value:input.value,checked:input.checked,disabled:input.disabled,input:rect(input),row:rect(input.closest('.flight-option'))});
+     const radios=[...body.querySelectorAll('[name="anex-package-choice"],[name="andromeda-outbound"],[name="andromeda-return"]')],focused=radios.find(input=>input===document.activeElement),choice=input=>({name:input.name,value:input.value,checked:input.checked,disabled:input.disabled,input:rect(input),row:rect(input.closest('.flight-option'))});
     return{modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth,body:rect(body),footer:rect(footer),total:rect(total),amount:rect(amount),button:rect(button),choices:[...document.querySelectorAll('.flight-option')].map(rect),selectedChoices:radios.filter(input=>input.checked).map(choice),focusedChoice:focused?choice(focused):null};
    });
    assert.equal(boxes.modalOverflow,false);assert.equal(boxes.bodyOverflow,false);assert.equal(boxes.documentOverflow,false);
@@ -210,22 +210,33 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    await page.locator('#modal-body [data-action="offer"][data-key^="'+provider+'%3A"]').click();await page.locator('[data-action="refresh-hotel"]').click();
    if(provider==='anex'){await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));await page.locator('[data-action="select-anex-tour"]').click();}
    await page.locator(radio(1)).waitFor();await page.locator('[data-action="'+apply+'"]').click();await page.locator('[data-action="'+app+'"]').waitFor();await price(1);
-   await page.locator('[data-action="'+edit+'"]').click();await page.locator(radio(2)).check();await pendingB;
+    await page.locator('[data-action="'+edit+'"]').click();
+    await page.locator(radio(2)).scrollIntoViewIfNeeded();await page.locator(radio(2)).focus();
+    const beforePendingBoxes=await geometry();
+    await page.locator(radio(2)).check();await pendingB;
    assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'changed pending pair removes application immediately');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(await page.locator(radio(2)).isDisabled(),false);
    const pendingBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-pending-'+width+'.png')});
    releaseB();await page.locator('[data-action="'+app+'"]').waitFor();await price(2);assert.equal(await page.locator(radio(2)).isChecked(),true);
    const verifiedBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-edit-verified-'+width+'.png')});
-   if(provider==='andromeda'){
+    {
     assert(pendingBoxes.focusedChoice&&verifiedBoxes.focusedChoice,'focused flight survives both receipts at '+width);
-    assert.equal(pendingBoxes.focusedChoice.name,'andromeda-outbound');assert.equal(pendingBoxes.focusedChoice.value,ref(2));
+     assert.equal(pendingBoxes.focusedChoice.name,provider==='anex'?'anex-package-choice':'andromeda-outbound');assert.equal(pendingBoxes.focusedChoice.value,ref(2));
     assert.equal(verifiedBoxes.focusedChoice.name,pendingBoxes.focusedChoice.name);assert.equal(verifiedBoxes.focusedChoice.value,pendingBoxes.focusedChoice.value);assert.equal(verifiedBoxes.focusedChoice.checked,true);assert.equal(verifiedBoxes.focusedChoice.disabled,false);
+     assert(Math.abs(pendingBoxes.focusedChoice.row.y-beforePendingBoxes.focusedChoice.row.y)<=1,'focused B row retains its visual anchor when price becomes pending at '+width);
     assert(Math.abs(verifiedBoxes.focusedChoice.row.y-pendingBoxes.focusedChoice.row.y)<=1,'focused B row retains its visual anchor at '+width);
-    const pendingReturn=pendingBoxes.selectedChoices.find(choice=>choice.name==='andromeda-return'),verifiedReturn=verifiedBoxes.selectedChoices.find(choice=>choice.name==='andromeda-return');
-    assert(pendingReturn&&verifiedReturn);assert.equal(verifiedReturn.value,pendingReturn.value);assert(Math.abs(verifiedReturn.row.y-pendingReturn.row.y)<=1,'selected return row retains its visual anchor at '+width);
     const focus=verifiedBoxes.focusedChoice.input;assert(focus.x>=verifiedBoxes.body.x-1&&focus.right<=verifiedBoxes.body.right+1&&focus.y>=verifiedBoxes.body.y-1&&focus.bottom<=Math.min(verifiedBoxes.body.bottom,verifiedBoxes.footer.y)+1,'focused flight stays visible after receipt at '+width);
-    if(pendingReturn.row.y>=pendingBoxes.body.y-1&&pendingReturn.row.bottom<=Math.min(pendingBoxes.body.bottom,pendingBoxes.footer.y)+1)assert(verifiedReturn.row.y>=verifiedBoxes.body.y-1&&verifiedReturn.row.bottom<=Math.min(verifiedBoxes.body.bottom,verifiedBoxes.footer.y)+1,'initially visible selected return stays fully visible at '+width);
+     if(provider==='andromeda'){
+      const pendingReturn=pendingBoxes.selectedChoices.find(choice=>choice.name==='andromeda-return'),verifiedReturn=verifiedBoxes.selectedChoices.find(choice=>choice.name==='andromeda-return');
+      assert(pendingReturn&&verifiedReturn);assert.equal(verifiedReturn.value,pendingReturn.value);assert(Math.abs(verifiedReturn.row.y-pendingReturn.row.y)<=1,'selected return row retains its visual anchor at '+width);
+      if(pendingReturn.row.y>=pendingBoxes.body.y-1&&pendingReturn.row.bottom<=Math.min(pendingBoxes.body.bottom,pendingBoxes.footer.y)+1)assert(verifiedReturn.row.y>=verifiedBoxes.body.y-1&&verifiedReturn.row.bottom<=Math.min(verifiedBoxes.body.bottom,verifiedBoxes.footer.y)+1,'initially visible selected return stays fully visible at '+width);
+     }
    }
-   await page.locator(radio(1)).check();await page.locator('[data-action="'+app+'"]').waitFor();await price(1);assert.equal(count(),2,'A/B/A uses two mutations');
+    if(provider==='anex')await page.locator(radio(2)).press('ArrowUp');else await page.locator(radio(1)).check();
+    await page.locator('[data-action="'+app+'"]').waitFor();await price(1);assert.equal(count(),2,'A/B/A uses two mutations');
+    if(provider==='anex'){
+     assert.equal(await page.locator(radio(1)).isChecked(),true,'keyboard return selects the exact cached A pair');
+     assert.equal(await page.locator(radio(1)).evaluate(input=>document.activeElement===input),true,'keyboard return retains focus on the current pair');
+    }
    await page.locator('[data-action="'+app+'"]').click();await page.locator('#prototype-lead-form').waitFor();await price(1);assert.match(await page.locator('#modal-body').textContent(),new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
    const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom};}));
    assert.equal(fields.length,2);if(width<=760)assert(fields[1].y>=fields[0].bottom-1,'contacts stack on mobile');else assert(fields[1].x>=fields[0].right-1,'contacts keep separate columns on desktop');
@@ -258,7 +269,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
     assert.equal(transport.calls.length,beforeHistory,'UNKNOWN Forward does not replay');assert.equal(await page.locator('[data-action="'+app+'"]').count(),0);assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(aborts,[]);
-   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,pendingBoxes,verifiedBoxes,cachedPendingBoxes,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,beforePendingBoxes,pendingBoxes,verifiedBoxes,cachedPendingBoxes,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
   }finally{releaseB?.();releaseUnknown?.();await context.close();}
  }
  console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
