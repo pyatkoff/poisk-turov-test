@@ -673,7 +673,49 @@ async function safeAndromedaFailureDiagnostics(source){
   {...selectedFailure,failureDetail:selectedDetails[0]},'catalog');
  await embedded({failure_category:'quote_state',failure_reason:selectedFailure.failureReason,failure_detail:selectedDetails[0],failure_phase:raw},
   {...selectedFailure,failureDetail:selectedDetails[0]},null);
- console.log(JSON.stringify({safeSupplierResponseDiagnosticCases:cases,embeddedResponseFailureCases:embeddedCases,
+ // Execute future package failure diagnostics through the existing initial-quote owner.
+ let packageCases=0;
+ const packageDetails=['package_document_invalid','package_document_layout_invalid','package_document_item_invalid',
+  'package_catalog_key_invalid','package_catalog_key_empty'];
+ const packageCheck=async(detail,extra={},expectedDetail=undefined,httpStatus=502)=>{
+  const h=quoteHarness(source,'andromeda');
+  h.setReply(()=>({ok:false,httpStatus,failure_category:'supplier_response',
+   failure_reason:'ANDROMEDA_INVALID_PACKAGE_RESPONSE',failure_phase:'quote_bootstrap',
+   failure_detail:detail,message:raw,raw_response:raw,...extra}));
+  const failure=await h.start().catch(error=>error);
+  assert.equal(failure.retryable,false);
+  assert.equal(failure.failureDetail,expectedDetail);
+  const warning=JSON.parse(h.warnings[0].slice('[AnyTour quote] '.length));
+  assert.equal(warning.failureDetail,expectedDetail);
+  if(expectedDetail){
+   assert.equal(failure.code,'quote_unconfirmed');assert.equal(failure.httpStatus,502);
+   assert.equal(failure.failureCategory,'supplier_response');assert.equal(failure.responseFailure,undefined);
+   assert.equal(failure.message,'Подтверждение тура не получено. Цена и наличие пока неизвестны.');
+   const event={provider:'andromeda',action:'quote',code:'quote_unconfirmed',httpStatus:502,
+    failureCategory:'supplier_response',failureReason:'ANDROMEDA_INVALID_PACKAGE_RESPONSE'};
+   assert.deepEqual(h.events,[{type:'anytour:quote-failure',detail:event}]);
+   assert.deepEqual(warning,{...event,failurePhase:'quote_bootstrap',failureDetail:expectedDetail});
+  }
+  assert(!JSON.stringify(failure).includes(raw));assert(!h.warnings[0].includes(raw));
+  assert(!JSON.stringify(h.events).includes('failureDetail'),'package branch stays console-only');
+  const before=h.calls.length;
+  await assert.rejects(h.start(),error=>error===failure);await assert.rejects(h.latest(),error=>error===failure);
+  assert.equal(before,1);assert.equal(h.calls.length,before,'package diagnostic keeps the initial attempt terminal');
+  packageCases++;
+ };
+ for(const detail of packageDetails)await packageCheck(detail,{},detail);
+ for(const detail of [undefined,null,201,'201',{},[packageDetails[0]],raw,'prefix_'+packageDetails[0],
+  packageDetails[0]+'_suffix',packageDetails[0]+'\n'+raw,packageDetails[0].toUpperCase(),' '+packageDetails[0],
+  ...selectedDetails])await packageCheck(detail);
+ for(const category of ['quote_state','supplier_http','supplier_transport','supplier_auth','supplier_rejected','internal'])
+  await packageCheck(packageDetails[0],{failure_category:category});
+ for(const reason of [undefined,null,{},['ANDROMEDA_INVALID_PACKAGE_RESPONSE'],raw,
+  'ANDROMEDA_INVALID_RESPONSE','ANDROMEDA_INVALID_PACKAGE_RESPONSE_suffix','ANDROMEDA_SELECTED_FLIGHTS_INVALID'])
+  await packageCheck(packageDetails[0],{failure_reason:reason});
+ for(const phase of [undefined,null,{},['quote_bootstrap'],raw,'quote_validate','flight_continuation','quote_bootstrap_suffix'])
+  await packageCheck(packageDetails[0],{failure_phase:phase});
+ for(const status of [200,500,503,0])await packageCheck(packageDetails[0],{},undefined,status);
+ console.log(JSON.stringify({safeSupplierResponseDiagnosticCases:cases,embeddedResponseFailureCases:embeddedCases,packageFailureDetailCases:packageCases,
   actualOwner:true,supplierHTTP:0,terminalReplayHTTP:0,publicCopyChanged:false}));
 }
 async function boundedFlightRepricing(source){
