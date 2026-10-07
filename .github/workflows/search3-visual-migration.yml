@@ -104,10 +104,110 @@ jobs:
           php -l v2/visual-search/index.php
           php -r '$_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; ob_start(); include "v2/visual-search/index.php";' | grep -Fq 'only available in its separate preview'
           php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include "v2/visual-search/index.php";' | grep -Eq 'app.js\?v=[0-9a-f]{12}'
-      - name: Retain visual bridge acceptance
+      - name: Package complete visual acceptance in bounded parts
+        id: acceptance-parts
         if: always()
+        env:
+          ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil
+          source = pathlib.Path("visual-live-evidence")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "visual-acceptance-parts"
+          limit = 24 * 1024 * 1024
+          parts = [[] for _ in range(4)]
+          sizes = [0] * len(parts)
+          if target.exists():
+              raise SystemExit("Acceptance parts output already exists")
+          entries = []
+          for file in sorted(source.rglob("*")):
+              if file.is_symlink():
+                  raise SystemExit("Acceptance evidence must not contain symlinks")
+              if file.is_file():
+                  content = file.read_bytes()
+                  entries.append({"path": file.relative_to(source).as_posix(),
+                                  "bytes": len(content),
+                                  "sha256": hashlib.sha256(content).hexdigest()})
+          if not entries:
+              raise SystemExit("No visual acceptance evidence to retain")
+          for entry in sorted(entries, key=lambda row: (-row["bytes"], row["path"])):
+              part = min(range(len(parts)), key=lambda index: sizes[index])
+              if sizes[part] + entry["bytes"] > limit:
+                  raise SystemExit("Complete acceptance evidence exceeds four bounded parts")
+              entry["part"] = f"{part + 1:02d}"
+              parts[part].append(entry)
+              sizes[part] += entry["bytes"]
+          inventory = {"schema": 1, "source_sha": os.environ["ACCEPTANCE_SOURCE_SHA"],
+                       "run_id": os.environ["GITHUB_RUN_ID"],
+                       "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+                       "file_count": len(entries), "total_bytes": sum(sizes),
+                       "files": entries,
+                       "parts": [{"id": f"{index + 1:02d}", "file_count": len(rows),
+                                  "bytes": sizes[index]} for index, rows in enumerate(parts) if rows]}
+          index_bytes = (json.dumps(inventory, sort_keys=True, separators=(",", ":")) + "\n").encode()
+          seen = set()
+          for index, rows in enumerate(parts):
+              if not rows:
+                  continue
+              # Leave headroom for the shared inventory and ZIP names/metadata.
+              overhead = len(index_bytes) + sum(2 * len(row["path"].encode()) + 256 for row in rows) + 1024
+              if sizes[index] + overhead >= 31 * 1024 * 1024:
+                  raise SystemExit("Acceptance part would exceed safe transfer size")
+              folder = target / f"part-{index + 1:02d}"
+              for row in rows:
+                  name = row["path"]
+                  if name in seen:
+                      raise SystemExit("Duplicate acceptance evidence path")
+                  seen.add(name)
+                  output = folder / "evidence" / name
+                  output.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(source / name, output)
+                  content = output.read_bytes()
+                  if len(content) != row["bytes"] or hashlib.sha256(content).hexdigest() != row["sha256"]:
+                      raise SystemExit("Acceptance evidence changed while packaging")
+              (folder / "acceptance-index.json").write_bytes(index_bytes)
+          if seen != {row["path"] for row in entries}:
+              raise SystemExit("Incomplete acceptance evidence")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for index, rows in enumerate(parts):
+                  output.write(f"part{index + 1:02d}={'true' if rows else 'false'}\n")
+          print(json.dumps({"file_count": len(entries), "total_bytes": sum(sizes),
+                            "index_sha256": hashlib.sha256(index_bytes).hexdigest(),
+                            "parts": inventory["parts"]}, sort_keys=True))
+          PY
+      - name: Retain visual bridge acceptance part 01
+        if: ${{ always() && steps.acceptance-parts.outputs.part01 == 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}
-          path: visual-live-evidence/
-          if-no-files-found: warn
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-01
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-01/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Retain visual bridge acceptance part 02
+        if: ${{ always() && steps.acceptance-parts.outputs.part02 == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-02
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-02/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Retain visual bridge acceptance part 03
+        if: ${{ always() && steps.acceptance-parts.outputs.part03 == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-03
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-03/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
+      - name: Retain visual bridge acceptance part 04
+        if: ${{ always() && steps.acceptance-parts.outputs.part04 == 'true' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-visual-live-acceptance-${{ github.event.pull_request.head.sha }}-part-04
+          path: ${{ runner.temp }}/visual-acceptance-parts/part-04/
+          compression-level: 0
+          include-hidden-files: true
+          if-no-files-found: error
