@@ -148,6 +148,55 @@ foreach ($cases as $reason => $category) {
     }
 }
 
+// Detail codes are trusted local annotations, not messages, raw causes or supplier codes.
+$flightDetails = [
+    101 => 'selected_pair_missing', 102 => 'existing_direction_duplicate',
+    103 => 'existing_uid_invalid', 104 => 'returned_direction_invalid',
+    105 => 'selected_directions_mismatch', 106 => 'selected_uid_mismatch',
+    107 => 'public_pair_invalid',
+];
+$flightMessage = 'ANDROMEDA_SELECTED_FLIGHTS_INVALID';
+$legacyFlightFailure = anytour_andromeda_quote_supplier_failure(new RuntimeException($flightMessage));
+foreach ($flightDetails as $code => $detail) {
+    $error = new RuntimeException($flightMessage, $code, new RuntimeException($secret));
+    $public = anytour_andromeda_quote_supplier_failure($error, 'flight_continuation');
+    $expectedDetail = [
+        'ok' => false, 'error' => 'supplier_unavailable', 'failure_category' => 'quote_state',
+        'failure_phase' => 'flight_continuation', 'failure_reason' => $flightMessage, 'failure_detail' => $detail,
+    ];
+    if ($public !== $expectedDetail) throw new RuntimeException('FAILURE_FLIGHT_DETAIL_' . $code);
+    $encoded = json_encode($public, JSON_THROW_ON_ERROR);
+    foreach ([$secret, (string)$code, 'RuntimeException', 'gateway.samo.ru', 'sid=abc'] as $private) {
+        if (str_contains($encoded, $private)) throw new RuntimeException('FAILURE_FLIGHT_DETAIL_LEAK');
+    }
+    $unsafePhase = anytour_andromeda_quote_supplier_failure($error, 'flight_continuation ' . $secret);
+    if ($unsafePhase !== $legacyFlightFailure + ['failure_detail' => $detail]) {
+        throw new RuntimeException('FAILURE_FLIGHT_DETAIL_UNSAFE_PHASE');
+    }
+}
+foreach ([0, 100, 108, -1, PHP_INT_MAX] as $code) {
+    if (anytour_andromeda_quote_supplier_failure(new RuntimeException($flightMessage, $code)) !== $legacyFlightFailure) {
+        throw new RuntimeException('UNLISTED_FLIGHT_DETAIL_CODE');
+    }
+}
+$foreignFlightError = new class($flightMessage, 101) extends RuntimeException {};
+foreach ([$foreignFlightError, new DomainException($flightMessage, 101),
+    new InvalidArgumentException($flightMessage, 101), new Exception($flightMessage, 101),
+    new TypeError($flightMessage, 101)] as $error) {
+    if (anytour_andromeda_quote_supplier_failure($error) !== $legacyFlightFailure) {
+        throw new RuntimeException('FOREIGN_FLIGHT_DETAIL_TYPE');
+    }
+}
+foreach ([$flightMessage . ' ' . $secret, $secret . ' ' . $flightMessage,
+    $flightMessage . "\n/private/path", 'ANDROMEDA_QUOTE_RESULT_INVALID', ''] as $message) {
+    $public = anytour_andromeda_quote_supplier_failure(new RuntimeException($message, 101,
+        new RuntimeException($secret)));
+    if (array_key_exists('failure_detail', $public)
+        || str_contains(json_encode($public, JSON_THROW_ON_ERROR), $secret)) {
+        throw new RuntimeException('UNLISTED_FLIGHT_DETAIL_MESSAGE');
+    }
+}
+
 // A phase is a fixed execution boundary, never a message, supplier action or path.
 $phases = ['request', 'database', 'catalog', 'criteria', 'quote_resolve', 'quote_reserve',
     'quote_bootstrap', 'flight_state', 'quote_validate', 'quote_checkpoint', 'flight_continuation'];
@@ -230,10 +279,22 @@ final class AnyTourAndromedaSelectedQuote {
         }
         return ['state' => $phaseFixture['retain'] ? 'flight_selection_required' : 'quote_verified'];
     }
+    public static function continueWithFlights(array $resolved, array $claim, array $selected, object $actions): array {
+        global $phaseFixture;
+        anytour_quote_phase_hook('continuation'); return ['flights' => $phaseFixture['public_pair']];
+    }
 }
 final class AnyTourAndromedaFlightSelection {
     public static function buildState(array $claim, array $options, string $context): array {
         anytour_quote_phase_hook('build'); return ['state' => ['local' => true], 'refs' => []];
+    }
+    public static function select(array $state, string $context, array $selection): array {
+        anytour_quote_phase_hook('select'); return ['claim' => [], 'selected' => []];
+    }
+}
+final class AnyTourAndromedaQuoteAttemptState {
+    public static function replay(array $state, string $context, string $operation): array {
+        return ['state' => 'flight_selection_required', 'final_price_verified' => false];
     }
 }
 function anytour_andromeda_search3_save(string $path, array $data): void {
@@ -242,7 +303,8 @@ function anytour_andromeda_search3_save(string $path, array $data): void {
 }
 function anytour_andromeda_quote_read(string $path, int $limit): array {
     global $phaseFixture;
-    anytour_quote_phase_hook('read'); return $phaseFixture['written'];
+    anytour_quote_phase_hook('read');
+    return ($phaseFixture['gateway_public_pair'] ?? false) ? ['state' => []] : $phaseFixture['written'];
 }
 function anytour_andromeda_quote_with_expiry(array $result, array $resolved): array {
     anytour_quote_phase_hook('validate'); return $result;
@@ -272,6 +334,7 @@ function anytour_andromeda_quote_unknown(string $path, string $lock, array $atte
     ++$phaseFixture['cleanup']; $phaseFixture['cleanup_phase'] = $phaseFixture['phase'];
 }
 eval($extractFunction($source, 'anytour_andromeda_quote_run'));
+eval($extractFunction($source, 'anytour_andromeda_quote_continue'));
 
 $phaseRun = static function(?string $failAt, bool $retain = false, bool $replay = false,
     ?Throwable $error = null, int $arity = 7): array {
@@ -346,7 +409,42 @@ if (($replayed['result']['state'] ?? null) !== 'quote_verified' || $replayed['fi
     || in_array('supplier', $replayed['fixture']['events'], true)) throw new RuntimeException('FAILURE_PHASE_REPLAY');
 ++$phaseChecks;
 
+// The canonical native producer already guarantees a valid public pair. Inject
+// malformed producer tuples to reach the actual gateway's independent guard.
+$publicPairChecks = 0;
+foreach ([[], [['direction' => '1'], ['direction' => '0']],
+    [['direction' => 0], ['direction' => '1']]] as $publicPair) {
+    $phase = 'flight_continuation';
+    $phaseFixture = ['fail_at' => null, 'events' => [], 'cleanup' => 0, 'replay' => false,
+        'gateway_public_pair' => true, 'public_pair' => $publicPair,
+        'prefix' => sys_get_temp_dir() . '/anytour-offline-public-pair-' . bin2hex(random_bytes(12))];
+    $phaseFixture['phase'] = &$phase;
+    try {
+        anytour_andromeda_quote_continue(['flight_selection' => ['provider' => 'andromeda',
+            'outbound_ref' => 'flight_' . str_repeat('a', 32), 'return_ref' => 'flight_' . str_repeat('b', 32)]],
+            new AnyTourQuotePhasePDO, [], [], 'local');
+        throw new RuntimeException('INVALID_PUBLIC_PAIR_ACCEPTED');
+    } catch (RuntimeException $error) {
+        if (get_class($error) !== RuntimeException::class
+            || $error->getMessage() !== $flightMessage || $error->getCode() !== 107
+            || $error->getPrevious() !== null || $phaseFixture['cleanup'] !== 1
+            || $phaseFixture['cleanup_phase'] !== 'flight_continuation'
+            || $phaseFixture['events'] !== ['resolve', 'meta', 'read', 'read', 'select', 'reserve', 'supplier', 'continuation']) {
+            throw new RuntimeException('FAILURE_PUBLIC_PAIR_GUARD');
+        }
+        $public = anytour_andromeda_quote_supplier_failure($error, $phase);
+        if (($public['failure_detail'] ?? null) !== 'public_pair_invalid'
+            || ($public['failure_reason'] ?? null) !== $flightMessage) {
+            throw new RuntimeException('FAILURE_PUBLIC_PAIR_DETAIL');
+        }
+        ++$publicPairChecks;
+    }
+}
+if (substr_count($source, "throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 107);") !== 2) {
+    throw new RuntimeException('FAILURE_PUBLIC_PAIR_ANNOTATIONS');
+}
 echo "andromeda quote failure category: OK\n";
 echo "andromeda quote native failure phase checks={$phaseChecks}\n";
+echo "andromeda quote public pair detail checks={$publicPairChecks}\n";
 // Stock quote CI already executes this file; keep the real parser smoke on that path.
 require_once __DIR__ . '/andromeda-claim-supplier-error-smoke.php';

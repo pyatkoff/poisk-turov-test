@@ -239,13 +239,19 @@ $boundQuote=static function(string $flow,string $mutation,string $at='calc')use(
             ?AnyTourAndromedaSelectedQuote::continueWithFlights($resolved,$getFlights,[0=>$pair[0],1=>$pair[1]],$actions)
             :AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($claim),$actions);
         return ['result'=>$result,'calls'=>$calls,'reserved'=>$reserved];
-    }catch(RuntimeException $error){return ['error'=>$error->getMessage(),'calls'=>$calls,'reserved'=>$reserved];}
+    }catch(RuntimeException $error){return ['error'=>$error->getMessage(),'code'=>$error->getCode(),
+        'class'=>get_class($error),'calls'=>$calls,'reserved'=>$reserved];}
 };
 foreach(['charter','regular','continuation'] as $flow){
     foreach(['replace','missing','duplicate','missing_uid'] as $mutation){
         $r=$boundQuote($flow,$mutation);
         if(($r['error']??null)!=='ANDROMEDA_SELECTED_FLIGHTS_INVALID'||isset($r['result']))throw new RuntimeException('CALC_FLIGHT_BINDING_'.$flow.'_'.$mutation);
+        $expectedCode=$mutation==='missing'?105:($mutation==='duplicate'?104:106);
+        if(($r['code']??null)!==$expectedCode||($r['class']??null)!==RuntimeException::class)throw new RuntimeException('CALC_FLIGHT_PREDICATE_'.$flow.'_'.$mutation);
         if(count(array_filter($r['calls'],static fn($action)=>$action==='calc'))!==1||$r['reserved']!==count($r['calls']))throw new RuntimeException('CALC_BINDING_BUDGET');
+        $expectedCalls=$flow==='charter'?['calc']:['changeservice','changeservice','calc'];
+        if($flow==='regular')array_unshift($expectedCalls,'get_flights');
+        if($r['calls']!==$expectedCalls)throw new RuntimeException('CALC_PREDICATE_CALLS_'.$flow.'_'.$mutation);
         ++$checks;
     }
     foreach(['updated','reordered'] as $mutation){
@@ -260,7 +266,67 @@ foreach(['charter','regular','continuation'] as $flow){
 foreach(['regular','continuation'] as $flow){
     $r=$boundQuote($flow,'replace','changeservice');
     if(($r['error']??null)!=='ANDROMEDA_SELECTED_FLIGHTS_INVALID'||in_array('calc',$r['calls'],true))throw new RuntimeException('SELECTION_FLIGHT_BINDING_'.$flow);
+    if(($r['code']??null)!==106||($r['class']??null)!==RuntimeException::class)throw new RuntimeException('SELECTION_FLIGHT_PREDICATE_'.$flow);
+    $expectedCalls=$flow==='regular'?['get_flights','changeservice','changeservice']:['changeservice','changeservice'];
+    if($r['calls']!==$expectedCalls||$r['reserved']!==count($expectedCalls))throw new RuntimeException('SELECTION_PREDICATE_CALLS_'.$flow);
     ++$checks;
 }
 
+// Reach native pre-calc predicates through the real flow and ClaimActions,
+// distinguishing an existing invalid head from a malformed returned pair.
+$predicateQuote=static function(string $case,string $flow)use($resolved,$getFlights,$package):array{
+    $claim=$getFlights;$pair=$getFlights['variants'][0]['transports'][0]['transport'];
+    if($case==='existing_duplicate'){
+        $extra=$pair[0];$extra['uid']='other_existing_out';
+        $claim['claimDocument'][0]['transports']=[['transport'=>[$pair[0],$extra]]];
+    }elseif($case==='existing_uid'){
+        $old=$pair[0];unset($old['uid']);
+        $claim['claimDocument'][0]['transports']=[['transport'=>[$old]]];
+    }
+    $calls=[];$reserved=0;
+    $actions=new AnyTourAndromedaClaimActions('SID_predicate_fixture',
+        static function()use(&$reserved):void{++$reserved;},
+        static function(string $url,string $post)use(&$calls,$claim,$case):array{
+            parse_str((string)parse_url($url,PHP_URL_QUERY),$query);
+            parse_str($post,$form);$reply=json_decode($form['claim']??'',true,64,JSON_THROW_ON_ERROR);
+            $action=$query['action']??null;$calls[]=$action;
+            if($action==='get_flights')$reply=$claim;
+            elseif($action==='changeservice'){
+                if(($query['NEW_UID']??null)==='back_uid'){
+                    $rows=&$reply['claimDocument'][0]['transports'][0]['transport'];
+                    if($case==='missing_pair')$rows=array_values(array_filter($rows,
+                        static fn(array $row):bool=>(string)($row['direction']??'')==='1'));
+                    elseif($case==='returned_invalid')$rows[1]['direction']='2';
+                    elseif($case==='returned_duplicate')$rows[]=$rows[0];
+                }
+            }else throw new RuntimeException('PREDICATE_UNEXPECTED_ACTION');
+            return ['status'=>200,'body'=>json_encode($reply,JSON_THROW_ON_ERROR)];
+        });
+    try{
+        $result=$flow==='regular'
+            ?AnyTourAndromedaSelectedQuote::run($resolved,new AnyTourAndromedaClient($package),$actions)
+            :AnyTourAndromedaSelectedQuote::continueWithFlights($resolved,$claim,[0=>$pair[0],1=>$pair[1]],$actions);
+        return ['result'=>$result,'calls'=>$calls,'reserved'=>$reserved];
+    }catch(Throwable $error){return ['error'=>$error,'calls'=>$calls,'reserved'=>$reserved];}
+};
+$predicateChecks=0;
+foreach(['regular','continuation'] as $flow){
+    foreach([
+        ['missing_pair',101,['changeservice','changeservice']],
+        ['existing_duplicate',102,[]],
+        ['existing_uid',103,[]],
+        ['returned_invalid',104,['changeservice','changeservice']],
+        ['returned_duplicate',104,['changeservice','changeservice']],
+    ] as [$case,$code,$expectedCalls]){
+        if($flow==='regular')array_unshift($expectedCalls,'get_flights');
+        $failed=$predicateQuote($case,$flow);$error=$failed['error']??null;
+        if(!$error instanceof RuntimeException||get_class($error)!==RuntimeException::class
+            ||$error->getMessage()!=='ANDROMEDA_SELECTED_FLIGHTS_INVALID'||$error->getCode()!==$code
+            ||$error->getPrevious()!==null||isset($failed['result'])
+            ||$failed['calls']!==$expectedCalls||$failed['reserved']!==count($expectedCalls)
+            ||in_array('calc',$failed['calls'],true))throw new RuntimeException('NATIVE_FLIGHT_PREDICATE_'.$flow.'_'.$case);
+        ++$predicateChecks;
+    }
+}
+print("Andromeda selected flight predicate details: {$predicateChecks} checks passed\n");
 print("Andromeda selected quote: {$checks} checks passed\n");

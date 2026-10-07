@@ -59,7 +59,7 @@ final class AnyTourAndromedaSelectedQuote
             }
             $selectedFlights = self::selectedFlights($claim);
             if (array_keys($selectedFlights) !== [0, 1]) {
-                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 101);
             }
             self::assertSameFlights($choice['private'], $selectedFlights);
         } else {
@@ -146,7 +146,7 @@ final class AnyTourAndromedaSelectedQuote
         }
         $selectedFlights = self::selectedFlights($claim);
         if (array_keys($selectedFlights) !== [0, 1]) {
-            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 101);
         }
         self::assertSameFlights($selected, $selectedFlights);
         return self::finalize($resolved, $claim, $packagePrice, $searchPriceEstimate, $selectedFlights, $actions, $retainCalculatedClaim);
@@ -467,13 +467,13 @@ final class AnyTourAndromedaSelectedQuote
             }
         }
         if (count($sameDirection) > 1) {
-            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 102);
         }
         if ($sameDirection !== []) {
             $index = $sameDirection[0];
             $oldUid = $selected[$index]['uid'] ?? null;
             if (!is_string($oldUid) || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $oldUid) !== 1) {
-                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 103);
             }
             if ($oldUid === $item['uid']) return $claim;
             $selected[$index] = $item;
@@ -495,7 +495,7 @@ final class AnyTourAndromedaSelectedQuote
                 if (!is_array($item) || ($item['type'] ?? null) !== 'ttAvia') continue;
                 $direction = (string)($item['direction'] ?? '');
                 if (!in_array($direction, ['0', '1'], true) || isset($out[$direction])) {
-                    throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+                    throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 104);
                 }
                 $out[$direction] = $item;
             }
@@ -508,13 +508,13 @@ final class AnyTourAndromedaSelectedQuote
     private static function assertSameFlights(array $expected, array $actual): void
     {
         if (array_keys($expected) !== array_keys($actual)) {
-            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+            throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 105);
         }
         foreach ($expected as $direction => $flight) {
             $uid = $flight['uid'] ?? null;
             if (!is_string($uid) || preg_match('/^[A-Za-z0-9_-]{1,128}$/D', $uid) !== 1
                 || ($actual[$direction]['uid'] ?? null) !== $uid) {
-                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID');
+                throw new RuntimeException('ANDROMEDA_SELECTED_FLIGHTS_INVALID', 106);
             }
         }
     }
