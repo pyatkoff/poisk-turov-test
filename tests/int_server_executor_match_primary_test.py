@@ -3412,4 +3412,204 @@ class Operator115Only2ControlTest(unittest.TestCase):
                     repeated.assert_not_called()
 
 
+FROZEN_NA3_FILES = [('scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py', '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'), ('scripts/diagnostics/fixtures/hotel_match_native_absent3_retained_fields_readonly_v1.json', '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', 'f43c431165137f817a6d04b4e925b7d382a3c2ff36ec139f3303d86998958e71')] + FROZEN_OP1152_FILES[:1] + FROZEN_OP1152_FILES[2:]
+
+class NativeAbsent3ControlTest(unittest.TestCase):
+    def setUp(self):
+        self.core = fresh_core()
+        registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX + SOURCE + ' ' + registration.NA3_MODE + ' ' + registration.NA3_OPERATION + ' ' + registration.NA3_BATCH
+
+    def stage(self, temp, bad_optional=False):
+        import pathlib
+        import sys
+        stage = Path(temp).resolve() / 'stage'
+        for relative, compressed, digest in FROZEN_NA3_FILES:
+            raw = zlib.decompress(base64.b64decode(compressed))
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), digest)
+            path = stage / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(raw)
+        runner = stage / registration.NA3_SOURCE_FILES[0]
+        sys.path.insert(0, str(runner.parent))
+        spec = importlib.util.spec_from_file_location('synthetic_native_absent3_control', runner)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fixture = module.manifest()
+        home = Path(temp).resolve() / 'home'
+        project = home / 'www/anytoour.ru'
+        project.mkdir(parents=True)
+        cache = home / '.fixture-cache'
+        raws = []
+        for i, selected in enumerate(fixture['rows']):
+            row = dict(provider='andromeda', supplier_namespace='andromeda_catalog',
+                       external_hotel_id=selected['catalog_id'], local_hotel_id=None,
+                       hotel_content=dict(hotel_url='https://www.bgoperator.ru/price.shtml?code=102616053529',
+                                          region='Synthetic region', category=4, source='andromeda'),
+                       **selected['expected_offer'])
+            if bad_optional and i == 0:
+                row['hotel_content']['hotel_url'] = {'private': 'original-optional-object'}
+            index = int(selected['json_pointer'].rsplit('/', 1)[1])
+            offers = [{'private': 'original-unselected-row'} for _ in range(index + 1)]
+            offers[index] = row
+            snapshot = dict(criteria=selected['expected_criteria'],
+                            store=dict(created_at=selected['created_at'], criteria=selected['expected_criteria'],
+                                       snapshot=dict(offers=offers)), private='original-other-field')
+            raw = module.retained.private_bytes(snapshot)
+            selected['sha256'] = hashlib.sha256(raw).hexdigest()
+            target = cache / selected['source_file']
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+            raws.append(raw)
+        encoded = module.n.enc(fixture)
+        (stage / registration.NA3_SOURCE_FILES[1]).write_bytes(encoded)
+        fixture_digest = hashlib.sha256(encoded).hexdigest()
+        runner.write_text(runner.read_text().replace(module.MANIFEST_SHA, fixture_digest))
+        shutil.rmtree(runner.parent / '__pycache__', ignore_errors=True)
+        handler = registration.REMOTE_NA3_HANDLER.replace(module.MANIFEST_SHA, fixture_digest)
+        handler = handler.replace(FROZEN_NA3_FILES[0][2], hashlib.sha256(runner.read_bytes()).hexdigest())
+        root = home / '.anytoour-match'
+        (root / 'operations').mkdir(parents=True)
+        config = project / '_preview/search3-anex-candidate/.andromeda-private.php'
+        config.parent.mkdir(parents=True)
+        config.write_text('<?php return ["catalog_path"=>' + json.dumps(str(cache / 'catalog.json')) + '];')
+        ns = dict(home=home, project=project, operation=registration.NA3_OPERATION, source=SOURCE,
+                  payload=dict(batch=registration.NA3_BATCH, maximum_writes=0, provider_http_calls=0),
+                  os=os, json=json, hashlib=hashlib, subprocess=subprocess, pathlib=pathlib, sys=sys,
+                  safe_file=lambda p, cap: p.is_file() and not p.is_symlink() and 0 < p.stat().st_size <= cap,
+                  safe_json=lambda p, cap: module.n.parsed(module.n.file_bytes(p, cap)),
+                  fail=lambda reason: (_ for _ in ()).throw(RuntimeError(reason)))
+        exec(handler, ns)
+        return dict(stage=stage, home=home, project=project, cache=cache, raws=raws, ns=ns,
+                    opdir=root / 'operations' / registration.NA3_OPERATION,
+                    marker=root / 'native-absent3-fields-batch-20261008.json')
+
+    def run_case(self, case):
+        return case['ns']['run_match_native_absent3_fields'](case['stage'])
+
+    def test_exact_scope_types_inventory_and_no_generic_collector_or_supplier_slot(self):
+        command = self.core.parse_command(self.body())
+        self.assertEqual((command['maximum_writes'], command['provider_http_calls']), (0, 0))
+        for body in (self.body() + ' 0', self.body().replace(registration.NA3_BATCH, registration.OP1152_BATCH),
+                     self.body().replace('20261008-v1', '20261008-v2'), self.body().replace(SOURCE, 'bad')):
+            with self.assertRaises(ValueError):
+                self.core.parse_command(body)
+        for key, value in [('maximum_writes', True), ('maximum_writes', 1), ('provider_http_calls', False), ('provider_http_calls', 1)]:
+            with self.assertRaises(ValueError):
+                registration.activate(self.core, dict(command, **{key: value}))
+        fixed = list(self.core.FIXED)
+        with patch.object(self.core, 'ensure_supplier_slot') as slot:
+            registration.activate(self.core, command)
+            slot.assert_not_called()
+        self.assertEqual(self.core.FIXED, fixed + list(registration.NA3_SOURCE_FILES))
+        self.assertNotIn('def run_match_operator115_only2_fields(stage):', self.core.REMOTE)
+        guards = [node.test for node in ast.walk(ast.parse(self.core.REMOTE))
+                  if isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                  and isinstance(node.test.left, ast.Name) and node.test.left.id == 'mode'
+                  and isinstance(node.test.ops[0], ast.NotIn)]
+        self.assertEqual(len(guards), 2)
+        for guard in guards:
+            self.assertFalse(eval(compile(ast.Expression(guard), '<guard>', 'eval'), {}, dict(mode=registration.NA3_MODE)))
+        self.assertLess(len(base64.b64encode(zlib.compress(self.core.REMOTE.encode(), 9))) + 100, 65536)
+
+    def test_source_fixture_helpers_and_symlink_refused_before_reservation(self):
+        for relative in registration.NA3_SOURCE_FILES:
+            for mutation in ['digest', 'symlink']:
+                with self.subTest(relative=relative, mutation=mutation), tempfile.TemporaryDirectory() as temp:
+                    case = self.stage(temp)
+                    path = case['stage'] / relative
+                    if mutation == 'digest':
+                        path.write_bytes(path.read_bytes() + b'\n')
+                    else:
+                        backup = path.with_suffix('.private')
+                        path.rename(backup)
+                        path.symlink_to(backup)
+                    with patch.object(subprocess, 'run') as child, self.assertRaisesRegex(RuntimeError, 'native_absent3_source_binding'):
+                        self.run_case(case)
+                    child.assert_not_called()
+                    self.assertFalse(case['marker'].exists())
+                    self.assertFalse(case['opdir'].exists())
+
+    def test_real_php_config_and_actual_cli_preserve_13_raw_contexts_without_identity_promotion(self):
+        self.assertIsNotNone(shutil.which('php'), 'real PHP is mandatory for this test')
+        with tempfile.TemporaryDirectory() as temp:
+            case = self.stage(temp)
+            result = self.run_case(case)['summary']
+            self.assertEqual((result['rows_examined'], result['raw_references_verified'], result['raw_files_read']), (13, 13, 13))
+            self.assertEqual(result['requested_catalog_candidates'], 3)
+            self.assertIs(result['original_supplier_response_proven'], False)
+            self.assertEqual(result['current_readiness'], 'not_evaluated')
+            self.assertTrue(all(row['independent_tv_hotel_id'] is None for row in result['rows']))
+            self.assertEqual(result['rows'][0]['fields'][0]['value'], 'A11 Hotel Obakoy ')
+            for i, raw in enumerate(case['raws']):
+                path = case['opdir'] / f'retained-{i:02d}.json'
+                self.assertEqual(path.read_bytes(), raw)
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn('original-unselected-row', json.dumps(result))
+            self.assertEqual((result['provider_http_calls'], result['database_reads'], result['mapping_writes'], result['accepted'], result['written']), (0, 0, 0, 0, 0))
+            with patch.object(subprocess, 'run') as repeated, self.assertRaisesRegex(RuntimeError, 'native_absent3_child_exists_no_replay'):
+                self.run_case(case)
+            repeated.assert_not_called()
+
+    def test_real_php_actual_cli_individual_optional_hold_keeps_original_and_other_12(self):
+        self.assertIsNotNone(shutil.which('php'), 'real PHP is mandatory for this test')
+        with tempfile.TemporaryDirectory() as temp:
+            case = self.stage(temp, bad_optional=True)
+            result = self.run_case(case)['summary']
+            self.assertEqual(result['raw_references_verified'], 13)
+            self.assertEqual(result['rows'][0]['fields'][3]['hold'], 'optional_field_not_scalar')
+            self.assertTrue(all(row['fields'][3]['hold'] is None for row in result['rows'][1:]))
+            self.assertIn('original-optional-object', (case['opdir'] / 'current-input.json').read_text())
+            self.assertNotIn('original-optional-object', json.dumps(result))
+
+    def test_real_php_actual_cli_rehashed_private_public_forgery_still_bound_to_originals(self):
+        self.assertIsNotNone(shutil.which('php'), 'real PHP is mandatory for this test')
+        actual_run = subprocess.run
+        with tempfile.TemporaryDirectory() as temp:
+            case = self.stage(temp)
+            def child(*args, **kwargs):
+                completed = actual_run(*args, **kwargs)
+                if args[0][0] == 'php':
+                    return completed
+                private_path = case['opdir'] / 'current-input.json'
+                private = json.loads(private_path.read_bytes())
+                private['rows'][0]['original_row']['hotel_content']['hotel_url'] = 'https://example.org/forged'
+                private_path.write_text(json.dumps(private, ensure_ascii=True, sort_keys=True, indent=2) + '\n')
+                result_path = case['opdir'] / 'result.json'
+                result = json.loads(result_path.read_bytes())
+                result['private_input_sha256'] = hashlib.sha256(private_path.read_bytes()).hexdigest()
+                result_path.write_text(json.dumps(result, sort_keys=True, indent=2) + '\n')
+                receipt_path = case['opdir'] / 'receipt.json'
+                receipt = json.loads(receipt_path.read_bytes())
+                receipt['private_input_sha256'] = result['private_input_sha256']
+                receipt['result_sha256'] = hashlib.sha256(result_path.read_bytes()).hexdigest()
+                receipt_path.write_text(json.dumps(receipt))
+                return completed
+            with patch.object(subprocess, 'run', side_effect=child), self.assertRaisesRegex(RuntimeError, 'native_absent3_original_or_terminal_binding'):
+                self.run_case(case)
+            with patch.object(subprocess, 'run') as repeated, self.assertRaisesRegex(RuntimeError, 'native_absent3_child_exists_no_replay'):
+                self.run_case(case)
+            repeated.assert_not_called()
+
+    def test_timeout_and_private_root_failure_do_not_replay_or_inherit_secret_environment(self):
+        with tempfile.TemporaryDirectory() as temp:
+            case = self.stage(temp)
+            calls = []
+            def child(command, **kwargs):
+                calls.append((command, kwargs))
+                self.assertNotIn('ANEX_SECRET_TEST_ONLY', kwargs['env'])
+                if command[0] == 'php':
+                    return subprocess.CompletedProcess(command, 0, str(case['cache']), '')
+                raise subprocess.TimeoutExpired(command, kwargs['timeout'])
+            with patch.dict(os.environ, {'ANEX_SECRET_TEST_ONLY': 'synthetic-secret'}), patch.object(subprocess, 'run', side_effect=child), self.assertRaises(subprocess.TimeoutExpired):
+                self.run_case(case)
+            self.assertEqual(len(calls), 2)
+            self.assertTrue(case['marker'].exists())
+            with patch.object(subprocess, 'run') as repeated, self.assertRaisesRegex(RuntimeError, 'native_absent3_child_exists_no_replay'):
+                self.run_case(case)
+            repeated.assert_not_called()
+
+
 if __name__=='__main__':unittest.main()
