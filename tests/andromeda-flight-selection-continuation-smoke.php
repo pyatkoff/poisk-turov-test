@@ -392,7 +392,7 @@ try{
     };
     $fresh=$newContext('three-pairs');$factoryAfterInitial=$gatewayFactoryCalls;$initialActionsAfter=$gatewayCalls;
     if(($fresh['preview']['repricing']??null)!==['enabled'=>true,'max_pairs'=>3,'used_pairs'=>0,'remaining_pairs'=>3]
-        ||($fresh['preview']['search_price_estimate']??null)!==['amount'=>'74592','currency'=>'RUB','source'=>'derived_search_estimate'])throw new RuntimeException('FRESH_REPRICE_CAPABILITY_OR_BASELINE');
+        ||($fresh['preview']['search_price_estimate']??null)!==['amount'=>'74592.00','currency'=>'RUB','source'=>'derived_search_estimate'])throw new RuntimeException('FRESH_REPRICE_CAPABILITY_OR_BASELINE');
     $repriceReentry=static function()use($continue,$fresh):void{
         try{$continue($fresh['b']);throw new RuntimeException('CONCURRENT_PAIR_ENTERED');}
         catch(RuntimeException $e){if($e->getMessage()!=='ANDROMEDA_QUOTE_REPLAY_REFUSED')throw $e;}
