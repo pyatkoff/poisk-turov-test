@@ -300,14 +300,16 @@ function updateSearchUI(){
  $$('#quick-stars button').forEach(b=>{const active=b.dataset.action==='any-stars'?!state.filters.stars.length:state.filters.stars.includes(+b.dataset.value);b.setAttribute('aria-pressed',active);b.classList.toggle('active',active)});
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
  $('#budget-label').textContent=budgetText();
- $('.search-submit').disabled=!catalogReady||!!(place.hotelId&&!data.preview&&!destinationHotel(place.hotelId)?.legacyIds.length);
+ $('.search-submit').disabled=!catalogReady||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  renderCatalogError();
 }
 function renderCatalogError(){
  let node=$('#catalog-error');
  if(!node){node=document.createElement('p');node.id='catalog-error';node.className='error-text';node.setAttribute('role','alert');$('#search-form .search-actions').before(node);}
- node.hidden=!catalogError||!catalogDeparture;
- node.innerHTML=node.hidden?'':`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`;
+ const countryFailed=!!catalogError&&!!catalogDeparture,hotelMissing=urlStateHydrated&&!data.preview&&destinationIds(currentDraftDestination()).some(id=>!destinationHotel(id)?.legacyIds.length);
+ const restoring=hotelMissing&&hotelRestorePending&&!countryFailed;
+ node.hidden=!countryFailed&&!hotelMissing;node.setAttribute('role',restoring?'status':'alert');node.classList.toggle('error-text',!restoring);node.classList.toggle('picker-caption',restoring);
+ node.innerHTML=node.hidden?'':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
 }
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();
@@ -452,7 +454,7 @@ function renderDestination(){
  $('#destination-scope').textContent='Отели — '+(countryNames[d.country]||'в выбранной стране')+' · страны и курорты можно выбрать по названию';
  $('#destination-country-context').innerHTML=`<div class="destination-current-country"><strong>${q.length>=2?'Отели: ':''}${esc(countryNames[d.country]||'Направление')}</strong><button class="text-button" data-action="destination-countries" aria-expanded="${destinationCountryList}">Изменить</button></div>`;
  $('#destination-selection').hidden=!ids.length&&!d.resorts.length;
- $('#destination-selection').innerHTML=`<div class="destination-selection-heading">ВЫБРАНО</div><div class="destination-selected-resorts">${ids.length?ids.map(id=>`<button data-action="destination-remove" data-id="${id}" aria-label="Убрать отель ${esc(destinationHotel(id)?.name)}"><span>${esc(destinationHotel(id)?.name||'Выбранный отель')}</span>${icon('x')}</button>`).join(''):d.resorts.map(r=>`<button data-action="destination-remove" data-value="${esc(r)}" aria-label="Убрать курорт ${esc(r)}"><span>${esc(r)}</span>${icon('x')}</button>`).join('')}</div><p class="picker-caption">${ids.length?'Только выбранные отели':'Любой из выбранных курортов'}</p>`;
+ $('#destination-selection').innerHTML=`<div class="destination-selection-heading">ВЫБРАНО</div><div class="destination-selected-resorts">${ids.length?ids.map(id=>`<button data-action="destination-remove" data-id="${id}" aria-label="${destinationHotel(id)?.name?'Убрать отель '+esc(destinationHotel(id).name):'Убрать выбранный отель'}"><span>${esc(destinationHotel(id)?.name||'Выбранный отель')}</span>${icon('x')}</button>`).join(''):d.resorts.map(r=>`<button data-action="destination-remove" data-value="${esc(r)}" aria-label="Убрать курорт ${esc(r)}"><span>${esc(r)}</span>${icon('x')}</button>`).join('')}</div><p class="picker-caption">${ids.length?'Только выбранные отели':'Любой из выбранных курортов'}</p>`;
  let html='';const countryRows=Object.entries(countryNames).filter(([k,n])=>destinationCountryList||q&&normalizeSearch(n).includes(q)).sort((a,b)=>destinationOrder(a[1],b[1]));
  if(countryRows.length)html+=`<section class="destination-section"><h3>Страны</h3>${countryRows.map(([k,n])=>`<button class="destination-row" data-action="destination-country" data-value="${k}"><span><strong>${esc(n)}</strong><small>Страна${k===d.country?' · текущий выбор':''}</small></span><span class="chevron">›</span></button>`).join('')}</section>`;
  if(!q&&!destinationCountryList)html+=`<button class="destination-row" data-action="destination-all" aria-pressed="${!ids.length&&!d.resorts.length}"><span><strong>Вся страна</strong><small>Все курорты и отели ${esc(countryNames[d.country])}</small></span><span class="choice-check">${!ids.length&&!d.resorts.length?icon('check'):''}</span></button>`;
@@ -599,7 +601,7 @@ function emptyCalendarContext(){
  return `<strong>В календаре — от ${money(point.price)}${esc(observed)}</strong><p>Это ранее сохранённая цена. Предложений по ней в текущем поиске нет.</p>`;
 }
 function refreshEmptyCalendarContext(){const node=$('[data-empty-calendar]');if(!node)return;const html=emptyCalendarContext();node.hidden=!html;if(node.innerHTML!==html)node.innerHTML=html;}
-function emptyResultsHTML(){if(!state.hasSearched){if(!urlStateHydrated&&!catalogError)return `<div class="empty pristine-empty" role="status">${icon('search')}<h3>Готовим поиск…</h3><p>Загружаем направления и сохранённые параметры поездки.</p></div>`;const d=currentDraftDestination();if(d.hotelId&&!data.preview&&!destinationHotel(d.hotelId)?.legacyIds.length)return `<div class="empty pristine-empty" role="status">${icon('info')}<h3>${hotelRestorePending?'Восстанавливаем выбранный отель…':'Не удалось восстановить отель'}</h3><p>Параметры поездки сохранены.${hotelRestorePending?'':' Повторите загрузку или выберите отель заново.'}</p>${hotelRestorePending?'':`<div class="empty-actions"><button class="secondary" data-action="retry-hotel-restore">Повторить загрузку отеля</button><button class="text-button" data-action="destination">Выбрать другой отель</button></div>`}</div>`;return `<div class="empty pristine-empty">${icon('search')}<h3>Начните с параметров поездки</h3><p>Выберите направление, даты и туристов, затем нажмите «Найти туры».</p></div>`;}const model=appliedFilterModel(),chips=filterChipData(model),response=responseFor(state.search);if(response.phase==='error')return '';
+function emptyResultsHTML(){if(!state.hasSearched){if(!urlStateHydrated&&!catalogError)return `<div class="empty pristine-empty" role="status">${icon('search')}<h3>Готовим поиск…</h3><p>Загружаем направления и сохранённые параметры поездки.</p></div>`;const d=currentDraftDestination();if(!data.preview&&destinationIds(d).some(id=>!destinationHotel(id)?.legacyIds.length))return `<div class="empty pristine-empty" role="status">${icon('info')}<h3>${hotelRestorePending?'Восстанавливаем выбранные отели…':'Не удалось восстановить выбранные отели'}</h3><p>Параметры поездки сохранены.${hotelRestorePending?'':' Повторите загрузку или выберите отель заново.'}</p>${hotelRestorePending?'':`<div class="empty-actions"><button class="secondary" data-action="retry-hotel-restore">Повторить загрузку отелей</button><button class="text-button" data-action="destination">Выбрать другой отель</button></div>`}</div>`;return `<div class="empty pristine-empty">${icon('search')}<h3>Начните с параметров поездки</h3><p>Выберите направление, даты и туристов, затем нажмите «Найти туры».</p></div>`;}const model=appliedFilterModel(),chips=filterChipData(model),response=responseFor(state.search);if(response.phase==='error')return '';
  if(response.pending||response.phase!=='complete'){emptySuggestions=[];return `<div class="empty recovery-empty" role="status">${icon('search')}<h3>${response.pending?'Подбираем туры по вашим условиям':'Поиск пока не завершён'}</h3><p>${response.pending?'Предложения появятся здесь по мере загрузки.':'Отсутствие результатов пока не означает, что подходящих туров нет.'}</p><p class="empty-preserved">Даты, туристы и фильтры сохранены.</p>${response.pending?'':'<button class="secondary" data-action="retry-search">Повторить поиск</button>'}</div>`;}
  emptySuggestions=recoverySuggestions(model);const calendarContext=emptyCalendarContext();return `<div class="empty recovery-empty">${icon('search')}<h3>Подходящих предложений пока нет</h3><p>${emptySuggestions.length?'Вот какие изменения вернут отели в выдачу:':'Попробуйте другие даты или направление.'}</p><div class="empty-calendar-context" data-empty-calendar ${calendarContext?'':'hidden'}>${calendarContext}</div>${recoveryHTML(emptySuggestions,'results')}<p class="empty-preserved">${emptySuggestions.length?'Количество рассчитано по уже загруженным предложениям. При изменении фильтров даты поездки и туристы сохранятся.':'По текущему запросу нет доступных предложений среди загруженных данных.'}</p><div class="empty-actions"><button class="primary" data-action="calendar">Выбрать другие даты</button>${chips.length?'<button class="secondary" data-action="reset">Сбросить фильтры</button>':''}<button class="text-button" data-action="edit-search">Изменить поиск</button></div></div>`;}
 function updateDrawerPreview(knownCount){
@@ -2094,7 +2096,7 @@ function renderSearchStatus(items,total){
 }
 
 function prepareSearchRun(options={}){
- if(state.filters.hotelId&&!data.preview&&!destinationHotel(state.filters.hotelId)?.legacyIds.length){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
+ if(!data.preview&&destinationIds(state.filters).some(id=>!destinationHotel(id)?.legacyIds.length)){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
  selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
@@ -2378,10 +2380,15 @@ async function restoreSavedHotels(){
  const favorites=validIds(getStored('anytour.prototype.v18.favorites.v1',[])),ids=favorites;if(!ids.length)return;const rows=await data.savedHotels(ids,state.search);if(state.hasSearched)return;hotels=rows;state.favorites=favorites.filter(id=>rows.some(h=>h.id===id));updateNav();
 }
 async function restoreURLHotel(){
- const id=state.filters.hotelId;if(!id||hotelRestorePending)return;
+ const place=currentDraftDestination(),ids=destinationIds(place),country=place.country;
+ if(!ids.length||hotelRestorePending)return;
+ const origin=draft.origin,generation=catalogLoadGeneration,key=JSON.stringify(ids);
+ const current=()=>generation===catalogLoadGeneration&&draft.origin===origin&&currentDraftDestination().country===country&&JSON.stringify(destinationIds(currentDraftDestination()))===key;
  hotelRestorePending=true;updateSearchUI();renderResults();
- try{const h=await data.restoreHotel(id,state.search.country);destinationHotels.set(h.id,h);}
- catch{/* Keep the selected ID and offer an explicit retry or reselection. */}
+ try{await Promise.all(ids.filter(id=>!destinationHotel(id)?.legacyIds.length).map(async id=>{
+  try{const h=await data.restoreHotel(id,country);if(current()&&h.id===id&&String(h.country)===String(country)&&h.legacyIds?.length)destinationHotels.set(id,h);}
+  catch{/* Keep every unresolved selected ID for explicit retry or reselection. */}
+ }));}
  finally{hotelRestorePending=false;updateSearchUI();renderResults();if(modalType==='destination')renderDestination();}
 }
 async function bootRealData(){

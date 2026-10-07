@@ -27,7 +27,10 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    if(gate)await gate;if(state.hotelLookupError)return {ok:false,error:'Fictional hotel lookup unavailable'};
    return {ok:true,items:rows.map(h=>({id:h.legacyId,name:h.name,country:{id:Number(h.country),name:h.countryName}}))};
   }
-  if(u.pathname.endsWith('/hotel-details-read-v1.php')){const ids=q.getAll('legacyHotelIds[]'),rows=state.hotelCatalogue.filter(h=>ids.includes(String(h.legacyId)));return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:rows.length?rows.map(h=>({...profile,id:h.id,name:h.name,country:{id:Number(h.country),name:h.countryName},images:h.images})):[profile],links:rows.length?rows.map(h=>({legacyHotelId:String(h.legacyId),anytourHotelId:h.id})):ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};}
+  if(u.pathname.endsWith('/hotel-details-read-v1.php')){
+   if(q.has('anytourHotelId')){const h=state.hotelCatalogue.find(h=>String(h.id)===q.get('anytourHotelId'));return {ok:!!h,source:'anytour-canonical-catalog',catalog:'anytour',item:h?{...profile,id:h.id,name:h.name,country:{id:Number(h.country),name:h.countryName},images:h.images}:null};}
+   const ids=q.getAll('legacyHotelIds[]'),rows=state.hotelCatalogue.filter(h=>ids.includes(String(h.legacyId)));return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:rows.length?rows.map(h=>({...profile,id:h.id,name:h.name,country:{id:Number(h.country),name:h.countryName},images:h.images})):[profile],links:rows.length?rows.map(h=>({legacyHotelId:String(h.legacyId),anytourHotelId:h.id})):ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};
+  }
   if(u.pathname.endsWith('/search3-local-results-read-v1.php')){
    if(action==='meal_catalog')return {ok:true,data:{source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:'a'.repeat(64),plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},{id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']}]}};
    if(action==='price_calendar'){
