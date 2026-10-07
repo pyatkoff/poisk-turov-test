@@ -11,7 +11,7 @@ const searchRef='a'.repeat(32),offerRef='anex_online:'+'b'.repeat(64),andromedaR
 function hotelCatalogue(){return [...Array.from({length:10},(_,i)=>({id:2001+i,legacyId:7001+i,name:'Rixos Fictional Belek '+String(i+1).padStart(2,'0'),country:'4',countryName:'Турция',images:i===2?[]:i===3?['/test-missing-photo.svg']:['/test-photo.svg']})),...Array.from({length:3},(_,i)=>({id:3001+i,legacyId:8001+i,name:'Rixos Fictional Egypt '+(i+1),country:'100',countryName:'Египет',images:['/test-photo.svg']}))];}
 function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}){
  const anexWindows=new Map();
- const calls=[],state={hold:false,failAnex:false,extended:false,anexCurrentAdditional:false,anexPackageChoiceCount:2,samoFailure:null,samoFlightChoice:false,samoSolePair:false,samoSearchGate:null,samoMeal:'AI',samoRoom:'SAMO STANDARD',wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null,tvFlightFuel:tvFuel,hotelCatalogue:[],catalogueCountries:[],hotelLookupGates:{},hotelLookupError:false};
+ const calls=[],state={hold:false,failAnex:false,extended:false,anexCurrentAdditional:false,anexPackageChoiceCount:2,samoFailure:null,samoFlightChoice:false,samoSolePair:false,samoSearchGate:null,samoMeal:'AI',samoRoom:'SAMO STANDARD',wideFacets:false,countriesFailure:'',countryGates:{},regionsGate:null,tvFlightFuel:tvFuel,hotelCatalogue:[],catalogueCountries:[],catalogueAliases:{},hotelLookupGates:{},hotelLookupError:false};
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
@@ -23,7 +23,7 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    return {ok:true,source:'anytour-destination-identities-v1',provider:'tourvisor',kind:action==='countries'?'country':'region',...(action==='regions'?{parentId:4}:{}),items:action==='countries'?[{id:4,kind:'country',parentId:null,name:'Турция',slug:'turkey',revision:1,tourvisorIds:['4']},...state.catalogueCountries]:[{id:21,kind:'region',parentId:4,name:'Белек',slug:'belek',revision:1,tourvisorIds:['21']}]};
   }
   if(u.pathname==='/data/hotel-search-v1.php'){
-   const country=q.get('countryId'),query=q.get('q').toLowerCase(),rows=state.hotelCatalogue.filter(h=>h.country===country&&h.name.toLowerCase().includes(query)).slice(0,10),gate=state.hotelLookupGates[country];
+   const country=q.get('countryId'),query=q.get('q').toLowerCase(),rows=state.hotelCatalogue.filter(h=>h.country===country&&(h.name.toLowerCase().includes(query)||state.catalogueAliases[h.id]?.includes(query))).slice(0,10),gate=state.hotelLookupGates[country];
    if(gate)await gate;if(state.hotelLookupError)return {ok:false,error:'Fictional hotel lookup unavailable'};
    return {ok:true,items:rows.map(h=>({id:h.legacyId,name:h.name,country:{id:Number(h.country),name:h.countryName}}))};
   }

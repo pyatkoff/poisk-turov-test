@@ -99,6 +99,8 @@ Next acceptance: the separately coordinated functional owner checks actual curre
 
 ### Hotel picker usability block
 
+Current successful catalogue rows remain authoritative for that exact query and country, including server-accepted aliases whose display name differs. Cached suggestions still use local name matching; a changed query/country or ignored abort cannot reuse the old alias response. Forward restores the query and exact multi-ID draft through a fresh catalogue read, without starting suppliers.
+
 The same canonical hotel catalogue supplies available thumbnails, stable own IDs and verified legacy links. Missing or failed photos show a placeholder. Hotel matches stay within the selected country; countries remain reachable while a hotel name is typed. Accepting a country change repeats only the bounded catalogue lookup, keeps the query and rejects obsolete responses. Supplier search still requires the form submit.
 
 The mobile picker uses the visual viewport height above an open keyboard, with a compact header, three visible fixture rows and an accessible confirmation action. Chromium checks at 390/768/1280 include a simulated keyboard and viewport pan; these are not physical iPhone/Safari acceptance. Query errors, retry, draft cancel/Forward, 8+2 pagination, current-country cache and verified hotel ID submission are covered with fictional responses and no live supplier or lead HTTP.
