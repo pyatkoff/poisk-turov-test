@@ -1543,7 +1543,8 @@ async function openLeadWithQuote(key){
 function quotePriceChangeHTML(o){
  const before=Number(o?.quoteListingTotal),after=o?.pricePending?null:data.amount(o?.total);
  if(o?.loading||o?.quoteError||!Number.isFinite(before)||before<=0||!after||before===after)return '';
- return `<p class="quote-price-change" role="status"><strong>Цена изменилась после проверки</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
+ const title=flightPairFor(o)?'Цена с выбранным перелётом':'Цена изменилась после проверки';
+ return `<p class="quote-price-change" role="status"><strong>${title}</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
 }
 function chosenStayHTML(o,editable=false){
  const placement=data.text(o.tour?.placement)||o.placement;
