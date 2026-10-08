@@ -1119,12 +1119,12 @@ function showModal(type,title,kicker,body,wide=false){
  if(!m.open){modalHistory.length=0;enterUIHistory();}
  else if(!restoringModal&&modalType!==type){modalHistory.push(captureModalStep(m));}
  modalType=type;updateModalBack();m.className=type==='gallery'?'gallery-dialog':wide?'wide-dialog':type==='dates'?'dates-dialog':'';$('#modal-title').textContent=title;$('#modal-kicker').textContent=kicker;m.classList.toggle('form-picker', ['departure','destination','destination-replace','dates','nights','guests','child-age','meals','budget','stars','form-filters'].includes(type));$('#modal-body').innerHTML=body;$('#modal-footer').innerHTML='';$('#modal-footer').hidden=true;$('#modal-body').scrollTop=0;
- if(!m.open)m.showModal();document.body.style.overflow='hidden';m.scrollTop=0;$('#modal-body').scrollTop=0;hydrate();syncDestinationViewport();if(newStep&&!restoringModal)$('#modal-title').focus({preventScroll:true});queueMicrotask(rememberUIRoute);
+ if(!m.open)m.showModal();document.body.style.overflow='hidden';m.scrollTop=0;$('#modal-body').scrollTop=0;delete m.dataset.quoteExpired;hydrate();syncDestinationViewport();if(newStep&&!restoringModal)$('#modal-title').focus({preventScroll:true});queueMicrotask(rememberUIRoute);queueMicrotask(refreshProviderQuoteExpiry);
 }
 function closeModal({fromHistory=false}={}){
  selectionGeneration++;calendarRequest?.abort();calendarObserver?.disconnect();hotelRoomObserver?.disconnect();hotelRoomObserver=null;cancelDestinationLookup();
  const m=$('#modal');if(!m.open)return;
- leaveUIHistory(fromHistory);modalType='';formFiltersDraft=null;destinationPending=null;modalHistory.length=0;m.close();syncDestinationViewport();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';restorePageReturn();
+ clearTimeout(providerQuoteExpiryTimer);leaveUIHistory(fromHistory);modalType='';formFiltersDraft=null;destinationPending=null;modalHistory.length=0;m.close();syncDestinationViewport();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';restorePageReturn();
 }
 function modalBack(){
  let previous=modalHistory.pop();
@@ -1399,6 +1399,40 @@ let flightDraft=null,andromedaQuoteDraft=null,andromedaApplicationDraft=null,ane
 // Retain only this search's direct-provider outcomes for navigation; never persist them.
 const providerViews=new Map();
 function retainedProviderView(o){const view=providerViews.get(o?.key);return view&&view.offer.raw===o.raw&&offerFromKey(o.key)?.raw===o.raw?view:null;}
+// Reflect the retained receipt's deadline in this dialog. The canonical adapter
+// still owns attempts, caches and price authority; expiry never starts a request.
+let providerQuoteExpiryTimer=null;
+function refreshProviderQuoteExpiry(){
+ clearTimeout(providerQuoteExpiryTimer);providerQuoteExpiryTimer=null;
+ if(typeof document==='undefined')return;
+ const modal=$('#modal');if(!modal?.open)return;
+ const offer=selectedOffer,view=retainedProviderView(offer),deadline=view?.result?.expiresAt;
+ if(!['andromeda-flights','andromeda-verified','provider-application','anex-quote','anex-application'].includes(modalType)||!Number.isSafeInteger(deadline))return;
+ const remaining=deadline*1000-Date.now();
+ if(remaining>0){providerQuoteExpiryTimer=setTimeout(refreshProviderQuoteExpiry,Math.min(remaining,2147483647));return;}
+ if(modal.dataset.quoteExpired==='1')return;
+ modal.dataset.quoteExpired='1';
+ const body=$('#modal-body'),active=document.activeElement,focus=focusReference(active,modal),top=body.contains(active)?active.getBoundingClientRect().top-body.getBoundingClientRect().top:null,scroll=body.scrollTop;
+ const form=$('#prototype-lead-form'),consent=form?.elements.consent;
+ if(consent){consent.checked=false;consent.dispatchEvent(new Event('input',{bubbles:true}));delete form.dataset.checked;}
+ for(const input of $$('[name="andromeda-outbound"],[name="andromeda-return"],[name="anex-package-choice"]'))input.disabled=true;
+ for(const button of $$('#modal [type="submit"],#modal [data-action="apply-andromeda-flights"],#modal [data-action="anex-package-calculate"],#modal [data-action="edit-anex-flights"],#modal [data-action="edit-andromeda-flights"]'))button.disabled=true;
+ const total=$('#modal-body .price-line.total strong');if(total)total.textContent='Срок истёк';
+ const priceStatus=$('#modal-body .price-line.total span');if(priceStatus)priceStatus.textContent='Цена больше не подтверждена';
+ const assurance=$('#modal-body .price-assurance');if(assurance)assurance.textContent='Эта цена больше не подтверждена.';
+ for(const changed of $$('#modal-body .quote-price-change'))changed.hidden=true;
+ const message=form?.querySelector('.lead-message');if(message)message.textContent='';
+ $('#modal-title').textContent='Цена требует проверки';
+ body.insertAdjacentHTML('beforeend',`<p id="provider-price-expiry" class="error-text" role="alert">Срок подтверждения цены истёк. Выберите другой тур или выполните новый поиск.${form?' Контакты сохранены.':''}</p>`);
+ $('#modal-footer').innerHTML=offerDetailFooterHTML({total:null,pricePending:true},`<button class="primary" data-action="all-offers" data-id="${offer.hotelId}">К вариантам тура</button>`,'Срок подтверждения цены истёк');
+ // Keep contact input nodes and their viewport position. A removed footer action
+ // receives the existing recovery action, without moving an active contact field.
+ restoreFocus(focus,$('#modal-footer [data-action="all-offers"]'),modal);body.scrollTop=scroll;
+ if(Number.isFinite(top)&&body.contains(document.activeElement))body.scrollTop+=document.activeElement.getBoundingClientRect().top-body.getBoundingClientRect().top-top;
+ rememberUIRoute();
+}
+window.addEventListener('focus',refreshProviderQuoteExpiry);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshProviderQuoteExpiry();});
 function rememberProviderView(o,type,result,error='',pending=false){
  const previous=retainedProviderView(o),repricing=result?.repricing?.enabled===true;
  if(o&&o.raw&&offerFromKey(o.key)?.raw===o.raw)providerViews.set(o.key,{offer:{...o,loading:false},type,result,error,pending,
@@ -2413,7 +2447,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
    restoringModal=true;
    try{if(previous)reopenUIRoute(previous.route);else openAllOffers(id,offerView?.id===id?{...offerView}:null);}finally{restoringModal=false;}
    if(previous)restoreModalStepFocus(previous);rememberUIRoute();
-  }else openAllOffers(id);
+  }else{
+   const returning=selectedOffer?.hotelId===id&&['offer','flights','selected-tour','andromeda-flights','andromeda-verified','provider-application','anex-current','anex-additional','anex-quote','anex-application'].includes(modalType);
+   const previous=returning?[...modalHistory].reverse().find(step=>step.type==='all-offers'&&step.route?.id===id):null;
+   openAllOffers(id,previous?.route||null);
+   if(previous){restoreModalStepFocus(previous);rememberUIRoute();}
+  }
   break;
  }
  case 'retry-hotel-details':if(modalType==='hotel-details')renderHotelDetails();break;

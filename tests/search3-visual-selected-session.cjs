@@ -1,0 +1,141 @@
+'use strict';
+// Compiled presentation acceptance: fictional transport only, no paid supplier
+// or lead request. Expiry changes the presentation; canonical locks stay owned
+// by the existing adapter. The browser clock models time, not a physical device.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
+const historyKey='anytour.prototype.v18.ui.v1';
+module.exports=async function({browser,origin,base,evidence}){
+ const records=[],started=Date.now();
+ const scenario=async(provider,width,mode)=>{
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+  transport.state.anexPackageChoiceCount=1;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  const application=provider==='anex'?'anex-application-preview':'andromeda-application-preview';
+  const oldPrice=provider==='anex'?'135678,9':'125500';
+  const calls=()=>transport.calls.length;
+  try{
+   await page.clock.install({time:new Date()});
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){
+     if(url.pathname.endsWith('/prototype-search/config.js')){
+      const response=await route.fetch();await route.fulfill({response,body:(await response.text())+"\nwindow.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';window.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';\n"});return;
+     }
+     await route.continue();return;
+    }
+    try{
+     const value=await transport.json(request.url(),{body:request.postData()});
+     if(mode==='return'&&url.pathname==='/api-v2.php'&&url.searchParams.get('action')==='search_results'){
+      const first=value[0].tours[0],tomorrow=new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10);
+      value[0].tours.push({...first,id:'visual-tv-next-day',date:tomorrow,price:120001});
+     }
+     if(mode==='return'&&value.data?.status==='expanded'){
+      const first=value.data.hotels[0].tours[0];
+      value.data.hotels[0].tours=Array.from({length:14},(_,i)=>({...first,offer_ref:'anex_online:'+(i+1).toString(16).repeat(64),price:{amount:String(121000+i),currency:'RUB'}}));
+     }
+     await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   const to=mode==='return'?new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10):trip.to;
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to,ages:''}));
+   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
+   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,0,'bootstrap does not search');
+   await page.locator('.search-submit').click();
+   await page.waitForFunction(()=>document.querySelector('#search-status').hidden&&document.querySelector('[data-action="all-offers"][data-id="501"]'));
+   const list=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
+   const choose=async(p=provider)=>{await page.locator('#modal-body [data-action="offer"][data-key^="'+p+'%3A"]').first().click();};
+   await list();await choose();await page.locator('[data-action="refresh-hotel"]').click();
+   let returnState;
+   if(provider==='anex'){
+    if(mode==='return'){
+     await page.locator('#offer-room').waitFor();
+     await page.locator('#offer-sort').selectOption('date');
+     await page.locator('.offer-filter-disclosure>summary').click();
+     for(const [name,value] of Object.entries({room:'ANEX CONCRETE',meal:'Всё включено',departure:trip.from,flight:'charter'}))await page.locator('#offer-'+name).selectOption(value);
+     await page.locator('[data-action="group-more"]').click();
+     // Capture the exact position after the real offer action is focused, so
+     // browser scrolling for a click is included in the expected return state.
+     const offer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await offer.focus();
+     returnState=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
+     await offer.click();
+    }else await page.locator('[data-action="select-anex-tour"]').waitFor();
+    await page.locator('[data-action="select-anex-tour"]').click();
+   }
+   await page.locator('[data-action="'+application+'"]').waitFor();
+   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice));
+   if(mode==='other'){
+    await page.locator('[data-action="close-modal"]').click();
+    await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
+    await list();await choose('tourvisor');const before=calls();
+    await page.clock.fastForward(901000);await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+    assert.equal(await page.locator('#provider-price-expiry').count(),0,'stale provider timer cannot mark another offer expired');
+    assert.doesNotMatch(await page.locator('#modal-footer').textContent(),/Срок подтверждения цены истёк/);
+    assert.equal(calls(),before,'stale timer never quotes another offer');
+   }else{
+    if(mode!=='verified'){
+     await page.locator('[data-action="'+application+'"]').click();
+     for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))await page.locator('[name="'+name+'"]').fill(value);
+     await page.locator('[name="consent"]').check();
+     if(mode==='return'){
+      const before=calls();await page.locator('#modal-body [data-action="all-offers"]').click();await page.locator('#offer-room').waitFor();
+      const restored=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
+      for(const field of ['id','departure','flight','room','meal','sort','open','limits','filtersOpen'])assert.deepEqual(restored.route[field],returnState.route[field],'same-hotel application return preserves '+field);
+      assert.equal(restored.scroll,returnState.scroll,'same-hotel return preserves scroll');assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');
+      assert.equal(calls(),before,'application return uses retained offers');
+      await page.screenshot({path:path.join(evidence,'selected-session-return-'+width+'.png')});
+      await page.locator('#modal-back').click();await page.locator('#prototype-lead-form').waitFor();
+      assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 999 123-45-67');
+     }
+     if(width===390&&mode==='application'){
+      await page.setViewportSize({width,height:650});
+      await page.evaluate(()=>document.documentElement.style.fontSize='200%');
+     }
+     await page.locator('[name="phone"]').focus();
+     await page.evaluate(()=>{window.__selectedSessionForm=document.querySelector('#prototype-lead-form');window.__selectedSessionPhone=document.activeElement;});
+    }
+    const before=calls(),scroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);
+    await page.clock.fastForward(901000);
+    await page.waitForFunction(()=>document.querySelector('#modal').dataset.quoteExpired==='1');
+    await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+    assert.equal(await page.locator('#provider-price-expiry').count(),1,'expiry is reflected once after deadline and resume');
+    assert.match(await page.locator('#provider-price-expiry').textContent(),/Срок подтверждения цены истёк/);
+    assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice),'expired footer removes current final-price claim');
+    assert.doesNotMatch((await page.locator('#modal-body .price-line.total').allTextContents()).join('').replace(/\s/g,''),new RegExp(oldPrice),'expired verified body removes the old final total');
+    assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'expired receipt cannot enter application');
+    assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]:enabled').count(),0,'expired application cannot submit');
+    if(mode!=='verified'){
+     assert.equal(await page.evaluate(()=>document.querySelector('#prototype-lead-form')===window.__selectedSessionForm),true,'expiry keeps the same contact form');
+     assert.equal(await page.evaluate(()=>document.activeElement===window.__selectedSessionPhone),true,'expiry preserves keyboard focus');
+     assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),scroll,'expiry preserves internal scroll');
+     for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))assert.equal(await page.locator('[name="'+name+'"]').inputValue(),value);
+     assert.equal(await page.locator('[name="consent"]').isChecked(),false,'expired price clears consent');
+     assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null,'expired receipt clears successful rehearsal status');
+    }
+    assert.equal(calls(),before,'idle expiry and resume send no request');
+    assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+    const recovery=await page.locator('#modal-footer [data-action="all-offers"]').evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight};});
+    assert(recovery.width>=44&&recovery.height>=44&&recovery.x>=-1&&recovery.right<=recovery.viewportWidth+1&&recovery.top>=0&&recovery.bottom<=recovery.viewportHeight+1,'expired recovery stays inside the viewport with a44px target');
+    await page.screenshot({path:path.join(evidence,`selected-session-${provider}-${mode}-${width}.png`)});
+    if(mode!=='verified'){
+     await page.locator('#modal-back').click();
+     assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Back cannot restore an expired application action');
+    }
+    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
+    await page.evaluate(()=>history.forward());
+    await page.waitForTimeout(50);
+    assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Forward does not restore expired price authority');
+    assert.equal(calls(),before,'Back and Forward do not recalculate');
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({provider,width,mode,compiled:true,expiry_presentation:mode!=='other',same_hotel_return:mode==='return',independent_offer:mode==='other',root_200_reduced_height:width===390&&mode==='application',supplier_HTTP:0,real_leads:0,physical_device:false});
+  }finally{await context.close();}
+ };
+ // Keep the existing full CI budget: at most four independent fixture contexts
+ // share the compiled browser, with no overlapping source or transport state.
+ const jobs=[...['anex','andromeda'].flatMap(provider=>[360,390,430,768,1280].map(width=>[provider,width,'application'])),...['anex','andromeda'].flatMap(provider=>[[''+provider,390,'verified'],[''+provider,390,'other']]),['anex',390,'return']];
+ for(let i=0;i<jobs.length;i+=4){const results=await Promise.allSettled(jobs.slice(i,i+4).map(args=>scenario(...args))),failed=results.filter(r=>r.status==='rejected');if(failed.length)throw new AggregateError(failed.map(r=>r.reason),'Selected-session acceptance failed');}
+ const receipt={published:false,live_data:false,engine:'Chromium',physical_device:false,duration_ms:Date.now()-started,records};
+ fs.writeFileSync(path.join(evidence,'selected-session.json'),JSON.stringify(receipt,null,2)+'\n');
+ console.log('PASS compiled selected session',JSON.stringify({cases:records.length,duration_ms:receipt.duration_ms,expiry_at_five_widths:true,retained_contact_focus:true,same_hotel_scope_return:true,supplier_HTTP:0,real_leads:0}));return receipt;
+};

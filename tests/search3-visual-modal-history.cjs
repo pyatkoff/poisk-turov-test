@@ -12,7 +12,7 @@ const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'
 const clone=x=>JSON.parse(JSON.stringify(x));
 function owner(source){const a=source.indexOf('function updateModalBack(){'),b=source.indexOf("$('#modal').addEventListener('cancel'",a);assert(a>=0&&b>a);return source.slice(a,b);}
 function observe(source,s){
- const trace=[],tasks=[],nodes=new Map(),savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx;
+ const trace=[],tasks=[],expiry=[],nodes=new Map(),savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx;
  const checkpoint=()=>({type:ctx.modalType,restoring:ctx.restoringModal,history:ctx.modalHistory.map(x=>x.type),selected:ctx.selectedOffer?.key,open:node('#modal').open,footer:node('#modal-footer').innerHTML});
  const record=(name,...args)=>trace.push([name,...args,checkpoint()]);
  function node(key){if(nodes.has(key))return nodes.get(key);const n={key,id:key,value:'AI',dataset:{hotelId:'7',room:'standard'},textContent:'old '+key,innerHTML:'<old>'+key+'</old>',hidden:false,scrollTop:37,className:'wide-dialog',open:key==='#modal'?!!s.open:false,top:key==='#modal-body'?100:150,
@@ -31,7 +31,8 @@ function observe(source,s){
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},
   focusReference:(element,root)=>{record('focusReference',element.key,root.key);return {element,selector:'#offer-button',top:18};},
   restoreFocus:(reference,fallback,root)=>{record('restoreFocus',reference?.selector||null,fallback.key,root.key);ctx.document.activeElement=reference?.element||fallback;},
-  queueMicrotask:fn=>{record('queueMicrotask');tasks.push(fn);},
+  providerQuoteExpiryTimer:777,refreshProviderQuoteExpiry:()=>{},clearTimeout:id=>{assert.equal(id,777);expiry.push('clear');},
+  queueMicrotask:fn=>{if(fn===ctx.refreshProviderQuoteExpiry){expiry.push('schedule');return;}record('queueMicrotask');tasks.push(fn);},
   window:{AnyTourPrototypeLead:{bind:offer=>record('bindLead',offer.key)}}
  };
  collaborators.forEach(name=>ctx[name]=(...args)=>{record(name,...args.map(x=>x&&typeof x==='object'?x.key||clone(x):x));return true;});
@@ -47,6 +48,7 @@ function observe(source,s){
  // Snapshot identity is part of the contract, not just equal serialized values.
  const last=ctx.modalHistory.at(-1),identities={snapshotOfferIsCurrent:last?.offer===savedOffer,snapshotGalleryIsOriginal:last?.gallery===savedGallery,selectedIsOriginal:ctx.selectedOffer===savedOffer};
  tasks.forEach(fn=>fn());
+ assert.deepEqual(expiry,s.kind==='show'?['schedule']:s.kind==='close'?s.open?['clear']:[]:trace.some(item=>item[0]==='queueMicrotask')?['schedule']:[],'dialog schedules receipt reflection or clears its timer without changing retained modal traces');
  const history=ctx.modalHistory.map(x=>({...x,focus:x.focus?{selector:x.focus.selector,top:x.focus.top,element:x.focus.element?.key}:null}));
  const dom=[...nodes].map(([key,n])=>[key,{value:n.value,textContent:n.textContent,innerHTML:n.innerHTML,hidden:n.hidden,scrollTop:n.scrollTop,className:n.className,open:n.open,title:n.title,ariaLabel:n['aria-label']}]);
  return clone({trace,history,identities,dom,selectedOffer:ctx.selectedOffer,gallery:ctx.gallery,modalType:ctx.modalType,restoringModal:ctx.restoringModal,selectionGeneration:ctx.selectionGeneration,observerIsNull:ctx.hotelRoomObserver===null,overflow:ctx.document.body.style.overflow,activeElement:ctx.document.activeElement?.key});
