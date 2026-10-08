@@ -308,6 +308,61 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
  }
  console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
 };
+const applicationViewportLayout=async(page,width,transport,evidence,label,stress=true)=>{
+ const form=page.locator('#prototype-lead-form'),amount=page.locator('#modal-footer .footer-total>strong'),phone=form.locator('[name="phone"]'),originalAmount=await amount.textContent(),originalPhone=await phone.inputValue(),beforeRequests=transport.calls.length,states=[];
+ const fields=()=>form.evaluate(form=>[...form.querySelectorAll('input,textarea')].map(el=>({name:el.name,value:el.value,checked:el.checked}))),originalFields=await fields();
+ const inspect=()=>page.locator('#modal').evaluate(modal=>{
+  const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},textRects=el=>{const range=document.createRange();range.selectNodeContents(el);return[...range.getClientRects()].map(r=>({x:r.x,y:r.y,right:r.right,bottom:r.bottom}));},footer=modal.querySelector('#modal-footer'),price=footer.querySelector('.footer-total'),action=footer.querySelector('.primary'),body=modal.querySelector('#modal-body'),input=modal.querySelector('[name="phone"]');
+  return{modal:rect(modal),footer:rect(footer),price:rect(price),amount:rect(price.querySelector('strong')),amountText:price.querySelector('strong').textContent,amountRects:textRects(price.querySelector('strong')),caption:rect(price.querySelector('small')),stayFacts:[...body.querySelectorAll('.chosen-stay dt,.chosen-stay dd')].map(el=>({box:rect(el),text:el.textContent,textRects:textRects(el)})),action:rect(action),actionRects:textRects(action),body:rect(body),phone:rect(input),phoneFocused:input===document.activeElement,caret:[input.selectionStart,input.selectionEnd],scroll:body.scrollTop,bodyTextSpill:(()=>{const walker=document.createTreeWalker(body,NodeFilter.SHOW_TEXT),spills=[];let node;while(node=walker.nextNode()){if(!node.textContent.trim())continue;const range=document.createRange();range.selectNodeContents(node);for(const box of range.getClientRects())if(box.right>body.getBoundingClientRect().right+1)spills.push({parent:node.parentElement.className,text:node.textContent.slice(0,70),right:box.right});}return spills;})(),bodySpill:[...body.querySelectorAll('*')].filter(el=>el.getBoundingClientRect().right>body.getBoundingClientRect().right+1).map(el=>({tag:el.tagName,class:el.className,text:el.textContent.slice(0,70),right:el.getBoundingClientRect().right})),bodyOverflow:body.scrollWidth>body.clientWidth+1,modalOverflow:modal.scrollWidth>modal.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth,keyboard:modal.classList.contains('application-keyboard'),viewport:{top:visualViewport.offsetTop,height:visualViewport.height}};
+ });
+ const contains=(parent,child)=>child.x>=parent.x-1&&child.right<=parent.right+1&&child.y>=parent.y-1&&child.bottom<=parent.bottom+1;
+ const verify=async(state,keyboard=false)=>{
+  const b=await inspect();states.push({state,...b});fs.writeFileSync(path.join(evidence,`application-${label}-${state}-${width}.json`),JSON.stringify(b,null,2));
+  assert(b.amountRects.length&&b.amountRects.every(r=>contains(b.amount,r)&&contains(b.price,r)&&contains(b.footer,r)),label+' complete whole-party amount remains visible at '+width+' '+state+': '+JSON.stringify(b));
+  assert(contains(b.footer,b.action)&&contains(b.footer,b.caption)&&b.actionRects.every(r=>contains(b.action,r)),label+' complete action and price status stay inside the footer at '+width+' '+state);assert(b.action.height>=48);
+  for(const fact of b.stayFacts){assert(fact.textRects.every(r=>contains(fact.box,r)),label+' complete stay fact fits its own cell at '+width+' '+state+': '+JSON.stringify(fact));if(state==='closed'&&fact.text==='Размещение')assert.equal(fact.textRects.length,1,'ordinary placement label remains readable without splitting its last letter');}
+  assert(b.phone.height>=48,label+' actual canonical phone control is a48px target');assert.equal(b.bodyOverflow,false,label+' body overflow at '+width+' '+state+': '+JSON.stringify(b));assert.equal(b.modalOverflow,false);assert.equal(b.documentOverflow,false);
+  if(keyboard){assert.equal(b.keyboard,true,label+' uses the existing viewport owner');assert(b.modal.y>=b.viewport.top-1&&b.modal.bottom<=b.viewport.top+b.viewport.height+1,label+' confirmation stays above the modeled keyboard at '+width+': '+JSON.stringify(b));assert(contains(b.body,b.phone),label+' focused phone field is revealed in the scrollable body');assert.equal(b.phoneFocused,true);assert.deepEqual(b.caret,[3,8]);}
+  await page.screenshot({path:path.join(evidence,`application-${label}-${state}-${width}.png`)});return b;
+ };
+ await page.evaluate(()=>{window.__applicationViewportAcceptance={descriptor:Object.getOwnPropertyDescriptor(window,'visualViewport'),native:window.visualViewport,fontSize:document.documentElement.style.fontSize,footerPadding:document.querySelector('#modal-footer').style.paddingBottom};});
+ try{
+  await verify('closed');
+  if(width<=760){
+   await phone.fill('+7 999 123-45-67');await phone.evaluate(el=>el.setSelectionRange(3,8));
+   await page.evaluate(()=>{const state=window.__applicationViewportAcceptance,viewport=new EventTarget();viewport.height=420;viewport.offsetTop=25;Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});document.querySelector('#modal-footer').style.paddingBottom='34px';state.native.dispatchEvent(new Event('resize'));});
+   const open=await verify('keyboard',true);
+   await page.evaluate(()=>{visualViewport.offsetTop=35;window.__applicationViewportAcceptance.native.dispatchEvent(new Event('scroll'));});
+   const moved=await inspect();assert.equal(moved.phoneFocused,true);assert.deepEqual(moved.caret,[3,8]);assert(Math.abs(moved.scroll-open.scroll)<=1,'viewport pan does not reset body scroll');assert.equal(await phone.inputValue(),'+7 999 123-45-67');
+   if(label==='TV'&&width===390){
+    const draft=await fields(),clearViewport=()=>page.locator('#modal').evaluate(modal=>({keyboard:modal.classList.contains('application-keyboard'),top:modal.style.getPropertyValue('--modal-viewport-top'),height:modal.style.getPropertyValue('--modal-viewport-height')}));
+    await page.locator('#modal-back').click();await page.locator('.tour-main-details>.chosen-stay').waitFor();assert.equal(await amount.textContent(),originalAmount);assert.deepEqual(await clearViewport(),{keyboard:false,top:'',height:''},'Back clears application viewport state on the retained tour');assert.match(await page.locator('.flight-summary').textContent(),/TEST201/);
+    await page.locator('[data-action="confirm-tour"]').click();await form.waitFor();assert.equal(await amount.textContent(),originalAmount);assert.deepEqual(await fields(),draft,'same-tour application Back/reopen keeps contact and consent draft');
+    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');await page.evaluate(()=>window.__applicationViewportAcceptance.native.dispatchEvent(new Event('scroll')));assert.deepEqual(await clearViewport(),{keyboard:false,top:'',height:''},'late viewport events do not restore a closed application');
+    await page.goForward();await form.waitFor();assert.equal(await amount.textContent(),originalAmount);assert.deepEqual(await fields(),draft,'passive Forward restores the same exact application draft');
+    await phone.evaluate(el=>{el.focus({preventScroll:true});el.setSelectionRange(3,8);});await page.evaluate(()=>window.__applicationViewportAcceptance.native.dispatchEvent(new Event('resize')));await verify('keyboard-history-return',true);
+    // Forward intentionally restores one route, without the modal step stack.
+    // Re-enter through the retained exact offer for the remaining Back checks.
+    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').click();await page.locator('[data-action="confirm-tour"]').click();await form.waitFor();assert.deepEqual(await fields(),draft);assert.equal(await amount.textContent(),originalAmount);
+    await phone.evaluate(el=>{el.focus({preventScroll:true});el.setSelectionRange(3,8);});await page.evaluate(()=>window.__applicationViewportAcceptance.native.dispatchEvent(new Event('resize')));await verify('keyboard-reopened',true);
+   }
+   await page.evaluate(()=>{const state=window.__applicationViewportAcceptance;Object.defineProperty(window,'visualViewport',state.descriptor);document.querySelector('#modal-footer').style.paddingBottom=state.footerPadding;state.native.dispatchEvent(new Event('resize'));});
+   const closed=await verify('reclosed');assert.equal(closed.keyboard,false);assert.equal(closed.phoneFocused,true);assert.deepEqual(closed.caret,[3,8]);
+  }
+  if(stress){
+   // DOM text/viewport stress is not physical iPhone text zoom or a price quote.
+   await page.evaluate(()=>document.documentElement.style.fontSize='32px');
+   await amount.evaluate(el=>el.textContent='1\u00a0035\u00a0282,99 ₽');await verify('text200-long-total');
+  }
+ }catch(error){
+  fs.writeFileSync(path.join(evidence,`application-${label}-failure-${width}.json`),JSON.stringify({error:String(error),url:page.url(),modal:await page.locator('#modal').innerHTML()},null,2));await page.screenshot({path:path.join(evidence,`application-${label}-failure-${width}.png`)});throw error;
+ }finally{
+  if(await amount.count())await amount.evaluate((el,text)=>el.textContent=text,originalAmount);if(await phone.count())await phone.fill(originalPhone);
+  await page.evaluate(()=>{const state=window.__applicationViewportAcceptance;Object.defineProperty(window,'visualViewport',state.descriptor);document.documentElement.style.fontSize=state.fontSize;document.querySelector('#modal-footer').style.paddingBottom=state.footerPadding;state.native.dispatchEvent(new Event('resize'));delete window.__applicationViewportAcceptance;});
+ }
+ assert.equal(await amount.textContent(),originalAmount);assert.deepEqual(await fields(),originalFields,'viewport testing preserves the complete contact and consent draft');assert.equal(transport.calls.length,beforeRequests,'viewport/text/focus changes never invoke quote, supplier or lead operations');
+ fs.writeFileSync(path.join(evidence,`application-${label}-viewport-${width}.json`),JSON.stringify({width,states,restoredAmount:originalAmount,restoredPhone:originalPhone,viewportAndTextModel:true,safeAreaPaddingModel:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
+};
 const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
  const widths=[360,390,430,768,1280];
  for(let offset=0;offset<widths.length;offset+=2){
@@ -388,6 +443,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
    await page.locator('#modal-back').click();assert.equal(await wholePrice('#detail-total'),120000,'Cancel keeps the applied A whole-tour total');assert.deepEqual(await stay('.tour-main-details>.chosen-stay'),chosenStay);
    await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="0"]').waitFor();assert.equal(await page.locator('[name="flight-pair"][value="0"]').isChecked(),true,'Cancel restores applied pair A');await flightContext(chosenStay,'TV cancelled draft');
    await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();assert.equal(await wholePrice('#modal-footer .footer-total strong'),133500.5,'B authoritative total includes fuel without adding it again');assert.deepEqual(await stay('.application-choice>.chosen-stay'),chosenStay);assert.match(await page.locator('.summary-flight-details').textContent(),/TEST201/);assert.match(await page.locator('.summary-flight-details').textContent(),/TEST202/);
+   await applicationViewportLayout(page,width,transport,evidence,'TV');
    await page.locator('#modal-back').click();assert.equal(await wholePrice('#detail-total'),133500.5);assert.deepEqual(await stay('.tour-main-details>.chosen-stay'),chosenStay);await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').waitFor();assert.equal(await page.locator('[name="flight-pair"][value="1"]').isChecked(),true);await flightContext(chosenStay,'TV application return');
    await page.locator('[name="flight-pair"][value="2"]').check();const unknownContext=await flightContext(chosenStay,'TV pair without money');assert.equal(await page.locator('#flight-total').textContent(),'Цена уточняется');assert.equal(await page.locator('.flight-option[data-flight-index="2"] .flight-price>strong').textContent(),'Цена уточняется');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);assert.equal(await page.locator('#flight-price-change').textContent(),'Цена всего тура с этими рейсами пока не подтверждена. Выберите другой вариант.');assert.doesNotMatch(await page.locator('#modal-footer').textContent(),/133\s*500|120\s*000/);assert.equal(await page.locator('[name="flight-pair"][value="2"]').evaluate(input=>document.activeElement===input),true);await page.screenshot({path:path.join(evidence,`tv-flight-context-unknown-${width}.png`)});
    await page.locator('#modal-back').click();assert.equal(await wholePrice('#detail-total'),133500.5,'unknown draft cannot replace applied B');await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').waitFor();assert.equal(await page.locator('[name="flight-pair"][value="1"]').isChecked(),true);await flightContext(chosenStay,'TV unknown Cancel');await page.locator('#modal-back').click();assert.equal(requests(),beforeLocalFlights,'TV Cancel, Apply, application Back and warm reopen remain local');
@@ -918,7 +974,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await page.locator('[name="consent"]').isChecked(),false);
   await page.locator('[name="phone"]').fill('+7 999 123-45-67');await page.locator('[name="consent"]').check();await page.locator('[type="submit"][form="prototype-lead-form"]').click();
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('не отправлена'));
-  await contactLayout(page,width,'SAMO');
+  await contactLayout(page,width,'SAMO');if(width===390)await applicationViewportLayout(page,width,transport,evidence,'SAMO',false);
   await page.screenshot({path:path.join(evidence,`samo-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'SAMO STANDARD','125500');
   await page.screenshot({path:path.join(evidence,`samo-application-forward-${width}.png`)});
@@ -962,7 +1018,7 @@ const server=http.createServer((req,res)=>{
   await page.waitForFunction(()=>document.querySelector('#prototype-lead-form').dataset.checked==='1');assert((await page.locator('.lead-message').textContent()).includes('требует подтверждения'));
   assert.equal(transport.calls.length,callsBeforeAnexApplication,'ANEX application preview adds no provider request');
   await page.locator('.application-choice').scrollIntoViewIfNeeded();
-  await contactLayout(page,width,'ANEX');
+  await contactLayout(page,width,'ANEX');if(width===390)await applicationViewportLayout(page,width,transport,evidence,'ANEX',false);
   await page.screenshot({path:path.join(evidence,`anex-retained-application-${width}.png`)});
   await forwardProviderApplication(page,transport,'ANEX CONCRETE','123000');
   await page.screenshot({path:path.join(evidence,`anex-application-forward-${width}.png`)});
