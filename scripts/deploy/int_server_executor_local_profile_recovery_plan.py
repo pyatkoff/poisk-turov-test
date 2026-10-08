@@ -1,12 +1,11 @@
-"""Separately reviewed read-only recovery plan after sealed phase3 UNKNOWN/no-replay."""
+"""Keep the stopped LOCAL recovery lane inaccessible pending a separate safety decision."""
 from __future__ import annotations
-
-import ast
 
 MODE = 'local-profile-plan-4191'
 OPERATION = 'int-andromeda-local-profile-mass-recovery-plan-4191-20261008-v1'
 BATCH = 'local4191-mass-recovery-20261008'
 RUNNER = 'scripts/diagnostics/local_profile_mass_recovery_plan_4191.php'
+BLOCKED_REASON = 'local_recovery_blocked_safety_stop_6047119931'
 
 
 def need(value: bool, reason: str) -> None:
@@ -23,10 +22,8 @@ def register_parser(core) -> None:
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 3 or parts[1:3] != [MODE, OPERATION]:
             return original(body)
-        need(len(parts) == 4 and parts[3] == BATCH, 'local_recovery_scope')
-        need(core.SHA_RE.fullmatch(parts[0]) is not None, 'source_sha')
-        return {'source_sha': parts[0], 'mode': MODE, 'operation_id': OPERATION,
-                'batch': BATCH, 'maximum_writes': 0, 'provider_http_calls': 0}
+        # #4464 is DORMANT/BLOCKED by #4217/comment6047119931.
+        need(False, BLOCKED_REASON)
 
     core.parse_command = parse
 
@@ -155,16 +152,5 @@ def run_local_profile_mass_recovery_plan_4191(stage):
 
 
 def activate(core, command: dict, plan) -> None:
-    need(command.get('operation_id') == OPERATION, 'local_recovery_operation')
-    expected = core.parse_command(core.PREFIX + ' '.join([
-        str(command.get('source_sha', '')), MODE, OPERATION, BATCH]))
-    need(command == expected, 'local_recovery_authorized_shape')
-    remote = plan.remote_with_plan(core)
-    anchor = "result['local_profile_plan']=run_local_profile_plan_4191(stage)"
-    need(remote.count(anchor) == 1, 'local_recovery_dispatch_drift')
-    remote = REMOTE_HANDLER + '\n' + remote.replace(
-        anchor, "result['local_profile_plan']=run_local_profile_mass_recovery_plan_4191(stage)", 1)
-    ast.parse(remote)
-    compile(remote, '<local-recovery-stock-remote>', 'exec')
-    core.REMOTE = remote
-    core.bundle_source = plan.bundle_source
+    # Also reject saved or synthetic payloads that bypass command parsing.
+    need(False, BLOCKED_REASON)
