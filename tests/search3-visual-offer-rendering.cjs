@@ -12,7 +12,7 @@ function observe(source,s){
   quoteErrorTerminal:!!(s.flags&64),quoteErrorCode:s.flags&128?'offer_expired':'',flightsError:s.flags&256?'flight error':'',raw:{anexKind:s.group?'group_minimum':'concrete',...(s.session?{anexSessionCurrent:true}:{})}};
  const hotel={id:7,name:'Hotel<&"',resort:'Resort<&',country:'4',photos:s.noPhoto?[]:['photo<&']};
  const call=(name,fn)=>(...args)=>{calls.push([name,...args.map(x=>x===o?'OFFER':x===hotel?'HOTEL':x)]);return fn?fn(...args):'['+name+']';};
- const node=key=>{if(!dom.has(key))dom.set(key,{innerHTML:'initial',hidden:true,classList:{add:name=>calls.push(['classAdd',key,name])}});return dom.get(key);};
+ const node=key=>{if(!dom.has(key))dom.set(key,{innerHTML:'initial',hidden:true,dataset:{},classList:{add:name=>calls.push(['classAdd',key,name])}});return dom.get(key);};
  const ctx={Math,Number,String,Array,JSON,selectedOffer:s.noOffer?null:o,countryNames:{'4':'Турция<&'},$:node,esc,
   data:{live:s.live,amount:call('amount',v=>Number(v)||null)},
   selectedTourHotel:call('selectedTourHotel',()=>s.noHotel?null:hotel),needsRefresh:call('needsRefresh',()=>s.unavailable),
