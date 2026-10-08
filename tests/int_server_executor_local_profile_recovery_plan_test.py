@@ -1,4 +1,4 @@
-"""Focused contract tests for the separate read-only LOCAL phase3 recovery plan."""
+"""The stopped LOCAL recovery stays blocked at parsing and direct activation."""
 from __future__ import annotations
 
 import ast
@@ -24,11 +24,10 @@ class ParserAndActivationTest(unittest.TestCase):
         return types.SimpleNamespace(PREFIX='/run-int-server-v1 ',SHA_RE=re.compile(r'\A[a-f0-9]{40}\Z'),
                                      parse_command=previous),previous
 
-    def test_exact_pair_only_has_zero_authority(self):
+    def test_stopped_exact_pair_is_rejected_before_previous_parser(self):
         core,previous=self.core();m.register_parser(core)
-        command=core.parse_command(f'{core.PREFIX}{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
-        self.assertEqual({'source_sha':SHA,'mode':m.MODE,'operation_id':m.OPERATION,'batch':m.BATCH,
-                          'maximum_writes':0,'provider_http_calls':0},command)
+        with self.assertRaisesRegex(ValueError,m.BLOCKED_REASON):
+            core.parse_command(f'{core.PREFIX}{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
         previous.assert_not_called()
 
     def test_invalid_scope_and_apply_flags_fail_closed(self):
@@ -39,14 +38,29 @@ class ParserAndActivationTest(unittest.TestCase):
             with self.subTest(value=value),self.assertRaises(ValueError):
                 core.parse_command(value)
 
-    def test_widened_payload_rejected_before_remote_generation(self):
-        core,_=self.core();m.register_parser(core)
-        command=core.parse_command(f'{core.PREFIX}{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
-        command['maximum_writes']=1
+    def test_unrelated_commands_keep_previous_parser(self):
+        core,previous=self.core();m.register_parser(core)
+        for body in ('unrelated text',core.PREFIX+SHA,
+                     f'{core.PREFIX}{SHA} {m.MODE} unrelated-operation {m.BATCH}',
+                     f'{core.PREFIX}{SHA} unrelated-mode {m.OPERATION} {m.BATCH}'):
+            with self.subTest(body=body),self.assertRaisesRegex(ValueError,'previous_parser'):
+                core.parse_command(body)
+            previous.assert_called_with(body)
+        self.assertEqual(4,previous.call_count)
+
+    def test_saved_or_widened_payload_rejected_before_remote_generation(self):
+        core,_=self.core()
+        core.REMOTE='unchanged';core.bundle_source=object()
+        before_bundle=core.bundle_source
         plan=types.SimpleNamespace(remote_with_plan=mock.Mock())
-        with self.assertRaises(ValueError):
-            m.activate(core,command,plan)
+        for writes in (0,1):
+            command={'source_sha':SHA,'mode':m.MODE,'operation_id':m.OPERATION,
+                     'batch':m.BATCH,'maximum_writes':writes,'provider_http_calls':0}
+            with self.subTest(writes=writes),self.assertRaisesRegex(ValueError,m.BLOCKED_REASON):
+                m.activate(core,command,plan)
         plan.remote_with_plan.assert_not_called()
+        self.assertEqual('unchanged',core.REMOTE)
+        self.assertIs(before_bundle,core.bundle_source)
 
 
 class RecoveryContractTest(unittest.TestCase):
@@ -77,39 +91,43 @@ class RecoveryContractTest(unittest.TestCase):
         lint=subprocess.run(['php','-l',str(path)],capture_output=True,text=True,timeout=30)
         self.assertEqual(0,lint.returncode,lint.stderr)
 
-    def test_activation_changes_only_exact_stock_dispatch(self):
+    def test_direct_activation_leaves_stock_dispatch_unchanged(self):
         baseline="prefix\nresult['local_profile_plan']=run_local_profile_plan_4191(stage)\nsuffix\n"
         plan=types.SimpleNamespace(remote_with_plan=mock.Mock(return_value=baseline),bundle_source=object())
         previous=mock.Mock(side_effect=ValueError('previous_parser'))
         core=types.SimpleNamespace(PREFIX='/run-int-server-v1 ',SHA_RE=re.compile(r'\A[a-f0-9]{40}\Z'),
                                    parse_command=previous,REMOTE='unchanged',bundle_source=None)
         m.register_parser(core)
-        command=core.parse_command(f'{core.PREFIX}{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
-        m.activate(core,command,plan)
-        self.assertTrue(core.REMOTE.startswith(m.REMOTE_HANDLER+'\n'))
-        self.assertIn("result['local_profile_plan']=run_local_profile_mass_recovery_plan_4191(stage)",core.REMOTE)
-        self.assertIs(core.bundle_source,plan.bundle_source)
+        command={'source_sha':SHA,'mode':m.MODE,'operation_id':m.OPERATION,
+                 'batch':m.BATCH,'maximum_writes':0,'provider_http_calls':0}
+        with self.assertRaisesRegex(ValueError,m.BLOCKED_REASON):
+            m.activate(core,command,plan)
+        plan.remote_with_plan.assert_not_called()
+        self.assertEqual('unchanged',core.REMOTE)
+        self.assertIsNone(core.bundle_source)
 
 
 class StockWiringTest(unittest.TestCase):
-    def test_real_wrapper_routes_recovery_without_supplier_lane(self):
+    def test_real_wrapper_rejects_stopped_recovery_before_dispatch(self):
         path=ROOT/'scripts/deploy/int_server_executor_anex_secret_transport.py'
         spec=importlib.util.spec_from_file_location('local_recovery_real_wrapper',path)
         wrapper=importlib.util.module_from_spec(spec);spec.loader.exec_module(wrapper)
         core,plan=wrapper.core,wrapper.local_profile_plan
-        command=core.parse_command(core.PREFIX+f'{SHA} {m.MODE} {m.OPERATION} {m.BATCH}')
-        baseline=plan.remote_with_plan(core);saved=core.REMOTE
-        wrapper.activate_local_plan(command)
-        ast.parse(core.REMOTE)
-        anchor="result['local_profile_plan']=run_local_profile_plan_4191(stage)"
-        restored=core.REMOTE.removeprefix(m.REMOTE_HANDLER+'\n').replace(
-            "result['local_profile_plan']=run_local_profile_mass_recovery_plan_4191(stage)",anchor,1)
-        self.assertEqual(baseline,restored)
+        saved=core.REMOTE;before_bundle=core.bundle_source
+        exact=core.PREFIX+f'{SHA} {m.MODE} {m.OPERATION} {m.BATCH}'
+        with self.assertRaisesRegex(ValueError,m.BLOCKED_REASON):
+            core.parse_command(exact)
+        command={'source_sha':SHA,'mode':m.MODE,'operation_id':m.OPERATION,
+                 'batch':m.BATCH,'maximum_writes':0,'provider_http_calls':0}
+        with mock.patch.object(plan,'remote_with_plan') as remote:
+            with self.assertRaisesRegex(ValueError,m.BLOCKED_REASON):
+                wrapper.activate_local_plan(command)
+            remote.assert_not_called()
+        self.assertEqual(saved,core.REMOTE)
+        self.assertIs(before_bundle,core.bundle_source)
         self.assertIn(m.RUNNER,plan.BUNDLE_FILES)
         self.assertNotIn(m.MODE,wrapper.SUPPLIER_SLOT_MODES)
         self.assertNotIn(m.MODE,wrapper.DIRECT_ANEX_MODES)
-        self.assertIs(core.bundle_source,plan.bundle_source)
-        core.REMOTE=saved
 
 
 if __name__=='__main__':
