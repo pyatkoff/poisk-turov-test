@@ -62,6 +62,7 @@ class AnexSecretTransportTest(unittest.TestCase):
     def test_wrapper_preserves_existing_supplier_slot_contract(self):
         self.assertIn('anex-range', m.SUPPLIER_SLOT_MODES)
         self.assertIn('program-fuel-probe', m.SUPPLIER_SLOT_MODES)
+        self.assertIn('match-common4-acquire', m.SUPPLIER_SLOT_MODES)
         self.assertIn('match-common4-continuation-remainder', m.SUPPLIER_SLOT_MODES)
         self.assertIn('andromeda-scope', m.SUPPLIER_SLOT_MODES)
         self.assertIn('andromeda-external-group', m.SUPPLIER_SLOT_MODES)
@@ -81,6 +82,7 @@ def load_tests(loader, tests, pattern):
     for name, module_name in (
         ('int_server_executor_local_profile_phase3_inspection_test.py', 'local_phase3_inspection_regressions'),
         ('int_server_executor_local_profile_recovery_plan_test.py', 'local_profile_recovery_regressions'),
+        ('int_server_executor_local_profile_metadata_test.py', 'local_profile_metadata_regressions'),
     ):
         path = Path(__file__).with_name(name)
         spec = importlib.util.spec_from_file_location(module_name, path)
