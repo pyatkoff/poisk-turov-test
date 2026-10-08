@@ -699,6 +699,79 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
+const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
+ const transport=fixture(),errors=[],forbidden=[],anexCalls=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage();
+ let releaseAnex;const firstPageGate=new Promise(resolve=>releaseAnex=resolve);
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')){
+     anexCalls.push(body.action);
+     if(body.action==='continue'){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'FIXTURE_DELIVERY_FAILED'})});return;}
+    }
+    const value=await transport.json(request.url(),{body:request.postData()});
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')&&body.action==='search'){
+     value.data.continuation={state:'available',pages_read:1,next_page:2};await firstPageGate;
+    }
+    await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+   }catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0,'boot is passive');
+  await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>document.querySelector('[data-search-source="tourvisor"]')?.textContent.includes('Порция получена')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('Получаем предложения'));
+  assert.doesNotMatch(await page.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров/,'pending source count is unknown, not guessed zero');
+  assert.doesNotMatch(await page.locator('#search-status').textContent(),/100%/,'TV progress cannot imply completion while another source is still pending');
+  await page.screenshot({path:path.join(evidence,'search-delivery-pending-390.png')});
+  releaseAnex();await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('Получена часть предложений')&&!document.querySelector('#search-more').hidden);
+  const status=page.locator('#search-status'),summary=status.locator('summary');
+  await summary.click();assert.match(await status.textContent(),/Вариантов до фильтров: 1/);assert.doesNotMatch(await status.textContent(),/не загрузил|недоступн/,'normal bounded first page is not a failure');
+  assert.equal(await status.locator('[data-search-source="andromeda"]').count(),0,'paused SAMO is not presented as an active source');
+  await page.screenshot({path:path.join(evidence,'search-delivery-first-page-390.png')});
+  assert.deepEqual(anexCalls,['search'],'no automatic page drain');
+  await page.locator('#search-more [data-action="continue-search"]').click();
+  await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('ANEX')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('не загрузилась'));
+  assert.deepEqual(anexCalls,['search','continue'],'one explicit continuation, no duplicate/retry');
+  assert.match(await status.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров: 1/,'failed continuation retains its received first-page count');
+  assert.match(await page.locator('#results-summary').textContent(),/2 варианта/,'independent TV and retained ANEX offers survive the failure');
+  if(!await status.locator('details').evaluate(el=>el.open))await summary.click();
+  const ordinaryRender=async()=>page.locator('#mobile-sort').evaluate(el=>{el.value=el.value==='price'?'recommended':'price';el.dispatchEvent(new Event('change',{bubbles:true}));});
+  await summary.focus();await ordinaryRender();assert.equal(await status.locator('details').evaluate(el=>el.open),true);assert.equal(await page.evaluate(()=>document.activeElement===document.querySelector('#search-status summary')),true,'passive result render preserves focused summary');
+  await status.locator('[data-action="edit-search"]').focus();await ordinaryRender();assert.equal(await page.evaluate(()=>document.activeElement?.dataset.action),'edit-search','passive result render preserves focused current action');
+  const samples=[];
+  for(const width of [360,390,430,768,1280]){
+   await page.setViewportSize({width,height:900});await status.scrollIntoViewIfNeeded();
+   for(const largeText of [false,true]){
+    await page.evaluate(large=>document.documentElement.style.fontSize=large?'32px':'',largeText);
+    const geometry=await status.evaluate(el=>{
+     const rect=node=>{const r=node.getBoundingClientRect();return{x:r.x,right:r.right,width:r.width,height:r.height};},bounds=rect(el);
+     const controls=[...el.querySelectorAll('summary,button')].map(rect),rows=[...el.querySelectorAll('[data-search-source]')].map(row=>({key:row.dataset.searchSource,...rect(row)}));
+     const texts=[...el.querySelectorAll('summary strong,summary>span,p,[data-search-source] strong,[data-search-source] small,button')].every(node=>{const range=document.createRange();range.selectNodeContents(node);return [...range.getClientRects()].every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1);});
+     return{bounds,controls,rows,texts,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(geometry.overflow,false,'status and whole page have no horizontal overflow at '+width+' text200='+largeText);assert(geometry.texts,'full source names/status/count/action text fits at '+width+' text200='+largeText);assert(geometry.controls.every(control=>control.height>=44),'status summary/actions retain44px targets at '+width);
+    assert(geometry.rows.every(row=>row.x>=geometry.bounds.x&&row.right<=geometry.bounds.right+1),'source panels remain within their status owner');
+    if(largeText&&width<=760)assert(geometry.rows[1].x===geometry.rows[0].x,'large text stacks source panels instead of breaking words in narrow columns');
+    await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
+    for(const action of ['retry-search','edit-search']){
+     const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+     const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
+     assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
+    }
+   }
+   await page.evaluate(()=>document.documentElement.style.fontSize='');
+  }
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,1);assert.equal(transport.calls.filter(call=>call.action==='search_continue').length,1);assert.deepEqual(anexCalls,['search','continue']);
+  assert(!transport.calls.some(call=>/andromeda|quote|lead/.test(call.url)),'delivery inspection/filter/resize do not issue SAMO, quote or lead operations');
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  console.log('PASS compiled search delivery: pending unknown count, healthy native first page, explicit failed continuation/retained offers, passive disclosure/focus and five widths/text200; supplier HTTP0');
+ }finally{releaseAnex();await context.close();}
+};
 // Off for the real-default regression below. Retained SAMO integration journeys
 // explicitly enable only this local fictional transport after that check passes.
 let enableSamoFixture=false;
@@ -745,6 +818,7 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
   for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
