@@ -150,4 +150,3 @@ for(const sort of ['default','price']){
 console.log(`PASS flight filter: ${actual.length} pinned bind states (${digest}), ${changed.length} dynamic/repair states, ${dom.length} real DOM states; unchanged normalization1001; no unchanged-order sorts/appends; provider/lead HTTP0`);
 
 require('./search3-visual-flight-picker-lazy.cjs');
-
