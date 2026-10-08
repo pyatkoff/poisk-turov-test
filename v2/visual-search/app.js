@@ -109,16 +109,20 @@ const durationText=(s=state.search)=>s.minNights===s.maxNights?nightsText(s.minN
 const departureScopeLabel=(s=state.search,selected=state.selectedDate)=>selected||s.from===s.to?'Вылет':'Даты вылета';
 const departureScopeValue=(s=state.search,selected=state.selectedDate)=>selected?dateText(selected):rangeText(s.from,s.to);
 const departureScopeText=(s=state.search,selected=state.selectedDate)=>`${departureScopeLabel(s,selected)} ${departureScopeValue(s,selected)}`;
-function restoreURL(){
+function restoreURL(tripOnly=false){
  const p=new URLSearchParams(location.search),s=state.search;
- if(countryNames[p.get('country')])s.country=p.get('country');
- if(data.catalog.departures.some(x=>data.text(x)===p.get('origin')))s.origin=p.get('origin');
+ if(!tripOnly){
+  if(countryNames[p.get('country')])s.country=p.get('country');
+  if(data.catalog.departures.some(x=>data.text(x)===p.get('origin')))s.origin=p.get('origin');
+ }
  const valid=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')&&v>=startDay&&v<=endDay&&data.date(v)===v;
  if(valid(p.get('from'))&&valid(p.get('to'))&&p.get('from')<=p.get('to')&&(dateObj(p.get('to'))-dateObj(p.get('from')))/86400000<=21){s.from=p.get('from');s.to=p.get('to');}
  const selectedDay=p.get('date');state.selectedDate=valid(selectedDay)&&selectedDay>=s.from&&selectedDay<=s.to?selectedDay:null;
  for(const k of ['minNights','maxNights','adults']){const n=Number(p.get(k));if(Number.isInteger(n)&&n>=1&&n<=(k==='adults'?6:28))s[k]=n;}
  if(s.maxNights<s.minNights||s.maxNights-s.minNights>10)s.maxNights=s.minNights;
  if(p.has('ages'))s.ages=p.get('ages').split(',').filter(x=>/^\d+$/.test(x)&&Number(x)<=17).slice(0,3).map(Number);
+ // Dates and party need no catalogue; identities and filters still restore only after init.
+ if(tripOnly){draft=structuredClone(s);return;}
  const hotelId=p.get('hotel');if(/^[1-9]\d*$/.test(hotelId||'')&&Number.isSafeInteger(Number(hotelId)))state.filters.hotelId=Number(hotelId);
  state.filters.hotelIds=validIds((p.get('hotels')||'').split('|').map(Number));if(state.filters.hotelIds.length){setDestinationIds(state.filters,state.filters.hotelIds);state.filters.resorts=[];}
  state.filters.stars=(p.get('stars')||'').split('|').map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=5);
@@ -2586,7 +2590,7 @@ $('#fixture-scenario').addEventListener('change',event=>switchFixture(event.targ
 document.addEventListener('click',event=>{if(event.target.closest('[data-action="more-cards"]')){const next=renderMoreResultCards();$('#cards').children[next]?.querySelector('button')?.focus({preventScroll:true});}});
 
 const initialUIRoute=history.state?.[uiHistoryKey];
-hydrate();renderResults();bootRealData();
+hydrate();restoreURL(true);renderResults();bootRealData();
 if(initialUIRoute)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 // The trip bar follows this document's viewport, including in the responsive preview.
 function updateCompactSearch(){compactSearchFrame=0;const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession;document.body.classList.toggle('mobile-results',mobileResults);$('#compact-search').hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;}
