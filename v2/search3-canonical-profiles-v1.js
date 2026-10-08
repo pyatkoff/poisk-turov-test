@@ -125,8 +125,9 @@ function create(refresh){
   retryBatches.push(requested.slice(0,middle),requested.slice(middle));
  }
  function pump(){
-  let requested=nextBatch();
-  while(requested.length&&workers.size<2){
+  // nextBatch consumes split work; do not dequeue it until a worker is free.
+  while(workers.size<2){
+   const requested=nextBatch();if(!requested.length)break;
    const current=requested,generation=epoch,controller=new AbortController(),task={controller};workers.add(task);current.forEach(key=>pending.add(key));
    const timer=setTimeout(()=>controller.abort(),15000),query=new URLSearchParams({catalog:'anytour'});current.forEach(key=>query.append('legacyHotelIds[]',key));
    Promise.resolve().then(()=>{const fetcher=root.V2Runtime&&root.V2Runtime.fetch||root.fetch.bind(root);return fetcher(endpoint+'?'+query.toString(),{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'},signal:controller.signal});}).then(response=>{if(!response.ok)throw new Error('Catalogue HTTP '+response.status);return response.json();}).then(payload=>{
@@ -141,7 +142,6 @@ function create(refresh){
     clearTimeout(timer);if(generation!==epoch)return;workers.delete(task);current.forEach(key=>pending.delete(key));
     try{refresh();}finally{if(generation===epoch)pump();}
    });
-   requested=nextBatch();
   }
   // Current result descriptions take the next free slot before waiting favourites.
   // Both consumers share the existing two-worker limit and in-flight ID registry.
