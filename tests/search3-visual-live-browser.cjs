@@ -1474,6 +1474,8 @@ const server=http.createServer((req,res)=>{
  ]),failures=isolated.filter(result=>result.status==='rejected');
  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
+ await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
+ await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
  }finally{await browser.close();server.close();}
