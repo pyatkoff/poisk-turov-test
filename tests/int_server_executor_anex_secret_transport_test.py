@@ -46,8 +46,8 @@ class AnexSecretTransportTest(unittest.TestCase):
             {'ANEX_API_TOKEN': 'api', 'ANEX_B2B_TOKEN': 'bad token'},
         ]
         for env in cases:
-            with self.subTest(env=env), self.assertRaises(ValueError):
-                with mock.patch.dict(os.environ, env, clear=True):
+            with self.subTest(env=env), mock.patch.dict(os.environ, env, clear=True):
+                with self.assertRaises(ValueError):
                     m.validated_anex_secret_payload()
 
     def test_remote_patch_is_exact_and_direct_only(self):
@@ -62,6 +62,7 @@ class AnexSecretTransportTest(unittest.TestCase):
     def test_wrapper_preserves_existing_supplier_slot_contract(self):
         self.assertIn('anex-range', m.SUPPLIER_SLOT_MODES)
         self.assertIn('program-fuel-probe', m.SUPPLIER_SLOT_MODES)
+        self.assertIn('match-common4-acquire', m.SUPPLIER_SLOT_MODES)
         self.assertIn('match-common4-continuation-remainder', m.SUPPLIER_SLOT_MODES)
         self.assertIn('andromeda-scope', m.SUPPLIER_SLOT_MODES)
         self.assertIn('andromeda-external-group', m.SUPPLIER_SLOT_MODES)
