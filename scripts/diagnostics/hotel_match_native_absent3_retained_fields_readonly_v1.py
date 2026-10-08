@@ -7,6 +7,7 @@ import json
 import os
 import pathlib
 import re
+import stat
 import sys
 
 import hotel_match_operator115_only2_retained_fields_readonly_v1 as retained
@@ -246,6 +247,198 @@ def execute(project_root, opdir, cache_root, fixture_path):
     return 0
 
 
+URL_MODE = 'match-native-absent3-saved-urls-readonly'
+URL_OP = 'int-andromeda-match-native-absent3-saved-urls-20261008-v1'
+URL_BATCH = 'native-absent3-saved-urls-20261008'
+PARENT_SOURCE = '0218e3400a8733e1e3356e21a02946a9d0c91cc0'
+PARENT_PRIVATE_SHA = '913f382d46a9c303b4b4db9f509cbdb7aeea82b98612e737ee6b0248ace1e484'
+PARENT_RESULT_SHA = 'd9a386659fce8dfa2499c2af7101418b4353302402b062bd7968787142d9fe3d'
+PARENT_RESULT_BYTES = 64969
+SUN_URL_SHA = 'c7bb70268683d848abb595f7ae010a8e3621aa0e0de3f6f136aca3f0ed76f0c0'
+URL_FIELDS = ('offer.hotel_content.hotel_url', 'offer.hotel_content.image_url')
+URL_STATES = ('completed_read_only_native_absent3_saved_urls',
+              'completed_read_only_native_absent3_saved_urls_incomplete')
+URL_RECEIPT_KEYS = ('operation', 'batch', 'source_sha', 'state', 'private_input_sha256',
+                    'parent_source_sha', 'parent_private_input_sha256', 'parent_result_sha256',
+                    *ZERO, *FALSE, 'no_replay')
+PARENT_FILES = (('current-input.json', 4194304), ('result.json', PARENT_RESULT_BYTES),
+                ('receipt.json', 65536))
+
+
+def saved_parent_bytes(directory, copied=False):
+    """Only the three terminal metadata files; no cache/original-body access."""
+    raw, descriptors = {}, []
+    for name, cap in PARENT_FILES:
+        path = directory / ('parent-' + name if copied else name)
+        before = path.lstat()
+        if not stat.S_ISREG(before.st_mode) or stat.S_IMODE(before.st_mode) != 0o600:
+            raise ValueError('saved_parent_file_security')
+        body = n.file_bytes(path, cap)
+        after = path.lstat()
+        identity = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns, s.st_mode)
+        if identity(before) != identity(after):
+            raise ValueError('saved_parent_file_drift')
+        raw[name] = body
+        descriptors.append({'file': name, 'sha256': hashlib.sha256(body).hexdigest(), 'bytes': len(body)})
+    if (hashlib.sha256(raw['current-input.json']).hexdigest() != PARENT_PRIVATE_SHA
+        or hashlib.sha256(raw['result.json']).hexdigest() != PARENT_RESULT_SHA
+        or len(raw['result.json']) != PARENT_RESULT_BYTES):
+        raise ValueError('saved_parent_digest')
+    return raw, descriptors
+
+
+def validate_saved_parent(raw):
+    private, result, receipt = (n.parsed(raw[name]) for name, _ in PARENT_FILES)
+    if raw['receipt.json'] != n.enc(receipt):
+        raise ValueError('saved_parent_receipt_bytes')
+    validate_result(result, receipt, PARENT_SOURCE, private)
+    n.require_fields(result, {'state': STATES[1], 'raw_references_verified': 13,
+        'raw_files_attempted': 13, 'raw_files_read': 13, 'requested_catalog_candidates': 3})
+    if (len(private['rows']) != 13 or any(e['raw_verified'] is not True or e['failure'] is not None
+                                         for e in private['rows'])):
+        raise ValueError('saved_parent_verified_roster')
+    values = []
+    for i, entry in enumerate(private['rows']):
+        original = entry['original_row']
+        content = original.get('hotel_content')
+        if not isinstance(content, dict) or any(k not in content for k in ('hotel_url', 'image_url')):
+            raise ValueError('saved_parent_url_slots')
+        for name in URL_FIELDS:
+            value = content[name.rsplit('.', 1)[1]]
+            old = next(f for f in result['rows'][i]['fields'] if f['field_name'] == name)
+            if (hashlib.sha256(retained.private_bytes(value)).hexdigest() != old['value_sha256']
+                or len(retained.private_bytes(value)) != old['value_bytes'] or old['present'] is not True):
+                raise ValueError('saved_parent_field_binding')
+            values.append(value)
+        if i < 12 and content['hotel_url'] is not None:
+            raise ValueError('saved_parent_null_roster')
+    if (sum(type(v) is str for v in values) != 14
+        or hashlib.sha256(retained.private_bytes(private['rows'][12]['original_row']['hotel_content']['hotel_url'])).hexdigest() != SUN_URL_SHA):
+        raise ValueError('saved_parent_string_roster')
+    return private, result, receipt
+
+
+def saved_url_field(row, name):
+    """Operator context controls redaction only, never establishes identity."""
+    value = row['hotel_content'][name.rsplit('.', 1)[1]]
+    out = retained.optional_projection('row.hotelUrl', True, value)
+    out['field_name'] = name
+    out['path_projection'] = None
+    operator = row.get('operator_ref')
+    out['projection_operator_namespace'] = {'115': 'operator_115', '315': 'operator_315'}.get(operator)
+    if operator not in ('115', '315'):
+        raise ValueError('saved_url_operator_context')
+    if operator == '315' and out['hold'] is None and type(value) is str:
+        projection = n.field_projection(name, {'present': True, 'value': value}, None, 'operator_315')
+        out['projection'] = projection
+        if projection['projection_hold'] is not None:
+            out['hold'] = projection['projection_hold']
+        elif projection['origin_state'] == 'absolute_operator_host_candidate':
+            # Reuse the existing strict path projector; no old URL5 execution/capture.
+            import hotel_match_nonbg5_retained_url_paths_readonly_v1 as paths
+            out['path_projection'] = paths.path_projection(value, projection['operator_host'])
+    return out
+
+
+def saved_url_rows(private, parent_result):
+    rows = []
+    for i, entry in enumerate(private['rows']):
+        original, spec = entry['original_row'], entry['spec']
+        fields = []
+        for name in URL_FIELDS:
+            projected = saved_url_field(original, name)
+            old_index = next(j for j, f in enumerate(parent_result['rows'][i]['fields']) if f['field_name'] == name)
+            projected['prior_private_value_pointer'] = {'sha256': PARENT_PRIVATE_SHA,
+                'json_pointer': '/rows/' + str(i) + '/original_row/hotel_content/' + name.rsplit('.', 1)[1]}
+            projected['prior_result_field_pointer'] = {'sha256': PARENT_RESULT_SHA,
+                'json_pointer': f'/rows/{i}/fields/{old_index}'}
+            fields.append(projected)
+        holds = list(BASE_HOLDS) + [f['hold'] for f in fields if f['hold']]
+        rows.append({'catalog_id': spec['catalog_id'], 'historical_local_hotel_id': spec['historical_local_hotel_id'],
+            'independent_tv_hotel_id': None, 'source_namespace': 'andromeda_catalog',
+            'target_namespace': 'not_established', 'operator_ref': original['operator_ref'],
+            'source_file': spec['source_file'], 'source_sha256': spec['sha256'], 'json_pointer': spec['json_pointer'],
+            'fields': fields, 'holds': list(dict.fromkeys(holds)), **dict.fromkeys(FALSE, False)})
+    return rows
+
+
+def saved_url_result(private, parent_result, descriptors, source):
+    rows = saved_url_rows(private, parent_result)
+    return {'schema': 'match-native-absent3-saved-urls-result/1', 'operation': URL_OP, 'batch': URL_BATCH,
+        'source_sha': source, 'state': URL_STATES[1] if any(f['hold'] for r in rows for f in r['fields']) else URL_STATES[0],
+        'private_input_sha256': PARENT_PRIVATE_SHA, 'parent_operation': OP, 'parent_batch': BATCH,
+        'parent_source_sha': PARENT_SOURCE, 'parent_private_input_sha256': PARENT_PRIVATE_SHA,
+        'parent_result_sha256': PARENT_RESULT_SHA, 'parent_metadata': descriptors, 'parent_unchanged': True,
+        'requested_catalog_candidates': 3, 'rows_examined': 13, 'url_slots_examined': 26,
+        'string_url_slots': 14, 'parent_files_bound': 3, 'parent_read_passes': 2,
+        'parent_bytes_bound': sum(d['bytes'] for d in descriptors), 'original_raw_files_read': 0, 'cache_files_read': 0,
+        'source_namespace': 'andromeda_catalog', 'target_namespace': 'not_established',
+        'current_readiness': 'not_evaluated', 'normalized_snapshot_only': True,
+        'original_supplier_response_proven': False, 'old_operation_replayed': False,
+        'rows': rows, 'hold_counts': dict(collections.Counter(h for r in rows for h in r['holds'])),
+        'no_replay': True, **dict.fromkeys(ZERO, 0), **dict.fromkeys(FALSE, False)}
+
+
+def validate_saved_urls(data, receipt=None, expected_source=None, private_input=None, opdir=None):
+    if opdir is None or private_input is None or not re.fullmatch(r'[a-f0-9]{40}', data.get('source_sha', '')):
+        raise ValueError('saved_urls_validation_inputs')
+    if expected_source is not None and data['source_sha'] != expected_source:
+        raise ValueError('saved_urls_source')
+    raw, descriptors = saved_parent_bytes(pathlib.Path(opdir), copied=True)
+    private, parent_result, _ = validate_saved_parent(raw)
+    if (n.file_bytes(pathlib.Path(opdir) / 'current-input.json', 4194304) != raw['current-input.json']
+        or not n.equal_typed(private_input, private)
+        or hashlib.sha256(retained.private_bytes(private_input)).hexdigest() != PARENT_PRIVATE_SHA):
+        raise ValueError('saved_urls_private_binding')
+    expected = saved_url_result(private, parent_result, descriptors, data['source_sha'])
+    if not n.equal_typed(data, expected) or len(n.enc(data)) > 1048576:
+        raise ValueError('saved_urls_result_binding')
+    if receipt is not None:
+        expected_receipt = {k: data[k] for k in URL_RECEIPT_KEYS} | {'result_sha256': hashlib.sha256(n.enc(data)).hexdigest()}
+        if not n.equal_typed(receipt, expected_receipt):
+            raise ValueError('saved_urls_receipt_binding')
+
+
+def project_saved_urls(project_root, opdir):
+    project_root, opdir = map(pathlib.Path, (project_root, opdir))
+    home = project_root.parent.parent
+    parent = home / '.anytoour-match/operations' / OP
+    if (project_root != home / 'www/anytoour.ru' or opdir != home / '.anytoour-match/operations' / URL_OP
+        or any(p.resolve() != p or p.is_symlink() or not p.is_dir() for p in (project_root, opdir, parent))
+        or any(stat.S_IMODE(p.stat().st_mode) != 0o700 for p in (opdir, parent))):
+        raise ValueError('saved_urls_execution_paths')
+    source = os.environ.get('MATCH_SOURCE_SHA', '')
+    if not re.fullmatch(r'[a-f0-9]{40}', source):
+        raise ValueError('saved_urls_execution_source')
+    reservation = n.parsed(n.file_bytes(opdir / 'reservation.json', 65536))
+    expected_reservation = {'operation': URL_OP, 'source_sha': source, 'batch': URL_BATCH,
+        'provider_http_calls': 0, 'maximum_writes': 0, 'state': 'reserved_before_saved_url_projection'}
+    if not n.equal_typed(reservation, expected_reservation):
+        raise ValueError('saved_urls_reservation')
+    outputs = ('execution-started.json', 'current-input.json', 'result.json', 'receipt.json',
+               *('parent-' + name for name, _ in PARENT_FILES))
+    if any((opdir / name).exists() or (opdir / name).is_symlink() for name in outputs):
+        raise ValueError('saved_urls_consumed_no_replay')
+    n.save(opdir / 'execution-started.json', {'operation': URL_OP, 'source_sha': source, 'batch': URL_BATCH, 'no_replay': True})
+    raw, before = saved_parent_bytes(parent)
+    # Preserve complete three-file evidence before parsing or URL projection.
+    for name, body in raw.items():
+        retained.durable_bytes(opdir / ('parent-' + name), body)
+    retained.durable_bytes(opdir / 'current-input.json', raw['current-input.json'])
+    private, parent_result, _ = validate_saved_parent(raw)
+    data = saved_url_result(private, parent_result, before, source)
+    after_raw, after = saved_parent_bytes(parent)
+    if not n.equal_typed(before, after) or any(raw[k] != after_raw[k] for k in raw):
+        raise ValueError('saved_urls_parent_drift')
+    validate_saved_urls(data, expected_source=source, private_input=private, opdir=opdir)
+    digest = n.save(opdir / 'result.json', data)
+    receipt = {k: data[k] for k in URL_RECEIPT_KEYS} | {'result_sha256': digest}
+    validate_saved_urls(data, receipt, source, private, opdir)
+    n.save(opdir / 'receipt.json', receipt)
+    print(json.dumps({k: data[k] for k in ('state', 'rows_examined', 'accepted', 'written')}))
+    return 0
+
+
 if __name__ == '__main__':
     if sys.argv[1:] == ['--self-test']:
         manifest()
@@ -253,5 +446,7 @@ if __name__ == '__main__':
     elif sys.argv[1:] == ['--execute']:
         sys.exit(execute(pathlib.Path(os.environ['ANYTOUR_ROOT']), pathlib.Path(os.environ['MATCH_OPERATION_DIR']),
             pathlib.Path(os.environ['MATCH_CACHE_ROOT']), pathlib.Path(os.environ['MATCH_MANIFEST_PATH'])))
+    elif sys.argv[1:] == ['--project-saved-urls']:
+        sys.exit(project_saved_urls(pathlib.Path(os.environ['ANYTOUR_ROOT']), pathlib.Path(os.environ['MATCH_OPERATION_DIR'])))
     else:
         raise SystemExit('exact --self-test or --execute required')
