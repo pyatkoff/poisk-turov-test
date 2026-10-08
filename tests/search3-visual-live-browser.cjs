@@ -309,7 +309,9 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
  console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
 };
 const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
- for(const width of [360,390,430,768,1280]){
+ const widths=[360,390,430,768,1280];
+ for(let offset=0;offset<widths.length;offset+=2){
+  await Promise.all(widths.slice(offset,offset+2).map(async width=>{
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],held=new Map(),releases=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
   const longRoom='FICTIONAL STANDARD SEA VIEW WITH SEPARATE LIVING ROOM AND PRIVATE TERRACE FOR THE EXACT SELECTED TOUR',longOperator='Вымышленный оператор · длинное каноническое название для проверки условий тура';let longStay=false;
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
@@ -405,6 +407,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
    fs.writeFileSync(path.join(evidence,`quote-retry-room-return-${width}.json`),JSON.stringify({width,height:650,pendingFooter,resumedFooter,movedBefore,movedAfter,receiptBefore,receiptAfter,successful_retry_application:true,whole_tour_total:133500.5,selected_pair:'1',room_return_and_reopen_requests:0,selected_marker:true,new_offer_reset:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
    fs.writeFileSync(path.join(evidence,`tv-flight-context-${width}.json`),JSON.stringify({width,height:650,chosenStay,contextA,contextB,unknownContext,longChosenStay,longContext,longPosition,whole_tour_A:120000,whole_tour_B:133500.5,fuel_already_in_total:20686,local_pair_cancel_apply_return_requests:0,unknown_price:null,unknown_apply_disabled:true,unknown_cancel_retains_B:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
   }finally{for(const release of releases)release();await context.close();}
+  }));
  }
  console.log('PASS compiled quote retry and room return: five widths, conditional focus/scroll retention, exact pair/whole total, passive reopen and independent offer');
 };
