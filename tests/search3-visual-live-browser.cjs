@@ -613,6 +613,54 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
  fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,keyboard_chip_removal_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
+async function formPickerActionJourney(browser,origin,base,evidence){
+ const receipts=[];
+ for(const width of [360,390,430,768,1280]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+   await page.locator('#quick-stars [data-action="star"][data-value="5"]').click();
+   const initialURL=page.url(),fields=()=>page.locator('#search-form').evaluate(el=>[...el.querySelectorAll('input,select')].map(control=>[control.name||control.id,control.value]));
+   const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
+   const target=async(locator,label)=>{
+    await locator.scrollIntoViewIfNeeded();
+    const box=await locator.evaluate(el=>{
+     const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);
+     const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),text=[...range.getClientRects()].filter(b=>b.width&&b.height);
+     return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,hit:!!hit&&(hit===el||el.contains(hit)),textInside:text.every(b=>b.x>=r.x-1&&b.right<=r.right+1),viewportWidth:innerWidth,viewportHeight:innerHeight};
+    });
+    assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
+    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
+   };
+   const close=async()=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.locator('#modal [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   for(const zoom of [100,200]){
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#search-form [data-action="form-filters"]').click();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);
+    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').click();assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');
+    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close();
+    await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;
+    if(await page.locator('#modal [data-action="month-next"]').isVisible()){
+     const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').click();assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),month,'one month click advances the displayed month');
+     await target(page.locator('#modal [data-action="month-prev"]'),'calendar previous month');await page.locator('#modal [data-action="month-prev"]').click();assert.equal(await page.locator('.calendar-month h3').first().textContent(),month,'previous month restores the same displayed month');
+    }
+    await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close();
+    for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close();}
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
+    receipts.push({width,zoom,reset,next,cancel_preserves_fields_and_URL:true,physicalSafari:false});
+   }
+   assert(!transport.calls.some(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)),'form reset, calendar navigation and Cancel start no supplier/quote/lead operation');
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+ console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, real reset/month navigation and Cancel preserve exact form/URL; supplier HTTP0');
+}
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -699,6 +747,91 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
+const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
+ const transport=fixture(),errors=[],forbidden=[],anexCalls=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage();
+ let releaseAnex;const firstPageGate=new Promise(resolve=>releaseAnex=resolve);
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')){
+     anexCalls.push(body.action);
+     if(body.action==='continue'){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'FIXTURE_DELIVERY_FAILED'})});return;}
+    }
+    const value=await transport.json(request.url(),{body:request.postData()});
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')&&body.action==='search'){
+     value.data.continuation={state:'available',pages_read:1,next_page:2};await firstPageGate;
+    }
+    await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+   }catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0,'boot is passive');
+  await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>document.querySelector('[data-search-source="tourvisor"]')?.textContent.includes('Порция получена')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('Получаем предложения'));
+  assert.doesNotMatch(await page.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров/,'pending source count is unknown, not guessed zero');
+  assert.doesNotMatch(await page.locator('#search-status').textContent(),/100%/,'TV progress cannot imply completion while another source is still pending');
+  await page.screenshot({path:path.join(evidence,'search-delivery-pending-390.png')});
+  releaseAnex();await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('Получена часть предложений')&&!document.querySelector('#search-more').hidden);
+  const status=page.locator('#search-status'),summary=status.locator('summary');
+  await summary.click();assert.match(await status.textContent(),/Вариантов до фильтров: 1/);assert.doesNotMatch(await status.textContent(),/не загрузил|недоступн/,'normal bounded first page is not a failure');
+  assert.equal(await status.locator('[data-search-source="andromeda"]').count(),0,'paused SAMO is not presented as an active source');
+  await page.screenshot({path:path.join(evidence,'search-delivery-first-page-390.png')});
+  assert.deepEqual(anexCalls,['search'],'no automatic page drain');
+  await page.locator('#search-more [data-action="continue-search"]').click();
+  await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('ANEX')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('не загрузилась'));
+  assert.deepEqual(anexCalls,['search','continue'],'one explicit continuation, no duplicate/retry');
+  assert.match(await status.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров: 1/,'failed continuation retains its received first-page count');
+  assert.match(await page.locator('#results-summary').textContent(),/2 варианта/,'independent TV and retained ANEX offers survive the failure');
+  if(!await status.locator('details').evaluate(el=>el.open))await summary.click();
+  const ordinaryRender=async()=>page.locator('#mobile-sort').evaluate(el=>{el.value=el.value==='price'?'recommended':'price';el.dispatchEvent(new Event('change',{bubbles:true}));});
+  await summary.focus();await ordinaryRender();assert.equal(await status.locator('details').evaluate(el=>el.open),true);assert.equal(await page.evaluate(()=>document.activeElement===document.querySelector('#search-status summary')),true,'passive result render preserves focused summary');
+  await status.locator('[data-action="edit-search"]').focus();await ordinaryRender();assert.equal(await page.evaluate(()=>document.activeElement?.dataset.action),'edit-search','passive result render preserves focused current action');
+  const samples=[];
+  for(const width of [360,390,430,768,1280]){
+   await page.setViewportSize({width,height:900});await status.scrollIntoViewIfNeeded();
+   for(const largeText of [false,true]){
+    await page.evaluate(large=>document.documentElement.style.fontSize=large?'32px':'',largeText);
+    const geometry=await status.evaluate(el=>{
+     const rect=node=>{const r=node.getBoundingClientRect();return{x:r.x,right:r.right,width:r.width,height:r.height};},bounds=rect(el);
+     const controls=[...el.querySelectorAll('summary,button')].map(rect),rows=[...el.querySelectorAll('[data-search-source]')].map(row=>({key:row.dataset.searchSource,...rect(row)}));
+     const texts=[...el.querySelectorAll('summary strong,summary>span,p,[data-search-source] strong,[data-search-source] small,button')].every(node=>{const range=document.createRange();range.selectNodeContents(node);return [...range.getClientRects()].every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1);});
+     return{bounds,controls,rows,texts,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(geometry.overflow,false,'status and whole page have no horizontal overflow at '+width+' text200='+largeText);assert(geometry.texts,'full source names/status/count/action text fits at '+width+' text200='+largeText);assert(geometry.controls.every(control=>control.height>=44),'status summary/actions retain44px targets at '+width);
+    assert(geometry.rows.every(row=>row.x>=geometry.bounds.x&&row.right<=geometry.bounds.right+1),'source panels remain within their status owner');
+    if(largeText&&width<=760)assert(geometry.rows[1].x===geometry.rows[0].x,'large text stacks source panels instead of breaking words in narrow columns');
+    if(width<=760){
+     const editWord=await page.locator('#compact-search .secondary[data-action="top"]').evaluate(el=>{
+      const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())if(node.data.includes('Изменить'))break;
+      if(!node)return false;const start=node.data.indexOf('Изменить'),range=document.createRange();range.setStart(node,start);range.setEnd(node,start+'Изменить'.length);const rects=[...range.getClientRects()],bounds=el.getBoundingClientRect();
+      return rects.length===1&&rects[0].x>=bounds.x&&rects[0].right<=bounds.right;
+     });assert(editWord,'compact edit action keeps its ordinary word readable at '+width+' text200='+largeText);
+     const routeWords=await page.locator('#compact-search .compact-route-block strong').evaluate(el=>{
+      const node=el.firstChild,bounds=el.getBoundingClientRect();if(!node||node.nodeType!==Node.TEXT_NODE)return false;
+      return [...node.data.matchAll(/[А-Яа-яЁё]+/g)].every(word=>{const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);const rects=[...range.getClientRects()];return rects.length===1&&rects[0].x>=bounds.x-1&&rects[0].right<=bounds.right+1;});
+     });assert(routeWords,'compact route preserves whole city/country words at '+width+' text200='+largeText);
+    }
+    await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
+    for(const action of ['retry-search','edit-search']){
+     const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+     const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
+     assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
+     if(width===390&&largeText&&action==='edit-search')await page.screenshot({path:path.join(evidence,'search-delivery-text200-controls-390.png')});
+    }
+   }
+   await page.evaluate(()=>document.documentElement.style.fontSize='');
+  }
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,1);assert.equal(transport.calls.filter(call=>call.action==='search_continue').length,1);assert.deepEqual(anexCalls,['search','continue']);
+  assert(!transport.calls.some(call=>/andromeda|quote|lead/.test(call.url)),'delivery inspection/filter/resize do not issue SAMO, quote or lead operations');
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  console.log('PASS compiled search delivery: pending unknown count, healthy native first page, explicit failed continuation/retained offers, passive disclosure/focus and five widths/text200; supplier HTTP0');
+ }finally{releaseAnex();await context.close();}
+};
 // Off for the real-default regression below. Retained SAMO integration journeys
 // explicitly enable only this local fictional transport after that check passes.
 let enableSamoFixture=false;
@@ -745,6 +878,8 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  await formPickerActionJourney(browser,origin,base,evidence);
+  await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
   for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
@@ -1326,8 +1461,13 @@ const server=http.createServer((req,res)=>{
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
  await chosenDepartureJourney(browser,origin,base,evidence);
- await quoteRetryAndRoomReturnJourney(browser,origin,base,evidence);
- await verifiedPairJourney(browser,origin,base,evidence);
+ // Each journey owns its context, fictional transport and evidence names. Keep
+ // both complete matrices; settle both before closing the shared browser.
+ const isolated=await Promise.allSettled([
+  quoteRetryAndRoomReturnJourney(browser,origin,base,evidence),
+  verifiedPairJourney(browser,origin,base,evidence)
+ ]),failures=isolated.filter(result=>result.status==='rejected');
+ if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
