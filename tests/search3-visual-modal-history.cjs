@@ -1,10 +1,12 @@
-// Site100 modal route snapshots retain nested form drafts; returning to passive all-offers preserves the newly chosen flight instead of restoring the old listing. Original identity/focus/scroll and stale-provider mutations stay required.
+// Site100 modal route snapshots retain nested form drafts; returning to passive offer/room lists preserves the newly chosen flight instead of restoring the old listing. Original identity/focus/scroll and stale-provider mutations stay required.
 // Execute the actual modal owner with DOM/collaborator boundaries intercepted.
 // Baseline is P5's unchanged modal code, originally app blob db413a55.
 // The retained pin was recomputed from release 7a4e93b before removal,
 // excluding only the two comparison Back scenarios.
 // O51 additionally projects the empty cancellation callback and checks the
 // unchanged active observations against fresh release 6f6d4b9585.
+// The receiving return fix intentionally changes hotel-details restoration;
+// its applied-pair regression retains exact identity and the whole-tour total.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -63,6 +65,10 @@ add('only stale step',{kind:'back',open:true,onlyStale:true,stale:['step-2']});
 add('offer list absent',{kind:'back',open:true,previous:'all-offers',noOfferView:true});
 add('hotel meal absent',{kind:'back',open:true,previous:'hotel-details',setup:(c,n)=>n('#hotel-room-meal').value='BB'});
 add('hotel returning offer expands',{kind:'back',open:true,previous:'hotel-details',returningOffer:true});
+add('hotel Back retains applied pair',{kind:'back',open:true,current:'offer',previous:'hotel-details',setup:c=>{
+ Object.assign(c.selectedOffer,{flightChoiceId:'1',total:133500.5});
+ c.modalHistory[0].offer={...c.selectedOffer,flightChoiceId:null,total:120000};
+}});
 add('focus outside body',{kind:'back',open:true,previous:'gallery',setup:(c,n)=>n('#modal-body').contains=()=>false});
 for(const open of [false,true])for(const filterOpen of [false,true])for(const fromHistory of [false,true])add(`close:${open}:${filterOpen}:${fromHistory}`,{kind:'close',open,filterOpen,fromHistory});
 // The retired My tour painter and empty verification cancellation had no active
@@ -71,13 +77,20 @@ for(const open of [false,true])for(const filterOpen of [false,true])for(const fr
 function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
-assert.equal(actual.length,67,'only two comparison Back scenarios retired from the original 69 cases');
-if(!process.argv.includes('--capture'))assert.equal(digest,'a3b548c81876c1bf7b2e4b0c9ca6f066b6d92eb997f9cb53e0fbbd5ebfc819f2','approved modal snapshots and retained active observations');
+assert.equal(actual.length,68,'retained 67 modal cases plus applied-pair hotel Back regression');
+if(!process.argv.includes('--capture'))assert.equal(digest,'b63e1cb92a5126b1fcd7d1507c2eb49108fd3b69eafad6d868a7c6be80ca0e3f','retained modal observations plus intentional passive hotel-room restoration fix');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.equal(result('show:true:dates:false').identities.snapshotOfferIsCurrent,true);
 assert.equal(result('show:true:dates:false').identities.snapshotGalleryIsOriginal,false);
 assert.equal(result('back:offer').restoringModal,false);
 assert.equal(result('back:all-offers').identities.selectedIsOriginal,true,'return to passive offers preserves current selected flight');
+assert.equal(result('back:hotel-details').identities.selectedIsOriginal,true,'return to passive hotel rooms preserves current selection identity');
+const appliedPair=result('hotel Back retains applied pair');
+assert.equal(appliedPair.modalType,'hotel-details');
+assert.equal(appliedPair.identities.selectedIsOriginal,true,'hotel Back keeps the original applied selection object');
+assert.equal(appliedPair.selectedOffer.key,'offer-7','hotel Back retains the exact offer');
+assert.equal(appliedPair.selectedOffer.flightChoiceId,'1','hotel Back cannot restore the unselected listing pair');
+assert.equal(appliedPair.selectedOffer.total,133500.5,'hotel Back cannot restore the former whole-tour total');
 assert.deepEqual(result('show:true:dates:false').history.at(-1).route,{type:'offer',key:'offer-7'},'nested picker snapshot retains route context');
 assert.deepEqual(result('only stale step').history,[]);
 assert.equal(result('close:true:true:false').overflow,'hidden');
@@ -85,4 +98,7 @@ assert.equal(result('close:true:false:false').overflow,'');
 assert.notDeepEqual(records(source.replace('restoringModal=false;if(previous.type', 'restoringModal=true;if(previous.type')),actual,'restoration flag mutation detected');
 assert.notDeepEqual(records(source.replace('modalBody.scrollTop+=top-previous.focus.top','modalBody.scrollTop+=top')),actual,'focus offset mutation detected');
 assert.notDeepEqual(records(source.replace('gallery:{...gallery},offer:selectedOffer','gallery:gallery,offer:selectedOffer')),actual,'snapshot alias mutation detected');
+const roomSnapshotMutation=source.replace("!['all-offers','hotel-details'].includes(previous.type)","previous.type!=='all-offers'");
+assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot guard is exercised');
+assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
 console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards digest ${digest}; supplier and lead HTTP 0`);

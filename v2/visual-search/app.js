@@ -1092,8 +1092,8 @@ function captureModalStep(m){
 }
 function restoreModalStepSnapshot(previous){
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;
- // The offer list is a passive view: returning to it must not undo chosen flights.
- if(previous.type!=='all-offers')selectedOffer=previous.offer;
+ // Offer and room lists are passive views: returning must not undo chosen flights.
+ if(!['all-offers','hotel-details'].includes(previous.type))selectedOffer=previous.offer;
  updateModalBack();
 }
 function restoreHotelDetailStep(previous){
@@ -1486,7 +1486,7 @@ async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
   const flightState=chooseFlight?{flightsLoading:true}:{flightsLoading:false,flightsError:'',variants:[],flightChoiceId:null};
   selectedOffer={...initial,tour,quoteListingTotal:initial.total,
    total:data.amount(tour.price)||initial.total,room:data.text(tour.roomType)||initial.room,
-   meal:data.meal(tour.meal)||initial.meal,loading:false,...flightState};
+   meal:data.meal(tour.meal)||initial.meal,loading:false,quoteError:'',quoteErrorCode:'',quoteErrorTerminal:false,...flightState};
   renderRealOffer();
   if(chooseFlight){
    await loadRealFlights(run);
@@ -1602,6 +1602,13 @@ function providerApplicationBodyHTML(receipt,flights,hotelId){
 function providerApplicationFooterHTML(receipt){return offerDetailFooterHTML({total:receipt.price},window.AnyTourPrototypeLead.action(),receipt.finalPriceVerified?'Подтверждённая цена выбранного тура':'Расчётная стоимость · требует подтверждения');}
 function renderRealOffer(){
  const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
+ const m=$('#modal'),busy=o.loading||o.flightsLoading;
+ const returning=m.open&&modalType==='offer'&&m.dataset.offerKey===o.key?{scroll:$('#modal-body').scrollTop,focus:focusReference(document.activeElement,m),footer:$('#modal-footer').contains(document.activeElement)}:null;
+ if(!returning)delete m.dataset.offerFocusKey;
+ if(returning?.footer&&busy)m.dataset.offerFocusKey=o.key;
+ // Resume a disabled action only if focus stayed on its pending fallback.
+ const resumeAction=returning&&!busy&&m.dataset.offerFocusKey===o.key&&document.activeElement===$('#modal-title');
+ if(!busy)delete m.dataset.offerFocusKey;
  if(o.provider==='tourvisor'&&data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.loading&&!o.quoteError&&!o.flightsLoading)rememberProviderView(o,'tourvisor-selection');
  const unavailable=needsRefresh(o);
  const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
@@ -1611,6 +1618,8 @@ function renderRealOffer(){
  const footerAction=offerPrimaryActionHTML(o,h,unavailable,terminalQuoteError);
  const footerStatus=selectedPriceStatus(o);
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=offerDetailFooterHTML(o,footerAction,footerStatus);
+ m.dataset.offerKey=o.key;
+ if(returning){restoreFocus(resumeAction?null:returning.focus,returning.footer||resumeAction?$('#modal-footer .primary:not(:disabled)')||$('#modal-title'):$('#modal-title'),m);$('#modal-body').scrollTop=returning.scroll;}
 }
 function openFlightPicker(){
  if(!selectedOffer?.variants?.length)return;flightDraft={base:selectedOffer,id:selectedOffer.flightChoiceId};
