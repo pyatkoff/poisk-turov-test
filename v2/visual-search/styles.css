@@ -1941,7 +1941,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .tour-dialog .tour-fuel-disclosure{margin:0;padding:0;border:0}
  .application-review{padding:0 0 16px;border-right:0;border-bottom:1px solid var(--line)}
  .application-choice>h3{margin-bottom:12px}
- .chosen-stay .saved-stay-summary>div{grid-template-columns:84px minmax(0,1fr);gap:10px}
+ .chosen-stay .saved-stay-summary>div{grid-template-columns:100px minmax(0,1fr);gap:10px}
  .tour-dialog #modal-footer,.application-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:12px 16px max(12px,env(safe-area-inset-bottom))}
  .tour-dialog #modal-footer .footer-total,.application-dialog #modal-footer .footer-total{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 12px}
  .tour-dialog #modal-footer .footer-total>strong,.application-dialog #modal-footer .footer-total>strong{font-size:1.625rem}
