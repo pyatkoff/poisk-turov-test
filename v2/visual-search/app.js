@@ -306,10 +306,13 @@ function updateSearchUI(){
 function renderCatalogError(){
  let node=$('#catalog-error');
  if(!node){node=document.createElement('p');node.id='catalog-error';node.className='error-text';node.setAttribute('role','alert');$('#search-form .search-actions').before(node);}
+ const focus=focusReference(document.activeElement,node),retrying=node.dataset.catalogRetry==='pending',bootstrapPending=retrying&&!catalogReady&&!catalogError;
  const bootstrapFailed=!!catalogError&&!urlStateHydrated,countryFailed=!!catalogError&&!!catalogDeparture,hotelMissing=urlStateHydrated&&!data.preview&&destinationIds(currentDraftDestination()).some(id=>!destinationHotel(id)?.legacyIds.length);
  const restoring=hotelMissing&&hotelRestorePending&&!countryFailed;
- node.hidden=!bootstrapFailed&&!countryFailed&&!hotelMissing;node.setAttribute('role',restoring?'status':'alert');node.classList.toggle('error-text',!restoring);node.classList.toggle('picker-caption',restoring);
- node.innerHTML=node.hidden?'':bootstrapFailed?'Не удалось загрузить направления. Параметры поездки сохранены. <button type="button" class="secondary" data-action="retry-catalog">Повторить загрузку</button>':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
+ node.hidden=!bootstrapPending&&!bootstrapFailed&&!countryFailed&&!hotelMissing;node.setAttribute('role',bootstrapPending||restoring?'status':'alert');node.classList.toggle('error-text',!bootstrapPending&&!restoring);node.classList.toggle('picker-caption',bootstrapPending||restoring);
+ node.innerHTML=node.hidden?'':bootstrapPending?'Загружаем направления. Параметры поездки сохранены.':bootstrapFailed?'Не удалось загрузить направления. Параметры поездки сохранены. <button type="button" class="secondary" data-action="retry-catalog">Повторить загрузку</button>':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
+ if(retrying&&!bootstrapPending)delete node.dataset.catalogRetry;
+ if(focus)restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
 }
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();
@@ -2561,7 +2564,10 @@ async function restoreURLHotel(){
  finally{hotelRestorePending=false;updateSearchUI();renderResults();if(modalType==='destination')renderDestination();}
 }
 async function bootRealData(){
+ const retryFocused=document.activeElement?.matches('[data-action="retry-catalog"]'),errorNode=$('#catalog-error');
+ if(!urlStateHydrated&&catalogError&&errorNode)errorNode.dataset.catalogRetry='pending';
  catalogReady=false;$('.search-submit').disabled=true;catalogError='';$$('[data-action="retry-catalog"]').forEach(button=>button.disabled=true);updateSearchUI();if(modalType==='destination')renderDestination();
+ if(retryFocused&&!errorNode?.hidden)restoreFocus(null,errorNode);
  try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();urlStateHydrated=true;await loadResorts(state.search.country);catalogReady=true;updateSearchUI();renderResults();if(modalType==='destination'){if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');renderCalendarScope();loadCalendarPrices();}await restoreURLHotel();if(!data.live)await restoreSavedHotels();$('#fixture-description').textContent=data.describe();if(data.live){const requestedSearch=new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();}else{state.hasSearched=true;runSearch();}}
  catch(error){catalogError=error.message;updateSearchUI();$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
 }
