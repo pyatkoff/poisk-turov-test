@@ -49,9 +49,9 @@ module.exports=async function({browser,origin,base,evidence}){
    let returnState;
    if(provider==='anex'){
     if(mode==='return'){
+     await page.locator('.offer-filter-disclosure>summary').click();
      await page.locator('#offer-room').waitFor();
      await page.locator('#offer-sort').selectOption('date');
-     await page.locator('.offer-filter-disclosure>summary').click();
      for(const [name,value] of Object.entries({room:'ANEX CONCRETE',meal:'Всё включено',departure:trip.from,flight:'charter'}))await page.locator('#offer-'+name).selectOption(value);
      await page.locator('[data-action="group-more"]').click();
      // Capture the exact position after the real offer action is focused, so
