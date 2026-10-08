@@ -37,6 +37,8 @@ on:
       - 'tests/int_server_executor_local_profile_mass_apply_test.py'
       - 'scripts/diagnostics/local_profile_mass_apply2_4191.php'
       - 'tests/int_server_executor_local_profile_mass_apply2_test.py'
+      - 'scripts/deploy/int_server_executor_local_profile_recovery_plan.py'
+      - 'tests/int_server_executor_local_profile_recovery_plan_test.py'
   workflow_dispatch:
     inputs:
       owner_command:
