@@ -236,7 +236,15 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
 .flight-option-heading{grid-column:1/-1;display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:10px}
 .flight-option-heading input{margin:0;width:19px;height:19px;accent-color:var(--brand);cursor:pointer}
 .flight-option-heading strong{font-size:16px;font-weight:650;line-height:1.4}
-.flight-option-heading small{display:block;color:var(--muted);font-size:12px;line-height:1.5;margin-top:3px}
+.flight-option-heading small{display:block;color:var(--muted);font-size:14px;line-height:1.5;margin-top:3px}
+.flight-option-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.flight-option-selected{display:none;font-size:13px;font-weight:650;font-style:normal;color:var(--brand);background:#eef2ff;border-radius:6px;padding:4px 8px}
+.flight-option:has(input:checked) .flight-option-selected{display:inline-block}
+.anex-pair-option .flight-option-heading{grid-template-columns:20px minmax(0,1fr);align-items:start}
+.anex-pair-option .flight-option-heading input{margin-top:2px}
+.flight-option-heading .flight-option-leg{color:var(--ink);overflow-wrap:anywhere;margin-bottom:12px}
+.flight-option-heading .flight-option-price{border-top:1px solid var(--line);padding-top:10px;margin-top:2px}
+.flight-option-price strong{display:block;color:var(--ink)}
 .flight-pair-delta{font-size:16px;font-weight:650;color:var(--brand);text-align:right;white-space:nowrap}
 .flight-pair-delta small{font-weight:400}
 .flight-option .flight-leg{padding:20px 0 17px}
@@ -284,7 +292,6 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
  .flight-option{grid-template-columns:minmax(0,1fr);padding:15px 13px;gap:0}
  .flight-option-heading{grid-template-columns:19px minmax(0,1fr) auto;gap:8px}
  .flight-option-heading strong{font-size:14px}
- .flight-option-heading small{font-size:11px}
  .flight-pair-delta{font-size:14px}
  .flight-option .flight-leg{padding:16px 0}
  .flight-option .flight-timeline{grid-template-columns:minmax(0,1fr) 93px minmax(0,1fr)}
@@ -301,7 +308,7 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
 @media(max-width:374px){
 
  .flight-option{padding:14px 11px}
- .flight-option-heading strong{font-size:13px}
+ .flight-option-heading strong{font-size:14px}
  .flight-pair-delta{font-size:13px}
  .flight-option-footer strong{font-size:20px}
 }
@@ -1309,6 +1316,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .summary-flight-details{margin:18px 0;padding:0 18px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .summary-flight-details>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:54px;cursor:pointer;list-style:none}
 .summary-flight-details>summary::-webkit-details-marker{display:none}.summary-flight-details>summary>span{font-weight:700}.summary-flight-details>summary>small{color:var(--muted);line-height:1.4;text-align:right}.summary-flight-details>summary::after{content:'⌄';color:var(--brand);font-size:18px;flex-shrink:0}.summary-flight-details[open]>summary::after{transform:rotate(180deg)}
+.selected-flight-summary{min-width:0;padding:8px 0}.selected-flight-line{display:block;font-size:14px;line-height:1.5;font-weight:400;overflow-wrap:anywhere;margin-top:6px}.selected-flight-line strong{font-weight:650}
 .summary-flight-details .saved-flight-summary{border-top:1px solid var(--line);padding-top:12px}.handoff-summary-after-form{margin-top:8px}
 .hotel-detail-photos.photo-count-1{grid-template-columns:1fr}.hotel-detail-photos.photo-count-2 button:nth-child(2){grid-row:1/3}
 @media(max-width:760px){#modal-footer button[form="prototype-lead-form"]{width:100%;max-width:none;min-height:48px;flex:1}}
