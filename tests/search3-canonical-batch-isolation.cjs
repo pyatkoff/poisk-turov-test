@@ -2,12 +2,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(process.argv[2]||'v2/search3-canonical-profiles-v1.js','utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
-function setup(){
+function setup(refreshRows=null,pathname='/_preview/search3-local-candidate/prototype-search/'){
  const events={},calls=[];let changes=0;
- const root={location:{pathname:'/_preview/search3-local-candidate/prototype-search/'},addEventListener:(name,fn)=>events[name]=fn};
+ const root={location:{pathname},addEventListener:(name,fn)=>events[name]=fn};
  root.fetch=(url,options)=>new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));
  vm.runInNewContext(source,{window:root,document:{createElement:()=>({setAttribute(){},appendChild(){},addEventListener(){}})},URLSearchParams,AbortController,setTimeout,clearTimeout});
- const owner=root.Search3CanonicalProfilesV1.create(()=>changes++);
+ const owner=root.Search3CanonicalProfilesV1.create(()=>{changes++;if(refreshRows)owner.read(refreshRows,{});});
  return {owner,root,calls,events,get changes(){return changes;}};
 }
 function h(id){return {id,provider:'tourvisor',mappingStatus:'resolved',tours:[{id:'tourvisor:'+id,provider:'tourvisor',price:100000+id}]};}
@@ -72,6 +72,50 @@ async function reject(ctx,index,error=new Error('fixture transport failure')){ct
  await reply(ctx,2,good([303,304]));
  assert.equal(ctx.calls.length,3,'old split completion cannot enqueue more work');
  assert.equal(ctx.owner.read([],{}).length,0,'old split completion cannot publish profiles after reset');
+
+ // Saturated workers must retain every split while refresh/read re-enters pump.
+ // IDs and catalogue responses below are fictional; own and legacy IDs differ.
+ for(const pathname of ['/_preview/search3-local-candidate/prototype-search/','/_preview/search3-next-candidate/visual-search/']){
+  rows=Array.from({length:200},(_,i)=>h(i+1));ctx=setup(rows,pathname);
+  const invalid=new Set([1,101]);
+  const payloadFor=requested=>({
+   ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:requested,
+   items:requested.map(legacy=>({...p(10000+legacy),name:invalid.has(legacy)?'':'Hotel '+legacy,
+    description:'Saved description '+legacy,primaryImage:'https://fixture.invalid/'+legacy+'.jpg',
+    images:['https://fixture.invalid/'+legacy+'.jpg']})),
+   links:requested.map(legacy=>({legacyHotelId:legacy,anytourHotelId:10000+legacy})),missingLegacyIds:[]
+  });
+  try{
+   ctx.owner.read(rows,{});await tick();assert.equal(ctx.calls.length,2);
+   let settled=0;
+   while(settled<ctx.calls.length&&settled<40){
+    const wave=ctx.calls.slice(settled);settled+=wave.length;
+    assert.ok(wave.length<=2,'catalogue isolation retains the shared two-worker limit');
+    // Additional renders while workers are occupied must not dequeue waiting halves.
+    for(let i=0;i<3;i++)ctx.owner.read(rows,{});
+    await tick();assert.equal(ctx.calls.length,settled,'no request while both slots are occupied');
+    for(const call of wave){
+     const requested=ids(call);assert.ok(requested.length>0&&requested.length<=100);
+     const payload=payloadFor(requested);call.resolve({ok:true,status:200,json:async()=>payload});
+    }
+    await tick();
+   }
+   const visible=ctx.owner.read(rows,{});
+   assert.equal(visible.length,198,'two invalid rows must not suppress the other 198 canonical cards');
+   assert.equal(settled,ctx.calls.length,'all queued subsets finish, with no repeated invalid union');
+   assert.ok(ctx.calls.length<=34,'two initial batches share the existing 32-child split budget');
+   assert.equal(new Set(ctx.calls.map(call=>ids(call).join(','))).size,ctx.calls.length,'no lost split is regrouped and requested again');
+   for(const card of visible){
+    const legacy=Number(card.id);assert.ok(!invalid.has(legacy));
+    assert.equal(card.anytourHotelId,10000+legacy);
+    assert.equal(card.description,'Saved description '+legacy);
+    assert.equal(card.primaryImage,'https://fixture.invalid/'+legacy+'.jpg');
+    assert.equal(card.images[0],card.primaryImage);
+    assert.equal(card.tours[0],rows[legacy-1].tours[0],'original supplier offer facts are unchanged');
+   }
+   console.log('parallel catalogue isolation: '+pathname+' 198/200; invalid=2; requests='+ctx.calls.length);
+  }finally{ctx.owner.reset();}
+ }
 
  console.log('search3 canonical batch isolation: ok');
 })().catch(error=>{console.error(error);process.exit(1);});
