@@ -1497,6 +1497,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 }
 
 /* The approved pickers share the existing dialog, draft and history owners. */
+.form-picker .modal-header .icon-button,.form-picker .calendar-navigation .icon-button,.form-picker .text-button{min-width:44px;min-height:44px}
 .form-picker .picker-caption{font-size:12px;line-height:1.5;color:var(--muted);margin:8px 0}
 .form-picker .picker-summary{display:grid;gap:4px;font-size:14px;line-height:1.5;min-width:0}
 .form-picker .picker-summary small{font-size:11px;line-height:1.5;color:var(--muted)}

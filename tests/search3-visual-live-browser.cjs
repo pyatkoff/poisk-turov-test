@@ -613,6 +613,54 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
  fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,keyboard_chip_removal_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
+async function formPickerActionJourney(browser,origin,base,evidence){
+ const receipts=[];
+ for(const width of [360,390,430,768,1280]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+   await page.locator('#quick-stars [data-action="star"][data-value="5"]').click();
+   const initialURL=page.url(),fields=()=>page.locator('#search-form').evaluate(el=>[...el.querySelectorAll('input,select')].map(control=>[control.name||control.id,control.value]));
+   const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
+   const target=async(locator,label)=>{
+    await locator.scrollIntoViewIfNeeded();
+    const box=await locator.evaluate(el=>{
+     const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);
+     const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),text=[...range.getClientRects()].filter(b=>b.width&&b.height);
+     return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,hit:!!hit&&(hit===el||el.contains(hit)),textInside:text.every(b=>b.x>=r.x-1&&b.right<=r.right+1),viewportWidth:innerWidth,viewportHeight:innerHeight};
+    });
+    assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
+    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
+   };
+   const close=async()=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.locator('#modal [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   for(const zoom of [100,200]){
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#search-form [data-action="form-filters"]').click();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);
+    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').click();assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');
+    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close();
+    await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;
+    if(await page.locator('#modal [data-action="month-next"]').isVisible()){
+     const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').click();assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),month,'one month click advances the displayed month');
+     await target(page.locator('#modal [data-action="month-prev"]'),'calendar previous month');await page.locator('#modal [data-action="month-prev"]').click();assert.equal(await page.locator('.calendar-month h3').first().textContent(),month,'previous month restores the same displayed month');
+    }
+    await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close();
+    for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close();}
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
+    receipts.push({width,zoom,reset,next,cancel_preserves_fields_and_URL:true,physicalSafari:false});
+   }
+   assert(!transport.calls.some(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)),'form reset, calendar navigation and Cancel start no supplier/quote/lead operation');
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+ console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, real reset/month navigation and Cancel preserve exact form/URL; supplier HTTP0');
+}
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -830,6 +878,7 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  await formPickerActionJourney(browser,origin,base,evidence);
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
   for(const width of [360,390,430,768,1280]){
