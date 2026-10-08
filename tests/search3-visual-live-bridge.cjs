@@ -42,6 +42,11 @@ for(const file of scripts){
   code=code.replace(marker,marker+`\nwindow.__offerLookupProbe={find:offerFromKey,swap(value){const previous=hotels;hotels=value;return previous;}};`);
  }
  w.eval(code);
+ if(file==='prototype-search/config.js'){
+  // Retained integration regressions opt in only to this fictional transport.
+  w.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';
+  w.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';
+ }
 }
 function offerLookupWork(){
  const probe=w.__offerLookupProbe;assert(probe);delete w.__offerLookupProbe;
@@ -156,7 +161,7 @@ const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
  assert.equal(starts(),0,'invalid budget blocks the first desktop search');assert.equal(d.activeElement,q('#max-price'));
  q('#max-price').value='';q('#max-price').dispatchEvent(new w.Event('input',{bubbles:true}));w.innerWidth=390;w.dispatchEvent(new w.Event('resize'));
  click('[data-action="about"]');
- assert.match(q('#modal-body').textContent,/живого поиска ТВ, SAMO\/Andromeda и ANEX/);
+ assert.match(q('#modal-body').textContent,/живого поиска Tourvisor и прямого ANEX/);
  assert.match(q('#modal-body').textContent,/База не подменяет живую выдачу/);
  assert.match(q('#modal-body').textContent,/Неподтверждённая или расчётная сумма/);
  assert.match(q('#modal-body').textContent,/данные не отправляются туроператору/);
