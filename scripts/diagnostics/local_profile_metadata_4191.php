@@ -125,7 +125,7 @@ function lmd_classify(array $scope, array $byId, array $d1): array {
     ksort($counts); ksort($missing);
     return ['rows'=>$rows,'requested_profiles'=>count($scope),'profiles_read'=>$read,
         'metadata_screened'=>$screened,'aliases_validated'=>$aliases,
-        'classification_counts'=>$counts,'missing_field_counts'=>$missing];
+        'classification_counts'=>$counts,'missing_field_counts'=>($missing === [] ? (object)[] : $missing)];
 }
 
 function lmd_read(PDO $db, array $scope): array {
