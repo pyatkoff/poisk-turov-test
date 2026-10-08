@@ -1,5 +1,9 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Temporary SAMO pause — 2026-10-08
+
+The shared live configuration now enables only Tourvisor and direct ANEX. Both optional SAMO/Andromeda endpoints are disabled, so initial search, continuation and quote actions cannot send SAMO requests. The integration remains in the source for a later explicit re-enable; its retained regression journeys opt in only within fictional transport fixtures. The calendar still uses previously observed database prices.
+
 ## Bounded flight repricing — 2026-10-07
 
 New supplier quote contexts explicitly carrying `repricing.enabled=true` can reopen their retained flight inventory from the verified tour and calculate another exact pair. The existing flight screen shows the returned whole-party total and its change; returning to a previously verified pair reuses the immutable cached result. Native transport markup remains informational and is never summed into a tour price.

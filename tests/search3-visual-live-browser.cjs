@@ -506,6 +506,9 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
+// Off for the real-default regression below. Retained SAMO integration journeys
+// explicitly enable only this local fictional transport after that check passes.
+let enableSamoFixture=false;
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://fixture');if(!u.pathname.startsWith(base)){res.writeHead(404).end();return;}
  const local=path.resolve(root,u.pathname.slice(base.length)||'index.php');if(!local.startsWith(root+'/')){res.writeHead(403).end();return;}
@@ -519,11 +522,38 @@ const server=http.createServer((req,res)=>{
   }
   res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;
  }
- res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(fs.readFileSync(file));
+ let body=fs.readFileSync(file);
+ if(enableSamoFixture&&file.endsWith('/prototype-search/config.js'))body=body.toString()+"\nwindow.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';window.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';\n";
+ res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(body);
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
- try{for(const width of [360,390,430,768,1280]){
+ try{
+  for(const width of [390,1280]){
+   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+   await page.route('**/*',async route=>{
+    const req=route.request(),url=new URL(req.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));
+   await page.locator('.search-submit:not(:disabled)').waitFor();
+   assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0,'default page does not auto-search');
+   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
+   await page.locator('[data-action="all-offers"][data-id="501"]').click();
+   await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').waitFor();
+   assert.equal(await page.locator('#modal-body [data-action="offer"][data-key^="tourvisor%3A"]').count(),1);
+   assert.equal(await page.locator('#modal-body [data-action="offer"][data-key^="andromeda%3A"]').count(),0);
+   assert(!transport.calls.some(call=>call.url.includes('andromeda')),'unmodified compiled config sends no SAMO requests');
+   assert(transport.calls.some(call=>call.action==='search_start'));assert(transport.calls.some(call=>call.url.endsWith('/api-anex-search3-preview.php')));
+   await page.screenshot({path:path.join(evidence,'samo-paused-'+width+'.png')});
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
+  }
+  console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  enableSamoFixture=true;
+  for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});

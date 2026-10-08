@@ -25,7 +25,7 @@ if (!$offline) {
     $html = preg_replace('/<script src="\.\/fixture-data\.js" defer><\/script>.*?<script src="\.\/app\.js" defer><\/script>/s', $graph, $html);
     $html = str_replace('Прототип · цены требуют проверки', 'Версия для проверки · живой поиск', $html);
     $html = str_replace('Сохранённая выдача и демонстрационные сценарии. Живой поиск ещё не подключён. Заявки и оплата отключены.',
-        'Актуальные предложения — ТВ, САМО и ANEX. Календарь показывает ранее найденные цены из базы. Поиск начинается только по нажатию «Найти туры». Заявки не отправляются.', $html);
+        'Актуальные предложения — Tourvisor и прямой ANEX. Календарь показывает ранее найденные цены из базы. Поиск начинается только по нажатию «Найти туры». Заявки не отправляются.', $html);
     $popularitySource = dirname(__DIR__) . '/data/hotel-popularity-v1.php';
     if (is_file($popularitySource)) {
         require_once $popularitySource;

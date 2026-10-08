@@ -9,7 +9,7 @@
  Object.defineProperties(bridge,{
   live:{value:true},preview:{value:false},scenario:{value:'live'},
   initialSearch:{value:Object.freeze({origin:'Москва',country:'4',from:first,to:last,minNights:7,maxNights:7,adults:2,ages:[]})},
-  describe:{value:()=> 'Живой поиск: ТВ, САМО и ANEX. Календарь — ранее найденные цены. Заявки не отправляются.'}
+  describe:{value:()=> 'Живой поиск: Tourvisor и прямой ANEX. Календарь — ранее найденные цены. Заявки не отправляются.'}
  });
  window.AnyTourPrototypeData=Object.freeze(bridge);
  window.AnyTourPrototypeLead=Object.freeze({...lead,
