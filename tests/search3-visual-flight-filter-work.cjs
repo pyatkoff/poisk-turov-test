@@ -65,8 +65,12 @@ function changedRecords(code){
  }
  return out;
 }
-function domRecords(code){
+function domRecords(code,{legacyCopy=false}={}){
  const {JSDOM}=require('jsdom'),out=[];
+ const copyLabels=[
+  ['.flight-options>legend','Пары рейсов туда и обратно. Цена всего тура за всех туристов.','Пары рейсов туда и обратно. Цена за весь тур.'],
+  ['.flight-price>small','весь тур за всех','за весь тур']
+ ];
  for(const width of [390,1280]){
   const dom=new JSDOM('<main></main>',{runScripts:'outside-only'}),w=dom.window,trace=[];
   w.matchMedia=q=>({matches:q.includes('max-width')?width<=760:true});
@@ -77,7 +81,26 @@ function domRecords(code){
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   host.innerHTML=api.render({tour:{id:'fixture'},variants},'23',{esc,text:String,money:n=>n+' ₽',price:(_,v)=>v.total,legHTML:()=>'',fuelText:()=>''});api.bind(host,n=>n+' ₽');
   const list=host.querySelector('.flight-options'),rows=[...list.querySelectorAll('.flight-option')],query=host.querySelector('[data-flight-query]'),sort=host.querySelector('[data-flight-sort]');
-  const take=()=>out.push({html:host.innerHTML,focus:w.document.activeElement.outerHTML,scroll:JSON.parse(JSON.stringify(trace)),scrollTop:host.scrollTop}),fire=(node,event='change')=>{node.focus();node.dispatchEvent(new w.Event(event,{bubbles:true}));},click=selector=>{const node=host.querySelector(selector);node.focus();node.click();},refresh=()=>{fire(query,'input');take();};
+  // Assert the declared presentation change on the actual DOM, then normalize
+  // only those two labels on clones. State, attributes and unknown nodes remain
+  // in the original pinned oracle, including BODY when it initially has focus.
+  const snapshotNode=node=>{
+   const copy=node.cloneNode(true);
+   for(const [selector,current,original] of copyLabels){
+    const labels=[...(copy.matches?.(selector)?[copy]:[]),...copy.querySelectorAll(selector)];
+    for(const label of labels){assert.equal(label.innerHTML,legacyCopy?original:current,'only declared plain flight-price copy may differ');label.textContent=original;}
+   }
+   return copy;
+  };
+  const take=()=>{
+   assert.equal(host.querySelectorAll(copyLabels[0][0]).length,1,'one actual pair legend');
+   assert.equal(host.querySelectorAll(copyLabels[1][0]).length,host.querySelectorAll('.flight-option').length,'one actual whole-tour caption per option');
+   for(const [selector,current,original] of copyLabels)for(const label of host.querySelectorAll(selector))assert.equal(label.innerHTML,legacyCopy?original:current,'actual flight-price copy must remain plain text');
+   const html=host.innerHTML,focus=w.document.activeElement.outerHTML;
+   out.push({html:snapshotNode(host).innerHTML,focus:snapshotNode(w.document.activeElement).outerHTML,scroll:JSON.parse(JSON.stringify(trace)),scrollTop:host.scrollTop});
+   assert.equal(host.innerHTML,html,'snapshot normalization must not mutate the actual host');
+   assert.equal(w.document.activeElement.outerHTML,focus,'snapshot normalization must not mutate the focused DOM');
+  },fire=(node,event='change')=>{node.focus();node.dispatchEvent(new w.Event(event,{bubbles:true}));},click=selector=>{const node=host.querySelector(selector);node.focus();node.click();},refresh=()=>{fire(query,'input');take();};
   take();query.value='еж air';refresh();sort.value='price';fire(sort);take();refresh();
   rows[0].dataset.flightPrice='1';rows[1].dataset.flightIndex='-1';refresh();
   rows.forEach(r=>{r.dataset.flightPrice='42';r.dataset.flightIndex='1';});refresh();
@@ -103,7 +126,16 @@ const work=model(source,{count:1000,uniform:true});work.context.normalizations=0
 const changed=changedRecords(source),dom=domRecords(source);
 if(process.argv.includes('--capture'))console.log('CAPTURE original changed/DOM digests',hash(changed),hash(dom));
 else{assert.equal(hash(changed),'6d255be2935c046bb0e3b069ab0bbf94cfc8544aad2211f7c7717b6774fdaf4a','original dynamic-data and child-node repair states');assert.equal(hash(dom),'94583c42c8b29ded66f9113f54053786978378bd7e62ecf1fb694c339e23b152','original real DOM, selection, focus and scroll states');}
-if(baseline){assert.deepEqual(changed,changedRecords(baseline));assert.deepEqual(dom,domRecords(baseline));}
+if(baseline){assert.deepEqual(changed,changedRecords(baseline));assert.deepEqual(dom,domRecords(baseline,{legacyCopy:true}));}
+for(const [before,after] of [
+ ['Пары рейсов туда и обратно. Цена всего тура за всех туристов.','Пары рейсов туда и обратно. Цена билета.'],
+ ['<small>весь тур за всех</small>','<small>цена за одного</small>'],
+ ['Пары рейсов туда и обратно. Цена всего тура за всех туристов.','<span>Пары рейсов туда и обратно. Цена всего тура за всех туристов.</span>'],
+ ['<small>весь тур за всех</small>','<small><span>весь тур за всех</span></small>']
+]){
+ const mutated=source.replace(before,after);assert.notEqual(mutated,source,'declared copy mutation reaches the actual renderer');
+ assert.throws(()=>domRecords(mutated),/actual flight-price copy/,'unrecognized copy cannot be normalized away');
+}
 for(const condition of ['index!==key.index','price!==key.price'])assert.notEqual(hash(changedRecords(source.replace('index!==key.index||price!==key.price',condition))),hash(changed),'each dynamic sort-key mutation detected');
 assert.notEqual(hash(changedRecords(source.replace('nodes=list.childNodes','nodes=[...list.querySelectorAll(".flight-option")]'))),hash(changed),'non-row child-node order mutation detected');
 function refreshWork(code,sort){
