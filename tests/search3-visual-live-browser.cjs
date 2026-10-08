@@ -254,7 +254,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
     assert(pendingBoxes.focusedChoice&&verifiedBoxes.focusedChoice,'focused flight survives both receipts at '+width);
      assert.equal(pendingBoxes.focusedChoice.name,provider==='anex'?'anex-package-choice':'andromeda-outbound');assert.equal(pendingBoxes.focusedChoice.value,ref(2));
     assert.equal(verifiedBoxes.focusedChoice.name,pendingBoxes.focusedChoice.name);assert.equal(verifiedBoxes.focusedChoice.value,pendingBoxes.focusedChoice.value);assert.equal(verifiedBoxes.focusedChoice.checked,true);assert.equal(verifiedBoxes.focusedChoice.disabled,false);
-     assert(Math.abs(pendingBoxes.focusedChoice.row.y-beforePendingBoxes.focusedChoice.row.y)<=1,'focused B row retains its visual anchor when price becomes pending at '+width);
+     assert(Math.abs(pendingBoxes.focusedChoice.row.y-beforePendingBoxes.focusedChoice.row.y)<=1,'focused B row retains its visual anchor when price becomes pending at '+width+' '+JSON.stringify({beforePendingBoxes,pendingBoxes,verifiedBoxes}));
     assert(Math.abs(verifiedBoxes.focusedChoice.row.y-pendingBoxes.focusedChoice.row.y)<=1,'focused B row retains its visual anchor at '+width);
     const focus=verifiedBoxes.focusedChoice.input;assert(focus.x>=verifiedBoxes.body.x-1&&focus.right<=verifiedBoxes.body.right+1&&focus.y>=verifiedBoxes.body.y-1&&focus.bottom<=Math.min(verifiedBoxes.body.bottom,verifiedBoxes.footer.y)+1,'focused flight stays visible after receipt at '+width);
      if(provider==='andromeda'){

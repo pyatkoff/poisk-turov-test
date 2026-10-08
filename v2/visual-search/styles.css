@@ -237,7 +237,7 @@ dialog.flight-picker-dialog{width:min(900px,calc(100% - 40px))}
 .flight-option-heading input{margin:0;width:19px;height:19px;accent-color:var(--brand);cursor:pointer}
 .flight-option-heading strong{font-size:16px;font-weight:650;line-height:1.4}
 .flight-option-heading small{display:block;color:var(--muted);font-size:14px;line-height:1.5;margin-top:3px}
-.flight-option-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.flight-option-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px;flex-wrap:wrap;margin-bottom:12px}
 .flight-option-selected{display:none;font-size:13px;font-weight:650;font-style:normal;color:var(--brand);background:#eef2ff;border-radius:6px;padding:4px 8px}
 .flight-option:has(input:checked) .flight-option-selected{display:inline-block}
 .anex-pair-option .flight-option-heading{grid-template-columns:20px minmax(0,1fr);align-items:start}
