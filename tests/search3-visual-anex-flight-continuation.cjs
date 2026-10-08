@@ -7,6 +7,13 @@ const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(r
 const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]*?)\];/)[1].matchAll(/'([^']+\.js)'/g)].map(m=>path.posix.normalize('visual-search/'+m[1]));
 // Transport fixtures install the presentation owner; cold loading has its own probe.
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
+function loadFixtureScripts(w){
+ for(const file of scripts)w.eval(source(file));
+ // This retained multi-provider regression uses fictional transport only.
+ w.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';
+ w.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';
+}
+
 async function expansionEntryScenario(count,late=false){
  const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
@@ -30,7 +37,7 @@ async function expansionEntryScenario(count,late=false){
  const settle=()=>new Promise(resolve=>setTimeout(resolve,150));
  const wait=async fn=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,50));}assert.fail('Expansion entry timeout: '+d.body.textContent.slice(-2000));};
  try{
-  for(const file of scripts)w.eval(source(file));
+  loadFixtureScripts(w);
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');
   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
   click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
@@ -93,7 +100,7 @@ async function solePackagePriceScenario(mode,direct=false){
  const count=action=>transport.calls.filter(c=>c.action===action).length;
  const reopen=async()=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');};
  try{
-  for(const file of scripts)w.eval(source(file));
+  loadFixtureScripts(w);
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');
   await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
   await reopen();click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));
@@ -158,7 +165,7 @@ async function soleSamoPriceScenario(mode){
  const count=action=>transport.calls.filter(c=>c.action===action&&c.url.includes('api-andromeda-quote')).length;
  const reopen=async()=>{click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="andromeda%3A"]');};
  try{
-  for(const file of scripts)w.eval(source(file));
+  loadFixtureScripts(w);
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
   await reopen();click('[data-action="refresh-hotel"]');
   if(mode==='late-start'){
@@ -234,7 +241,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
   click('#modal-body [data-action="offer"][data-key^="'+target+'%3A"]');
  };
  try{
-  for(const file of scripts)w.eval(source(file));
+  loadFixtureScripts(w);
   await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
   await reopen();click('[data-action="refresh-hotel"]');
   if(provider==='anex'){
@@ -348,7 +355,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
   };
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout: '+d.body.textContent.slice(-2000));};
   try{
-   for(const file of scripts)w.eval(source(file));
+   loadFixtureScripts(w);
    await wait(()=>!q('.search-submit').disabled);click('.search-submit');
    // Expansion preserves the original first search; finish its status/results
    // reads before asserting that later history navigation makes no requests.
@@ -417,7 +424,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
   };
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout: '+d.body.textContent.slice(-2500));};
   try{
-   for(const file of scripts)w.eval(source(file));
+   loadFixtureScripts(w);
    await wait(()=>!q('.search-submit').disabled);click('.search-submit');
    await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
@@ -458,7 +465,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
   w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(transport.calls.at(-1)?.action==='quote_calculate')await new Promise(resolve=>releaseQuote=resolve);if(failure==='different-pair'&&value.data?.status==='quote_verified')value.data.choice.choice_ref='anex_quote:'+'1'.repeat(64);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
   const wait=async(fn)=>{for(let i=0;i<80;i++){if(fn())return;await new Promise(r=>setTimeout(r,50));}assert.fail('Timeout quote: '+d.body.textContent.slice(-2000));};
   try{
-   for(const file of scripts)w.eval(source(file));
+   loadFixtureScripts(w);
    await wait(()=>!q('.search-submit').disabled);click('.search-submit');
    await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
    click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('#modal-body [data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');
