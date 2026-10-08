@@ -638,28 +638,33 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
     assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
    };
-   const close=async()=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.locator('#modal [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   const focused=()=>page.evaluate(()=>document.activeElement.dataset.action||document.activeElement.id||document.activeElement.tagName);
+   const close=async(action)=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
    for(const zoom of [100,200]){
     await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
     await page.locator('#search-form [data-action="form-filters"]').click();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);
-    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').click();assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');
-    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close();
+    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').press('Enter');assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');assert.equal(await focused(),'reset-form-filters','keyboard reset retains the same logical control');
+    await page.keyboard.press('Tab');assert.equal(await focused(),'apply-form-filters','Tab after reset continues to Apply');await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'reset-form-filters','reverse Tab returns to the reset control');await page.keyboard.press('Enter');assert.equal(await focused(),'reset-form-filters','repeated reset retains focus');
+    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close('form-filters');
     await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;
     if(await page.locator('#modal [data-action="month-next"]').isVisible()){
-     const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').click();assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),month,'one month click advances the displayed month');
-     await target(page.locator('#modal [data-action="month-prev"]'),'calendar previous month');await page.locator('#modal [data-action="month-prev"]').click();assert.equal(await page.locator('.calendar-month h3').first().textContent(),month,'previous month restores the same displayed month');
+     const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').press('Enter');const advanced=await page.locator('.calendar-month h3').first().textContent();assert.notEqual(advanced,month,'one Enter advances the displayed month');assert.equal(await focused(),'month-next','next month retains keyboard focus');
+     await page.keyboard.press('Enter');assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),advanced,'a second Enter advances the next month');assert.equal(await focused(),'month-next');
+     await target(page.locator('#modal [data-action="month-prev"]'),'calendar previous month');await page.locator('#modal [data-action="month-prev"]').press('Enter');assert.equal(await page.locator('.calendar-month h3').first().textContent(),advanced);assert.equal(await focused(),'month-prev');await page.keyboard.press('Enter');assert.equal(await page.locator('.calendar-month h3').first().textContent(),month,'repeated previous Enter restores the same displayed month');
+     for(let n=0;await page.locator('#modal [data-action="month-prev"]').isEnabled();n++){assert(n<2,'fixture trip starts within the first two available months');assert.equal(await focused(),'month-prev');await page.keyboard.press('Enter');}
+     assert.equal(await focused(),'modal-title','the first-month boundary returns focus to the existing title');
     }
-    await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close();
-    for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close();}
+    await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close('dates');
+    for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close(type);}
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
-    receipts.push({width,zoom,reset,next,cancel_preserves_fields_and_URL:true,physicalSafari:false});
+    receipts.push({width,zoom,reset,next,keyboard_reset_focus:true,keyboard_month_focus:width>760,disabled_month_boundary_focus:width>760,Escape_returns_exact_trigger:true,cancel_preserves_fields_and_URL:true,physicalSafari:false});
    }
    assert(!transport.calls.some(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)),'form reset, calendar navigation and Cancel start no supplier/quote/lead operation');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
- console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, real reset/month navigation and Cancel preserve exact form/URL; supplier HTTP0');
+ console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, repeated keyboard reset/month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
 }
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
