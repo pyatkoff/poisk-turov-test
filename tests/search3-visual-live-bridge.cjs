@@ -81,7 +81,49 @@ const continueToFlights=async()=>{
  else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
+// Fresh receiving contexts keep retry/position regressions independent of the
+// retained successful TV selection in the cumulative journey below.
+async function quoteReturnRegressions(){
+ for(const width of [390,1280]){
+  const t=fixture(),localErrors=[],console=new VirtualConsole();console.on('jsdomError',e=>localErrors.push(e.message));
+  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const win=local.window,doc=win.document,get=s=>doc.querySelector(s),tap=s=>{assert(get(s),s);get(s).click();};
+  let quote=null,flights=null;
+  Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
+  win.matchMedia=()=>({matches:width<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  win.HTMLElement.prototype.scrollIntoView=function(){};win.scrollTo=()=>{};
+  // JSDOM visibility only: real focus/scroll geometry is tested in compiled Chromium.
+  win.HTMLElement.prototype.getClientRects=function(){return [{}];};
+  win.HTMLDialogElement.prototype.showModal=function(){this.open=true};win.HTMLDialogElement.prototype.close=function(){this.open=false};
+  const append=doc.head.append.bind(doc.head);doc.head.append=(...nodes)=>{append(...nodes);for(const node of nodes)if(node.tagName==='SCRIPT'){assert(new URL(node.src).pathname.endsWith('/flight-picker-ui-v1.js'));queueMicrotask(()=>{win.eval(source('visual-search/flight-picker-ui-v1.js'));node.onload();});}};
+  win.fetch=async(url,options={})=>{assert(!String(url).includes('lead-bridge'),'no real lead transport');const body=options.body?JSON.parse(options.body):{},action=body.action||new URL(url,win.location.href).searchParams.get('action');if(action==='flights'&&flights){flights.started=true;await flights.pending;}const value=await t.json(url,options);return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+  for(const file of scripts){
+   if(file==='visual-search/app.js'){const canonical=win.AnyTourPrototypeData;win.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{quote:{value:async(...args)=>{const control=quote,tour=await canonical.quote(...args);if(control){control.started=true;await control.pending;if(control.error)throw control.error;}return tour;}}}));}
+   let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__retention=()=>({offer:selectedOffer,type:modalType});\n'+marker);}win.eval(code);
+  }
+  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Receiving retention timeout at '+width);};
+  const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap(exact);};
+  try{
+   await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]'));open();
+   quote={error:Object.assign(new Error('Fictional temporary retry failure'),{code:'temporary_fixture'})};tap('[data-action="start-lead"]');await until(()=>get('#modal-body .error-text'));
+   assert.equal(win.__retention().offer.quoteErrorCode,'temporary_fixture');quote=null;tap('[data-action="start-lead"]');await until(()=>win.__retention().offer.tour&&!win.__retention().offer.loading);
+   const retried=win.__retention().offer;assert.equal(retried.quoteError,'');assert.equal(retried.quoteErrorCode,'');assert.equal(retried.quoteErrorTerminal,false);assert.equal(retried.tour.price,120000);
+   await until(()=>get('#prototype-lead-form'));
+   tap('#modal-back');tap('[data-action="close-modal"]');await until(()=>!get('#modal').open);open();
+   // The retained quote starts only the explicitly requested flight inventory.
+   let releaseFlights;flights={pending:new Promise(resolve=>releaseFlights=resolve)};get('#modal-body').scrollTop=183;get('#modal-body [data-action="change-room"]').focus();tap('[data-action="retry-flights"]');await until(()=>flights.started);
+   assert.equal(win.__retention().type,'offer');assert.equal(get('#modal-body').scrollTop,183);assert.equal(doc.activeElement.dataset.action,'change-room');releaseFlights();await until(()=>get('[data-action="apply-flight"]'));flights=null;
+   assert.equal(win.__retention().type,'flights','intentional next step is distinct from same-offer updates');assert.equal(get('#modal-body').scrollTop,0);tap('[data-action="close-modal"]');await until(()=>!get('#modal').open);
+   // Fresh hotel-rooms history captures the earlier listing. It is a passive view.
+   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact);tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
+   const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
+   assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
+   tap('#modal-body '+exact);assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
+  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
+ }
+}
 (async()=>{
+ await quoteReturnRegressions();
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
  assert.equal(coldScripts.length,0,'catalogue bootstrap leaves the flight UI cold');
