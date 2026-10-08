@@ -84,6 +84,14 @@ firstpage_readback = importlib.util.module_from_spec(firstpage_spec)
 firstpage_spec.loader.exec_module(firstpage_readback)
 firstpage_readback.register_parser(core)
 
+LOCAL_METADATA_SCRIPT = SCRIPT.with_name('int_server_executor_local_profile_metadata.py')
+local_metadata_spec = importlib.util.spec_from_file_location('int_server_executor_local_profile_metadata', LOCAL_METADATA_SCRIPT)
+if local_metadata_spec is None or local_metadata_spec.loader is None:
+    raise RuntimeError('local_metadata_registration_import')
+local_profile_metadata = importlib.util.module_from_spec(local_metadata_spec)
+local_metadata_spec.loader.exec_module(local_profile_metadata)
+local_profile_metadata.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -208,7 +216,9 @@ def execute_direct_anex(command: dict, source_root: Path) -> dict:
 
 
 def activate_local_plan(command: dict) -> None:
-    if command.get('mode') == local_profile_recovery.MODE and command.get('operation_id') == local_profile_recovery.OPERATION:
+    if command.get('mode') == local_profile_metadata.MODE and command.get('operation_id') == local_profile_metadata.OPERATION:
+        local_profile_metadata.activate(core, command, local_profile_plan)
+    elif command.get('mode') == local_profile_recovery.MODE and command.get('operation_id') == local_profile_recovery.OPERATION:
         local_profile_recovery.activate(core, command, local_profile_plan)
     elif command.get('mode') == local_phase3_inspection.MODE and command.get('operation_id') == local_phase3_inspection.OPERATION:
         local_phase3_inspection.activate(core, command, local_profile_plan)
