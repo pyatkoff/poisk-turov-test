@@ -46,8 +46,8 @@ class AnexSecretTransportTest(unittest.TestCase):
             {'ANEX_API_TOKEN': 'api', 'ANEX_B2B_TOKEN': 'bad token'},
         ]
         for env in cases:
-            with self.subTest(env=env), mock.patch.dict(os.environ, env, clear=True):
-                with self.assertRaises(ValueError):
+            with self.subTest(env=env), self.assertRaises(ValueError):
+                with mock.patch.dict(os.environ, env, clear=True):
                     m.validated_anex_secret_payload()
 
     def test_remote_patch_is_exact_and_direct_only(self):
@@ -81,6 +81,7 @@ def load_tests(loader, tests, pattern):
     for name, module_name in (
         ('int_server_executor_local_profile_phase3_inspection_test.py', 'local_phase3_inspection_regressions'),
         ('int_server_executor_local_profile_recovery_plan_test.py', 'local_profile_recovery_regressions'),
+        ('int_server_executor_local_profile_metadata_test.py', 'local_profile_metadata_regressions'),
     ):
         path = Path(__file__).with_name(name)
         spec = importlib.util.spec_from_file_location(module_name, path)
