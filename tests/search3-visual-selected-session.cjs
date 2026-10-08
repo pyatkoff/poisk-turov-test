@@ -9,9 +9,9 @@ module.exports=async function({browser,origin,base,evidence}){
  const records=[],started=Date.now();
  const scenario=async(provider,width,mode)=>{
   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
-  transport.state.anexPackageChoiceCount=1;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  transport.state.anexPackageChoiceCount=mode==='editing'?2:1;transport.state.repricingEnabled=mode==='editing';page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   const application=provider==='anex'?'anex-application-preview':'andromeda-application-preview';
-  const oldPrice=provider==='anex'?'135678,9':'125500';
+  const oldPrice=mode==='editing'?'101000':provider==='anex'?'135678,9':'125500',contacts=mode!=='verified'&&mode!=='editing';
   const calls=()=>transport.calls.length;
   try{
    await page.clock.install({time:new Date()});
@@ -28,7 +28,10 @@ module.exports=async function({browser,origin,base,evidence}){
      const value=await transport.json(request.url(),{body:request.postData()});
      if(mode==='return'&&url.pathname==='/api-v2.php'&&url.searchParams.get('action')==='search_results'){
       const first=value[0].tours[0],tomorrow=new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10);
-      value[0].tours.push({...first,id:'visual-tv-next-day',date:tomorrow,price:120001});
+      // A real selectable refinement needs multiple retained meal values; the
+      // existing owner deliberately hides a one-value field. Native BB is an
+      // already-mapped canonical fixture meal, not a fabricated display alias.
+      value[0].tours.push({...first,id:'visual-tv-next-day',date:tomorrow,price:120001,meal:{id:3,name:'BB'}});
      }
      if(mode==='return'&&value.data?.status==='expanded'){
       const first=value.data.hotels[0].tours[0];
@@ -50,7 +53,7 @@ module.exports=async function({browser,origin,base,evidence}){
    if(provider==='anex'){
     if(mode==='return'){
      await page.locator('.offer-filter-disclosure>summary').click();
-     await page.locator('#offer-room').waitFor();
+     for(const name of ['room','meal','departure','flight'])assert.equal(await page.locator('#offer-'+name).isVisible(),true,'dense fixture exposes a genuine '+name+' choice');
      await page.locator('#offer-sort').selectOption('date');
      for(const [name,value] of Object.entries({room:'ANEX CONCRETE',meal:'Всё включено',departure:trip.from,flight:'charter'}))await page.locator('#offer-'+name).selectOption(value);
      await page.locator('[data-action="group-more"]').click();
@@ -61,7 +64,9 @@ module.exports=async function({browser,origin,base,evidence}){
      await offer.click();
     }else await page.locator('[data-action="select-anex-tour"]').waitFor();
     await page.locator('[data-action="select-anex-tour"]').click();
+    if(mode==='editing')await page.locator('[data-action="anex-package-calculate"]:enabled').click();
    }
+   if(provider==='andromeda'&&mode==='editing')await page.locator('[data-action="apply-andromeda-flights"]:enabled').click();
    await page.locator('[data-action="'+application+'"]').waitFor();
    assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice));
    if(mode==='other'){
@@ -73,7 +78,14 @@ module.exports=async function({browser,origin,base,evidence}){
     assert.doesNotMatch(await page.locator('#modal-footer').textContent(),/Срок подтверждения цены истёк/);
     assert.equal(calls(),before,'stale timer never quotes another offer');
    }else{
-    if(mode!=='verified'){
+    let reportedMarkup;
+    if(mode==='editing'){
+     await page.locator('[data-action="edit-'+(provider==='anex'?'anex':'andromeda')+'-flights"]').click();
+     reportedMarkup=(await page.locator('.flight-option small').allTextContents()).filter(text=>text.includes('Доплата оператора'));
+     if(provider==='anex')assert.match((await page.locator('.flight-option-price').allTextContents()).join('').replace(/\s/g,''),new RegExp(oldPrice),'selected bounded pair visibly carries its verified whole-tour price before expiry');
+     else assert.match(await page.locator('#andromeda-flight-price-status').textContent(),/Подтверждённая/);
+    }
+    if(contacts){
      await page.locator('[data-action="'+application+'"]').click();
      for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))await page.locator('[name="'+name+'"]').fill(value);
      await page.locator('[name="consent"]').check();
@@ -104,7 +116,13 @@ module.exports=async function({browser,origin,base,evidence}){
     assert.doesNotMatch((await page.locator('#modal-body .price-line.total').allTextContents()).join('').replace(/\s/g,''),new RegExp(oldPrice),'expired verified body removes the old final total');
     assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'expired receipt cannot enter application');
     assert.equal(await page.locator('[type="submit"][form="prototype-lead-form"]:enabled').count(),0,'expired application cannot submit');
-    if(mode!=='verified'){
+    if(mode==='editing'){
+     assert.doesNotMatch((await page.locator('.flight-option-price').allTextContents()).join('').replace(/\s/g,''),new RegExp(oldPrice),'expired selected pair removes its old verified whole-tour price');
+     assert.doesNotMatch((await page.locator('#anex-flight-price-status,#andromeda-flight-price-status').allTextContents()).join(''),/подтверждена|Подтверждённая/,'expired flight screen revokes verified status');
+     assert.equal(await page.locator('[name="anex-package-choice"]:enabled,[name="andromeda-outbound"]:enabled,[name="andromeda-return"]:enabled').count(),0,'expired flight inventory cannot select another pair');
+     assert.deepEqual((await page.locator('.flight-option small').allTextContents()).filter(text=>text.includes('Доплата оператора')),reportedMarkup,'reported supplier markup remains informational, not silently removed or summed');
+    }
+    if(contacts){
      assert.equal(await page.evaluate(()=>document.querySelector('#prototype-lead-form')===window.__selectedSessionForm),true,'expiry keeps the same contact form');
      assert.equal(await page.evaluate(()=>document.activeElement===window.__selectedSessionPhone),true,'expiry preserves keyboard focus');
      assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),scroll,'expiry preserves internal scroll');
@@ -117,7 +135,7 @@ module.exports=async function({browser,origin,base,evidence}){
     const recovery=await page.locator('#modal-footer [data-action="all-offers"]').evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,viewportWidth:innerWidth,viewportHeight:innerHeight};});
     assert(recovery.width>=44&&recovery.height>=44&&recovery.x>=-1&&recovery.right<=recovery.viewportWidth+1&&recovery.top>=0&&recovery.bottom<=recovery.viewportHeight+1,'expired recovery stays inside the viewport with a44px target');
     await page.screenshot({path:path.join(evidence,`selected-session-${provider}-${mode}-${width}.png`)});
-    if(mode!=='verified'){
+    if(contacts){
      await page.locator('#modal-back').click();
      assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Back cannot restore an expired application action');
     }
@@ -133,7 +151,7 @@ module.exports=async function({browser,origin,base,evidence}){
  };
  // Keep the existing full CI budget: at most four independent fixture contexts
  // share the compiled browser, with no overlapping source or transport state.
- const jobs=[...['anex','andromeda'].flatMap(provider=>[360,390,430,768,1280].map(width=>[provider,width,'application'])),...['anex','andromeda'].flatMap(provider=>[[''+provider,390,'verified'],[''+provider,390,'other']]),['anex',390,'return']];
+ const jobs=[...['anex','andromeda'].flatMap(provider=>[360,390,430,768,1280].map(width=>[provider,width,'application'])),...['anex','andromeda'].flatMap(provider=>[[provider,390,'verified'],[provider,390,'other'],[provider,390,'editing']]),['anex',390,'return']];
  for(let i=0;i<jobs.length;i+=4){const results=await Promise.allSettled(jobs.slice(i,i+4).map(args=>scenario(...args))),failed=results.filter(r=>r.status==='rejected');if(failed.length)throw new AggregateError(failed.map(r=>r.reason),'Selected-session acceptance failed');}
  const receipt={published:false,live_data:false,engine:'Chromium',physical_device:false,duration_ms:Date.now()-started,records};
  fs.writeFileSync(path.join(evidence,'selected-session.json'),JSON.stringify(receipt,null,2)+'\n');
