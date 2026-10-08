@@ -1431,8 +1431,6 @@ function refreshProviderQuoteExpiry(){
  if(Number.isFinite(top)&&body.contains(document.activeElement))body.scrollTop+=document.activeElement.getBoundingClientRect().top-body.getBoundingClientRect().top-top;
  rememberUIRoute();
 }
-window.addEventListener('focus',refreshProviderQuoteExpiry);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshProviderQuoteExpiry();});
 function rememberProviderView(o,type,result,error='',pending=false){
  const previous=retainedProviderView(o),repricing=result?.repricing?.enabled===true;
  if(o&&o.raw&&offerFromKey(o.key)?.raw===o.raw)providerViews.set(o.key,{offer:{...o,loading:false},type,result,error,pending,
@@ -2478,6 +2476,8 @@ document.addEventListener('keydown',e=>{
  if(modalType==='gallery'&&['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();gallery.index=(gallery.index+(e.key==='ArrowRight'?1:-1)+hotels.find(h=>h.id===gallery.id).photos.length)%hotels.find(h=>h.id===gallery.id).photos.length;renderGallery()}
  if($('#filter-panel').classList.contains('open')){if(e.key==='Escape'){e.preventDefault();if($('#filter-panel').classList.contains('filter-detail-open')){setFilterSectionOpen($('.filter-operator-group'),false);rememberUIRoute();}else closeFilters()}if(e.key==='Tab'){const els=$$('#filter-panel button:not([disabled]),#filter-panel input,#filter-panel select').filter(el=>el.getClientRects().length),first=els[0],last=els.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}
 });
+window.addEventListener('focus',refreshProviderQuoteExpiry);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshProviderQuoteExpiry();});
 let touchStart=null;
 $('#modal-body').addEventListener('touchstart',e=>{touchStart=null;if(modalType==='gallery'&&e.touches.length===1&&e.target.closest('.gallery-stage')&&!e.target.closest('button'))touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY,id:gallery.id};},{passive:true});
 $('#modal-body').addEventListener('touchcancel',()=>{touchStart=null;},{passive:true});
