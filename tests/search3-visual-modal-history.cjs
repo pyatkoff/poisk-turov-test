@@ -75,8 +75,23 @@ for(const open of [false,true])for(const filterOpen of [false,true])for(const fr
 // DOM effect. Ignore only their intercepted callbacks, retaining every active
 // modal observation and original before/after comparison.
 function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
-const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
-if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'modal before/after observable traces');
+// Only the two new viewport-sync call sites may differ from the retained pin.
+// Prove their exact position/count and preserve every original observation.
+let retainedSource=source;
+for(const [current,retained] of [
+ ['m.close();syncDestinationViewport();document.body.style.overflow=','m.close();document.body.style.overflow='],
+ ['restoreModalStepFocus(previous);syncDestinationViewport();','restoreModalStepFocus(previous);']
+]){assert.equal(retainedSource.split(current).length,2,'one intentional viewport-sync call site');retainedSource=retainedSource.replace(current,retained);}
+const actual=records(source),projected=clone(actual),retained=records(retainedSource);let viewportSyncObservations=0;
+for(let index=0;index<actual.length;index++){
+ const scenario=scenarios[index],trace=actual[index].result.trace,extra=scenario.kind==='close'&&scenario.open||scenario.kind==='back'&&trace.some(record=>record[0]==='restoreFocus');
+ const syncs=trace.flatMap((record,index)=>record[0]==='syncDestinationViewport'?[index]:[]),originalCount=retained[index].result.trace.filter(record=>record[0]==='syncDestinationViewport').length;
+ assert.equal(syncs.length,originalCount+(extra?1:0),scenario.name+' exact viewport synchronization count');
+ if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'restorePageReturn':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
+}
+assert.deepEqual(projected,retained,'all original modal observations remain unchanged after only the explicit viewport synchronization');
+const digest=crypto.createHash('sha256').update(JSON.stringify(projected)).digest('hex'),i=process.argv.indexOf('--compare');
+if(i>=0)assert.deepEqual(projected,records(fs.readFileSync(process.argv[i+1],'utf8')),'retained modal before/after observable traces');
 assert.equal(actual.length,68,'retained 67 modal cases plus applied-pair hotel Back regression');
 if(!process.argv.includes('--capture'))assert.equal(digest,'b63e1cb92a5126b1fcd7d1507c2eb49108fd3b69eafad6d868a7c6be80ca0e3f','retained modal observations plus intentional passive hotel-room restoration fix');
 const result=name=>actual.find(r=>r.name===name).result;
@@ -101,4 +116,4 @@ assert.notDeepEqual(records(source.replace('gallery:{...gallery},offer:selectedO
 const roomSnapshotMutation=source.replace("!['all-offers','hotel-details'].includes(previous.type)","previous.type!=='all-offers'");
 assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot guard is exercised');
 assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
-console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards digest ${digest}; supplier and lead HTTP 0`);
+console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards retained digest ${digest} plus ${viewportSyncObservations} exact viewport sync observations; supplier and lead HTTP 0`);
