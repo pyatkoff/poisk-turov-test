@@ -3612,4 +3612,190 @@ class NativeAbsent3ControlTest(unittest.TestCase):
             repeated.assert_not_called()
 
 
+FROZEN_URL3_FILES = [('scripts/diagnostics/hotel_match_native_absent3_retained_fields_readonly_v1.py', 'eNrdPWlz20aW3/krEKe8ABzepHjNaKsUhx67xrFckpzdDJeFAoGmhJgEOAAoS9Hyv+97faEbBwU58mx2XWUTRx+vX79+94O//66zT+LOKgg7JLw1dvfpTRQOGi9evHgT3BHfiLZBmsLvOiAbPzGitdEbGGEUb91N8Ds8T0J3l9xEafIXIyS3JDbc0Ah8EqZBem8EYep+Jm0YrBFsd1GcGl602RAvDaIwEY98NyVpsCWGmxh+Kp7euMnNJliJ29+SKBTXkey6c1O1UUzEVZK6cqTkPmnIUaOUbJytm3o3TrQjsZtGca934kTh5r7vxCR1g5D4Dlss3Ls+vnFuewiceN1ohMapvGuHjfOPcG/CYltu6MfRlvhui87RCt00uCUtd5UARgYt0afFJmj1u/1Rr9udtG57ZuPHs6vXb3Ggmp3Mxs/nP82xQ625xGKg29mHd2/ml1fO5dsz7L4eDrzhoNcbnfQG4/WkN3ZHfne4GpJp/2Q19geTvjvw+uv1YES83mC6Hgy6A38ymk4n05MJGQPob97959WnC4SF70j7I/xaDiByQxzHbsckiTa3xLLbX4L0xgndLbHMdXCX7uGNaRsdw1S3hi3F4Us5ti9tJAwEYP7+p0uY3zKj9ZrEbTqa2TT4rdjr4hMYbJ09ZUB4UZjCxPxuH8NADUP+KW0ak2ug6aqBPCDx6yi+r3ofbN1rUm+iJNrHHjHtxj/mF+cqGX44d+Zv3sxfX1023py9v5yr7+gD5837s79dNi6vzq7mDFVetN1tCJxuilF6CPKoZxhHuGs3doJQtAUwL+av5+8+Xjl/n//K94ciniNrhduNF2xZTnLj0js4vgQvdnFwC5cw5G6f4tv+yQiev8LFww9dFzQLIwBqt3HvYcIfz2Cpb88FOWSsyhGsygnhbxQH10Hobpxkv9ttAoKEkOyALdF5g9AnOxIiH3M2kQfN4GQ76a0TwPqwOwEQV5sguSG+tmd037x9HGNPJIokje8d74Z4n1lHWP0aQIJugJvz/3DenL17D0eHASsJnaNjH7q3brCBmQgA7PjBNcyL8GUNYeitiy8F0wVc3cKCcfzL808Xr+fOO46Kfhf+DKcn3T4OMR6NuviLT3vdyWh4Aj0aDZ+sja0bBmuYycLTfMoPtz2jy4Sx9wSGC9uUDHZBCGDQhk1DZSxNY3RyMhjZtBM2/uc+iAknEYuO0jQeTAa/OavJxDjL6PQUpCsUNTPOP0qqmhmUo8L9NvIJ3CK7pLj75x4Wh4QcfUngeW+gPYXD6m6ia/gN/QCFE7YZKPPxzUEmluxcD4c2JeMX3RG1qRtfk1RvWE08Ctm4Piw6SWR7RBcA4puU1osETfn6zLiKAakKXipJ3NnF0S1BfL1xNwmhBy36jcllceRnBkCYWoyz2tmwr175gZe217Dcz+Q+sSzsewvUFzs3abqD9W82lGHsbu6TAI8OfeyCFrHdpfQNINVduQAGrlR/8iUOEOH5I6Werq27A6q7lk3xyV2w3W/FE7tpdOFvHlDOLOiK7QMjTKQAIGZKjguT0sOSvgjWxoaEFj6xje9OUemJYlV7ab+O9sCRYytemIJi4NAtDTjdRgyajyH7Pqgnb2aMxOFjl8r5A1I8zOTKYzdIiPELgjaP4yiWAhPoFgg1Nm0V0geAgxMmCt08IAdlFW54b8lZgL5ATrTX+82GnkArNhPixnAsk87Cba27renyYTQ8tBY9uFrg7Sv1+r+YBG4a+fltOQVMWTKLOjjvztj7oz07Ccht0hHU36FiEqDF0X5gQyFMzi4KcIdyA8JblbsDT2cClm5ekNAJP0QhyW1krX0hAAgJPaTBI3xvYW4C0KqB1JADxu4Xpiat7hmr6Xen495JH/lHBHTlYAP5btwf9afj0ZHzoZ0VXX6KUYa96XDQHeIZ3QMf8pAv7DfZ+153ODkZj8QZIbC4kJ0RLiA4Zi08tk2q83H8ADF+xYYpA5QjWDI6saUMMtwhONq4RzjEojdbthPgdKlldkxlQAQTTjn+LKC/BX3sJcIaJEEIvBh2jC8FWZ5tEOAQrDW0XKoLK3RAFlMPdKAiU0MoDsDxSQU27pNozUeHPk0j2RGPT0HxyFfSBtECw+OTjBPkYKRvnwKkOlyBePloD6YHfBslpZsCsSB4C/XR8nCsPwPbQ04dBy7yajYAuYMfKn7Fq2XFMNni/8goFLUPUnZpMpyqoEJmPibmj5xEAAeAQAksWYzElyIyUFTlwKcnhGKSEYjn7pDDWJ4LjBlIKUqbRrTzg7hpcObD9xd5Fbzikh9l2wLGXyw5+bgpPsqYTiLkMkHQuqgHyTconJWHlDnIhwd5AAOGezyEJNxvURUjFgdKiFSF+IDnxvcUBuzF8cGnuIUdg+3xFb1kDeovDARPkCc3FaUGzxN7epCD0wUuSle3NH4A+SdbAhAzbeegD9VqM1asIBvsU7ZBmoSTuM8Y+iLPzhXZUwogxWcOtlxDBfG0IdVL3C/6wHD2ucekzcQobdK+IXfMaLCo/OeL4HJ2ViDdEs7AFswtj2xOcueRXWrM6Q/oQ/pYdJMXcvOWgFnV1ll0lzrugUjaoNWBSLZoV31taPoGIQgf8eB7mNf1UgP0fu6dojhqAg16mz3oztfGPozJBjlSh4tAJr+gTbKPb8HEMFZkjcx058bAL6/bGQ25tzDgqbGWRlbrIZh1+/6B+xok1MK69vcxtdAY1dBjiQSD4zQNbafkuRSrfcAD4qA+cgfEHCDBI2nNRG+xV7Pc1qGRw4W1IIeDXU3cXACGbVwtmGsF8uEbph0u3DVd0DMYqnQrbh2WCrLS8bloKwNE4wYICJo2z0R8vYz4KgiPC+j61imnsRZVs9A4fdQo1SA2uSHKmLfEEj6S19wrgs/o74FLBirOmDRDScU5bbT6Df0/0Rd6B7tO+T42EApS27RRX5JsHNswRQraLmatnsIe2GjwLxW72MLOaU/wjqsZTHlCtsymBtUScAXdy1uDQOVTwow4P7zT/AzqrLRR7am/Ny7IHh7E5DYgX+BMxyC3qfFGF/zp4j0glW0hcoz0hsC5Ffg2dLbB2AMQt4t4xP1ibrlP8cakehdiFqgoQfcmmMSq69AwFf+ezaHMhjA5yaEGrvrsIkracFYy09yiADQFUpsMOFsZAMge6YEqLZTy8UKladZMqPFsZIuvVcqzplg9etw4RRUUKNnpGx6Tg2bi8u5SqWAW7TG9VixDM5ijfUrVIlWDYaefMyRdlfk92OVnVgQ/B0VRcLgWHrYBXbB76f2OcOayYCrPUlPpHweedsq4JEN/07iJMB7D9Dvqqckcn7YKTDlHBUMXWSo9fwWGCS/xFOkAFgiggqd/E536OTRpdTwezQLsMf5ZsRbKUSmN4BXSBXOH6eoL24kfcLCFiTfc+bLGDnwm2Aj5MutNNsc2iOrAFTsUajJtVoRHE2tKV0WFg9Hr0qB0LqPs2ScKOcJpypQZZS/Kt8e8CdAKpG5B5lcv7Gd1i2VOala5caSt8I0ctaoTWKhrZdaBEtSo0OE0VWpWql/lNQXdTCqlHapFch+u4BaU9KRTV3eM0le2nZtJdx1lQD5kOqkiJYqLWZsdZI6dh+BgHmp6Y5mMApISfhFc072M1XDlWoqnvPGrmr2SZWfalPTkWNRhGi0U5Zud2IhqIKID85liW/lI8ySiHxXZu6WPZAsvImBCeDC7xl9BldEn/Cu6Y4uz2kc9NQqHUkTa6p6Nina1PgtokGUr+3ayr6h9F2y/Wd5yDXBWuQaAqtwcUZ2zWaMi38RGlK7qGLhyDjXWtgJIQCc0H7FDI8C3AJsqqYEmeSMhSBHaaGFyv/x31bYlbyg4xGMm+5HVFFdQ4uAQpqqE7YkeDVijoH/xLkf7wjjFlWSt8M0f9FYcWXrBV/EV5rDQHoDwnmgFH7dNj4l7SbYKcWfH6LuCFfsk6uZx4nLCzi1XWlCPqbN5dUkdx669X8itinA9prnO6vkdFIhUdwOMnqBR2aZ6HbV/KYPEA9G+3kSrLBbfesXOps1iedk5LmGrtTg3c/xlK86FAJiFJgIAxCPBLj1lCo1cDVMs+FNNUNNnHPf8LMOOyoD+EZf6V0TjGahP83d8bfi9tjaXzVRLq/vfDbtniSt8mIKexDJd6sazy+NvMtQ67GKolUa21IwbYNtAy1aOvDR5i1ZIsR+eiFyvo9oLjzPKHKYaILPoMJu6NBuIAa+9KhqwlaDwfhksebkk3DFiAiY5tensguQ6Bm59oHRJxlMVcj4bNrjiuTmKqYbK7VkgSPM84o9D7twtLlkeTeC/WWRbtT6S/RbTH3IMWo+bl9jyqn9TA1RT1pHgc2+ZA3RZMiSaMI6HGRk4KJ4TqyxX40YHjt7d0LsFN5BAnT0c45ECebYMqCF/ZTl1ix4NKqNZQCm6gBluM5R4CeKFMNmWdj6DhPoL+QxdacPww0gT5ZiiSGHhOheI69CjIIPY+vcyra4s8l+HNuk0mG/mubvs1HA5pbKMbKxi7JW1Bonzecbj7AwXn6ljQ8kYPGgKAYps3pcpiHCvtraN/0aS5oAyoj/QnA/WaZF7R/GWO/Aq5tRj/Zg6w6coyHVyR7w9mFL83OqxWzWcK5JIlGSIR/pQwb6z1JRbsOYe6WQzjN6A1My4CX2D2jBmmLIfaSurTSi+sGfHML98+dIBak4jYObteM9sF2pQKI3aogXLh+5ILSEx4fX5R9WcVhGAY4ikYn5qdlkSMb7dUa7fDhInud9ugvCzZQtjmz4FQCw70+xqokVJOsre4XA0moi5rmlk4eLoZMebcCSZtsRMGw+PZcOPgymJxr8Z3ag7Hh8VmYx+MC8P8SI8bzegq2BwJAFqvQ3iKGQJET+jruXwtM/Lt2eouJhP0Axw2JrQaDK8RNPUyFlEKEh8S3dfNb5KLVJTaSwSzFg+aVU6R9YeFdmCNqpoLTO6zJI00bI8Rsx/eDzXKp+ByLImGHOeicWAisRizlk+Ow3qZ6obkrlEAfU9t8ldkKQJo+3cK430VR+1sk0tgCEGcSVwKJRdFoKRTxlbVG4pL5N2DwoVdBseN4+OGj9iPzCPHdQGWLuas822FGPeGQVUrqHm7uZVa45mEdc7rZNTo6WCHtUEK8VsSQLesk7IKhOvipdVjQ+WZx2Ub/BjsLOIa11n6xF1tCKEqIc4/zV2ZhlNiBP5L9TX1PxuRnCYJOfsU8x98tO2qH5qh9EXC+7x+ndQn9rQAiVFvMYnlvny19bLbeulf/Xy7ezlz7OXl/8wFd26XOHPe+j/ZJnv9UzvbPbHTPCnmN6NityLb2oBlVk+VTZPibXzrFaOhtfnckI0NF8c92Sxn6L3ip1J3XslOBIdiKneVFfQRYMurtid4DHMDjmlpgXPiag0LkrMhRmf9fhSpAGjraFcjmnCVHaVrD1MLXwD7Hy7S6wKqK2sIkonUHjgeuhpZteofqRA5fbB1iJqXTBGPl28d44WDNKUs9Y+3qi1gtirdnmjMoJW2YiDVFU3lvQxGx/PLuYfrrgii526/d6EDIbdrjsZDwakRwaDkxHp99xufzocuVO/6017nteVXT9evPsFOLAocZz2BuvBpO9jW2/QHayGq6G/mq5PulNv5a/GLiHupL+aTka9PhkPxoSMVt3+cAKsq0eGk6Ec92J++em9rJz0p+5gMhqdTNcemfhrtz+cTr2+ux73ur1hb7IaDk4GAxin2191R/2VP56OJuPJuDfs+9M1Gfj5YX/8lZXmjYbT0bRx+emDg6jjk3nj1WoMKJqMJgN/ArCtVifTkzXA3u0BXshgBPhwu6Trk8F6tO4NRq7nDtZd4o9H6y7iBgcrr5QsK3l8rFTRpuM9rZyQ7jb2Tkqq5p7SXS8yREC+RaFho7yoghrIjj4Sf1hRsChe68ymfPxjxY2cXN68e89wbpXre7zAA/i1lWOWJfRW4qKz8lxL2F7Mp8G2gS+JqZLA7IC5RxhH9qIdiMFTJhKYqvvixYtz2E7MsYO/MYF/MXUX8+y2oOvReBwNi/wFjFRmVneEWGytIv/eQC6XJLSSnAczm4ZPEi8GIKOYJrUfmmpSF6oeaOBT619FW6Z8U0fDqSFBB25t8Y1qmcYP3J5a8wUxvY6aXnIEnkPMyp7bG2be50Nn+LR96by7vJj/zWI9hAeAmlbiPTLnwvvvTo1uNOp2H3M/aVtCDeoEzCcQB/dKTI1iMhcDZpWbgKesmbuG3alclKjtPzU27nblu0YyM6wEIfbJbdOgV0EY8asE1DV+uUVF1gkTfuvpt3S5KurERBwlFBXyGQXRfjpSfNDRUj0ovsAtxVRJxE5WMpTRVpbexJN9GGllaTA5DyKOo7kOc8na9H1m9FvFSPii7FQvC1GGoqhTfVhlw6q8oHK8TMSpw/FIfn6MYj/GU45WG6nbosc4eJJq7nQXqqSUAWjwfqYaykIjbCraoKXG+tmO2wqbcPJMInNssyUrzJA6jZmXWOhytRcrncSUHOx6OqamDBWUzaIfjPZ+KNq6Rw2ZnmrmlVcHSVNIKw+qZUIq1F6dyCvMbVKVHEETVjE3IperKiIO9WoihYCgrrI8JPW3UoCnJ2KxbPFCejEretJSq/IzzwpFIjBKaZ5FQ81HYrn1ogHzAmsKm1mQR0ruPG8j8uf5BnzmGTxyAsUO0fRDNa39SbwYujjJJkrVRFLVg5kpqoU0D1oUwAGjB7kdy4qGptGzgdD17FwweFHmkbvUWisOHJ4uz7C/CJaZQ4fn6uqJ9Kc5yV/FvMsdbSxPv8BwAbSFSd/JiFSBhgXrPTpwbjAlzYo+5fUC+kmya5V/6RIUMVKeQsTLJLioVOoSZIrfX41en6YRiM1TaGlZHjisAVO432wK9fAWumVoZtotTUhL0pju/C3uPIOU8ZzhMYF51GcqKafXX+YP6CJ3ApfaUotkoNh59fkPrAk/gqAtnYvPKjmoae94BMtrh1BZ5x/HYXt1l9LfONokSg0N2mdN/s2nzK2XSB1N6uri0MI8RcwcO8GsUONoQYxeidPk7iuF/KL9kZoY+hK1XGVI2kJKE/GVIAY+Y6/al4OUWZRPaMgmmQN0SR3fvR5+5SEbAu+BkQ5yj/H+QGcTjyRtS4g4j7ZMZYwa5IP7Lufh22sWRweGR0ekJ5Yuj7vARUorPmdHjCKbHzPFuJLY4BYHboGyc0zxepC8Sfpw6XhwS3/BphN1vyputPIDFfOsaFHeqhwoe6ptVbascv6jrv30+CB6WYfalPEHR2RrIHLdVRJt9phKIRZ2E6FVJPQmUwdDFLOhBU1jgliyhjzAY19BE9NFMTWhUegBSzkxZBStw6MPbV2EFT+LFkbh6voki1EiwdDQc/5zaPRhEVdl54k2befeiI8AaYhSkSESlgplARklIxPOYk+ak0UpiH8efYzXuZ9WFbNqNV6NYqXR8kmqDscKTdPKc+wMoqJSgiECUQtAlZ7f6HS/NZneoyxYRVapImTX1oQksDTgCdsnZCbTR2SaNAv+Cbu5aL+WZHblqkp4UQm6Z4D6rcCGC7OjbkVHEzEd4cgpCpnD8SVwVx1nXEdXkFnMjy9AKYvpMER3HuSeHcxDSZma0KokiBnyRRFgvgAQFv3kYjS1GPr/aimXPmrNKKQm0LOS64X+YvnnKAD7qsqup1RfIRkU+SzzTZRzWs1XA1xSzQPm7Lcex35S8b0WrirPD2DBKyVHQAaiqvIE2I2SKZCFOJRsAf1k6YHWYnoA9Rsr42g5ARVx+xLWKGMIhQwI4YivSIQohitmeZ/S0ejFcUZdHtkoY42yqXD5Y7BVJRzxfh96N254TZ1Oudz6GmUCpRF86XBQ3/RHKhkweyrzTEDPYQYTL9qI9qHP55Hrxq8guknCvs9VRAz7fIvoiZapnxVCIcX4SDEKImztKzdln+NhGUu5x/+/v0+IIjJLImPxMOVDQVXpHH/+jIlS1zZytT9UAcQz2dRqIGrdYU6CUpRYWjXx2Pf6siIS/gkyLQ5q2vWM0MTha8b9pPMnmRn6LJUoNcHQEllL4oolwU7tI8cUqbYMe1LXmh6OyAlLh31wsiKUIX1YhShdbsbKZD8R/EWUVAaT8tnOen1frrhECzl8jbesqk6mKFjqEo+cRvNGKqUtX6e7lJRGNSqrIHMVIRW1F/xjijXXJeoxtGU9VmCRVTlq6U+Fyop8mkR5AlTNgojD8RJRGb7KA1czUsCxUV5UIZL5FW5Zkt9fXUVRu3LiSdUS7NJ4YvXDN66xYDpw/rMF36KYgi3fLnwiQctv2OVqIHiGw7jbVYbPDViXJ5SXSnAR8vzFEjXqHUuB0wXOMxZFKCdNHfSh3CYqt3uOWUpV9RFPLX/IWLPiJjw0jrASpbajbJF2feYqumSOe9Q8aL7YcxZNFPxAr4qZRcfSD567JISvsy6inrtI48lEV1m+QRU0mXZVqptRpsG/APeR054hkgVZ+lkLT5dBkJpDL/8pSIN9HE7xS7dzWWU0jyqgeSptIPhtopYHPlKgUaADm40nnR9fUd1RmTH0R/VQ/qGM2roUQ6RkjQ2ZTebQfROJZY9sWykTEEOzzC8hW3Dpn6nyL6fRNJ4sOehxjZLnIykZYtVWWd4OE6Rcms0ujDGmUTwltZ1qXSWJ7V+p2ZWmtldZnE0jtyihEj1PlnthCc+R4w6U41B3huPQIJvjbOE4OY4pTeDkPmm78fUtfvsSmyzMVishm3UrxSw0pTIr98mMbB1cb/hwdvXul7lz9uMlcO0BIP/q7N2H+U88lgP3Zz+df3j/q/NLz7mcv39zhf8txvnfhZ2yqQCFVwurgGAzYPmpJSuJNVtQKjUL8+zDr1egzTgX5+dXcPibRmVLtoTzj/MLWMX5B+endxfYQQ+IHO/8+uz123ntqeT/DPLx7OotOlMewQPnvYqTtxQlZXbAt8KOBDkpeBYu7xOQAnOECCQifplYISpkVXJjDZ6uh/87y/8Ap0W+wA==', 'ebfd1462f8fde062215b2fe71e6f5fc1cd236ad3834ffdf8fc6dd4d419a6135c')] + FROZEN_NA3_FILES[1:] + [('scripts/diagnostics/hotel_match_nonbg5_retained_url_paths_readonly_v1.py', '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', '8437cdb48cc571ff273cfdb95f9e8c5aca9cde5a6586cb93d99f60303961b356')]
+
+class NativeAbsent3SavedURLControlTest(unittest.TestCase):
+    def setUp(self):
+        self.core = fresh_core()
+        registration.register_parser(self.core)
+
+    def body(self):
+        return self.core.PREFIX + SOURCE + ' ' + registration.URL3_MODE + ' ' + registration.URL3_OPERATION + ' ' + registration.URL3_BATCH
+
+    def test_command_is_fixed_and_old_capture_is_not_a_projection(self):
+        cmd = self.core.parse_command(self.body())
+        self.assertEqual(cmd, dict(source_sha=SOURCE, mode=registration.URL3_MODE, operation_id=registration.URL3_OPERATION,
+                                   batch=registration.URL3_BATCH, maximum_writes=0, provider_http_calls=0))
+        for body in (self.body() + ' 0', self.body().replace(registration.URL3_OPERATION, registration.NA3_OPERATION),
+                     self.body().replace(registration.URL3_BATCH, registration.NA3_BATCH), self.body().replace(SOURCE, 'bad')):
+            with self.assertRaises(ValueError):
+                self.core.parse_command(body)
+        for key,value in [('maximum_writes', True), ('maximum_writes', 1), ('provider_http_calls', False), ('provider_http_calls', 1)]:
+            with self.assertRaises(ValueError):
+                registration.activate(self.core, dict(cmd, **{key:value}))
+
+    def test_registration_preserves_owner_guards_and_skips_all_collectors(self):
+        cmd = self.core.parse_command(self.body())
+        checked = self.core.checked_event
+        fixed = list(self.core.FIXED)
+        with patch.object(self.core, 'ensure_supplier_slot') as slot:
+            registration.activate(self.core, cmd)
+        slot.assert_not_called()
+        self.assertIs(self.core.checked_event, checked)
+        self.assertEqual(self.core.FIXED, fixed + [p for p in registration.URL3_SOURCE_FILES if p not in fixed])
+        tree = ast.parse(self.core.REMOTE)
+        guards = [n.test for n in ast.walk(tree) if isinstance(n,ast.If) and isinstance(n.test,ast.Compare)
+                  and isinstance(n.test.left,ast.Name) and n.test.left.id=='mode'
+                  and any(isinstance(op,ast.NotIn) for op in n.test.ops)
+                  and isinstance(n.test.comparators[0],ast.Tuple)
+                  and any(isinstance(e,ast.Constant) and e.value=='reconcile' for e in n.test.comparators[0].elts)]
+        self.assertEqual(len(guards), 2)
+        for guard in guards:
+            self.assertFalse(eval(compile(ast.Expression(guard),'<collector-guard>','eval'), {}, dict(mode=registration.URL3_MODE)))
+
+    def handler_case(self, temp):
+        import pathlib, sys
+        home=Path(temp).resolve()/'home'; project=home/'www/anytoour.ru';project.mkdir(parents=True)
+        root=home/'.anytoour-match';(root/'operations').mkdir(parents=True)
+        stage=Path(temp).resolve()/'stage'
+        self.assertEqual(tuple(entry[0] for entry in FROZEN_URL3_FILES), registration.URL3_SOURCE_FILES)
+        for rel,compressed,digest in FROZEN_URL3_FILES:
+            raw=zlib.decompress(base64.b64decode(compressed))
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), digest)
+            target=stage/rel;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(raw)
+        ns=dict(home=home,project=project,operation=registration.URL3_OPERATION,source=SOURCE,
+                payload=dict(batch=registration.URL3_BATCH,maximum_writes=0,provider_http_calls=0),
+                os=os,json=json,hashlib=hashlib,subprocess=subprocess,pathlib=pathlib,sys=sys,
+                safe_file=lambda p,cap:p.is_file() and not p.is_symlink() and 0<p.stat().st_size<=cap,
+                fail=lambda reason:(_ for _ in ()).throw(RuntimeError(reason)))
+        exec(registration.REMOTE_URL3_HANDLER,ns)
+        return ns,stage,root
+
+    def test_bad_source_stops_before_reservation_or_private_access(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ns,stage,root=self.handler_case(temp)
+            path=stage/registration.URL3_SOURCE_FILES[-1];path.write_bytes(path.read_bytes()+b'\n')
+            with patch.object(subprocess,'run') as child,self.assertRaisesRegex(RuntimeError,'native_absent3_saved_urls_source_binding'):
+                ns['run_match_native_absent3_saved_urls'](stage)
+            child.assert_not_called()
+            self.assertFalse((root/'native-absent3-saved-urls-batch-20261008.json').exists())
+
+    def test_reservation_precedes_cli_timeout_is_consumed_and_env_is_stripped(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ns,stage,root=self.handler_case(temp)
+            def child(args,**kw):
+                self.assertEqual(args[-1],'--project-saved-urls')
+                self.assertEqual(args[0],'python3')
+                self.assertNotIn('ANEX_SECRET_TEST_ONLY',kw['env'])
+                self.assertNotIn('MATCH_CACHE_ROOT',kw['env'])
+                self.assertTrue((root/'native-absent3-saved-urls-batch-20261008.json').exists())
+                self.assertTrue((root/'operations'/registration.URL3_OPERATION/'reservation.json').exists())
+                raise subprocess.TimeoutExpired(args,kw['timeout'])
+            with patch.dict(os.environ,{'ANEX_SECRET_TEST_ONLY':'synthetic'}),patch.object(subprocess,'run',side_effect=child),self.assertRaises(subprocess.TimeoutExpired):
+                ns['run_match_native_absent3_saved_urls'](stage)
+            with patch.object(subprocess,'run') as second,self.assertRaisesRegex(RuntimeError,'native_absent3_saved_urls_child_exists_no_replay'):
+                ns['run_match_native_absent3_saved_urls'](stage)
+            second.assert_not_called()
+
+    def saved_case(self, temp):
+        """Synthetic terminal metadata; the new CLI cannot access its old caches."""
+        import pathlib, sys
+        case = NativeAbsent3ControlTest().stage(temp)
+        runner = case['stage'] / registration.NA3_SOURCE_FILES[0]
+        spec = importlib.util.spec_from_file_location('synthetic_saved_parent', runner)
+        parent_module = importlib.util.module_from_spec(spec); spec.loader.exec_module(parent_module)
+        fixture = parent_module.manifest()
+        url = 'https://b2b.fstravel.com/hotel/123'
+        for i, selected in enumerate(fixture['rows']):
+            path = case['cache'] / selected['source_file']
+            snapshot = json.loads(path.read_bytes())
+            row = snapshot['store']['snapshot']['offers'][int(selected['json_pointer'].rsplit('/', 1)[1])]
+            row['hotel_content']['hotel_url'] = None if i < 12 else url
+            row['hotel_content']['image_url'] = 'https://www.bgoperator.ru/image.jpg' if i < 12 else 'https://b2b.fstravel.com/image.jpg'
+            raw = parent_module.retained.private_bytes(snapshot)
+            path.write_bytes(raw); selected['sha256'] = hashlib.sha256(raw).hexdigest()
+        fixture_raw = parent_module.n.enc(fixture)
+        fixture_path = case['stage'] / registration.NA3_SOURCE_FILES[1]
+        fixture_path.write_bytes(fixture_raw)
+        fixture_sha = hashlib.sha256(fixture_raw).hexdigest()
+        case['opdir'].mkdir(mode=0o700)
+        parent_module.n.save(case['opdir'] / 'reservation.json', dict(operation=parent_module.OP,
+            source_sha=SOURCE, batch=parent_module.BATCH, provider_http_calls=0, maximum_writes=0,
+            state='reserved_before_retained_read'))
+        with patch.object(parent_module, 'MANIFEST_SHA', fixture_sha), patch.dict(os.environ, {'MATCH_SOURCE_SHA': SOURCE}), patch('builtins.print'):
+            parent_module.execute(case['project'], case['opdir'], case['cache'], fixture_path)
+        parent_raw = {name: (case['opdir'] / name).read_bytes() for name in ('current-input.json', 'result.json', 'receipt.json')}
+        # Prove projection uses metadata only, even with originals and caches absent.
+        shutil.rmtree(case['cache'])
+        for path in case['opdir'].glob('retained-*.json'): path.unlink()
+        for relative, compressed, digest in FROZEN_URL3_FILES:
+            target = case['stage'] / relative; target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(zlib.decompress(base64.b64decode(compressed)))
+        fixture_path.write_bytes(fixture_raw)
+        text = runner.read_text().replace(FROZEN_NA3_FILES[1][2], fixture_sha)
+        replacements = dict(PARENT_SOURCE=SOURCE,
+            PARENT_PRIVATE_SHA=hashlib.sha256(parent_raw['current-input.json']).hexdigest(),
+            PARENT_RESULT_SHA=hashlib.sha256(parent_raw['result.json']).hexdigest(),
+            PARENT_RESULT_BYTES=len(parent_raw['result.json']),
+            SUN_URL_SHA=hashlib.sha256(parent_module.retained.private_bytes(url)).hexdigest())
+        for key, value in replacements.items():
+            text, count = re.subn(r'^' + key + r' = .*$', key + ' = ' + repr(value), text, flags=re.M)
+            self.assertEqual(count, 1)
+        runner.write_text(text); shutil.rmtree(runner.parent / '__pycache__', ignore_errors=True)
+        handler = registration.REMOTE_URL3_HANDLER.replace(FROZEN_URL3_FILES[0][2], hashlib.sha256(runner.read_bytes()).hexdigest())
+        handler = handler.replace(FROZEN_NA3_FILES[1][2], fixture_sha)
+        ns = dict(home=case['home'], project=case['project'], operation=registration.URL3_OPERATION, source=SOURCE,
+            payload=dict(batch=registration.URL3_BATCH, maximum_writes=0, provider_http_calls=0),
+            os=os, json=json, hashlib=hashlib, subprocess=subprocess, pathlib=pathlib, sys=sys,
+            safe_file=lambda p, cap: p.is_file() and not p.is_symlink() and 0 < p.stat().st_size <= cap,
+            safe_json=lambda p, cap: json.loads(p.read_bytes()),
+            fail=lambda reason: (_ for _ in ()).throw(RuntimeError(reason)))
+        exec(handler, ns)
+        return dict(case, ns=ns, parent=case['opdir'], parent_raw=parent_raw,
+            opdir=case['opdir'].parent / registration.URL3_OPERATION)
+
+    def test_actual_cli_reads_only_saved_metadata_and_preserves_parent(self):
+        with tempfile.TemporaryDirectory() as temp:
+            case = self.saved_case(temp)
+            lane = case['ns']['run_match_native_absent3_saved_urls'](case['stage'])
+            self.assertIs(lane['successful'], True)
+            data = lane['summary']
+            self.assertEqual((data['rows_examined'], data['url_slots_examined'], data['string_url_slots']), (13, 26, 14))
+            self.assertEqual((data['cache_files_read'], data['original_raw_files_read'], data['accepted'], data['written']), (0, 0, 0, 0))
+            self.assertEqual(data['rows'][12]['fields'][0]['path_projection']['positive_numeric_path_candidates'], ['123'])
+            self.assertTrue(all(row['independent_tv_hotel_id'] is None for row in data['rows']))
+            for name, raw in case['parent_raw'].items():
+                self.assertEqual((case['parent'] / name).read_bytes(), raw)
+                self.assertEqual((case['opdir'] / ('parent-' + name)).read_bytes(), raw)
+            with patch.object(subprocess, 'run') as replay, self.assertRaisesRegex(RuntimeError, 'native_absent3_saved_urls_child_exists_no_replay'):
+                case['ns']['run_match_native_absent3_saved_urls'](case['stage'])
+            replay.assert_not_called()
+
+    def test_actual_cli_rehashed_counter_missing_receipt_and_stdout_forgery_are_consumed(self):
+        actual_run = subprocess.run
+        for mutation in ('rehashed_counter', 'missing_receipt', 'stdout_boolean'):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temp:
+                case = self.saved_case(temp)
+                def child(*args, **kwargs):
+                    completed = actual_run(*args, **kwargs)
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    if mutation == 'missing_receipt':
+                        (case['opdir'] / 'receipt.json').unlink()
+                    elif mutation == 'stdout_boolean':
+                        stdout = json.loads(completed.stdout); stdout['accepted'] = False
+                        return subprocess.CompletedProcess(completed.args, 0, json.dumps(stdout), '')
+                    else:
+                        result_path = case['opdir'] / 'result.json'; value = json.loads(result_path.read_bytes()); value['accepted'] = 1
+                        result_path.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n')
+                        receipt_path = case['opdir'] / 'receipt.json'; receipt = json.loads(receipt_path.read_bytes())
+                        receipt['accepted'] = 1; receipt['result_sha256'] = hashlib.sha256(result_path.read_bytes()).hexdigest()
+                        receipt_path.write_text(json.dumps(receipt, sort_keys=True, indent=2) + '\n')
+                    return completed
+                with patch.object(subprocess, 'run', side_effect=child), self.assertRaises(RuntimeError):
+                    case['ns']['run_match_native_absent3_saved_urls'](case['stage'])
+                with patch.object(subprocess, 'run') as replay, self.assertRaisesRegex(RuntimeError, 'native_absent3_saved_urls_child_exists_no_replay'):
+                    case['ns']['run_match_native_absent3_saved_urls'](case['stage'])
+                replay.assert_not_called()
+
+
 if __name__=='__main__':unittest.main()
