@@ -756,11 +756,23 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
     assert.equal(geometry.overflow,false,'status and whole page have no horizontal overflow at '+width+' text200='+largeText);assert(geometry.texts,'full source names/status/count/action text fits at '+width+' text200='+largeText);assert(geometry.controls.every(control=>control.height>=44),'status summary/actions retain44px targets at '+width);
     assert(geometry.rows.every(row=>row.x>=geometry.bounds.x&&row.right<=geometry.bounds.right+1),'source panels remain within their status owner');
     if(largeText&&width<=760)assert(geometry.rows[1].x===geometry.rows[0].x,'large text stacks source panels instead of breaking words in narrow columns');
+    if(width<=760){
+     const editWord=await page.locator('#compact-search .secondary[data-action="top"]').evaluate(el=>{
+      const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())if(node.data.includes('Изменить'))break;
+      if(!node)return false;const start=node.data.indexOf('Изменить'),range=document.createRange();range.setStart(node,start);range.setEnd(node,start+'Изменить'.length);const rects=[...range.getClientRects()],bounds=el.getBoundingClientRect();
+      return rects.length===1&&rects[0].x>=bounds.x&&rects[0].right<=bounds.right;
+     });assert(editWord,'compact edit action keeps its ordinary word readable at '+width+' text200='+largeText);
+     const routeWords=await page.locator('#compact-search .compact-route-block strong').evaluate(el=>{
+      const node=el.firstChild,bounds=el.getBoundingClientRect();if(!node||node.nodeType!==Node.TEXT_NODE)return false;
+      return [...node.data.matchAll(/[А-Яа-яЁё]+/g)].every(word=>{const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);const rects=[...range.getClientRects()];return rects.length===1&&rects[0].x>=bounds.x-1&&rects[0].right<=bounds.right+1;});
+     });assert(routeWords,'compact route preserves whole city/country words at '+width+' text200='+largeText);
+    }
     await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
     for(const action of ['retry-search','edit-search']){
      const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
      const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
      assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
+     if(width===390&&largeText&&action==='edit-search')await page.screenshot({path:path.join(evidence,'search-delivery-text200-controls-390.png')});
     }
    }
    await page.evaluate(()=>document.documentElement.style.fontSize='');
@@ -1400,8 +1412,13 @@ const server=http.createServer((req,res)=>{
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
  await chosenDepartureJourney(browser,origin,base,evidence);
- await quoteRetryAndRoomReturnJourney(browser,origin,base,evidence);
- await verifiedPairJourney(browser,origin,base,evidence);
+ // Each journey owns its context, fictional transport and evidence names. Keep
+ // both complete matrices; settle both before closing the shared browser.
+ const isolated=await Promise.allSettled([
+  quoteRetryAndRoomReturnJourney(browser,origin,base,evidence),
+  verifiedPairJourney(browser,origin,base,evidence)
+ ]),failures=isolated.filter(result=>result.status==='rejected');
+ if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
