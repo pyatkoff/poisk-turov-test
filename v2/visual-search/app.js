@@ -1419,8 +1419,9 @@ function renderGallery(retry=false){
  const h=hotels.find(x=>x.id===gallery.id);if(!h?.photos.length)return;
  const body=$('#modal-body');let stage=$('.gallery-stage');
  if(!stage||stage.dataset.hotelId!==String(h.id)){
-  body.innerHTML=`<div class="gallery-stage" data-hotel-id="${h.id}"><img id="gallery-image" draggable="false"><div class="gallery-state"><p role="status" aria-live="polite"></p><button class="secondary" data-action="gallery-retry" hidden>Повторить загрузку фото</button></div><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span data-gallery-count></span></div><div class="gallery-thumbs" role="group" aria-label="Выбор фотографии">${h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" aria-label="Фото ${i+1}"><img src="${esc(p)}" alt="" loading="lazy"></button>`).join('')}</div>`;
+  body.innerHTML=`<div class="gallery-stage" data-hotel-id="${h.id}"><img id="gallery-image" draggable="false"><div class="gallery-state"><p role="status" aria-live="polite"></p><button class="secondary" data-action="gallery-retry" hidden>Повторить загрузку фото</button></div><button class="icon-button gallery-arrow prev" data-action="gallery-prev" aria-label="Предыдущее фото">${icon('back')}</button><button class="icon-button gallery-arrow next" data-action="gallery-next" aria-label="Следующее фото">${icon('arrow')}</button></div><div class="gallery-caption"><span>${esc(h.name)}</span><span data-gallery-count></span></div><div class="gallery-thumbs" role="group" aria-label="Выбор фотографии">${h.photos.map((p,i)=>`<button data-action="gallery-index" data-value="${i}" aria-label="Фото ${i+1}"><span class="gallery-thumb-placeholder" aria-hidden="true">${icon('image')}</span><img src="${esc(p)}" alt="" loading="lazy"></button>`).join('')}</div>`;
   stage=$('.gallery-stage');
+  for(const thumb of $$('.gallery-thumbs img')){const button=thumb.parentElement,label=`Фото ${Number(button.dataset.value)+1}`;thumb.onload=()=>{thumb.hidden=false;button.setAttribute('aria-label',label);};thumb.onerror=()=>{thumb.hidden=true;button.setAttribute('aria-label',label+' пока не загрузилось');};}
  }
  const img=$('#gallery-image'),status=stage.querySelector('[role="status"]'),retryButton=stage.querySelector('[data-action="gallery-retry"]');
  const current=()=>modalType==='gallery'&&gallery.id===h.id&&$('#gallery-image')===img;
@@ -1430,7 +1431,7 @@ function renderGallery(retry=false){
  if(retry||img.dataset.photoIndex!==index||img.getAttribute('src')!==src){
   if(document.activeElement===retryButton)stage.querySelector('.gallery-arrow.next').focus({preventScroll:true});
   stage.setAttribute('aria-busy','true');stage.classList.remove('photo-failed');status.textContent='Загружаем фото…';retryButton.hidden=true;img.hidden=false;img.dataset.photoIndex=index;img.alt=`Фото ${gallery.index+1} из ${h.photos.length} отеля ${h.name}`;
-  if(retry)img.removeAttribute('src');img.setAttribute('src',src);if(img.complete&&img.naturalWidth)img.onload();
+  if(retry){img.removeAttribute('src');const thumb=$(`.gallery-thumbs [data-value="${gallery.index}"] img`);if(thumb?.hidden){thumb.loading='eager';thumb.removeAttribute('src');thumb.setAttribute('src',src);}}img.setAttribute('src',src);if(img.complete&&img.naturalWidth)img.onload();
  }
  $('[data-gallery-count]').textContent=`${gallery.index+1} / ${h.photos.length}`;
  for(const button of $$('.gallery-thumbs button')){const active=Number(button.dataset.value)===gallery.index;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));}
