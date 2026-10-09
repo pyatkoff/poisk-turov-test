@@ -15,6 +15,11 @@ for(const value of ['On Request','on request','  ON REQUEST  ']){
 }
 assert.equal(requestLabels.mealLabel({meal:'On Request'}),'On Request','raw meal identity remains unchanged');
 assert.equal(requestLabels.displayMealLabel({meal:'Upon Request'}),'Upon Request');assert.equal(requestLabels.roomLabel({room:'Request'}),'Request','unconfirmed near matches are not rewritten');
+const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function minimumOfferSummary(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
+ flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>''
+});
+const requestSummaryText=requestSummary.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+assert.match(requestSummaryText,/Номер уточняется/);assert.doesNotMatch(requestSummaryText,/Номер Номер уточняется/,'result card does not duplicate the room label');
 for(const name of ['andromedaApplicationReceipt','anexApplicationReceipt']){
  const owner=section(app,`function ${name}(`,name==='andromedaApplicationReceipt'?'function openAndromedaVerified(':'function openAnexApplicationPreview(');
  assert.match(owner,/meal:String\(mealLabel\(o\)\|\|''\)/,name+' keeps the raw lead receipt owner');assert.doesNotMatch(owner,/displayMealLabel|roomLabel/,name+' receipt has no presentation projection');
