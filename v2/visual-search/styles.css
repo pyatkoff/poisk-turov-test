@@ -1434,9 +1434,9 @@ body.search-editing .results-heading,
 body.search-editing .results-main{display:none}
 body.search-editing #compact-search{display:none}
 body.search-editing .results-section{padding-top:0;padding-bottom:0}
-#search-form.search-box{display:block;padding:16px;border-radius:16px;background:#fff;color:var(--ink);box-shadow:0 4px 20px #10234c0a}
+#search-form.search-box{display:block;padding:12px;border-radius:16px;background:#fff;color:var(--ink);box-shadow:0 4px 20px #10234c0a}
 #search-form .search-primary{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.5fr) minmax(0,1.4fr) minmax(0,.75fr) minmax(0,1fr);gap:10px;padding:0;background:transparent;border:0;border-radius:0}
-#search-form .search-field{display:grid;align-content:center;min-width:0;min-height:78px;gap:8px;padding:12px;border:1px solid #dbe2ef;border-radius:10px;background:#f8faff;box-shadow:none;text-align:left}
+#search-form .search-field{display:grid;align-content:center;min-width:0;min-height:66px;gap:4px;padding:8px 12px;border:1px solid #dbe2ef;border-radius:10px;background:#f8faff;box-shadow:none;text-align:left}
 #search-form .search-field:hover{border-color:var(--brand);background:#f0f4ff}
 #search-form .search-field:focus-visible{outline:3px solid #ffb18f;outline-offset:2px}
 #search-form .field-label{font-size:.875rem;color:var(--muted);line-height:1.4}
@@ -1447,21 +1447,21 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 #search-form .field-value strong{font-weight:650}
 #search-form .field-value small{font-size:12px;line-height:1.4;color:var(--muted);font-weight:400}
 #search-form .chevron{margin-left:auto;flex:none;color:var(--muted);font-size:24px;line-height:1}
-#search-form .search-secondary{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:10px;padding:14px 0 0;margin:0}
+#search-form .search-secondary{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:10px;padding:12px 0 0;margin:0}
 #search-form .quick-category{min-width:0;margin:0;padding:0;border:0;grid-column:auto;grid-row:auto}
 #search-form .quick-category legend{font-size:.875rem;color:var(--muted);line-height:1.4;margin-bottom:6px}
 #search-form .quick-stars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
 #search-form .quick-stars button{min-width:0;min-height:44px;font-size:12px;padding:8px 4px;border:1px solid var(--line);border-radius:9px;background:#fff;font-weight:400;color:var(--ink)}
 #search-form .quick-stars button[aria-pressed=true]{background:var(--soft-blue);border-color:var(--brand);color:var(--brand);font-weight:650}
 #search-form .quick-stars button[aria-pressed=true]::before{content:none}
-#search-form .quick-field{grid-row:auto;min-width:0;min-height:70px;padding:10px;border:1px solid #dbe2ef;border-radius:10px;background:#f8faff;gap:4px 8px}
+#search-form .quick-field{grid-row:auto;min-width:0;min-height:64px;padding:8px 10px;border:1px solid #dbe2ef;border-radius:10px;background:#f8faff;gap:4px 8px}
 #search-form .quick-field>span:first-child,#search-form .quick-field strong{font-size:.875rem;line-height:1.4;color:var(--ink);white-space:normal;overflow:visible;overflow-wrap:anywhere}
-#search-form .search-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:14px 0 0;padding:0}
+#search-form .search-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 12px;margin:12px 0 0;padding:0}
 #search-form .search-submit{min-width:220px;min-height:48px;margin:0;font-size:1rem}
 #search-form #search-return{min-height:44px;font-size:13px;padding:10px 8px;color:var(--brand)}
-#search-form .search-edit-note{font-size:12px;line-height:1.5;margin:10px 0;color:var(--muted)}
-#search-form .form-all-filters{display:flex;justify-content:center;min-height:44px;margin:8px auto 0;font-size:13px}
-#search-form .form-price-note{font-size:11px;line-height:1.5;text-align:center;color:var(--muted);margin-top:8px}
+#search-form .search-edit-note{font-size:12px;line-height:1.5;margin:4px 0 0;color:var(--muted)}
+#search-form .form-all-filters{display:flex;justify-content:center;min-height:44px;margin:0;font-size:13px}
+#search-form .form-price-note{font-size:12px;line-height:1.5;text-align:center;color:var(--muted);margin-top:4px}
 #search-form #form-conflict{margin-top:8px;font-size:12px;line-height:1.5}
 @media(min-width:1101px){body.search-editing .results-section:not(.filters-requested){display:none}}
 @media(max-width:1100px){#search-form .search-primary{grid-template-columns:repeat(6,minmax(0,1fr))}#search-form .search-field{grid-column:span 3}#search-form .search-field:nth-child(3){grid-column:span 6}#search-form .search-field:nth-child(4),#search-form .search-field:nth-child(5){grid-column:span 3}}
@@ -1498,7 +1498,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  #search-form .quick-field .chevron{position:absolute;right:13px;bottom:17px}
  #search-form .search-actions{position:static;display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:12px 0 0;padding:0;border:0;background:transparent;box-shadow:none}
  #search-form .search-submit{width:100%;min-width:0;min-height:48px;font-size:15px;box-shadow:none;border-radius:12px;order:0}
- #search-form .form-all-filters{margin-top:8px}
+ #search-form .form-all-filters{margin-top:0}
  #search-form #search-return{justify-content:center}
  body.form-visible .demo-note{margin-top:26px;background:transparent;color:var(--muted)}
 }
@@ -1588,7 +1588,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  dialog.form-picker .calendar-months{display:block}
  dialog.form-picker .calendar-month{margin-top:16px}
  dialog.form-picker .calendar-month h3{font-size:19px;line-height:26px;letter-spacing:0;margin-bottom:8px}
- dialog.form-picker .calendar-month .calendar-units{margin:0 0 10px;font-size:13px}
+ dialog.form-picker .date-choice-tools .calendar-units{margin:8px 0 0;font-size:13px}
  dialog.form-picker .month-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
  dialog.form-picker .month-day{height:60px;min-width:0;min-height:60px;display:flex;flex-direction:column;justify-content:flex-start;gap:5px;padding:4px 0 3px;font-size:18px;font-weight:650;line-height:22px;border-radius:8px;background:white}
  dialog.form-picker .month-day>span{font-size:18px;font-weight:inherit}

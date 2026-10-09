@@ -1274,7 +1274,7 @@ function prepareDatePicker(source,restore){
 }
 function openDates(source='form',restore=null){
  prepareDatePicker(source,restore);
- showModal('dates','Даты вылета','',`<div class="date-choice-tools"><strong id="date-selection-label"></strong><p id="date-selection-hint" aria-live="polite"></p><div class="calendar-context"></div><span data-calendar-load-status hidden></span><div class="calendar-legend" role="status" hidden><span></span></div></div><div id="date-calendar"></div>`);
+ showModal('dates','Даты вылета','',`<div class="date-choice-tools"><strong id="date-selection-label"></strong><p id="date-selection-hint" aria-live="polite"></p><div class="calendar-context"></div><span data-calendar-load-status hidden></span><div class="calendar-legend" role="status" hidden><span></span></div><p class="picker-caption calendar-units">От, тыс. ₽ · весь тур за ${esc(partyLabel(dateContext.search))}</p></div><div id="date-calendar"></div>`);
  renderCalendarScope();
  $('#modal-footer').hidden=false;$('#modal-footer').innerHTML=`<div class="date-footer"><p class="picker-caption date-missing-price">— цена не сохранена; дату можно выбрать.</p><div id="date-selection-price" class="date-selection-price" aria-live="polite"></div><p class="picker-caption date-source">${esc(calendarSourceLabel())}</p><p class="error-text" id="date-error" role="alert"></p><button class="primary picker-apply" data-action="apply-dates"></button></div>`;
  refreshCalendarPriceCache();renderDateCalendar();
@@ -1341,14 +1341,14 @@ function monthFrame(month){
  const prices=Array.from({length:count},(_,i)=>{const d=month.slice(0,8)+String(i+1).padStart(2,'0');return d>=startDay&&d<=endDay?calendarPrice(d):null}),cheapest=minimumKnownPrice(prices);
  let days='<span></span>'.repeat(first);
  for(let n=1;n<=count;n++){const day=month.slice(0,8)+String(n).padStart(2,'0'),valid=day>=startDay&&day<=endDay,price=prices[n-1];days+=`<button class="month-day ${price!==null&&price===cheapest?'is-cheap':''}" data-action="day-pick" data-date="${day}" ${!valid?'disabled':''} aria-label="${dateLong(day)}${price!==null?', от '+money(price):valid?', цена пока неизвестна':''}"><span>${n}</span><small>${price!==null?shortAmount(price,true):valid?'—':''}</small></button>`;}
- return `<section class="calendar-month" data-month="${month}"><h3>${heading.charAt(0).toUpperCase()+heading.slice(1)}</h3><p class="picker-caption calendar-units">От, тыс. ₽ · весь тур за ${esc(partyLabel(dateContext.search))}</p><div class="month-grid">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span class="weekday">${d}</span>`).join('')}${days}</div></section>`;
+ return `<section class="calendar-month" data-month="${month}"><h3>${heading.charAt(0).toUpperCase()+heading.slice(1)}</h3><div class="month-grid">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<span class="weekday">${d}</span>`).join('')}${days}</div></section>`;
 }
 function renderDateCalendar(){
  const host=$('#date-calendar'),active=document.activeElement,focus=active?.matches('[data-action="month-prev"],[data-action="month-next"]')?focusReference(active,host):null;
  calendarMobile=innerWidth<=760;
  const months=[],first=startDay.slice(0,7)+'-01',last=endDay.slice(0,7)+'-01',next=dateObj(calendarMonth);next.setUTCMonth(next.getUTCMonth()+1);
  if(innerWidth<=760){for(let m=first;m<=last;){months.push(m);const d=dateObj(m);d.setUTCMonth(d.getUTCMonth()+1);m=iso(d);}}else{months.push(calendarMonth);if(iso(next)<=last)months.push(iso(next));}
- host.innerHTML=`${innerWidth<=760?'':`<div class="calendar-navigation"><button class="icon-button" data-action="month-prev" aria-label="Предыдущий месяц" ${calendarMonth<=first?'disabled':''}>${icon('back')}</button><span>Выберите даты вылета</span><button class="icon-button" data-action="month-next" aria-label="Следующий месяц" ${calendarMonth>=last?'disabled':''}>${icon('arrow')}</button></div>`}<div class="calendar-months">${months.map(monthFrame).join('')}</div>`;
+ host.innerHTML=`${innerWidth<=760?'':`<div class="calendar-navigation"><button class="icon-button" data-action="month-prev" aria-label="Предыдущий месяц" ${calendarMonth<=first?'disabled':''}>${icon('back')}</button><button class="icon-button" data-action="month-next" aria-label="Следующий месяц" ${calendarMonth>=last?'disabled':''}>${icon('arrow')}</button></div>`}<div class="calendar-months">${months.map(monthFrame).join('')}</div>`;
  updateDateSelection();if(focus)restoreFocus(focus,$('#modal-title'),$('#modal'));
 }
 function dateRangeError(range){if(!range?.from||!range?.to)return 'Укажите обе даты вылета.';if(range.from<startDay||range.to>endDay)return 'Выберите даты в доступном периоде календаря.';if(range.from>range.to)return 'Конец диапазона должен быть не раньше начала.';if((dateObj(range.to)-dateObj(range.from))/86400000>21)return 'Период может включать не больше 22 дат. Выберите конец ближе к началу.';return '';}
@@ -1356,7 +1356,7 @@ function updateDateSelection(){
  $('#date-selection-label').textContent=(dateDraft.from===dateDraft.to?'Вылет ':'Диапазон ')+departureRangeText(dateDraft.from,dateDraft.to)+' · '+durationText(dateContext.search);
  $$('[data-action="day-pick"]').forEach(b=>{const d=b.dataset.date,active=d===dateDraft.from||d===dateDraft.to;b.classList.toggle('active',active);b.classList.toggle('in-range',d>dateDraft.from&&d<dateDraft.to);b.setAttribute('aria-pressed',active||d>dateDraft.from&&d<dateDraft.to)});
  $('[data-action="apply-dates"]').textContent=dateDraft.from&&dateDraft.to?(data.live&&dateContext?.source==='results'?'Найти туры: ':'Применить ')+departureRangeText(dateDraft.from,dateDraft.to):'Выберите обе даты';
- const hint=$('#date-selection-hint');hint.hidden=false;hint.textContent=dateDraft.phase?'Для диапазона нажмите вторую дату.':'Выберите день или диапазон вылета.';
+ const hint=$('#date-selection-hint');hint.hidden=false;hint.textContent=dateDraft.phase?'Выберите конец диапазона.':'Выберите дату или диапазон.';
  renderDateSelectionPrice();
  const error=dateRangeError(dateDraft);
  $('[data-action="apply-dates"]').disabled=!!error;$('#date-error').textContent=error;

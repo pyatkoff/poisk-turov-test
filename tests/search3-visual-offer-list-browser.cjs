@@ -15,7 +15,7 @@ const server=http.createServer((req,res)=>{
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
  try{browser=await chromium.launch({headless:true});for(const width of [360,390,430,768,1280]){
-  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[],geometry=[];let requests=0,release,pending;
+  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[],geometry=[],density=[],calendarContext=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
    const url=new URL(route.request().url());if(url.hostname!=='127.0.0.1'){if(route.request().resourceType()!=='image')forbidden.push(url.pathname);await route.abort();return;}
@@ -29,21 +29,62 @@ const server=http.createServer((req,res)=>{
    for(const step of record.steps)assert(step.display==='flex'&&step.gap>=5&&step.numberWidth>=20&&Math.abs(step.numberWidth-step.numberHeight)<1,name+' retains separated, numbered selection steps');
    geometry.push({name,...record});await page.screenshot({path:path.join(evidence,`${name}-${width}.png`)});
   };
+  const densityFrame=async(state,zoom)=>{
+   const record=await page.evaluate(({state,zoom})=>{
+    const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},fits=(el,box=el)=>{const bounds=box.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return [...range.getClientRects()].every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1&&r.y>=bounds.y-1&&r.bottom<=bounds.bottom+1);};
+    const form=document.querySelector('#search-form'),first=document.querySelector('.hotel-card'),price=first?.querySelector('.starting-price strong'),actions=[...form.querySelectorAll('.search-actions button')].filter(el=>el.getClientRects().length),values=[...form.querySelectorAll('#origin-label,#destination-label,#destination-detail,#dates-label,#nights-label,#guests-label,#guests-detail,#meal-label,#budget-label')].filter(el=>el.getClientRects().length);
+    return{state,zoom,scrollY,form:rect(form),actions:actions.map(el=>({action:el.dataset.action||'submit',text:el.textContent,...rect(el),fullText:fits(el)})),values:values.map(el=>({id:el.id,text:el.textContent,fullText:fits(el,el.closest('.field-control')||el)})),firstCard:first?rect(first):null,firstPrice:price?rect(price):null,calendar:rect(document.querySelector('#price-calendar')),datePrices:[...document.querySelectorAll('#price-strip .date-price')].map(el=>({text:el.querySelector('strong').textContent,...rect(el),fullText:fits(el.querySelector('strong'),el)})),overflow:document.documentElement.scrollWidth>innerWidth+1};
+   },{state,zoom});
+   assert.equal(record.overflow,false,state+' text'+zoom+' fits the document');
+   if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
+   else{assert(record.values.every(value=>value.fullText),'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
+   density.push(record);return record;
+  };
+  const reachable=async(control,label)=>{
+   await control.scrollIntoViewIfNeeded();const box=await control.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return{width:r.width,height:r.height,hit:hit===el||el.contains(hit),fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1)};});
+   assert(box.width>=44&&box.height>=44&&box.hit&&box.fullText,label+' keeps a reachable44px action and its complete label');return box;
+  };
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
    const trigger=page.locator('.hotel-card [data-action="all-offers"]').first();await trigger.waitFor();assert.equal(requests,0,'form/results leave the offer-list renderer cold');
-   assert(await page.locator('#calendar-preview').isVisible(),'price calendar is open');assert.equal(await page.locator('#price-strip .date-price').count(),7);await shot('results');
+   assert(await page.locator('#calendar-preview').isVisible(),'price calendar is open');assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot('results');await densityFrame('results',100);
+   await page.evaluate(()=>document.documentElement.style.fontSize='200%');await page.evaluate(()=>scrollTo(0,0));await densityFrame('results',200);await shot('results-text200');
+   const dateTargets=page.locator('#price-strip .date-price');assert.equal(await dateTargets.count(),7,'large text retains all seven dates');
+   const passiveDateURL=page.url();await dateTargets.last().focus();const lastDate=await reachable(dateTargets.last(),'last saved date text200');
+   assert(await dateTargets.last().evaluate(el=>document.activeElement===el),'the last date remains a keyboard target');assert.equal(page.url(),passiveDateURL,'keyboard rail navigation is passive');
+   if(width<=760){const focus=await dateTargets.last().evaluate(el=>{const style=getComputedStyle(el);return {visible:el.matches(':focus-visible'),style:style.outlineStyle,offset:parseFloat(style.outlineOffset)};});assert(focus.visible&&focus.style!=='none'&&focus.offset<=0,'keyboard date focus remains visible inside the scrollable rail');}
+   const rail=await page.locator('#price-strip').evaluate(el=>({width:el.clientWidth,contentWidth:el.scrollWidth,scrollLeft:el.scrollLeft,overflowX:getComputedStyle(el).overflowX}));
+   if(width===360){assert(rail.contentWidth>rail.width&&rail.scrollLeft>0,'large saved prices use the internal rail and keyboard focus reveals the last date');assert.equal(rail.overflowX,'auto');}
+   density.push({state:'date-rail-keyboard',zoom:200,lastDate,...rail});
+   await page.evaluate(()=>{document.documentElement.style.fontSize='';document.querySelector('#price-strip').scrollLeft=0;scrollTo(0,0);});
    const photo=await page.locator('.hotel-card').first().evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth};});
    if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available');
    await page.locator('.hotel-card').first().scrollIntoViewIfNeeded();await shot('card');
    const appliedURL=page.url(),appliedKeys=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id));
    await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('#search-form').waitFor({state:'visible'});await page.locator('#search-form').scrollIntoViewIfNeeded();await shot('form');
+   for(const zoom of [100,200]){
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);await densityFrame('form',zoom);
+    for(const control of ['.search-submit','[data-action="cancel-search-edit"]','[data-action="form-filters"]'])await reachable(page.locator('#search-form '+control),'form '+control+' text'+zoom);
+    if(zoom===200)await shot('form-text200');
+   }
+   await page.evaluate(()=>document.documentElement.style.fontSize='');await page.locator('#search-form').scrollIntoViewIfNeeded();
    const editSearchNotice=await page.locator('#search-edit-note').textContent();
    assert(await page.locator('#search-edit-note').isVisible());assert.doesNotMatch(editSearchNotice,/Условия изменены/,'opening the unchanged applied search does not assert a change');assert.match(editSearchNotice,/Найти туры/,'the explicit search action is explained');
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'opening preserves the result inventory');
    await page.locator('#search-edit-note').scrollIntoViewIfNeeded();await shot('edit-notice');
    for(const name of ['departure','destination','dates','nights','guests','meals','budget','form-filters']){
     await page.locator(`#search-form [data-action="${name}"]`).click();await page.locator('#modal').waitFor({state:'visible'});await shot(name);
+    if(name==='dates'){
+     const body=page.locator('#modal-body'),initialScroll=await body.evaluate(el=>el.scrollTop);await page.locator('#modal').evaluate(modal=>{window.__compactCalendarFocus=document.activeElement;});
+     for(const zoom of [100,200]){
+      await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+      if(width<=760)await page.locator('#date-calendar .calendar-month').nth(2).evaluate(el=>el.scrollIntoView({block:'start',behavior:'instant'}));
+      const scope=await page.locator('#modal').evaluate(modal=>{const units=[...modal.querySelectorAll('.calendar-units')],body=modal.querySelector('#modal-body').getBoundingClientRect(),footer=modal.querySelector('#modal-footer').getBoundingClientRect(),boxes=units.map(el=>{const r=el.getBoundingClientRect();return{text:el.textContent,top:r.top,bottom:r.bottom,width:r.width,height:r.height};});return{count:units.length,boxes,visible:boxes.every(r=>r.top>=body.top-1&&r.bottom<=Math.min(body.bottom,footer.top)+1),scroll:modal.querySelector('#modal-body').scrollTop,overflow:modal.scrollWidth>modal.clientWidth+1||document.documentElement.scrollWidth>innerWidth+1};});
+      assert.equal(scope.count,1,'calendar explains price units once');assert.match(scope.boxes[0].text,/тыс\. ₽.*весь тур/);assert.equal(scope.visible,true,'price units stay visible with later mobile months at '+width+' text'+zoom);assert.equal(scope.overflow,false);
+      const apply=await reachable(page.locator('#modal [data-action="apply-dates"]'),'calendar Apply text'+zoom);calendarContext.push({zoom,...scope,apply});await shot('dates-context-text'+zoom);
+     }
+     await page.evaluate(()=>{document.documentElement.style.fontSize='';window.__compactCalendarFocus?.focus({preventScroll:true});delete window.__compactCalendarFocus;});await body.evaluate((el,scroll)=>el.scrollTop=scroll,initialScroll);
+    }
     if(name==='guests'){
      await page.locator('[data-action="children-plus"]').click();await page.locator('[data-action="child-age"]').first().click();await shot('child-age');await page.locator('#modal-back').click();
     }
@@ -86,7 +127,7 @@ const server=http.createServer((req,res)=>{
    await list.locator('[data-action="offer"]').first().click();const tourPrice=page.locator(width<=760?'#modal-footer .footer-total>strong':'#detail-total');await tourPrice.waitFor();assert.match(await tourPrice.textContent(),/\d.*₽/,'the selected offer has a visible total');await shot('tour');
    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[data-action="apply-flight"]').waitFor();await shot('flights');
    await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();await shot('application');
-   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,supplier_requests:0,lead_requests:0,physicalSafari:false});
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled approved interface and cold offer-list browser',JSON.stringify(receipts));
