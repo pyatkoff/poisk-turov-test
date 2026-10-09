@@ -501,6 +501,31 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
  await editResultSearch(page,width);
+ const formValueStates=[];
+ const formValues=async label=>{
+  if(width!==390)return;
+  for(const viewportWidth of [360,390,430,768,1280]){
+   await page.setViewportSize({width:viewportWidth,height:900});await page.evaluate(()=>document.fonts.ready);await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const measure=()=>page.locator('#search-form .quick-field').evaluateAll(buttons=>{
+    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
+    return{fields:buttons.map(button=>{const value=button.querySelector('strong'),range=document.createRange();range.selectNodeContents(value);return{button:rect(button),label:rect(button.querySelector('span')),value:rect(value),text:value.textContent,textRects:[...range.getClientRects()].map(b=>({x:b.x,y:b.y,right:b.right,bottom:b.bottom})),overflow:button.scrollWidth>button.clientWidth+1};}),documentOverflow:document.documentElement.scrollWidth>innerWidth};
+   });
+   if(label==='default'&&viewportWidth===360){
+    await page.evaluate(()=>{
+     const visit=rules=>{for(const rule of rules){if(rule.cssRules)visit(rule.cssRules);if(rule.selectorText==='#search-form .quick-field'&&rule.style.alignContent==='stretch'){window.__formValueBaseline={rule,css:rule.style.cssText};rule.style.alignContent='start';rule.style.removeProperty('align-self');rule.style.removeProperty('grid-template-rows');}}};
+     for(const sheet of document.styleSheets)visit(sheet.cssRules);if(!window.__formValueBaseline)throw Error('Existing mobile value-row rule not found');
+    });
+    try{const baseline=await measure();assert(Math.abs(baseline.fields[0].value.height-baseline.fields[1].value.height)>5,'old declarations reproduce unequal default value boxes on360px');formValueStates.push({label:'baseline-old-declarations',width:viewportWidth,...baseline});await page.screenshot({path:path.join(evidence,'form-values-baseline-360.png')});}
+    finally{await page.evaluate(()=>{const saved=window.__formValueBaseline;saved.rule.style.cssText=saved.css;delete window.__formValueBaseline;});}
+   }
+   const boxes=await measure();assert.equal(boxes.fields.length,2);assert.equal(boxes.documentOverflow,false,label+' has no horizontal form overflow at '+viewportWidth);
+   for(const field of boxes.fields){assert(field.button.width>=44&&field.button.height>=44,label+' retains the whole row click target');assert.equal(field.overflow,false);assert(field.textRects.length&&field.textRects.every(text=>text.x>=field.button.x-1&&text.right<=field.button.right+1&&text.y>=field.button.y-1&&text.bottom<=field.button.bottom+1),label+' keeps complete value text inside its control at '+viewportWidth);}
+   if(viewportWidth<=760){const [meal,budget]=boxes.fields;assert(Math.abs(meal.value.y-budget.value.y)<=1&&Math.abs(meal.value.bottom-budget.value.bottom)<=1,label+' aligns both value boxes at '+viewportWidth);assert(Math.abs(meal.label.y-budget.label.y)<=1,label+' aligns both field labels');}
+   formValueStates.push({label,width:viewportWidth,...boxes});await page.screenshot({path:path.join(evidence,`form-values-${label}-${viewportWidth}.png`)});
+  }
+  await page.setViewportSize({width,height:900});
+ };
+ await formValues('default');
  await page.locator('#quick-stars [data-value="5"]').click();
  assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'true','approved form displays selected stars');
  await page.locator('#quick-meal').click();
@@ -509,6 +534,7 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  assert((await page.locator('#meal-label').textContent()).includes(mealValue),'approved form displays selected meal');
  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('200000');await page.locator('[data-action="apply-budget"]').click();
  assert.match(await page.locator('#budget-label').textContent(),/200\s*000/,'approved form displays the total budget');
+ await formValues('applied');
  if(width===390){
   await page.setViewportSize({width:360,height:900});
   const boxes=await page.locator('#search-form .quick-field').evaluateAll(buttons=>buttons.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width};}));
@@ -517,10 +543,18 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  }
  await page.locator('#quick-budget').click();await page.locator('#budget-max').fill('999999');await page.locator('[data-action="close-modal"]').click();
  assert.match(await page.locator('#budget-label').textContent(),/200\s*000/,'cancelled budget does not replace the applied value');
+ await formValues('cancelled');
+ if(width===390){
+  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('1234567');await page.locator('#budget-max').fill('9999999');await page.locator('[data-action="apply-budget"]').click();
+  assert.match((await page.locator('#budget-label').textContent()).replace(/\s/g,''),/1234567.*9999999/,'complete long applied range is retained');await formValues('long-range');
+  await page.locator('#quick-budget').click();assert.equal(await page.locator('#budget-min').inputValue(),'1234567');assert.equal(await page.locator('#budget-max').inputValue(),'9999999');await page.locator('[data-action="close-modal"]').click();
+ }
  await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');await page.locator('[data-action="apply-budget"]').click();
  await page.locator('#quick-meal').click();await page.locator('[data-meal-choice][value=""]').check();await page.locator('[data-action="apply-meals"]').click();
  await page.locator('#quick-stars [data-action="any-stars"]').click();
  assert.equal(await page.locator('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');assert.match(await page.locator('#meal-label').textContent(),/Любое/);assert.match(await page.locator('#budget-label').textContent(),/Без ограничений/);
+ await formValues('reset');
+ if(width===390)fs.writeFileSync(path.join(evidence,'form-value-alignment.json'),JSON.stringify({states:formValueStates,engine:'Chromium',savedFictionalTransport:true,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
  await page.locator('#search-return').click();
  assert.equal(await page.locator('#cards').innerHTML(),originalCards,'cancelled form keeps the complete saved results');assert.equal(page.url(),originalURL,'cancelled form preserves URL');
  assert.equal(transport.calls.filter(c=>c.action==='search_start').length,starts,'form filter edits never repeat supplier search');

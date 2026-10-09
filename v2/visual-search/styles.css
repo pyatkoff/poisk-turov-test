@@ -1492,7 +1492,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  #search-form .search-secondary{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:12px}
  #search-form .quick-category{grid-column:1/-1}
  #search-form .quick-category legend{font-size:14px;line-height:20px;margin-bottom:0;padding-left:2px;color:var(--text)}
- #search-form .quick-field{position:relative;display:grid;align-content:start;grid-template-columns:minmax(0,1fr);gap:0;padding:0;min-height:70px;border:0;border-radius:0;background:transparent;text-align:left}
+ #search-form .quick-field{position:relative;display:grid;align-self:stretch;align-content:stretch;grid-template-columns:minmax(0,1fr);grid-template-rows:20px minmax(52px,1fr);gap:0;padding:0;min-height:70px;border:0;border-radius:0;background:transparent;text-align:left}
  #search-form .quick-field>span:first-child{font-size:14px;line-height:20px;color:var(--text);padding:0 0 0 2px;grid-column:1;grid-row:1}
  #search-form .quick-field strong{display:flex;align-items:center;min-height:52px;grid-column:1;grid-row:2;padding:9px 32px 9px 13px;background:#fff;border:1px solid #dde3e9;border-radius:12px;font-size:15px;line-height:21px;font-weight:400}
  #search-form .quick-field .chevron{position:absolute;right:13px;bottom:17px}
