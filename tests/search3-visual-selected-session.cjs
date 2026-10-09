@@ -152,7 +152,6 @@ module.exports=async function({browser,origin,base,evidence}){
  // Keep the existing full CI budget: at most four independent fixture contexts
  // share the compiled browser, with no overlapping source or transport state.
  const jobs=[...['anex','andromeda'].flatMap(provider=>[360,390,430,768,1280].map(width=>[provider,width,'application'])),...['anex','andromeda'].flatMap(provider=>[[provider,390,'verified'],[provider,390,'other'],[provider,390,'editing']]),['anex',390,'return']];
- for(let i=0;i<jobs.length;i+=4){const results=await Promise.allSettled(jobs.slice(i,i+4).map(args=>scenario(...args))),failed=results.filter(r=>r.status==='rejected');if(failed.length)throw new AggregateError(failed.map(r=>r.reason),'Selected-session acceptance failed');}
  const flightSession=async width=>{
   const errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   try{
@@ -184,7 +183,12 @@ module.exports=async function({browser,origin,base,evidence}){
    console.error('FAIL compiled flight session at'+width,error.stack);await page.screenshot({path:path.join(evidence,'flight-session-failure-'+width+'.png')}).catch(()=>{});throw error;
   }finally{await context.close();}
  };
- for(let i=0;i<5;i+=4){const results=await Promise.allSettled([360,390,430,768,1280].slice(i,i+4).map(flightSession)),failed=results.filter(r=>r.status==='rejected');if(failed.length)throw new AggregateError(failed.map(r=>r.reason),'Compiled flight session acceptance failed');}
+ // Fill a freed slot immediately instead of waiting for the slowest case in
+ // each batch. Every case retains its own context/transport and evidence path.
+ // Keep all22 cases and the existing four-context limit and job timeout.
+ const tasks=[...jobs.map(args=>()=>scenario(...args)),...[360,390,430,768,1280].map(width=>()=>flightSession(width))],failures=[];let next=0;
+ await Promise.all(Array.from({length:4},async()=>{for(;;){const task=tasks[next++];if(!task)return;try{await task();}catch(error){failures.push(error);}}}));
+ if(failures.length)throw new AggregateError(failures,'Compiled selected-session acceptance failed');
  const receipt={published:false,live_data:false,engine:'Chromium',physical_device:false,duration_ms:Date.now()-started,records};
  fs.writeFileSync(path.join(evidence,'selected-session.json'),JSON.stringify(receipt,null,2)+'\n');
  console.log('PASS compiled selected session',JSON.stringify({cases:records.length,duration_ms:receipt.duration_ms,expiry_at_five_widths:true,retained_contact_focus:true,same_hotel_scope_return:true,supplier_HTTP:0,real_leads:0}));return receipt;
