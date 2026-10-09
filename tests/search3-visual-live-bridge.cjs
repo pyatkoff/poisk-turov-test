@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {JSDOM,VirtualConsole}=require('jsdom');
-const {fixture,trip,day}=require('./search3-visual-live-fixture.cjs');
+const {fixture,trip,day,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
 const resultRangeTo=new Date(Date.parse(day+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
 function searchDeliveryPresentationRegressions(){
@@ -151,8 +151,133 @@ async function quoteReturnRegressions(){
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
+// The actual entry graph and canonical catalogue adapter own these passive
+// regressions. JSDOM permits focus identity, not rendered/physical geometry.
+async function pickerRetainedDraftRegressions(){
+ const historyKey='anytour.prototype.v18.ui.v1',alias='контрольный псевдоним',pause=()=>new Promise(resolve=>setTimeout(resolve,30));
+ const records={family:0,destination:0};
+ async function create(width,{route=null,hotel=false}={}){
+  const t=fixture(),errors=[],console=new VirtualConsole(),completed=[],started=[];
+  console.on('jsdomError',error=>errors.push(error.message));
+  t.state.hotelCatalogue=hotelCatalogue();t.state.catalogueAliases={2004:[alias],2005:[alias]};
+  t.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
+  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({scenario:'live',...trip,adults:3,ages:'0,12',...(hotel?{hotel:'2001'}:{})}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const win=local.window,doc=win.document,get=s=>doc.querySelector(s),originalURL=win.location.href;
+  Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
+  win.matchMedia=()=>({matches:width<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  win.HTMLElement.prototype.scrollIntoView=function(){};win.HTMLElement.prototype.getClientRects=function(){return [{}];};win.scrollTo=()=>{};
+  win.HTMLDialogElement.prototype.showModal=function(){this.open=true};win.HTMLDialogElement.prototype.close=function(){this.open=false};
+  win.fetch=async(url,options={})=>{assert(!/lead|booking/.test(String(url)),'passive picker has no lead transport');const value=await t.json(url,options);return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+  // Actual modal entry retains the unchanged search underneath. Replay that
+  // existing history stack on reload so its native closing Back has a target.
+  if(route)win.history.pushState({[historyKey]:structuredClone(route)},'',originalURL);
+  for(const file of scripts){
+   if(file==='visual-search/app.js'){
+    const canonical=win.AnyTourPrototypeData;
+    win.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{lookupHotels:{value:async(...args)=>{
+     const call={query:args[0],country:args[1],signal:args[2]};started.push(call);
+     try{const rows=await canonical.lookupHotels(...args);completed.push({call,ids:rows.map(h=>h.id)});return rows;}
+     catch(error){completed.push({call,error:error.message});throw error;}
+    }}}));
+   }
+   win.eval(source(file));
+  }
+  const until=async predicate=>{for(let i=0;i<100;i++){if(predicate())return;await pause();}throw Error('Passive picker timeout '+width+' / '+get('#modal-title').textContent+' / '+get('#modal-body').textContent);};
+  const tap=selector=>{const node=get(selector);assert(node,selector);assert(!node.disabled,'enabled '+selector);node.focus();node.click();};
+  const input=value=>{const node=get('#destination-query');node.focus();node.value=value;node.dispatchEvent(new win.Event('input',{bubbles:true}));};
+  const ui=()=>JSON.parse(JSON.stringify(win.history.state?.[historyKey]||null)),ids=()=>[...doc.querySelectorAll('.destination-hotel')].map(node=>Number(node.dataset.id));
+  const selected=()=>[...doc.querySelectorAll('#destination-selection [data-action="destination-remove"]')].map(node=>Number(node.dataset.id));
+  const reads=()=>t.calls.filter(call=>call.url.endsWith('/data/hotel-search-v1.php')).length;
+  const passive=()=>{assert.equal(win.location.href,originalURL,'draft/Back/reload must not mutate the applied search URL');assert.equal(t.calls.filter(call=>['search_start','search_continue','quote','quote_start','quote_calculate','quote_select_flights','search','tour','flights','expand','offer','additional_prices'].includes(call.action)||/api-(?:anex|andromeda)|lead|booking/.test(call.url)).length,0,'passive picker performs no supplier, price or lead operation');assert.deepEqual(errors,[],'actual app has no JSDOM errors');};
+  await until(()=>!get('.search-submit').disabled);
+  if(hotel)await until(()=>get('#destination-detail').textContent===t.state.hotelCatalogue.find(h=>h.id===2001).name);
+  if(route){win.dispatchEvent(new win.Event('pageshow'));await until(()=>get('#modal').open);}
+  const dispose=async()=>{await pause();passive();local.window.close();};
+  return{t,win,doc,get,tap,input,ui,ids,selected,reads,started,completed,until,passive,dispose};
+ }
+ const actionFocus=(c,action,index=null)=>{assert.equal(c.doc.activeElement.dataset.action,action,'retained usable action focus');if(index!==null)assert.equal(c.doc.activeElement.dataset.index,String(index),'focus retains the exact child index');assert(c.doc.activeElement.isConnected);assert(!c.doc.activeElement.matches(':disabled'));};
+ const returnNested=(c,action)=>{if(action==='cancel')c.get('#modal').dispatchEvent(new c.win.Event('cancel',{cancelable:true}));else c.tap(action==='back'?'#modal-back':'[data-action="'+action+'"]');};
+ for(const width of [390,1280]){
+  const family=await create(width);let captured;
+  try{
+   family.tap('#search-form [data-action="guests"]');family.tap('[data-action="child-age"][data-index="1"]');family.tap('[data-action="age-pick"][data-value="13"]');await pause();
+   captured=family.ui();assert.deepEqual(captured,{type:'child-age',guest:{adults:3,ages:[0,12]},choice:{index:1,value:13}},'retain a route captured from actual second-child UI');
+   family.tap('[data-action="apply-age"]');assert.equal(family.get('#modal-title').textContent,'Туристы');actionFocus(family,'child-age',1);assert.match(family.get('[data-action="child-age"][data-index="1"]').textContent,/13 лет/);
+   family.tap('[data-action="children-plus"]');actionFocus(family,'children-minus');assert(family.get('[data-action="children-plus"]').disabled);assert(family.get('[data-action="apply-guests"]').disabled,'missing third age still blocks Apply');
+   family.tap('[data-action="child-age"][data-index="2"]');family.tap('[data-action="age-pick"][data-value="17"]');family.tap('[data-action="apply-age"]');actionFocus(family,'child-age',2);assert(!family.get('[data-action="apply-guests"]').disabled);
+   for(const action of ['back','cancel']){family.tap('[data-action="child-age"][data-index="2"]');family.tap('[data-action="age-pick"][data-value="16"]');returnNested(family,action);actionFocus(family,'child-age',2);assert.match(family.get('[data-action="child-age"][data-index="2"]').textContent,/17 лет/,'nested cancel does not commit changed age');}
+   family.tap('[data-action="adults-minus"]');family.tap('[data-action="adults-minus"]');assert(family.get('[data-action="adults-minus"]').disabled);actionFocus(family,'adults-plus');
+   for(let i=0;i<5;i++)family.tap('[data-action="adults-plus"]');assert(family.get('[data-action="adults-plus"]').disabled);actionFocus(family,'adults-minus');
+   for(let i=0;i<3;i++)family.tap('[data-action="children-minus"]');assert(family.get('[data-action="children-minus"]').disabled);actionFocus(family,'children-plus');
+   family.tap('[data-action="close-modal"]');await family.until(()=>!family.get('#modal').open&&!family.ui());
+   assert.equal(family.get('#guests-label').textContent,'3 взр. · 2 реб.');assert.equal(family.get('#guests-detail').textContent,'До 1 года и 12 лет');family.passive();records.family++;
+  }finally{await family.dispose();}
+  for(const action of ['back','cancel','apply-age']){
+   const restored=await create(width,{route:captured});
+   try{
+    await restored.until(()=>restored.get('#modal-title').textContent==='Возраст ребёнка 2');assert.equal(restored.get('#modal-back').hidden,false,'passive reload reconstructs the existing guests parent');assert.match(restored.get('#age-summary').textContent,/13 лет/);
+    returnNested(restored,action);assert.equal(restored.get('#modal-title').textContent,'Туристы');actionFocus(restored,'child-age',1);
+    assert.match(restored.get('[data-action="child-age"][data-index="0"]').textContent,/До 1 года/);assert.match(restored.get('[data-action="child-age"][data-index="1"]').textContent,action==='apply-age'?/13 лет/:/12 лет/);
+    assert.equal(restored.get('#guests-detail').textContent,'До 1 года и 12 лет','nested age confirmation only changes the parent draft');
+    restored.tap(action==='apply-age'?'[data-action="apply-guests"]':'[data-action="close-modal"]');await restored.until(()=>!restored.get('#modal').open&&!restored.ui());
+    assert.equal(restored.get('#guests-detail').textContent,action==='apply-age'?'До 1 года и 13 лет':'До 1 года и 12 лет');restored.passive();records.family++;
+   }finally{await restored.dispose();}
+  }
+  for(const index of [-1,99,'1']){
+   const invalid=await create(width,{route:{...captured,choice:{...captured.choice,index}}});
+   try{await invalid.until(()=>invalid.get('#modal-title').textContent==='Туристы');assert.equal(invalid.get('#modal-back').hidden,true);assert(invalid.get('[data-action="apply-guests"]'));assert.equal(invalid.get('[data-action="apply-age"]'),null,'invalid index is not a stranded child route');assert.match(invalid.get('[data-action="child-age"][data-index="1"]').textContent,/12 лет/);invalid.passive();records.family++;}finally{await invalid.dispose();}
+  }
+  // A canonical request may finish in the nested confirmation. It must update
+  // retained lookup state without painting or stealing the confirmation focus.
+  for(const beforeReturn of [true,false])for(const fail of [false,true])for(const action of beforeReturn?['keep-destination','back','cancel','confirm-destination']:['keep-destination','confirm-destination']){
+   const c=await create(width,{hotel:true});let release;
+   try{
+    c.tap('#search-form [data-action="destination"]');const baseline=c.reads();c.t.state.hotelLookupGates['4']=new Promise(resolve=>release=resolve);c.t.state.hotelLookupError=fail;
+    c.input(alias);await c.until(()=>c.reads()===baseline+1);assert.equal(c.get('#destination-query').getAttribute('aria-busy'),'true');
+    c.tap('[data-action="destination-countries"]');c.tap('[data-action="destination-country"][data-value="4"]');await pause();assert.equal(c.ui().type,'destination-replace');
+    const confirmation=c.get('#modal-body').innerHTML,footer=c.get('#modal-footer').innerHTML;const control=c.get('[data-action="keep-destination"]');control.focus();
+    if(beforeReturn){release();await c.until(()=>c.completed.length===1);await pause();assert.equal(c.get('#modal-body').innerHTML,confirmation,'terminal lookup does not repaint nested confirmation');assert.equal(c.get('#modal-footer').innerHTML,footer);assert.strictEqual(c.doc.activeElement,control,'terminal lookup cannot steal nested confirmation focus');}
+    returnNested(c,action);assert.equal(c.get('#destination-query').value,alias);if(c.get('[data-action="destination-countries"]').getAttribute('aria-expanded')==='true')c.tap('[data-action="destination-countries"]');
+    if(!beforeReturn)release();await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false');
+    assert.equal(c.started.length,1);assert.equal(c.started[0].query,alias);assert.equal(c.started[0].country,'4');assert.equal(c.reads(),baseline+1,'return/repaint does not automatically replay catalogue lookup');assert.deepEqual(c.selected(),action==='confirm-destination'?[]:[2001],'only explicit confirm clears the exact parent selection');
+    if(fail){assert(c.get('[data-action="retry-destination"]'));assert.deepEqual(c.ids(),[]);assert(c.completed[0].error);c.t.state.hotelLookupError=false;delete c.t.state.hotelLookupGates['4'];c.tap('[data-action="retry-destination"]');await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false'&&c.ids().length===2);assert.equal(c.reads(),baseline+2,'one existing explicit Retry performs one catalogue read');}
+    assert.deepEqual(c.ids(),[2004,2005],'actual canonical alias rows retain exact IDs independent of names');assert.equal(c.get('[data-action="retry-destination"]'),null);
+    if(beforeReturn&&!fail&&action==='keep-destination'){
+     c.tap('[data-action="destination-remove"][data-id="2001"]');c.tap('[data-action="destination-hotel"][data-id="2004"]');c.tap('[data-action="destination-hotel"][data-id="2005"]');assert.deepEqual(c.selected(),[2004,2005]);assert.match(c.get('.destination-apply-context').textContent,/Только выбранные отели/);
+     c.input('Rix');await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false');assert.deepEqual(c.selected(),[2004,2005],'typing never mutates OR selection');c.tap('[data-action="apply-destination"]');await c.until(()=>!c.get('#modal').open&&!c.ui());assert.equal(c.get('#destination-detail').textContent,c.t.state.hotelCatalogue.filter(h=>[2004,2005].includes(h.id)).map(h=>h.name).join(' · '));
+     c.tap('#search-form [data-action="destination"]');assert.deepEqual(c.selected(),[2004,2005],'Apply retains exact IDs in the form draft');c.tap('[data-action="destination-remove"][data-id="2004"]');c.input(alias);await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false');c.tap('[data-action="close-modal"]');await c.until(()=>!c.get('#modal').open&&!c.ui());
+     c.tap('#search-form [data-action="destination"]');assert.deepEqual(c.selected(),[2004,2005],'Cancel restores applied exact IDs');assert.equal(c.get('#destination-query').value,'','Cancel drops only the abandoned query');
+    }
+    c.passive();records.destination++;
+   }finally{release?.();await c.dispose();}
+  }
+  for(const scenario of ['changed-country','changed-query','same-query-new-request','closed']){
+   const c=await create(width,{hotel:true});let release;
+   try{
+    c.tap('#search-form [data-action="destination"]');const baseline=c.reads();c.t.state.hotelLookupGates['4']=new Promise(resolve=>release=resolve);c.input(scenario==='changed-country'?'Rix':alias);await c.until(()=>c.reads()===baseline+1);
+    c.tap('[data-action="destination-countries"]');c.tap('[data-action="destination-country"][data-value="'+(scenario==='changed-country'?'100':'4')+'"]');await pause();assert.equal(c.ui().type,'destination-replace');
+    if(scenario==='closed'){
+     // The existing dialog backdrop handler closes the entire owner; rectangles
+     // are not asserted in JSDOM, only actual lifecycle and aborted identity.
+     c.get('#modal').dispatchEvent(new c.win.MouseEvent('click',{bubbles:true,clientX:1,clientY:1}));await c.until(()=>!c.get('#modal').open&&!c.ui());assert(c.started[0].signal.aborted);release();await c.until(()=>c.completed.length===1);c.tap('#search-form [data-action="destination"]');assert.equal(c.get('#destination-query').value,'');assert.equal(c.get('#destination-query').getAttribute('aria-busy'),'false');assert.deepEqual(c.ids(),[]);assert.deepEqual(c.selected(),[2001]);assert.equal(c.reads(),baseline+1,'late closed request does not re-open or auto-read');
+    }else{
+     returnNested(c,scenario==='changed-country'?'confirm-destination':'keep-destination');delete c.t.state.hotelLookupGates['4'];
+     if(scenario!=='changed-country'){if(c.get('[data-action="destination-countries"]').getAttribute('aria-expanded')==='true')c.tap('[data-action="destination-countries"]');c.input(scenario==='changed-query'?'Rix':alias);}
+     await c.until(()=>c.reads()===baseline+2&&c.get('#destination-query').getAttribute('aria-busy')==='false');
+     const expected=scenario==='changed-country'?[3001,3002,3003]:scenario==='changed-query'?[2001,2002,2003,2004,2005,2006,2007,2008]:[2004,2005];assert.deepEqual(c.ids(),expected);assert(c.started[0].signal.aborted,'old request identity is cancelled');assert.equal(c.started[1].country,scenario==='changed-country'?'100':'4');
+     c.get('#destination-query').focus();const focused=c.doc.activeElement,rendered=c.get('#destination-results').innerHTML;
+     if(scenario==='same-query-new-request')c.t.state.hotelLookupError=true; // distinct late terminal outcome for the identical country/query tuple
+     release();await c.until(()=>c.completed.length===2);await pause();if(scenario==='same-query-new-request')assert(c.completed.at(-1).error,'the older identical tuple actually completed with an error');assert.deepEqual(c.ids(),expected,'late old response cannot replace current canonical rows');assert.equal(c.get('#destination-results').innerHTML,rendered);assert.strictEqual(c.doc.activeElement,focused,'late response cannot move current input focus');assert.equal(c.reads(),baseline+2);assert.equal(c.get('[data-action="retry-destination"]'),null,'stale same-tuple error cannot replace the current success');
+    }
+    c.passive();records.destination++;
+   }finally{release?.();await c.dispose();}
+  }
+ }
+ console.log('PASS retained picker lifecycle: '+records.family+' family/history/index/boundary cases, '+records.destination+' nested canonical completion/error/retry/late cases at390/1280; supplier/lead0; geometry/physical not modelled');
+}
 (async()=>{
  await quoteReturnRegressions();
+ await pickerRetainedDraftRegressions();
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
  assert.equal(coldScripts.length,0,'catalogue bootstrap leaves the flight UI cold');
