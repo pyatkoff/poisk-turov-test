@@ -450,7 +450,23 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(d.activeElement,hotelEditor,'progressive results do not interrupt typing');
  assert.deepEqual([hotelEditor.selectionStart,hotelEditor.selectionEnd],[3,8]);
  assert.equal(hotelEditor.value,'Вымышленный');
+ const filterKeyboardStarts=starts(),filterKeyboardURL=w.location.href,filterKeyboardCards=[...d.querySelectorAll('.hotel-card')].map(el=>el.id),filterPanel=q('#filter-panel'),filterBudget=q('#min-price'),filterBudgetBefore=filterBudget.value;
+ filterBudget.focus();filterBudget.value='12345';filterBudget.dispatchEvent(new w.Event('input',{bubbles:true}));filterBudget.setSelectionRange(1,3);filterPanel.scrollTop=73;
+ const filterBudgetRect=filterBudget.getBoundingClientRect,filterPanelRect=filterPanel.getBoundingClientRect,filterHeader=q('.filter-top'),filterFooter=q('.mobile-filter-footer'),filterHeaderRect=filterHeader.getBoundingClientRect,filterFooterRect=filterFooter.getBoundingClientRect;
+ filterBudget.getBoundingClientRect=()=>({top:130,bottom:160});filterPanel.getBoundingClientRect=()=>({top:33,bottom:437});filterHeader.getBoundingClientRect=()=>({bottom:100});filterFooter.getBoundingClientRect=()=>({top:330});
+ for(const width of [360,390,430,768,1280]){
+  w.innerWidth=width;departureViewport.height=420;departureViewport.offsetTop=25;departureViewport.dispatchEvent(new w.Event('resize'));
+  assert.equal(filterPanel.classList.contains('viewport-keyboard'),width<=1100,'open result drawer binds only its responsive layout');
+  if(width<=1100){assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-top'),'33px');assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-bottom'),'463px');assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-height'),'404px');}else assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-height'),'');
+  assert.equal(d.activeElement,filterBudget);assert.deepEqual([filterBudget.selectionStart,filterBudget.selectionEnd],[1,3]);assert.equal(filterBudget.value,'12345');assert.equal(filterPanel.scrollTop,73,'visible budget input does not cause scroll jumps');assert.equal(starts(),filterKeyboardStarts);assert.equal(w.location.href,filterKeyboardURL);
+ }
+ w.innerWidth=390;departureViewport.height=420;departureViewport.offsetTop=35;departureViewport.dispatchEvent(new w.Event('scroll'));assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-top'),'43px');assert.equal(filterBudget.value,'12345');
+ filterBudget.getBoundingClientRect=()=>({top:350,bottom:380});departureViewport.dispatchEvent(new w.Event('resize'));assert.equal(filterPanel.scrollTop,123,'budget below the fixed footer is revealed within the same drawer');assert.equal(d.activeElement,filterBudget);assert.deepEqual([filterBudget.selectionStart,filterBudget.selectionEnd],[1,3]);
+ filterBudget.getBoundingClientRect=filterBudgetRect;filterPanel.getBoundingClientRect=filterPanelRect;filterHeader.getBoundingClientRect=filterHeaderRect;filterFooter.getBoundingClientRect=filterFooterRect;
+ departureViewport.height=900;departureViewport.offsetTop=0;departureViewport.dispatchEvent(new w.Event('resize'));assert.equal(filterPanel.classList.contains('viewport-keyboard'),false);assert.equal(filterPanel.style.getPropertyValue('--filter-viewport-bottom'),'');assert.equal(filterBudget.value,'12345');
  click('[data-action="close-filters"]');await settle();
+ assert.equal(q('#min-price').value,filterBudgetBefore,'Cancel restores applied budget');assert.deepEqual([...d.querySelectorAll('.hotel-card')].map(el=>el.id),filterKeyboardCards);assert.equal(w.location.href,filterKeyboardURL);assert.equal(starts(),filterKeyboardStarts);
+ departureViewport.height=420;departureViewport.offsetTop=25;departureViewport.dispatchEvent(new w.Event('scroll'));assert.equal(filterPanel.classList.contains('viewport-keyboard'),false,'late viewport event never reopens the closed drawer');departureViewport.height=900;departureViewport.offsetTop=0;departureViewport.dispatchEvent(new w.Event('resize'));
  assert.equal(q('#hotel-query').value,'','discarding the mobile filter draft restores applied conditions');
  let releaseFocusedSource;transport.state.samoSearchGate=new Promise(resolve=>releaseFocusedSource=resolve);
  click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
