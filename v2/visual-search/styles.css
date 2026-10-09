@@ -747,11 +747,11 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .meals-dialog .meal-result-summary{flex:1;min-width:0;display:grid;gap:4px;font-size:14px;line-height:1.4}
 .meals-dialog #meal-result-preview{font-weight:600;color:var(--ink)}
 .meals-dialog #meal-selection-status{font-size:13px;color:var(--muted)}
-.meals-dialog .picker-apply{width:auto;flex:none;min-width:130px}
+.form-picker.meals-dialog .picker-apply{width:auto;flex:none;min-width:130px}
 .meals-dialog .meal-option>span:not(.meal-hotel-count){flex:1;min-width:0}
 .meals-dialog .meal-hotel-count{flex:none;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
 .meals-dialog #meal-result-preview.meal-preview-empty{color:#9a471d}
-@media(max-width:760px){.meals-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.meals-dialog .picker-apply{width:100%;max-width:none}.meals-dialog .meal-result-summary{gap:3px}}
+@media(max-width:760px){.meals-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.form-picker.meals-dialog .picker-apply{width:100%;max-width:none}.meals-dialog .meal-result-summary{gap:3px}}
 
 /* Approved filter block: core conditions are visible; one shared draft owns the operator step. */
 .filter-section-toggle{display:none}
