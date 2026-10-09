@@ -218,7 +218,7 @@ async function boundedRepriceScenario(provider,mode,width=390){
   const n=calculation?provider==='anex'?Number(body.choice_ref?.slice('anex_quote:'.length,'anex_quote:'.length+1)):(Number(body.flight_selection?.outbound_ref?.slice('flight_'.length,'flight_'.length+1))+1)/2:0;
   if(calculation){assert(n>=1&&n<=4);used.add(n);assert(used.size<=3,'fourth uncached pair must be rejected before HTTP');if(['unknown','late-unknown'].includes(mode)&&n===2)transport.state.repricingFailure='unknown';}
   const value=await transport.json(url,options);
-  if(calculation){options.signal?.addEventListener('abort',()=>aborts++);if(mode==='coalesce'&&n===1||['unknown','late','late-unknown'].includes(mode)&&n===2)await new Promise(resolve=>release=resolve);}
+  if(calculation){options.signal?.addEventListener('abort',()=>aborts++);if(mode==='coalesce'&&n===1||['unknown','late','late-unknown','cached-pending'].includes(mode)&&n===2)await new Promise(resolve=>release=resolve);}
   if(mode==='initial-busy'&&u.pathname.endsWith('/api-andromeda-quote-preview.php')&&action==='quote_select_flights'){
    options.signal?.addEventListener('abort',()=>aborts++);await new Promise(resolve=>release=resolve);
   }
@@ -231,6 +231,17 @@ async function boundedRepriceScenario(provider,mode,width=390){
  const radio=n=>'[name="'+(provider==='anex'?'anex-package-choice':'andromeda-outbound')+'"][value="'+ref(n)+'"]';
  const count=()=>transport.calls.filter(c=>c.action===operation).length;
  const price=n=>assert.match(q('#modal-footer').textContent.replace(/\s/g,''),new RegExp(String(100000+n*1000)));
+ const comparison=known=>{
+  if(provider!=='anex')return;
+  const rows=[...d.querySelectorAll('.anex-pair-option')];
+  if(!rows.length){assert.deepEqual(known,[]);assert(!q('[data-action="'+app+'"]'),'sealed comparisons cannot grant an application');return;}
+  assert.equal(rows.length,4);
+  for(const [index,row] of rows.entries()){
+   const value=row.querySelector('.flight-option-price');
+   if(known.includes(index+1)){assert.equal(value.querySelector('strong')?.textContent.replace(/[^0-9]/g,''),String(100000+(index+1)*1000));assert.match(value.textContent,/Весь тур за всех/);}
+   else{assert.equal(value.querySelector('strong'),null,'unknown or pending pair has no numeric total');assert.match(value.textContent,/цен[ау] тура/i);}
+  }
+ };
  const reopen=async(target=provider)=>{
   click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));
   if(provider==='andromeda'&&mode==='unknown'&&!retainedList){
@@ -277,11 +288,15 @@ async function boundedRepriceScenario(provider,mode,width=390){
   }else{
    await wait(()=>q('[data-action="'+app+'"]'));price(1);click('[data-action="'+edit+'"]');assert(q(radio(1)));
    click(radio(2));assert(!q('[data-action="'+app+'"]'),'draft change immediately clears application authority');
-   if(['unknown','late','late-unknown'].includes(mode)){
+   if(['unknown','late','late-unknown','cached-pending'].includes(mode)){
     await wait(()=>release);
-    if(mode==='unknown'){
-     click(radio(1));assert(!q('[data-action="'+app+'"]'),'cached A cannot authorize application while B mutates');assert.match(q('#modal-footer').textContent,/Цена уточняется/);assert.equal(count(),2);
+    if(mode==='cached-pending'){
+     click(radio(1));assert(!q('[data-action="'+app+'"]'));comparison([]);release();await wait(()=>q('[data-action="'+app+'"]'));price(1);comparison([1,2]);assert.equal(count(),2,'settled queued cached A never issues a third calculation');
+     click('[data-action="'+app+'"]');assert(q('#prototype-lead-form'));price(1);
+    }else if(mode==='unknown'){
+     click(radio(1));assert(!q('[data-action="'+app+'"]'),'cached A cannot authorize application while B mutates');assert.match(q('#modal-footer').textContent,/Цена уточняется/);assert.equal(count(),2);comparison([]);
      release();await wait(()=>q(radio(1))?.disabled||!q(radio(1))&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert(!q('[data-action="'+app+'"]'));assert.doesNotMatch(q('#modal-footer').textContent.replace(/\s/g,''),/101000|102000/);
+     comparison([]);
      if(provider==='andromeda'){
       assert.equal(q('#modal-body').firstElementChild.id,'andromeda-quote-error','terminal reason precedes the long flight inventory');
       const reason=q('#andromeda-quote-error').textContent;assert.match(reason,/Цена и наличие пока неизвестны/);
@@ -305,13 +320,17 @@ async function boundedRepriceScenario(provider,mode,width=390){
    }else{
     await wait(()=>q('[data-action="'+app+'"]'));price(2);assert(q(radio(2)),'editing remains on the same picker screen');assert.equal(q(radio(2)).checked,true);
     click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),2,'A/B/A uses two mutable operations');
+    comparison([1,2]);
+    const beforeComparison=transport.calls.length;
+    click(radio(2));await wait(()=>q('[data-action="'+app+'"]'));price(2);comparison([1,2]);assert.equal(count(),2,'cached B2→2');
+    click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);comparison([1,2]);assert.equal(transport.calls.length,beforeComparison,'comparison and cached pair changes issue no request');
     click('[data-action="'+app+'"]');assert(q('#prototype-lead-form'));price(1);assert.match(q('#modal-body').textContent,new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
     const before=transport.calls.length;click('[data-action="close-modal"]');await settle();w.history.forward();await wait(()=>q('#modal').open&&q('#prototype-lead-form'));
     assert.equal(transport.calls.length,before,'fresh-cap application Forward reuses the current cached receipt');price(1);
-    click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back reuses selected receipt');price(1);
+    click('#modal-back');await settle();assert.equal(transport.calls.length,before,'application Back reuses selected receipt');price(1);comparison([1,2]);
     click(radio(3));await wait(()=>q('[data-action="'+app+'"]'));price(3);assert.equal(count(),3);
     click(radio(4));await wait(()=>!q('[data-action="'+app+'"]')&&q(provider==='anex'?'#anex-package-status':'#andromeda-quote-error')?.textContent.length>0);assert.equal(count(),3,'fourth pair spends no HTTP');
-    click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),3,'healthy budget exhaustion keeps cached pairs');
+    click(radio(1));await wait(()=>q('[data-action="'+app+'"]'));price(1);assert.equal(count(),3,'healthy budget exhaustion keeps cached pairs');comparison([1,2,3]);
    }
   }
   assert.equal(aborts,0,'changing or leaving the picker never aborts mutable supplier work');assert.deepEqual(errors,[]);
@@ -320,10 +339,18 @@ async function boundedRepriceScenario(provider,mode,width=390){
 (async()=>{
  await boundedRepriceScenario('anex','initial-busy');
  console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
- for(const provider of ['anex','andromeda']){
-  for(const width of [360,390,430,768,1280])await boundedRepriceScenario(provider,'cache',width);
-  for(const mode of ['coalesce','unknown','late','late-unknown'])await boundedRepriceScenario(provider,mode);
+ // Every case has its own window, transport, history and quote state. Keep
+ // ordered actions inside a case serial, but bound independent windows to two.
+ const boundedCases=['anex','andromeda'].flatMap(provider=>[
+  ...[360,390,430,768,1280].map(width=>[provider,'cache',width]),
+  ...['coalesce','unknown','late','late-unknown','cached-pending'].map(mode=>[provider,mode,390])
+ ]),completed=[];
+ for(let index=0;index<boundedCases.length;index+=2){
+  const batch=boundedCases.slice(index,index+2),results=await Promise.allSettled(batch.map(args=>boundedRepriceScenario(...args)));
+  for(let i=0;i<results.length;i++){if(results[i].status==='rejected')throw results[i].reason;completed.push(batch[i].join(':'));}
  }
+ assert.equal(completed.length,20);assert.deepEqual(completed,boundedCases.map(args=>args.join(':')));
+ console.log('VISUAL_BOUNDED_CASE_INVENTORY_OK',JSON.stringify({parallel_windows:2,cases:completed}));
  console.log('VISUAL_BOUNDED_REPRICE_JOURNEY_OK ANEX/SAMO A/B/A and cap at five widths, serialized coalescing, global UNKNOWN, late price/application; supplier HTTP 0');
  for(const mode of ['verified','failed','late-start','late-calc'])await soleSamoPriceScenario(mode);
  console.log('VISUAL_SAMO_SOLE_PAIR_JOURNEY_OK verified/failure/late inventory/late total/duplicate/application Back; supplier HTTP 0');

@@ -183,7 +183,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
   const ref=n=>provider==='anex'?'anex_quote:'+String(n).repeat(64):'flight_'+String(n*2-1).repeat(32);
   const radio=n=>'[name="'+(provider==='anex'?'anex-package-choice':'andromeda-outbound')+'"][value="'+ref(n)+'"]';
   const price=async n=>assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(String(100000+n*1000)));
-  const pairClarity=async(n,verified)=>{
+  const pairClarity=async(n,verified,known=verified?[n]:[])=>{
    if(provider!=='anex')return null;
    const rows=page.locator('.anex-pair-option');assert.equal(await rows.count(),4,'all canonical ANEX pairs remain available');
    const selected=rows.filter({has:page.locator('input:checked')}),badge=selected.locator('.flight-option-selected');assert.equal(await selected.count(),1);assert.equal(await badge.isVisible(),true);assert.equal((await badge.textContent()).trim(),'Выбрано');
@@ -191,8 +191,8 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    for(const [index,fact] of facts.entries()){
     assert.equal(fact.legs.length,2);assert(fact.legs[0].text.includes(`TEST ANEX PACKAGE ${index+1} OUT`));assert(fact.legs[1].text.includes(`TEST ANEX PACKAGE ${index+1} BACK`));if(width<=760)assert(fact.legs.every(leg=>leg.font>=14),'canonical leg facts are readable at '+width);
     assert.equal(fact.selectedBadgeVisible,fact.checked,'only the selected exact pair has a visible badge');
-    if(!fact.checked||!verified){assert.doesNotMatch(fact.price.replace(/\s/g,''),/101000|102000|103000/,'unverified pair never inherits a current verified amount');assert.match(fact.price,/цен[ау] тура/i);}
-    if(!fact.checked)assert.match(fact.price,/требует расчёта/);
+    if(known.includes(index+1)){assert.equal(fact.price.replace(/[^0-9]/g,''),String(100000+(index+1)*1000),'known exact pair retains only its own whole-party amount');assert.match(fact.price,/Весь тур за всех/);}
+    else{assert.doesNotMatch(fact.price.replace(/\s/g,''),/101000|102000|103000/,'unknown or pending pair never inherits another amount');assert.match(fact.price,/цен[ау] тура/i);if(!fact.checked)assert.match(fact.price,/требует расчёта/);}
    }
    if(verified){assert.equal(await page.locator('#modal-title').textContent(),'Цена тура подтверждена');assert.match(await selected.locator('.flight-option-price').textContent(),/Весь тур за всех/);assert((await selected.locator('.flight-option-price').textContent()).replace(/\s/g,'').includes(String(100000+n*1000)));assert.match(await page.locator('.flight-summary').textContent(),/Цена выбранного варианта подтверждена\. Можно выбрать другие рейсы\./);}
    else assert.match(await selected.locator('.flight-option-price').textContent(),/Уточняем цену тура с этими рейсами/);
@@ -249,7 +249,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'changed pending pair removes application immediately');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(await page.locator(radio(2)).isDisabled(),false);
    const pendingBoxes=await geometry(),pendingPairClarity=await pairClarity(2,false);if(provider==='anex')assert.match(await page.locator('#anex-package-status').textContent(),/полную цену тура с выбранным перелётом/);await page.screenshot({path:path.join(evidence,provider+'-reprice-pending-'+width+'.png')});
    releaseB();await page.locator('[data-action="'+app+'"]').waitFor();await price(2);assert.equal(await page.locator(radio(2)).isChecked(),true);
-   const verifiedBoxes=await geometry(),verifiedPairClarity=await pairClarity(2,true);await page.screenshot({path:path.join(evidence,provider+'-reprice-edit-verified-'+width+'.png')});
+   const verifiedBoxes=await geometry(),verifiedPairClarity=await pairClarity(2,true,[1,2]);await page.screenshot({path:path.join(evidence,provider+'-reprice-edit-verified-'+width+'.png')});
     {
     assert(pendingBoxes.focusedChoice&&verifiedBoxes.focusedChoice,'focused flight survives both receipts at '+width);
      assert.equal(pendingBoxes.focusedChoice.name,provider==='anex'?'anex-package-choice':'andromeda-outbound');assert.equal(pendingBoxes.focusedChoice.value,ref(2));
@@ -269,6 +269,13 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
      assert.equal(await page.locator(radio(1)).isChecked(),true,'keyboard return selects the exact cached A pair');
      assert.equal(await page.locator(radio(1)).evaluate(input=>document.activeElement===input),true,'keyboard return retains focus on the current pair');
     }
+   const comparisonPairClarity=await pairClarity(1,true,[1,2]),comparisonBoxes=await geometry(),beforeComparison=transport.calls.length;
+   if(provider==='anex'){
+    await page.screenshot({path:path.join(evidence,'anex-reprice-comparison-'+width+'.png')});
+    await page.locator(radio(1)).press('ArrowDown');await page.locator('[data-action="'+app+'"]').waitFor();await price(2);await pairClarity(2,true,[1,2]);assert.equal(count(),2,'cached B2→2');
+    await page.locator(radio(2)).press('ArrowUp');await page.locator('[data-action="'+app+'"]').waitFor();await price(1);await pairClarity(1,true,[1,2]);assert.equal(transport.calls.length,beforeComparison,'passive comparisons and cached selection spend no request');
+   }
+   const comparisonRequests=transport.calls.length-beforeComparison;assert.equal(comparisonRequests,0);
    await page.locator('[data-action="'+app+'"]').click();await page.locator('#prototype-lead-form').waitFor();await price(1);assert.match(await page.locator('#modal-body').textContent(),new RegExp(provider==='anex'?'TEST ANEX PACKAGE 1 OUT':'TEST SAMO 1'));
    const applicationSummary=await providerApplicationFlightSummary(page,width,provider==='anex'?[`TEST ANEX PACKAGE 1 OUT · Москва SVO → Анталья AYT · ${day} 10:00`,`TEST ANEX PACKAGE 1 BACK · Анталья AYT → Москва SVO · ${back} 14:00`]:['TEST SAMO 1','TEST SAMO 2'],evidence,provider+'-reprice');
    const fields=await page.locator('#prototype-lead-form>.form-row').first().locator('label').evaluateAll(labels=>labels.map(el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom};}));
@@ -277,10 +284,10 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    const beforeBack=transport.calls.length;await page.locator('#modal-back').click();await page.locator(radio(1)).waitFor();assert.equal(transport.calls.length,beforeBack,'application return is passive');
    await page.locator(radio(3)).check();await pendingUnknown;await page.locator(radio(1)).check();
    assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'cached A remains unavailable while C mutates');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(count(),3);
-   const cachedPendingBoxes=await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-cached-pending-'+width+'.png')});
+   const cachedPendingBoxes=await geometry();await pairClarity(1,false,[]);await page.screenshot({path:path.join(evidence,provider+'-reprice-cached-pending-'+width+'.png')});
    releaseUnknown();await page.waitForFunction(({app,error})=>!document.querySelector('[data-action="'+app+'"]')&&document.querySelector(error)?.textContent.length>0,{app,error:provider==='anex'?'#anex-package-status':'#andromeda-quote-error'});
    assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
-   if(provider==='anex'){assert.equal(await page.locator('#modal-footer .footer-total strong').textContent(),'Цена уточняется');assert.match(await page.locator('#modal-footer .footer-price-status').textContent(),/Цена требует подтверждения/);assert.doesNotMatch((await page.locator('.flight-summary').textContent()).replace(/\s/g,''),/101000|102000|103000/,'UNKNOWN cannot expose a previous pair total as current');}
+   if(provider==='anex'){assert.equal(await page.locator('#modal-footer .footer-total strong').textContent(),'Цена уточняется');assert.match(await page.locator('#modal-footer .footer-price-status').textContent(),/Цена требует подтверждения/);assert.doesNotMatch((await page.locator('.flight-summary').textContent()).replace(/\s/g,''),/101000|102000|103000/,'UNKNOWN cannot expose a previous pair total as current');for(const row of await page.locator('.flight-option-price').allTextContents())assert.doesNotMatch(row.replace(/\s/g,''),/101000|102000|103000/,'UNKNOWN also removes every retained comparison amount');}
    await geometry();await page.screenshot({path:path.join(evidence,provider+'-reprice-unknown-'+width+'.png')});
    if(provider==='andromeda'){
     const reason=await page.locator('#andromeda-quote-error').evaluate(error=>{const body=document.querySelector('#modal-body'),r=error.getBoundingClientRect(),b=body.getBoundingClientRect(),footer=document.querySelector('#modal-footer').getBoundingClientRect();return{text:error.textContent,first:body.firstElementChild===error,childElements:error.childElementCount,role:error.getAttribute('role'),visible:r.width>0&&r.height>0&&r.top>=b.top-1&&r.bottom<=Math.min(b.bottom,footer.top)+1,scroll:body.scrollTop};});
@@ -303,7 +310,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
     assert.equal(transport.calls.length,beforeHistory,'UNKNOWN Forward does not replay');assert.equal(await page.locator('[data-action="'+app+'"]').count(),0);assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(aborts,[]);
-   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,beforePendingBoxes,pendingBoxes,verifiedBoxes,cachedPendingBoxes,initialPairClarity,pendingPairClarity,verifiedPairClarity,applicationSummary,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,comparison_requests:comparisonRequests,beforePendingBoxes,pendingBoxes,verifiedBoxes,cachedPendingBoxes,comparisonBoxes,initialPairClarity,pendingPairClarity,verifiedPairClarity,comparisonPairClarity,applicationSummary,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
   }finally{releaseB?.();releaseUnknown?.();await context.close();}
  }
  console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
