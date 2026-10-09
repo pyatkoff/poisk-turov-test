@@ -276,8 +276,12 @@ async function pickerRetainedDraftRegressions(){
  console.log('PASS retained picker lifecycle: '+records.family+' family/history/index/boundary cases, '+records.destination+' nested canonical completion/error/retry/late cases at390/1280; supplier/lead0; geometry/physical not modelled');
 }
 (async()=>{
+ // Each complete matrix owns its windows, fixtures and errors. Keep the
+ // retained corpus ordered and settle both before closing their shared CSS host.
+ const completed=await Promise.allSettled([
+  pickerRetainedDraftRegressions(),
+  (async()=>{
  await quoteReturnRegressions();
- await pickerRetainedDraftRegressions();
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);
  assert.equal(coldScripts.length,0,'catalogue bootstrap leaves the flight UI cold');
@@ -403,7 +407,7 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(q('#modal-body').scrollTop,73,'browser Forward restores the meal picker position');
  click('[data-action="close-modal"]');await settle();
  click('#search-form [data-action="budget"]');q('#budget-min').value='111 000';q('#budget-min').dispatchEvent(new w.Event('input',{bubbles:true}));q('#budget-max').value='222 000';q('#budget-max').dispatchEvent(new w.Event('input',{bubbles:true}));
- w.history.back();await settle();assert(!q('#modal').open,'browser Back closes the budget picker without applying its draft');
+ w.history.back();await settle();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes the budget picker without applying its draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('#budget-min').value,'111 000','browser Forward restores the un-applied minimum budget text');
  assert.equal(q('#budget-max').value,'222 000','browser Forward restores the un-applied maximum budget text');
@@ -907,5 +911,8 @@ async function pickerRetainedDraftRegressions(){
  assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));assert.deepEqual(errors,[]);
  console.log('PASS offer-key lookup work '+JSON.stringify(offerLookupEvidence));
  console.log('PASS live bridge: truthful live/DB/application disclosure; explicit search only; departure error/retry/cancel/late-response recovery; three canonical sources → one hotel; current TV quote/flights/exact-price application dry-run; contact draft survives offer change while consent resets; SAMO verified receipt; ANEX concrete + non-final surcharge; actionable Back, retained receipts and late APD, cross-provider return without replay; no live HTTP');
+  })()
+ ]),rejected=completed.filter(result=>result.status==='rejected');
+ if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent source matrices failed');
  dom.window.close();
 })().catch(e=>{console.error(e);console.error(transport.calls.slice(-8));dom.window.close();process.exitCode=1;});

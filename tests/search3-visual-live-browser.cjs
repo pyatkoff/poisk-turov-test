@@ -1023,10 +1023,10 @@ const server=http.createServer((req,res)=>{
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
-  // Complete, independent matrices share only the immutable compiled assets and
-  // browser. Default/SAMO-mode transition tests above stay ordered. Each branch
-  // owns its contexts, fictional transports, errors and evidence names; retain
-  // every rejection and settle both before closing the shared browser.
+  // Complete, independent matrices share only immutable compiled assets. The
+  // first two use this browser; the large-flight owner retains its own browser,
+  // server and evidence directory. Default/SAMO-mode transition tests above stay
+  // ordered. Retain every rejection and settle all three before shared cleanup.
   const completed=await Promise.allSettled([
    formPickerActionJourney(browser,origin,base,evidence),
    (async()=>{
@@ -1622,10 +1622,10 @@ const server=http.createServer((req,res)=>{
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
-   })()
+   })(),
+   (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');
   if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
- await require('./search3-visual-large-flight-choices.cjs')();
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
