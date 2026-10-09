@@ -102,7 +102,9 @@ function offerLookupWork(){
 }
 const offerLookupEvidence=offerLookupWork();
 const settle=async()=>{await new Promise(resolve=>setTimeout(resolve,120));};
-const wait=async(fn)=>{for(let i=0;i<40;i++){if(fn())return;await settle();}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
+// Positive readiness polls share the same 4.8s bound, with finer observation.
+// Keep settle() unchanged for negative/passive-operation observation windows.
+const wait=async(fn)=>{for(let i=0;i<160;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Timed out: '+q('#cards').textContent+' / '+q('#modal-body').textContent);};
 const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
@@ -414,9 +416,9 @@ async function pickerRetainedDraftRegressions(){
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('#budget-min').value,'111 000','browser Forward restores the un-applied minimum budget text');
  assert.equal(q('#budget-max').value,'222 000','browser Forward restores the un-applied maximum budget text');
- click('[data-action="close-modal"]');await settle();
+ click('[data-action="close-modal"]');await settle();await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
  click('#search-form [data-action="form-filters"]');click('#modal [data-action="stars"]');click('[data-action="picker-star"][data-value="5"]');click('[data-action="apply-stars"]');q('#modal-body').scrollTop=131;
- w.history.back();await settle();assert(!q('#modal').open,'browser Back closes form filters without applying their draft');
+ w.history.back();await settle();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes form filters without applying their draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.match(q('#modal-body [data-action="stars"]').textContent,/5★/,'browser Forward restores the un-applied category draft');
  assert.equal(q('#modal-body').scrollTop,131,'browser Forward restores the form filter position');

@@ -5,6 +5,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 function owner(source){const start=source.indexOf('function offerSelectionHint('),end=source.indexOf('function openFlightPicker(',start);assert(start>=0&&end>start);return source.slice(start,end);}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const moneyFormat=new Intl.NumberFormat('ru-RU',{minimumFractionDigits:1});
 function observe(source,s){
  const calls=[],dom=new Map();const o={key:'offer<&"',provider:s.provider,hotelId:7,total:133500.5,operator:'Operator<&',room:'Room<&',ages:[0,17],day:'2026-10-14',returnDay:'2026-10-21',nights:7,
   loading:!!(s.flags&1),flightsLoading:!!(s.flags&2),quoteError:s.flags&4?'Ошибка<&':'',pricePending:!!(s.flags&8),
@@ -18,19 +19,21 @@ function observe(source,s){
   selectedTourHotel:call('selectedTourHotel',()=>s.noHotel?null:hotel),needsRefresh:call('needsRefresh',()=>s.unavailable),
   rememberProviderView:call('rememberProviderView',()=>undefined),
   showModal:call('showModal',()=>undefined),flightPairFor:call('flightPairFor',x=>x.flightChoiceId?{id:'pair'}:null),
-  money:call('money',v=>Number(v).toLocaleString('ru-RU',{minimumFractionDigits:1})+' ₽'),
+  money:call('money',v=>moneyFormat.format(Number(v))+' ₽'),
   guestsText:call('guestsText',()=> '2 взрослых · 2 ребёнка'),nightsText:call('nightsText',n=>n+' ночей'),
   photoUrl:call('photoUrl',h=>h.photos[0]),icon:call('icon',n=>'<i>'+n+'</i>'),
   window:{AnyTourPrototypeLead:{unavailableMarkup:call('unavailableMarkup',()=>'<offline-unavailable>')}}
  };
  for(const name of ['selectionStepsHTML','quotePriceChangeHTML','hotelStarsHTML','refreshOfferNotice','priceNote','chosenStayHTML','flightSummaryHTML','fuelDisclosureHTML','selectedPriceStatus','refreshOfferActionLabel'])ctx[name]=call(name);
- vm.createContext(ctx);vm.runInContext(owner(source),ctx);ctx.renderRealOffer();
+ vm.createContext(ctx);(typeof source==='string'?new vm.Script(owner(source)):source).runInContext(ctx);ctx.renderRealOffer();
  return JSON.parse(JSON.stringify({calls,dom:[...dom].map(([key,n])=>[key,{html:n.innerHTML,hidden:n.hidden}]),selectedOffer:ctx.selectedOffer}));
 }
 const scenarios=[];
 for(const provider of ['tourvisor','andromeda','anex','fixture'])for(const live of [false,true])for(const unavailable of [false,true])for(let flags=0;flags<512;flags++)scenarios.push({provider,live,unavailable,flags,noPhoto:!!(flags&16),group:!!(flags&32)});
 scenarios.push({provider:'tourvisor',live:true,flags:0,noOffer:true},{provider:'tourvisor',live:true,flags:0,noHotel:true});
-function records(source){return scenarios.map(s=>observe(source,s));}
+// Compile each source/mutation once; every scenario still receives a fresh VM
+// context and executes the complete owner with the same observed collaborators.
+function records(source){const script=new vm.Script(owner(source));return scenarios.map(s=>observe(script,s));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
 assert(source.includes(flightGuard),'terminal flight presentation guard');
