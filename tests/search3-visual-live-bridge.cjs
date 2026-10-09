@@ -921,4 +921,3 @@ async function pickerRetainedDraftRegressions(){
  if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent source matrices failed');
  dom.window.close();
 })().catch(e=>{console.error(e);console.error(transport.calls.slice(-8));dom.window.close();process.exitCode=1;});
-
