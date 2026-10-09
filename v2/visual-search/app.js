@@ -935,6 +935,8 @@ function focusReference(element,root=document){
  if(!element||element===document.body||element===document.documentElement||!root.contains(element))return null;
  let selector=element.id?'#'+CSS.escape(element.id):'';
  if(!selector&&element.dataset?.action){selector='[data-action="'+CSS.escape(element.dataset.action)+'"]';for(const key of ['id','key','value','room','index'])if(element.dataset[key]!==undefined)selector+='[data-'+key+'="'+CSS.escape(element.dataset[key])+'"]';const card=element.closest('.hotel-card');if(card)selector='#'+CSS.escape(card.id)+' '+selector;}
+ if(!selector&&element.matches('input[name="flight-pair"]'))selector='input[name="flight-pair"][value="'+CSS.escape(element.value)+'"]';
+ if(!selector)for(const attribute of ['data-flight-query','data-flight-filter','data-flight-time','data-flight-sort','data-flight-show-results','data-flight-selected','data-flight-load-more'])if(element.hasAttribute(attribute)){selector='['+attribute+(element.getAttribute(attribute)?'="'+CSS.escape(element.getAttribute(attribute))+'"':'')+']';break;}
  const scroller=root.querySelector?.('#modal-body'),top=scroller?.contains(element)?element.getBoundingClientRect().top-scroller.getBoundingClientRect().top:null;
  return {element,selector,top};
 }
@@ -991,7 +993,7 @@ function uiRoute(){
  if(type==='stars')return {type,stars:[...starsDraft]};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
  if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,phase:nightsDraft.phase===1?1:0}};
- if(type==='flights'){const o=flightDraft?.base;return {type:'offer',key:o?.key,flightChoiceId:o?.flightChoiceId};}
+ if(type==='flights'){const o=flightDraft?.base,view=flightDraft?.ui?.snapshot(),focused=focusReference(document.activeElement,$('#modal')),focus=focused?.selector?{selector:focused.selector,top:focused.top}:null,scroll=$('#modal-body').scrollTop;if(o&&view)o.flightPickerState={view,focus,scroll};return {type,key:o?.key,flightChoiceId:flightDraft?.id,view,focus,scroll};}
  if(type==='selected-tour')return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop};
  if(type==='offer')return {type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
  if(type==='all-offers')return {type,id:offerView?.id,departure:offerView?.departure,flight:offerView?.flight,room:offerView?.room,meal:offerView?.meal,sort:offerView?.sort,open:[...(offerView?.open||[])],limits:{...(offerView?.limits||{})},filtersOpen:$('.offer-filter-disclosure')?.open===true,scroll:$('#modal-body').scrollTop};
@@ -1053,6 +1055,11 @@ function reopenUIRoute(route){
  case 'selected-tour':{
   if(!route.key||selectedOffer?.key!==route.key)return false;
   openLeadPreview();if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
+ }
+ case 'flights':{
+  const o=offerFromKey(route.key),retained=selectedOffer?.key===route.key?selectedOffer:retainedProviderView(o)?.offer;
+  if(!o||!retained||retained.raw!==o.raw||retained.loading||retained.flightsLoading||needsRefresh(retained)||!retained.variants?.length)return false;
+  selectedOffer=retained;openFlightPicker(route);break;
  }
  case 'favorites':openFavorites();break;
  case 'hotel-details':{if(!hotel)return false;openHotelDetails(hotel.id,route);break;}
@@ -1138,12 +1145,14 @@ function closeModal({fromHistory=false}={}){
  clearTimeout(providerQuoteExpiryTimer);leaveUIHistory(fromHistory);modalType='';formFiltersDraft=null;destinationPending=null;modalHistory.length=0;m.close();syncDestinationViewport();document.body.style.overflow=$('#filter-panel').classList.contains('open')?'hidden':'';restorePageReturn();
 }
 function modalBack(){
+ if(modalType==='flights')uiRoute();
  let previous=modalHistory.pop();
  while(previous&&['andromeda-flights','anex-current'].includes(previous.type)&&retainedProviderView(previous.offer)?.type!==previous.type)previous=modalHistory.pop();
  if(!previous)return;
  restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
  restoreModalStepSnapshot(previous);
  if(previous.type==='offer')renderRealOffer();
+ if(previous.type==='flights')openFlightPicker(previous.route);
  if(['andromeda-flights','andromeda-verified','anex-current','anex-additional','anex-quote','provider-application','anex-application'].includes(previous.type)){
   restoreProviderView(selectedOffer);
   if(previous.type==='provider-application')openAndromedaApplicationPreview();
@@ -1671,11 +1680,13 @@ function renderRealOffer(){
  m.dataset.offerKey=o.key;
  if(returning){restoreFocus(resumeAction?null:returning.focus,returning.footer||resumeAction?$('#modal-footer .primary:not(:disabled)')||$('#modal-title'):$('#modal-title'),m);$('#modal-body').scrollTop=returning.scroll;}
 }
-function openFlightPicker(){
- if(!selectedOffer?.variants?.length)return;flightDraft={base:selectedOffer,id:selectedOffer.flightChoiceId};
+function openFlightPicker(restore=null){
+ if(!selectedOffer?.variants?.length)return;const saved=restore||selectedOffer.flightPickerState,id=restore?.flightChoiceId;
+ flightDraft={base:selectedOffer,id:id!==null&&id!==undefined&&selectedOffer.variants[Number(id)]?String(id):selectedOffer.flightChoiceId,restore:saved};
  showModal('flights','Выберите перелёт','ТУДА И ОБРАТНО','<div class="empty" role="status">Загружаем варианты перелёта…</div>',true);
- $('#modal').classList.add('flight-picker-dialog');renderFlightPicker();
+ $('#modal').classList.add('flight-picker-dialog');
  $('#modal-title').tabIndex=-1;$('#modal-title').focus({preventScroll:true});$('#modal-body').scrollTop=0;
+ renderFlightPicker();
 }
 let flightPickerLoad=null,flightPickerRequest=0;
 function loadFlightPicker(){
@@ -1694,9 +1705,10 @@ function renderFlightPicker(){
  const current=()=>request===flightPickerRequest&&flightDraft===view&&selectedOffer===view.base&&modalType==='flights'&&$('#modal').open;
  const paint=()=>{if(!current())return;const o=view.base;
   $('#modal-body').innerHTML=`${selectionStepsHTML(1)}<div class="flight-picker-context"><strong>${esc(hotels.find(h=>h.id===o.hotelId).name)}</strong>${chosenStayHTML(o)}</div><p class="flight-picker-note">${o.provider==='fixture'?'Демо · ':''}Время местное · цена всего тура за всех туристов</p>${window.AnyTourFlightPickerV18.render(o,flightDraft.id,{esc,money,text:data.text,price:data.variantPrice,legHTML,fuelText})}`;
- window.AnyTourFlightPickerV18.bind($('#modal-body'),money);
+ view.ui=window.AnyTourFlightPickerV18.bind($('#modal-body'),money,view.restore?.view,()=>{if(current())rememberUIRoute();});
  $('#modal').classList.add('flight-picker-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="flight-selection-total" aria-live="polite"><span>Весь тур за всех</span><strong id="flight-total"></strong></div><button class="primary" data-action="apply-flight">К заявке с этими рейсами</button><div class="flight-selection-caption" aria-live="polite"><span id="flight-selected-summary"></span><span id="flight-price-change"></span></div>';updateFlightPreview();
 
+  if(view.restore){restoreFocus(view.restore.focus,$('#modal-title'),$('#modal'));if(Number.isFinite(view.restore.scroll)&&view.restore.scroll>=0)$('#modal-body').scrollTop=view.restore.scroll;}
   rememberUIRoute();
  };
  if(window.AnyTourFlightPickerUIV1){paint();return;}
@@ -1705,7 +1717,7 @@ function renderFlightPicker(){
 }
 function updateFlightPreview(){if(!flightDraft||modalType!=='flights')return;const o=withFlightPair(flightDraft.base,flightDraft.id),before=flightDraft.base.quoteListingTotal||flightDraft.base.total,delta=o.total-before;$('#flight-price-change').hidden=!o.pricePending&&delta===0;$('#flight-selected-summary').textContent=window.AnyTourFlightPickerV18.selectionSummary(flightDraft.base,flightDraft.id);$('#flight-total').textContent=o.pricePending?'Цена уточняется':money(o.total);$('#flight-price-change').textContent=o.pricePending?'Цена всего тура с этими рейсами пока не подтверждена. Выберите другой вариант.':(delta===0?'Цена тура не изменится':`${delta>0?'Дороже':'Дешевле'} на ${money(Math.abs(delta))} · было ${money(before)}`);$('[data-action="apply-flight"]').disabled=o.pricePending;}
 
-function applyFlightPair(){if(!flightDraft)return;const applied=withFlightPair(flightDraft.base,flightDraft.id);if(applied.pricePending){updateFlightPreview();return;}flightDraft=null;modalBack();selectedOffer=applied;renderRealOffer();openLeadPreview(applied);}
+function applyFlightPair(){if(!flightDraft)return;const applied=withFlightPair(flightDraft.base,flightDraft.id);if(applied.pricePending){updateFlightPreview();return;}rememberUIRoute();applied.flightPickerState=flightDraft.base.flightPickerState;flightDraft=null;modalBack();selectedOffer=applied;renderRealOffer();openLeadPreview(applied);}
 function flightConnectionText(segments){return (segments||[]).slice(0,-1).map((segment,i)=>[...new Set([data.text(segment.arrival?.port),data.text(segments[i+1]?.departure?.port)].filter(Boolean))].join(' / ')||'Аэропорт уточняется').join('; ');}
 function savedFlightTextPlain(o){
  if(o?.savedFlightText)return String(o.savedFlightText);const v=flightPairFor(o);if(!v)return 'Рейс пока не выбран';

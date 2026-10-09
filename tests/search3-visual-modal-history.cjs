@@ -119,3 +119,14 @@ const roomSnapshotMutation=source.replace("!['all-offers','hotel-details'].inclu
 assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot guard is exercised');
 assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
 console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards retained digest ${digest} plus ${viewportSyncObservations} exact viewport sync observations; supplier and lead HTTP 0`);
+
+// Execute the actual passive route owner: browser history is a locator, never
+// enough to rebuild absent/expired/foreign inventory or authorize a request.
+const routeStart=source.indexOf('function reopenUIRoute(route){'),routeEnd=source.indexOf('function restoreHistoryView(route){',routeStart);assert(routeStart>=0&&routeEnd>routeStart);
+for(const mode of ['current','retained','missing','foreign','loading','flights-loading','expired','empty','other']){
+ const raw={},offer={key:'exact-tv',raw},saved={...offer,variants:[{}]},route={type:'flights',key:'exact-tv',flightChoiceId:'0',view:{query:'AAA'},scroll:83},opened=[];
+ if(mode==='foreign')saved.raw={};if(mode==='loading')saved.loading=true;if(mode==='flights-loading')saved.flightsLoading=true;if(mode==='empty')saved.variants=[];
+ const ctx={hotels:[],selectedOffer:mode==='retained'?null:mode==='other'?{key:'other',raw:{},variants:[{}]}:saved,offerFromKey:key=>mode==='missing'?null:key===offer.key?offer:null,retainedProviderView:()=>mode==='retained'?{offer:saved}:null,needsRefresh:o=>{assert.strictEqual(o,saved);return mode==='expired';},openFlightPicker:value=>opened.push(value)};
+ vm.createContext(ctx);vm.runInContext(source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
+}
+console.log('PASS passive flight history: exact retained offer/raw inventory only; missing/foreign/loading/expired/empty/other rejected; supplier and lead HTTP0');
