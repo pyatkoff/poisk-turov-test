@@ -339,10 +339,18 @@ async function boundedRepriceScenario(provider,mode,width=390){
 (async()=>{
  await boundedRepriceScenario('anex','initial-busy');
  console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
- for(const provider of ['anex','andromeda']){
-  for(const width of [360,390,430,768,1280])await boundedRepriceScenario(provider,'cache',width);
-  for(const mode of ['coalesce','unknown','late','late-unknown','cached-pending'])await boundedRepriceScenario(provider,mode);
+ // Every case has its own window, transport, history and quote state. Keep
+ // ordered actions inside a case serial, but bound independent windows to two.
+ const boundedCases=['anex','andromeda'].flatMap(provider=>[
+  ...[360,390,430,768,1280].map(width=>[provider,'cache',width]),
+  ...['coalesce','unknown','late','late-unknown','cached-pending'].map(mode=>[provider,mode,390])
+ ]),completed=[];
+ for(let index=0;index<boundedCases.length;index+=2){
+  const batch=boundedCases.slice(index,index+2),results=await Promise.allSettled(batch.map(args=>boundedRepriceScenario(...args)));
+  for(let i=0;i<results.length;i++){if(results[i].status==='rejected')throw results[i].reason;completed.push(batch[i].join(':'));}
  }
+ assert.equal(completed.length,20);assert.deepEqual(completed,boundedCases.map(args=>args.join(':')));
+ console.log('VISUAL_BOUNDED_CASE_INVENTORY_OK',JSON.stringify({parallel_windows:2,cases:completed}));
  console.log('VISUAL_BOUNDED_REPRICE_JOURNEY_OK ANEX/SAMO A/B/A and cap at five widths, serialized coalescing, global UNKNOWN, late price/application; supplier HTTP 0');
  for(const mode of ['verified','failed','late-start','late-calc'])await soleSamoPriceScenario(mode);
  console.log('VISUAL_SAMO_SOLE_PAIR_JOURNEY_OK verified/failure/late inventory/late total/duplicate/application Back; supplier HTTP 0');
