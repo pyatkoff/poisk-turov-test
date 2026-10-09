@@ -156,9 +156,11 @@ module.exports=async function({browser,origin,base,evidence}){
  const flightSession=async width=>{
   const errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   try{
-   await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/'))await route.continue();else{forbidden.push(u.pathname);await route.abort();}});
+   await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){if(u.pathname===base+'visual-search/index.html'){const response=await route.fetch();await route.fulfill({response,contentType:'text/html; charset=utf-8'});}else await route.continue();}else{forbidden.push(u.pathname);await route.abort();}});
    // This existing CI server renders PHP without forwarding query parameters.
    // Use the same compiled offline entry, with its explicit fictional scenario.
+   // Its bytes stay exact; the server omits HTML MIME for static files, so
+   // normalize that one document header instead of altering the shared server.
    await page.goto(origin+base+'visual-search/index.html?scenario=flights&searched=1');await page.locator('.hotel-card [data-action="offer"]').first().click();await page.locator('[data-action="start-tour-flights"]').click();await page.locator('#flight-total').waitFor();
    const pair=()=>page.locator('[name="flight-pair"]:checked').inputValue(),read=()=>page.evaluate(key=>structuredClone(history.state[key]),historyKey);
    assert.equal(await pair(),'0');await page.locator('.flight-filter-panel>summary').click();await page.locator('[data-flight-query]').fill('no-such-flight');assert.equal(await pair(),'0');await page.locator('.flight-filter-state button').click();assert.equal(await page.locator('.flight-filter-panel>summary').evaluate(el=>el===document.activeElement),true,'Reset focuses a remaining visible target');
