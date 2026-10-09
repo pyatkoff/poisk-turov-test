@@ -140,3 +140,5 @@ async function verify(){
  const widths=(process.env.ANYTOUR_QA_WIDTHS||'360,390,430,768,1280').split(',').map(Number),matrix=[];for(const width of widths)matrix.push(await run(width));fs.mkdirSync(evidence,{recursive:true});fs.writeFileSync(path.join(evidence,'behavior.json'),JSON.stringify({kind:'actual NEXT scripts in jsdom; no layout engine',assetRoot:root,matrix,monthRanges},null,2));console.log('PASS: complete form interactions at '+widths.join('/')+'; saved data only; no provider requests or real leads.');
 }
 verify().catch(error=>{console.error(error.stack);process.exit(1);});
+// Keep the gallery regression in the current owner gate, without a new workflow.
+require('./search3-visual-gallery.cjs');
