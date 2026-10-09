@@ -1,4 +1,4 @@
-// Site100 accepted calendar markup/copy and multi-hotel scope. All 203 supplier-view route/restore records are byte-identical to b74ac0; their independent historical digest is checked below.
+// Approved compact calendar keeps one sticky price-units caption. All 203 supplier-view route/restore records are byte-identical to b74ac0; their independent historical digest is checked below.
 // Actual passive route restoration and calendar presentation, with only their
 // DOM/render/loading boundaries intercepted. No supplier or lead transport runs.
 // Pinned baseline: app blob6a27aa34, before context extraction.
@@ -78,7 +78,7 @@ add('catalog loading',{kind:'price',catalogLoading:true,prices:[120]});add('cata
 function records(source){return scenarios.map(s=>({name:s.name,result:observe(source,s)}));}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 if(i>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[i+1],'utf8')),'before/after passive route/calendar observations');
-if(!process.argv.includes('--capture'))assert.equal(digest,'66bca607101de11bc6028d1b927457e5f94f718510d919967640c4593e3232a3','approved calendar and retained provider context observations');
+if(!process.argv.includes('--capture'))assert.equal(digest,'161e34c0b2119a96a31279c66959d93399a3bcbd4dcc329afef061c58e50a514','approved calendar and retained provider context observations');
 assert.equal(crypto.createHash('sha256').update(JSON.stringify(actual.slice(0,203))).digest('hex'),'351941150be5e80e8a32a115c77132f8abb8563acf191ed81e99d66d4ce316cb','unchanged b74ac0 provider-view history records');
 const changed=mutated=>JSON.stringify(records(mutated))!==JSON.stringify(actual);
 assert(changed(source.replace('view.offer.raw===o.raw','true')),'retained raw identity mutation detected');
