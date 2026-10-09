@@ -58,6 +58,7 @@ d.head.append=(...nodes)=>{
  }
 };
 Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});
+w.innerHeight=900;const departureViewport=new w.EventTarget();departureViewport.height=900;departureViewport.offsetTop=0;w.visualViewport=departureViewport;
 w.innerWidth=390;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
 w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
 w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
@@ -297,6 +298,15 @@ async function pickerRetainedDraftRegressions(){
  // Form pickers preserve canonical values and spend no supplier searches.
  click('[data-action="departure"]');
  assert.deepEqual([...d.querySelectorAll('[data-action="choose-departure"]')].map(x=>x.dataset.value),['Москва','Казань','Екатеринбург']);
+ q('#departure-query').focus();departureViewport.height=420;departureViewport.offsetTop=64;departureViewport.dispatchEvent(new w.Event('resize'));
+ assert.equal(q('#modal').classList.contains('viewport-keyboard'),true,'departure search uses the visible mobile viewport');
+ assert.equal(q('#modal').style.getPropertyValue('--modal-viewport-top'),'72px');assert.equal(q('#modal').style.getPropertyValue('--modal-viewport-height'),'404px');
+ assert.equal(d.activeElement,q('#departure-query'));q('#modal-body').scrollTop=73;
+ departureViewport.offsetTop=24;departureViewport.dispatchEvent(new w.Event('scroll'));assert.equal(q('#modal-body').scrollTop,73);assert.equal(d.activeElement,q('#departure-query'));assert.equal(q('#departure-summary').textContent,'Москва');assert.equal(starts(),0);
+ departureViewport.height=900;departureViewport.offsetTop=0;departureViewport.dispatchEvent(new w.Event('resize'));assert.equal(q('#modal').classList.contains('viewport-keyboard'),false);assert.equal(q('#modal').style.getPropertyValue('--modal-viewport-height'),'');
+ w.innerWidth=768;departureViewport.height=420;departureViewport.dispatchEvent(new w.Event('resize'));assert.equal(q('#modal').classList.contains('viewport-keyboard'),false,'tablet does not inherit the mobile keyboard layout');w.innerWidth=390;departureViewport.height=900;departureViewport.dispatchEvent(new w.Event('resize'));
+
+
  q('#departure-query').value='кат';q('#departure-query').dispatchEvent(new w.Event('input',{bubbles:true}));
  assert.equal(d.querySelectorAll('[data-action="choose-departure"]').length,1);assert.equal(q('[data-action="choose-departure"]').dataset.value,'Екатеринбург');
  click('[data-action="close-modal"]');await settle();assert.equal(q('#origin').value,'Москва');
