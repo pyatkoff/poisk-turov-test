@@ -34,11 +34,30 @@ scenarios.push({provider:'tourvisor',live:true,flags:0,noOffer:true},{provider:'
 // Compile each source/mutation once; every scenario still receives a fresh VM
 // context and executes the complete owner with the same observed collaborators.
 function records(source){const script=new vm.Script(owner(source));return scenarios.map(s=>observe(script,s));}
+// Remove only the approved hidden photo-error status and its one icon call
+// before checking the original complete-frame pin. Keep every policy result,
+// selected-offer value, footer and other collaborator invocation observable.
+const photoFailureHTML='<div class="tour-photo-missing" role="status" aria-label="Фото не загрузилось" hidden><i>image</i><span>Сбой загрузки</span></div>';
+function approvedFrame(rows,allowAbsent=false){return rows.map((record,index)=>{
+ const s=scenarios[index],frame=record.calls.find(c=>c[0]==='showModal');
+ if(s.noOffer||s.noHotel){assert(!frame);return record;}
+ assert(frame,'complete tour frame remains observable');
+ const count=frame[4].split(photoFailureHTML).length-1;
+ if(s.noPhoto){assert.equal(count,0,'genuine missing photo keeps its original presentation');return record;}
+ if(allowAbsent&&count===0)return record;
+ assert.equal(count,1,'real photo has exactly the approved hidden recovery status');
+ const expected={...record,calls:record.calls.map(c=>[...c])},photo=expected.calls.findIndex(c=>c[0]==='photoUrl');
+ assert(photo>=0,'canonical photo lookup is retained');
+ assert.deepEqual(expected.calls[photo+1],['icon','image'],'only the recovery status icon is added');
+ expected.calls.splice(photo+1,1);
+ expected.calls.find(c=>c[0]==='showModal')[4]=frame[4].replace(photoFailureHTML,'');
+ return expected;
+});}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
 const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
 assert(source.includes(flightGuard),'terminal flight presentation guard');
 const baseline=records(source.replace(flightGuard,'${flightSummaryHTML(o)}'));
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(baseline)).digest('hex'),'b622b57c5d36aa7ea230bb5828db319698b24f151fac260e318a19ee8b0b26ad','approved journey frame and terminal flight-summary policy');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(approvedFrame(baseline))).digest('hex'),'b622b57c5d36aa7ea230bb5828db319698b24f151fac260e318a19ee8b0b26ad','approved journey frame and terminal flight-summary policy');
 function expectedDelta(before){return before.map((record,index)=>{
  const s=scenarios[index];if(!s.unavailable&&!(s.flags&64)&&!(s.flags&128))return record;
  const expected=JSON.parse(JSON.stringify(record));expected.calls=expected.calls.filter(c=>c[0]!=='flightSummaryHTML');
@@ -46,7 +65,7 @@ function expectedDelta(before){return before.map((record,index)=>{
  return expected;
 });}
 assert.deepEqual(actual,expectedDelta(baseline),'only terminal/unavailable flight block and its renderer invocation may disappear');
-if(i>=0)assert.deepEqual(actual,expectedDelta(records(fs.readFileSync(process.argv[i+1],'utf8'))),'original/candidate exact intentional presentation delta');
+if(i>=0)assert.deepEqual(approvedFrame(actual),expectedDelta(approvedFrame(records(fs.readFileSync(process.argv[i+1],'utf8')),true)),'original/candidate exact intentional presentation delta');
 const verified=observe(source,{provider:'tourvisor',live:true,unavailable:false,flags:16});
 assert(verified.calls.some(c=>c[0]==='rememberProviderView'));
 assert(verified.calls.find(c=>c[0]==='showModal')[4].includes('tour-layout'));

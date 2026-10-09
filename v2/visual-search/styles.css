@@ -1861,7 +1861,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-dialog .selection-steps li,.application-dialog .selection-steps li{font-size:.875rem;line-height:1.4;padding-bottom:8px;align-items:flex-start;overflow-wrap:anywhere}
 .tour-hero{display:flex;align-items:center;gap:16px;margin-bottom:20px;min-width:0}
 .tour-hero>img,.tour-photo-missing{width:112px;height:88px;object-fit:cover;border-radius:10px;flex:none}
-.tour-photo-missing{display:grid;place-content:center;gap:4px;background:#f3f6fa;color:var(--muted);font-size:.875rem;text-align:center}
+.tour-hero>.tour-photo-missing{display:grid;height:auto;min-height:88px;overflow-wrap:anywhere;place-content:center;gap:4px;background:#f3f6fa;color:var(--muted);font-size:.875rem;text-align:center}
 .tour-hero>div:last-child{min-width:0}
 .tour-hero h3{font-size:1.25rem;line-height:1.35;margin:4px 0;overflow-wrap:anywhere}
 .tour-hero p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}
@@ -1938,7 +1938,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .tour-dialog .selection-steps li,.application-dialog .selection-steps li{font-size:.875rem;line-height:1.4;gap:5px}
  .tour-dialog .selection-steps li>span,.application-dialog .selection-steps li>span{width:20px;height:20px;font-size:.75rem}
  .tour-hero{gap:12px;margin-bottom:16px}
- .tour-hero>img,.tour-photo-missing{width:80px;height:80px}
+ .tour-hero>img{width:80px;height:80px}.tour-hero>.tour-photo-missing{width:80px;min-height:80px}
  .tour-hero h3{font-size:1.125rem}
  .tour-layout,.application-layout{grid-template-columns:minmax(0,1fr);gap:16px}
  .tour-price-details{position:static;padding-top:16px;border-top:1px solid var(--line)}
