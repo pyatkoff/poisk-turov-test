@@ -339,11 +339,12 @@ const destinationHotel=id=>hotels.find(h=>h.id===id&&h.legacyIds.length)||destin
 let destinationLookup={status:'idle',rows:[]},destinationRequest=null,destinationTimer=null,catalogError='',catalogReady=false,hotelRestorePending=false,catalogLoadGeneration=0,catalogDeparture='';
 function cancelDestinationLookup(){clearTimeout(destinationTimer);destinationRequest?.abort();destinationRequest=null;destinationLookup={status:'idle',rows:[]};}
 function syncDestinationViewport(){
- const m=$('#modal'),v=window.visualViewport,application=['selected-tour','provider-application','anex-application'].includes(modalType)&&!!m.querySelector('#prototype-lead-form'),keyboard=(modalType==='destination'||application)&&m.open&&innerWidth<=760&&v&&v.height<innerHeight-120;
+ const m=$('#modal'),v=window.visualViewport,application=['selected-tour','provider-application','anex-application'].includes(modalType)&&!!m.querySelector('#prototype-lead-form'),picker=['destination','flights','meals','budget','form-filters'].includes(modalType),keyboard=(picker||application)&&m.open&&innerWidth<=760&&v&&v.height<innerHeight-120;
+ m.classList.toggle('viewport-keyboard',!!keyboard);
  m.classList.toggle('destination-keyboard',!!keyboard&&modalType==='destination');m.classList.toggle('application-keyboard',!!keyboard&&application);
  if(keyboard){m.style.setProperty('--modal-viewport-top',(v.offsetTop+8)+'px');m.style.setProperty('--modal-viewport-height',Math.max(180,v.height-16)+'px');}
  else{m.style.removeProperty('--modal-viewport-top');m.style.removeProperty('--modal-viewport-height');}
- if(keyboard&&application){
+ if(keyboard){
   const body=$('#modal-body'),active=document.activeElement;
   if(body.contains(active)&&active.matches('input,textarea')){const box=active.getBoundingClientRect(),visible=body.getBoundingClientRect();if(box.top<visible.top||box.bottom>visible.bottom)active.scrollIntoView({block:'nearest',inline:'nearest'});}
  }

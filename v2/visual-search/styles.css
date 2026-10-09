@@ -747,11 +747,11 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .meals-dialog .meal-result-summary{flex:1;min-width:0;display:grid;gap:4px;font-size:14px;line-height:1.4}
 .meals-dialog #meal-result-preview{font-weight:600;color:var(--ink)}
 .meals-dialog #meal-selection-status{font-size:13px;color:var(--muted)}
-.meals-dialog .picker-apply{width:auto;flex:none;min-width:130px}
+.form-picker.meals-dialog .picker-apply{width:auto;flex:none;min-width:130px}
 .meals-dialog .meal-option>span:not(.meal-hotel-count){flex:1;min-width:0}
 .meals-dialog .meal-hotel-count{flex:none;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
 .meals-dialog #meal-result-preview.meal-preview-empty{color:#9a471d}
-@media(max-width:760px){.meals-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.meals-dialog .picker-apply{width:100%;max-width:none}.meals-dialog .meal-result-summary{gap:3px}}
+@media(max-width:760px){.meals-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}.form-picker.meals-dialog .picker-apply{width:100%;max-width:none}.meals-dialog .meal-result-summary{gap:3px}}
 
 /* Approved filter block: core conditions are visible; one shared draft owns the operator step. */
 .filter-section-toggle{display:none}
@@ -1647,9 +1647,9 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  .destination-dialog .destination-selection-heading .text-button{min-height:44px}
  .destination-dialog.destination-keyboard .destination-selection{padding:7px 0}
  .destination-dialog.destination-keyboard .destination-selection-heading{margin-bottom:4px}
- dialog.form-picker.destination-keyboard{inset:var(--modal-viewport-top) 0 auto;margin:0;height:var(--modal-viewport-height);max-height:var(--modal-viewport-height)}
- dialog.form-picker.destination-keyboard .modal-header{min-height:52px;padding:4px 16px}
- dialog.form-picker.destination-keyboard #modal-body{padding:8px 16px;scroll-padding-top:60px}
+ dialog#modal.viewport-keyboard{inset:var(--modal-viewport-top) 0 auto;margin:0;height:var(--modal-viewport-height);max-height:var(--modal-viewport-height)}
+ dialog.viewport-keyboard:is(.form-picker,.flight-picker-dialog) .modal-header{min-height:52px;padding:4px 16px}
+ dialog.viewport-keyboard:is(.form-picker,.flight-picker-dialog) #modal-body{padding:8px 16px;scroll-padding-top:60px}
  dialog.form-picker.destination-keyboard .destination-search-sticky{top:-8px;padding:0 0 4px}
  dialog.form-picker.destination-keyboard .destination-search input{height:44px;min-height:44px}
  dialog.form-picker.destination-keyboard .destination-search>svg{top:12px}
@@ -1921,7 +1921,6 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 @media(min-width:761px){.tour-dialog #modal-footer>.footer-total{display:none}}
 @media(max-width:760px){
  dialog.tour-dialog,dialog.application-dialog{width:100%;max-width:100%;max-height:100dvh}
- dialog.application-dialog.application-keyboard{inset:var(--modal-viewport-top) 0 auto;margin:0;height:var(--modal-viewport-height);max-height:var(--modal-viewport-height)}
  .tour-dialog #modal-body,.application-dialog #modal-body{padding:16px}
  .tour-dialog .modal-header,.application-dialog .modal-header{display:grid;grid-template-columns:minmax(0,1fr) 44px;padding:10px 16px;gap:10px}
  .tour-dialog .modal-header:has(#modal-back:not([hidden])),.application-dialog .modal-header:has(#modal-back:not([hidden])){grid-template-columns:44px minmax(0,1fr) 44px}
