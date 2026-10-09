@@ -157,7 +157,9 @@ module.exports=async function({browser,origin,base,evidence}){
   const errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/'))await route.continue();else{forbidden.push(u.pathname);await route.abort();}});
-   await page.goto(origin+base+'visual-search/?scenario=flights&searched=1');await page.locator('.hotel-card [data-action="offer"]').first().click();await page.locator('[data-action="start-tour-flights"]').click();await page.locator('#flight-total').waitFor();
+   // This existing CI server renders PHP without forwarding query parameters.
+   // Use the same compiled offline entry, with its explicit fictional scenario.
+   await page.goto(origin+base+'visual-search/index.html?scenario=flights&searched=1');await page.locator('.hotel-card [data-action="offer"]').first().click();await page.locator('[data-action="start-tour-flights"]').click();await page.locator('#flight-total').waitFor();
    const pair=()=>page.locator('[name="flight-pair"]:checked').inputValue(),read=()=>page.evaluate(key=>structuredClone(history.state[key]),historyKey);
    assert.equal(await pair(),'0');await page.locator('.flight-filter-panel>summary').click();await page.locator('[data-flight-query]').fill('no-such-flight');assert.equal(await pair(),'0');await page.locator('.flight-filter-state button').click();assert.equal(await page.locator('.flight-filter-panel>summary').evaluate(el=>el===document.activeElement),true,'Reset focuses a remaining visible target');
    await page.locator('[data-flight-sort]').selectOption('original');await page.locator('[data-flight-load-more]').click();await page.locator('[name="flight-pair"][value="3"]').check();await page.locator('[data-flight-filter="direct"]').check();await page.locator('.flight-time-filters>summary').click();
