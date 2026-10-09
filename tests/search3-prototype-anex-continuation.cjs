@@ -38,7 +38,7 @@ function harness(){
  sandbox.window=root;
  const anchor='  root.AnyTourPrototypeData=Object.freeze({';
  assert.equal(source.split(anchor).length,2,'canonical export anchor');
- const instrument=`  root.__test={applyDirectAnex,applyDirectAndromeda,continueSearch,pollSearch,stop,
+ const instrument=`  root.__test={applyDirectAnex,applyDirectAndromeda,enrichAnex,continueSearch,pollSearch,stop,
  available:typeof anexContinuationAvailable==='function'?anexContinuationAvailable:()=>false,
  set(run,callback){activeSearch=run;generation=run.generation;searchId=run.searchId;raw=[];context={country:'4',adults:2,ages:[],origin:'Москва'};notify=callback;},
  continuation:typeof anexPageContinuation==='function'?anexPageContinuation:()=>null};\n`;
@@ -53,6 +53,45 @@ function harness(){
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+test('initial endpoint rejection retains only its public code and HTTP status',async()=>{
+ for(const [code,status] of [['invalid_request',400],['forbidden',403],['search_not_supported',422],['rate_limited',429],['supplier_timeout',502],['temporarily_unavailable',503]]){
+  const h=harness();h.setFetch(async()=>({ok:false,status,error:code,message:'PRIVATE_MESSAGE',url:'PRIVATE_URL',diagnostic:{token:'PRIVATE_TOKEN'}}));
+  await h.t.enrichAnex(h.run,params);
+  const result=JSON.parse(JSON.stringify(h.run.sourceCounts.anex));
+  assert.deepEqual(result,{status:'error',hotels:0,offers:0,failure:{stage:'search',code,httpStatus:status}});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.events.at(-1))),{type:'provider',provider:'anex',...result});
+  await h.t.pollSearch(h.run);
+  assert.deepEqual(JSON.parse(JSON.stringify(h.events.at(-1).sources.anex)),result,'terminal snapshot retains the failure');
+  assert.equal(h.calls.length,1,'observation never retries the initial request');
+  assert(!JSON.stringify(h.events).includes('PRIVATE_'),'private response fields never reach subscribers');
+ }
+});
+test('unknown rejection code and invalid HTTP status stay unclassified without leaking text',async()=>{
+ const h=harness();h.setFetch(async()=>({ok:false,status:999,error:'PRIVATE_CODE',message:'PRIVATE_MESSAGE'}));
+ await h.t.enrichAnex(h.run,params);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),{stage:'search',code:'unknown'});
+ assert(!JSON.stringify(h.events).includes('PRIVATE_'));assert.equal(h.calls.length,1);
+});
+test('transport exception is observable without exporting its message or guessing HTTP status',async()=>{
+ const h=harness();h.setFetch(async()=>{throw new Error('PRIVATE_TRANSPORT_URL_AND_TOKEN');});
+ await h.t.enrichAnex(h.run,params);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),{stage:'search',code:'unknown'});
+ assert(!JSON.stringify(h.events).includes('PRIVATE_'));assert.equal(h.calls.length,1);
+});
+test('continued endpoint rejection retains diagnostics and the consumed page fence',async()=>{
+ const h=harness();await h.initial();h.setFetch(async()=>({ok:false,status:502,error:'supplier_timeout',message:'PRIVATE_MESSAGE'}));
+ await h.t.continueSearch();
+ assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),{stage:'continue',code:'supplier_timeout',httpStatus:502});
+ assert.equal(h.stored.size,1);assert.equal(h.run.sourceCounts.anex.status,'partial');
+ assert.deepEqual(JSON.parse(JSON.stringify(h.events.at(-1).sources.anex.failure)),{stage:'continue',code:'supplier_timeout',httpStatus:502});
+ assert.equal(await h.t.continueSearch(),false);assert.equal(h.calls.length,1);assert(!JSON.stringify(h.events).includes('PRIVATE_'));
+});
+test('stopped initial search cannot publish a late rejected response',async()=>{
+ const h=harness(),d=deferred();h.setFetch(()=>d.promise);
+ const pending=h.t.enrichAnex(h.run,params);h.t.stop();
+ d.resolve({ok:false,status:429,error:'rate_limited'});await pending;
+ assert.equal(h.events.filter(event=>event.status==='error').length,0);assert.equal(h.run.sourceCounts.anex,undefined);assert.equal(h.calls.length,1);
+});
 test('legacy endpoint: retain first page; do not invent continuation',async()=>{const h=harness(),p=page();delete p.continuation;await h.initial(p);assert.equal(h.stored.size,1);assert.equal(h.t.available(h.run),false);assert.equal(h.calls.length,0);assert.equal(await h.t.continueSearch(),false);});
 test('initial available page is immediate and does not auto-drain',async()=>{const h=harness();await h.initial();assert.equal(h.t.available(h.run),true);assert.equal(h.calls.length,0);assert.equal(h.run.sourceCounts.anex.status,'partial');});
 test('ANEX-only click sends one next-page action and preserves previous object',async()=>{const h=harness();await h.initial();const original=[...h.stored.values()][0].tour;await h.t.continueSearch();assert.equal(h.calls.length,1);assert.deepEqual(h.calls[0].body,{action:'continue',generation:1,search_ref:ref,page:2});assert.equal(h.stored.size,2);assert.strictEqual([...h.stored.values()][0].tour,original);assert.equal(h.run.canContinue,true);assert.equal(h.run.sourceCounts.anex.offers,2);});

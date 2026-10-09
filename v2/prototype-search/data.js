@@ -17,6 +17,17 @@
     if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
     try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname===expectedPath&&!url.search&&!url.hash?url:null;}catch{return null;}
   }
+  const anexSearchFailureCodes=new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request','search_not_supported','rate_limited','supplier_conditions_rejected','supplier_timeout','supplier_unavailable','unknown']);
+  function anexSearchError(response,payload,stage){
+    const failure={stage,code:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
+    if(Number.isInteger(response?.status)&&response.status>=100&&response.status<=599)failure.httpStatus=response.status;
+    return Object.assign(new Error(stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
+  }
+  function anexSearchFailure(error,stage){
+    const value=error?.searchFailure,result={stage,code:anexSearchFailureCodes.has(value?.code)?value.code:'unknown'};
+    if(Number.isInteger(value?.httpStatus)&&value.httpStatus>=100&&value.httpStatus<=599)result.httpStatus=value.httpStatus;
+    return result;
+  }
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
   const amount = value => { const n = Number(value && typeof value === 'object' ? value.value : value); return Number.isFinite(n) && n > 0 ? n : null; };
   const date = value => { const s = String(value || '').slice(0, 10), p = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/); return p ? `${p[3]}-${p[2]}-${p[1]}` : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : ''; };
@@ -515,15 +526,18 @@
           body:JSON.stringify({action:'continue',generation:run.generation,search_ref:window.searchRef,page})});
         const payload=await response.json().catch(()=>null);
         if(!current(run))return;
-        if(!response.ok||payload?.ok!==true)throw new Error('ANEX continuation unavailable');
+        if(!response.ok||payload?.ok!==true)throw anexSearchError(response,payload,'continue');
         await applyDirectAnex(run,payload.data,window.params,index,run.anexWindowsTotal,page);
       }catch(error){
         if(!current(run))return;
         window.continuationFailed=true;
+        window.failure=anexSearchFailure(error,'continue');
       }
     }
     if(!current(run))return;
     const result=rebuildDirectAnex(run);
+    const failed=order.map(index=>run.anexWindows.get(index).failure).find(Boolean);
+    if(failed)result.failure=failed;
     notify({type:'provider',provider:'anex',...result,continued:true});
     clearCalendarWindows();
   }
@@ -533,7 +547,7 @@
       body:JSON.stringify({action:'search',generation:run.generation,params:p})});
     const payload=await response.json().catch(()=>null),data=payload&&payload.data;
     if(!current(run))return null;
-    if(!response.ok||payload?.ok!==true)throw new Error('ANEX search unavailable');
+    if(!response.ok||payload?.ok!==true)throw anexSearchError(response,payload,'search');
     return data;
   }
   async function continueDirectAnex(run,url,windows,startIndex){
@@ -549,7 +563,7 @@
       if(!current(run)||error?.name==='AbortError')return;
       const previous=run.sourceCounts.anex;
       if(previous&&Number.isInteger(previous.windowsLoaded)&&previous.windowsLoaded>0){
-        run.sourceCounts.anex={...previous,status:'partial',continuationFailed:true};
+        run.sourceCounts.anex={...previous,status:'partial',continuationFailed:true,failure:anexSearchFailure(error,'search')};
         notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
         clearCalendarWindows();
       }
@@ -567,12 +581,12 @@
         notify({type:'provider',provider:'anex',...result});
       }catch(error){
         if(!current(run)||error?.name==='AbortError')return;
-        run.sourceCounts.anex={status:'error',hotels:0,offers:0};
-        notify({type:'provider',provider:'anex',status:'error'});
+        run.sourceCounts.anex={status:'error',hotels:0,offers:0,failure:anexSearchFailure(error,'search')};
+        notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
       }
       return;
     }
-    let loaded=0,failed=0;
+    let loaded=0,failed=0,failure=null;
     for(let index=0;current(run)&&index<windows.length;index++){
       try{
         const resultData=await requestDirectAnex(run,windows[index],url.href);if(!resultData||!current(run))return;
@@ -581,16 +595,17 @@
       }catch(error){
         if(!current(run)||error?.name==='AbortError')return;
         failed++;
+        failure??=anexSearchFailure(error,'search');
       }
     }
     if(!current(run))return;
     if(!loaded){
-      run.sourceCounts.anex={status:'error',hotels:0,offers:0};
-      notify({type:'provider',provider:'anex',status:'error'});return;
+      run.sourceCounts.anex={status:'error',hotels:0,offers:0,failure};
+      notify({type:'provider',provider:'anex',...run.sourceCounts.anex});return;
     }
     if(failed){
       const previous=run.sourceCounts.anex||{hotels:0,offers:0};
-      run.sourceCounts.anex={...previous,status:'partial',destinationBranchFailed:true};
+      run.sourceCounts.anex={...previous,status:'partial',destinationBranchFailed:true,failure};
       notify({type:'provider',provider:'anex',...run.sourceCounts.anex});
     }
     clearCalendarWindows();
