@@ -616,13 +616,31 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
 async function formPickerActionJourney(browser,origin,base,evidence){
  const receipts=[];
  for(const width of [360,390,430,768,1280]){
-  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
+  const transport=fixture(),errors=[],forbidden=[],hotelReads=[],hotelReadWaiters=new Map(),releases=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  page.on('requestfailed',request=>{const read=hotelReads.find(entry=>entry.request===request);if(read){read.failure=request.failure()?.errorText||null;read.failedResolve(read.failure);}});
   try{
    await page.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52"><rect fill="#bacad5" width="64" height="52"/></svg>'});return;}
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
-    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+    let finished,failedResolve;const read=url.pathname==='/data/hotel-search-v1.php'?{request,query:url.searchParams.get('q'),country:url.searchParams.get('countryId'),held:!!transport.state.hotelLookupGates[url.searchParams.get('countryId')],done:new Promise(resolve=>finished=resolve),failed:new Promise(resolve=>failedResolve=resolve),failedResolve,expectAbort:false,cancelled:false}:null;
+    if(read){hotelReads.push(read);hotelReadWaiters.get(request)?.(read);}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}
+    catch(error){
+     // Only a deliberately held canonical read cancelled by these native actions
+     // may finish without a response. Retain its explicit abort receipt; all
+     // other route/fixture failures remain forbidden, including other aborts.
+     let failure=request.failure()?.errorText;
+     if(read?.held&&read.expectAbort&&!failure){
+      // Cancellation and route completion are separate events too. Wait only for
+      // this explicitly cancelled held read, with the unchanged 10s action cap.
+      let timer;try{failure=await Promise.race([read.failed,new Promise(resolve=>timer=setTimeout(()=>resolve(null),10000))]);}finally{clearTimeout(timer);}
+     }
+     if(read?.held&&read.expectAbort&&failure==='net::ERR_ABORTED')read.cancelled=true;
+     else{forbidden.push(error.message);await route.abort();}
+    }finally{finished?.();}
    });
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
    await page.locator('#quick-stars [data-action="star"][data-value="5"]').click();
@@ -659,9 +677,129 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
     receipts.push({width,zoom,reset,next,keyboard_reset_focus:true,keyboard_month_focus:width>760,disabled_month_boundary_focus:width>760,Escape_returns_exact_trigger:true,cancel_preserves_fields_and_URL:true,physicalSafari:false});
    }
+   // Continue the same isolated five-width form context. All catalogue rows,
+   // aliases and profile links below are the existing explicitly fictional fixture.
+   transport.state.hotelCatalogue=hotelCatalogue();
+   transport.state.catalogueAliases={2004:['контрольный псевдоним'],2005:['контрольный псевдоним']};
+   transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
+   const historyKey='anytour.prototype.v18.ui.v1',alias='контрольный псевдоним',familyURL=origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'0,12',hotels:'2001|2002'}),familyReceipts=[],destinationReceipts=[];
+   const frames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const closed=()=>page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+   const familyFields=()=>page.evaluate(()=>['#origin','#dates-label','#nights-label','#guests-label','#guests-detail','#destination-detail'].map(selector=>{const el=document.querySelector(selector);return el.value||el.textContent;}));
+   const indexFocus=()=>page.evaluate(()=>({action:document.activeElement.dataset.action||document.activeElement.id,index:document.activeElement.dataset.index??null,disabled:document.activeElement.matches(':disabled')}));
+   const selectedIDs=()=>page.locator('[data-action="destination-remove"][data-id]').evaluateAll(rows=>rows.map(row=>Number(row.dataset.id)));
+   const hotelIDs=()=>page.locator('.destination-hotel').evaluateAll(rows=>rows.map(row=>Number(row.dataset.id)));
+   const geometry=async label=>{
+    const result=await page.locator('#modal').evaluate(modal=>{const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),active=document.activeElement;return{modal:rect(modal),body:rect(body),footer:rect(footer),scroll:body.scrollTop,focus:active.dataset.action||active.id,focusIndex:active.dataset.index??null,documentOverflow:document.documentElement.scrollWidth>innerWidth,modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,viewportHeight:innerHeight};});
+    assert.equal(result.documentOverflow,false,label+' does not widen the document at '+width);assert.equal(result.modalOverflow,false);assert.equal(result.bodyOverflow,false);
+    assert(result.footer.bottom<=result.viewportHeight+1,label+' retains its confirmation footer inside the viewport at '+width);return result;
+   };
+   const loadFamily=async()=>{
+    await page.goto(familyURL);await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled&&document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
+    return{url:page.url(),fields:await familyFields()};
+   };
+   const assertUnapplied=async baseline=>{assert.equal(page.url(),baseline.url,'picker edits never mutate the applied URL');assert.deepEqual(await familyFields(),baseline.fields,'Cancel preserves the entire family and exact-hotel form');};
+   for(const zoom of [100,200]){
+    const baseline=await loadFamily();await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#search-form [data-action="guests"]').click();
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
+    const route=await page.evaluate(key=>history.state[key],historyKey);
+    assert.deepEqual(route,{type:'child-age',guest:{adults:3,ages:[0,12]},choice:{index:1,value:13}},'capture the actual native second-child route, not a constructed replacement');
+    await page.locator('[data-action="apply-age"]').press('Enter');assert.equal(await page.locator('#modal-title').textContent(),'Туристы');
+    assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false},'ordinary second-child Apply returns to the exact indexed row');
+    assert.match(await page.locator('[data-action="child-age"][data-index="0"]').textContent(),/До 1 года/);assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="12"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
+    assert.deepEqual(await page.evaluate(key=>history.state[key],historyKey),route);
+    await page.reload();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    assert(await page.locator('#modal-back').isVisible(),'a full reload retains the parent guests step');assert.equal(await page.locator('[data-action="age-pick"][data-value="13"]').getAttribute('aria-pressed'),'true');
+    const restored=await geometry('restored child-age');await target(page.locator('[data-action="apply-age"]'),'restored age Apply');await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
+    await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);await page.screenshot({path:path.join(evidence,'picker-family-return-'+width+'-'+zoom+'.png')});
+    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
+    // Restore a genuine child route again; Back must retain the original age.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#modal-back').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/12 лет/);
+    for(let n=3;n<6;n++)await page.locator('[data-action="adults-plus"]').press('Enter');
+    assert(await page.locator('[data-action="adults-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-minus',index:null,disabled:false},'upper adult boundary retains the usable opposite counter');
+    for(let n=6;n>1;n--)await page.locator('[data-action="adults-minus"]').press('Enter');
+    assert(await page.locator('[data-action="adults-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-plus',index:null,disabled:false},'lower adult boundary retains a usable counter');
+    await page.locator('[data-action="children-plus"]').press('Enter');assert(await page.locator('[data-action="children-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-minus',index:null,disabled:false});assert(await page.locator('[data-action="apply-guests"]').isDisabled(),'missing third-child age still blocks Apply');
+    const boundary=await geometry('family counter boundary');await target(page.locator('[data-action="children-minus"]'),'boundary child counter');await page.screenshot({path:path.join(evidence,'picker-family-boundary-'+width+'-'+zoom+'.png')});
+    await page.locator('[data-action="child-age"][data-index="2"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="17"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'2',disabled:false});
+    await page.locator('[data-action="remove-child"][data-index="1"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/17 лет/,'removing the middle child never aliases the surviving third child');
+    await page.locator('[data-action="children-minus"]').press('Enter');await page.locator('[data-action="children-minus"]').press('Enter');assert(await page.locator('[data-action="children-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-plus',index:null,disabled:false});
+    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
+    // Only explicit whole-party Apply changes the form draft; no supplier starts.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');await page.locator('[data-action="apply-guests"]').press('Enter');await closed();
+    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 13 лет');assert.equal(page.url(),baseline.url,'the current applied URL remains unchanged until search submit');
+    await page.locator('#search-form [data-action="guests"]').click();assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await page.keyboard.press('Escape');await closed();
+    // Corrupted index is an explicitly labelled history fixture; it must recover
+    // to the existing guests owner, not create a dead-end child dialog.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.evaluate(({key})=>{const route=structuredClone(history.state[key]);route.choice.index=3;history.replaceState({...history.state,[key]:route},'',location.href);},{key:historyKey});await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Туристы'&&!document.querySelector('.search-submit').disabled);assert.equal(await page.locator('[data-action="apply-guests"]').count(),1);await page.keyboard.press('Escape');await closed();assert.equal(page.url(),baseline.url);
+    familyReceipts.push({width,zoom,capturedNativeRoute:route,full_reload:true,indexed_return_focus:true,age0_and17_retained:true,all_four_counter_boundaries:true,missing_age_blocks_apply:true,explicit_party_apply:true,invalid_history_index_recovers:true,cancel_preserves_applied_URL:true,restored,boundary,physicalSafari:false});
+   }
+   const baseline=await loadFamily();await page.evaluate(()=>document.documentElement.style.fontSize='');
+   const openDestination=async()=>{await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2001,2002]);};
+   const hideCountries=async()=>{if(await page.locator('[data-action="destination-countries"]').getAttribute('aria-expanded')==='true')await page.locator('[data-action="destination-countries"]').press('Enter');};
+   const heldLookup=async(query=alias,country='4')=>{
+    let release;const gate=new Promise(resolve=>release=resolve);transport.state.hotelLookupGates[country]=gate;const finish=()=>{if(transport.state.hotelLookupGates[country]===gate)delete transport.state.hotelLookupGates[country];release();};releases.push(finish);
+    const started=page.waitForRequest(request=>{const url=new URL(request.url());return url.pathname==='/data/hotel-search-v1.php'&&url.searchParams.get('q')===query&&url.searchParams.get('countryId')===country;});
+    await page.locator('#destination-query').fill(query);const request=await started;
+    // Request and Route are distinct Playwright events: do not assume the route
+    // callback has already registered the retained read when Request arrives.
+    const read=hotelReads.find(entry=>entry.request===request)||await new Promise((resolve,reject)=>{
+     const timer=setTimeout(()=>{hotelReadWaiters.delete(request);reject(new Error('Canonical read interception was not registered within the existing 10s action limit'));},10000);
+     hotelReadWaiters.set(request,value=>{clearTimeout(timer);hotelReadWaiters.delete(request);resolve(value);});
+    });assert(read,'actual intercepted canonical read is retained');
+    return{finish,read};
+   };
+   const completeHeld=async(held,success=true)=>{
+    const profile=success&&!held.read.request.failure()?page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname.endsWith('/hotel-details-read-v1.php')&&url.searchParams.getAll('legacyHotelIds[]').join(',')==='7004,7005';}):null;
+    held.finish();await held.read.done;if(profile)await(await profile).finished();await frames();
+   };
+   const closeDestination=async()=>{await page.locator('#modal [data-action="close-modal"]').click();await closed();await assertUnapplied(baseline);};
+   for(const action of ['keep','back','cancel','confirm'])for(const failed of [false,true]){
+    await openDestination();transport.state.hotelLookupError=failed;const held=await heldLookup();
+    await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');assert.equal(await page.locator('#modal-title').textContent(),'Изменить направление?');
+    const before=await geometry('pending destination replacement');if(action==='keep'&&!failed)await page.screenshot({path:path.join(evidence,'picker-destination-pending-'+width+'.png')});await completeHeld(held,!failed);assert.equal(await page.locator('#modal-title').textContent(),'Изменить направление?','a late terminal read never replaces the active confirmation');
+    const after=await geometry('completed read under replacement');assert.equal(after.scroll,before.scroll);assert.equal(after.focus,before.focus,'a hidden catalogue completion never steals confirmation focus');
+    if(action==='keep')await page.locator('[data-action="keep-destination"]').press('Enter');
+    else if(action==='back')await page.locator('#modal-back').press('Enter');
+    else if(action==='cancel'){if(failed)await page.locator('#modal [data-action="close-modal"]').press('Enter');else await page.keyboard.press('Escape');}
+    else await page.locator('[data-action="confirm-destination"]').press('Enter');
+    await hideCountries();await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+    assert.equal(await page.locator('#destination-query').inputValue(),alias);assert.deepEqual(await selectedIDs(),action==='confirm'?[]:[2001,2002]);assert.equal(page.url(),baseline.url);
+    if(failed){await page.locator('[data-action="retry-destination"]').waitFor();assert.match(await page.locator('#destination-results').textContent(),/Не удалось загрузить отели/);if(action==='cancel')await page.screenshot({path:path.join(evidence,'picker-destination-error-'+width+'-100.png')});transport.state.hotelLookupError=false;await page.locator('[data-action="retry-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);}
+    assert.deepEqual(await hotelIDs(),[2004,2005],'the retained canonical alias response is visible without name/ID guessing');
+    if(action==='keep'&&failed===false||action==='cancel'&&failed===true)await page.screenshot({path:path.join(evidence,'picker-destination-'+action+'-'+(failed?'error-retry':'ready')+'-'+width+'.png')});
+    destinationReceipts.push({width,action,failed,cancel_action:action==='cancel'?(failed?'header-close':'Escape'):null,terminal_during_confirmation:true,query_retained:true,exact_draft_IDs:action==='confirm'?[]:[2001,2002],alias_IDs:[2004,2005],focus_and_scroll_retained:true,geometry:after});await closeDestination();
+   }
+   // The response-after-return control uses the same request and preserves query
+   // focus/selection/scroll while the existing parent picker settles normally.
+   await openDestination();const control=await heldLookup();await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');await page.locator('[data-action="keep-destination"]').press('Enter');await hideCountries();await page.locator('#destination-query').focus();await page.locator('#destination-query').evaluate(el=>el.setSelectionRange(2,7));const controlBefore=await geometry('response-after-return');
+   await completeHeld(control);await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');assert.deepEqual(await hotelIDs(),[2004,2005]);assert.equal(await focused(),'destination-query');assert.deepEqual(await page.locator('#destination-query').evaluate(el=>[el.selectionStart,el.selectionEnd]),[2,7]);const controlAfter=await geometry('response-after-return complete');assert.equal(controlAfter.scroll,controlBefore.scroll);await closeDestination();
+   // Replace the country while an old request is retained. The new canonical
+   // country settles first; the old read is explicitly released only afterwards.
+   await openDestination();const foreign=await heldLookup('Rix');await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="100"]').press('Enter');foreign.read.expectAbort=true;await page.locator('[data-action="confirm-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===3);foreign.finish();await foreign.read.done;await frames();assert.deepEqual(await hotelIDs(),[3001,3002,3003]);assert.deepEqual(await selectedIDs(),[]);assert.match(await page.locator('#destination-scope').textContent(),/Египет/);await page.screenshot({path:path.join(evidence,'picker-destination-country-'+width+'.png')});await closeDestination();
+   // Old A -> B -> new A exercises both query replacement and a duplicate
+   // spelling without allowing the cancelled first response to become current.
+   await openDestination();const old=await heldLookup();delete transport.state.hotelLookupGates['4'];old.read.expectAbort=true;await page.locator('#destination-query').fill('Rix');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===8);await page.locator('#destination-query').fill(alias);await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);await page.locator('#destination-query').focus();old.finish();await old.read.done;await frames();assert.deepEqual(await hotelIDs(),[2004,2005]);assert.equal(await focused(),'destination-query');assert.deepEqual(await selectedIDs(),[2001,2002]);await closeDestination();
+   for(const failed of [false,true]){
+    await openDestination();transport.state.hotelLookupError=failed;const late=await heldLookup();late.read.expectAbort=true;await page.locator('#modal [data-action="close-modal"]').click();await closed();late.finish();await late.read.done;await frames();assert.equal(await page.locator('#modal').evaluate(el=>el.open),false);await assertUnapplied(baseline);transport.state.hotelLookupError=false;
+   }
+   // root200 retains readable recovery and keyboard focus without extending the
+   // original viewport or inventing a physical keyboard/Safari claim.
+   await page.evaluate(()=>document.documentElement.style.fontSize='200%');await openDestination();transport.state.hotelLookupError=true;const enlarged=await heldLookup();await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');await completeHeld(enlarged,false);await page.locator('[data-action="keep-destination"]').press('Enter');await hideCountries();await page.locator('[data-action="retry-destination"]').waitFor();const enlargedGeometry=await geometry('root200 destination error');await target(page.locator('[data-action="retry-destination"]'),'root200 catalogue retry');await page.screenshot({path:path.join(evidence,'picker-destination-error-'+width+'-200.png')});transport.state.hotelLookupError=false;await page.locator('[data-action="retry-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);
+   // Explicit OR Apply commits only the two canonical own IDs to the form draft.
+   for(const id of [2001,2002])await page.locator('[data-action="destination-remove"][data-id="'+id+'"]').press('Enter');
+   for(const id of [2004,2005])await page.locator('[data-action="destination-hotel"][data-id="'+id+'"]').press('Enter');
+   assert.deepEqual(await selectedIDs(),[2004,2005]);assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отели \(2\)/);await page.locator('[data-action="apply-destination"]').press('Enter');await closed();assert.match(await page.locator('#destination-detail').textContent(),/Fictional Belek 04.*Fictional Belek 05/);assert.equal(page.url(),baseline.url);await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2004,2005]);await page.keyboard.press('Escape');await closed();
+   fs.writeFileSync(path.join(evidence,'picker-retained-'+width+'.json'),JSON.stringify({width,family:familyReceipts,destination:destinationReceipts,response_after_return:true,query_replacement_and_duplicate_guard:true,changed_country_late_guard:true,closed_success_and_error_guard:true,canonicalReadReceipts:hotelReads.map(read=>({query:read.query,country:read.country,held:read.held,expected_cancel:read.expectAbort,cancelled_route:read.cancelled,failure:read.failure||read.request.failure()?.errorText||null})),OR_own_IDs:[2004,2005],legacy_links:[7004,7005],Apply_commits_form_draft_only:true,root200_error:enlargedGeometry,fixture_only:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
    assert(!transport.calls.some(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)),'form reset, calendar navigation and Cancel start no supplier/quote/lead operation');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  }finally{await context.close();}
+  }finally{for(const release of releases)release();await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
  console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, repeated keyboard reset/month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
@@ -883,9 +1021,15 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
-  await formPickerActionJourney(browser,origin,base,evidence);
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
+  // Complete, independent matrices share only immutable compiled assets. The
+  // first two use this browser; the large-flight owner retains its own browser,
+  // server and evidence directory. Default/SAMO-mode transition tests above stay
+  // ordered. Retain every rejection and settle all three before shared cleanup.
+  const completed=await Promise.allSettled([
+   formPickerActionJourney(browser,origin,base,evidence),
+   (async()=>{
   for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
@@ -1478,7 +1622,10 @@ const server=http.createServer((req,res)=>{
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+   })(),
+   (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
+  ]),rejected=completed.filter(result=>result.status==='rejected');
+  if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
- await require('./search3-visual-large-flight-choices.cjs')();
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

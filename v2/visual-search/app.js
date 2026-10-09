@@ -350,12 +350,12 @@ function lookupDestination(){
  destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;const q=$('#destination-query').value.trim(),country=destinationChoice.country;
  if(!countryNames[country]||q.length<2){renderDestination();return;}
  const request=new AbortController();destinationRequest=request;destinationLookup={status:'loading',rows:[]};renderDestination();
- const current=()=>destinationRequest===request&&modalType==='destination'&&destinationChoice?.country===country&&$('#destination-query').value.trim()===q;
+ const current=()=>{const parent=modalHistory.at(-1),query=modalType==='destination'?$('#destination-query')?.value:modalType==='destination-replace'&&parent?.type==='destination'&&parent.route?.choice?.country===country?parent.route.query:null;return destinationRequest===request&&destinationChoice?.country===country&&typeof query==='string'&&query.trim()===q;};
  destinationTimer=setTimeout(async()=>{const timeout=setTimeout(()=>request.abort(),15000);try{
   const rows=await data.lookupHotels(q,country,request.signal);if(!current())return;
   rows.forEach(h=>destinationHotels.set(h.id,h));destinationLookup={status:'complete',rows,query:normalizeSearch(q),country};
  }catch(error){if(!current())return;destinationLookup={status:'error',rows:[]};}
- finally{clearTimeout(timeout);if(current()){destinationRequest=null;renderDestination();}}
+ finally{clearTimeout(timeout);if(current()){destinationRequest=null;if(modalType==='destination')renderDestination();}}
  },180);
 }
 function appliedDestination(){return {country:state.search.country,resorts:[...state.filters.resorts],hotelId:state.filters.hotelId,hotelIds:destinationIds(state.filters)};}
@@ -930,7 +930,7 @@ let uiHistoryOpen=false,uiHistoryClosing=false,restoringUIHistory=false,handling
 function focusReference(element,root=document){
  if(!element||element===document.body||element===document.documentElement||!root.contains(element))return null;
  let selector=element.id?'#'+CSS.escape(element.id):'';
- if(!selector&&element.dataset?.action){selector='[data-action="'+CSS.escape(element.dataset.action)+'"]';for(const key of ['id','key','value','room'])if(element.dataset[key]!==undefined)selector+='[data-'+key+'="'+CSS.escape(element.dataset[key])+'"]';const card=element.closest('.hotel-card');if(card)selector='#'+CSS.escape(card.id)+' '+selector;}
+ if(!selector&&element.dataset?.action){selector='[data-action="'+CSS.escape(element.dataset.action)+'"]';for(const key of ['id','key','value','room','index'])if(element.dataset[key]!==undefined)selector+='[data-'+key+'="'+CSS.escape(element.dataset[key])+'"]';const card=element.closest('.hotel-card');if(card)selector='#'+CSS.escape(card.id)+' '+selector;}
  const scroller=root.querySelector?.('#modal-body'),top=scroller?.contains(element)?element.getBoundingClientRect().top-scroller.getBoundingClientRect().top:null;
  return {element,selector,top};
 }
@@ -1034,7 +1034,7 @@ function reopenUIRoute(route){
  case 'filters':if(innerWidth>1100)return false;openFilters(route);break;
  case 'departure':openDeparture(route);break;
  case 'destination':openDestination(route);break;
- case 'child-age':guestDraft=restoredGuestDraft(route.guest);openChildAge(route.choice?.index,route.choice?.value);break;
+ case 'child-age':{openGuests({draft:route.guest});const index=route.choice?.index;if(Number.isInteger(index)&&index>=0&&index<guestDraft.ages.length){$('[data-action="child-age"][data-index="'+index+'"]')?.focus({preventScroll:true});openChildAge(index,route.choice?.value);}break;}
  case 'form-filters':openFormFilters(route);break;
  case 'stars':openStars(route);break;
  case 'guests':openGuests(route);break;
@@ -1379,9 +1379,9 @@ function updateGuestSelection(){
  $('[data-action="apply-guests"]').disabled=!!missing.length;
 }
 function renderGuests(){
- const focused=document.activeElement?.closest('#modal-body [data-action]')?.dataset.action,g=guestDraft;
+ const body=$('#modal-body'),focused=focusReference(document.activeElement,body),g=guestDraft;
  $('#modal-body').innerHTML=`<div class="counter-row"><div><strong>Взрослые</strong><small>От 18 лет</small></div><div class="counter"><button data-action="adults-minus" aria-label="Убрать взрослого" ${g.adults<=1?'disabled':''}>−</button><output aria-label="Количество взрослых">${g.adults}</output><button data-action="adults-plus" aria-label="Добавить взрослого" ${g.adults>=6?'disabled':''}>+</button></div></div><div class="counter-row"><div><strong>Дети</strong><small>До 18 лет</small></div><div class="counter"><button data-action="children-minus" aria-label="Убрать ребёнка" ${!g.ages.length?'disabled':''}>−</button><output aria-label="Количество детей">${g.ages.length}</output><button data-action="children-plus" aria-label="Добавить ребёнка" ${g.ages.length>=3?'disabled':''}>+</button></div></div><div class="ages">${g.ages.map((age,i)=>`<div class="guest-age-row"><button class="guest-age-choice" data-action="child-age" data-index="${i}" aria-label="Возраст ребёнка ${i+1}"><small>Ребёнок ${i+1}</small><span>${age===null?'Укажите возраст':age===0?'До 1 года':childAgeText(age)}</span><span class="chevron">›</span></button><button class="icon-button" type="button" data-action="remove-child" data-index="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('')}</div><p class="guest-age-help" id="guest-age-help">${agesNeedReview?'Даты или ночи изменены. Проверьте возраст детей на возвращение.':g.ages.length?'Укажите возраст на дату возвращения. Она зависит от выбранного тура.':'Можно добавить до 3 детей. Возраст нужен для каждого ребёнка.'}</p><p class="error-text" id="guest-error" role="alert"></p>`;
- updateGuestSelection();if(focused)$(`#modal-body [data-action="${focused}"]:not(:disabled)`)?.focus({preventScroll:true});rememberUIRoute();
+ updateGuestSelection();if(focused){const opposite={'adults-plus':'adults-minus','adults-minus':'adults-plus','children-plus':'children-minus','children-minus':'children-plus'};restoreFocus(focused,body.querySelector('[data-action="'+opposite[focused.element?.dataset.action]+'"]:not(:disabled)')||$('#modal-title'),body);}rememberUIRoute();
 }
 function openChildAge(index,value=undefined){
  if(!Number.isInteger(index)||index<0||index>=guestDraft.ages.length)return;ageChoice={index,value:value===undefined?guestDraft.ages[index]:Number.isInteger(value)&&value>=0&&value<=17?value:null};
