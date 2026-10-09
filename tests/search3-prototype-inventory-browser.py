@@ -135,6 +135,16 @@ def check_width(browser, origin, width):
 
         if url.path == "/test-photo.svg":
             route.fulfill(content_type="image/svg+xml", body=FIXTURE.PHOTO)
+        elif url.path == BASE + "prototype-search/config.js" and request.method == "GET":
+            # Exercise the existing three-provider oracle with fictional HTTP.
+            # The shipped config keeps SAMO paused; only this intercepted fixture
+            # enables its two local endpoints, both handled below or denied.
+            config = (ROOT / "prototype-search/config.js").read_text()
+            for key, endpoint in (("andromedaApi", "/_preview/search3-anex-candidate/api-andromeda-search3-preview.php"),
+                                  ("andromedaQuoteApi", "/_preview/search3-anex-candidate/api-andromeda-quote-preview.php")):
+                assert config.count(key + ":null") == 1, "fixture expects the shipped SAMO pause"
+                config = config.replace(key + ":null", key + ":" + json.dumps(endpoint), 1)
+            route.fulfill(content_type="application/javascript", body=config)
         elif url.path == "/data/departures-v1.php":
             reply({"ok": True, "items": [{"id": 1, "name": "Москва"}]})
         elif url.path.endswith("/data/search3-destination-read-v1.php"):

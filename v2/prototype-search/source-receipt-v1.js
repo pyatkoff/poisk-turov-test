@@ -10,6 +10,7 @@
     'windowsLoaded','windowsTotal','pagesLoaded','pagesTotal'
   ]);
   const statuses = new Set(['loading','complete','partial','error','skipped']);
+  const failureCodes = new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request','search_not_supported','rate_limited','supplier_conditions_rejected','supplier_timeout','supplier_unavailable','unknown']);
   const safeKey = value => typeof value === 'string' && /^[A-Za-z0-9_.:+-]{1,80}$/.test(value);
   const safeCount = value => Number.isSafeInteger(value) && value >= 0;
   const cleanCounts = value => {
@@ -25,6 +26,11 @@
     const out = {};
     if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
     if (statuses.has(value.status)) out.status = value.status;
+    const failure=value.failure;
+    if (failure && !Array.isArray(failure) && ['search','continue'].includes(failure.stage) && failureCodes.has(failure.code)) {
+      out.failure={stage:failure.stage,code:failure.code};
+      if (Number.isInteger(failure.httpStatus) && failure.httpStatus >= 100 && failure.httpStatus <= 599) out.failure.httpStatus=failure.httpStatus;
+    }
     for (const field of countFields) {
       const n = value[field];
       if (safeCount(n)) out[field] = n;
@@ -118,6 +124,7 @@
     receipt: {
       schemaVersion: 1,
       phase: 'loading',
+      coverage: 'pending',
       providers: {},
       sources: {},
       union: null,
@@ -129,11 +136,16 @@
   });
   const refreshDedupe = state => {
     state.receipt.dedupe = dedupeSnapshot(state.receipt.sources, state.receipt.union);
+    const states=Object.values(state.receipt.sources).map(row=>row.status).filter(status=>status!=='skipped');
+    state.receipt.coverage=!state.terminalSeen || state.receipt.phase==='loading' ? 'pending'
+      : states.some(status=>status==='partial'||status==='error') ? 'partial'
+      : states.some(status=>status==='loading') ? 'pending'
+      : states.length && states.every(status=>status==='complete') ? 'complete' : 'unknown';
   };
   const applyReceiptEvent = (state, event) => {
     if (!event || typeof event !== 'object') return;
     const receipt = state.receipt;
-    if (event.type === 'loading') receipt.phase = 'loading';
+    if (event.type === 'loading') {receipt.phase = 'loading';receipt.coverage = 'pending';}
     if (event.type === 'results') {
       const snapshot = resultSnapshot(event);
       receipt.projection = snapshot.projection;
@@ -168,8 +180,8 @@
         if (row.status) receipt.providers[provider] = row.status;
       }
       receipt.union = state.projectedUnion || cleanUnion(event.union);
-      refreshDedupe(state);
       state.terminalSeen = true;
+      refreshDedupe(state);
     }
     if (event.type === 'error') receipt.phase = 'error';
   };

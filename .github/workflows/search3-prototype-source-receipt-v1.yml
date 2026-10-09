@@ -4,8 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
+      - 'v2/prototype-search/data.js'
       - 'v2/prototype-search/source-receipt-v1.js'
       - 'tests/search3-prototype-source-receipt-v1.cjs'
+      - 'tests/search3-prototype-source-receipt-terminal-status-v1.cjs'
       - '.github/workflows/search3-prototype-source-receipt-v1.yml'
 
 permissions:
@@ -30,3 +32,5 @@ jobs:
           node --check v2/prototype-search/source-receipt-v1.js
           node --check tests/search3-prototype-source-receipt-v1.cjs
           node tests/search3-prototype-source-receipt-v1.cjs
+          node --check tests/search3-prototype-source-receipt-terminal-status-v1.cjs
+          node tests/search3-prototype-source-receipt-terminal-status-v1.cjs
