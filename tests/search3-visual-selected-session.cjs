@@ -162,7 +162,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.goto(origin+base+'visual-search/index.html?scenario=flights&searched=1');await page.locator('.hotel-card [data-action="offer"]').first().click();await page.locator('[data-action="start-tour-flights"]').click();await page.locator('#flight-total').waitFor();
    const pair=()=>page.locator('[name="flight-pair"]:checked').inputValue(),read=()=>page.evaluate(key=>structuredClone(history.state[key]),historyKey);
    assert.equal(await pair(),'0');await page.locator('.flight-filter-panel>summary').click();await page.locator('[data-flight-query]').fill('no-such-flight');assert.equal(await pair(),'0');await page.locator('.flight-filter-state button').click();assert.equal(await page.locator('.flight-filter-panel>summary').evaluate(el=>el===document.activeElement),true,'Reset focuses a remaining visible target');
-   await page.locator('[data-flight-sort]').selectOption('original');await page.locator('[data-flight-load-more]').click();await page.locator('[name="flight-pair"][value="3"]').check();await page.locator('[data-flight-filter="direct"]').check();await page.locator('.flight-time-filters>summary').click();
+   await page.locator('.flight-time-filters>summary').click();await page.locator('[data-flight-sort]').selectOption('original');await page.locator('[data-flight-load-more]').click();await page.locator('[name="flight-pair"][value="3"]').check();await page.locator('[data-flight-filter="direct"]').check();
    await page.locator('[data-flight-index="3"] details>summary').click();await page.locator('[data-flight-query]').focus();await page.locator('#modal-body').evaluate(el=>el.scrollTop=123);await page.waitForTimeout(30);
    // Native browser Back consumes the nested step. The latest scroll/focus
    // must be captured even while history writing is deliberately suppressed.
@@ -177,6 +177,9 @@ module.exports=async function({browser,origin,base,evidence}){
    const bounds=await page.locator('#modal-footer [data-action="apply-flight"]').evaluate(el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,vw:innerWidth,vh:innerHeight};});assert(bounds.width>=44&&bounds.height>=44&&bounds.left>=-1&&bounds.right<=bounds.vw+1&&bounds.top>=0&&bounds.bottom<=bounds.vh+1,'confirmation target remains inside viewport');
    await page.screenshot({path:path.join(evidence,'flight-session-unknown-'+width+'.png')});assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    records.push({provider:'fixture',width,mode:'flight-session',compiled:true,native_history:true,reset_focus:true,exact_draft_apply_cancel:true,unknown_gated:true,retained_refinements:true,supplier_HTTP:0,real_leads:0,physical_device:false});
+  }catch(error){
+   fs.writeFileSync(path.join(evidence,'flight-session-failure-'+width+'.json'),JSON.stringify({width,error:error.stack,errors,forbidden,compiled:true,physical_device:false},null,2)+'\n');
+   console.error('FAIL compiled flight session at'+width,error.stack);await page.screenshot({path:path.join(evidence,'flight-session-failure-'+width+'.png')}).catch(()=>{});throw error;
   }finally{await context.close();}
  };
  for(let i=0;i<5;i+=4){const results=await Promise.allSettled([360,390,430,768,1280].slice(i,i+4).map(flightSession)),failed=results.filter(r=>r.status==='rejected');if(failed.length)throw new AggregateError(failed.map(r=>r.reason),'Compiled flight session acceptance failed');}
