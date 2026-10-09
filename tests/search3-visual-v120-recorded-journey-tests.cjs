@@ -8,7 +8,7 @@ const {JSDOM, VirtualConsole} = require('jsdom');
 {
  const vm=require('node:vm'),source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
  const actual=name=>{const start=source.indexOf('function '+name+'(');assert(start>=0,name);const tail=source.slice(start),line=tail.slice(0,tail.indexOf('\n'));return line.endsWith('}')?line:tail.slice(0,tail.indexOf('\n}')+2);};
- const hotel={id:7,name:'Exact target'},offer={key:'target',hotelId:7,day:'2026-10-05',nights:7,adults:2,ages:[0,17],total:123450,room:'Standard',meal:'Завтраки',operator:'ANEX',flight:'charter',origin:'Москва',provider:'anex',search:{country:'4',origin:'Москва',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:10,adults:2,ages:[0,17]}};
+ const hotel={id:7,name:'Exact target'},offer={key:'target',hotelId:7,day:'2026-10-05',nights:7,adults:2,ages:[0,17],total:123450,room:'Standard',meal:'Завтраки',operator:'ANEX',flight:'charter',placement:'DBL + 2 CHD',origin:'Москва',provider:'anex',search:{country:'4',origin:'Москва',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:10,adults:2,ages:[0,17]}};
  const ctx={hotels:[hotel],Number,String,Array,JSON,addDays:(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10),fuelAmount:()=>null,flightAllowanceText:()=> 'Уточняется',savedFlightTextPlain:()=> 'Рейс уточнит менеджер',savedFlightLegs:()=>[]};
  vm.createContext(ctx);vm.runInContext(['selectedTourOfferSnapshot','selectedTourHotel','sameSelectedTourConditions'].map(actual).join('\n'),ctx);
  const target=ctx.selectedTourOfferSnapshot(offer);
@@ -18,7 +18,11 @@ const {JSDOM, VirtualConsole} = require('jsdom');
  assert.deepEqual([...target.ages],[0,17]);assert.notEqual(target.ages,offer.ages,'Refresh target keeps detached child ages');
  assert.equal(target.raw.selectionEnabled,false,'Refresh snapshot cannot authorize a quote or application');
  assert.equal(ctx.sameSelectedTourConditions(offer,target),true,'Exact target still matches its original conditions');
- for(const [field,value]of Object.entries({hotelId:8,day:'2026-10-06',nights:8,adults:3,ages:[0,16],room:'Deluxe',meal:'Всё включено',operator:'SAMO',flight:'regular'}))assert.equal(ctx.sameSelectedTourConditions({...offer,[field]:value},target),false,'A changed '+field+' is only an alternative');
+ for(const [field,value]of Object.entries({hotelId:8,day:'2026-10-06',nights:8,adults:3,ages:[0,16],room:'Deluxe',meal:'Всё включено',operator:'SAMO',flight:'regular',placement:'TWIN + 2 CHD',origin:'Калининград'}))assert.equal(ctx.sameSelectedTourConditions({...offer,[field]:value},target),false,'A changed '+field+' is only an alternative');
+ assert.equal(ctx.sameSelectedTourConditions({...offer,placement:''},target),false,'Unknown placement cannot prove the known selected placement');
+ assert.equal(ctx.sameSelectedTourConditions({...offer,origin:'',search:{...offer.search,origin:'Калининград'}},target),false,'Changed accepted search departure is not the original tour');
+ assert.equal(ctx.sameSelectedTourConditions({...offer,origin:'',search:{...offer.search}},target),true,'Existing accepted search departure fallback remains supported');
+ assert.equal(ctx.sameSelectedTourConditions({...offer,placement:undefined},{...target,placement:''}),true,'Both absent placement facts retain the existing unknown state');
  assert.equal(ctx.selectedTourOfferSnapshot({...offer,total:0}),null,'Invalid price cannot become an exact refresh target');
 }
 
