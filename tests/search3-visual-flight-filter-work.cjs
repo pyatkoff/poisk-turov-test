@@ -65,7 +65,7 @@ function changedRecords(code){
  }
  return out;
 }
-function domRecords(code,{legacyCopy=false}={}){
+function domRecords(code,{legacyCopy=false,legacyResetFocus=false}={}){
  const {JSDOM}=require('jsdom'),out=[];
  const copyLabels=[
   ['.flight-options>legend','Пары рейсов туда и обратно. Цена всего тура за всех туристов.','Пары рейсов туда и обратно. Цена за весь тур.'],
@@ -92,12 +92,16 @@ function domRecords(code,{legacyCopy=false}={}){
    }
    return copy;
   };
+  let resetSnapshot=false;
   const take=()=>{
    assert.equal(host.querySelectorAll(copyLabels[0][0]).length,1,'one actual pair legend');
    assert.equal(host.querySelectorAll(copyLabels[1][0]).length,host.querySelectorAll('.flight-option').length,'one actual whole-tour caption per option');
    for(const [selector,current,original] of copyLabels)for(const label of host.querySelectorAll(selector))assert.equal(label.innerHTML,legacyCopy?original:current,'actual flight-price copy must remain plain text');
    const html=host.innerHTML,focus=w.document.activeElement.outerHTML;
-   out.push({html:snapshotNode(host).innerHTML,focus:snapshotNode(w.document.activeElement).outerHTML,scroll:JSON.parse(JSON.stringify(trace)),scrollTop:host.scrollTop});
+   if(resetSnapshot)assert.strictEqual(w.document.activeElement,legacyResetFocus?w.document.body:host.querySelector('.flight-filter-panel>summary'),'Reset keeps keyboard focus on the visible filter summary');
+   // Reset's old BODY focus is the one declared behavior repair. Normalize
+   // only this detached focus snapshot; all DOM/order/selection pins remain.
+   out.push({html:snapshotNode(host).innerHTML,focus:snapshotNode(resetSnapshot?w.document.body:w.document.activeElement).outerHTML,scroll:JSON.parse(JSON.stringify(trace)),scrollTop:host.scrollTop});resetSnapshot=false;
    assert.equal(host.innerHTML,html,'snapshot normalization must not mutate the actual host');
    assert.equal(w.document.activeElement.outerHTML,focus,'snapshot normalization must not mutate the focused DOM');
   },fire=(node,event='change')=>{node.focus();node.dispatchEvent(new w.Event(event,{bubbles:true}));},click=selector=>{const node=host.querySelector(selector);node.focus();node.click();},refresh=()=>{fire(query,'input');take();};
@@ -112,7 +116,7 @@ function domRecords(code,{legacyCopy=false}={}){
   click('[data-flight-selected]');take();click('[data-flight-load-more]');take();
   query.value='absent';refresh();click('[data-flight-selected]');take();
   host.querySelector('[data-flight-filter="baggage"]').checked=true;fire(host.querySelector('[data-flight-filter="baggage"]'));take();
-  click('.flight-filter-state button');take();click('[data-flight-show-results]');take();
+  click('.flight-filter-state button');resetSnapshot=true;take();click('[data-flight-show-results]');take();
   dom.window.close();
  }
  return out;
@@ -126,7 +130,7 @@ const work=model(source,{count:1000,uniform:true});work.context.normalizations=0
 const changed=changedRecords(source),dom=domRecords(source);
 if(process.argv.includes('--capture'))console.log('CAPTURE original changed/DOM digests',hash(changed),hash(dom));
 else{assert.equal(hash(changed),'6d255be2935c046bb0e3b069ab0bbf94cfc8544aad2211f7c7717b6774fdaf4a','original dynamic-data and child-node repair states');assert.equal(hash(dom),'94583c42c8b29ded66f9113f54053786978378bd7e62ecf1fb694c339e23b152','original real DOM, selection, focus and scroll states');}
-if(baseline){assert.deepEqual(changed,changedRecords(baseline));assert.deepEqual(dom,domRecords(baseline,{legacyCopy:true}));}
+if(baseline){assert.deepEqual(changed,changedRecords(baseline));assert.deepEqual(dom,domRecords(baseline,{legacyCopy:true,legacyResetFocus:true}));}
 for(const [before,after] of [
  ['Пары рейсов туда и обратно. Цена всего тура за всех туристов.','Пары рейсов туда и обратно. Цена билета.'],
  ['<small>весь тур за всех</small>','<small>цена за одного</small>'],
@@ -150,3 +154,4 @@ for(const sort of ['default','price']){
 console.log(`PASS flight filter: ${actual.length} pinned bind states (${digest}), ${changed.length} dynamic/repair states, ${dom.length} real DOM states; unchanged normalization1001; no unchanged-order sorts/appends; provider/lead HTTP0`);
 
 require('./search3-visual-flight-picker-lazy.cjs');
+

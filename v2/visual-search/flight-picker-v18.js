@@ -57,7 +57,8 @@
 
   // Compatibility entrypoints become usable after the UI owner is loaded.
   function render(o,selected,helpers){return window.AnyTourFlightPickerUIV1.render(o,selected,helpers);}
-  function bind(container,money=value=>value.toLocaleString('ru-RU')+' ₽'){return window.AnyTourFlightPickerUIV1.bind(container,money);}
+  function bind(container,money=value=>value.toLocaleString('ru-RU')+' ₽',restored=null,changed=null){return window.AnyTourFlightPickerUIV1.bind(container,money,restored,changed);}
   window.AnyTourFlightDisplayV1=Object.freeze({departureMinute,pairAllowance,pairRoutes});
   window.AnyTourFlightPickerV18 = Object.freeze({render,bind,pairSummary,selectionSummary,allowanceValue,directionAllowance});
 })();
+

@@ -27,11 +27,20 @@ function render(o, selected, helpers) {
       return `<article class="flight-option flight-option-compact" data-flight-index="${i}" data-flight-forward-time="${departurePeriod(v.forward)}" data-flight-backward-time="${departurePeriod(v.backward)}" data-flight-search="${esc([...(v.forward||[]),...(v.backward||[])].map(f=>[helpers.text(f.company),f.number,helpers.text(f.departure?.port),helpers.text(f.arrival?.port)].filter(Boolean).join(' ')).join(' '))}" data-flight-price="${total || ''}" data-flight-direct="${v.forward?.length === 1 && v.backward?.length === 1}" data-flight-baggage="${!!v.forward?.length && !!v.backward?.length && bags.every(n => Number(n) > 0)}"><label class="flight-choice-row"><input type="radio" name="flight-pair" value="${i}" ${String(i) === String(selected) ? 'checked' : ''}><span class="sr-only">Вариант ${i + 1}.</span>${pairRoutes(v, helpers)}<div class="flight-price"><strong>${total ? money(total) : 'Цена уточняется'}</strong><small>весь тур за всех</small><em data-flight-difference>${esc(priceDifference(total, selectedTotal, String(i) === String(selected), money))}</em></div></label><details><summary aria-label="Подробнее о варианте ${i + 1}: ${esc(bag)}. ${esc(carryOn)}"><span class="flight-allowances"><span>${esc(bag)}</span><span>${esc(carryOn)}</span></span><span class="flight-details-label">Подробнее</span></summary><div class="flight-expanded">${legHTML(v.forward, 'Туда') + legHTML(v.backward, 'Обратно')}<p>Топливный сбор: ${fuelText({...o, flightChoiceId: String(i)})}</p></div></details></article>`;
     }).join('')}</fieldset><button type="button" class="secondary flight-load-more" data-flight-load-more hidden></button>`;
   }
-function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽') {
+function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽', restored = null, changed = null) {
     const list=container.querySelector('.flight-options'),rows=[...list.querySelectorAll('.flight-option')];
     container.querySelector('.flight-filter-panel').open=false;
     const status=container.querySelector('.flight-filter-state'),query=container.querySelector('[data-flight-query]'),selectedButton=container.querySelector('[data-flight-selected]'),loadMore=container.querySelector('[data-flight-load-more]');
-    const pageSize=matchMedia('(max-width:760px)').matches?4:6;let visibleLimit=pageSize;
+    const pageSize=matchMedia('(max-width:760px)').matches?4:6;let visibleLimit=Number.isSafeInteger(restored?.limit)?Math.max(pageSize,Math.min(rows.length,restored.limit)):pageSize;
+    if(restored){
+      query.value=typeof restored.query==='string'?restored.query.slice(0,1024):'';
+      for(const name of ['direct','baggage'])container.querySelector('[data-flight-filter="'+name+'"]').checked=restored[name]===true;
+      for(const name of ['forward','backward']){const control=container.querySelector('[data-flight-time="'+name+'"]');control.value=[...control.options].some(option=>option.value===restored[name])?restored[name]:'';}
+      container.querySelector('[data-flight-sort]').value=restored.sort==='original'?'original':'price';
+      container.querySelector('.flight-filter-panel').open=restored.panel===true;
+      container.querySelector('.flight-time-filters').open=restored.timePanel===true;
+      for(const row of rows)row.querySelector('details').open=Array.isArray(restored.expanded)&&restored.expanded.includes(Number(row.dataset.flightIndex));
+    }
     const normalize=value=>String(value).toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();
     const resetFilters=()=>{container.querySelectorAll('[data-flight-filter]').forEach(x=>x.checked=false);container.querySelectorAll('[data-flight-time]').forEach(x=>x.value='');query.value='';};
     const orderKeys=rows.map(row=>({row}));let ordered=[],lastSort;
@@ -76,14 +85,18 @@ function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽'
       selectedButton.hidden=!selectedRow||(!hiddenSelection&&!selectedBeyondLimit&&selectedRow===firstVisible);
       selectedButton.textContent=hiddenSelection?'Сбросить фильтры и показать выбранный':'К выбранному';
       if(selectedBeyondLimit)selectedButton.textContent='Показать выбранный';
-      if(direct||baggage||terms.length||timeCount){const reset=document.createElement('button');reset.type='button';reset.className='text-button';reset.textContent='Сбросить';reset.onclick=()=>{resetFilters();update(true);};status.append(reset);}
+      if(direct||baggage||terms.length||timeCount){const reset=document.createElement('button');reset.type='button';reset.className='text-button';reset.textContent='Сбросить';reset.onclick=()=>{const focused=document.activeElement===reset;resetFilters();update(true);if(focused)container.querySelector('.flight-filter-panel>summary').focus({preventScroll:true});};status.append(reset);}
+      if(changed)queueMicrotask(changed);
     }
     query.addEventListener('input',()=>update(true));
     container.querySelector('[data-flight-show-results]').addEventListener('click',()=>{const panel=container.querySelector('.flight-filter-panel');panel.open=false;panel.querySelector('summary').focus({preventScroll:true});container.scrollTop=0;});
     loadMore.addEventListener('click',()=>{visibleLimit+=pageSize;update();const firstNew=[...list.querySelectorAll('.flight-option:not([hidden])')][visibleLimit-pageSize];firstNew?.querySelector('input')?.focus({preventScroll:true});firstNew?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});});
     selectedButton.addEventListener('click',()=>{const chosen=list.querySelector('input:checked');if(!chosen)return;const row=chosen.closest('.flight-option');if(row.dataset.flightMatch!=='true'){resetFilters();visibleLimit=pageSize;update();}if(row.hidden){const position=[...list.querySelectorAll('.flight-option[data-flight-match="true"]')].indexOf(row);visibleLimit=Math.max(visibleLimit,position+1);update();}chosen.focus({preventScroll:true});row.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'nearest'});});
     container.addEventListener('change',event=>{if(event.target.name==='flight-pair'){const focused=event.target;update();focused.focus({preventScroll:true});}});
-    container.querySelectorAll('[data-flight-filter],[data-flight-sort],[data-flight-time]').forEach(control=>control.addEventListener('change',()=>update(true)));update();
+    container.querySelectorAll('[data-flight-filter],[data-flight-sort],[data-flight-time]').forEach(control=>control.addEventListener('change',()=>update(true)));
+    if(changed)container.addEventListener('toggle',changed,true);update();
+    return Object.freeze({snapshot:()=>({query:query.value,direct:container.querySelector('[data-flight-filter="direct"]').checked,baggage:container.querySelector('[data-flight-filter="baggage"]').checked,forward:container.querySelector('[data-flight-time="forward"]').value,backward:container.querySelector('[data-flight-time="backward"]').value,sort:container.querySelector('[data-flight-sort]').value,panel:container.querySelector('.flight-filter-panel').open,timePanel:container.querySelector('.flight-time-filters').open,limit:visibleLimit,expanded:rows.filter(row=>row.querySelector('details').open).map(row=>Number(row.dataset.flightIndex))})});
   }
  window.AnyTourFlightPickerUIV1=Object.freeze({render,bind});
 })();
+
