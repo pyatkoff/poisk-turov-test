@@ -4,10 +4,26 @@
 // No application bootstrap, supplier transport, quote or lead submission executes.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const cold=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/offer-list-v1.js'),'utf8');
-const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8')+'\n'+section(cold,'function offerListInventory(','function mountOfferList(');
+const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+const source=app+'\n'+section(cold,'function offerListInventory(','function mountOfferList(');
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
+const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String});
+for(const value of ['On Request','on request','  ON REQUEST  ']){
+ assert.equal(requestLabels.displayMealLabel({meal:value}),'Питание уточняется');assert.equal(requestLabels.roomLabel({room:value}),'Номер уточняется');
+}
+assert.equal(requestLabels.mealLabel({meal:'On Request'}),'On Request','raw meal identity remains unchanged');
+assert.equal(requestLabels.displayMealLabel({meal:'Upon Request'}),'Upon Request');assert.equal(requestLabels.roomLabel({room:'Request'}),'Request','unconfirmed near matches are not rewritten');
+const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function minimumOfferSummary(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
+ flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>''
+});
+const requestSummaryText=requestSummary.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+assert.match(requestSummaryText,/Номер уточняется/);assert.doesNotMatch(requestSummaryText,/Номер Номер уточняется/,'result card does not duplicate the room label');
+for(const name of ['andromedaApplicationReceipt','anexApplicationReceipt']){
+ const owner=section(app,`function ${name}(`,name==='andromedaApplicationReceipt'?'function openAndromedaVerified(':'function openAnexApplicationPreview(');
+ assert.match(owner,/meal:String\(mealLabel\(o\)\|\|''\)/,name+' keeps the raw lead receipt owner');assert.doesNotMatch(owner,/displayMealLabel|roomLabel/,name+' receipt has no presentation projection');
+}
 function generatedRootOwner(source){return source.includes('const generatedRootBindings=')?section(source,'const generatedRootBindings=','function renderSummary(){'):'';}
 function owner(source,kind){
  if(kind==='results'){const first=source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[],renderedCardEntries=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];")?"let renderedCardLimit=24,renderedCardScope='',renderedResultItems=[];":source.includes("let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;")?"let renderedCardLimit=24,renderedCardScope='',resultCardObserver=null;":"let renderedCardLimit=24,renderedCardScope='';";return generatedRootOwner(source)+section(source,first,'function syncFilters(){');}
@@ -60,6 +76,7 @@ function observe(source,s){
  ctx.offerGroupKey=call('offerGroupKey',o=>o.room+'-'+o.meal);
  ctx.offerRefinementLabel=call('offerRefinementLabel',(field,value)=>field+':'+value);
  for(const name of ['flightLabel','offerSearchContext','offerCountText','nightsText','operatorBadge','offerMetaNote','offerActionLabel','icon','mealLabel','offerRefinementRecovery'])ctx[name]=call(name,v=>name+':'+(v?.key??v?.operator??v?.meal??v??''));
+ ctx.displayMealLabel=o=>Object.keys(o).length===1?o.meal||'Питание уточняется':ctx.mealLabel(o);ctx.roomLabel=o=>o.room||'Номер уточняется';
  ctx.sharedOfferNote=call('sharedOfferNote',()=>s.shared?'Общее примечание':'');
  ctx.byId=id=>node('#'+id);
  ctx.paintGeneratedRoots=(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');};
@@ -112,6 +129,16 @@ let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
  .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n"," const commonNote='';\n")
  .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));')
  .replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');
+// Reconstruct the prior raw presentation only for the historical oracle.
+// Runtime filtering/grouping still keeps these exact raw values; the current
+// owner changes only the labels shown for the confirmed On Request sentinel.
+oldCold=oldCold
+ .replace("function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?displayMealLabel({meal:value}):field==='room'?roomLabel({room:value}):value;}","function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?value:value;}")
+ .replaceAll('displayMealLabel(o)','mealLabel(o)').replaceAll('roomLabel(o)','o.room')
+ .replace("offerView.room?roomLabel({room:offerView.room}):''","offerView.room")
+ .replace("mealNames[offerView.meal]||displayMealLabel({meal:offerView.meal})","mealNames[offerView.meal]||offerView.meal")
+ .replaceAll('roomLabel(group.offers[0])','group.offers[0].room')
+ .replaceAll('displayMealLabel(group.offers[0])','mealLabel(group.offers[0])');
 const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function offerRowEntry(',scopeStart);
 if(scopeStart>=0){
  assert(scopeEnd>scopeStart,'current heading scope boundary');

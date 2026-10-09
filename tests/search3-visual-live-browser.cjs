@@ -613,6 +613,197 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  assert.equal(starts(),beforeStarts+1,'one explicit submit starts one search');const request=transport.calls.findLast(c=>c.action==='search_start');assert.equal(request.query['hotelIds[]'],'7002','supplier search uses the verified legacy ID, not the own catalogue ID');assert.equal(request.query.countryId,'4');
  fs.writeFileSync(path.join(evidence,`hotel-picker-block-${width}.json`),JSON.stringify({width,keyboard_selection_focus:true,keyboard_deselection_focus:true,keyboard_chip_removal_focus:true,available_photos:true,missing_and_failed_photo_fallback:true,typed_country_switch:true,cached_country_scope:true,own_hotel_id:2002,verified_legacy_id:7002,trip_preserved:true,explicit_searches:1,simulated_keyboard:width<=760,physicalSafari:false,supplier_HTTP:0,real_leads:0},null,2));
 };
+async function formPickerActionJourney(browser,origin,base,evidence){
+ const receipts=[];
+ for(const width of [360,390,430,768,1280]){
+  const transport=fixture(),errors=[],forbidden=[],hotelReads=[],hotelReadWaiters=new Map(),releases=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  page.on('requestfailed',request=>{const read=hotelReads.find(entry=>entry.request===request);if(read){read.failure=request.failure()?.errorText||null;read.failedResolve(read.failure);}});
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="64" height="52"><rect fill="#bacad5" width="64" height="52"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    let finished,failedResolve;const read=url.pathname==='/data/hotel-search-v1.php'?{request,query:url.searchParams.get('q'),country:url.searchParams.get('countryId'),held:!!transport.state.hotelLookupGates[url.searchParams.get('countryId')],done:new Promise(resolve=>finished=resolve),failed:new Promise(resolve=>failedResolve=resolve),failedResolve,expectAbort:false,cancelled:false}:null;
+    if(read){hotelReads.push(read);hotelReadWaiters.get(request)?.(read);}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}
+    catch(error){
+     // Only a deliberately held canonical read cancelled by these native actions
+     // may finish without a response. Retain its explicit abort receipt; all
+     // other route/fixture failures remain forbidden, including other aborts.
+     let failure=request.failure()?.errorText;
+     if(read?.held&&read.expectAbort&&!failure){
+      // Cancellation and route completion are separate events too. Wait only for
+      // this explicitly cancelled held read, with the unchanged 10s action cap.
+      let timer;try{failure=await Promise.race([read.failed,new Promise(resolve=>timer=setTimeout(()=>resolve(null),10000))]);}finally{clearTimeout(timer);}
+     }
+     if(read?.held&&read.expectAbort&&failure==='net::ERR_ABORTED')read.cancelled=true;
+     else{forbidden.push(error.message);await route.abort();}
+    }finally{finished?.();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+   await page.locator('#quick-stars [data-action="star"][data-value="5"]').click();
+   const initialURL=page.url(),fields=()=>page.locator('#search-form').evaluate(el=>[...el.querySelectorAll('input,select')].map(control=>[control.name||control.id,control.value]));
+   const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
+   const target=async(locator,label)=>{
+    await locator.scrollIntoViewIfNeeded();
+    const box=await locator.evaluate(el=>{
+     const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);
+     const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),text=[...range.getClientRects()].filter(b=>b.width&&b.height);
+     return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,hit:!!hit&&(hit===el||el.contains(hit)),textInside:text.every(b=>b.x>=r.x-1&&b.right<=r.right+1),viewportWidth:innerWidth,viewportHeight:innerHeight};
+    });
+    assert(box.width>=43.5&&box.height>=43.5,label+' has the existing44px target');assert(box.hit,label+' is reachable at its center');
+    assert(box.x>=0&&box.right<=box.viewportWidth&&box.y>=0&&box.bottom<=box.viewportHeight,label+' fits the visible viewport');assert(box.textInside,label+' keeps its whole label');return box;
+   };
+   const focused=()=>page.evaluate(()=>document.activeElement.dataset.action||document.activeElement.id||document.activeElement.tagName);
+   const close=async(action)=>{await target(page.locator('#modal [data-action="close-modal"]'),'picker close');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');assert.equal(await focused(),action,'Escape returns focus to the exact picker trigger');assert.deepEqual(await fields(),initialFields,'Cancel preserves the complete form');assert.equal(await page.locator('#quick-stars').innerHTML(),initialStars,'Cancel preserves applied category');assert.equal(page.url(),initialURL,'Cancel preserves exact search URL');};
+   for(const zoom of [100,200]){
+    await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#search-form [data-action="form-filters"]').click();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);
+    const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').press('Enter');assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');assert.equal(await focused(),'reset-form-filters','keyboard reset retains the same logical control');
+    await page.keyboard.press('Tab');assert.equal(await focused(),'apply-form-filters','Tab after reset continues to Apply');await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'reset-form-filters','reverse Tab returns to the reset control');await page.keyboard.press('Enter');assert.equal(await focused(),'reset-form-filters','repeated reset retains focus');
+    await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close('form-filters');
+    await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;
+    if(await page.locator('#modal [data-action="month-next"]').isVisible()){
+     const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').press('Enter');const advanced=await page.locator('.calendar-month h3').first().textContent();assert.notEqual(advanced,month,'one Enter advances the displayed month');assert.equal(await focused(),'month-next','next month retains keyboard focus');
+     await page.keyboard.press('Enter');assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),advanced,'a second Enter advances the next month');assert.equal(await focused(),'month-next');
+     await target(page.locator('#modal [data-action="month-prev"]'),'calendar previous month');await page.locator('#modal [data-action="month-prev"]').press('Enter');assert.equal(await page.locator('.calendar-month h3').first().textContent(),advanced);assert.equal(await focused(),'month-prev');await page.keyboard.press('Enter');assert.equal(await page.locator('.calendar-month h3').first().textContent(),month,'repeated previous Enter restores the same displayed month');
+     for(let n=0;await page.locator('#modal [data-action="month-prev"]').isEnabled();n++){assert(n<2,'fixture trip starts within the first two available months');assert.equal(await focused(),'month-prev');await page.keyboard.press('Enter');}
+     assert.equal(await focused(),'modal-title','the first-month boundary returns focus to the existing title');
+    }
+    await page.screenshot({path:path.join(evidence,`form-actions-dates-${width}-${zoom}.png`)});await close('dates');
+    for(const type of ['nights','guests']){await page.locator('#search-form [data-action="'+type+'"]').click();await close(type);}
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'form actions do not widen the document');
+    receipts.push({width,zoom,reset,next,keyboard_reset_focus:true,keyboard_month_focus:width>760,disabled_month_boundary_focus:width>760,Escape_returns_exact_trigger:true,cancel_preserves_fields_and_URL:true,physicalSafari:false});
+   }
+   // Continue the same isolated five-width form context. All catalogue rows,
+   // aliases and profile links below are the existing explicitly fictional fixture.
+   transport.state.hotelCatalogue=hotelCatalogue();
+   transport.state.catalogueAliases={2004:['контрольный псевдоним'],2005:['контрольный псевдоним']};
+   transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
+   const historyKey='anytour.prototype.v18.ui.v1',alias='контрольный псевдоним',familyURL=origin+base+'visual-search/?'+new URLSearchParams({...trip,adults:3,ages:'0,12',hotels:'2001|2002'}),familyReceipts=[],destinationReceipts=[];
+   const frames=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const closed=()=>page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+   const familyFields=()=>page.evaluate(()=>['#origin','#dates-label','#nights-label','#guests-label','#guests-detail','#destination-detail'].map(selector=>{const el=document.querySelector(selector);return el.value||el.textContent;}));
+   const indexFocus=()=>page.evaluate(()=>({action:document.activeElement.dataset.action||document.activeElement.id,index:document.activeElement.dataset.index??null,disabled:document.activeElement.matches(':disabled')}));
+   const selectedIDs=()=>page.locator('[data-action="destination-remove"][data-id]').evaluateAll(rows=>rows.map(row=>Number(row.dataset.id)));
+   const hotelIDs=()=>page.locator('.destination-hotel').evaluateAll(rows=>rows.map(row=>Number(row.dataset.id)));
+   const geometry=async label=>{
+    const result=await page.locator('#modal').evaluate(modal=>{const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),active=document.activeElement;return{modal:rect(modal),body:rect(body),footer:rect(footer),scroll:body.scrollTop,focus:active.dataset.action||active.id,focusIndex:active.dataset.index??null,documentOverflow:document.documentElement.scrollWidth>innerWidth,modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,viewportHeight:innerHeight};});
+    assert.equal(result.documentOverflow,false,label+' does not widen the document at '+width);assert.equal(result.modalOverflow,false);assert.equal(result.bodyOverflow,false);
+    assert(result.footer.bottom<=result.viewportHeight+1,label+' retains its confirmation footer inside the viewport at '+width);return result;
+   };
+   const loadFamily=async()=>{
+    await page.goto(familyURL);await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled&&document.querySelector('#destination-detail').textContent.includes('Fictional Belek 02'));
+    return{url:page.url(),fields:await familyFields()};
+   };
+   const assertUnapplied=async baseline=>{assert.equal(page.url(),baseline.url,'picker edits never mutate the applied URL');assert.deepEqual(await familyFields(),baseline.fields,'Cancel preserves the entire family and exact-hotel form');};
+   for(const zoom of [100,200]){
+    const baseline=await loadFamily();await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#search-form [data-action="guests"]').click();
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
+    const route=await page.evaluate(key=>history.state[key],historyKey);
+    assert.deepEqual(route,{type:'child-age',guest:{adults:3,ages:[0,12]},choice:{index:1,value:13}},'capture the actual native second-child route, not a constructed replacement');
+    await page.locator('[data-action="apply-age"]').press('Enter');assert.equal(await page.locator('#modal-title').textContent(),'Туристы');
+    assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false},'ordinary second-child Apply returns to the exact indexed row');
+    assert.match(await page.locator('[data-action="child-age"][data-index="0"]').textContent(),/До 1 года/);assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="12"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');
+    await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await frames();
+    assert.deepEqual(await page.evaluate(key=>history.state[key],historyKey),route);
+    await page.reload();await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    assert(await page.locator('#modal-back').isVisible(),'a full reload retains the parent guests step');assert.equal(await page.locator('[data-action="age-pick"][data-value="13"]').getAttribute('aria-pressed'),'true');
+    const restored=await geometry('restored child-age');await target(page.locator('[data-action="apply-age"]'),'restored age Apply');await page.screenshot({path:path.join(evidence,'picker-family-reload-'+width+'-'+zoom+'.png')});
+    await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await assertUnapplied(baseline);await page.screenshot({path:path.join(evidence,'picker-family-return-'+width+'-'+zoom+'.png')});
+    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
+    // Restore a genuine child route again; Back must retain the original age.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Возраст ребёнка 2'&&!document.querySelector('.search-submit').disabled);await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);
+    await page.locator('#modal-back').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/12 лет/);
+    for(let n=3;n<6;n++)await page.locator('[data-action="adults-plus"]').press('Enter');
+    assert(await page.locator('[data-action="adults-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-minus',index:null,disabled:false},'upper adult boundary retains the usable opposite counter');
+    for(let n=6;n>1;n--)await page.locator('[data-action="adults-minus"]').press('Enter');
+    assert(await page.locator('[data-action="adults-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'adults-plus',index:null,disabled:false},'lower adult boundary retains a usable counter');
+    await page.locator('[data-action="children-plus"]').press('Enter');assert(await page.locator('[data-action="children-plus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-minus',index:null,disabled:false});assert(await page.locator('[data-action="apply-guests"]').isDisabled(),'missing third-child age still blocks Apply');
+    const boundary=await geometry('family counter boundary');await target(page.locator('[data-action="children-minus"]'),'boundary child counter');await page.screenshot({path:path.join(evidence,'picker-family-boundary-'+width+'-'+zoom+'.png')});
+    await page.locator('[data-action="child-age"][data-index="2"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="17"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'2',disabled:false});
+    await page.locator('[data-action="remove-child"][data-index="1"]').press('Enter');assert.deepEqual(await indexFocus(),{action:'child-age',index:'1',disabled:false});assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/17 лет/,'removing the middle child never aliases the surviving third child');
+    await page.locator('[data-action="children-minus"]').press('Enter');await page.locator('[data-action="children-minus"]').press('Enter');assert(await page.locator('[data-action="children-minus"]').isDisabled());assert.deepEqual(await indexFocus(),{action:'children-plus',index:null,disabled:false});
+    await page.keyboard.press('Escape');await closed();await assertUnapplied(baseline);
+    // Only explicit whole-party Apply changes the form draft; no supplier starts.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.locator('[data-action="age-pick"][data-value="13"]').press('Enter');await page.locator('[data-action="apply-age"]').press('Enter');await page.locator('[data-action="apply-guests"]').press('Enter');await closed();
+    assert.match(await page.locator('#guests-label').textContent(),/3 взр.*2 реб/);assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 13 лет');assert.equal(page.url(),baseline.url,'the current applied URL remains unchanged until search submit');
+    await page.locator('#search-form [data-action="guests"]').click();assert.match(await page.locator('[data-action="child-age"][data-index="1"]').textContent(),/13 лет/);await page.keyboard.press('Escape');await closed();
+    // Corrupted index is an explicitly labelled history fixture; it must recover
+    // to the existing guests owner, not create a dead-end child dialog.
+    await page.locator('#search-form [data-action="guests"]').click();await page.locator('[data-action="child-age"][data-index="1"]').press('Enter');await page.evaluate(({key})=>{const route=structuredClone(history.state[key]);route.choice.index=3;history.replaceState({...history.state,[key]:route},'',location.href);},{key:historyKey});await page.reload();
+    await page.waitForFunction(()=>document.querySelector('#modal').open&&document.querySelector('#modal-title').textContent==='Туристы'&&!document.querySelector('.search-submit').disabled);assert.equal(await page.locator('[data-action="apply-guests"]').count(),1);await page.keyboard.press('Escape');await closed();assert.equal(page.url(),baseline.url);
+    familyReceipts.push({width,zoom,capturedNativeRoute:route,full_reload:true,indexed_return_focus:true,age0_and17_retained:true,all_four_counter_boundaries:true,missing_age_blocks_apply:true,explicit_party_apply:true,invalid_history_index_recovers:true,cancel_preserves_applied_URL:true,restored,boundary,physicalSafari:false});
+   }
+   const baseline=await loadFamily();await page.evaluate(()=>document.documentElement.style.fontSize='');
+   const openDestination=async()=>{await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2001,2002]);};
+   const hideCountries=async()=>{if(await page.locator('[data-action="destination-countries"]').getAttribute('aria-expanded')==='true')await page.locator('[data-action="destination-countries"]').press('Enter');};
+   const heldLookup=async(query=alias,country='4')=>{
+    let release;const gate=new Promise(resolve=>release=resolve);transport.state.hotelLookupGates[country]=gate;const finish=()=>{if(transport.state.hotelLookupGates[country]===gate)delete transport.state.hotelLookupGates[country];release();};releases.push(finish);
+    const started=page.waitForRequest(request=>{const url=new URL(request.url());return url.pathname==='/data/hotel-search-v1.php'&&url.searchParams.get('q')===query&&url.searchParams.get('countryId')===country;});
+    await page.locator('#destination-query').fill(query);const request=await started;
+    // Request and Route are distinct Playwright events: do not assume the route
+    // callback has already registered the retained read when Request arrives.
+    const read=hotelReads.find(entry=>entry.request===request)||await new Promise((resolve,reject)=>{
+     const timer=setTimeout(()=>{hotelReadWaiters.delete(request);reject(new Error('Canonical read interception was not registered within the existing 10s action limit'));},10000);
+     hotelReadWaiters.set(request,value=>{clearTimeout(timer);hotelReadWaiters.delete(request);resolve(value);});
+    });assert(read,'actual intercepted canonical read is retained');
+    return{finish,read};
+   };
+   const completeHeld=async(held,success=true)=>{
+    const profile=success&&!held.read.request.failure()?page.waitForResponse(response=>{const url=new URL(response.url());return url.pathname.endsWith('/hotel-details-read-v1.php')&&url.searchParams.getAll('legacyHotelIds[]').join(',')==='7004,7005';}):null;
+    held.finish();await held.read.done;if(profile)await(await profile).finished();await frames();
+   };
+   const closeDestination=async()=>{await page.locator('#modal [data-action="close-modal"]').click();await closed();await assertUnapplied(baseline);};
+   for(const action of ['keep','back','cancel','confirm'])for(const failed of [false,true]){
+    await openDestination();transport.state.hotelLookupError=failed;const held=await heldLookup();
+    await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');assert.equal(await page.locator('#modal-title').textContent(),'Изменить направление?');
+    const before=await geometry('pending destination replacement');if(action==='keep'&&!failed)await page.screenshot({path:path.join(evidence,'picker-destination-pending-'+width+'.png')});await completeHeld(held,!failed);assert.equal(await page.locator('#modal-title').textContent(),'Изменить направление?','a late terminal read never replaces the active confirmation');
+    const after=await geometry('completed read under replacement');assert.equal(after.scroll,before.scroll);assert.equal(after.focus,before.focus,'a hidden catalogue completion never steals confirmation focus');
+    if(action==='keep')await page.locator('[data-action="keep-destination"]').press('Enter');
+    else if(action==='back')await page.locator('#modal-back').press('Enter');
+    else if(action==='cancel'){if(failed)await page.locator('#modal [data-action="close-modal"]').press('Enter');else await page.keyboard.press('Escape');}
+    else await page.locator('[data-action="confirm-destination"]').press('Enter');
+    await hideCountries();await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');
+    assert.equal(await page.locator('#destination-query').inputValue(),alias);assert.deepEqual(await selectedIDs(),action==='confirm'?[]:[2001,2002]);assert.equal(page.url(),baseline.url);
+    if(failed){await page.locator('[data-action="retry-destination"]').waitFor();assert.match(await page.locator('#destination-results').textContent(),/Не удалось загрузить отели/);if(action==='cancel')await page.screenshot({path:path.join(evidence,'picker-destination-error-'+width+'-100.png')});transport.state.hotelLookupError=false;await page.locator('[data-action="retry-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);}
+    assert.deepEqual(await hotelIDs(),[2004,2005],'the retained canonical alias response is visible without name/ID guessing');
+    if(action==='keep'&&failed===false||action==='cancel'&&failed===true)await page.screenshot({path:path.join(evidence,'picker-destination-'+action+'-'+(failed?'error-retry':'ready')+'-'+width+'.png')});
+    destinationReceipts.push({width,action,failed,cancel_action:action==='cancel'?(failed?'header-close':'Escape'):null,terminal_during_confirmation:true,query_retained:true,exact_draft_IDs:action==='confirm'?[]:[2001,2002],alias_IDs:[2004,2005],focus_and_scroll_retained:true,geometry:after});await closeDestination();
+   }
+   // The response-after-return control uses the same request and preserves query
+   // focus/selection/scroll while the existing parent picker settles normally.
+   await openDestination();const control=await heldLookup();await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');await page.locator('[data-action="keep-destination"]').press('Enter');await hideCountries();await page.locator('#destination-query').focus();await page.locator('#destination-query').evaluate(el=>el.setSelectionRange(2,7));const controlBefore=await geometry('response-after-return');
+   await completeHeld(control);await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false');assert.deepEqual(await hotelIDs(),[2004,2005]);assert.equal(await focused(),'destination-query');assert.deepEqual(await page.locator('#destination-query').evaluate(el=>[el.selectionStart,el.selectionEnd]),[2,7]);const controlAfter=await geometry('response-after-return complete');assert.equal(controlAfter.scroll,controlBefore.scroll);await closeDestination();
+   // Replace the country while an old request is retained. The new canonical
+   // country settles first; the old read is explicitly released only afterwards.
+   await openDestination();const foreign=await heldLookup('Rix');await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="100"]').press('Enter');foreign.read.expectAbort=true;await page.locator('[data-action="confirm-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===3);foreign.finish();await foreign.read.done;await frames();assert.deepEqual(await hotelIDs(),[3001,3002,3003]);assert.deepEqual(await selectedIDs(),[]);assert.match(await page.locator('#destination-scope').textContent(),/Египет/);await page.screenshot({path:path.join(evidence,'picker-destination-country-'+width+'.png')});await closeDestination();
+   // Old A -> B -> new A exercises both query replacement and a duplicate
+   // spelling without allowing the cancelled first response to become current.
+   await openDestination();const old=await heldLookup();delete transport.state.hotelLookupGates['4'];old.read.expectAbort=true;await page.locator('#destination-query').fill('Rix');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===8);await page.locator('#destination-query').fill(alias);await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);await page.locator('#destination-query').focus();old.finish();await old.read.done;await frames();assert.deepEqual(await hotelIDs(),[2004,2005]);assert.equal(await focused(),'destination-query');assert.deepEqual(await selectedIDs(),[2001,2002]);await closeDestination();
+   for(const failed of [false,true]){
+    await openDestination();transport.state.hotelLookupError=failed;const late=await heldLookup();late.read.expectAbort=true;await page.locator('#modal [data-action="close-modal"]').click();await closed();late.finish();await late.read.done;await frames();assert.equal(await page.locator('#modal').evaluate(el=>el.open),false);await assertUnapplied(baseline);transport.state.hotelLookupError=false;
+   }
+   // root200 retains readable recovery and keyboard focus without extending the
+   // original viewport or inventing a physical keyboard/Safari claim.
+   await page.evaluate(()=>document.documentElement.style.fontSize='200%');await openDestination();transport.state.hotelLookupError=true;const enlarged=await heldLookup();await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');await completeHeld(enlarged,false);await page.locator('[data-action="keep-destination"]').press('Enter');await hideCountries();await page.locator('[data-action="retry-destination"]').waitFor();const enlargedGeometry=await geometry('root200 destination error');await target(page.locator('[data-action="retry-destination"]'),'root200 catalogue retry');await page.screenshot({path:path.join(evidence,'picker-destination-error-'+width+'-200.png')});transport.state.hotelLookupError=false;await page.locator('[data-action="retry-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);
+   // Explicit OR Apply commits only the two canonical own IDs to the form draft.
+   for(const id of [2001,2002])await page.locator('[data-action="destination-remove"][data-id="'+id+'"]').press('Enter');
+   for(const id of [2004,2005])await page.locator('[data-action="destination-hotel"][data-id="'+id+'"]').press('Enter');
+   assert.deepEqual(await selectedIDs(),[2004,2005]);assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отели \(2\)/);await page.locator('[data-action="apply-destination"]').press('Enter');await closed();assert.match(await page.locator('#destination-detail').textContent(),/Fictional Belek 04.*Fictional Belek 05/);assert.equal(page.url(),baseline.url);await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2004,2005]);await page.keyboard.press('Escape');await closed();
+   fs.writeFileSync(path.join(evidence,'picker-retained-'+width+'.json'),JSON.stringify({width,family:familyReceipts,destination:destinationReceipts,response_after_return:true,query_replacement_and_duplicate_guard:true,changed_country_late_guard:true,closed_success_and_error_guard:true,canonicalReadReceipts:hotelReads.map(read=>({query:read.query,country:read.country,held:read.held,expected_cancel:read.expectAbort,cancelled_route:read.cancelled,failure:read.failure||read.request.failure()?.errorText||null})),OR_own_IDs:[2004,2005],legacy_links:[7004,7005],Apply_commits_form_draft_only:true,root200_error:enlargedGeometry,fixture_only:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+   assert(!transport.calls.some(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)),'form reset, calendar navigation and Cancel start no supplier/quote/lead operation');
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  }finally{for(const release of releases)release();await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'form-picker-actions.json'),JSON.stringify({receipts,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+ console.log('PASS compiled form picker actions: five widths/normal+root200,44px hitpoints, repeated keyboard reset/month focus, boundary title and Escape preserve exact form/URL/trigger; supplier HTTP0');
+}
 const root=path.resolve(process.env.SEARCH3_VISUAL_ASSET_ROOT||path.join(__dirname,'../v2')),base='/_preview/search3-next-candidate/',evidence=path.resolve('visual-live-evidence');fs.mkdirSync(evidence,{recursive:true});
 // The hotel footer is controlled by IntersectionObserver. Two animation frames
 // can still capture its intermediate layout after Playwright scrolls a summary.
@@ -699,6 +890,91 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
+const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
+ const transport=fixture(),errors=[],forbidden=[],anexCalls=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage();
+ let releaseAnex;const firstPageGate=new Promise(resolve=>releaseAnex=resolve);
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')){
+     anexCalls.push(body.action);
+     if(body.action==='continue'){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'FIXTURE_DELIVERY_FAILED'})});return;}
+    }
+    const value=await transport.json(request.url(),{body:request.postData()});
+    if(url.pathname.endsWith('/api-anex-search3-preview.php')&&body.action==='search'){
+     value.data.continuation={state:'available',pages_read:1,next_page:2};await firstPageGate;
+    }
+    await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+   }catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0,'boot is passive');
+  await page.locator('.search-submit').click();
+  await page.waitForFunction(()=>document.querySelector('[data-search-source="tourvisor"]')?.textContent.includes('Порция получена')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('Получаем предложения'));
+  assert.doesNotMatch(await page.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров/,'pending source count is unknown, not guessed zero');
+  assert.doesNotMatch(await page.locator('#search-status').textContent(),/100%/,'TV progress cannot imply completion while another source is still pending');
+  await page.screenshot({path:path.join(evidence,'search-delivery-pending-390.png')});
+  releaseAnex();await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('Получена часть предложений')&&!document.querySelector('#search-more').hidden);
+  const status=page.locator('#search-status'),summary=status.locator('summary');
+  await summary.click();assert.match(await status.textContent(),/Вариантов до фильтров: 1/);assert.doesNotMatch(await status.textContent(),/не загрузил|недоступн/,'normal bounded first page is not a failure');
+  assert.equal(await status.locator('[data-search-source="andromeda"]').count(),0,'paused SAMO is not presented as an active source');
+  await page.screenshot({path:path.join(evidence,'search-delivery-first-page-390.png')});
+  assert.deepEqual(anexCalls,['search'],'no automatic page drain');
+  await page.locator('#search-more [data-action="continue-search"]').click();
+  await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('ANEX')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('не загрузилась'));
+  assert.deepEqual(anexCalls,['search','continue'],'one explicit continuation, no duplicate/retry');
+  assert.match(await status.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров: 1/,'failed continuation retains its received first-page count');
+  assert.match(await page.locator('#results-summary').textContent(),/2 варианта/,'independent TV and retained ANEX offers survive the failure');
+  if(!await status.locator('details').evaluate(el=>el.open))await summary.click();
+  const ordinaryRender=async()=>page.locator('#mobile-sort').evaluate(el=>{el.value=el.value==='price'?'recommended':'price';el.dispatchEvent(new Event('change',{bubbles:true}));});
+  await summary.focus();await ordinaryRender();assert.equal(await status.locator('details').evaluate(el=>el.open),true);assert.equal(await page.evaluate(()=>document.activeElement===document.querySelector('#search-status summary')),true,'passive result render preserves focused summary');
+  await status.locator('[data-action="edit-search"]').focus();await ordinaryRender();assert.equal(await page.evaluate(()=>document.activeElement?.dataset.action),'edit-search','passive result render preserves focused current action');
+  const samples=[];
+  for(const width of [360,390,430,768,1280]){
+   await page.setViewportSize({width,height:900});await status.scrollIntoViewIfNeeded();
+   for(const largeText of [false,true]){
+    await page.evaluate(large=>document.documentElement.style.fontSize=large?'32px':'',largeText);
+    const geometry=await status.evaluate(el=>{
+     const rect=node=>{const r=node.getBoundingClientRect();return{x:r.x,right:r.right,width:r.width,height:r.height};},bounds=rect(el);
+     const controls=[...el.querySelectorAll('summary,button')].map(rect),rows=[...el.querySelectorAll('[data-search-source]')].map(row=>({key:row.dataset.searchSource,...rect(row)}));
+     const texts=[...el.querySelectorAll('summary strong,summary>span,p,[data-search-source] strong,[data-search-source] small,button')].every(node=>{const range=document.createRange();range.selectNodeContents(node);return [...range.getClientRects()].every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1);});
+     return{bounds,controls,rows,texts,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert.equal(geometry.overflow,false,'status and whole page have no horizontal overflow at '+width+' text200='+largeText);assert(geometry.texts,'full source names/status/count/action text fits at '+width+' text200='+largeText);assert(geometry.controls.every(control=>control.height>=44),'status summary/actions retain44px targets at '+width);
+    assert(geometry.rows.every(row=>row.x>=geometry.bounds.x&&row.right<=geometry.bounds.right+1),'source panels remain within their status owner');
+    if(largeText&&width<=760)assert(geometry.rows[1].x===geometry.rows[0].x,'large text stacks source panels instead of breaking words in narrow columns');
+    if(width<=760){
+     const editWord=await page.locator('#compact-search .secondary[data-action="top"]').evaluate(el=>{
+      const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let node;while(node=walker.nextNode())if(node.data.includes('Изменить'))break;
+      if(!node)return false;const start=node.data.indexOf('Изменить'),range=document.createRange();range.setStart(node,start);range.setEnd(node,start+'Изменить'.length);const rects=[...range.getClientRects()],bounds=el.getBoundingClientRect();
+      return rects.length===1&&rects[0].x>=bounds.x&&rects[0].right<=bounds.right;
+     });assert(editWord,'compact edit action keeps its ordinary word readable at '+width+' text200='+largeText);
+     const routeWords=await page.locator('#compact-search .compact-route-block strong').evaluate(el=>{
+      const node=el.firstChild,bounds=el.getBoundingClientRect();if(!node||node.nodeType!==Node.TEXT_NODE)return false;
+      return [...node.data.matchAll(/[А-Яа-яЁё]+/g)].every(word=>{const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word[0].length);const rects=[...range.getClientRects()];return rects.length===1&&rects[0].x>=bounds.x-1&&rects[0].right<=bounds.right+1;});
+     });assert(routeWords,'compact route preserves whole city/country words at '+width+' text200='+largeText);
+    }
+    await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
+    for(const action of ['retry-search','edit-search']){
+     const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
+     const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
+     assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
+     if(width===390&&largeText&&action==='edit-search')await page.screenshot({path:path.join(evidence,'search-delivery-text200-controls-390.png')});
+    }
+   }
+   await page.evaluate(()=>document.documentElement.style.fontSize='');
+  }
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,1);assert.equal(transport.calls.filter(call=>call.action==='search_continue').length,1);assert.deepEqual(anexCalls,['search','continue']);
+  assert(!transport.calls.some(call=>/andromeda|quote|lead/.test(call.url)),'delivery inspection/filter/resize do not issue SAMO, quote or lead operations');
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  console.log('PASS compiled search delivery: pending unknown count, healthy native first page, explicit failed continuation/retained offers, passive disclosure/focus and five widths/text200; supplier HTTP0');
+ }finally{releaseAnex();await context.close();}
+};
 // Off for the real-default regression below. Retained SAMO integration journeys
 // explicitly enable only this local fictional transport after that check passes.
 let enableSamoFixture=false;
@@ -745,7 +1021,15 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
+  // Complete, independent matrices share only immutable compiled assets. The
+  // first two use this browser; the large-flight owner retains its own browser,
+  // server and evidence directory. Default/SAMO-mode transition tests above stay
+  // ordered. Retain every rejection and settle all three before shared cleanup.
+  const completed=await Promise.allSettled([
+   formPickerActionJourney(browser,origin,base,evidence),
+   (async()=>{
   for(const width of [360,390,430,768,1280]){
   const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
   let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
@@ -1326,12 +1610,22 @@ const server=http.createServer((req,res)=>{
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
  await chosenDepartureJourney(browser,origin,base,evidence);
- await quoteRetryAndRoomReturnJourney(browser,origin,base,evidence);
- await verifiedPairJourney(browser,origin,base,evidence);
+ // Each journey owns its context, fictional transport and evidence names. Keep
+ // both complete matrices; settle both before closing the shared browser.
+ const isolated=await Promise.allSettled([
+  quoteRetryAndRoomReturnJourney(browser,origin,base,evidence),
+  verifiedPairJourney(browser,origin,base,evidence)
+ ]),failures=isolated.filter(result=>result.status==='rejected');
+ if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
+ await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
+ await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
  await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+   })(),
+   (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
+  ]),rejected=completed.filter(result=>result.status==='rejected');
+  if(rejected.length)throw new AggregateError(rejected.map(result=>result.reason),'Complete independent compiled matrices failed');
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
- await require('./search3-visual-large-flight-choices.cjs')();
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
