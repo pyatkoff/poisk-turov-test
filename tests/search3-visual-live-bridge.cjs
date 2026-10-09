@@ -382,9 +382,12 @@ async function pickerRetainedDraftRegressions(){
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert.equal(q('[data-action="destination-resort"][data-value="Белек"]').getAttribute('aria-pressed'),'true','browser Forward restores the un-applied resort choice');
  assert.match(q('.destination-apply-context').textContent,/Любой из выбранных курортов/,'restored destination action describes the same resort draft');
- click('[data-action="close-modal"]');await settle();
+ // Closing the previous picker consumes an asynchronous history entry. Wait
+ // for that transition, rather than racing it against the next picker under
+ // the parallel source matrix. Keep the existing bounded wait and assertions.
+ click('[data-action="close-modal"]');await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
  click('#search-form [data-action="nights"]');click('[data-action="night-pick"][data-value="10"]');click('[data-action="night-pick"][data-value="12"]');
- w.history.back();await settle();assert(!q('#modal').open,'browser Back closes the nights picker without applying its draft');
+ w.history.back();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes the nights picker without applying its draft');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
  assert(q('[data-action="night-pick"][data-value="10"]').classList.contains('active'),'browser Forward restores the first night boundary');
  assert(q('[data-action="night-pick"][data-value="11"]').classList.contains('in-range'),'browser Forward restores the nights range');
