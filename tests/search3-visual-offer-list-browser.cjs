@@ -57,6 +57,7 @@ const server=http.createServer((req,res)=>{
    assert.equal(await page.locator('[data-action="offer-group"]').count(),0,'approved exact offers appear without room disclosures');await shot('offers');
    const placeholder=page.locator('[data-offer-key$="-request-placeholder"]');await placeholder.waitFor();const placeholderText=await placeholder.textContent();
    assert.match(placeholderText,/Номер уточняется/);assert.match(placeholderText,/Питание уточняется/);assert.doesNotMatch(placeholderText,/on request/i,'supplier placeholder is not exposed as user-facing copy');
+   if(!await page.locator('.offer-filter-disclosure').evaluate(el=>el.open))await page.locator('.offer-filter-disclosure>summary').click();
    assert.match(await page.locator('#offer-room option[value=" on request "]').textContent(),/^Номер уточняется · 1 тур$/);
    assert.match(await page.locator('#offer-meal option[value="On Request"]').textContent(),/^Питание уточняется · 1 тур$/);
    await page.locator('#offer-room').selectOption(' on request ');assert.equal(await page.locator('#all-offers-list .grouped-offer').count(),1,'raw room identity still drives exact filtering');assert.equal(await placeholder.count(),1);await page.locator('#offer-room').selectOption('');
