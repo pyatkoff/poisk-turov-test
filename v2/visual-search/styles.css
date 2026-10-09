@@ -1979,12 +1979,17 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .card-thumbs {display:flex;gap:6px;min-width:0}
 .card-thumb,.card-more-photos {position:relative;flex:1;min-width:0;aspect-ratio:1.3;border:2px solid transparent;border-radius:7px;overflow:hidden;padding:0;background:#eef2f8}
 .card-thumb:only-child {flex:0 0 calc((100% - 18px)/4)}
-.card-thumb img {display:block;width:100%;height:100%;object-fit:cover}
+.card-thumb>svg {position:absolute;inset:0;margin:auto;width:20px;height:20px;color:var(--muted)}
+.card-thumb img {position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover}
+.card-thumb img[hidden] {display:none}
 .card-thumb.active {border-color:var(--brand)}
 .card-more-photos {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--brand);font-size:.8125rem;line-height:1.3}
 .hotel-photos.photo-unavailable .hotel-image-wrap {display:flex;align-items:center;justify-content:center;aspect-ratio:auto;min-height:160px;padding:16px;background:#f1f4f8}
 .photo-missing-label {display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.875rem;line-height:1.5}
 .photo-unavailable .hotel-image-button,.photo-unavailable .card-photo-arrow,.photo-unavailable .card-thumbs {display:none}
+.hotel-photos:not(.photo-unavailable) .photo-missing-label {display:none;position:absolute;inset:0 60px;justify-content:center;text-align:center;pointer-events:none}
+.hotel-photos.photo-failed .photo-missing-label,.hotel-photos.photo-loading .photo-missing-label {display:flex}
+.hotel-photos.photo-failed .hotel-image,.hotel-photos.photo-loading .hotel-image {visibility:hidden}
 .hotel-info-top {grid-column:2;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;padding:18px 20px 8px;min-width:0}
 .hotel-info-top>div:first-child {min-width:0}
 .hotel-stars {font-size:.875rem;line-height:1.3;letter-spacing:2px;color:#b1853e;margin-bottom:4px}
