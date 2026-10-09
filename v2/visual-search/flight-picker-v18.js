@@ -61,4 +61,3 @@
   window.AnyTourFlightDisplayV1=Object.freeze({departureMinute,pairAllowance,pairRoutes});
   window.AnyTourFlightPickerV18 = Object.freeze({render,bind,pairSummary,selectionSummary,allowanceValue,directionAllowance});
 })();
-

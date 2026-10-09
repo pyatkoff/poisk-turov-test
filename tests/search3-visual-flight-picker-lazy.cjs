@@ -67,4 +67,3 @@ function fixture(){
  console.log('PASS cold flight picker: bootstrap0/cold1/warm0; shared newest open; closed/replaced draft/selection cancellation; network/timeout/missing-owner retry; price/fuel/supplier/lead0');
  console.log('PASS actual flight session DOM: Reset focus; Cancel/Apply exact pair; retained refinements/details/page/scroll; passive Forward unknown draft stays gated; committed snapshot read1/external HTTP0');
 })().catch(error=>{console.error(error);process.exitCode=1;});
-

@@ -130,4 +130,3 @@ for(const mode of ['current','retained','missing','foreign','loading','flights-l
  vm.createContext(ctx);vm.runInContext(source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
 }
 console.log('PASS passive flight history: exact retained offer/raw inventory only; missing/foreign/loading/expired/empty/other rejected; supplier and lead HTTP0');
-

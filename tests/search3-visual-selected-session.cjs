@@ -182,4 +182,3 @@ module.exports=async function({browser,origin,base,evidence}){
  fs.writeFileSync(path.join(evidence,'selected-session.json'),JSON.stringify(receipt,null,2)+'\n');
  console.log('PASS compiled selected session',JSON.stringify({cases:records.length,duration_ms:receipt.duration_ms,expiry_at_five_widths:true,retained_contact_focus:true,same_hotel_scope_return:true,supplier_HTTP:0,real_leads:0}));return receipt;
 };
-

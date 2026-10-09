@@ -99,4 +99,3 @@ function bind(container, money = value => value.toLocaleString('ru-RU') + ' ₽'
   }
  window.AnyTourFlightPickerUIV1=Object.freeze({render,bind});
 })();
-
