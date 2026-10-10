@@ -54,10 +54,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "f5abc41fbb2f96ed26eb9b91fa406d3009e058b0ad7c6f012189495183e33066",
+    "app.js": "9dbdf404d9cce940d1f22ebc7cf93741a59af145e418153a64a983b3349ef882",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "0c0839ec21765e18620bb08010c2119471c6f9a7049176a906cffbf67c0c85a8",
-    "styles.css": "bf186042ee9bbe2b855c2218c9fd5b0df784925429f94a56de8a2be381a655b8",
+    "styles.css": "436cd10750a0212ab86af8af79fc1ff209aa51f26ac725686892e9e77360e404",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
@@ -129,5 +129,22 @@
     "globalUnknownSealsApplication": true,
     "realSupplierAcceptance": false,
     "physicalSafariAcceptance": false
+  },
+  "selectionRefinement": {
+    "status": "LOCAL_DRAFT_AWAITING_OWNER_VISUAL_APPROVAL",
+    "baseRelease": "1ec419388769d14949a2bad79d8e13465f2f8978",
+    "approvedReference": "05051662c25cf8258991475e2e7536a12f7248d4",
+    "mobileReadingOrder": [
+      "hotel",
+      "photo",
+      "price-and-action",
+      "facts",
+      "exact-conditions"
+    ],
+    "mobilePhotoRatio": 1.8,
+    "desktopGridPreserved": true,
+    "sameExactOfferKey": true,
+    "financialContractsChanged": false,
+    "published": false
   }
 }

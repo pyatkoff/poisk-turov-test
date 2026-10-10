@@ -780,10 +780,13 @@ function hotelHighlightsHTML(h){
  if(capturedFacts.length>1&&capturedFacts.every(label=>label.length<=56))return `<ul class="hotel-highlight-list" aria-label="Особенности отеля">${[...new Set(capturedFacts)].slice(0,3).map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`;
  return text?`<span>${esc(text)}</span>`:'';
 }
-function cardHTML({hotel:h,offers,rating=ratingValue(h)}){const o=offers[0],ratingLabel=rating===null?'—':ratingFormatter.format(rating),photoIndex=state.photoIndexes[h.id]||0,popularityBadge=popularity?.badge(h)||'',shortlistActions=optionalShortlistEnabled?`<button class="favorite-button ${state.favorites.includes(h.id)?'active':''}" data-action="favorite" data-id="${h.id}" aria-pressed="${state.favorites.includes(h.id)}" aria-label="${state.favorites.includes(h.id)?'Убрать из избранного':'В избранное'}: ${esc(h.name)}">${icon('heart')}</button>`:'';return `<article class="hotel-card" id="hotel-${h.id}" data-hotel-id="${h.id}"><div class="hotel-main">
+function cardHTML({hotel:h,offers,rating=ratingValue(h)}){const o=offers[0],ratingLabel=rating===null?'—':ratingFormatter.format(rating),photoIndex=state.photoIndexes[h.id]||0,popularityBadge=popularity?.badge(h)||'',shortlistActions=optionalShortlistEnabled?`<button class="favorite-button ${state.favorites.includes(h.id)?'active':''}" data-action="favorite" data-id="${h.id}" aria-pressed="${state.favorites.includes(h.id)}" aria-label="${state.favorites.includes(h.id)?'Убрать из избранного':'В избранное'}: ${esc(h.name)}">${icon('heart')}</button>`:'';return `<article class="hotel-card" id="hotel-${h.id}" data-hotel-id="${h.id}">
+ <div class="hotel-info-top"><div>${popularityBadge?`<span class="hotel-popularity-badge" title="Входит в TOP500 продаваемых отелей">${esc(popularityBadge)}</span>`:'' }${hotelStarsHTML(h)}<h3><button data-action="hotel-details" data-id="${h.id}" title="${esc(h.name)}"><span class="hotel-card-name">${esc(h.name)}</span>${icon('arrow')}</button></h3><div class="hotel-location">${icon('pin')} ${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</div></div>${rating!==null?`<div class="rating-block" aria-label="Оценка гостей ${ratingLabel} из 5"><strong>${ratingLabel}<small>/ 5</small></strong><span>${rating>=4.5?'Отлично':'Оценка гостей'}</span></div>`:''}</div>
  <div class="hotel-photos ${h.photos.length?'':'photo-unavailable'}"><div class="hotel-image-wrap"><span class="photo-missing-label" role="status">${icon('image')}${h.photos.length?'Фото не загрузилось':'Нет фотографий'}</span><button class="hotel-image-button" data-action="gallery" data-id="${h.id}" ${h.photos.length?'':'disabled'} aria-label="${h.photos.length?'Открыть фотографии':'Фото пока недоступны:'} ${esc(h.name)}"><img class="hotel-image" src="${esc(photoUrl(h,photoIndex))}" alt="Фото отеля ${esc(h.name)}" loading="lazy" width="700" height="500"><span class="photo-count">${icon('image')} <span class="photo-index">${h.photos.length?photoIndex+1:0}</span> / ${h.photos.length}</span></button>${shortlistActions}<button class="card-photo-arrow prev" data-action="card-photo" data-id="${h.id}" data-dir="-1" aria-label="Предыдущее фото ${esc(h.name)}">${icon('back')}</button><button class="card-photo-arrow next" data-action="card-photo" data-id="${h.id}" data-dir="1" aria-label="Следующее фото ${esc(h.name)}">${icon('arrow')}</button></div><div class="card-thumbs">${h.photos.slice(0,h.photos.length>4?3:4).map((p,i)=>`<button class="card-thumb ${photoIndex===i?'active':''}" data-action="card-photo-index" data-id="${h.id}" data-value="${i}" aria-label="Показать фото ${i+1} отеля ${esc(h.name)}" aria-pressed="${photoIndex===i}">${icon('image')}<img src="${esc(p)}" alt="" loading="lazy" width="150" height="100"></button>`).join('')}${h.photos.length>4?`<button class="card-more-photos" data-action="gallery" data-id="${h.id}" aria-label="Все ${h.photos.length} фотографий отеля ${esc(h.name)}">${icon('image')}<span>Все ${h.photos.length}</span></button>`:''}</div></div>
- <div class="hotel-info"><div class="hotel-info-top"><div>${popularityBadge?`<span class="hotel-popularity-badge" title="Входит в TOP500 продаваемых отелей">${esc(popularityBadge)}</span>`:'' }${hotelStarsHTML(h)}<h3><button data-action="hotel-details" data-id="${h.id}" title="${esc(h.name)}"><span class="hotel-card-name">${esc(h.name)}</span>${icon('arrow')}</button></h3><div class="hotel-location">${icon('pin')} ${esc(h.resort)}, ${esc(countryNames[h.country]||'')}</div></div>${rating!==null?`<div class="rating-block" aria-label="Оценка гостей ${ratingLabel} из 5"><strong>${ratingLabel}<small>/ 5</small></strong><span>${rating>=4.5?'Отлично':'Оценка гостей'}</span></div>`:''}</div><div class="hotel-facts">${hotelHighlightsHTML(h)}</div></div></div>
- ${minimumOfferSummary(o)}<div class="hotel-price ${o.total>=1000000?'price-wide':''}"><div class="starting-price"><span>За ${guestsText(o)} · весь тур</span><strong>${money(o.total)}</strong></div><span class="fuel-note">${icon('info')} ${cardPriceNote(o)}</span><button class="primary" data-action="offer" data-card-entry="true" data-key="${esc(o.key)}" aria-label="Смотреть тур: ${esc(h.name)}"><span>Смотреть тур</span></button></div><div class="hotel-more"><button class="text-button" data-action="hotel-details" data-id="${h.id}" data-target="hotel-about-heading">Об отеле</button>${offers.length>1?`<button class="secondary card-all-offers" data-action="all-offers" data-id="${h.id}">Все туры (${offers.length}) ${icon('arrow')}</button>`:''}</div></article>`;}
+ <div class="hotel-price ${o.total>=1000000?'price-wide':''}"><div class="starting-price"><span>За ${guestsText(o)} · весь тур</span><strong>${money(o.total)}</strong></div><span class="fuel-note">${icon('info')} ${cardPriceNote(o)}</span><button class="primary" data-action="offer" data-card-entry="true" data-key="${esc(o.key)}" aria-label="Смотреть тур: ${esc(h.name)}"><span>Смотреть тур</span></button></div>
+ <div class="hotel-facts">${hotelHighlightsHTML(h)}</div>
+ ${minimumOfferSummary(o)}
+ <div class="hotel-more"><button class="text-button" data-action="hotel-details" data-id="${h.id}" data-target="hotel-about-heading">Об отеле</button>${offers.length>1?`<button class="secondary card-all-offers" data-action="all-offers" data-id="${h.id}">Все туры (${offers.length}) ${icon('arrow')}</button>`:''}</div></article>`;}
 
 
 function refreshOpenHotelRooms(){
@@ -1544,6 +1547,9 @@ function fuelIncludedInPrice(o){
 }
 function fuelText(o){const n=fuelAmount(o);return n===null?'Сбор уточняется':n===0?'Без доплаты по сбору':money(n)+(fuelIncludedInPrice(o)?' · включён в цену':' · включение в цену уточняется');}
 function selectedPriceStatus(o){
+ if(o.loading)return 'Получаем цену и условия тура…';
+ if(o.flightsLoading)return 'Рейсы загружаются · цена требует проверки';
+ if(o.pricePending)return 'Цена тура с этими рейсами не подтверждена';
  if(o.provider==='fixture')return 'Демонстрационная цена';
  if(o.provider==='recorded')return 'Цена из записи';
  if(o.quoteError)return 'Цена из выдачи · не подтверждена';
@@ -1645,13 +1651,11 @@ function chosenStayHTML(o,editable=false){
 }
 function offerSelectionHint(o,terminalQuoteError){
  if(o.loading)return 'Получаем цену и условия тура…';
- if(o.flightsLoading)return 'Загружаем варианты перелёта…';
+ if(o.flightsLoading)return '';
  if(terminalQuoteError)return 'Выберите другой тур в результатах.';
  if(o.quoteError)return 'Повторите проверку предложения, чтобы продолжить.';
- if(o.pricePending)return 'Цена этого рейса не подтверждена. Можно выбрать другой или оставить рейс менеджеру.';
- if(o.flightsError)return 'Рейсы не загрузились — заявку можно оставить без них.';
- if(!o.tour)return 'Перед заявкой получим условия предложения. Рейс можно оставить менеджеру.';
- if(!o.variants?.length)return 'Рейсы не указаны — их уточнит менеджер.';
+ if(o.pricePending)return '';
+ if(!o.tour)return 'Перед заявкой получим условия предложения.';
  return '';
 }
 function offerPrimaryActionHTML(o,h,unavailable,terminalQuoteError){
@@ -1678,7 +1682,7 @@ function offerDetailBodyHTML(o,h,unavailable,terminalQuoteError,selectionHint){
 
 
  <div class="tour-layout"><div class="tour-main-details">${chosenStayHTML(o,true)}${feedback}${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}</div>
- <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.provider==='fixture'?priceNote(o):o.loading?'Получаем цену предложения…':unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`;
+ <aside class="tour-price-details" aria-label="Состав и стоимость тура"><div class="price-breakdown"><h3>Цена и условия</h3><p class="price-party">За ${guestsText(o)} · ${nightsText(o.nights)}</p><div class="price-line total"><span>${o.loading?'Цена из выдачи':o.flightsLoading||o.pricePending?selectedPriceStatus(o):o.quoteError?'Цена из выдачи':flightPairFor(o)?'С выбранным перелётом':'Цена предложения'}</span><strong id="detail-total">${o.pricePending?'Уточняется':money(o.total)}</strong></div>${!unavailable?`<p class="price-assurance">${icon('info')} ${o.quoteError?'Эта сумма не подтверждена после проверки.':o.loading?'Показана цена из выдачи. Ждём результат проверки.':o.provider==='fixture'?priceNote(o):unavailable?priceNote(o):'Условия цены и наличие подтверждаются перед оформлением'}</p>`:''}${!unavailable&&selectionHint?`<p class="tour-selection-hint" role="status">${selectionHint}</p>`:''}${fuelDisclosureHTML(o)}</div></aside></div>`;
 }
 function offerDetailFooterHTML(o,footerAction,footerStatus){
  return `<div class="footer-total"><span>${o.quoteError?'Цена из выдачи за всех':'За всех туристов'}</span><strong>${o.pricePending?'Цена уточняется':money(o.total)}</strong><small class="footer-price-status">${footerStatus}</small></div>${footerAction}`;

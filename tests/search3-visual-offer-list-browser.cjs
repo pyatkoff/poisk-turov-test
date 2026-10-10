@@ -36,6 +36,11 @@ const server=http.createServer((req,res)=>{
     return{state,zoom,scrollY,form:rect(form),actions:actions.map(el=>({action:el.dataset.action||'submit',text:el.textContent,...rect(el),fullText:fits(el)})),values:values.map(el=>({id:el.id,text:el.textContent,fullText:fits(el,el.closest('.field-control')||el)})),firstCard:first?rect(first):null,firstPrice:price?rect(price):null,calendar:rect(document.querySelector('#price-calendar')),datePrices:[...document.querySelectorAll('#price-strip .date-price')].map(el=>({text:el.querySelector('strong').textContent,...rect(el),fullText:fits(el.querySelector('strong'),el)})),overflow:document.documentElement.scrollWidth>innerWidth+1};
    },{state,zoom});
    assert.equal(record.overflow,false,state+' text'+zoom+' fits the document');
+   if(state==='results'&&zoom===100&&width<=760){
+    const decision=await page.locator('.hotel-card').first().evaluate(card=>{const price=card.querySelector('.starting-price strong').getBoundingClientRect(),action=card.querySelector('.hotel-price .primary').getBoundingClientRect(),nav=document.querySelector('.mobile-bottom').getBoundingClientRect();return {priceBottom:price.bottom,actionBottom:action.bottom,visibleBottom:nav.top};});
+    assert(decision.priceBottom<=decision.visibleBottom&&decision.actionBottom<=decision.visibleBottom,'first mobile tour price and action are visible above fixed navigation without scrolling');
+    record.firstDecision=decision;
+   }
    if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
    else{assert(record.values.every(value=>value.fullText),'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
    density.push(record);return record;
@@ -47,6 +52,9 @@ const server=http.createServer((req,res)=>{
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
    const trigger=page.locator('.hotel-card [data-action="all-offers"]').first();await trigger.waitFor();assert.equal(requests,0,'form/results leave the offer-list renderer cold');
+   const cardOrder=await page.locator('.hotel-card').first().evaluate(card=>({blocks:[...card.children].map(el=>el.classList[0]),priceKey:card.querySelector('.hotel-price .primary').dataset.key,conditionsKey:card.querySelector('.card-minimum-offer').dataset.minimumKey}));
+   assert.deepEqual(cardOrder.blocks,['hotel-info-top','hotel-photos','hotel-price','hotel-facts','card-minimum-offer','hotel-more'],'card DOM follows the mobile reading and keyboard order');
+   assert.equal(cardOrder.priceKey,cardOrder.conditionsKey,'the earlier price action keeps the exact offer conditions');
    assert(await page.locator('#calendar-preview').isVisible(),'price calendar is open');assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot('results');await densityFrame('results',100);
    await page.evaluate(()=>document.documentElement.style.fontSize='200%');await page.evaluate(()=>scrollTo(0,0));await densityFrame('results',200);await shot('results-text200');
    const dateTargets=page.locator('#price-strip .date-price');assert.equal(await dateTargets.count(),7,'large text retains all seven dates');

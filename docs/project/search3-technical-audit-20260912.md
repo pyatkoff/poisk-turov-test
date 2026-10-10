@@ -698,3 +698,28 @@ Cloud Browser по-прежнему не объявляет viewport/emulation A
 browser zoom shortcut также оставила 1363×936, DPR1. Mobile live acceptance остаётся
 not_measured; будущие CI PNG на 375/430 — evidence точного артефакта, а не Cloud Browser
 mobile и не физический Safari/iPhone. Оценка 9.5 или полная приёмка не заявлены.
+
+## 2026-10-10 — same-reference audit and local selection refinement
+
+Owner direction: achieve 9.5 visual/usability with one reference, the same corpus and paired actual-browser evidence. Base release `1ec419388769d14949a2bad79d8e13465f2f8978`; installed NEXT source `9b74bdfae2fa9244be52e822d64db1e7282e6901`. Preparation claim: #4217 comment6091382014. This is a draft review, not a new publication or a full SEARCH-QUALITY-1 score.
+
+The approved donor is Site100/package34/v154, source `05051662c25cf8258991475e2e7536a12f7248d4`, with documentary transfer Site102 source `a33878d9798e6f7c1a4ff0a3f245f27254580a27`. Fixed source was opened through the supported Sites workflow and compared directly. Site106/package35 remains an unapproved separate hotel-room draft; later native versions are not substituted as approval.
+
+Finite findings for this block:
+
+| Observation | Attribution and action | Acceptance |
+| --- | --- | --- |
+| First mobile card price/action are below the initial fold | Inherited approved order, not a transfer regression. Proposed new order: hotel → full-width photo → existing exact price/source/action → features → exact conditions → other actions | The same key, total, source, conditions and photo; price/action above fixed navigation at360/390/430 with 900px viewport |
+| Flight instructions recur in the price panel | `flightSummaryHTML` and `offerSelectionHint` match the approved donor byte for byte. Improve the reference: flight guidance in its own section; price/availability guidance in price details | One complete pending-price explanation; price details contain no repeated manager-flight instruction; quote/error/flight actions unchanged |
+| Pending/loading status can inherit a demo/recorded/selected-pair description | Existing `selectedPriceStatus` checked provenance before these transient states. Present the transient state first; pending verification identifies the displayed amount as listing price | Actual presentation owner tested for Tourvisor/fixture/recorded pending states, disabled loading continuation and no new supplier/lead request |
+| Earlier overall scores used different grounds | Retracted 7.5 is not a comparable baseline | No new overall score or claim of reaching9.5; retain SEARCH-QUALITY-1 and `not_measured` for unverified scope |
+
+The first three rows are implemented in the local draft. The card order is a deliberate new layout proposal and awaits concrete owner visual approval under `AUTOPILOT.md`; it is not labelled restoration of Site100. Its action opens the existing exact-tour details. Exact conditions remain below the price; they are not removed or changed. Photos retain1.8, desktop/tablet retain the explicit grid and vertically centered price group. The actual DOM follows the mobile reading/keyboard order without a second renderer or a CSS override layer.
+
+Checks: exact compiler AST/closure and lead projection checks; source live-bridge journeys (including same-offer return, pending/loading presentation, late responses and local-only fixtures); approved-interface source matrix; compiled offer-list/form/calendar/selected-tour paths at360/390/430/768/1280,200% text and44px actions; passive295-record oracle digest `161e34c0b2119a96a31279c66959d93399a3bcbd4dcc329afef061c58e50a514`. Independent AST review:301 functions on each side, only `cardHTML`, `selectedPriceStatus`, `offerSelectionHint`, `offerDetailBodyHTML` changed; other297 functions unchanged. Monetary calculations, supplier requests, flight handlers and lead contracts remain unchanged.
+
+Paired actual compiled Chromium on the same saved23.09 corpus,1047 hotels/1453 offers, RIA96953 RUB and the same exact key: price y874.92→736.67 at360,876.63→738.38 at390,898.86→760.61 at430. Candidate action bottoms771.72/766.83/789.06 are above the832px navigation boundary. Tablet768/desktop1280 price and photo geometry are identical. The mixed demo corpus also confirms price y894.92→684.67/875.63→686.38/897.86→708.61. Mobile card height is3px greater because of price-band padding/border; no claim of shorter cards is made.
+
+Read-only public NEXT DOM confirms the RIA photo URL. Its identical original JPEG is cached only in the paired QA harness for both sides, without changing product assets or substituting a different hotel's photo; remaining outside image requests are blocked. Fixtures and counters make zero supplier/lead requests. These are saved-data and controlled-transport checks, not fresh availability, real lead delivery or physical iPhone/Safari acceptance.
+
+Local evidence: `visual-live-evidence/offer-list-lazy/receipt.json` and five-width results/tour/form/200% frames; `visual-live-evidence/selection-pairs/receipt.json` and baseline/candidate saved-corpus frames. App SHA256 `9dbdf404d9cce940d1f22ebc7cf93741a59af145e418153a64a983b3349ef882`. Exact draft commit/CI links belong in the PR and canonical terminal receipt. No merge, NEXT/Sites publication, main/production change, new score or automation change is implied by this entry.
