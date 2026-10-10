@@ -13,6 +13,13 @@ assert.deepEqual(original.links,[{oldLocalId:501,tourvisorHotelId:101}]);
 assert.equal(original.items[0].images.length,126);assert(updated.items[0].revision>original.items[0].revision);
 const base='/_preview/search3-next-candidate/',reader=base+'data/local-tv-catalog-read-v1.php';
 async function adapterAcceptance(){
+ for(const pathname of ['/','/prototype-search/','/_preview/search3-site-candidate/visual-search/','/_preview/search3-local-candidate/visual-search/','/_preview/search3-next-candidate/visual-search/']){
+  const configDom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+pathname,runScripts:'outside-only'});
+  try{configDom.window.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
+   assert.equal(configDom.window.V2_CONFIG.localTvCatalogEnabled,pathname.startsWith('/_preview/search3-next-candidate/')||pathname.startsWith('/_preview/search3-local-candidate/'),'rollout remains isolated to existing LOCAL/NEXT paths');
+   assert.equal(configDom.window.V2_CONFIG.andromedaApi,null);assert.equal(configDom.window.V2_CONFIG.andromedaQuoteApi,null);
+  }finally{configDom.window.close();}
+ }
  const dom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+base+'visual-search/',runScripts:'outside-only'}),w=dom.window;
  Object.assign(w,{structuredClone,TextEncoder,AbortController,Response});
  w.fetch=async()=>{throw new Error('Unexpected supplier transport');};
@@ -22,8 +29,9 @@ async function adapterAcceptance(){
  let reply=original,release;
  w.fetch=async(url,options)=>{const u=new URL(url,w.location.href);assert.equal(u.pathname,reader);assert.deepEqual(u.searchParams.getAll('oldLocalHotelIds[]'),['501']);assert.equal(options.cache,'no-store');calls.push(url);if(release)await release.promise;return new Response(JSON.stringify(reply),{status:200});};
  try{
+  const rollout=w.V2_CONFIG.localTvCatalogEnabled;assert.equal(rollout,true,'actual NEXT config enables existing content reader');w.V2_CONFIG.localTvCatalogEnabled=false;
   assert.equal(await data.refreshHotelContent([501]),false);assert.equal(calls.length,0,'disabled rollout has no new reader calls');
-  w.V2_CONFIG.localTvCatalogEnabled=true;
+  w.V2_CONFIG.localTvCatalogEnabled=rollout;
   let resolve;release={promise:new Promise(r=>resolve=r)};
   const first=data.refreshHotelContent([501]),second=data.refreshHotelContent([501]);assert.equal(calls.length,1,'concurrent same request is shared');resolve();await Promise.all([first,second]);release=null;
   const shown=data.project([raw],trip)[0];assert.equal(shown.id,501);assert.equal(shown.raw.localHotelId,101);assert.equal(shown.note,original.items[0].description);assert.equal(shown.photos.length,126);
@@ -49,7 +57,7 @@ async function browserAcceptance(){
   const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;if(!fs.existsSync(file)){res.writeHead(404).end();return;}
   if(file.endsWith('.php')){res.setHeader('Content-Type','text/html; charset=utf-8');res.end(execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php";include $argv[1];',file]));return;}
   res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'application/octet-stream');
-  const content=fs.readFileSync(file);res.end(file.endsWith('prototype-search/config.js')?content.toString()+'\nwindow.V2_CONFIG.localTvCatalogEnabled=true;':content);
+  const content=fs.readFileSync(file);res.end(content);
  });
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
  let browser;const receipts=[];

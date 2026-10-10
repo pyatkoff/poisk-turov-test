@@ -46,6 +46,12 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
  const json=async(url,options={})=>{
   const u=new URL(url,'https://anytoour.ru'),body=options.body?JSON.parse(options.body):{},q=u.searchParams,action=q.get('action')||body.action;
   calls.push({url:u.pathname,action,body,query:Object.fromEntries(q)});
+  if(/^\/_preview\/search3-(?:next|local)-candidate\/data\/local-tv-catalog-read-v1\.php$/.test(u.pathname)){
+   const values=q.getAll('oldLocalHotelIds[]');
+   if(options.body||!values.length||values.length>100||[...q.keys()].some(key=>key!=='oldLocalHotelIds[]')||values.some(value=>!Number.isSafeInteger(Number(value))||Number(value)<1))throw Error('Invalid fictional LOCAL content request');
+   const ids=[...new Set(values.map(Number))];
+   return {ok:true,source:'anytour-local-tv-catalog-v1',catalog:'local-tv',items:[],requestedIds:ids,missingIds:ids,links:[]};
+  }
   if(u.pathname.endsWith('/api-andromeda-search3-preview.php')&&state.samoSearchGate)await state.samoSearchGate;
   if(u.pathname==='/data/departures-v1.php')return {ok:true,items:[{id:1,name:'Москва'},{id:2,name:'Казань'},{id:3,name:'Екатеринбург'}]};
   if(u.pathname.endsWith('/search3-destination-read-v1.php')){

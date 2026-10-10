@@ -158,7 +158,7 @@ async function quoteReturnRegressions(){
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact);assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
-  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
+  }finally{win.AnyTourPrototypeData.stop();await Promise.resolve();local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
 // The actual entry graph and canonical catalogue adapter own these passive
