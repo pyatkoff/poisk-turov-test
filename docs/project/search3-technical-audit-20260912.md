@@ -698,3 +698,121 @@ Cloud Browser по-прежнему не объявляет viewport/emulation A
 browser zoom shortcut также оставила 1363×936, DPR1. Mobile live acceptance остаётся
 not_measured; будущие CI PNG на 375/430 — evidence точного артефакта, а не Cloud Browser
 mobile и не физический Safari/iPhone. Оценка 9.5 или полная приёмка не заявлены.
+
+
+## SEARCH-QUALITY-1 — Site121/full-path42, 2026-10-10
+
+Это обязательный отчёт качества **реального продуктового пакета**, а не новая
+очередь, второй tracker или пересчёт прежних разговорных баллов. Исторические
+записи выше сохраняются. Полная матрица и причины по каждому затронутому критерию:
+[SEARCH #1646/comment6096285423](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6096285423);
+[product #1719/comment6096287276](https://github.com/pyatkoff/poisk-turov-test/issues/1719#issuecomment-6096287276).
+Канонический журнал публикации/claims остаётся #4217.
+
+### Exact artifact и сопоставимый scope
+
+- Первый формальный baseline этого сценарного scope: Site118/package41/v164,
+  source `75eaf8407449a912f21cceba2d296d17d9659573`. Прежние разговорные
+  8–8.5/9–9.5 и покрытие52/55 не являются качественным baseline.
+- Установленный кликабельный прототип: **Site121/package42/v165**,
+  source `0b7786ae3e94015388d688a4786f4fc0223ca48f`;
+  [публичный review route](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390).
+  Deployment `appgdep_6aca073306a48191b9afb061f5d51cea` SUCCEEDED
+  2026-10-10T09:37:05Z; native archive SHA-256
+  `1e693aed3ab55b7a2a3e6886dd7cdaaece95c68d3a5c0c6a8b3cf9680151a132`.
+- Acceptance/evidence-only source
+  `ad778ab870a4b0af33d58c5496e0775b5c32481f` в existing Site source.
+  `dist` byte-identical установленному0b7786: новое сохранение/публикация не выполнялись.
+  `qa/fullpath42/runtime-receipt.json` и `CHECKPOINT.md` сохраняют точные
+  hashes, исходные/финальные кадры, действия и границы.
+- Chrome frames360/390/430/768/1280 и short desktop1280×720; сохранённый
+  canonical snapshot и явно помеченные demos, supplier0/real-lead0.
+  Восемь основных кадров form/results/tour/contact на390/1280.
+  Шесть applicable compiled-script suites PASS, syntax/diffcheck PASS;
+  jsdom не имеет layout engine.
+- Фото и найденные5 Rix IDs относятся ко всем1047 отелям retained snapshot,
+  независимо от24 rendered cards. Это не оценка полноты живого NEXT-каталога.
+  Не выдумывались aliases, фото/звёзды, supplier/MATCH/LOCAL contracts.
+
+### Неизменная рубрика:12 исторических строк,11 обязательных
+
+Пять частных баллов в прежнем каноническом порядке, значения0/1/1.5/2.
+`N = not_measured`: сумма строки не вычисляется. Баллы — экспертная оценка
+указанных проверенных сценариев, не измерение конверсии. Проверенные неизменившиеся
+критерии сохраняют прежнее exact evidence; byte-identical блоки не проверялись заново
+ради балла. Compare/shortlist остаётся deferred вне launch gate.
+
+| Параметр | Baseline118: пять баллов; сумма | Current121: пять баллов; сумма | Delta / незакрытый критерий |
+| --- | --- | --- | --- |
+| Desktop visual | 2/1.5/2/2/N; not_measured | 2/1.5/2/2/N; not_measured | Проверенные0; full intermediate/short rail+long-content corpus отсутствует |
+| Mobile visual | 2/2/2/N/1.5; not_measured | 2/2/2/N/1.5; not_measured | Проверенные0; full0–3 family/long/200% corpus отсутствует |
+| Соответствие целевому макету | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Полное exact approved-reference сравнение отсутствует |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; поля/draft/exact multi-ID сохранены |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; facets/count/reset/zero/same-offer/state сохранены |
+| Карточки и price/CTA | 2/2/2/2/1.5;9.5 | 2/2/2/2/2;10 | +0.5; price/status/CTA вместе в tablet row |
+| Календарь | 2/N/2/2/2; not_measured | 2/N/2/2/2; not_measured | Проверенные0; sparse/full geometry corpus отсутствует |
+| Compare / shortlist — deferred вне запуска | N/N/N/N/N; deferred | N/N/N/N/N; deferred | Исключён из11 обязательных, не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; exact context/authority/unknown/return сохранены |
+| Lead-form handoff | 2/1.5/2/2/2;9.5 | 2/1.5/2/2/2;9.5 | 0; changed-price pair360 consent ниже первого fold |
+| Accessibility / state UX | 2/2/N/2/2; not_measured | 2/2/N/2/2; not_measured | Проверенные0; full readability/targets/200% corpus отсутствует |
+| Архитектурная чистота / стабильность | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Полного comparable five-criterion baseline нет |
+
+**Карточки — причины всех пяти баллов.** Медиа/название/место2→2
+(настоящие фото либо честный placeholder); достоверные факты без дублей2→2
+(existing projection/source invariants); условия representative offer2→2
+(exact date/nights/room/meal/operator); различение minimum/concrete/saved/unverified
+price2→2 (authority не менялась); доступное действие1.5→2
+(тот же RIA96953₽ на768: price/status/CTA в одной полной строке).
+Сумма9.5→10. Baseline `qa/results41/anytour-after-results768.jpg`;
+after `qa/fullpath42/after/fullpath42-after-card768.jpg` и results390/1280.
+Числовое поднятие CTA из кадров с различным scroll offset не заявляется.
+
+**Lead — причины всех пяти баллов.** Правильный выбранный тур2→2
+(exact offer/party/ages0/8/current pair06:05+08:05/whole-tour187700₽);
+действие/фокус1.5→1.5 (deferred family360/390 умещает phone/consent/CTA,
+changed-price pair360 требует scroll); validation/pending/error2→2
+(actual consent focus/scroll плюс compiled late/duplicate/closed guards);
+draft/отдельное согласие2→2 (phone retained, changed pair consent reset);
+контролируемый возврат без реальной отправки2→2
+(actual Back-to-detail и explicit close→nativeForward сохраняют
+review/phone/consent/187700). Existing nested Back расходует Forward entry;
+nested Back→Forward не объявлен completed. Сумма9.5→9.5.
+Baseline `qa/fullpath42/before/fullpath42-before-contact-family390.jpg`;
+финальные family360/390/1280, pair360/390, validation360/history-forward360
+в `qa/fullpath42/final/`. Восстановление временно потерянных child ages —
+исправление invariant, не рост балла. Pre-age-fix contact/capture races исключены.
+
+Наследованное exact evidence измеренных строк:
+Form `qa/results41/form-behavior.json` →
+`qa/fullpath42/form/behavior.json` + `logs/form-final.log`;
+Filters `qa/results41/cards-filters-behavior.json` →
+`qa/fullpath42/logs/results.log`;
+Selected/Lead `qa/results41/decision-behavior.json` →
+`qa/fullpath42/behavior/decision-behavior.json`,
+`return/selection-return.json`, `logs/decision-final.log`,
+`logs/selection-return-final.log`.
+Site120 after-кадры формы/picker/cards/tour используются только для неизменившихся
+блоков, parity120→121 записана отдельно. Контакт принят по финальному121.
+
+### Стадии и следующий крупный блок
+
+**Макеты:** восемь основных desktop/mobile кадров готовы, общая визуальная сумма
+не назначена без long/200% полного scope.
+**Кликабельный прототип:** Site121, Cards10/Lead9.5 только в указанном scope;
+`PROTOTYPE_PENDING_OWNER_ACCEPTANCE` перед NEXT migration.
+**Установленный NEXT:** без изменений, PR4501/source
+`9b74bdfae2fa9244be52e822d64db1e7282e6901`,
+[terminal6091085104](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6091085104).
+UI delta0; макет/prototype баллы ему не наследуются.
+
+Physical iPhone/Safari/OS keyboard/safe-area/200% **UNVERIFIED** для этого artifact,
+отдельно от Chrome/jsdom. Полный0–3 family/long-content/200% scope not_measured;
+общего9.5–10 нет. Architecture/CI/количество версий не компенсируют слабый mobile.
+
+Следующий разрешённый цельный дизайн-блок: mobile family/long conditions/changed-price
+path360/390/430, большая выборка выбранных отелей и200% readability/focus/scroll.
+Подтверждённые слабые точки — consent ниже первого fold при changed price360
+и chips/footer, оставляющие мало видимых hotel rows. Existing owners и рубрика
+сохраняются; новый полный прототип требует принятия владельцем перед NEXT transfer.
+Supplier/real lead/provider/money/DB/LOCAL/MATCH/analytics/main/production/schedules
+этим пакетом не менялись.
