@@ -4,6 +4,35 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const {fixture,trip,day,hotelCatalogue}=require('./search3-visual-live-fixture.cjs');
 const resultRangeTo=new Date(Date.parse(day+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
 const root=path.resolve(__dirname,'../v2'),source=n=>fs.readFileSync(path.join(root,n),'utf8');
+function modalViewportRegressions(){
+ const app=source('visual-search/app.js'),start=app.indexOf('function syncDestinationViewport(){'),end=app.indexOf('function lookupDestination(){',start);
+ assert(start>0&&end>start,'use the connected modal viewport owner and its real listeners');
+ const owner=app.slice(start,end),widths=[360,390,430,768,1280];let cases=0;
+ for(const width of widths)for(const lead of [false,true]){
+  const local=new JSDOM('<dialog id="modal"><header></header><div id="modal-body">'+(lead?'<form id="prototype-lead-form">':'<section>')+'<input id="phone" type="tel" value="1234567890">'+(lead?'</form>':'</section>')+'</div><footer></footer></dialog><aside id="filter-panel"><div class="filter-top"></div><div class="mobile-filter-footer"></div></aside>',{runScripts:'outside-only',pretendToBeVisual:true}),win=local.window,doc=win.document,modal=doc.querySelector('#modal'),body=doc.querySelector('#modal-body'),phone=doc.querySelector('#phone'),viewport=new win.EventTarget(),frames=[];
+  const mobile=width<=760;win.innerWidth=width;win.innerHeight=844;viewport.height=420;viewport.offsetTop=25;viewport.scale=1;win.visualViewport=viewport;modal.open=true;body.scrollTop=40;
+  // Explicit rectangles exercise decisions and real DOM focus; they are not browser layout.
+  body.getBoundingClientRect=()=>({top:90,bottom:310,height:220});phone.getBoundingClientRect=()=>({top:330-body.scrollTop+40,bottom:378-body.scrollTop+40,height:48});
+  phone.focus();phone.setSelectionRange(2,5);let ancestorScroll=0,refocus=0;
+  win.HTMLElement.prototype.scrollIntoView=()=>ancestorScroll++;win.scrollTo=()=>ancestorScroll++;win.HTMLElement.prototype.focus=()=>refocus++;
+  win.requestAnimationFrame=callback=>{frames.push(callback);return frames.length;};
+  win.eval('const $=selector=>document.querySelector(selector);let modalType="selected-tour";'+owner);
+  const settle=()=>{for(const callback of frames.splice(0))callback();},sync=()=>{viewport.dispatchEvent(new win.Event('resize'));settle();},unchanged=()=>{assert.strictEqual(doc.activeElement,phone);assert.strictEqual(doc.querySelector('#phone'),phone);assert.strictEqual(doc.querySelector('#modal-body'),body);assert.equal(phone.value,'1234567890');assert.deepEqual([phone.selectionStart,phone.selectionEnd],[2,5]);assert.equal(ancestorScroll,0,'reveal scrolls only the inner modal body');assert.equal(refocus,0,'viewport changes never replace or refocus the input');};
+  sync();assert.equal(modal.classList.contains('viewport-keyboard'),mobile,'the open retained tour remains bounded even without a contact form at '+width);assert.equal(modal.classList.contains('application-keyboard'),mobile&&lead);assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),mobile?'404px':'');
+  if(mobile){const rect=phone.getBoundingClientRect();assert(rect.top>=98&&rect.bottom<=302,'the focused phone is revealed inside the body at '+width);}else assert.equal(body.scrollTop,40);
+  unchanged();const scroll=body.scrollTop;sync();assert.equal(body.scrollTop,scroll,'repeated viewport events are idempotent');
+  if(mobile){body.scrollTop=40;phone.dispatchEvent(new win.FocusEvent('focusin',{bubbles:true}));settle();assert(phone.getBoundingClientRect().bottom<=302,'changing the focused field consumes the existing viewport without another resize');}
+  viewport.scale=1.25;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false,'pinch shrink is excluded from keyboard bounds');assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),'');unchanged();
+  viewport.scale=1;viewport.height=150;sync();assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),mobile?'134px':'','short viewport has no overflowing minimum-height floor');
+  viewport.height=844;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false);assert.equal(modal.style.getPropertyValue('--modal-viewport-top'),'');unchanged();
+  viewport.height=420;viewport.offsetTop=-25;sync();assert.equal(modal.style.getPropertyValue('--modal-viewport-top'),mobile?'8px':'','negative viewport pan does not move the dialog above the visible area');
+  modal.open=false;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false);assert.equal(modal.classList.contains('application-keyboard'),false);assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),'');unchanged();
+  // A queued reveal may not move a closed dialog after dismissal.
+  modal.open=true;body.scrollTop=40;viewport.dispatchEvent(new win.Event('resize'));modal.open=false;const closedScroll=body.scrollTop;settle();assert.equal(body.scrollTop,closedScroll);cases++;local.window.close();
+ }
+ console.log('PASS actual modal viewport: '+cases+' retained-tour/contact cases across five widths, inner-only focus/caret reveal, pinch, short/panned viewport, dismissal and late events; explicit rectangle fixtures, no native Safari claim');
+}
+modalViewportRegressions();
 function searchDeliveryPresentationRegressions(){
  const app=source('visual-search/app.js'),start=app.indexOf('function renderSearchStatus(items,total){'),end=app.indexOf('\nfunction prepareSearchRun(',start);
  assert(start>0&&end>start,'one current search status owner');

@@ -339,7 +339,7 @@ const destinationHotel=id=>hotels.find(h=>h.id===id&&h.legacyIds.length)||destin
 let destinationLookup={status:'idle',rows:[]},destinationRequest=null,destinationTimer=null,catalogError='',catalogReady=false,hotelRestorePending=false,catalogLoadGeneration=0,catalogDeparture='';
 function cancelDestinationLookup(){clearTimeout(destinationTimer);destinationRequest?.abort();destinationRequest=null;destinationLookup={status:'idle',rows:[]};}
 function syncDestinationViewport(){
- const m=$('#modal'),v=window.visualViewport,application=['selected-tour','provider-application','anex-application'].includes(modalType)&&!!m.querySelector('#prototype-lead-form'),picker=['departure','destination','flights','meals','budget','form-filters'].includes(modalType),keyboard=(picker||application)&&m.open&&innerWidth<=760&&v&&v.height<innerHeight-120;
+ const m=$('#modal'),v=window.visualViewport,application=['selected-tour','provider-application','anex-application'].includes(modalType)&&!!m.querySelector('#prototype-lead-form'),keyboard=m.open&&innerWidth<=760&&v&&(v.scale||1)<=1.01&&Number.isFinite(v.height)&&v.height<innerHeight-120;
  const panel=$('#filter-panel'),drawerKeyboard=panel.classList.contains('open')&&innerWidth<=1100&&v&&v.height<innerHeight-120;
  panel.classList.toggle('viewport-keyboard',!!drawerKeyboard);
  if(drawerKeyboard){panel.style.setProperty('--filter-viewport-top',(v.offsetTop+8)+'px');panel.style.setProperty('--filter-viewport-bottom',Math.max(0,innerHeight-v.offsetTop-v.height+8)+'px');panel.style.setProperty('--filter-viewport-height',Math.max(0,v.height-16)+'px');}
@@ -350,15 +350,25 @@ function syncDestinationViewport(){
  }
  m.classList.toggle('viewport-keyboard',!!keyboard);
  m.classList.toggle('destination-keyboard',!!keyboard&&modalType==='destination');m.classList.toggle('application-keyboard',!!keyboard&&application);
- if(keyboard){m.style.setProperty('--modal-viewport-top',(v.offsetTop+8)+'px');m.style.setProperty('--modal-viewport-height',Math.max(180,v.height-16)+'px');}
+ if(keyboard){m.style.setProperty('--modal-viewport-top',(Math.max(0,v.offsetTop||0)+8)+'px');m.style.setProperty('--modal-viewport-height',Math.max(0,v.height-16)+'px');}
  else{m.style.removeProperty('--modal-viewport-top');m.style.removeProperty('--modal-viewport-height');}
  if(keyboard){
-  const body=$('#modal-body'),active=document.activeElement;
-  if(body.contains(active)&&active.matches('input,textarea')){const box=active.getBoundingClientRect(),visible=body.getBoundingClientRect();if(box.top<visible.top||box.bottom>visible.bottom)active.scrollIntoView({block:'nearest',inline:'nearest'});}
+  // Keep keyboard-induced viewport panning inside the same modal body. No
+  // refocus, root scrolling or replacement of the current contact/draft node.
+  requestAnimationFrame(()=>{
+   if(!m.open||!m.classList.contains('viewport-keyboard'))return;
+   const field=document.activeElement,body=$('#modal-body');
+   if(!body.contains(field)||!field.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),textarea,[contenteditable="true"]'))return;
+   const rect=field.getBoundingClientRect(),view=body.getBoundingClientRect();
+   if(view.height<=0)return;
+   if(rect.top<view.top+8||rect.height>view.height-16)body.scrollTop+=rect.top-view.top-8;
+   else if(rect.bottom>view.bottom-8)body.scrollTop+=rect.bottom-view.bottom+8;
+  });
  }
 }
 window.visualViewport?.addEventListener('resize',syncDestinationViewport);
 window.visualViewport?.addEventListener('scroll',syncDestinationViewport);
+$('#modal').addEventListener('focusin',syncDestinationViewport);
 function lookupDestination(){
  destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;const q=$('#destination-query').value.trim(),country=destinationChoice.country;
  if(!countryNames[country]||q.length<2){renderDestination();return;}
@@ -1135,7 +1145,7 @@ function restoreModalStepSnapshot(previous){
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;
  // Offer and room lists are passive views: returning must not undo chosen flights.
  if(!['all-offers','hotel-details'].includes(previous.type))selectedOffer=previous.offer;
- updateModalBack();
+ updateModalBack();syncDestinationViewport();
 }
 function restoreHotelDetailStep(previous){
   const id=Number($('.hotel-section-nav')?.dataset.hotelId),h=hotels.find(h=>h.id===id);
