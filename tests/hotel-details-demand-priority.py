@@ -62,8 +62,9 @@ class DemandPriority(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(":memory:")
         self.db.row_factory = sqlite3.Row
+        self.next_search_id = 1000
         self.db.executescript("""
-            CREATE TABLE tour_price_observations(hotel_id INTEGER, source TEXT, observed_at TEXT);
+            CREATE TABLE tour_price_observations(hotel_id INTEGER, source TEXT, search_id INTEGER, observed_at TEXT);
             CREATE TABLE hot_tours_current(hotel_id INTEGER, fetched_at TEXT);
             CREATE TABLE catalog_hotels(id INTEGER PRIMARY KEY, name TEXT, last_seen_at TEXT);
             CREATE TABLE catalog_hotel_details(hotel_id INTEGER PRIMARY KEY, status TEXT, fetched_at TEXT);
@@ -72,8 +73,15 @@ class DemandPriority(unittest.TestCase):
     def tearDown(self):
         self.db.close()
 
-    def observe(self, hotel, source="user_search", when="2026-10-01 00:00:00", count=1):
-        self.db.executemany("INSERT INTO tour_price_observations VALUES (?,?,?)", [(hotel, source, when)] * count)
+    def observe(self, hotel, source="user_search", when="2026-10-01 00:00:00", count=1, search_id=None):
+        rows = []
+        for _ in range(count):
+            current_search_id = search_id
+            if current_search_id is None and source == "user_search":
+                current_search_id = self.next_search_id
+                self.next_search_id += 1
+            rows.append((hotel, source, current_search_id, when))
+        self.db.executemany("INSERT INTO tour_price_observations VALUES (?,?,?,?)", rows)
 
     def rows(self, limit=100):
         return self.db.execute(self.queries[str(limit)], {
@@ -93,6 +101,15 @@ class DemandPriority(unittest.TestCase):
         rows = self.rows()
         self.assertEqual([r["hotel_id"] for r in rows], [101, 102])
         self.assertEqual([r["user_search_count"] for r in rows], [2, 1])
+
+    def test_many_tours_and_retry_of_one_search_count_once(self):
+        self.observe(101, count=50, search_id=700)
+        self.observe(102, search_id=701)
+        self.observe(102, search_id=702)
+        rows = self.rows()
+        self.assertEqual([r["hotel_id"] for r in rows], [102, 101])
+        self.assertEqual([r["user_search_count"] for r in rows], [2, 1])
+        self.assertEqual([r["observation_count"] for r in rows], [2, 50])
 
     def test_hot_duplicates_do_not_inflate_user_count_or_duplicate_hotel(self):
         self.observe(101, count=2)
