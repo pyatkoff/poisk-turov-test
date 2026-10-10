@@ -1455,3 +1455,113 @@ defects in existing owners, do not restartall55/roadmap/newtracker/newdesign.
 No MAIN/production/supplier/real lead/provider/money/DB/LOCAL/MATCH/analytics/workflow/
 secret/other schedule action. Fresh liveTV+directANEX/SAMOpaused preserved.
 Source6098308051/publisher6098371799/audit6098501460 RELEASE after exact audit CI/merge/readback.
+
+
+## SEARCH-QUALITY-1 — quality48 / Site129, 2026-10-10
+
+**Новый работающий эффект.** В существующем departure Clear handler после очистки
+и прежнего render возвращается фокус тому же input с preventScroll. Обе кнопки
+очистки теперь позволяют сразу продолжить ввод без второго tap. City selection,
+query independence, draft/Apply/Cancel, exact IDs и история не менялись. Это
+подтверждённый UX-дефект и его исправление, не новый дизайн или рост за номер версии.
+Другие product changes — только package/cache labels; CSS/renderer/fixtures/contracts
+не менялись. Полный mobile long-content блок этим небольшим исправлением не закрыт.
+
+**Exact artifact и стадия.** Existing public project
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a, Site129/package48/v171,
+pushed product `8a599958e77afdf0686cc11a897fc4b3972154bd`;
+version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_5f84cf81089c8191a4efae4b021eec7d`;
+deployment `appgdep_6aca50d3db788191bcaa544a59c93887` SUCCEEDED
+2026-10-10T14:51:15.046065Z. Stock gzipSHA256
+`40da97e31bcd771f278ad38ad5be81798e724a74aae1c5ef5b9fc0f86dadb5ab`;
+native normalized tarSHA256
+`576014b816ce4c2634501e05c3713e7d696e08db4390689f5f5ea786846bd517`.
+Exact native source/archive/version/deployment readback и actual footer48/v171
+совпали. Save/deploy один раз, project/history/public audience сохранены.
+https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+QA-only retained evidence push не меняет dist/hosting и не требует второй публикации.
+
+**Фиксированная оценка и comparable baseline.** Existing SEARCH-QUALITY-1:
+12historical/11required, Compare deferred, пять0/1/1.5/2. N=not_measured, без
+суммы строки. Previous exact Site128/b5956a6/QAfc72fb8,
+[#1646/6098573849](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6098573849)
+и quality47 выше carry с прежним exact scope. Новый Clear-recovery subset A11yC1
+имеет первый формальный comparable baseline before1.5/2 (лишний tap), after2/2
+(+0.5). Это не перекалибровка прежнего profile2 и не прирост полной A11y строки.
+Не начислять тот же эффект ещё раз Form/Mobile; визуальные delta0.
+Expert scores не измеряют конверсию; незавершённые строки не выдаются за9.5–10.
+
+| Параметр | Previous128: C1/C2/C3/C4/C5; сумма | Current129: C1/C2/C3/C4/C5; сумма | Delta / доказательство или пробел |
+| --- | --- | --- | --- |
+| Desktop visual | 2/2/2/2/N; N | 2/2/2/2/N; N | measured0; C5 matched intermediate/short form+rail+cards corpus отсутствует |
+| Mobile visual | 2/2/2/N/2; N | 2/2/2/N/2; N | measured0; C4 long room/meal/operator/baggage/family0–3/text200 не полностью принят |
+| Соответствие целевому макету | N/N/N/N/N; N | N/N/N/N/N; N | full exact approved-reference comparison отсутствует |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 прежний scope; current Clear/query/Cancel и compiled matrix не создают новый full score |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; owner unchanged, exact47/45 evidence carry |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; owner byte-identical, exact45/46 evidence carry |
+| Календарь | 2/N/2/2/2; N | 2/N/2/2/2; N | measured0; whole sparse/full geometry C2 ещёN |
+| Compare / shortlist — deferred | N/N/N/N/N; deferred | N/N/N/N/N; deferred | вне11required, не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; exact46/47 return evidence + current identity/party guards |
+| Lead-form handoff | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0 bounded prototype; exact46 validation/draft/consent + current guards |
+| Accessibility / state UX — прежний profile | 2/2/N/2/2; N | 2/2/N/2/2; N | measured0; new C1 Clear subset +0.5 отдельно, full C3 text/readability corpusN |
+| Архитектурная чистота / стабильность | N/N/N/N/N; N | N/N/N/N/N; N | full comparable five-criteria baseline отсутствует |
+
+**Пять причин fully-covered строк, все пять2, gain0 в прежнем scope.**
+Form: C1city/destination existing exact43/45 + current recovery; C2dates/nights
+Cancel47/current suite; C3children0–3 ages current semantic + exact47actual0/8/17;
+C4canonicalID OR/cap20/query/Cancel/Apply45/current suite; C5budget/primary-advanced
+exact45/47, owner unchanged. Filters: C1facets; C2active/count; C3reset/zero;
+C4same-offer combinations; C5local no-supplier state — unchanged exact42/45/47
+and current results suite. Cards: C1media/name/place; C2nonduplicate facts;
+C3representative offer; C4minimum/concrete/saved distinction; C5accessible CTA —
+unchanged exact45/46/47 and current results suite. Selected: C1identity/generation/
+distinct offer; C2room/meal/party; C3known demo baggage/honest unknown; C4whole-party
+total/changed-price guards; C5Back/reopen/independent offer — unchanged exact46/47
+and current decision/selection suites. Lead: C1sameoffer/party/total; C2action/focus;
+C3validation/pending/error; C4draft/separate consent/reset; C5controlled Back —
+exact46/47 and current suites. Эти10 не являются real lead/booking/physical acceptance.
+
+**Actual browser before/after и checks.** Before Site128 at390×480:
+empty-query Clear value='' / focused=false. After Site129 same snapshot2adults,
+Moscow/Turkey/1–7Oct/7nights: both pointer Clear entries value='' / focused=true;
+native typeText(null,'Мос') без inputtap → value='Мос'/focused=true;
+pageY0/scrollTop0; Cancel/reopen restores empty query/Moscow/same exact URL.
+Other actual dialog widths360/430/768/1280: focusedtrue/overflow0/pageY0/scrollTop0.
+Settled390 frame shows visible focus ring, selected city and available confirmation;
+wide1280 actual dialog readable. Wrapper scrollbar is not product overflow proof.
+Immediate after-Clear preceding-paint image excluded.
+
+Focused compiled regression deliberately transfers focus to Clear before click:
+before FAIL “Clear returns typing focus”, after PASS5widths with same input,
+typing, selection, Cancel/Apply, history and exact family/search/offer. Six applicable
+compiled/jsdom suites exit0: mobile-form/search-editor/results-block/selection-return/
+decision-prototype/sites-interactions; syntax/diffPASS. jsdom has no layout engine,
+its scroll property is not geometry/physical keyboard evidence. Supplier0/reallead0.
+
+Actual saved hotel4496/TUI MAGIC LIFE BODRUM ADULT ONLY16+ and49-character room
+at360×480: full canonical identity/geography/footer facts/CTA readable, body
+scroll reaches selected room action. This two-adult AdultOnly offer is not combined
+with children; family0/8/17 belongs to labelled demo/semantic matrix. This limited
+new corpus does not close full MobileC4 or earn visualgain. No invented photos/
+stars/aliases/baggage/matching or supplier-money contracts.
+
+Read-only reviewer /root/quality48_long_content_review personally viewed after390/
+1280, source/regression and beforelongroom; supports only new Clear subset1.5→2,
+no fullrow/visual/physical gain. Retained qa/quality48/{before,after,logs}/**,
+browser-recovery.json390 trace+four widths, recovery-behavior.json,
+verify-recovery.cjs, README/REVIEW/runtime-receipt. Existing rubric/audit only.
+
+**Стадии и следующий конкретный этап.** Макет: visual delta0, full rowsN.
+Clickable Site129: relevant Clear recovery accepted, subset +0.5; full owner
+visual+behavior approval beforeNEXT остаётся. Installed NEXT source
+`73a8e38d2b179cc7334c547e093207ba052082d3`/terminal6097387169 separate,
+this package NOT transferred, no inherited scores/deploy.
+PhysicaliPhone/Safari/OSkeyboard/safearea/text-only200%UNVERIFIED.
+Next unresolved product block remains whole mobile longhotel/room/meal/operator/
+baggage + families0–3 through form→hotel→tour→contacts→Back,360/390/430 and
+supported increased text, plus exact short/intermediate desktop composition.
+Do not replace this with versions/audit/CI or repeat unchanged controls for points.
+No main/production/NEXT/provider/supplier/lead/money/fuel/FX/DB/LOCAL/MATCH/
+analytics/workflow/secret/other schedule changes. FreshTV+directANEX/SAMOpaused.
+Source6098640363/publisher6098740513/audit6098783297 RELEASE at canonical terminal.
