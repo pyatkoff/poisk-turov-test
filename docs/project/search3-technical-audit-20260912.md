@@ -1566,3 +1566,148 @@ Do not replace this with versions/audit/CI or repeat unchanged controls for poin
 No main/production/NEXT/provider/supplier/lead/money/fuel/FX/DB/LOCAL/MATCH/
 analytics/workflow/secret/other schedule changes. FreshTV+directANEX/SAMOpaused.
 Source6098640363/publisher6098740513/audit6098783297 RELEASE at canonical terminal.
+
+
+## 2026-10-10 — quality49: точная цена карточки и продолжение решения
+
+**Работающий эффект.** На фактическом Site129 при сохранённом demo-variants-1
+(1 окт, Standard, Всё включено, новая цена195400) карточка минимума159800/6 окт/
+Завтраки открывала этот другой сохранённый тур. Card CTA больше не перенаправляется
+через cardEntryOfferKey: открывается exact advertised key demo-variants-5.
+Отдельная сводка «Ваш выбор» и «Продолжить выбор» ведут к retained exact offer,
+показывают его даты/номер/питание/туристов/оператора, пару, сумму и existing price status.
+После explicit demo pair2 итог196700, контакты/согласие сохраняются при пассивном
+возврате. Текущий выбор вне filters явно отмечен; фильтры не изменяются. Новый applied
+search убирает старую сводку. Close заменяет только сводку через существующий
+cardHTML/renderResultCards owner, не исходную карточку/minimum CTA/input. Supplier0/reallead0.
+
+**Exact artifact / стадии.** Existing PUBLIC project appgprj_6abcd9299ef88191bbce1fc1bf8c767a,
+Site131/package49/v173, pushed product13632e17eab2be0c2f00336de635f0bf2dd0820a;
+version appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_b7cc8196319881919abe9f7ee4c9cb35;
+deployment appgdep_6aca5b97d7b4819181ea2a9513421d27 SUCCEEDED2026-10-10T15:37:12.015326Z.
+Stock gzipSHA256ef0f598a66e862d23dade1d44f64bd9ba6f2bd7466c27eb7054525f756d669dc;
+native normalized tarSHA256e768c6c432a74e7210af0f045b8dd6c5fd1c22fed00f1a3aa9b85af66965347c.
+Actual footer49/v173 и native source/archive/version/deployment readback совпали.
+URL https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
+PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
+
+Initial Site130/fbf9b414407d260be15aaeff26eac3bc15a3fb0e/v172 deployment
+appgdep_6aca59f78c988191b9bf3fd816d72407 succeeded15:30:21.980422Z; publisher6099108194
+RELEASE6099139938. Actual pair390 revealed raw savedFlightTextPlain summary378.5px
+with ISO dates/route/carrier/numbers. Final173 projects short direction/date/time from
+existing savedFlightLegs; full data remains exact-tour details. Final390303.5px,
+desktop1280147px. Each publication had its own exact claim/native receipt; do not replay.
+Intermediate stock preparation953ac0a18a56a33419727c8a666aa02bb1649d35 retained/pushed
+source but refused archive because test logs appeared during save. Stock OPEN reconciled
+same pushed head; final clean preparation13632e17 included completed logs. No native
+save/deploy existed for953ac0; no UNKNOWN operation repeated.
+
+**SEARCH-QUALITY-1 whole profile.** Same12historical/11required, Compare deferred,
+five0/1/1.5/2. N=not_measured; never sum an incomplete row. Previous exact bounded
+Site129/#1646/6098806766/audit quality48 evidence carried, not rerun for points.
+Whole search score remains N: 5/11 fully summed rows,41/55 measured criteria and14
+missing. These are coverage counts, not7.45/10 or mean10 of measured cells.
+First comparable broadened minimumA→CTA→exact-tour→return CardsC5 baseline1/2
+(wrong tour) → current2/2 (correct A, distinct B continuation), delta+1 in that
+criterion only. Historical bounded Cards10 did not include this defect; no old10→9
+regression/recalibration and no scope-mixed row9→10 or whole-search +1 claim.
+Expert score, not conversion measurement.
+
+| Параметр | Previous129 C1/C2/C3/C4/C5; сумма | Current131 C1/C2/C3/C4/C5; сумма | Delta / точное ограничение |
+| --- | --- | --- | --- |
+| Desktop visual |2/2/2/2/N;N|2/2/2/2/N;N|measured0; C5 whole intermediate/short form+calendar+rail+cards missing|
+| Mobile visual |2/2/2/N/2;N|2/2/2/N/2;N|measured0; C4 whole longhotel/room/meal/operator/baggage/family0–3/increased-text corpus missing|
+| Соответствие целевому макету |N/N/N/N/N;N|N/N/N/N/N;N|exact approved Site100 comparison for all five criteria missing|
+| Основная форма |2/2/2/2/2;10|2/2/2/2/2;10|0 bounded previous scope; no inherited overall visual10|
+| Filters / decision UX |2/2/2/2/2;10|2/2/2/2/2;10|0 unchanged bounded scope|
+| Cards / price / CTA — historical bounded scope |2/2/2/2/2;10|2/2/2/2/2;10|0 carried profile; expanded CardsC5 baseline1→2 separately|
+| Calendar |2/N/2/2/2;N|2/N/2/2/2;N|measured0; full sparse/full geometry C2 missing|
+| Compare / shortlist — deferred |N/N/N/N/N;deferred|N/N/N/N/N;deferred|excluded from11required, not restarted|
+| Selected tour |2/2/2/2/2;10|2/2/2/2/2;10|0 bounded prototype, no live final-price/booking claim|
+| Lead/contact |2/2/2/2/2;10|2/2/2/2/2;10|0 controlled prototype; no delivery|
+| A11y / state UX |2/2/N/2/2;N|2/2/N/2/2;N|measured0; C3 whole readability/targets/increased-text missing|
+| Architecture / stability |N/N/N/N/N;N|N/N/N/N/N;N|whole five-criteria comparable baseline missing; greenCI not score|
+
+**Все пять критериев, неизменённые именования/смысл.** Desktop:
+C1grid/alignment;C2density/spacing;C3typography/long text;C4CTA/control sizing;
+C5form/rail/cards intermediate+short screens. Mobile:C1independentcomposition;
+C2readability/no field loss;C3actions available;C4longcontent/family/increasedtext;
+C5nooverlap/excessscroll in checked browser. Reference:C1formstructure;
+C2calendarposition;C3filter/resultcomposition;C4card/priceCTA hierarchy;
+C5approved mobile/brand/no false promises. Form:C1city/destination;
+C2dates/nights;C3party/childages;C4region/hotel/stars/meal;C5budget and primary/advanced
+fields without primary operator. Filters:C1truthful facets;C2activevalues/counts;
+C3reset/zero recovery;C4same-offer condition combination;C5state/no supplier calls.
+Cards:C1media/name/place;C2truthful nonduplicate facts;C3representative exact offer;
+C4minimum/concrete/saved/unverified distinction;C5clear accessible exact action.
+Calendar:C1dates/prices readable;C2sparse/full geometry;C3truthfulminimum/coverage;
+C4filter/continuation/disclosure sync;C5exact date/Submit.
+Compare:C1add/remove/cap;C2differences;C3exactIDs;C4history/price/unavailable;
+C5reload/storageerror/focus. Selected:C1exactoffercontext;C2room/meal/party;
+C3verifiedflights/honestunknown;C4whole-party price/composition/authority;
+C5change/return without replacement. Lead:C1correcttour;C2clear action/focus;
+C3validation/pending/error;C4draft/separateconsent;C5controlledreturn.
+A11y:C1keyboard/focus;C2labels/semantics;C3readability/targets;C4loading/empty/error/
+partial;C5state restore. Architecture:C1oneconnectedowner;C2replacedcode removed;
+C3source/generated/hashes;C4protectedcontract isolation;C5regressions/races/repeatability.
+
+**Five reasons for fully covered carried rows (all five2, delta0).** Form:
+C1exact43/45city/destination/current editor;C2exact47dates/nights Cancel;C3current
+compiled families0–3 and exact47actual0/8/17;C4canonical hotel OR/cap20/query/Cancel/
+Apply exact45/currentform suite;C5budget/primary-advanced exact45/47.
+Filters:C1facets,C2active/count,C3reset/zero,C4same-offer combinations,C5local
+no-supplier state — exact42/45/47 + current finalresults suite.
+Cards:C1media/name/place,C2nonduplicatefacts,C3representativeconditions,C4price
+distinctions,C5accessibleCTA — historical45/46/47/48 bounded scope retained;
+new expandedC5 separately proven beforeFAIL/current finalfivewidth matrix+actual131.
+Selected:C1identity/generation/differentoffer,C2room/meal/party,C3known demo baggage/
+honestunknown,C4whole-party total/changed-price gate,C5Back/reopen/independentoffer —
+exact46/47/currentdecision/currentfinalselection+cardcontinuity.
+Lead:C1sameoffer/party/total,C2action/focus,C3validation/pending/error,
+C4draft/consent/reset,C5controlledBack — exact46/47 + currentcompiled/actual131.
+No double-award of same repair to Mobile/A11y/Selected; no physical score inheritance.
+
+**Checks and actual evidence.** Final focused card-continuity-final.json:
+PASS360/390/430/768/1280; before log FAIL exact expected key5/actual key1. Covers
+minimum vscontinuation, changedprice acceptance, pair/total/contact/consent,
+outsidefilters/currentsearch, cancelled flights/form, independentoffer and
+unknown/error/expired/pending/late/duplicate with no quote/flight/data replay.
+Six applicable compiled suites passed; after compact projection final results-block
+and selection-return passed again, other four tests cover unchanged owners.
+Syntax/diffPASS. JSDOM no layout/OS keyboard; separate actual geometry below.
+
+Actual131: key1 retained and196700/06:05+08:05 pair after repeated passive contacts/
+Close at allfivewidths; consenttrue;focus returns exact continuation key1.
+No horizontal overflow; continuebutton48pxmobile,63.1875pxdesktop/tablet.
+Actual390 synthetic phone visible after reopen in final-contact-retained390 and
+compiled exact-value regressionPASS. Browser read-only DOM masks phone value:
+raw equalityfalse is retained as inconclusive in receipt, not a regression or PASS.
+Actualminimum action key5,159800,6–13Oct,breakfast; previousB cannot replace it.
+Actual short360/390/430×480 body footer overlap0; internal430 scroll0→362 of639
+with277pxclient reaches bottom while footer accessible. Actual key5 explicitdemo
+quote expiry:159800 labelled unconfirmed/chooseother; return summary saysprice/
+conditions need check, not verified. This demo is not live capacity/speed/price.
+
+Retained qa/quality49/{before,after,logs}/**, focused script/JSON,
+final-publication.json, final-installed-dist-hashes.json. Stabilized images selected;
+immediate preceding-paint captures were overwritten/excluded. Independent read-only
+source/screenshot review recorded in final receipt. No invented photo/star/alias/
+hotelmatching or money formula. Removed obsolete redirection, existing card CSSowner
+only. Large mobile photos1.8, open seven-price rail, form/calendar foundation retained.
+
+**Конечный путь, не очередь микроисправлений.** Один цельный desktop/mobile
+prototype has three complete blocks: (1) form/calendar/hotelpicker/filters/results;
+(2) exacttour/flightpair/wholepartyprice/changed-unknown-error and return;
+(3) contactdraft/consent/recovery and return. Main eight frames form/results/tour/
+contact at390+1280, plus360/430/768/shortdesktop/longcanonicalcontent/families0–3/
+supported increased text. Existing unchanged evidence carried instead of all55-before-
+any-mockup. Missing14criteria are one whole acceptance corpus, not14PRs.
+End: every applicable required row≥9.5 same rubric/artifact, owner whole visual+
+behavior approval, then authorized exact NEXT transfer and separate installed acceptance.
+Mockup whole scoreN; clickable131 repaired connected scope accepted/full scoreN;
+installed NEXT73a8e38d2b179cc7334c547e093207ba052082d3/terminal6097387169 unchanged/
+NOT transferred/no inherited scores. PhysicaliPhone/Safari/OSkeyboard/safearea/
+text-only200%UNVERIFIED. No main/production/NEXT/supplier/provider/leadtransport/
+money/fuel/FX/DB/LOCAL/MATCH/analytics/workflow/secret/other schedule changes.
+FreshTV+directANEX/SAMOpaused. Claims source6099025667+6099055371,
+finalpublisher6099169659 andaudit6099156831 require canonical terminalRELEASE.
