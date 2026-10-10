@@ -397,6 +397,7 @@ const applicationViewportLayout=async(page,width,transport,evidence,label,stress
   }
   if(stress){
    // DOM text/viewport stress is not physical iPhone text zoom or a price quote.
+   await phone.fill('+7 999 123-45-67');await phone.evaluate(el=>{el.focus({preventScroll:true});el.setSelectionRange(3,8);});await settleViewport();
    await page.evaluate(()=>document.documentElement.style.fontSize='32px');
    await amount.evaluate(el=>el.textContent='1\u00a0035\u00a0282,99 ₽');await verify('text200-long-total');
   }
