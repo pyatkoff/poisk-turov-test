@@ -119,6 +119,47 @@ class CaptureFiles(unittest.TestCase):
         flag.write_text('{"registry":true}');self.assertEqual(enabled(),'0')
         flag.unlink();actual=self.op/'real-flag.json';actual.write_bytes(self.flag);flag.symlink_to(actual);self.assertEqual(enabled(),'0')
 
+    def test_current_same_backend_source_carries_original_install_without_reinstallation(self):
+        private=Path(self.temp.name)/'private';private.mkdir()
+        targets={p[3:]:p for p in m.SOURCE_HASHES}
+        for relative,src in targets.items():
+            f=self.project/relative;f.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(SOURCE/src,f)
+        (self.project/'data/local-tv-catalog-enabled.json').write_bytes(self.flag)
+        expected={relative:m.SOURCE_HASHES[src] for relative,src in targets.items()}
+        expected['data/local-tv-catalog-enabled.json']=hashlib.sha256(self.flag).hexdigest()
+        full={'database_sha256':'1'*64,'config_sha256':'2'*64,'protected_snapshots':{},'readback':{'links_sha256':'3'*64},'catalog_rows':{}}
+        summary={k:v for k,v in full.items() if k!='catalog_rows'}
+        prior={'state':'inspected_read_only','source_sha':'a'*40,'control_source_sha':'b'*40,'before_files':{},'before_data':summary}
+        installed=dict(prior,state='installed_capture',after_files=expected,after_data=summary)
+        def receipt(name,data):
+            d=private/name;d.mkdir(exist_ok=True);(d/'result.json').write_text(json.dumps({'mode':m.MODE,'status':'complete','local_tv_capture':data}))
+        receipt('int-andromeda-local-tv-capture-inspect-20261010-v1',prior)
+        receipt('int-andromeda-local-tv-capture-install-20261010-v1',installed)
+        self.ns.update(private=private,source='c'*40,files=m.SOURCE_HASHES,time=__import__('time'),
+            safe_json=lambda p,n:json.loads(p.read_text()),payload={'action':'retained','provider_http_calls':0,'old_profile_writes':0,
+                'mapping_writes':0,'schema_writes':0,'local_tv_capture_control_sha':'d'*40},
+            operation='int-andromeda-local-tv-capture-retained-20261010-v1',result={})
+        calls=[]
+        def run(args,**kwargs):
+            calls.append(args)
+            if args[-1] in ('capture-before.json','capture-after.json'):
+                (self.op/args[-1]).write_text(json.dumps(full));out=json.dumps(summary)
+            elif '-r' in args:out='enabled'
+            else:out='ANYTOUR_LOCAL_TV_DAILY '+json.dumps({'supplierHttpAttempts':0,'httpRequests':0,'legacyMigration':{'transferred':0,'issues':[]}})
+            return subprocess.CompletedProcess(args,0,out,'')
+        with mock.patch.object(subprocess,'run',side_effect=run),mock.patch.dict(self.ns,{'capture_install_files':mock.Mock(side_effect=AssertionError('unexpected reinstall'))}):
+            retained=self.ns['run_local_tv_capture'](self.stage)
+            self.assertEqual(retained['state'],'retained_complete');self.assertEqual(retained['installed_source_sha'],'a'*40)
+            self.assertEqual(retained['source_sha'],'c'*40);self.assertEqual(retained['database_writes'],0)
+            self.assertEqual(len([c for c in calls if '--http-budget=0' in c]),1)
+            receipt('int-andromeda-local-tv-capture-retained-20261010-v1',retained)
+            self.ns['operation']='int-andromeda-local-tv-capture-readback-20261010-v1';self.ns['payload']['action']='readback'
+            self.assertEqual(self.ns['run_local_tv_capture'](self.stage)['state'],'verified_read_only')
+            (self.project/'data/local-tv-catalog-v1.php').write_text('unreviewed backend')
+            with self.assertRaisesRegex(RuntimeError,'installed_files_drift'):self.ns['run_local_tv_capture'](self.stage)
+            self.ns['operation']='int-andromeda-local-tv-capture-install-20261010-v1';self.ns['payload']['action']='install'
+            with self.assertRaisesRegex(RuntimeError,'install_source_changed'):self.ns['run_local_tv_capture'](self.stage)
+
 @unittest.skipUnless(os.environ.get('LOCAL_TV_SCHEMA_NATIVE_CI')=='1','isolated native MySQL CI required')
 class CaptureNative(unittest.TestCase):
     def test_actual_snapshot_read_only_manual_and_full_gallery(self):

@@ -141,8 +141,10 @@ def run_local_tv_capture(stage):
     parent=private/'int-andromeda-local-tv-capture-inspect-20261010-v1'
     if not safe_file(parent/'result.json',65536):fail('capture_inspection_missing')
     previous=safe_json(parent/'result.json',65536);prior=previous.get('local_tv_capture',{})
-    if previous.get('status')!='complete' or prior.get('state')!='inspected_read_only' or prior.get('source_sha')!=source:fail('capture_inspection_contract')
+    if (previous.get('status')!='complete' or previous.get('mode')!='local-tv-capture-v1'
+            or prior.get('state')!='inspected_read_only' or not re.fullmatch(r'[a-f0-9]{40}',str(prior.get('source_sha','')))):fail('capture_inspection_contract')
     if action=='install':
+        if prior['source_sha']!=source:fail('capture_install_source_changed')
         if prior.get('control_source_sha')!=payload['local_tv_capture_control_sha'] or not 0<=int(time.time())-prior['observed_at']<=1800:fail('capture_inspection_expired')
         if before_files!=prior['before_files'] or before_data!=prior['before_data']:fail('capture_inspection_drift')
         # Block a concurrent installed data CLI before copying its dependencies.
@@ -159,7 +161,19 @@ def run_local_tv_capture(stage):
         installed=private/'int-andromeda-local-tv-capture-install-20261010-v1'
         if not safe_file(installed/'result.json',65536):fail('capture_install_terminal_missing')
         terminal=safe_json(installed/'result.json',65536)
-        if terminal.get('status')!='complete' or terminal.get('local_tv_capture',{}).get('state')!='installed_capture':fail('capture_install_not_complete')
+        installed_data=terminal.get('local_tv_capture',{})
+        # A document-only ref advance must not require another installation.
+        # Current bundle hashes and all installed files stay exact; the original
+        # inspect/install receipt chain still binds its own source and control.
+        if (terminal.get('status')!='complete' or terminal.get('mode')!='local-tv-capture-v1'
+                or installed_data.get('state')!='installed_capture' or installed_data.get('source_sha')!=prior['source_sha']
+                or installed_data.get('control_source_sha')!=prior.get('control_source_sha')
+                or installed_data.get('before_files')!=prior.get('before_files')
+                or installed_data.get('before_data')!=prior.get('before_data')
+                or installed_data.get('after_files')!=expected):fail('capture_install_not_complete')
+        installed_after=installed_data.get('after_data',{})
+        if any(before_data.get(k)!=installed_after.get(k) for k in ('config_sha256','database_sha256','protected_snapshots')):fail('capture_original_protected_data_drift')
+        data['installed_source_sha']=prior['source_sha']
         enabled()
         if action=='retained':
             data['database_writes']=None
@@ -178,7 +192,11 @@ def run_local_tv_capture(stage):
         data['database_writes']=sum(rows_before.get(k)!=rows_after.get(k) for k in set(rows_before)|set(rows_after))
     if action=='readback':
         retained=private/'int-andromeda-local-tv-capture-retained-20261010-v1'
-        if not safe_file(retained/'result.json',65536) or safe_json(retained/'result.json',65536).get('status')!='complete':fail('capture_retained_terminal_missing')
+        if not safe_file(retained/'result.json',65536):fail('capture_retained_terminal_missing')
+        retained_terminal=safe_json(retained/'result.json',65536);retained_data=retained_terminal.get('local_tv_capture',{})
+        if (retained_terminal.get('status')!='complete' or retained_terminal.get('mode')!='local-tv-capture-v1'
+                or retained_data.get('state')!='retained_complete' or retained_data.get('installed_source_sha')!=prior['source_sha']
+                or retained_data.get('after_files')!=expected):fail('capture_retained_terminal_missing')
     data['registry_enabled']=True;return data
 
 '''
