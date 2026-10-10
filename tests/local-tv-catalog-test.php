@@ -168,6 +168,10 @@ foreach(range(900001,900005)as $id){
     $raw=local_card($id);if($id===900002)$raw['name']='Fortuna 5*';if($id===900003)$raw['id']=900005;
     $json=LocalTvCatalogV1::json($raw);$cacheInsert->execute([$id,$json,$id===900004?str_repeat('0',64):hash('sha256',$json),$now]);
 }
+$c->discover([['id'=>900006]],'user_search',$now);
+$raw=local_card(900006);$raw['name']='Roulette 4*';$json=LocalTvCatalogV1::json($raw);
+$cacheInsert->execute([900006,$json,hash('sha256',$json),$now]);
+$c->setManualFields(900006,['name'=>'Проверенный ручной отель'],1);
 $pdo->exec("UPDATE catalog_hotel_details SET status='not_found' WHERE hotel_id=900005");
 $c->setManualFields(900001,['description'=>'Ручное описание сохраняется'],1);
 $protectedBefore=LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
@@ -189,7 +193,11 @@ if($native){
 }else{$c->backfillObserved();local_same($c->dailyRetained(3000)['httpRequests'],0,'SQLite retained method makes zero HTTP attempts');}
 $retained=$c->read([900001])['items'][0];local_same(count($retained['images']),126,'Retained daily keeps full gallery');
 local_same($retained['description'],'Ручное описание сохраняется','Retained daily preserves manual content');
-foreach([900002,900003,900004,900005]as $id)local_same($c->read([$id])['items'][0]['contentState'],'pending','Invalid or absent retained row is not retried');
+local_same($c->read([900002])['missingIds'],[900002],'Pristine generic product is excluded from the hotel reader');
+local_same($pdo->query('SELECT state FROM local_tv_hotels WHERE id=900002')->fetchColumn(),'excluded','Pristine generic product is terminally classified');
+local_same($c->counts()['excludedCount'],1,'Excluded non-hotel product is counted separately');
+foreach([900003,900004,900005]as $id)local_same($c->read([$id])['items'][0]['contentState'],'pending','Invalid or absent retained row remains repairable');
+local_same($c->read([900006])['items'][0]['contentState'],'pending','Manual hotel evidence blocks automatic generic exclusion');
 local_same(LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
     $pdo->query('SELECT * FROM anytour_hotel_sources ORDER BY anytour_hotel_id,namespace,external_key')->fetchAll(PDO::FETCH_ASSOC),
     $pdo->query('SELECT * FROM local_tv_legacy_links ORDER BY old_local_id')->fetchAll(PDO::FETCH_ASSOC),
@@ -198,6 +206,7 @@ $beforeDenied=LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels 
 local_need($runCli(1)[0]!==0,'Unadmitted LOCAL supplier budget fails closed');
 local_same(LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)),$beforeDenied,'Refused LOCAL acquisition changes no data');
 $retainedRepeat=$c->dailyRetained(3000);local_need(!isset($retainedRepeat['skipped'][900001]),'Successful retained source is not replayed');
+local_need(!isset($retainedRepeat['skipped'][900002])&&!isset($retainedRepeat['excluded'][900002]),'Excluded generic product is not selected again');
 
 // Additional actual DB/API snapshots match the fictional LIVE fixture's old501 -> TV101.
 if(getenv('LOCAL_TV_TEST_EXPORT')){
