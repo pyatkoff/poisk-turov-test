@@ -158,7 +158,7 @@ async function quoteReturnRegressions(){
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact);assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
-  }finally{win.AnyTourPrototypeData.stop();await Promise.resolve();local.window.close();assert.deepEqual(localErrors,[]);}
+  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
 // The actual entry graph and canonical catalogue adapter own these passive
@@ -531,7 +531,7 @@ async function pickerRetainedDraftRegressions(){
  click('#search-return');await wait(()=>!q('.search-submit').disabled);assert.equal(q('#cards').innerHTML,frozenCards);assert.equal(w.location.search,frozenURL);
  assert.equal(starts(),searchesBeforeRecovery,'catalogue recovery and cancellation never start a supplier search');
 
- click('[data-action="hotel-details"][data-id="501"]');await wait(()=>q('#hotel-room-count'));assert.match(q('#modal-body').textContent,/Тестовая улица/);assert.match(q('#modal-body').textContent,/Мини-клуб/);click('[data-action="close-modal"]');await settle();
+ click('[data-action="hotel-details"][data-id="501"]');assert.match(q('#modal-body').textContent,/Тестовая улица/);assert.match(q('#modal-body').textContent,/Мини-клуб/);click('[data-action="close-modal"]');await settle();
  // Both quote entry points must ignore a response after closing/reopening the same offer.
  const tvActions=()=>transport.calls.filter(c=>c.url==='/api-v2.php'&&['tour','flights'].includes(c.action));
  const openTv=()=>{click('[data-action="all-offers"][data-id="501"]');click('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');};

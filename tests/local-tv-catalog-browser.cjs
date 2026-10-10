@@ -16,14 +16,23 @@ async function adapterAcceptance(){
  for(const pathname of ['/','/prototype-search/','/_preview/search3-site-candidate/visual-search/','/_preview/search3-local-candidate/visual-search/','/_preview/search3-next-candidate/visual-search/']){
   const configDom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+pathname,runScripts:'outside-only'});
   try{configDom.window.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
-   assert.equal(configDom.window.V2_CONFIG.localTvCatalogEnabled,pathname.startsWith('/_preview/search3-next-candidate/')||pathname.startsWith('/_preview/search3-local-candidate/'),'rollout remains isolated to existing LOCAL/NEXT paths');
+   assert.equal(configDom.window.V2_CONFIG.localTvCatalogEnabled,false,'static/Site config stays off without the live server bootstrap');
    assert.equal(configDom.window.V2_CONFIG.andromedaApi,null);assert.equal(configDom.window.V2_CONFIG.andromedaQuoteApi,null);
   }finally{configDom.window.close();}
  }
  const dom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+base+'visual-search/',runScripts:'outside-only'}),w=dom.window;
  Object.assign(w,{structuredClone,TextEncoder,AbortController,Response});
  w.fetch=async()=>{throw new Error('Unexpected supplier transport');};
- for(const file of ['prototype-search/config.js','runtime-v3.js','search3-canonical-profiles-v1.js','prototype-search/data.js'])w.eval(fs.readFileSync(path.join(sourceRoot,file),'utf8'));
+ for(const [script,scenario] of [['/_preview/search3-next-candidate/visual-search/index.php','snapshot'],['/visual-search/index.php',''],['/_preview/search3-local-candidate/visual-search/index.php','']]){
+  const html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]=$argv[2];$_GET["scenario"]=$argv[3];include $argv[1];',path.join(sourceRoot,'visual-search/index.php'),script,scenario],{encoding:'utf8'});
+  assert(!html.includes('data-local-tv-catalog="enabled"'),'offline/forbidden PHP entry cannot enable LOCAL content');
+ }
+ const served=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php";include $argv[1];',path.join(sourceRoot,'visual-search/index.php')],{encoding:'utf8'});
+ const entry=new JSDOM(served),configScript=entry.window.document.querySelector('script[src*="prototype-search/config.js"]');assert.equal(configScript?.dataset.localTvCatalog,'enabled','actual live PHP entry opts in');
+ Object.defineProperty(w.document,'currentScript',{configurable:true,value:configScript});
+ w.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
+ Object.defineProperty(w.document,'currentScript',{configurable:true,value:null});entry.window.close();
+ for(const file of ['runtime-v3.js','search3-canonical-profiles-v1.js','prototype-search/data.js'])w.eval(fs.readFileSync(path.join(sourceRoot,file),'utf8'));
  const data=w.AnyTourPrototypeData,raw={...structuredClone(profile),anytourHotelId:501,tours:[structuredClone(tour)]};
  const before=data.project([raw],trip)[0],rawBefore=JSON.stringify(raw),offerBefore=JSON.stringify(before.offers),calls=[];
  let reply=original,release;

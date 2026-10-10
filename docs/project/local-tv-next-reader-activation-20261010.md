@@ -2,19 +2,20 @@
 
 Owner «Давай делать»; current source claim6097088162. Existing new-catalog source
 PR4500 and stock schema/seed control PR4508/4510 are merged. Actual initial transfer
-run38049033138 is COMPLETE initialized_retained: observed6389, ready6175, unfinished214,
+run38049033138 and independent readback38049163836 are COMPLETE initialized_retained: observed6389, ready6175, unfinished214,
 links5075 with0 link issues, manualFields161, storedPhotos251968. Protected old profiles,
 sources and raw cache hashes unchanged; supplier/lead/schema calls0, production unchanged.
 This follows valid empty schema inspect/install/independent readback and fresh complete
 retained inventory38048904700 with durable private full before snapshots.
 
-This source activates the already-reviewed browser content overlay only for existing
-LOCAL/NEXT preview pathnames. Main/source/Site/old preview paths stay off. No renderer,
+The existing live NEXT PHP bootstrap explicitly marks its config script; the config
+activates the already-reviewed content overlay only with that marker and an allowed
+LOCAL/NEXT pathname. Static/Site/offline config stays off. Main/source/Site/old preview paths stay off. No renderer,
 offer/flight/fuel/money/lead/supplier gate, root config or scheduler change. The existing
 old-own-ID → TV bridge preserves transactional identities; direct TV reading is a
 separate explicit namespace. Full retained source and manual leaves remain server-owned.
 
-Acceptance uses actual config, not test-server flag injection: five widths,126-photo
+Acceptance renders the actual PHP bootstrap/config marker, not test-server flag injection: five widths,126-photo
 SQL/HTTP fixture, new saved revision, manual empty field, no-store/coalesced reads,
 failed reader fallback, foreign bridge/revision rejection, stale-search/dialog guard
 and unchanged offer choices. Other baseline UI fixtures explicitly return missing-only
