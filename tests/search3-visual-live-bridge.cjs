@@ -138,7 +138,7 @@ async function quoteReturnRegressions(){
   win.fetch=async(url,options={})=>{assert(!String(url).includes('lead-bridge'),'no real lead transport');const body=options.body?JSON.parse(options.body):{},action=body.action||new URL(url,win.location.href).searchParams.get('action');if(action==='flights'&&flights){flights.started=true;await flights.pending;}const value=await t.json(url,options);return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
   for(const file of scripts){
    if(file==='visual-search/app.js'){const canonical=win.AnyTourPrototypeData;win.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{quote:{value:async(...args)=>{const control=quote,tour=await canonical.quote(...args);if(control){control.started=true;await control.pending;if(control.error)throw control.error;}return tour;}}}));}
-   let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__retention=()=>({offer:selectedOffer,type:modalType});\n'+marker);}win.eval(code);
+   let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__retention=()=>({offer:selectedOffer,type:modalType});window.__selectedPricePresentation=offer=>{selectedOffer=offer;renderRealOffer();};\n'+marker);}win.eval(code);
   }
   const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Receiving retention timeout at '+width);};
   const exact='[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]',open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap(exact);};
@@ -158,6 +158,19 @@ async function quoteReturnRegressions(){
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
    tap('#modal-body '+exact);assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
+   const stable=win.__retention().offer,stableJSON=JSON.stringify(stable),presentationCalls=t.calls.length;
+   for(const provider of ['tourvisor','fixture','recorded']){
+    win.__selectedPricePresentation({...stable,provider,total:null,pricePending:true});
+    assert.equal(get('.footer-total strong').textContent,'Цена уточняется');
+    assert.match(get('.footer-price-status').textContent,/не подтверждена/,'pending total cannot inherit a verified/demo/recorded status');
+    assert.match(get('.price-line.total span').textContent,/не подтверждена/,'body and sticky footer agree on pending authority');
+    assert.equal([...doc.querySelectorAll('.error-text')].filter(el=>el.textContent.includes('Цена выбранного перелёта')).length,1,'one complete pending-flight explanation');
+    assert.doesNotMatch(get('.tour-price-details').textContent,/Рейс.*менеджер/,'price panel has no repeated flight instructions');
+   }
+   win.__selectedPricePresentation({...stable,flightsLoading:true});
+   assert.match(get('.footer-price-status').textContent,/Рейсы загружаются/);assert(get('#modal-footer .primary').disabled);
+   assert.equal(JSON.stringify(stable),stableJSON,'presentation states cannot change the retained exact offer');
+   assert.equal(t.calls.length,presentationCalls,'pending/loading presentation makes no supplier or lead request');
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
@@ -541,6 +554,9 @@ async function pickerRetainedDraftRegressions(){
    openTv();const before=tvActions().length;click(`[data-action="${action}"]`);await wait(()=>quoteControl.started);
    assert(q('#modal-footer .primary').disabled,'a pending quote disables continuation');
    assert.match(q('.tour-selection-hint').textContent,/Получаем цену/);
+   assert.equal(q('.price-line.total span').textContent,'Цена из выдачи','pending verification identifies the shown amount as a listing price');
+   assert.match(q('.footer-price-status').textContent,/Получаем цену и условия/,'sticky price status waits for verification');
+   assert.doesNotMatch(q('.tour-price-details').textContent,/Рейс.*менеджер/,'price details do not repeat the flight instruction');
    click('[data-action="close-modal"]');await settle();openTv();const unchanged=q('#modal-body').innerHTML;
    release();await settle();quoteControl=null;
    assert.equal(q('#modal-body').innerHTML,unchanged,'late '+action+' response cannot replace a reopened offer');
