@@ -106,4 +106,14 @@ try {
 putenv('TOURVISOR_HTTP_MAX_ATTEMPTS');
 if (v2_data_tv_http_attempt_count() !== 0) throw new RuntimeException('Tourvisor HTTP attempt counter mutated without a request');
 
+// Execute the real demand SELECT against offline fixtures; never start acquisition.
+$demandTest = proc_open(
+    ['python3', __DIR__ . '/hotel-details-demand-priority.py', PHP_BINARY],
+    [0=>STDIN,1=>STDOUT,2=>STDERR],
+    $pipes
+);
+if (!is_resource($demandTest) || proc_close($demandTest) !== 0) {
+    throw new RuntimeException('hotel demand priority regression failed');
+}
+
 echo "ANYTOUR_HOTEL_DETAILS_SMOKE_OK hotel=65108 images=2 description=1 fortuna_guard=1 quota_guard=1 scope_guard=1\n";
