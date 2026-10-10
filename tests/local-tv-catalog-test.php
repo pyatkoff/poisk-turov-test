@@ -160,6 +160,45 @@ $pdo->exec("INSERT INTO tour_operator_identity_observations VALUES(800003,100,'u
 local_same($c->backfillObserved(),3,'Offer store, price history and passive identity evidence recovered');
 local_same($c->read([800099])['items'],[],'Foreign provider local IDs cannot seed TV catalogue');
 
+// Actual retained-only CLI: missing, generic, corrupt and wrong-ID cards never cause HTTP or retry writes.
+$pdo->exec("ALTER TABLE catalog_hotel_details ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT 'success'");
+$c->discover(array_map(static fn($id)=>['id'=>$id],range(900001,900005)),'user_search',$now);
+$cacheInsert=$pdo->prepare('INSERT INTO catalog_hotel_details(hotel_id,raw_json,source_hash,fetched_at) VALUES(?,?,?,?)');
+foreach(range(900001,900005)as $id){
+    $raw=local_card($id);if($id===900002)$raw['name']='Fortuna 5*';if($id===900003)$raw['id']=900005;
+    $json=LocalTvCatalogV1::json($raw);$cacheInsert->execute([$id,$json,$id===900004?str_repeat('0',64):hash('sha256',$json),$now]);
+}
+$pdo->exec("UPDATE catalog_hotel_details SET status='not_found' WHERE hotel_id=900005");
+$c->setManualFields(900001,['description'=>'Ручное описание сохраняется'],1);
+$protectedBefore=LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM anytour_hotel_sources ORDER BY anytour_hotel_id,namespace,external_key')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM local_tv_legacy_links ORDER BY old_local_id')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM catalog_hotel_details ORDER BY hotel_id')->fetchAll(PDO::FETCH_ASSOC)]);
+$cliEnv=array_merge(getenv(),['ANYTOUR_LOCAL_TV_CATALOG_ENABLED'=>'1','ANYTOUR_DATA_DSN'=>$dsn,
+    'ANYTOUR_DATA_DB_USER'=>$native?'root':'fixture','ANYTOUR_DATA_DB_PASSWORD'=>$native?(getenv('LOCAL_TV_TEST_PASSWORD')?:''):'']);
+$runCli=static function(int $budget)use($cliEnv):array{
+    $p=proc_open([PHP_BINARY,__DIR__.'/../v2/data/collect-hotel-details-v1.php','--candidate-scope=local','--http-budget='.$budget,'--limit=3000'],
+        [0=>['file','/dev/null','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,null,$cliEnv);
+    $out=stream_get_contents($pipes[1]);$err=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return[proc_close($p),$out,$err];
+};
+if($native){
+    [$status,$out,$err]=$runCli(0);local_same($status,0,'Actual LOCAL CLI succeeds with zero HTTP: '.$err.$out);
+    $report=json_decode(substr(trim($out),strlen('ANYTOUR_LOCAL_TV_DAILY ')),true,512,JSON_THROW_ON_ERROR);
+    local_same($report['supplierHttpAttempts'],0,'Actual CLI makes zero supplier attempts');
+    local_same($report['legacyMigration'],['transferred'=>0,'issues'=>[]],'Daily CLI never migrates old bridges');
+}else{$c->backfillObserved();local_same($c->dailyRetained(3000)['httpRequests'],0,'SQLite retained method makes zero HTTP attempts');}
+$retained=$c->read([900001])['items'][0];local_same(count($retained['images']),126,'Retained daily keeps full gallery');
+local_same($retained['description'],'Ручное описание сохраняется','Retained daily preserves manual content');
+foreach([900002,900003,900004,900005]as $id)local_same($c->read([$id])['items'][0]['contentState'],'pending','Invalid or absent retained row is not retried');
+local_same(LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM anytour_hotel_sources ORDER BY anytour_hotel_id,namespace,external_key')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM local_tv_legacy_links ORDER BY old_local_id')->fetchAll(PDO::FETCH_ASSOC),
+    $pdo->query('SELECT * FROM catalog_hotel_details ORDER BY hotel_id')->fetchAll(PDO::FETCH_ASSOC)]),$protectedBefore,'Retained CLI preserves old tables and links exactly');
+$beforeDenied=LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC));
+local_need($runCli(1)[0]!==0,'Unadmitted LOCAL supplier budget fails closed');
+local_same(LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)),$beforeDenied,'Refused LOCAL acquisition changes no data');
+$retainedRepeat=$c->dailyRetained(3000);local_need(!isset($retainedRepeat['skipped'][900001]),'Successful retained source is not replayed');
+
 // Additional actual DB/API snapshots match the fictional LIVE fixture's old501 -> TV101.
 if(getenv('LOCAL_TV_TEST_EXPORT')){
     $c->discover([['id'=>101]],'user_search',$now);

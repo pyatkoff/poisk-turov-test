@@ -186,10 +186,10 @@ $limit = hotel_details_int($argv, 'limit', 3000, 1, 3000);
 $freshDays = hotel_details_int($argv, 'fresh-days', 30, 1, 365);
 $minIntervalMs = hotel_details_int($argv, 'min-interval-ms', 600, 500, 5000);
 $maxAttempts = hotel_details_int($argv, 'max-attempts', 1, 1, 4);
-$httpBudget = hotel_details_int($argv, 'http-budget', 3000, 1, 3000);
+$httpBudget = hotel_details_int($argv, 'http-budget', 3000, 0, 3000);
 $scope = v2_hotel_detail_candidate_scope(hotel_details_arg($argv, 'candidate-scope', 'demand'));
 $worstCaseHttpAttempts = $limit * $maxAttempts;
-if ($worstCaseHttpAttempts > $httpBudget) {
+if ($httpBudget > 0 && $worstCaseHttpAttempts > $httpBudget) {
     throw new RuntimeException('Hotel detail request plan exceeds explicit HTTP budget');
 }
 putenv('TOURVISOR_HTTP_MAX_ATTEMPTS=' . $maxAttempts);
@@ -201,6 +201,9 @@ $retryCutoff = $now->modify('-1 day')->format('Y-m-d H:i:s');
 $pdo = v2_data_db();
 if (hotel_details_arg($argv,'candidate-scope') === null && LocalTvCatalogV1::enabled()) $scope='local';
 if ($scope === 'local') {
+    if ($httpBudget !== 0) {
+        throw new RuntimeException('LOCAL source acquisition requires separate bounded admission; use --http-budget=0');
+    }
     if (!LocalTvCatalogV1::enabled()) {
         throw new RuntimeException('LOCAL TV rollout must be explicitly enabled after migration review');
     }
@@ -210,25 +213,18 @@ if ($scope === 'local') {
     try {
         $catalogue = new LocalTvCatalogV1($pdo);
         $discovered = $catalogue->backfillObserved();
-        $links = $catalogue->migrateLinks($now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
-        $report = $catalogue->daily(static function (int $hotelId) use ($httpBudget,$minIntervalMs): array {
-            static $previous = 0.0;
-            if (v2_data_tv_http_attempt_count() >= $httpBudget) throw new RuntimeException('http_budget_exhausted');
-            $wait = $minIntervalMs - (microtime(true)-$previous)*1000;
-            if ($previous>0 && $wait>0) usleep((int)($wait*1000));
-            $previous = microtime(true);
-            return v2_data_tv_get('/hotels/' . $hotelId);
-        },$limit,intdiv($httpBudget,$maxAttempts),$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),$freshDays);
+        $report = $catalogue->dailyRetained($limit);
         echo 'ANYTOUR_LOCAL_TV_DAILY ' . LocalTvCatalogV1::json($report + [
-            'registeredFromRetainedObservations'=>$discovered,'legacyMigration'=>$links,
+            'registeredFromRetainedObservations'=>$discovered,'legacyMigration'=>['transferred'=>0,'issues'=>[]],
             'supplierHttpAttempts'=>v2_data_tv_http_attempt_count(),
             'historyCoverage'=>'surviving_real_observations_only_removed_history_not_recoverable',
         ]) . "\n";
     } finally {
         $pdo->query("SELECT RELEASE_LOCK('anytour-local-tv-daily')");
     }
-    exit($report['errors'] !== [] ? 2 : 0);
+    exit(0);
 }
+if ($httpBudget === 0) throw new RuntimeException('Zero HTTP budget is permitted only for retained LOCAL collection');
 $sourceTotal = hotel_details_source_total($pdo, $scope);
 $pendingPlan = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit, $scope);
 $pending = $pendingPlan['rows'];

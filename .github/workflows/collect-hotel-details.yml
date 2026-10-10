@@ -56,7 +56,7 @@ on:
         default: '1'
         type: string
       http_budget:
-        description: 'Hard per-run worst-case HTTP attempt budget (1-3000)'
+        description: 'HTTP attempt budget (0 for retained-only LOCAL, 1-3000 for legacy scopes)'
         required: true
         default: '3000'
         type: string
@@ -90,14 +90,14 @@ jobs:
           grep -Fq 'hot_tours_current' v2/data/collect-hotel-details-v1.php
           grep -Fq "namespace='legacy_catalog'" v2/data/collect-hotel-details-v1.php
           grep -Fq "v2_hotel_detail_candidate_scope(hotel_details_arg(\$argv, 'candidate-scope', 'demand'))" v2/data/collect-hotel-details-v1.php
-          grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 1, 3000)" v2/data/collect-hotel-details-v1.php
+          grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 0, 3000)" v2/data/collect-hotel-details-v1.php
           grep -Fq "hotel_details_int(\$argv, 'max-attempts', 1, 1, 4)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'v2_hotel_detail_is_generic_product_name' v2/data/collect-hotel-details-v1.php
           grep -Fq 'TOURVISOR_HTTP_MAX_ATTEMPTS' v2/data/tourvisor-client-v1.php
           echo ANYTOUR_HOTEL_DETAILS_TOOLING_OK
 
   collect-production:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 330
@@ -141,8 +141,7 @@ jobs:
           test "$FRESH_DAYS_VALUE" -ge 1 && test "$FRESH_DAYS_VALUE" -le 365
           test "$INTERVAL_VALUE" -ge 500 && test "$INTERVAL_VALUE" -le 5000
           test "$MAX_ATTEMPTS_VALUE" -ge 1 && test "$MAX_ATTEMPTS_VALUE" -le 4
-          test "$HTTP_BUDGET_VALUE" -ge 1 && test "$HTTP_BUDGET_VALUE" -le 3000
-          test $(( LIMIT_VALUE * MAX_ATTEMPTS_VALUE )) -le "$HTTP_BUDGET_VALUE"
+          test "$HTTP_BUDGET_VALUE" -ge 0 && test "$HTTP_BUDGET_VALUE" -le 3000
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
@@ -164,10 +163,17 @@ jobs:
               effective_scope=\$(php -r 'require \$argv[1].\"/db-v1.php\"; require \$argv[1].\"/local-tv-catalog-v1.php\"; v2_data_db_config(); echo LocalTvCatalogV1::enabled() ? \"local\" : \"demand\";' \"\$root\")
             fi
             case \"\$effective_scope\" in demand|canonical|local) ;; *) exit 1 ;; esac
+            effective_budget='$HTTP_BUDGET_VALUE'
+            if test \"\$effective_scope\" = local; then
+              if test '$EVENT_VALUE' = schedule; then effective_budget=0; fi
+              test \"\$effective_budget\" -eq 0
+            else
+              test \"\$effective_budget\" -ge $(( LIMIT_VALUE * MAX_ATTEMPTS_VALUE ))
+            fi
             if test \"\$effective_scope\" != local; then
               php \"\$root/migrate-hotel-details-v1.php\"
             fi
-            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope=\"\$effective_scope\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
+            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope=\"\$effective_scope\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget=\"\$effective_budget\"
             if test \"\$effective_scope\" != local; then
               php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             fi
