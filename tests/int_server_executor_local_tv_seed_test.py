@@ -118,7 +118,7 @@ try{
     $before=(new LocalTvCatalogV1($db))->counts();$error=null;$result=null;$other=null;
     if($scenario==='changed_cache')$db->exec("UPDATE catalog_hotel_details SET raw_json='{}' WHERE hotel_id=101");
     if($scenario==='changed_profile')$db->exec("UPDATE anytour_hotels SET profile_json='{}' WHERE id=50");
-    if($scenario==='nonempty')(new LocalTvCatalogV1($db))->register(777,'2026-10-01 00:00:00','2026-10-01 00:00:00',[]);
+    if($scenario==='nonempty')(new LocalTvCatalogV1($db))->discover([['id'=>777]],'user_search','2026-10-01 00:00:00');
     if($scenario==='lock'){$other=new PDO($dsn.';dbname='.$name,'root','local_tv_schema_test_only');$other->query("SELECT GET_LOCK('anytour-local-tv-daily',0)");}
     if($scenario==='wrong_db')$plan['schema']['database_sha256']=str_repeat('0',64);
     if($scenario==='apply' || $scenario==='lost_ack' || $scenario==='changed_cache' || $scenario==='changed_profile' || $scenario==='nonempty' || $scenario==='lock' || $scenario==='wrong_db'){

@@ -125,7 +125,7 @@ final class LocalTvSeedV1
             LocalTvSchemaV1::save($directory,'seed-before.json',self::summary($before));
             LocalTvSchemaV1::save($directory,'seed-started.json',['observations_sha256'=>$plan['observations_sha256'],'observed'=>count($plan['observations']),'provider_calls'=>0]);
             $c=new LocalTvCatalogV1($db);$started=true;$registered=0;$filled=0;
-            foreach($plan['observations'] as $r)$registered+=$c->register($r['id'],$r['first_seen'],$r['last_seen'],[]);
+            $registered=$c->backfillObserved();
             $links=$c->migrateLinks($now);
             LocalTvSchemaV1::save($directory,'seed-legacy-result.json',$links);
             $q=$db->prepare('SELECT raw_json,source_hash,fetched_at FROM catalog_hotel_details WHERE hotel_id=?');
