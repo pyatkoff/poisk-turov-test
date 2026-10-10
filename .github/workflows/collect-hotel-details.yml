@@ -4,27 +4,43 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/hotel-details-v1.php'
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
+      - 'v2/data/local-tv-catalog-v1.php'
+      - 'v2/data/local-tv-catalog-read-v1.php'
+      - 'v2/data/migrations/20261010-local-tv-catalog.sql'
+      - 'tests/local-tv-catalog-test.php'
+      - 'tests/local-tv-catalog-workflow.py'
       - 'tests/hotel-details-smoke.php'
       - '.github/workflows/collect-hotel-details.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
   push:
     branches: [main]
     paths:
+      - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/hotel-details-v1.php'
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
       - 'tests/hotel-details-smoke.php'
+      - 'tests/local-tv-catalog-workflow.py'
       - '.github/workflows/collect-hotel-details.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
   schedule:
     - cron: '35 3 * * *'
   workflow_dispatch:
     inputs:
-      limit:
-        description: 'Maximum unique tour hotelIds to enrich in this run (1-30000)'
+      candidate_scope:
+        description: 'Hotel acquisition universe: demand (default), canonical or new LOCAL'
         required: true
-        default: '30000'
+        default: 'demand'
+        type: choice
+        options: [demand, canonical, local]
+      limit:
+        description: 'Maximum unique hotel IDs to enrich in this run (1-3000)'
+        required: true
+        default: '3000'
         type: string
       fresh_days:
         description: 'Skip hotel descriptions refreshed within this many days (1-365)'
@@ -32,9 +48,19 @@ on:
         default: '30'
         type: string
       min_interval_ms:
-        description: 'Minimum interval between paid hotel API calls; 550ms stays below 120/min'
+        description: 'Minimum interval between hotel API calls'
         required: true
         default: '550'
+        type: string
+      max_attempts:
+        description: 'Maximum HTTP attempts per selected hotel (1-4)'
+        required: true
+        default: '1'
+        type: string
+      http_budget:
+        description: 'HTTP attempt budget (0 for retained-only LOCAL, 1-3000 for legacy scopes)'
+        required: true
+        default: '3000'
         type: string
 
 concurrency:
@@ -47,27 +73,55 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Validate paid hotel enrichment tooling
+      - name: Exact reviewed permanent LOCAL source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 8af3e190588bf61b067f81838aec3f0201205ec9
+          path: local-tv-source
+          persist-credentials: false
+      - name: Validate MAIN daily capture wiring
+        env:
+          LOCAL_TV_CAPTURE_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
+        run: python3 tests/local_tv_capture_workflow_test.py -v
+      - name: Validate quota-safe hotel enrichment tooling
+        working-directory: local-tv-source
         shell: bash
         run: |
           set -euo pipefail
+          php -l v2/data/tourvisor-client-v1.php >/dev/null
           php -l v2/data/hotel-details-v1.php >/dev/null
           php -l v2/data/migrate-hotel-details-v1.php >/dev/null
           php -l v2/data/collect-hotel-details-v1.php >/dev/null
+          php -l v2/data/local-tv-catalog-v1.php >/dev/null
+          php -l v2/data/local-tv-catalog-read-v1.php >/dev/null
+          php -l tests/local-tv-catalog-test.php >/dev/null
           php -l tests/hotel-details-smoke.php >/dev/null
           php tests/hotel-details-smoke.php
+          python3 tests/local-tv-catalog-workflow.py
           grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'tour_price_observations' v2/data/collect-hotel-details-v1.php
           grep -Fq 'hot_tours_current' v2/data/collect-hotel-details-v1.php
+          grep -Fq "namespace='legacy_catalog'" v2/data/collect-hotel-details-v1.php
+          grep -Fq "v2_hotel_detail_candidate_scope(hotel_details_arg(\$argv, 'candidate-scope', 'demand'))" v2/data/collect-hotel-details-v1.php
+          grep -Fq "hotel_details_int(\$argv, 'http-budget', 3000, 0, 3000)" v2/data/collect-hotel-details-v1.php
+          grep -Fq "hotel_details_int(\$argv, 'max-attempts', 1, 1, 4)" v2/data/collect-hotel-details-v1.php
+          grep -Fq 'v2_hotel_detail_is_generic_product_name' v2/data/collect-hotel-details-v1.php
+          grep -Fq 'TOURVISOR_HTTP_MAX_ATTEMPTS' v2/data/tourvisor-client-v1.php
           echo ANYTOUR_HOTEL_DETAILS_TOOLING_OK
 
   collect-production:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
+      - name: Exact reviewed permanent LOCAL source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 8af3e190588bf61b067f81838aec3f0201205ec9
+          path: local-tv-source
+          persist-credentials: false
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -84,37 +138,62 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Enrich every hotel found in AnyTour tour data
+      - name: Enrich selected hotel acquisition universe within explicit request budget
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          LIMIT_VALUE: ${{ inputs.limit || '30000' }}
+          SCOPE_VALUE: ${{ inputs.candidate_scope || 'demand' }}
+          EVENT_VALUE: ${{ github.event_name }}
+          LIMIT_VALUE: ${{ inputs.limit || '3000' }}
           FRESH_DAYS_VALUE: ${{ inputs.fresh_days || '30' }}
           INTERVAL_VALUE: ${{ inputs.min_interval_ms || '550' }}
+          MAX_ATTEMPTS_VALUE: ${{ inputs.max_attempts || '1' }}
+          HTTP_BUDGET_VALUE: ${{ inputs.http_budget || '3000' }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          test "$SCOPE_VALUE" = demand || test "$SCOPE_VALUE" = canonical || test "$SCOPE_VALUE" = local
           [[ "$LIMIT_VALUE" =~ ^[0-9]+$ ]] && [[ "$FRESH_DAYS_VALUE" =~ ^[0-9]+$ ]] && [[ "$INTERVAL_VALUE" =~ ^[0-9]+$ ]]
-          test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 30000
+          [[ "$MAX_ATTEMPTS_VALUE" =~ ^[0-9]+$ ]] && [[ "$HTTP_BUDGET_VALUE" =~ ^[0-9]+$ ]]
+          test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 3000
           test "$FRESH_DAYS_VALUE" -ge 1 && test "$FRESH_DAYS_VALUE" -le 365
           test "$INTERVAL_VALUE" -ge 500 && test "$INTERVAL_VALUE" -le 5000
+          test "$MAX_ATTEMPTS_VALUE" -ge 1 && test "$MAX_ATTEMPTS_VALUE" -le 4
+          test "$HTTP_BUDGET_VALUE" -ge 0 && test "$HTTP_BUDGET_VALUE" -le 3000
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
           scp "${opts[@]}" \
-            v2/data/db-v1.php \
-            v2/data/tourvisor-client-v1.php \
-            v2/data/hotel-details-v1.php \
+            local-tv-source/v2/data/db-v1.php \
+            local-tv-source/v2/data/tourvisor-client-v1.php \
+            local-tv-source/v2/data/hotel-details-v1.php \
             v2/data/migrate-hotel-details-v1.php \
-            v2/data/collect-hotel-details-v1.php \
+            local-tv-source/v2/data/collect-hotel-details-v1.php \
+            local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/build-seo-offer-snapshots-v1.php \
             "$remote:$remote_dir/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
             php -l \"\$root/collect-hotel-details-v1.php\" >/dev/null
-            php \"\$root/migrate-hotel-details-v1.php\"
-            php \"\$root/collect-hotel-details-v1.php\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE'
-            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            effective_scope='$SCOPE_VALUE'
+            if test '$EVENT_VALUE' = schedule; then
+              effective_scope=\$(php -r 'require \$argv[1].\"/db-v1.php\"; require \$argv[1].\"/local-tv-catalog-v1.php\"; v2_data_db_config(); echo LocalTvCatalogV1::enabled() ? \"local\" : \"demand\";' \"\$root\")
+            fi
+            case \"\$effective_scope\" in demand|canonical|local) ;; *) exit 1 ;; esac
+            effective_budget='$HTTP_BUDGET_VALUE'
+            if test \"\$effective_scope\" = local; then
+              if test '$EVENT_VALUE' = schedule; then effective_budget=0; fi
+              test \"\$effective_budget\" -eq 0
+            else
+              test \"\$effective_budget\" -ge $(( LIMIT_VALUE * MAX_ATTEMPTS_VALUE ))
+            fi
+            if test \"\$effective_scope\" != local; then
+              php \"\$root/migrate-hotel-details-v1.php\"
+            fi
+            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope=\"\$effective_scope\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget=\"\$effective_budget\"
+            if test \"\$effective_scope\" != local; then
+              php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            fi
           "
