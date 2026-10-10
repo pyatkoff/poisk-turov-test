@@ -1286,26 +1286,56 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3 NEXT: selected-ANEX verification stage consolidated, published; substantive source reduction continues",
-    "status": "SUBSTANTIVE_DATA_JS_STAGE_REDUCTION_PUBLISHED_NEXT_SCOPE_UNPROVEN",
+    "title": "Search3: целостные desktop/mobile макеты и кликабельный прототип visual/UX9,5–10",
+    "status": "READY_FOR_FULL_PATH_DESIGN_PACKAGE",
     "issue": 1646,
     "coordinator_issue": 4217,
-    "pr": 4394,
+    "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "owner_request": "Stop micro-optimization PRs. Complete only a finite large size/structure pass: remove proven unused/duplicate layers or a full repeated stage, measure the whole runtime graph, preserve favorites and all protected contracts, then perform accumulated NEXT acceptance.",
-    "last_fully_checked_release_sha": "1aa2931173b54fdb63dbb3711177c2bebd362304",
-    "published_source_sha": "081c25dc0669d7dc9f921511a1b8790c546e64bc",
-    "acceptance_status": "SELECTED_ANEX_THREE_CYCLES_CONSOLIDATED_CHECKED_MERGED_PUBLISHED_HTTP_VERIFIED_NEXT_ONLY_HOSTED_INTERACTIVE_PHYSICAL_SAFARI_REAL_SUPPLIER_LEAD_AND_BROWSER_LATENCY_UNVERIFIED",
-    "next_action": "Bounded INT→SEARCH handoff was delivered and completed in PR4397. Exact source 081c25dc0669d7dc9f921511a1b8790c546e64bc merged as release 1aa2931173b54fdb63dbb3711177c2bebd362304 and was published once by terminal command5972125022/run37143908980 from predecessor b819f75c3b902df3483d14d990b0962ec7e3feb4. Actual deployment receipt comment5972162447 verifies NEXT-only 839 files, 42 visual assets, 9 routes200, noindex, lead+LOCAL403, counter/supplier/real-lead0, production+sibling unchanged, predecessor/rollback retained. The substantive source result replaces three copied selected-ANEX request lifecycles with one internal executor while retaining the three public entrypoints and exact request/authority/attempt/cache/timeout/generation/cleanup/error contracts; 104 other functions/exports and all normalizers remain byte-identical. data.js raw126244->123743 (-2501B,-1.98%); repeated stage6742->4241 (-2501B,-37.1%); compiled initial and complete LIVE each -1664 served and -47 gzip under the pinned toolchain. Raw-source gzip increased44B, so no page-speed claim. Source/compiled Chromium CI and guarded HTTP/isolation are verified; no new hosted interactive journey, physical Safari/iPhone, real supplier/SQL/quote/lead or browser-latency evidence is claimed. Overall source-size objective remains open, but no next qualifying full-stage/duplicate scope is currently proven. Do not repeat the completed app/forms or whole-graph audits, reopen the rejected micro queue, or treat the active disjoint INT live first-page claim as REFACTOR ownership. Resume source work only with a fresh proven substantive scope and exact owners/consumers/preservation oracle; otherwise make no source/state/publisher write.",
-    "next_task": {
-      "id": "S3_NEXT_SUBSTANTIVE_SOURCE_SCOPE",
-      "status": "WAIT_FOR_PROVEN_FULL_STAGE_OR_DUPLICATE_SCOPE",
-      "candidate_scope": "No active REFACTOR source candidate is claimed after #4397. A next package must remove or consolidate a substantive complete stage/duplicate implementation in place with net source reduction across all affected runtime files. Do not repeat the already unsuccessful app.js form/filter investigation, the completed connected-graph inventory, comparison/old My Tour removal, or the rejected approximately1.5k profile residue. Favorites and its paused flag remain unchanged. Protected data.js/provider blocks require a new exact bounded INT→SEARCH handoff; the delivered selected-ANEX scope is terminal and must not be expanded by implication.",
-      "acceptance": "Report exact per-file and whole affected-source raw bytes before/after, plus comparable initial/complete compiled served and gzip. Preserve functional output and protected contracts through existing focused suites, exact-head required CI and compiled Chromium before merge. Operation counters alone, code movement, new parallel layers, unchanged/growing source without a substantial cross-cutting benefit, cosmetic byte-only changes and latency claims without paired browser evidence do not qualify.",
-      "execution": "On later runs read fresh release/main/current_task/#4217/#1646/open PR/CI/claims. Take no source claim unless a new substantial scope is already evidenced and ownership is free or explicitly handed off. Do not interfere with disjoint INT live/runtime claims. Publication remains a separate exclusive NEXT claim and never replays #4394/#4397 operations.",
-      "protected": "NEXT/release only. Preserve raw identity/order and native sparse/mutation behavior, calendar/filter/search scope, URLs/payload, money/fuel, supplier/auth, selected-ANEX request bytes and authority/no-replay contracts, lead/CRM/Metrika/goals, generations, original logo, favorites data/paused flag, and canonical selected-offer/return path. No main/production/sibling/indexation/DB/MATCH/LOCAL/INT change; no provider/direct-ANEX removal or data.js expansion without a new bounded handoff; no replay."
+    "updated_at": "2026-10-10",
+    "owner_request": "10.10.2026: сделать план для автопилотов, чтобы получить поисковик9,5–10 визуально и по юзабилити, хотя бы макеты по этому плану.",
+    "acceptance_status": "PLAN_PREPARED_NEW_FULL_PATH_MOCKUPS_AND_PROTOTYPE_NOT_YET_CREATED_OR_APPROVED",
+    "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
+    "published_source_sha": "9b74bdfae2fa9244be52e822d64db1e7282e6901",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6091085104",
+    "planning_base_release_sha": "2816925ef50b56ed97a760cf2dd28ef318f3e7d4",
+    "quality": {
+      "rubric": "SEARCH-QUALITY-1",
+      "mandatory_rows": 11,
+      "criteria_per_row": 5,
+      "target_per_measured_row": 9.5,
+      "compare_shortlist": "deferred",
+      "evidence_scopes": [
+        "mockup",
+        "clickable prototype",
+        "compiled fixture",
+        "installed NEXT",
+        "physical",
+        "real supplier"
+      ],
+      "score_status": "No new assessment; not_measured stays not_measured. A mockup does not close functional, authority, identity or architecture criteria."
     },
+    "next_action": "SITE/design #1719: fresh scoped claim in #4217, then prepare one complete draft in existing public AnyTour Search3 design project appgprj_6abcd9299ef88191bbce1fc1bf8c767a. Cover full form/results/filters/calendar/hotel variants/selected tour/price-flights/contact/Back on390+1280, responsive360/430/768, short desktop and200% text. Use same retained corpus and marked controlled states. Deliver exact working version, at least8 main screenshots plus dialogs/states, clickable transitions, independent review and measured applicable visual criteria. Short baseline and full existing-rubric evaluation run in parallel; do not wait for all55/live/physical gates before making mockups. Do not replace this deliverable with another status report or isolated card patch.",
+    "next_task": {
+      "scope": "Three connected design blocks: parameters/results/hotel; hotel variant/selected tour; contact/return. One coherent design package before bounded implementation packets.",
+      "design_owner": "SITE #1719 owns existing public Sites draft/history, not NEXT source. SEARCH #1646 supplies exact constraints/corpus and implements approved handoff. Independent QA read-only, coordinator#4217.",
+      "acceptance": "Same SEARCH-QUALITY-1 before/after, same data/tasks/widths. At least9.5 only when all5 criteria of that row measured. Visual and behavior approval of one complete exact clickable version required before new layout in NEXT. Physical Safari and real supplier/delivery evidence separate. Full source/compiled/exact-head gates and publisher readback required later.",
+      "execution": "Continue the same artifact and unfinished block across runs. While approval/CI/ownership is blocked, take independent approved work; no roadmap restart, no completed/UNKNOWN replay, no duplicate state/tracker or schedule.",
+      "protected": "Tourvisor+direct ANEX remain current live sources, SAMO paused. Keep mobile photo1.8,7-date strip/month/year, primary fields, logo, exact offer/search/party context, URL/payload/auth, price/fuel/authority, provider/lead/CRM/Metrika/goals, DB/LOCAL/MATCH. No new supplier requests, real lead send, main/production/sibling/SEO change or schedule/enabled/paused changes."
+    },
+    "existing_unapproved_drafts": [
+      {
+        "pr": 4502,
+        "head": "6c1f5678761074d193b636cdce4aa86c5f63d70c",
+        "status": "draft; material for full design, not approved or published"
+      },
+      {
+        "site": "Site106/package35",
+        "status": "draft; not approved or promoted"
+      }
+    ],
+    "superseded_task_source": "https://github.com/pyatkoff/poisk-turov-test/blob/2816925ef50b56ed97a760cf2dd28ef318f3e7d4/AUTOPILOT_STATE.json",
     "scheduler_observation": {
       "id": "6a936eb5226081919fb7ec372e05d2e0",
       "title": "AnyTour NEXT Refactor",
@@ -1317,8 +1347,7 @@
       "first_background_run_after_resume_verified": false,
       "prompt_unchanged": true,
       "schedule_unchanged": true
-    },
-    "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-5972162447"
+    }
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
