@@ -108,6 +108,14 @@ local_tv_seed = importlib.util.module_from_spec(local_tv_seed_spec)
 local_tv_seed_spec.loader.exec_module(local_tv_seed)
 local_tv_seed.register_parser(core)
 
+LOCAL_TV_CONTENT_SCRIPT = SCRIPT.with_name('int_server_executor_local_tv_content.py')
+local_tv_content_spec = importlib.util.spec_from_file_location('int_server_executor_local_tv_content', LOCAL_TV_CONTENT_SCRIPT)
+if local_tv_content_spec is None or local_tv_content_spec.loader is None:
+    raise RuntimeError('local_tv_content_registration_import')
+local_tv_content = importlib.util.module_from_spec(local_tv_content_spec)
+local_tv_content_spec.loader.exec_module(local_tv_content)
+local_tv_content.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -263,7 +271,8 @@ def main() -> None:
     firstpage_readback.activate(core, command)
     local_tv_schema.activate(core, command)
     local_tv_seed.activate(core, command)
-    if command['mode'] in SUPPLIER_SLOT_MODES:
+    local_tv_content.activate(core, command)
+    if command['mode'] in SUPPLIER_SLOT_MODES or (command['mode']=='local-tv-content-v1' and command['action']=='fill'):
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
         result = execute_direct_anex(command, Path(args.source_root))

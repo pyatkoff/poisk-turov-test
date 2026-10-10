@@ -652,7 +652,7 @@ def checked_event(token: str, event: dict, control_sha: str) -> dict:
     command = parse_command(body)
     main = api_get('/git/ref/heads/main', token)['object']['sha']
     need(main == control_sha, 'main_changed')
-    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1') else FEATURE
+    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1','local-tv-content-v1') else FEATURE
     feature = api_get('/git/ref/heads/' + source_branch, token)['object']['sha']
     need(feature == command['source_sha'], 'local_profile_release_changed' if source_branch == LOCAL_PROFILE_SOURCE else 'feature_changed')
     return command
@@ -3087,6 +3087,10 @@ def execute(command: dict, source_root: Path) -> dict:
         control_sha = os.environ.get('GITHUB_SHA', '')
         need(SHA_RE.fullmatch(control_sha) is not None, 'local_tv_seed_control_sha')
         payload['local_tv_seed_control_sha'] = control_sha
+    if command['mode'] == 'local-tv-content-v1':
+        control_sha = os.environ.get('GITHUB_SHA', '')
+        need(SHA_RE.fullmatch(control_sha) is not None, 'local_tv_content_control_sha')
+        payload['local_tv_content_control_sha'] = control_sha
     payload['archive'] = remote_archive
     payload['manifest_sha256'] = hashlib.sha256(
         json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()
