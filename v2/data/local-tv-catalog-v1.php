@@ -17,7 +17,9 @@ final class LocalTvCatalogV1
     public static function enabled(): bool
     {
         return getenv('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') === '1'
-            || (defined('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') && constant('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') === true);
+            || (defined('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') && constant('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') === true)
+            || (is_file(__DIR__.'/local-tv-catalog-enabled.json') && !is_link(__DIR__.'/local-tv-catalog-enabled.json')
+                && file_get_contents(__DIR__.'/local-tv-catalog-enabled.json') === "{\"registry\":true,\"dailyHttpBudget\":0}\n");
     }
 
     public static function json(mixed $value): string
@@ -428,6 +430,37 @@ final class LocalTvCatalogV1
             }
         }
         return ['transferred'=>$transferred,'issues'=>$issues];
+    }
+
+    /** Import only newer retained descriptions. No HTTP, old profile or bridge writer. */
+    public function dailyRetained(int $limit): array
+    {
+        if ($limit<1 || $limit>3000) throw new InvalidArgumentException('Invalid retained collector bound');
+        $q=$this->pdo->query("SELECT l.id,c.raw_json,c.source_hash,c.fetched_at FROM local_tv_hotels l
+            JOIN catalog_hotel_details c ON c.hotel_id=l.id
+            WHERE c.status='success' AND c.raw_json IS NOT NULL AND c.source_hash IS NOT NULL AND c.fetched_at IS NOT NULL
+                AND (l.source_fetched_at IS NULL OR c.fetched_at>l.source_fetched_at)
+            ORDER BY l.pending_since,l.id LIMIT $limit");
+        $pending=$q->fetchAll(PDO::FETCH_ASSOC);
+        $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'httpRequests'=>0,'skipped'=>[]];
+        foreach ($pending as $r) {
+            $id=(int)$r['id'];
+            if (!hash_equals($r['source_hash'],hash('sha256',$r['raw_json']))) {
+                $report['skipped'][(string)$id]='retained_hash'; continue;
+            }
+            try {
+                $payload=json_decode($r['raw_json'],true,512,JSON_THROW_ON_ERROR);
+                if (!is_array($payload)) throw new DomainException('invalid_retained_card');
+                self::time($r['fetched_at']); self::normalize($payload,$id);
+            } catch (Throwable $e) {
+                $report['skipped'][(string)$id]=$e instanceof DomainException?$e->getMessage():'invalid_retained_card';
+                continue;
+            }
+            // Unknown COMMIT or readback propagates; neither it nor an error UPDATE is retried.
+            $this->saveSource($id,$payload,$r['fetched_at']);
+            $report['filled']++; $report['retainedSource']++;
+        }
+        return $report+$this->counts();
     }
 
     /** FIFO unfinished work, then stale successful cards; popularity is not a queue input. */

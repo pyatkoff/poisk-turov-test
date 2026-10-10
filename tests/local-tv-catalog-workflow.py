@@ -73,7 +73,7 @@ if args and args[0] == '-r':
             env = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
                        RUNNER_TEMP=str(task_root), HOST_VALUE="fixture.invalid", USER_VALUE="fixture",
                        SCOPE_VALUE=scope, EVENT_VALUE=event, LIMIT_VALUE="20", FRESH_DAYS_VALUE="30",
-                       INTERVAL_VALUE="550", MAX_ATTEMPTS_VALUE="1", HTTP_BUDGET_VALUE="20",
+                       INTERVAL_VALUE="550", MAX_ATTEMPTS_VALUE="1", HTTP_BUDGET_VALUE="0" if scope=="local" else "20",
                        LOCAL_WORKFLOW_TEST_LOG=str(log), LOCAL_WORKFLOW_FLAG=flag,
                        LOCAL_WORKFLOW_REAL_PHP=real_php, LOCAL_WORKFLOW_FIXTURE_DATA=str(fixture_data),
                        LOCAL_WORKFLOW_PROBE_FAIL="1" if probe_failure else "0")
@@ -91,6 +91,7 @@ if args and args[0] == '-r':
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([name for name, _ in self.writers(calls)], ["collect-hotel-details-v1.php"])
         self.assertIn("--candidate-scope=local", self.writers(calls)[0][1])
+        self.assertIn("--http-budget=0", self.writers(calls)[0][1])
 
     def assert_legacy(self, result, calls, scope):
         self.assertEqual(result.returncode, 0, result.stderr)
