@@ -816,3 +816,50 @@ path360/390/430, большая выборка выбранных отелей �
 сохраняются; новый полный прототип требует принятия владельцем перед NEXT transfer.
 Supplier/real lead/provider/money/DB/LOCAL/MATCH/analytics/main/production/schedules
 этим пакетом не менялись.
+
+
+
+## SEARCH-QUALITY-1 — Site122/mobile43, 2026-10-10
+
+Это обязательная запись результатов завершённого продуктового prototype-пакета.
+Исторические записи выше сохранены. Формальная матрица и причины:
+[SEARCH #1646/comment6096572288](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6096572288),
+[product #1719/comment6096572430](https://github.com/pyatkoff/poisk-turov-test/issues/1719#issuecomment-6096572430).
+Scoped audit claim #4217/comment6096567581. Старый audit claim RELEASE6096307906.
+
+SEARCH-QUALITY-1 — Site122/mobile43, 10.10.2026. Подтверждённый продуктовый результат и сопоставимые баллы.
+
+**Artifact / стадии.** Существующий публичный Site122/package43/v166, installed source `3012d12be8e5104eb3538b7ffb443d6e5c2e77dd`, deployment `appgdep_6aca1070366c8191a7ffddca6b8c7dd8` SUCCEEDED2026-10-10T10:16:33.205968Z. Native get_site_version source/archive readback совпал: sha256 `044e3883ff83a3cfee82666036a4fa88ebe14a694dfb394ca52bd8917b3e5f2e`. Actual footer43/v166.
+Публичный маршрут: https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=430
+Acceptance/evidence-only source `0f5c3f5e633a27d9f3579c84ce5f60fb12e6ba58`: `dist` byte-identical3012, `qa/mobile43/runtime-receipt.json`, before/final JPG, focused logs. Второе save/deploy не выполнялось.
+Макеты: новые реальные desktop/mobile contact/picker кадры в существующем цельном пути. Кликабельный прототип: Site122, **PROTOTYPE_PENDING_OWNER_ACCEPTANCE_BEFORE_NEXT**. Установленный NEXT: **без изменений**, PR4501/source`9b74bdfae2fa9244be52e822d64db1e7282e6901`, terminal6091085104; delta0, макет/prototype баллы ему не наследуются.
+
+Рубрика прежняя:12 исторических строк/11 обязательных, Compare deferred; пять критериев в каноническом порядке, значения0/1/1.5/2. N=not_measured запрещает сумму строки. Предыдущая сопоставимая оценка — Site121/formal report6096285423, а не conversational8–8.5/52из55. Экспертная оценка перечисленного Chrome corpus, не конверсия.
+
+| Параметр | Previous121: 5 баллов; сумма | Current122: 5 баллов; сумма | Delta / изменение или недостающая проверка |
+| --- | --- | --- | --- |
+| Desktop visual | 2/1.5/2/2/N; not_measured | 2/1.5/2/2/N; not_measured | Измеренные0; full intermediate/short rail+long-content corpus отсутствует |
+| Mobile visual | 2/2/2/N/1.5; not_measured | 2/2/2/N/2; not_measured | **C5+0.5**: consent выше footer360, picker footer ниже84px; C4 full long-content/text200% corpus отсутствует |
+| Соответствие целевому макету | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Полного exact approved-reference сравнения нет |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; exact IDs/OR/cap20/draft сохранены |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; прежние facets/count/reset/zero/state сохранены |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; прежний tablet gain не начислен повторно |
+| Календарь | 2/N/2/2/2; not_measured | 2/N/2/2/2; not_measured | Измеренные0; sparse/full geometry corpus отсутствует |
+| Compare / shortlist — deferred вне запуска | N/N/N/N/N; deferred | N/N/N/N/N; deferred | Вне11 обязательных; не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; offer/pair/party/price/fuel authority сохранены |
+| Lead-form handoff | 2/1.5/2/2/2;9.5 | 2/2/2/2/2;10 | **+0.5**: changed-price contact360 phone/consent/CTA одновременно доступны |
+| Accessibility / state UX | 2/2/N/2/2; not_measured | 2/2/N/2/2; not_measured | Измеренные0; full readability/targets/text200% corpus отсутствует |
+| Архитектурная чистота / стабильность | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Полного comparable5-criterion baseline нет |
+
+**Lead, все5 причин.** Правильный выбранный тур2→2: отель/date/nights/party/каждый child age0/8 (и actual0/8/17), exact pair06:05/08:05, whole-group187700 сохранены. Понятное действие/фокус1.5→2: same360×800 changed-price family2 before consent-row bottom727.765625 при footer663.828125; after604.953125, scroll0. Раньше64px под footer, теперь59px свободно; screenshot before/after одинаковых данных. Phone и consent focus при последовательной validation actual сохранены. Validation/pending/error2→2: existing six-state compiled corpus PASS, никаких real-send; late/duplicate/closed/generation gates не ослаблены. Draft/отдельное согласие2→2: actual test-only phone/consent Back→reopen сохраняются; compiled exactpairchange reset PASS. Контролируемый возврат2→2: existing return/independent-other-offer/passive checks сохраняют context и не запускают реальные операции. **9.5→10 только в этом corpus**, не весь продукт.
+
+**Mobile, частные причины.** C1/C2/C3=2→2 с exact прежним evidence; C4=N: actual2/3children и compiled0/1/2/3 не заменяют full long-content/text200% coverage. C5«отсутствие перекрытий/лишней прокрутки в проверенном браузере»1.5→2: limiting360 contact исправлен;390 consent620.828125<footer707.828125;430708.828125<footer795.828125, без заявленного числового подъёма430. Actual0/8/17 retained во всех width changes; нет horizontal overflow на360/390/430/768/1280. Полные room/meal/baggage/operator факты доступны в native review на768/1280. Rix5IDs4234/813/748/1823/686: footer214.5→130.5px (−84), full chosen names/removal в стабильном native disclosure, clearOR«Любой из выбранных отелей», Apply exactIDs URL/results5отелей·5вариантов. Late lookup не закрывает disclosure и не теряет input focus. Short430×480 query/button доступны; это уменьшенное окно, **не OSkeyboard**.
+Финальные430 кадры: top-frame + отдельный bottom с consent/CTA; top-only не является доказательством всей формы. Capture races/cached clips/fullPage timeout не объявляются regression и исключены из acceptance.
+
+**Измеренные fully-covered затронутые строки без роста.** Form2/2/2/2/2: (1)все поля сохранены;(2)canonical source/aliases/photo facts прежние,1047retainedhotels независимо24cards;(3)exactmultiIDsOR/cap20;(4)query не меняет selection/Cancel откатывает/ApplyURL;(5)late/native selected focus и removal возвращают focus. Шесть applicable suites PASS, form включает8/20IDs на5widths/21stcap.
+Filters2/2/2/2/2 и Selected2/2/2/2/2 переносятся с exact причин/evidence6096285423; current decision/return/results logs подтверждают сохранение. У этих строк новых частных улучшений нет.
+Карточки пять причин прежние: genuine-media-or-placeholder, sourcefacts, concreteconditions, price-status distinction, availableCTA — все2→2; renderer/cards/date/sort byte-identical, повторного tablet прироста нет.
+
+Наследованное evidence: Site121/formal report6096285423/#1719/6096287276, auditPR4506/release58b4cce8; qa/fullpath42 sourcead778ab. Новое: qa/mobile43/form/behavior.json (large8/20IDs), decision/decision-behavior.json, return/selection-return.json; logs/form-final.txt/decision.txt/return.txt/results.txt/editors.txt/interactions.txt; final/rix5* и family3-pair360/390/430-bottom,review768/1280. Незатронутые byte-identical блоки не перепроверялись ради балла.
+
+**Границы и следующий цельный блок.** Physical iPhone/Safari/OSkeyboard/safe-area/text-only200% UNVERIFIED для122. Нет общей оценки9.5–10. Следующий разрешённый блок — actual long hotel/room/meal + family0–3 readable path360/390/430 и text200% в существующих владельцах, без all55-before-mockup; отдельное exact evidence до повышения C4/accessibility. Полный прототип требует принятия владельцем перед NEXT переносом. Supplier0/real-lead0; SAMOpaused, MAIN/production/DB/provider/money/LOCAL/MATCH/analytics/workflows/schedules не менялись. Canonical sourceclaim6096360802/publisher6096475218/auditclaim6096567581, terminal в#4217 после audit exact-headCI/release/readback.
