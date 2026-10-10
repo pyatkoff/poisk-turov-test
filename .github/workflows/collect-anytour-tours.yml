@@ -33,6 +33,7 @@ on:
       - 'v2/seo-offer-snapshot-v1.php'
       - 'v2/seo-price-promo-v1.css'
       - '.github/workflows/collect-anytour-tours.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
   push:
     branches: [main]
     paths:
@@ -65,6 +66,7 @@ on:
       - 'v2/seo-offer-snapshot-v1.php'
       - 'v2/seo-price-promo-v1.css'
       - '.github/workflows/collect-anytour-tours.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
   schedule:
     # Small resumable passes; each successful/empty target is refreshed once/24h.
     - cron: '12 * * * *'
@@ -151,12 +153,18 @@ jobs:
           echo ANYTOUR_TOP500_MONTHLY_TOOLING_OK
 
   collect-production:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Exact reviewed LOCAL observation hook
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 8af3e190588bf61b067f81838aec3f0201205ec9
+          path: local-tv-source
+          persist-credentials: false
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -199,9 +207,11 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
           scp "${opts[@]}" \
-            v2/data/db-v1.php \
-            v2/data/tourvisor-client-v1.php \
-            v2/data/price-observer-v1.php \
+            local-tv-source/v2/data/db-v1.php \
+            local-tv-source/v2/data/tourvisor-client-v1.php \
+            local-tv-source/v2/data/price-observer-v1.php \
+            local-tv-source/v2/data/hotel-details-v1.php \
+            local-tv-source/v2/data/local-tv-catalog-v1.php \
             v2/data/price-segment-v1.php \
             v2/data/price-confidence-v1.php \
             v2/data/price-intelligence-v1.php \
