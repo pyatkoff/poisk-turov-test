@@ -72,6 +72,7 @@ async function browserAcceptance(){
    try{
     await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();
     await page.waitForFunction(()=>document.querySelector('.hotel-card')?.textContent.includes('Synthetic LOCAL fixture 101'));
+    await page.waitForFunction(()=>{const status=document.querySelector('#search-status');return document.querySelector('#search-form').hidden&&(status.hidden||!status.querySelector('[data-action="stop-search"]'));});
     const card=page.locator('.hotel-card').first(),price=await card.locator('.starting-price strong').textContent(),url=page.url();
     const starts=()=>transport.calls.filter(c=>c.action==='search_start').length,searches=starts();
     assert.match(await card.locator('.photo-count').textContent(),/126/);

@@ -86,6 +86,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     // Registration is independent of tour-price validity, observation caps and
     // temporary history retention. Rollout stays opt-in until schema/readback.
     if (LocalTvCatalogV1::enabled()
+        && in_array($context['source'] ?? 'user_search',['user_search','scheduled_monitor','hot_tours'],true)
         && empty($context['ci_test']) && empty($context['demo'])
         && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
         try {
