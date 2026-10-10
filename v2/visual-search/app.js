@@ -352,11 +352,11 @@ function syncDestinationViewport(){
  m.classList.toggle('destination-keyboard',!!keyboard&&modalType==='destination');m.classList.toggle('application-keyboard',!!keyboard&&application);
  if(keyboard){m.style.setProperty('--modal-viewport-top',(Math.max(0,v.offsetTop||0)+8)+'px');m.style.setProperty('--modal-viewport-height',Math.max(0,v.height-16)+'px');}
  else{m.style.removeProperty('--modal-viewport-top');m.style.removeProperty('--modal-viewport-height');}
- if(keyboard){
+ if(m.open&&innerWidth<=760&&(v?.scale||1)<=1.01){
   // Keep keyboard-induced viewport panning inside the same modal body. No
   // refocus, root scrolling or replacement of the current contact/draft node.
   requestAnimationFrame(()=>{
-   if(!m.open||!m.classList.contains('viewport-keyboard'))return;
+   if(!m.open||innerWidth>760||(window.visualViewport?.scale||1)>1.01)return;
    const field=document.activeElement,body=$('#modal-body');
    if(!body.contains(field)||!field.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),textarea,[contenteditable="true"]'))return;
    const rect=field.getBoundingClientRect(),view=body.getBoundingClientRect();
@@ -369,6 +369,7 @@ function syncDestinationViewport(){
 window.visualViewport?.addEventListener('resize',syncDestinationViewport);
 window.visualViewport?.addEventListener('scroll',syncDestinationViewport);
 $('#modal').addEventListener('focusin',syncDestinationViewport);
+if(window.ResizeObserver)new ResizeObserver(syncDestinationViewport).observe($('#modal-body'));
 function lookupDestination(){
  destinationCountryList=false;cancelDestinationLookup();destinationResolvedQuery='';destinationHotelLimit=destinationHotelPageSize;$('#modal-body').scrollTop=0;const q=$('#destination-query').value.trim(),country=destinationChoice.country;
  if(!countryNames[country]||q.length<2){renderDestination();return;}

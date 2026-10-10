@@ -6,8 +6,10 @@ The existing viewport owner now keeps every open mobile dialog inside the reduce
 visual viewport, including contact → retained tour while the keyboard is still
 open. Pinch zoom is excluded; short viewports have no 180px floor. Focused text
 controls reveal through modal-body scroll only, without replacing/refocusing the
-field or scrolling ancestors. Focus changes, restored modal snapshots, dismissal
-and late events consume the same owner. The filter-drawer branch is unchanged.
+field or scrolling ancestors. Focus changes, restored modal snapshots, body resize
+from enlarged text/footer, dismissal and late events consume the same owner.
+Focused mobile fields remain fully revealed with the keyboard dismissed too.
+The filter-drawer branch is unchanged.
 The existing modal-position rule accounts for safe-area-top within the same bound.
 No new layout concept, card/profile redesign, renderer or style owner is included.
 
