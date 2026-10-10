@@ -92,6 +92,14 @@ local_profile_metadata = importlib.util.module_from_spec(local_metadata_spec)
 local_metadata_spec.loader.exec_module(local_profile_metadata)
 local_profile_metadata.register_parser(core)
 
+LOCAL_TV_SCHEMA_SCRIPT = SCRIPT.with_name('int_server_executor_local_tv_schema.py')
+local_tv_schema_spec = importlib.util.spec_from_file_location('int_server_executor_local_tv_schema', LOCAL_TV_SCHEMA_SCRIPT)
+if local_tv_schema_spec is None or local_tv_schema_spec.loader is None:
+    raise RuntimeError('local_tv_schema_registration_import')
+local_tv_schema = importlib.util.module_from_spec(local_tv_schema_spec)
+local_tv_schema_spec.loader.exec_module(local_tv_schema)
+local_tv_schema.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -245,6 +253,7 @@ def main() -> None:
     local_profile_acquire.activate(core, command)
     local_profile_apply_source320.activate(core, command)
     firstpage_readback.activate(core, command)
+    local_tv_schema.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES:
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
