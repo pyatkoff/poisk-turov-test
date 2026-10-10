@@ -104,7 +104,7 @@ jobs:
           python3 -m py_compile scripts/deploy/int_server_executor_local_tv_schema.py
           php -l scripts/diagnostics/local_tv_schema_v1.php
           python3 tests/int_server_executor_local_tv_schema_test.py -v
-      - name: Retained-only new LOCAL initialization MySQL acceptance
+      - name: Retained initialization and current LOCAL frontier MySQL acceptance
         env:
           LOCAL_TV_SCHEMA_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
           LOCAL_TV_SCHEMA_NATIVE_CI: '1'

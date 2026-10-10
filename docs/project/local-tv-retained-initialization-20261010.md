@@ -41,6 +41,19 @@ This establishes retained fill only. Fresh provider acquisition, persistent regi
 browser rollout and deployed DB→API→NEXT acceptance remain separate subsequent scopes.
 Old STOP6047119931, phase3 UNKNOWN and D1/consumed operations remain untouched.
 
+The separate fixed operation `int-andromeda-local-tv-frontier-20261010-v1` diagnoses
+the current nonempty target; it never repeats seed/DDL/apply. It uses an actual MySQL
+REPEATABLE READ / READ ONLY transaction, inventories surviving observations and
+protected source fingerprints, validates current catalog/link content, and groups at
+most1000 unfinished IDs by missing/corrupt/foreign/generic/valid-retained source.
+The complete ID/revision/source-hash scope is saved privately with a verified digest;
+public evidence contains ID-only reason groups and12 bounded samples. Finite deployed
+capture-file hashes and the loaded flag are inspected without returning private config.
+Provider code remains absent from the bundle and HTTP/old/new DB writes remain0.
+This is preflight evidence only: it does not authorize old held IDs, turn on capture,
+change a schedule, or execute content acquisition. Native tests prove real MySQL rejects
+an attempted UPDATE inside the diagnostic snapshot and that all catalog bytes survive.
+
 The new tests execute actual isolated MySQL fixtures, full130-image transfer, manual
 content, provider snapshots, history-vs-dictionary separation, retained corruption,
 changed cache/profile, wrong/nonempty target, active lock and lost ACK after a real

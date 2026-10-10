@@ -176,6 +176,81 @@ final class LocalTvSeedV1
         return $c->counts()+['links'=>$links,'manual_fields'=>$manual,'stored_photos'=>$photos,'source_absent_fields'=>$missing,
             'catalog_sha256'=>hash_final($digest),'links_sha256'=>hash_final($ld),'samples'=>$samples];
     }
+
+    /** Diagnose the current new target in an enforced read-only, consistent snapshot. */
+    public static function frontier(PDO $db,string $directory): array
+    {
+        LocalTvSchemaV1::need(!$db->inTransaction(),'frontier_nested_transaction');
+        $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+        $db->exec('SET TRANSACTION READ ONLY');$db->beginTransaction();
+        try{
+            $inventory=self::inventory($db);$read=self::readback($db);
+            $registered=$db->query('SELECT id FROM local_tv_hotels ORDER BY id')->fetchAll(PDO::FETCH_COLUMN);
+            $registered=array_fill_keys(array_map('intval',$registered),true);
+            $unregistered=[];
+            foreach($inventory['observations'] as $r)if(!isset($registered[$r['id']]))$unregistered[]=$r;
+            $links=[];
+            foreach($db->query('SELECT old_local_id,tv_id FROM local_tv_legacy_links ORDER BY old_local_id') as $r)$links[(int)$r['tv_id']][]=(int)$r['old_local_id'];
+            $q=$db->query("SELECT l.id,l.state,l.revision,l.source_fetched_at,d.hotel_id AS retained_id,d.raw_json,d.source_hash,d.fetched_at
+                FROM local_tv_hotels l LEFT JOIN catalog_hotel_details d ON d.hotel_id=l.id WHERE l.state<>'ready' ORDER BY l.pending_since,l.id");
+            $pending=[];$groups=[];$samples=[];
+            while($r=$q->fetch(PDO::FETCH_ASSOC)){
+                $id=(int)$r['id'];$reason='retained_valid_pending';$name=null;
+                if($r['retained_id']===null)$reason='cache_missing';
+                elseif(!is_string($r['raw_json']))$reason='raw_missing';
+                elseif(!is_string($r['source_hash']) || !hash_equals($r['source_hash'],hash('sha256',$r['raw_json'])))$reason='integrity_invalid';
+                else{
+                    try{
+                        $raw=json_decode($r['raw_json'],true,512,JSON_THROW_ON_ERROR);
+                        if(!is_array($raw))$reason='shape_invalid';
+                        else{
+                            $hotel=v2_hotel_detail_object($raw);$name=LocalTvCatalogV1::text($hotel['name']??null);
+                            try{LocalTvCatalogV1::normalize($raw,$id);}
+                            catch(Throwable $e){$reason=match($e->getMessage()){
+                                'generic_accommodation_product'=>'generic_accommodation_product',
+                                'source_identity_or_empty_response'=>'source_identity_or_empty_response',
+                                default=>'normalization_invalid',
+                            };}
+                            if($reason==='retained_valid_pending'){
+                                try{self::timestamp($r['fetched_at']);}catch(Throwable){$reason='timestamp_invalid';}
+                            }
+                        }
+                    }catch(JsonException){$reason='json_invalid';}
+                }
+                $row=['id'=>$id,'state'=>$r['state'],'revision'=>(int)$r['revision'],'retained_reason'=>$reason,
+                    'old_local_ids'=>$links[$id]??[],'source_fetched_at'=>$r['source_fetched_at'],
+                    'retained_sha256'=>$r['source_hash'],'retained_fetched_at'=>$r['fetched_at'],'name'=>$name];
+                $pending[]=$row;$groups[$reason][]=$id;
+                LocalTvSchemaV1::need(count($pending)<=1000,'frontier_review_bound');
+                if(count($samples)<12){$sample=array_intersect_key($row,array_flip(['id','state','revision','retained_reason','old_local_ids','name']));
+                    if(is_string($sample['name']))$sample['name']=mb_substr($sample['name'],0,200);$samples[]=$sample;}
+            }
+            LocalTvSchemaV1::need(count($pending)===$read['unfinished'],'frontier_count_mismatch');
+            ksort($groups);foreach($groups as &$ids)sort($ids,SORT_NUMERIC);unset($ids);
+            $scope=['pending'=>$pending,'unregistered_observations'=>$unregistered];
+            LocalTvSchemaV1::save($directory,'frontier-scope.json',$scope);
+            $db->commit();
+            return ['readback'=>$read,'protected_snapshots'=>$inventory['images'],
+                'observed'=>count($inventory['observations']),'observations_sha256'=>$inventory['observations_sha256'],
+                'unregistered'=>count($unregistered),'unregistered_ids'=>array_slice(array_column($unregistered,'id'),0,100),
+                'retained_reason_ids'=>$groups,'pending_with_old_link'=>count(array_filter($pending,static fn($r)=>$r['old_local_ids']!==[])),
+                'samples'=>$samples,'scope_sha256'=>hash_file('sha256',$directory.'/frontier-scope.json')];
+        }finally{if($db->inTransaction())$db->rollBack();}
+    }
+
+    /** Hash finite capture seams; never return configuration or executable file contents. */
+    public static function captureRuntime(string $root): array
+    {
+        $files=[];
+        foreach(['api-v2.php','data/db-v1.php','data/price-observer-v1.php','data/local-tv-catalog-v1.php','data/collect-hotel-details-v1.php'] as $relative){
+            $path=$root.'/'.$relative;
+            LocalTvSchemaV1::need(!is_link($path),'capture_symlink');
+            if(!file_exists($path)){$files[$relative]=null;continue;}
+            LocalTvSchemaV1::need(is_file($path) && realpath($path)===$path && filesize($path)<=2*1024*1024,'capture_file_bound');
+            $files[$relative]=hash_file('sha256',$path);
+        }
+        return ['registry_enabled'=>LocalTvCatalogV1::enabled(),'files'=>$files];
+    }
 }
 
 if(!defined('LOCAL_TV_SEED_LIBRARY_ONLY')){
@@ -186,12 +261,12 @@ if(!defined('LOCAL_TV_SEED_LIBRARY_ONLY')){
         'supplier_calls'=>0,'old_profile_writes'=>0,'mapping_writes'=>0,'schema_writes'=>0,'state'=>'blocked','observed_at'=>time()];$exit=1;
     define('LOCAL_TV_SCHEMA_LIBRARY_ONLY',true);require __DIR__.'/local_tv_schema_v1.php';
     try{
-        LocalTvSchemaV1::need(count($argv)===2 && in_array($action,['inventory','apply','readback'],true),'seed_action');
+        LocalTvSchemaV1::need(count($argv)===2 && in_array($action,['inventory','apply','readback','frontier'],true),'seed_action');
         LocalTvSchemaV1::need($root===$home.'/www/anytoour.ru' && realpath($root)===$root && is_file($root.'/config.php') && !is_link($root.'/config.php'),'seed_root');
         LocalTvSchemaV1::need(realpath($directory)===$directory && $directory===$home.'/.anytoour-int-executor/'.$operation && !is_link($directory),'seed_operation_root');
         LocalTvSchemaV1::need(preg_match('/^[a-f0-9]{40}$/D',$source)===1 && preg_match('/^[a-f0-9]{40}$/D',$control)===1 && realpath($stage)===$stage,'seed_identity');
         $_SERVER['DOCUMENT_ROOT']=$root;require $stage.'/v2/data/db-v1.php';require $stage.'/v2/data/local-tv-catalog-v1.php';
-        v2_data_db_config();LocalTvSchemaV1::need(!(defined('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') && constant('ANYTOUR_LOCAL_TV_CATALOG_ENABLED')===true),'registry_must_remain_disabled');
+        v2_data_db_config();if($action!=='frontier')LocalTvSchemaV1::need(!(defined('ANYTOUR_LOCAL_TV_CATALOG_ENABLED') && constant('ANYTOUR_LOCAL_TV_CATALOG_ENABLED')===true),'registry_must_remain_disabled');
         $db=v2_data_db();$configSha=hash_file('sha256',$root.'/config.php');$receipt['config_sha256']=$configSha;
         if($action==='inventory'){
             $plan=LocalTvSeedV1::inventory($db,$directory);LocalTvSchemaV1::save($directory,'seed-plan.json',$plan);
@@ -203,6 +278,9 @@ if(!defined('LOCAL_TV_SEED_LIBRARY_ONLY')){
             $plan=json_decode(file_get_contents($parent),true,512,JSON_THROW_ON_ERROR);
             LocalTvSchemaV1::need(hash_equals((string)getenv('LOCAL_TV_SEED_EXPECTED_PLAN_SHA256'),hash_file('sha256',$parent)),'seed_plan_changed');
             $receipt=array_replace($receipt,LocalTvSeedV1::apply($db,$plan,$directory,gmdate('Y-m-d H:i:s')));
+        }elseif($action==='frontier'){
+            $receipt['frontier']=LocalTvSeedV1::frontier($db,$directory);
+            $receipt['capture_runtime']=LocalTvSeedV1::captureRuntime($root);$receipt['state']='frontier_read_only';
         }else{
             $receipt['readback']=LocalTvSeedV1::readback($db);$receipt['state']='verified_read_only';
         }
