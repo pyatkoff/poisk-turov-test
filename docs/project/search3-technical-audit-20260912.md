@@ -863,3 +863,159 @@ Filters2/2/2/2/2 и Selected2/2/2/2/2 переносятся с exact причи
 Наследованное evidence: Site121/formal report6096285423/#1719/6096287276, auditPR4506/release58b4cce8; qa/fullpath42 sourcead778ab. Новое: qa/mobile43/form/behavior.json (large8/20IDs), decision/decision-behavior.json, return/selection-return.json; logs/form-final.txt/decision.txt/return.txt/results.txt/editors.txt/interactions.txt; final/rix5* и family3-pair360/390/430-bottom,review768/1280. Незатронутые byte-identical блоки не перепроверялись ради балла.
 
 **Границы и следующий цельный блок.** Physical iPhone/Safari/OSkeyboard/safe-area/text-only200% UNVERIFIED для122. Нет общей оценки9.5–10. Следующий разрешённый блок — actual long hotel/room/meal + family0–3 readable path360/390/430 и text200% в существующих владельцах, без all55-before-mockup; отдельное exact evidence до повышения C4/accessibility. Полный прототип требует принятия владельцем перед NEXT переносом. Supplier0/real-lead0; SAMOpaused, MAIN/production/DB/provider/money/LOCAL/MATCH/analytics/workflows/schedules не менялись. Canonical sourceclaim6096360802/publisher6096475218/auditclaim6096567581, terminal в#4217 после audit exact-headCI/release/readback.
+
+## SEARCH-QUALITY-1 — long44 / Site125, 2026-10-10
+
+**Артефакт и стадии.** Установлен существующий публичный Site125/package44/v167,
+source `a77f525c4f9cacf2da4f20b58eb2702a5f619943`,
+native version `appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_a03fc74e759c81918e2f8901f4bc641d`,
+deployment `appgdep_6aca1e836c2c8191a2d6843d6c5692b1` SUCCEEDED
+2026-10-10T11:16:34.629213Z. Exact source/deployment/native archive readback совпал;
+storage SHA256 `a3eccac6826e7567ac5f267bb6563e5fe504614738a679fa896a9dc5df609a0a`.
+Исходный stock-helper gzip SHA256 `52faccdcec80ae231f46b24afef5c2a6d5e0a5a967b14355d40f98ba7a598caf`
+— отдельная byte provenance, не равенство нормализованному native tar.
+Actual footer44/v167. Acceptance/evidence-only source `4c2700072446532acb0012a33a6755b7f0f95b9e`: `dist` byte-identical установленномуa77, clean checkout; дополнительного save/deploy для evidence не было. Публичный проверенный маршрут:
+https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=360
+
+Предыдущая сопоставимая оценка: Site122/package43/v166/source3012d12,
+[полный formal report6096572288](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6096572288),
+evidence-only source `0f5c3f5e633a27d9f3579c84ce5f60fb12e6ba58`.
+Рубрика не меняется:12 исторических строк,11 обязательных, Compare deferred;
+вектор из пяти канонических критериев, значения0/1/1.5/2.
+N=not_measured: при одном N сумму строки не вычислять. Это экспертная оценка
+указанного corpus, не конверсия. Прежние разговорные8–8.5/9–9.5 и52/55 не baseline.
+
+| Параметр | Previous122: пять баллов; сумма | Current125: пять баллов; сумма | Delta / evidence или конкретный пробел |
+| --- | --- | --- | --- |
+| Desktop visual | 2/1.5/2/2/N; not_measured | 2/1.5/2/2/N; not_measured | Измеренные0; density1.5 не закрыта. Нет полного intermediate/short-screen form+rail+card corpus |
+| Mobile visual | 2/2/2/N/2; not_measured | 2/2/2/N/2; not_measured | Измеренные0; новый long5483/short480 сценарий устранён, но C4 full long/family/text200% ещё отсутствует |
+| Соответствие целевому макету | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Нет полного одинакового exact approved-reference сравнения формы/rail/фильтров/cards/mobile |
+| Полнота основной формы | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; full primary fields, exact hotel5483 и8/20IDs/cap/draft/Cancel/Apply сохранены |
+| Filters / decision UX | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; те же facets/count/reset/same-offer/state без supplier calls |
+| Карточки и price/CTA | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; renderer/price authority прежние, current long title/place/status/action доступны |
+| Календарь | 2/N/2/2/2; not_measured | 2/N/2/2/2; not_measured | Измеренные0; sparse/full geometry corpus целиком не завершён |
+| Compare / shortlist — deferred вне запуска | N/N/N/N/N; deferred | N/N/N/N/N; deferred | Вне11 обязательных; не возобновлён |
+| Selected tour | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; exact offer/room/meal/party/unknown/group-total/back сохранены |
+| Lead-form handoff | 2/2/2/2/2;10 | 2/2/2/2/2;10 | 0; current contact owner не изменён; точное previous43 actual evidence и latest compiled guards сохранены |
+| Accessibility / state UX | 2/2/N/2/2; not_measured | 2/2/N/2/2; not_measured | Измеренные0; full target/readability/text200% corpus отсутствует |
+| Архитектурная чистота / стабильность | N/N/N/N/N; not_measured | N/N/N/N/N; not_measured | Нет полного сопоставимого пяти-критериального baseline; owner/isolation evidence не превращено в общий балл |
+
+**Новый работающий эффект, одинаковые данные.** Canonical retained hotel5483:
+RAMADA PLAZA BY WYNDHAM ISTANBUL ATAKOY (EX. RAMADA HOTEL AND SUITES ISTAMBUL ATAKOY),
+Бакыркёй, Турция,5 canonical stars, существующий guest score4.8. Фото отсутствует:
+честный placeholder, без обогащения каталога. Exact сохранённый offer:
+Standard City View / Завтраки /5→12Oct /7ночей /2взрослых /FUN&SUN /144525₽.
+Это cached snapshot от23.09, не актуальная bookable/final verified цена.
+
+На360 fixed hotel header168→61px; scrolling body415.609375→522.609375
+при360×800 и114.796875→221.796875 при360×480: **+107px** в обоих matched scopes.
+Полное canonical имя и география перенесены в доступный scrolling body;
+полное имя осталось accessible dialog label. Первое About открывает identity
+через existing positionHotelSection, Rooms сохраняет exact выбранный key.
+В compact tripbar длинный список заменён страной/count; полный выбор доступен
+через форму и полное имя existing edit button. Compact168.421875→98.375px на360.
+Нет нового renderer/helper/style owner или override layer.
+
+Во время actual124 acceptance найден отдельный реальный дефект: fixed bar
+bottom98.375, title top88.375 —10px перекрыты. Current125 existing html/updateCompactSearch
+измеряет actual bar+8 перед explicit results scroll. Settled360 title108.375
+при bar98.375 — **10px свободно**,390/430 также gap10;768/1280 barhidden/titlevisible.
+Doc/body horizontal overflow0 на пяти widths. Original hidden-bar fallbacks сохранены.
+Late font/content-only reflow без resize/scroll отдельным observer не покрыт;
+точное after-font/resize evidence не превращено в обещание всех возможных reflows.
+
+Actual360×480 Rooms: scroll276, heading155.09375 ниже nav138.8125,
+focus hotel-rooms-heading, прежний exact offer key. CheckConditions показывает
+«Цена и рейсы пока не подтверждены», запрещает заявку; Back возвращает ту же
+выбранную строку/144525 и focusCheckConditions, close возвращает focusОбОтеле.
+Query Rix показывает5 snapshot suggestions, оставляя5483 выбранным; Cancel picker
+и отдельно Cancel формы после закрытого modal возвращают1hotel/1offer/1–7Oct/2взрослых
+и full-named edit-button focus. Согласие/contacts/generation/price gates не изменены.
+
+**Все пять причин в затронутых fully-covered строках, канонический порядок.**
+
+- Form: C1 city/destination2→2 — Москва/Турция и exact long5483 сохраняются;
+  C2 dates/nights2→2 — исходные1–7Oct/7nights, calendar boundaries/edit cancellation из exact previous corpus и current suite;
+  C3 tourists/children/ages2→2 — families0/1/2/3 compiled и previous43 actual0/8/17;
+  C4 region/hotel/category/meal2→2 — настоящая geography/star, exact multi-ID OR/cap20,
+  query не выбирает, Cancel откатывает, Apply сохраняет URL/filter;
+  C5 accessible budget/primary-advanced separation2→2 — прежние primary fields и budget доступны,
+  primary operator не добавлен. Сумма10→10.
+- Filters: C1 trustworthy facets2→2; C2 active values/counts2→2; C3 reset/zero recovery2→2;
+  C4 same-offer combination2→2; C5 state preservation without supplier calls2→2.
+  Exact inherited fullpath42/formal6096285423 плюс latest results/editor suites; сумма10→10.
+- Cards: C1 media/name/place2→2 — real media или honest placeholder, full long name/place;
+  C2 facts/no duplicates2→2 — canonical projection прежняя; C3 representative exact offer2→2 —
+  dates/nights/room/meal/operator совпадают; C4 minimum/concrete/saved/unverified2→2 —
+  snapshot price честно требует проверки; C5 unambiguous accessible action2→2 —
+  existing СмотретьТур и price/action row сохранены. Exact previous tablet gain не начислен повторно.
+  Current five-width actual и results suite; сумма10→10.
+- Selected: C1 exact context2→2 —5483/key сохранён; C2 room/meal/party2→2 —
+  StandardCityView/BB/2adults и previous family corpus; C3 verified flights or honestunknown2→2 —
+  текущий cached offer не превращён в live; C4 agreed total/composition/no new arithmetic2→2 —
+ 144525 за группу остаётся saved/unverified, fuel не добавлялся повторно;
+  C5 change/return without tour substitution2→2 — actualCheckConditions→Back→samekey,
+  compiled independent-other-offer/party/pair guards. Сумма10→10.
+- Lead: C1 right tour2→2; C2 action/focus2→2; C3 validation/pending/error2→2;
+  C4 permitted draft/separate consent2→2; C5 controlled return/no real send2→2.
+  Неперепроверенная byte-identical contact композиция переносится с точным
+  previous43 family3/pair/phone/consent frames и report6096572288;
+  current six-state/return suites подтверждают сохранность changed-price,
+  late/duplicate/closed/expiry/independent-other-offer и consent reset. Сумма10→10
+  только в том прежнем bounded Chrome corpus, не physical/real delivery.
+
+**Visual partial причины и независимая проверка.** Mobile C1/C2/C3=2→2:
+единая mobile композиция, full canonical identity/place/status, доступные действия
+в actual360×480. C4=N→N: один длинный отель не закрывает full long room/meal/baggage/operator
++family0–3+text200% corpus. C5=2→2: previous narrow corpus исправен, новый long-context
+дефект устранён и evidence расширено, но критерию уже было2; не начислять ещё0.5.
+Desktop C1=2→2 сетка; C2=1.5→1.5 density остаётся; C3=2→2 типографика/longidentity;
+C4=2→2 CTA/контролы; C5=N→N промежуточные/короткие экраны полного пути не завершены.
+Независимый read-only reviewer подтвердил actual settled mobile, profile/rooms/unknown,
+delta0, отсутствие новой существенной визуальной проблемы в просмотренном scope.
+
+**Evidence и исключения.** `qa/long44/runtime-receipt.json`,
+`source-checks.json`, `capture-scope.json`, `CHECKPOINT.md`; matched before360
+в `before/mobile44-long-profile360*-before.jpg`, actual124 profile in`after124/`
+(profile owners byte-identical125), actual125 in`final/`: clearance-card360-settled,
+resize390/430/768/1280, profile360-short-settled, rooms360-short, unknown360-short.
+Before файлы labelled768/1280 показывают430/768 соответственно: оригиналы сохранены,
+но **исключены из matched-width comparison**, wide numerical gain не заявлен.
+`excluded/` содержит intermediate smooth-scroll/viewport-paint и raced dependent
+Cancel captures; controlled closed-modal Cancel отдельно успешно проверен,
+непричастные product defects по raced кадрам не объявлены.
+
+Шесть latest applicable compiled-script suites exit0/PASS:
+verify-mobile-form (long5483,8/20IDs/21stcap/fivewidths),
+verify-selection-return, verify-search-editor, verify-sites-interactions,
+verify-decision-prototype, verify-results-block. Syntax/diff PASS.
+JSdom не имеет layout engine, поэтому rectangles берутся только из actual Chrome.
+Harness scrollTo support добавлен по фактическому отсутствующему jsdom API,
+значимые assertions не ослаблены. Нет нового supplier request или real lead.
+
+Site123/e34 и124/257 — известные terminal публикации того же пакета44:
+первый runtime metadata defect166/43→167/44 исправлен двумя existing constants;
+затем proven results overlap устранён в125. Не UNKNOWN/no-replay и не качественный
+рост за количество версий. Publisher6096918226 RELEASE6096980721;
+sourceclaim6096684702 и auditclaim6096980897 завершаются после evidence/audit readback.
+
+**Стадии не наследуют оценки.** Макет: реальные текущие desktop/mobile layout-кадры
+общего пути дополнены long profile; общий visual score остаётсяnot_measured.
+Кликабельный прототип: exact Site125 выше, bounded строки из таблицы и actual actions,
+PROTOTYPE_PENDING_OWNER_ACCEPTANCE_BEFORE_NEXT. Установленный NEXT остаётся
+PR4501/source`9b74bdfae2fa9244be52e822d64db1e7282e6901`, terminal6091085104:
+UI delta0, новый прототип ему не переносился и его баллы не наследуются.
+Physical iPhone/Safari/OSkeyboard/safearea/text-only200% UNVERIFIED;
+уменьшенный480px wrapper — browser viewport, не OSkeyboard/physical приёмка.
+
+**Следующий цельный разрешённый этап.** Закрывать оставшийся C4/a11y corpus:
+long hotel/room/meal/baggage/operator +family0–3 на360/390/430 с увеличением текста,
+сохраняющим полноту имени, context и fixed действия на form→hotel→tour→contact→Back;
+parallel short desktop/intermediate form+rail/card acceptance для C5.
+Использовать тот же coherent product и current owners, не all55-before-mockups,
+не новую косметическую очередь. Исправлять только наблюдаемый остаток, сохранять
+exact baseline при каждом gain. Физическую проверку и approval полного concrete
+prototype перед NEXT переносом вести отдельно. Необоснованный общий9.5–10 не заявлен;
+live TV+directANEX, SAMOpaused, MAIN/production/provider/money/DB/LOCAL/MATCH/
+analytics/workflows/прочие schedules этим пакетом не менялись.
+
