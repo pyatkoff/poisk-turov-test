@@ -204,7 +204,7 @@ if ($scope === 'local') {
     if (!LocalTvCatalogV1::enabled()) {
         throw new RuntimeException('LOCAL TV rollout must be explicitly enabled after migration review');
     }
-    // Share the existing cross-run single collector lock. No parallel acquisition.
+    // One cross-run lock for the LOCAL scope. No parallel LOCAL acquisition.
     $lock = $pdo->query("SELECT GET_LOCK('anytour-local-tv-daily',0)")->fetchColumn();
     if ((int)$lock !== 1) throw new RuntimeException('LOCAL TV collector already active');
     try {

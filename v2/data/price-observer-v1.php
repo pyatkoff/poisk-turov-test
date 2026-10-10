@@ -89,7 +89,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         && empty($context['ci_test']) && empty($context['demo'])
         && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
         try {
-            (new LocalTvCatalogV1($pdo))->discover($hotels,$source,$observedAt);
+            (new LocalTvCatalogV1($pdo))->discover($hotels,$source,gmdate('Y-m-d H:i:s'));
         } catch (Throwable $e) {
             // Content storage cannot change search or price-observer semantics.
             error_log('LOCAL TV discovery failed: '.$e->getMessage());

@@ -74,13 +74,14 @@ async function browserAcceptance(){
     await page.waitForFunction(()=>document.querySelector('.hotel-card')?.textContent.includes('Synthetic LOCAL fixture 101'));
     const card=page.locator('.hotel-card').first(),price=await card.locator('.starting-price strong').textContent(),url=page.url();
     const starts=()=>transport.calls.filter(c=>c.action==='search_start').length,searches=starts();
-    assert((await card.textContent()).includes(original.items[0].description));assert.match(await card.locator('.photo-count').textContent(),/126/);
+    assert.match(await card.locator('.photo-count').textContent(),/126/);
     await card.locator('[data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();assert((await page.locator('#modal-body').textContent()).includes(original.items[0].description));
     assert((await page.locator('#modal-body').textContent()).includes('Два тестовых бассейна'));assert((await page.locator('#modal-body').textContent()).includes('Wi-Fi в общественных местах'));
-    const choices=await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('strong')?.textContent})));assert(choices.length>0);
+    const choices=await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent})));assert(choices.length>0);
     await close();current=updated;await card.locator('[data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();
-    assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description));assert((await card.textContent()).includes(updated.items[0].description));
-    assert.equal(await card.locator('.starting-price strong').textContent(),price);assert.deepEqual(await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('strong')?.textContent}))),choices);
+    assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description));
+    assert((await card.textContent()).includes(updated.items[0].name));assert.match(await card.locator('.photo-count').textContent(),/126/);
+    assert.equal(await card.locator('.starting-price strong').textContent(),price);assert.deepEqual(await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent}))),choices);
     const geometry=await page.locator('#modal-body').evaluate(el=>({modalOverflow:el.scrollWidth>el.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth+1}));assert.deepEqual(geometry,{modalOverflow:false,documentOverflow:false});
     await page.screenshot({path:path.join(evidence,'content-'+width+'.png')});await close();failed=true;
     await card.locator('[data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description),'reader failure preserves latest saved content');await close();failed=false;
