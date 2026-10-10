@@ -39,6 +39,9 @@ on:
       - 'tests/int_server_executor_local_profile_mass_apply2_test.py'
       - 'scripts/deploy/int_server_executor_local_profile_recovery_plan.py'
       - 'tests/int_server_executor_local_profile_recovery_plan_test.py'
+      - 'scripts/deploy/int_server_executor_local_tv_schema.py'
+      - 'scripts/diagnostics/local_tv_schema_v1.php'
+      - 'tests/int_server_executor_local_tv_schema_test.py'
   workflow_dispatch:
     inputs:
       owner_command:
@@ -59,11 +62,45 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: local_tv_schema_test_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -plocal_tv_schema_test_only"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: PHP for native schema acceptance
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, pdo_sqlite, mbstring
+      - name: Exact reviewed LOCAL schema source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 3cc3d29595c8a9ec71a0435ee2efeb939c40adb6
+          path: local-tv-source
+          persist-credentials: false
+      - name: New LOCAL schema actual MySQL and executor contract
+        env:
+          LOCAL_TV_SCHEMA_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
+          LOCAL_TV_SCHEMA_NATIVE_CI: '1'
+          LOCAL_TV_SCHEMA_TEST_DSN: mysql:host=127.0.0.1;port=3306;charset=utf8mb4
+          LOCAL_TV_SCHEMA_TEST_PASSWORD: local_tv_schema_test_only
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/deploy/int_server_executor_local_tv_schema.py
+          php -l scripts/diagnostics/local_tv_schema_v1.php
+          python3 tests/int_server_executor_local_tv_schema_test.py -v
       - name: Validate permanent INT executor contract
         run: |
           set -euo pipefail
@@ -125,6 +162,8 @@ jobs:
       - name: Recheck executor contract
         run: |
           set -euo pipefail
+          python3 -m py_compile scripts/deploy/int_server_executor_local_tv_schema.py
+          php -l scripts/diagnostics/local_tv_schema_v1.php
           python3 -m py_compile scripts/deploy/int_server_executor.py
           python3 tests/int_server_executor_test.py -v
           python3 -m py_compile scripts/deploy/int_server_executor_anex_secret_transport.py
