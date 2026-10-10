@@ -310,7 +310,7 @@ final class LocalTvCatalogV1
     {
         $q = $this->pdo->prepare("UPDATE local_tv_hotels SET state='excluded',next_attempt_at=NULL,
             last_error='generic_accommodation_product' WHERE id=? AND state<>'ready' AND source_json IS NULL
-            AND discovery_json='{}' AND content_json='{}' AND manual_json='{}'");
+            AND discovery_json IN ('{}','[]') AND content_json='{}' AND manual_json='{}'");
         $q->execute([$id]);
         return $q->rowCount() === 1;
     }
