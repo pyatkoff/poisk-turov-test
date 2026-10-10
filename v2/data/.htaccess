@@ -1,6 +1,9 @@
-# Search3 preview: expose only the three read-only local catalogue/result DTOs.
+# Search3 preview: expose only explicit read-only catalogue/result DTOs.
 # The parent preview .htaccess still denies every other PHP file in this directory.
 <Files "hotel-details-read-v1.php">
+  Require all granted
+</Files>
+<Files "local-tv-catalog-read-v1.php">
   Require all granted
 </Files>
 <Files "search3-local-results-read-v1.php">
