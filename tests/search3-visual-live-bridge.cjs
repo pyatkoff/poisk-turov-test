@@ -709,7 +709,7 @@ async function pickerRetainedDraftRegressions(){
  q('[name="consent"]').checked=true;q('#prototype-lead-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await settle();
  assert.match(q('.lead-message').textContent,/Срок подтверждения тура истёк/);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
  assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');
- click('[data-action="close-modal"]');await settle();w.history.forward();await settle();
+ click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open&&q('#modal-title').textContent==='Ваш тур в деталях');
  assert.match(q('#modal-body').textContent,/Срок подтверждения тура истёк/);
  assert(!q('#prototype-lead-form')&&!q('[data-action="andromeda-application-preview"]')&&!q('[data-action="refresh-hotel"]'));
  assert.equal(transport.calls.length,beforeSamoApplicationForward,'expired reuse, submit and Forward spend zero requests');w.Date.now=realNow;
