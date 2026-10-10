@@ -10,6 +10,7 @@ if (PHP_SAPI !== 'cli') {
 require_once __DIR__ . '/db-v1.php';
 require_once __DIR__ . '/tourvisor-client-v1.php';
 require_once __DIR__ . '/hotel-details-v1.php';
+require_once __DIR__ . '/local-tv-catalog-v1.php';
 
 function hotel_details_arg(array $argv, string $name, ?string $fallback = null): ?string
 {
@@ -198,6 +199,36 @@ $cutoff = $now->modify('-' . $freshDays . ' days')->format('Y-m-d H:i:s');
 $retryCutoff = $now->modify('-1 day')->format('Y-m-d H:i:s');
 
 $pdo = v2_data_db();
+if (hotel_details_arg($argv,'candidate-scope') === null && LocalTvCatalogV1::enabled()) $scope='local';
+if ($scope === 'local') {
+    if (!LocalTvCatalogV1::enabled()) {
+        throw new RuntimeException('LOCAL TV rollout must be explicitly enabled after migration review');
+    }
+    // One cross-run lock for the LOCAL scope. No parallel LOCAL acquisition.
+    $lock = $pdo->query("SELECT GET_LOCK('anytour-local-tv-daily',0)")->fetchColumn();
+    if ((int)$lock !== 1) throw new RuntimeException('LOCAL TV collector already active');
+    try {
+        $catalogue = new LocalTvCatalogV1($pdo);
+        $discovered = $catalogue->backfillObserved();
+        $links = $catalogue->migrateLinks($now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'));
+        $report = $catalogue->daily(static function (int $hotelId) use ($httpBudget,$minIntervalMs): array {
+            static $previous = 0.0;
+            if (v2_data_tv_http_attempt_count() >= $httpBudget) throw new RuntimeException('http_budget_exhausted');
+            $wait = $minIntervalMs - (microtime(true)-$previous)*1000;
+            if ($previous>0 && $wait>0) usleep((int)($wait*1000));
+            $previous = microtime(true);
+            return v2_data_tv_get('/hotels/' . $hotelId);
+        },$limit,intdiv($httpBudget,$maxAttempts),$now->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),$freshDays);
+        echo 'ANYTOUR_LOCAL_TV_DAILY ' . LocalTvCatalogV1::json($report + [
+            'registeredFromRetainedObservations'=>$discovered,'legacyMigration'=>$links,
+            'supplierHttpAttempts'=>v2_data_tv_http_attempt_count(),
+            'historyCoverage'=>'surviving_real_observations_only_removed_history_not_recoverable',
+        ]) . "\n";
+    } finally {
+        $pdo->query("SELECT RELEASE_LOCK('anytour-local-tv-daily')");
+    }
+    exit($report['errors'] !== [] ? 2 : 0);
+}
 $sourceTotal = hotel_details_source_total($pdo, $scope);
 $pendingPlan = hotel_details_pending_rows($pdo, $cutoff, $retryCutoff, $limit, $scope);
 $pending = $pendingPlan['rows'];

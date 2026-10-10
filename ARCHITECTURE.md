@@ -103,6 +103,30 @@ For `v2/prototype-search/`, the current canonical ownership is:
 
 The retired `results-date-refresh-v1.js` and `inventory-scope-refresh-v1.js` patch layers are not valid owners after the 2026-09-23 prototype refactor pass. The older #2423 technical audit remains historical evidence only and does not redefine this ownership map.
 
+### Observed LOCAL hotel content replacement
+
+The 2026-10-10 owner specification sets the new LOCAL content ID to the Tourvisor ID.
+`v2/data/local-tv-catalog-v1.php` is the replacement content owner, with an additive
+explicit migration and the existing daily `collect-hotel-details-v1.php` as its collector.
+Real server search responses and the shared monitor observer register every seen TV hotel;
+price history, popularity, clicks and full supplier dictionaries do not own this registry.
+`local-tv-catalog-read-v1.php` supplies LOCAL/NEXT preview presentation through the existing
+`prototype-search/data.js` adapter and existing card/detail renderers.
+
+This seam is **SOURCE_IMPLEMENTED, runtime disabled**. Until separately admitted activation,
+the independent `anytour_hotels` catalogue remains ACTIVE. After activation it remains
+COMPATIBILITY for old own IDs, provider/MATCH evidence and offer/stay/FK consumers.
+Only the explicit `local_tv_legacy_links` bridge translates old own IDs to TV content IDs;
+numeric equality is never a bridge. Content replacement does not renumber transactional
+offer IDs or restart stopped/UNKNOWN operations. Old data is retained, not dropped.
+
+Activation must select one authoritative content writer and reader order; simultaneous
+independent automatic profile writers are not supported. Server and browser feature flags
+default off and do not provide operational approval. Scope, provenance, manual-field
+protection, retained-source priority, coverage limits and acceptance are specified in
+`docs/project/anytour-catalog-replacement-proposal-20261010.md`. Existing canonical-catalog
+MySQL CI and visual-migration CI own the SQL/API and adapter/compiled-browser checks.
+
 ## External contracts — protected
 
 Without explicit user approval, architecture work must preserve:

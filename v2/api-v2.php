@@ -185,6 +185,18 @@ function tourvisor_autosave_status(int $searchId, array $response): void
 
 function tourvisor_autosave_results(int $searchId, int $limit, array $response): void
 {
+    // Observe the already-fetched server response before bounded offer publication.
+    // A closed browser, absent clicks or incomplete price DTO cannot lose a discovery.
+    try {
+        require_once __DIR__ . '/data/local-tv-catalog-v1.php';
+        if (LocalTvCatalogV1::enabled() && $searchId > 0 && array_is_list($response)
+            && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
+            require_once __DIR__ . '/data/db-v1.php';
+            (new LocalTvCatalogV1(v2_data_db()))->discover($response, 'user_search', gmdate('Y-m-d H:i:s'));
+        }
+    } catch (Throwable $ignored) {
+        error_log('LOCAL TV discovery could not be persisted');
+    }
     try {
         AnyTourTourvisorOfferAutosaveV1::autosaveSearchResults(
             $searchId,

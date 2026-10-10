@@ -25,10 +25,10 @@ function v2_hotel_detail_text(mixed $value, int $max = 65535): ?string
 /** Explicit acquisition universe; never silently broaden a scheduled run. */
 function v2_hotel_detail_candidate_scope(mixed $value): string
 {
-    if (!is_string($value)) throw new InvalidArgumentException('Hotel detail candidate scope must be demand or canonical');
+    if (!is_string($value)) throw new InvalidArgumentException('Hotel detail candidate scope must be demand, canonical or local');
     $scope = strtolower(trim($value));
-    if (!in_array($scope, ['demand','canonical'], true)) {
-        throw new InvalidArgumentException('Hotel detail candidate scope must be demand or canonical');
+    if (!in_array($scope, ['demand','canonical','local'], true)) {
+        throw new InvalidArgumentException('Hotel detail candidate scope must be demand, canonical or local');
     }
     return $scope;
 }

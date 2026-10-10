@@ -22,6 +22,10 @@ on:
       - 'v2/data/hotel-popularity-v1.php'
       - 'tests/search3-visual-*.cjs'
       - 'tests/search3-prototype-*.cjs'
+      - 'tests/local-tv-catalog-browser.cjs'
+      - 'tests/local-tv-catalog-test.php'
+      - 'v2/data/local-tv-catalog*.php'
+      - 'v2/data/migrations/20261010-local-tv-catalog.sql'
       - '.github/workflows/search3-visual-migration.yml'
 permissions:
   contents: read
@@ -55,11 +59,13 @@ jobs:
           node tests/search3-visual-passive-contexts.cjs
           node tests/search3-visual-event-dispatch.cjs
           node tests/search3-visual-result-merge.cjs
+          node tests/local-tv-catalog-browser.cjs
   visual-migration:
     # OWNER_PRIORITY: full responsive coverage returns when the draft is ready.
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Existing full journey plus the five-width LOCAL SQL/API/browser acceptance.
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
@@ -93,6 +99,7 @@ jobs:
           node tests/search3-visual-hotel-content-text.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-offer-list-browser.cjs
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-hotel-details-browser.cjs
+          SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/local-tv-catalog-browser.cjs --browser
           SEARCH3_VISUAL_ASSET_ROOT="$RUNNER_TEMP/visual-compiled" node tests/search3-visual-terminal-offer-browser.cjs
           node tests/search3-visual-offer-rendering.cjs
           node tests/search3-visual-migration.cjs

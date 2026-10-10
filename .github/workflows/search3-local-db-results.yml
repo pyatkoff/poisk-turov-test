@@ -66,7 +66,7 @@ jobs:
           import pathlib,re
           text=pathlib.Path('v2/data/.htaccess').read_text()
           grants=re.findall(r'<Files\s+"([^"]+\.php)">\s*Require all granted\s*</Files>',text,re.S)
-          assert grants==['hotel-details-read-v1.php','search3-local-results-read-v1.php','search3-destination-read-v1.php'],grants
+          assert grants==['hotel-details-read-v1.php','local-tv-catalog-read-v1.php','search3-local-results-read-v1.php','search3-destination-read-v1.php'],grants
           endpoint=pathlib.Path('v2/data/search3-local-results-read-v1.php').read_text()
           assert '/_preview/search3-local-candidate/data' in endpoint
           assert "search3_local_results_out(['ok'=>false,'error'=>'Local DB results are isolated to local preview'],403)" in endpoint

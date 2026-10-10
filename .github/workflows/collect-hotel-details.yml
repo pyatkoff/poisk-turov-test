@@ -8,6 +8,11 @@ on:
       - 'v2/data/hotel-details-v1.php'
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
+      - 'v2/data/local-tv-catalog-v1.php'
+      - 'v2/data/local-tv-catalog-read-v1.php'
+      - 'v2/data/migrations/20261010-local-tv-catalog.sql'
+      - 'tests/local-tv-catalog-test.php'
+      - 'tests/local-tv-catalog-workflow.py'
       - 'tests/hotel-details-smoke.php'
       - '.github/workflows/collect-hotel-details.yml'
   push:
@@ -18,17 +23,18 @@ on:
       - 'v2/data/migrate-hotel-details-v1.php'
       - 'v2/data/collect-hotel-details-v1.php'
       - 'tests/hotel-details-smoke.php'
+      - 'tests/local-tv-catalog-workflow.py'
       - '.github/workflows/collect-hotel-details.yml'
   schedule:
     - cron: '35 3 * * *'
   workflow_dispatch:
     inputs:
       candidate_scope:
-        description: 'Hotel acquisition universe: demand (default) or canonical'
+        description: 'Hotel acquisition universe: demand (default), canonical or new LOCAL'
         required: true
         default: 'demand'
         type: choice
-        options: [demand, canonical]
+        options: [demand, canonical, local]
       limit:
         description: 'Maximum unique hotel IDs to enrich in this run (1-3000)'
         required: true
@@ -73,8 +79,12 @@ jobs:
           php -l v2/data/hotel-details-v1.php >/dev/null
           php -l v2/data/migrate-hotel-details-v1.php >/dev/null
           php -l v2/data/collect-hotel-details-v1.php >/dev/null
+          php -l v2/data/local-tv-catalog-v1.php >/dev/null
+          php -l v2/data/local-tv-catalog-read-v1.php >/dev/null
+          php -l tests/local-tv-catalog-test.php >/dev/null
           php -l tests/hotel-details-smoke.php >/dev/null
           php tests/hotel-details-smoke.php
+          python3 tests/local-tv-catalog-workflow.py
           grep -Fq "v2_data_tv_get('/hotels/' . \$hotelId)" v2/data/collect-hotel-details-v1.php
           grep -Fq 'tour_price_observations' v2/data/collect-hotel-details-v1.php
           grep -Fq 'hot_tours_current' v2/data/collect-hotel-details-v1.php
@@ -114,6 +124,7 @@ jobs:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           SCOPE_VALUE: ${{ inputs.candidate_scope || 'demand' }}
+          EVENT_VALUE: ${{ github.event_name }}
           LIMIT_VALUE: ${{ inputs.limit || '3000' }}
           FRESH_DAYS_VALUE: ${{ inputs.fresh_days || '30' }}
           INTERVAL_VALUE: ${{ inputs.min_interval_ms || '550' }}
@@ -123,7 +134,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          test "$SCOPE_VALUE" = demand || test "$SCOPE_VALUE" = canonical
+          test "$SCOPE_VALUE" = demand || test "$SCOPE_VALUE" = canonical || test "$SCOPE_VALUE" = local
           [[ "$LIMIT_VALUE" =~ ^[0-9]+$ ]] && [[ "$FRESH_DAYS_VALUE" =~ ^[0-9]+$ ]] && [[ "$INTERVAL_VALUE" =~ ^[0-9]+$ ]]
           [[ "$MAX_ATTEMPTS_VALUE" =~ ^[0-9]+$ ]] && [[ "$HTTP_BUDGET_VALUE" =~ ^[0-9]+$ ]]
           test "$LIMIT_VALUE" -ge 1 && test "$LIMIT_VALUE" -le 3000
@@ -141,13 +152,23 @@ jobs:
             v2/data/hotel-details-v1.php \
             v2/data/migrate-hotel-details-v1.php \
             v2/data/collect-hotel-details-v1.php \
+            v2/data/local-tv-catalog-v1.php \
             v2/data/build-seo-offer-snapshots-v1.php \
             "$remote:$remote_dir/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
             php -l \"\$root/collect-hotel-details-v1.php\" >/dev/null
-            php \"\$root/migrate-hotel-details-v1.php\"
-            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope='$SCOPE_VALUE' --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
-            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            effective_scope='$SCOPE_VALUE'
+            if test '$EVENT_VALUE' = schedule; then
+              effective_scope=\$(php -r 'require \$argv[1].\"/db-v1.php\"; require \$argv[1].\"/local-tv-catalog-v1.php\"; v2_data_db_config(); echo LocalTvCatalogV1::enabled() ? \"local\" : \"demand\";' \"\$root\")
+            fi
+            case \"\$effective_scope\" in demand|canonical|local) ;; *) exit 1 ;; esac
+            if test \"\$effective_scope\" != local; then
+              php \"\$root/migrate-hotel-details-v1.php\"
+            fi
+            php \"\$root/collect-hotel-details-v1.php\" --candidate-scope=\"\$effective_scope\" --limit='$LIMIT_VALUE' --fresh-days='$FRESH_DAYS_VALUE' --min-interval-ms='$INTERVAL_VALUE' --max-attempts='$MAX_ATTEMPTS_VALUE' --http-budget='$HTTP_BUDGET_VALUE'
+            if test \"\$effective_scope\" != local; then
+              php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
+            fi
           "
