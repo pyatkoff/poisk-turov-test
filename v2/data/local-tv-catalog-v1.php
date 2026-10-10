@@ -305,6 +305,16 @@ final class LocalTvCatalogV1
         $q->execute([$retry,mb_substr(str_replace(["\n","\r"],' ',$reason),0,1000),$id]);
     }
 
+    /** A retained generic product is not a hotel, but only pristine rows may be excluded automatically. */
+    private function excludeGeneric(int $id): bool
+    {
+        $q = $this->pdo->prepare("UPDATE local_tv_hotels SET state='excluded',next_attempt_at=NULL,
+            last_error='generic_accommodation_product' WHERE id=? AND state<>'ready' AND source_json IS NULL
+            AND discovery_json IN ('{}','[]') AND content_json='{}' AND manual_json='{}'");
+        $q->execute([$id]);
+        return $q->rowCount() === 1;
+    }
+
     /** Privileged callers supply the observed revision; an empty manual value is intentional. */
     public function setManualFields(int $id, array $fields, int $expectedRevision): void
     {
@@ -439,10 +449,11 @@ final class LocalTvCatalogV1
         $q=$this->pdo->query("SELECT l.id,c.raw_json,c.source_hash,c.fetched_at FROM local_tv_hotels l
             JOIN catalog_hotel_details c ON c.hotel_id=l.id
             WHERE c.status='success' AND c.raw_json IS NOT NULL AND c.source_hash IS NOT NULL AND c.fetched_at IS NOT NULL
+                AND l.state<>'excluded'
                 AND (l.source_fetched_at IS NULL OR c.fetched_at>l.source_fetched_at)
             ORDER BY l.pending_since,l.id LIMIT $limit");
         $pending=$q->fetchAll(PDO::FETCH_ASSOC);
-        $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'httpRequests'=>0,'skipped'=>[]];
+        $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'httpRequests'=>0,'skipped'=>[],'excluded'=>[]];
         foreach ($pending as $r) {
             $id=(int)$r['id'];
             if (!hash_equals($r['source_hash'],hash('sha256',$r['raw_json']))) {
@@ -453,7 +464,12 @@ final class LocalTvCatalogV1
                 if (!is_array($payload)) throw new DomainException('invalid_retained_card');
                 self::time($r['fetched_at']); self::normalize($payload,$id);
             } catch (Throwable $e) {
-                $report['skipped'][(string)$id]=$e instanceof DomainException?$e->getMessage():'invalid_retained_card';
+                $reason=$e instanceof DomainException?$e->getMessage():'invalid_retained_card';
+                if ($reason==='generic_accommodation_product' && $this->excludeGeneric($id)) {
+                    $report['excluded'][(string)$id]=$reason;
+                } else {
+                    $report['skipped'][(string)$id]=$reason;
+                }
                 continue;
             }
             // Unknown COMMIT or readback propagates; neither it nor an error UPDATE is retried.
@@ -515,17 +531,19 @@ final class LocalTvCatalogV1
 
     public function counts(): array
     {
-        $r=$this->pdo->query("SELECT COUNT(*) AS discovered,
+        $r=$this->pdo->query("SELECT COUNT(*) AS registered,
+            SUM(CASE WHEN state<>'excluded' THEN 1 ELSE 0 END) AS discovered,
             SUM(CASE WHEN state='ready' THEN 1 ELSE 0 END) AS ready,
-            SUM(CASE WHEN state<>'ready' THEN 1 ELSE 0 END) AS unfinished FROM local_tv_hotels")->fetch(PDO::FETCH_ASSOC);
+            SUM(CASE WHEN state NOT IN ('ready','excluded') THEN 1 ELSE 0 END) AS unfinished,
+            SUM(CASE WHEN state='excluded' THEN 1 ELSE 0 END) AS excludedCount FROM local_tv_hotels")->fetch(PDO::FETCH_ASSOC);
         return array_map('intval',$r);
     }
 
     public function read(array $values, bool $oldLocal=false): array
     {
         $ids=self::ids($values); $marks=implode(',',array_fill(0,count($ids),'?'));
-        $sql=$oldLocal ? "SELECT l.*,b.old_local_id FROM local_tv_hotels l JOIN local_tv_legacy_links b ON b.tv_id=l.id WHERE b.old_local_id IN ($marks)"
-            : "SELECT l.* FROM local_tv_hotels l WHERE l.id IN ($marks)";
+        $sql=$oldLocal ? "SELECT l.*,b.old_local_id FROM local_tv_hotels l JOIN local_tv_legacy_links b ON b.tv_id=l.id WHERE b.old_local_id IN ($marks) AND l.state<>'excluded'"
+            : "SELECT l.* FROM local_tv_hotels l WHERE l.id IN ($marks) AND l.state<>'excluded'";
         $q=$this->pdo->prepare($sql); $q->execute($ids); $found=[];
         foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $found[(int)($oldLocal?$r['old_local_id']:$r['id'])]=$r;
         $items=$missing=$links=[];
