@@ -17,7 +17,8 @@ assert.deepEqual(config,{
   leadApi:'../preview-lead-disabled.php',
   andromedaApi:null,
   andromedaQuoteApi:null,
-  anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php'
+  anexApi:'/_preview/search3-anex-candidate/api-anex-search3-preview.php',
+  localTvCatalogEnabled:false
 });
 assert.doesNotMatch(source,/https?:\/\//i);
 assert.ok(config.leadApi.endsWith('/preview-lead-disabled.php'),'prototype lead transport must stay disabled');
