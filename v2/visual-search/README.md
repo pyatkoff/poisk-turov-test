@@ -8,7 +8,9 @@ open. Pinch zoom is excluded; short viewports have no 180px floor. Focused text
 controls reveal through modal-body scroll only, without replacing/refocusing the
 field or scrolling ancestors. Focus changes, restored modal snapshots, body resize
 from enlarged text/footer, dismissal and late events consume the same owner.
-Focused mobile fields remain fully revealed with the keyboard dismissed too.
+Focused fields remain fully revealed after text/footer enlargement at mobile,
+tablet and desktop widths, with the keyboard dismissed too. Keyboard positioning
+remains mobile-only; tablet/desktop layout is unchanged.
 The filter-drawer branch is unchanged.
 The existing modal-position rule accounts for safe-area-top within the same bound.
 No new layout concept, card/profile redesign, renderer or style owner is included.

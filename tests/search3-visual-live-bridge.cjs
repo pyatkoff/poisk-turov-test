@@ -20,14 +20,14 @@ function modalViewportRegressions(){
   win.eval('const $=selector=>document.querySelector(selector);let modalType="selected-tour";'+owner);
   const settle=()=>{for(const callback of frames.splice(0))callback();},sync=()=>{viewport.dispatchEvent(new win.Event('resize'));settle();},unchanged=()=>{assert.strictEqual(doc.activeElement,phone);assert.strictEqual(doc.querySelector('#phone'),phone);assert.strictEqual(doc.querySelector('#modal-body'),body);assert.equal(phone.value,'1234567890');assert.deepEqual([phone.selectionStart,phone.selectionEnd],[2,5]);assert.equal(ancestorScroll,0,'reveal scrolls only the inner modal body');assert.equal(refocus,0,'viewport changes never replace or refocus the input');};
   sync();assert.equal(modal.classList.contains('viewport-keyboard'),mobile,'the open retained tour remains bounded even without a contact form at '+width);assert.equal(modal.classList.contains('application-keyboard'),mobile&&lead);assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),mobile?'404px':'');
-  if(mobile){const rect=phone.getBoundingClientRect();assert(rect.top>=98&&rect.bottom<=302,'the focused phone is revealed inside the body at '+width);}else assert.equal(body.scrollTop,40);
+  {const rect=phone.getBoundingClientRect();assert(rect.top>=98&&rect.bottom<=302,'the focused phone is revealed inside the body at '+width);}
   unchanged();const scroll=body.scrollTop;sync();assert.equal(body.scrollTop,scroll,'repeated viewport events are idempotent');
   if(mobile){body.scrollTop=40;phone.dispatchEvent(new win.FocusEvent('focusin',{bubbles:true}));settle();assert(phone.getBoundingClientRect().bottom<=302,'changing the focused field consumes the existing viewport without another resize');}
   viewport.scale=1.25;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false,'pinch shrink is excluded from keyboard bounds');assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),'');unchanged();
   viewport.scale=1;viewport.height=150;sync();assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),mobile?'134px':'','short viewport has no overflowing minimum-height floor');
   viewport.height=844;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false);assert.equal(modal.style.getPropertyValue('--modal-viewport-top'),'');unchanged();
   body.scrollTop=40;observers.forEach(observer=>observer.callback([{target:body}]));settle();
-  if(mobile)assert(phone.getBoundingClientRect().bottom<=302,'a focused field is fully revealed after text/footer resize without a keyboard at '+width);else assert.equal(body.scrollTop,40);
+  assert(phone.getBoundingClientRect().bottom<=302,'a focused field is fully revealed after text/footer resize without a keyboard at '+width);
   assert.equal(observers.length,1,'one observer consumes the existing viewport owner');assert.strictEqual(observers[0].target,body);unchanged();
   viewport.height=420;viewport.offsetTop=-25;sync();assert.equal(modal.style.getPropertyValue('--modal-viewport-top'),mobile?'8px':'','negative viewport pan does not move the dialog above the visible area');
   modal.open=false;sync();assert.equal(modal.classList.contains('viewport-keyboard'),false);assert.equal(modal.classList.contains('application-keyboard'),false);assert.equal(modal.style.getPropertyValue('--modal-viewport-height'),'');unchanged();
