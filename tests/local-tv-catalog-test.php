@@ -172,6 +172,18 @@ $c->discover([['id'=>900006]],'user_search',$now);
 $raw=local_card(900006);$raw['name']='Roulette 4*';$json=LocalTvCatalogV1::json($raw);
 $cacheInsert->execute([900006,$json,hash('sha256',$json),$now]);
 $c->setManualFields(900006,['name'=>'Проверенный ручной отель'],1);
+$genericDiscovery=['id'=>900007,'name'=>'Roulette 3*','country'=>['id'=>4,'name'=>'Тестовая страна'],
+    'region'=>['id'=>40,'name'=>'Тестовый регион'],'category'=>3,'images'=>['https://fixture.example.test/not-a-concrete-hotel.jpg']];
+local_same($c->discover([$genericDiscovery],'user_search',$now),1,'Observed generic product keeps its exact TV ID');
+$genericObserved=$c->read([900007])['items'][0];
+local_same($genericObserved['contentState'],'generic','Observed generic product is completed without a supplier request');
+local_same($genericObserved['description'],'Это предложение с размещением без заранее определённого отеля. Конкретный отель назначает туроператор после подтверждения бронирования. Ориентируйтесь только на параметры в предложении — страну, регион и категорию; название, адрес, фотографии и набор услуг будут известны позже.','Owner-authored generic explanation is public');
+local_same($genericObserved['images'],[],'Generic observation never exposes hotel-shaped source photos');
+local_same($genericObserved['primaryImage'],null,'Existing UI supplies the neutral no-photo cover');
+local_same($genericObserved['detailsAvailable'],false,'Generic product never claims concrete hotel details');
+$genericRevision=$genericObserved['revision'];
+local_same($c->discover([$genericDiscovery],'scheduled_monitor',$now),0,'Repeated generic observation creates no duplicate');
+local_same($c->read([900007])['items'][0]['revision'],$genericRevision,'Repeated generic observation does not inflate revision');
 $pdo->exec("UPDATE catalog_hotel_details SET status='not_found' WHERE hotel_id=900005");
 $c->setManualFields(900001,['description'=>'Ручное описание сохраняется'],1);
 $protectedBefore=LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
@@ -193,9 +205,16 @@ if($native){
 }else{$c->backfillObserved();local_same($c->dailyRetained(3000)['httpRequests'],0,'SQLite retained method makes zero HTTP attempts');}
 $retained=$c->read([900001])['items'][0];local_same(count($retained['images']),126,'Retained daily keeps full gallery');
 local_same($retained['description'],'Ручное описание сохраняется','Retained daily preserves manual content');
-local_same($c->read([900002])['missingIds'],[900002],'Pristine generic product is excluded from the hotel reader');
-local_same($pdo->query('SELECT state FROM local_tv_hotels WHERE id=900002')->fetchColumn(),'excluded','Pristine generic product is terminally classified');
-local_same($c->counts()['excludedCount'],1,'Excluded non-hotel product is counted separately');
+$retainedGeneric=$c->read([900002])['items'][0];
+local_same($retainedGeneric['contentState'],'generic','Retained generic product remains in the catalogue');
+local_same($retainedGeneric['name'],'Fortuna 5*','Exact supplier product name is retained');
+local_same($retainedGeneric['images'],[],'Retained generic source photos cannot masquerade as a concrete hotel');
+local_same($retainedGeneric['hotelInformation'],[],'Retained generic source facilities cannot become product promises');
+local_same($retainedGeneric['detailsAvailable'],false,'Retained generic source is provenance, not concrete hotel details');
+local_need(in_array('description',$retainedGeneric['manualFields'],true)&&in_array('images',$retainedGeneric['manualFields'],true),'Owner product fields are explicit and protected');
+local_same($pdo->query('SELECT state FROM local_tv_hotels WHERE id=900002')->fetchColumn(),'generic','Retained generic task reaches terminal product state');
+local_same($c->counts()['genericCount'],2,'Generic products are counted inside ready catalogue coverage');
+local_same($c->counts()['excludedCount'],0,'Genuine observed products are not excluded');
 foreach([900003,900004,900005]as $id)local_same($c->read([$id])['items'][0]['contentState'],'pending','Invalid or absent retained row remains repairable');
 local_same($c->read([900006])['items'][0]['contentState'],'pending','Manual hotel evidence blocks automatic generic exclusion');
 local_same(LocalTvCatalogV1::json([$pdo->query('SELECT * FROM anytour_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),
@@ -206,7 +225,17 @@ $beforeDenied=LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels 
 local_need($runCli(1)[0]!==0,'Unadmitted LOCAL supplier budget fails closed');
 local_same(LocalTvCatalogV1::json($pdo->query('SELECT * FROM local_tv_hotels ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)),$beforeDenied,'Refused LOCAL acquisition changes no data');
 $retainedRepeat=$c->dailyRetained(3000);local_need(!isset($retainedRepeat['skipped'][900001]),'Successful retained source is not replayed');
-local_need(!isset($retainedRepeat['skipped'][900002])&&!isset($retainedRepeat['excluded'][900002]),'Excluded generic product is not selected again');
+local_need(!isset($retainedRepeat['skipped'][900002])&&!isset($retainedRepeat['genericProducts'][900002]),'Completed generic product is not selected again');
+
+// A generic response discovered without retained content is one completed product card, never a daily retry loop.
+$c->discover([['id'=>910001]],'user_search','2026-01-01 00:00:00');$genericFetchCalls=[];
+$genericDaily=$c->daily(static function(int $id)use(&$genericFetchCalls){
+    $genericFetchCalls[]=$id;$card=local_card($id);$card['name']='Fortuna 4*';return $card;
+},1,1,'2026-10-14 03:35:00');
+local_same($genericFetchCalls,[910001],'Oldest unfinished generic product is fetched once');
+local_same($genericDaily['genericProducts'],[910001=>'generic_accommodation_product'],'Fresh generic response creates an explicit product result');
+local_same($genericDaily['fetchedSource'],0,'Generic response is not reported as a concrete hotel source card');
+local_same($c->read([910001])['items'][0]['contentState'],'generic','Fresh generic product is terminal after one response');
 
 // Additional actual DB/API snapshots match the fictional LIVE fixture's old501 -> TV101.
 if(getenv('LOCAL_TV_TEST_EXPORT')){
@@ -236,6 +265,8 @@ try {
     };
     [$status,$body,$headers]=$request('tourvisorHotelIds[]=700001');local_same($status,200,'Real content HTTP read succeeds');
     local_same($body['items'][0],$c->read([700001])['items'][0],'SQL and API projection parity');
+    [$status,$genericBody]=$request('tourvisorHotelIds[]=900002');local_same($status,200,'Generic product HTTP read succeeds');
+    local_same($genericBody['items'][0],$retainedGeneric,'Generic product SQL and API projection parity');
     local_need(str_contains($headers,'no-store'),'Reopening must reread current content without paid search');
     local_same($request('oldLocalHotelIds[]=50')[1]['items'][0]['id'],700001,'Actual API resolves old ID explicitly');
     local_same($request('tourvisorHotelIds[]=50')[1]['missingIds'],[50],'TV namespace never guesses old ID');

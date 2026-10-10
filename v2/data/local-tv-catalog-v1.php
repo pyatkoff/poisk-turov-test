@@ -7,6 +7,9 @@ final class LocalTvCatalogV1
 {
     public const SOURCE = 'anytour-local-tv-catalog-v1';
     public const READ_LIMIT = 100;
+    private const GENERIC_DESCRIPTION = 'Это предложение с размещением без заранее определённого отеля. Конкретный отель назначает туроператор после подтверждения бронирования. Ориентируйтесь только на параметры в предложении — страну, регион и категорию; название, адрес, фотографии и набор услуг будут известны позже.';
+    private const GENERIC_ABSENT = ['description','primaryImage','images','coordinates','address','place',
+        'hotelInformation.infrastructure','hotelInformation.services','hotelInformation.meals','hotelInformation.roomTypes'];
     private bool $mysql;
 
     public function __construct(private PDO $pdo)
@@ -119,6 +122,32 @@ final class LocalTvCatalogV1
         return $out;
     }
 
+    /** A supplier product row identifies a bookable format, not a concrete hotel. */
+    private static function genericContent(array $payload, int $expectedId): array
+    {
+        $hotel = v2_hotel_detail_object($payload);
+        if ($hotel === null || self::tvId($hotel['id'] ?? null) !== $expectedId
+            || !v2_hotel_detail_is_generic_product_name($hotel['name'] ?? null)) {
+            throw new DomainException('source_identity_or_empty_response');
+        }
+        $normalized = v2_hotel_detail_normalized($hotel);
+        $content = ['name'=>self::text($hotel['name'])];
+        foreach (['country','region','subRegion'] as $field) {
+            $place = is_array($hotel[$field] ?? null) ? $hotel[$field] : [];
+            $id = v2_hotel_detail_int($place['id'] ?? null); $name = self::text($place['name'] ?? null);
+            if ($id !== null || $name !== null) $content[$field]=array_filter(['id'=>$id,'name'=>$name],static fn($value)=>$value!==null);
+        }
+        if ($normalized['category'] !== null) $content['category']=$normalized['category'];
+        return $content;
+    }
+
+    private static function genericManual(): array
+    {
+        return ['description'=>self::GENERIC_DESCRIPTION,'primaryImage'=>null,'images'=>[],'photoDetails'=>[],
+            'coordinates'=>null,'address'=>null,'place'=>null,'build'=>null,'repair'=>null,'square'=>null,
+            'hotelInformation'=>[]];
+    }
+
     /** Full decoded response is retained separately, including unknown fields and photo captions. */
     public static function normalize(array $payload, int $expectedId): array
     {
@@ -193,9 +222,11 @@ final class LocalTvCatalogV1
         foreach ($hotels as $hotel) {
             if (!is_array($hotel)) continue;
             try { $id = self::tvId($hotel['id'] ?? null); } catch (InvalidArgumentException) { continue; }
-            if (v2_hotel_detail_is_generic_product_name($hotel['name'] ?? null)) continue;
             $discovery = array_intersect_key($hotel, array_flip(['name','country','region','subRegion','category']));
             $count += $this->register($id, $now, $now, $discovery);
+            if (v2_hotel_detail_is_generic_product_name($hotel['name'] ?? null)) {
+                $this->saveGenericProduct($id,$hotel,null);
+            }
         }
         return $count;
     }
@@ -305,14 +336,45 @@ final class LocalTvCatalogV1
         $q->execute([$retry,mb_substr(str_replace(["\n","\r"],' ',$reason),0,1000),$id]);
     }
 
-    /** A retained generic product is not a hotel, but only pristine rows may be excluded automatically. */
-    private function excludeGeneric(int $id): bool
+    /**
+     * Complete a pristine Fortune/Roulette task as an owner-authored product card.
+     * A retained supplier row may be preserved as private provenance, but its
+     * hotel-shaped photos, address and facilities never become product facts.
+     */
+    private function saveGenericProduct(int $id, array $payload, ?string $fetchedAt): bool
     {
-        $q = $this->pdo->prepare("UPDATE local_tv_hotels SET state='excluded',next_attempt_at=NULL,
-            last_error='generic_accommodation_product' WHERE id=? AND state<>'ready' AND source_json IS NULL
-            AND discovery_json IN ('{}','[]') AND content_json='{}' AND manual_json='{}'");
-        $q->execute([$id]);
-        return $q->rowCount() === 1;
+        $id=self::tvId($id); $content=self::json(self::genericContent($payload,$id));
+        $manual=self::json(self::genericManual()); $raw=$hash=null;
+        if ($fetchedAt !== null) {
+            self::time($fetchedAt); $raw=self::json($payload); $hash=hash('sha256',$raw);
+        }
+        $this->begin(); $committing=false;
+        try {
+            $r=$this->locked($id);
+            if ($r['state']==='generic') { $this->pdo->commit(); return false; }
+            // Never reinterpret a concrete source or any manual/imported content.
+            if ($r['state']==='ready' || $r['source_json']!==null || $r['content_json']!=='{}' || $r['manual_json']!=='{}') {
+                $this->pdo->commit(); return false;
+            }
+            $revision=(int)$r['revision']+1;
+            $q=$this->pdo->prepare("UPDATE local_tv_hotels SET content_json=?,manual_json=?,source_json=?,source_sha256=?,
+                source_fetched_at=?,source_absent_json=?,revision=?,state='generic',next_attempt_at=NULL,last_error=NULL WHERE id=?");
+            $q->execute([$content,$manual,$raw,$hash,$fetchedAt,self::json(self::GENERIC_ABSENT),$revision,$id]);
+            $committing=true; $this->pdo->commit();
+        } catch (Throwable $e) {
+            if ($committing) throw new RuntimeException('generic_commit_unknown',0,$e);
+            if ($this->pdo->inTransaction()) $this->pdo->rollBack();
+            throw $e;
+        }
+        try {
+            $q=$this->pdo->prepare('SELECT content_json,manual_json,source_json,source_sha256,source_fetched_at,source_absent_json,revision,state FROM local_tv_hotels WHERE id=?');
+            $q->execute([$id]); $check=$q->fetch(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) { throw new RuntimeException('generic_post_commit_readback_unknown',0,$e); }
+        if (!$check || $check['content_json']!==$content || $check['manual_json']!==$manual
+            || $check['source_json']!==$raw || $check['source_sha256']!==$hash || $check['source_fetched_at']!==$fetchedAt
+            || $check['source_absent_json']!==self::json(self::GENERIC_ABSENT) || (int)$check['revision']!==$revision
+            || $check['state']!=='generic') throw new RuntimeException('generic_post_commit_readback_unknown');
+        return true;
     }
 
     /** Privileged callers supply the observed revision; an empty manual value is intentional. */
@@ -449,11 +511,11 @@ final class LocalTvCatalogV1
         $q=$this->pdo->query("SELECT l.id,c.raw_json,c.source_hash,c.fetched_at FROM local_tv_hotels l
             JOIN catalog_hotel_details c ON c.hotel_id=l.id
             WHERE c.status='success' AND c.raw_json IS NOT NULL AND c.source_hash IS NOT NULL AND c.fetched_at IS NOT NULL
-                AND l.state<>'excluded'
+                AND l.state NOT IN ('excluded','generic')
                 AND (l.source_fetched_at IS NULL OR c.fetched_at>l.source_fetched_at)
             ORDER BY l.pending_since,l.id LIMIT $limit");
         $pending=$q->fetchAll(PDO::FETCH_ASSOC);
-        $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'httpRequests'=>0,'skipped'=>[],'excluded'=>[]];
+        $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'httpRequests'=>0,'skipped'=>[],'genericProducts'=>[]];
         foreach ($pending as $r) {
             $id=(int)$r['id'];
             if (!hash_equals($r['source_hash'],hash('sha256',$r['raw_json']))) {
@@ -465,8 +527,8 @@ final class LocalTvCatalogV1
                 self::time($r['fetched_at']); self::normalize($payload,$id);
             } catch (Throwable $e) {
                 $reason=$e instanceof DomainException?$e->getMessage():'invalid_retained_card';
-                if ($reason==='generic_accommodation_product' && $this->excludeGeneric($id)) {
-                    $report['excluded'][(string)$id]=$reason;
+                if ($reason==='generic_accommodation_product' && $this->saveGenericProduct($id,$payload,$r['fetched_at'])) {
+                    $report['genericProducts'][(string)$id]=$reason; $report['filled']++; $report['retainedSource']++;
                 } else {
                     $report['skipped'][(string)$id]=$reason;
                 }
@@ -488,24 +550,29 @@ final class LocalTvCatalogV1
         }
         $cutoff=(new DateTimeImmutable($now,new DateTimeZone('UTC')))->modify('-'.$freshDays.' days')->format('Y-m-d H:i:s');
         $q=$this->pdo->prepare("SELECT id,state,source_fetched_at FROM local_tv_hotels
-            WHERE (next_attempt_at IS NULL OR next_attempt_at<=?) AND (state<>'ready' OR source_fetched_at<?)
+            WHERE state<>'generic' AND (next_attempt_at IS NULL OR next_attempt_at<=?) AND (state<>'ready' OR source_fetched_at<?)
             ORDER BY CASE WHEN state='ready' THEN 1 ELSE 0 END,pending_since,id LIMIT $limit");
         $q->execute([$now,$cutoff]); $pending=$q->fetchAll(PDO::FETCH_ASSOC);
         $report=['selected'=>count($pending),'filled'=>0,'retainedSource'=>0,'fetchedSource'=>0,'httpRequests'=>0,
-            'errors'=>[],'sourceAbsent'=>[],'budgetDeferred'=>0];
+            'errors'=>[],'sourceAbsent'=>[],'genericProducts'=>[],'budgetDeferred'=>0];
         $read=$this->pdo->prepare('SELECT raw_json,source_hash,fetched_at FROM catalog_hotel_details WHERE hotel_id=?');
         foreach ($pending as $row) {
             $id=(int)$row['id'];
             try {
-                $read->execute([$id]); $retained=$read->fetch(PDO::FETCH_ASSOC); $payload=null;
+                $read->execute([$id]); $retained=$read->fetch(PDO::FETCH_ASSOC); $payload=null; $generic=false;
                 if ($retained && is_string($retained['raw_json']) && is_string($retained['source_hash'])
                     && hash_equals($retained['source_hash'],hash('sha256',$retained['raw_json']))) {
                     try {
                         $candidate=json_decode($retained['raw_json'],true,512,JSON_THROW_ON_ERROR);
                         if (!is_array($candidate)) throw new DomainException('invalid_retained_card');
-                        self::normalize($candidate,$id); self::time($retained['fetched_at']);
+                        try { self::normalize($candidate,$id); }
+                        catch (DomainException $e) {
+                            if ($e->getMessage()!=='generic_accommodation_product') throw $e;
+                            self::genericContent($candidate,$id); $generic=true;
+                        }
+                        self::time($retained['fetched_at']);
                         if ($row['source_fetched_at']===null || $retained['fetched_at']>$row['source_fetched_at']) $payload=$candidate;
-                    } catch (Throwable) { $payload=null; }
+                    } catch (Throwable) { $payload=null; $generic=false; }
                 }
                 $usingRetained=$payload!==null;
                 if ($usingRetained) { $fetched=$retained['fetched_at']; }
@@ -513,7 +580,18 @@ final class LocalTvCatalogV1
                     if ($report['httpRequests']>=$httpBudget) { $report['budgetDeferred']++; continue; }
                     $report['httpRequests']++; $payload=$fetch($id); $fetched=$now;
                     if (!is_array($payload)) throw new DomainException('invalid_source_response');
-                    self::normalize($payload,$id); $report['fetchedSource']++;
+                    try { self::normalize($payload,$id); }
+                    catch (DomainException $e) {
+                        if ($e->getMessage()!=='generic_accommodation_product') throw $e;
+                        self::genericContent($payload,$id); $generic=true;
+                    }
+                    if (!$generic) $report['fetchedSource']++;
+                }
+                if ($generic) {
+                    if (!$this->saveGenericProduct($id,$payload,$fetched)) throw new DomainException('generic_product_protected');
+                    $report['filled']++; $report['genericProducts'][(string)$id]='generic_accommodation_product';
+                    if ($usingRetained) $report['retainedSource']++;
+                    continue;
                 }
                 $result=$this->saveSource($id,$payload,$fetched);
                 $report['filled']++;
@@ -533,8 +611,9 @@ final class LocalTvCatalogV1
     {
         $r=$this->pdo->query("SELECT COUNT(*) AS registered,
             SUM(CASE WHEN state<>'excluded' THEN 1 ELSE 0 END) AS discovered,
-            SUM(CASE WHEN state='ready' THEN 1 ELSE 0 END) AS ready,
-            SUM(CASE WHEN state NOT IN ('ready','excluded') THEN 1 ELSE 0 END) AS unfinished,
+            SUM(CASE WHEN state IN ('ready','generic') THEN 1 ELSE 0 END) AS ready,
+            SUM(CASE WHEN state NOT IN ('ready','generic','excluded') THEN 1 ELSE 0 END) AS unfinished,
+            SUM(CASE WHEN state='generic' THEN 1 ELSE 0 END) AS genericCount,
             SUM(CASE WHEN state='excluded' THEN 1 ELSE 0 END) AS excludedCount FROM local_tv_hotels")->fetch(PDO::FETCH_ASSOC);
         return array_map('intval',$r);
     }
@@ -564,7 +643,8 @@ final class LocalTvCatalogV1
             $primary=v2_hotel_detail_https_url($profile['primaryImage']??null);
             $profile['primaryImage']=$primary!==null&&!v2_hotel_detail_is_regional_placeholder_url($primary)?$primary:($profile['images'][0]??null);
             $profile += ['id'=>(int)$r['id'],'catalog'=>'local-tv','revision'=>(int)$r['revision'],
-                'detailsAvailable'=>$r['source_json']!==null,'detailsFetchedAt'=>$r['source_fetched_at'],
+                'detailsAvailable'=>$r['state']==='ready' && $r['source_json']!==null,
+                'detailsFetchedAt'=>$r['state']==='ready'?$r['source_fetched_at']:null,
                 'sourceAbsent'=>json_decode($r['source_absent_json'],true,512,JSON_THROW_ON_ERROR),
                 'manualFields'=>array_values(array_filter(array_keys($manual),static fn($field)=>array_key_exists(explode('.',$field)[0],$profile))),
                 'contentState'=>$r['state']];
