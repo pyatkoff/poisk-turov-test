@@ -874,7 +874,7 @@ deployment `appgdep_6aca1e836c2c8191a2d6843d6c5692b1` SUCCEEDED
 storage SHA256 `a3eccac6826e7567ac5f267bb6563e5fe504614738a679fa896a9dc5df609a0a`.
 Исходный stock-helper gzip SHA256 `52faccdcec80ae231f46b24afef5c2a6d5e0a5a967b14355d40f98ba7a598caf`
 — отдельная byte provenance, не равенство нормализованному native tar.
-Actual footer44/v167. Публичный проверенный маршрут:
+Actual footer44/v167. Acceptance/evidence-only source `4c2700072446532acb0012a33a6755b7f0f95b9e`: `dist` byte-identical установленномуa77, clean checkout; дополнительного save/deploy для evidence не было. Публичный проверенный маршрут:
 https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=360
 
 Предыдущая сопоставимая оценка: Site122/package43/v166/source3012d12,
