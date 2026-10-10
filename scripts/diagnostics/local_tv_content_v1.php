@@ -15,7 +15,7 @@ final class LocalTvContentV1
             $row=$db->prepare('SELECT * FROM local_tv_hotels WHERE id=?');
             $edge=$db->prepare("SELECT 1 FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND CAST(external_key AS UNSIGNED)=? LIMIT 1");
             $cache=$db->prepare('SELECT * FROM catalog_hotel_details WHERE hotel_id=?');
-            $eligible=[];$excluded=[];$statuses=[];$seen=[];
+            $eligible=[];$excluded=[];$statuses=[];$seen=[];$cacheHashes=[];
             $retryCutoff=(new DateTimeImmutable($now,new DateTimeZone('UTC')))->modify('-1 day')->format('Y-m-d H:i:s');
             foreach($scope['pending'] as $p){
                 $id=$p['id'];LocalTvSchemaV1::need(is_int($id) && $id>0 && !isset($seen[$id]),'content_scope_ids');$seen[$id]=true;
@@ -30,10 +30,10 @@ final class LocalTvContentV1
                 elseif($status==='not_found' && is_string($d['fetched_at']??null) && $r['last_seen_at']<=$d['fetched_at'])$reason='known_not_found_without_new_observation';
                 elseif($status==='failure' && is_string($d['fetched_at']??null) && $d['fetched_at']>$retryCutoff)$reason='recent_failure';
                 if($reason!==null){$excluded[$reason][]=$id;continue;}
-                $eligible[]=$r;LocalTvSchemaV1::need(count($eligible)<=self::CAP,'content_review_bound');
+                $eligible[]=$r;$cacheHashes[$id]=hash('sha256',LocalTvCatalogV1::json($d?:null));LocalTvSchemaV1::need(count($eligible)<=self::CAP,'content_review_bound');
             }
             ksort($excluded);ksort($statuses);
-            $plan=['eligible'=>$eligible,'excluded'=>$excluded,'source_status_ids'=>$statuses,'database_sha256'=>$inventory['schema']['database_sha256'],'protected_snapshots'=>$inventory['images'],'before'=>$read];
+            $plan=['eligible'=>$eligible,'cache_sha256'=>$cacheHashes,'excluded'=>$excluded,'source_status_ids'=>$statuses,'database_sha256'=>$inventory['schema']['database_sha256'],'protected_snapshots'=>$inventory['images'],'before'=>$read];
             LocalTvSchemaV1::save($directory,'content-plan.json',$plan);$db->commit();return $plan;
         }finally{if($db->inTransaction())$db->rollBack();}
     }
@@ -57,10 +57,12 @@ final class LocalTvContentV1
             LocalTvSchemaV1::save($directory,'content-before.json',$plan);
             $check=$db->prepare('SELECT * FROM local_tv_hotels WHERE id=?');
             $edge=$db->prepare("SELECT 1 FROM anytour_hotel_sources WHERE namespace='legacy_catalog' AND CAST(external_key AS UNSIGNED)=? LIMIT 1");
+            $cache=$db->prepare('SELECT * FROM catalog_hotel_details WHERE hotel_id=?');
             $c=new LocalTvCatalogV1($db);$consecutive=0;
             foreach($plan['eligible'] as $before){
                 $id=(int)$before['id'];$check->execute([$id]);LocalTvSchemaV1::need($check->fetch(PDO::FETCH_ASSOC)===$before,'content_target_changed');
                 $edge->execute([$id]);LocalTvSchemaV1::need(!$edge->fetchColumn(),'content_legacy_edge_appeared');
+                $cache->execute([$id]);LocalTvSchemaV1::need(hash('sha256',LocalTvCatalogV1::json($cache->fetch(PDO::FETCH_ASSOC)?:null))===$plan['cache_sha256'][$id],'content_cache_changed');
                 LocalTvSchemaV1::save($directory,'hotel-'.$id.'-started.json',['id'=>$id,'revision'=>(int)$before['revision'],'max_attempts'=>1]);
                 $started=true;$result['attempted']++;
                 try{
@@ -119,6 +121,7 @@ if(!defined('LOCAL_TV_CONTENT_LIBRARY_ONLY')){
         }else{$receipt['readback']=LocalTvSeedV1::readback($db);$receipt['state']='verified_read_only';}
         LocalTvSchemaV1::need(hash_file('sha256',$root.'/config.php')===$config,'content_config_drift');$exit=0;
     }catch(Throwable $e){$receipt['state']=$e->getMessage()==='content_unknown_no_replay'?'unknown_no_replay':'blocked';$receipt['error_class']=get_class($e);$receipt['error_sha256']=hash('sha256',$e->getMessage());
+        if($receipt['state']==='unknown_no_replay')$receipt['database_writes']=null;
         if(function_exists('v2_data_tv_http_attempt_count'))$receipt['supplier_calls']=v2_data_tv_http_attempt_count();}
     try{LocalTvSchemaV1::save($dir,'local-tv-content-receipt.json',$receipt);}catch(Throwable){$exit=1;}
     echo LocalTvSchemaV1::json($receipt)."\n";exit($exit);

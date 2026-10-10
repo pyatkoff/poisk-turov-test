@@ -14,6 +14,9 @@ and failures less than one day old. Remaining exact IDs (maximum200), all before
 current catalog/link and protected source fingerprints are recorded privately.
 The public plan includes exact eligible/excluded/status IDs. No old recovery manifest,
 SOURCE_MISSING1920+1868, phase3/D1 execution or legacy profile writer is included.
+The frontier is bound to its actual source4a5d843; a subsequent current release may
+carry it only through the same four exact reviewed backend file hashes. This accommodates
+the unrelated audit-only release1935399 without changing data or code provenance.
 
 Fill requires the current fresh plan, same source/config/catalog/protected snapshots
 and shared LOCAL lock. The reviewed Tourvisor client uses the same /hotels/{id}, auth

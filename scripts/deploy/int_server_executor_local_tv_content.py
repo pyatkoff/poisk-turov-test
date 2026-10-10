@@ -72,7 +72,7 @@ def run_local_tv_content(stage):
     if not safe_file(parent/'result.json',65536) or not safe_file(parent/scope_name,16*1024*1024):fail('content_parent_missing')
     outer=safe_json(parent/'result.json',65536);previous=outer.get(key,{});stamp=previous.get('observed_at')
     if (outer.get('status')!='complete' or previous.get('state')!=expected_state or previous.get('action')!=parent_action
-            or previous.get('source_sha')!=source or type(stamp) is not int
+            or previous.get('source_sha')!=('4a5d84348f6fcce0a39c288ebe7f3f72c4e790cd' if action=='plan' else source) or type(stamp) is not int
             or (action!='readback' and not 0<=int(time.time())-stamp<=(7200 if action=='plan' else 1800))):fail('content_parent_contract')
     expected=previous.get('frontier',{}).get(hash_key) if action=='plan' else previous.get(hash_key)
     config=previous.get('config_sha256')
@@ -85,6 +85,8 @@ def run_local_tv_content(stage):
         str(stage/'scripts/diagnostics/local_tv_content_v1.php'),action],cwd=project,env=env,capture_output=True,text=True,timeout=900)
     if not safe_file(op/'local-tv-content-receipt.json',65536):fail('content_terminal_missing_no_replay')
     data=safe_json(op/'local-tv-content-receipt.json',65536);result['local_tv_content']=data
+    if data.get('state')=='unknown_no_replay':
+        result['database_writes']=None;result['supplier_calls']=data.get('supplier_calls');fail('content_unknown_no_replay')
     allowed={'schema_version','operation_id','source_sha','control_source_sha','action','state','supplier_calls','old_profile_writes','mapping_writes','schema_writes',
         'database_writes','observed_at','config_sha256','plan','plan_sha256','result','readback','error_class','error_sha256'}
     if (set(data)-allowed or data.get('operation_id')!=operation or data.get('source_sha')!=source

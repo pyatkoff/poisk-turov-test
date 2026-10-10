@@ -41,6 +41,7 @@ class ContentControl(unittest.TestCase):
         c=self.wrapper().core;cmd=c.parse_command(f'{c.PREFIX}{"a"*40} {m.MODE} {next(iter(m.OPERATIONS))}');m.activate(c,cmd);ast.parse(c.REMOTE)
         self.assertIn("if op.exists() or op.is_symlink(): fail('operation_exists_no_replay')",c.REMOTE)
         self.assertIn('content_parent_changed',c.REMOTE);self.assertIn('content_independent_readback',c.REMOTE)
+        self.assertIn("result['database_writes']=None",c.REMOTE)
         self.assertIn("mode not in ('local-tv-content-v1','reconcile',",c.REMOTE)
     def test_current_release_and_owner_are_required(self):
         c=self.wrapper().core;sha='a'*40;control='b'*40;body=f'{c.PREFIX}{sha} {m.MODE} {next(iter(m.OPERATIONS))}'
@@ -79,6 +80,7 @@ try{
     $calls=[];$result=null;$error=null;
     if($scenario==='target_drift')$c->discover([['id'=>777]],'user_search','2026-10-10 12:00:00');
     if($scenario==='edge_drift')$db->exec("INSERT INTO anytour_hotel_sources VALUES(51,'legacy_catalog','105','manual','{}','x','2026-10-01 00:00:00','2026-10-01 00:00:00')");
+    if($scenario==='cache_drift')$db->exec("UPDATE catalog_hotel_details SET status='not_found' WHERE hotel_id=106");
     if($scenario==='lost_ack')$db->loseAck=true;
     if($scenario!=='plan'){
         mkdir($dir.'/fill',0700);
@@ -107,6 +109,8 @@ try{
     def test_target_and_old_edge_drift_stop_before_provider_calls(self):
         for scenario in ('target_drift','edge_drift'):
             with self.subTest(scenario=scenario):r=self.run_native(scenario);self.assertEqual(r['calls'],[]);self.assertIsNotNone(r['error'])
+    def test_changed_cache_status_stops_without_requesting_that_hotel(self):
+        r=self.run_native('cache_drift');self.assertEqual(r['calls'],[105]);self.assertEqual(r['error'],'content_unknown_no_replay');self.assertEqual(r['read']['ready'],1)
     def test_lost_real_commit_ack_is_unknown_with_effects_preserved_and_no_retry(self):
         r=self.run_native('lost_ack');self.assertEqual(r['error'],'content_unknown_no_replay');self.assertEqual(r['calls'],[105]);self.assertEqual(r['read']['ready'],1);self.assertTrue(r['old_unchanged'])
 
