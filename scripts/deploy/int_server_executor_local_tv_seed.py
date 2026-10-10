@@ -13,6 +13,7 @@ OPERATIONS = {
     'int-andromeda-local-tv-seed-inventory-20261010-v1': 'inventory',
     'int-andromeda-local-tv-seed-apply-20261010-v1': 'apply',
     'int-andromeda-local-tv-seed-readback-20261010-v1': 'readback',
+    'int-andromeda-local-tv-frontier-20261010-v1': 'frontier',
 }
 SOURCE_HASHES = {
     'v2/data/db-v1.php': 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4',
@@ -73,6 +74,7 @@ def run_local_tv_seed(stage):
         'int-andromeda-local-tv-seed-inventory-20261010-v1':'inventory',
         'int-andromeda-local-tv-seed-apply-20261010-v1':'apply',
         'int-andromeda-local-tv-seed-readback-20261010-v1':'readback',
+        'int-andromeda-local-tv-frontier-20261010-v1':'frontier',
     }
     action=operations.get(operation)
     if (action is None or payload.get('action')!=action
@@ -117,7 +119,7 @@ def run_local_tv_seed(stage):
     allowed={'schema_version','operation_id','source_sha','control_source_sha','action','supplier_calls',
              'old_profile_writes','mapping_writes','schema_writes','state','observed_at','config_sha256',
              'inventory','plan_sha256','registered','filled','links_transferred','link_issues',
-             'protected_sources_unchanged','readback','error_class','error_sha256'}
+             'protected_sources_unchanged','readback','frontier','capture_runtime','error_class','error_sha256'}
     if (set(data)-allowed or data.get('schema_version')!=1 or data.get('operation_id')!=operation
             or data.get('source_sha')!=source or data.get('control_source_sha')!=payload['local_tv_seed_control_sha']
             or data.get('action')!=action
@@ -125,12 +127,16 @@ def run_local_tv_seed(stage):
                    for k in ('supplier_calls','old_profile_writes','mapping_writes','schema_writes'))):
         fail('local_tv_seed_receipt_contract')
     result['local_tv_seed']=data
-    state={'inventory':'inventoried_read_only','apply':'initialized_retained','readback':'verified_read_only'}[action]
+    state={'inventory':'inventoried_read_only','apply':'initialized_retained','readback':'verified_read_only','frontier':'frontier_read_only'}[action]
     if run.returncode!=0 or run.stderr.strip() or data.get('state')!=state:
         fail('local_tv_seed_nonzero_no_replay')
     try: emitted=json.loads(run.stdout.strip())
     except Exception: fail('local_tv_seed_stdout')
     if emitted!=data: fail('local_tv_seed_stdout')
+    if action=='frontier':
+        if (not safe_file(op/'frontier-scope.json',16*1024*1024)
+                or hashlib.sha256((op/'frontier-scope.json').read_bytes()).hexdigest()!=data.get('frontier',{}).get('scope_sha256')):
+            fail('local_tv_frontier_scope_readback')
     if action=='apply':
         if (data.get('protected_sources_unchanged') is not True
                 or not safe_file(op/'seed-before.json',65536) or not safe_file(op/'seed-after.json',65536)

@@ -89,8 +89,18 @@ if($dsn!=='mysql:host=127.0.0.1;port=3306;charset=utf8mb4' || getenv('LOCAL_TV_S
 $server=new PDO($dsn,'root','local_tv_schema_test_only',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 $name='local_tv_seed_ci_'.bin2hex(random_bytes(6));$server->exec('CREATE DATABASE `'.$name.'`');
 class LostSeedAck extends PDO{public function commit():bool{$result=parent::commit();throw new RuntimeException('lost_commit_ack');}}
+class FrontierReadOnlyGuard extends PDO{
+    public bool $writeBlocked=false;
+    public function query(string $query,?int $fetchMode=null,mixed ...$args):PDOStatement|false{
+        if($this->inTransaction() && !$this->writeBlocked){
+            try{$this->exec('UPDATE local_tv_hotels SET revision=revision+1');throw new RuntimeException('readonly_guard_failed');}
+            catch(PDOException $e){if(($e->errorInfo[1]??0)!==1792)throw $e;$this->writeBlocked=true;}
+        }
+        return $fetchMode===null?parent::query($query):parent::query($query,$fetchMode,...$args);
+    }
+}
 try{
-    $class=$scenario==='lost_ack'?LostSeedAck::class:PDO::class;
+    $class=$scenario==='lost_ack'?LostSeedAck::class:($scenario==='frontier'?FrontierReadOnlyGuard::class:PDO::class);
     $db=new $class($dsn.';dbname='.$name,'root','local_tv_schema_test_only',[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $db->exec(file_get_contents($argv[2].'/v2/data/migrations/20261010-local-tv-catalog.sql'));
     $db->exec('CREATE TABLE tour_price_observations(hotel_id INT,search_id INT,source VARCHAR(32),observed_at DATETIME)');
@@ -125,12 +135,27 @@ try{
         $apply=$directory.'/apply';mkdir($apply,0700);
         try{$result=LocalTvSeedV1::apply($db,$plan,$apply,'2026-10-10 00:00:00');}catch(Throwable $e){$error=$e->getMessage();}
     }
+    $frontier=null;$scope=null;$writeBlocked=null;
+    if($scenario==='frontier'){
+        mkdir($directory.'/initial',0700);LocalTvSeedV1::apply($db,$plan,$directory.'/initial','2026-10-10 00:00:00');
+        $catalog=new LocalTvCatalogV1($db);
+        $catalog->discover(array_map(static fn($id)=>['id'=>$id],range(201,208)),'user_search','2026-10-10 00:00:00');
+        $db->exec("INSERT INTO tour_price_observations VALUES(105,8,'user_search','2026-10-10 00:00:00')");
+        $cards=[201=>['id'=>201,'name'=>'FORTUNA 4*'],202=>['id'=>999,'name'=>'Other identity'],203=>[],204=>'broken_json',205=>null,206=>true,
+            207=>['id'=>207,'name'=>'Valid without time'],208=>['id'=>208,'name'=>'Valid retained card']];
+        foreach($cards as $id=>$card){$raw=$id===204?$card:($card===null?null:json_encode($card));
+            $db->prepare('INSERT INTO catalog_hotel_details VALUES(?,?,?,?)')->execute([$id,$raw,$raw===null?null:hash('sha256',$raw),$id===207?null:'2026-10-09 00:00:00']);}
+        mkdir($directory.'/frontier',0700);$beforeFrontier=LocalTvSeedV1::readback($db);
+        $frontier=LocalTvSeedV1::frontier($db,$directory.'/frontier');$writeBlocked=$db->writeBlocked;
+        $scope=json_decode(file_get_contents($directory.'/frontier/frontier-scope.json'),true,512,JSON_THROW_ON_ERROR);
+        if($beforeFrontier!==LocalTvSeedV1::readback($db))throw new RuntimeException('frontier_wrote_catalog');
+    }
     $read=LocalTvSeedV1::readback($db);$dto=(new LocalTvCatalogV1($db))->read([50],true);
     $after=LocalTvSeedV1::inventory($db);
     if($other)$other->query("SELECT RELEASE_LOCK('anytour-local-tv-daily')");
     echo LocalTvSchemaV1::json(['summary'=>$summary,'before'=>$before,'error'=>$error,'result'=>$result,'read'=>$read,'dto'=>$dto,
         'old_unchanged'=>$after['images']['profiles']===$plan['images']['profiles'] && $after['images']['sources']===$plan['images']['sources'],
-        'raw_snapshot_sha'=>hash_file('sha256',$directory.'/retained.jsonl')]);
+        'raw_snapshot_sha'=>hash_file('sha256',$directory.'/retained.jsonl'),'frontier'=>$frontier,'scope'=>$scope,'write_blocked'=>$writeBlocked]);
 }finally{$server->exec('DROP DATABASE `'.$name.'`');}
 '''
         with tempfile.TemporaryDirectory() as directory:
@@ -166,6 +191,18 @@ try{
             with self.subTest(scenario=scenario):
                 r=self.run_native(scenario);self.assertIsNone(r['result']);self.assertEqual(r['read']['ready'],0)
                 self.assertEqual(r['read']['discovered'],1 if scenario=='nonempty' else 0)
+
+    def test_actual_frontier_classifies_missing_corrupt_generic_foreign_and_valid_sources_without_writes(self):
+        r=self.run_native('frontier');f=r['frontier'];self.assertTrue(r['write_blocked'])
+        self.assertEqual(f['readback']['discovered'],12);self.assertEqual(f['readback']['unfinished'],11)
+        self.assertEqual(f['unregistered'],1);self.assertEqual(f['unregistered_ids'],[105])
+        self.assertEqual(f['retained_reason_ids'],{
+            'cache_missing':[102,104],'generic_accommodation_product':[201],'integrity_invalid':[103],
+            'json_invalid':[204],'raw_missing':[205],'retained_valid_pending':[208],
+            'shape_invalid':[206],'source_identity_or_empty_response':[202,203],'timestamp_invalid':[207]})
+        self.assertEqual(f['pending_with_old_link'],0);self.assertTrue(r['old_unchanged'])
+        self.assertEqual(len(r['scope']['pending']),11)
+        self.assertNotIn('raw_json',json.dumps(f));self.assertNotIn('source_json',json.dumps(f))
 
 
 if __name__=='__main__':unittest.main()
