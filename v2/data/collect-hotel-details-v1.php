@@ -51,12 +51,13 @@ function hotel_details_source_total(PDO $pdo, string $scope): int
 function hotel_details_demand_source_sql(): string
 {
     return "WITH source_rows AS (
-        SELECT hotel_id,0 AS anytour_hotel_id,0 AS user_search_count,COUNT(*) AS observation_count,
+        SELECT hotel_id,0 AS anytour_hotel_id,SUM(is_user_search) AS user_search_count,COUNT(*) AS observation_count,
                MAX(seen_at) AS last_seen_at,NULL AS canonical_name,0 AS identity_only
         FROM (
-            SELECT hotel_id,observed_at AS seen_at FROM tour_price_observations WHERE hotel_id>0
+            SELECT hotel_id,observed_at AS seen_at,CASE WHEN source='user_search' THEN 1 ELSE 0 END AS is_user_search
+            FROM tour_price_observations WHERE hotel_id>0
             UNION ALL
-            SELECT hotel_id,fetched_at AS seen_at FROM hot_tours_current WHERE hotel_id>0
+            SELECT hotel_id,fetched_at AS seen_at,0 AS is_user_search FROM hot_tours_current WHERE hotel_id>0
         ) u
         GROUP BY hotel_id
     )";
