@@ -1480,7 +1480,8 @@ Exact native source/archive/version/deployment readback и actual footer48/v171
 совпали. Save/deploy один раз, project/history/public audience сохранены.
 https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/mobile-preview?width=390
 PROTOTYPE_PENDING_FULL_OWNER_ACCEPTANCE_BEFORE_NEXT.
-QA-only retained evidence push не меняет dist/hosting и не требует второй публикации.
+QA-only pushed source `adbb0d2e8ffe35d09d0949ae7bfe4190b6bbf5dc` changes only
+qa/quality48/**; dist/hosting byte-identical to published8a599958, no second save/deploy.
 
 **Фиксированная оценка и comparable baseline.** Existing SEARCH-QUALITY-1:
 12historical/11required, Compare deferred, пять0/1/1.5/2. N=not_measured, без
