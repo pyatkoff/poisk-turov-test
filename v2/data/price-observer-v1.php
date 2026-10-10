@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db-v1.php';
+require_once __DIR__ . '/local-tv-catalog-v1.php';
 
 function v2_price_observer_date($value): ?DateTimeImmutable
 {
@@ -82,6 +83,18 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     $observedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
     $pdo = v2_data_db();
+    // Registration is independent of tour-price validity, observation caps and
+    // temporary history retention. Rollout stays opt-in until schema/readback.
+    if (LocalTvCatalogV1::enabled()
+        && empty($context['ci_test']) && empty($context['demo'])
+        && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
+        try {
+            (new LocalTvCatalogV1($pdo))->discover($hotels,$source,$observedAt);
+        } catch (Throwable $e) {
+            // Content storage cannot change search or price-observer semantics.
+            error_log('LOCAL TV discovery failed: '.$e->getMessage());
+        }
+    }
     $stmt = $pdo->prepare("INSERT IGNORE INTO tour_price_observations (
         fingerprint,observed_at,source,search_id,departure_id,country_id,region_id,subregion_id,hotel_id,tour_id,
         departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,

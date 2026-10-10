@@ -7,6 +7,12 @@ on:
       - 'v2/data/migrations/20260916-anytour-canonical-catalog.sql'
       - 'v2/data/hotel-presentation-read-v1.php'
       - 'v2/data/hotel-details-v1.php'
+      - 'v2/data/local-tv-catalog-v1.php'
+      - 'v2/data/local-tv-catalog-read-v1.php'
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/api-v2.php'
+      - 'v2/data/migrations/20261010-local-tv-catalog.sql'
+      - 'tests/local-tv-catalog-test.php'
       - 'scripts/catalog/anytour_catalog_seed.php'
       - 'scripts/catalog/anytour_catalog_preflight.php'
       - 'scripts/catalog/anytour_catalog_backfill_plan.php'
@@ -77,3 +83,11 @@ jobs:
           php tests/anytour_catalog_backfill_mysql_test.php
       - name: Preserve existing safe media normalization
         run: php tests/hotel-details-smoke.php
+      - name: Permanent LOCAL TV catalogue, migration, daily backlog and actual HTTP
+        env:
+          MYSQL_PWD: fixture-only-password
+          LOCAL_TV_TEST_DSN: 'mysql:host=127.0.0.1;port=3306;dbname=local_tv_fixture;charset=utf8mb4'
+          LOCAL_TV_TEST_PASSWORD: fixture-only-password
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -e 'CREATE DATABASE local_tv_fixture CHARACTER SET utf8mb4'
+          php tests/local-tv-catalog-test.php

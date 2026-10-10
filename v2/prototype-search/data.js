@@ -13,6 +13,67 @@
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
+  const localContents=new Map(),localContentReads=new Map(),localContentAttempted=new Set();
+  const localContentQueue=[];let localContentWorkers=0;
+  const contentFields=['name','country','region','subRegion','category','rating','description','primaryImage','images','photoDetails','hotelInformation','descriptionSections','coordinates','address','place','build','repair','square'];
+  function localContentEndpoint(){
+    if(root.V2_CONFIG?.localTvCatalogEnabled!==true)return null;
+    const path=String(root.location?.pathname||'');
+    return path.startsWith('/_preview/search3-next-candidate/')? '/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php'
+      :path.startsWith(local)?local+'data/local-tv-catalog-read-v1.php':null;
+  }
+  async function refreshHotelContent(ids){
+    const target=localContentEndpoint();if(!target)return false;
+    const requested=[...new Set(ids)].filter(id=>Number.isSafeInteger(id)&&id>0).slice(0,100);
+    if(!requested.length)return false;
+    const epoch=generation,key=epoch+':'+requested.join(',');if(localContentReads.has(key))return localContentReads.get(key);
+    const task=(async()=>{
+      const query=new URLSearchParams();requested.forEach(id=>query.append('oldLocalHotelIds[]',String(id)));
+      const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+      try{
+        const response=await fetch(target+'?'+query,{credentials:'same-origin',cache:'no-store',signal:controller.signal,headers:{Accept:'application/json'}});
+        if(!response.ok)return false;
+        const payload=await response.json();if(epoch!==generation||controller.signal.aborted)return false;
+        if(payload?.ok!==true||payload.source!=='anytour-local-tv-catalog-v1'||payload.catalog!=='local-tv'
+          ||!Array.isArray(payload.items)||!Array.isArray(payload.links)||!Array.isArray(payload.missingIds)
+          ||JSON.stringify(payload.requestedIds)!==JSON.stringify(requested))throw new Error('Invalid LOCAL content response');
+        const items=new Map(),seen=new Set(),updates=new Map();
+        for(const item of payload.items){
+          if(item?.catalog!=='local-tv'||!Number.isSafeInteger(item.id)||item.id<1||!Number.isSafeInteger(item.revision)||item.revision<1||items.has(item.id))throw new Error('Invalid LOCAL content identity');
+          items.set(item.id,item);
+        }
+        for(const link of payload.links){
+          if(!requested.includes(link?.oldLocalId)||seen.has(link.oldLocalId)||!items.has(link.tourvisorHotelId))throw new Error('Invalid LOCAL crosswalk');
+          seen.add(link.oldLocalId);const item=items.get(link.tourvisorHotelId),previous=localContents.get(link.oldLocalId);
+          const content=Object.fromEntries(contentFields.filter(field=>Object.hasOwn(item,field)).map(field=>[field,item[field]]));
+          // Absent fields never blank a good compatible card during rollout.
+          for(const field of Object.keys(content))if(!item.manualFields?.includes(field)
+            &&(content[field]===null||content[field]===''||Array.isArray(content[field])&&!content[field].length))delete content[field];
+          content.localHotelId=item.id;content.localContentRevision=item.revision;
+          if(previous&&item.revision===previous.localContentRevision&&JSON.stringify(content)!==JSON.stringify(previous))throw new Error('Conflicting LOCAL content revision');
+          if(!previous||item.revision>=previous.localContentRevision)updates.set(link.oldLocalId,content);
+        }
+        for(const id of payload.missingIds){if(!requested.includes(id)||seen.has(id))throw new Error('Invalid missing LOCAL content');seen.add(id);}
+        if(seen.size!==requested.length||new Set(payload.links.map(link=>link.tourvisorHotelId)).size!==items.size)throw new Error('Incomplete LOCAL response');
+        updates.forEach((content,id)=>localContents.set(id,content));return updates.size>0;
+      }catch{return false;}finally{clearTimeout(timeout);}
+    })();
+    localContentReads.set(key,task);
+    try{return await task;}finally{if(localContentReads.get(key)===task)localContentReads.delete(key);}
+  }
+  function queueHotelContent(rows){
+    if(!localContentEndpoint())return;
+    const ids=rows.map(h=>h.id).filter(id=>!localContentAttempted.has(id));
+    ids.forEach(id=>localContentAttempted.add(id));const epoch=generation;
+    for(let start=0;start<ids.length;start+=100)localContentQueue.push({ids:ids.slice(start,start+100),epoch});
+    pumpHotelContent();
+  }
+  function pumpHotelContent(){
+    while(localContentWorkers<2&&localContentQueue.length){const work=localContentQueue.shift();if(work.epoch!==generation)continue;
+      localContentWorkers++;refreshHotelContent(work.ids).then(changed=>{if(changed&&work.epoch===generation)publish();})
+        .finally(()=>{localContentWorkers--;pumpHotelContent();});
+    }
+  }
   function nativeEndpoint(value,expectedPath){
     if(typeof value!=='string'||typeof expectedPath!=='string'||!root.location)return null;
     try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname===expectedPath&&!url.search&&!url.hash?url:null;}catch{return null;}
@@ -314,6 +375,7 @@
     return [...items.values()];
   }
   function hotel(h, s) {
+    const saved=localContents.get(Number(h.anytourHotelId||h.id));if(saved)h={...h,...saved};
     const own=Number(h.anytourHotelId || h.id), photos=[h.primaryImage,...(Array.isArray(h.images)?h.images:[])].map(image).filter(Boolean);
     const rating=Number(h.rating && typeof h.rating === 'object' ? h.rating.value : h.rating);
     const ratingScale=Number(h.rating && typeof h.rating === 'object' ? h.rating.scale : 5);
@@ -361,9 +423,11 @@
     }
     return {hotels:rows.length,offers,hotelsByProvider,offersByProvider,providerSets};
   }
-  function publish() {if(owner&&context&&activeSearch&&current(activeSearch))notify({type:'results',hotels:project(owner.read(raw,{}),context)});}
+  function publish() {if(owner&&context&&activeSearch&&current(activeSearch)){const rows=project(owner.read(raw,{}),context);notify({type:'results',hotels:rows});queueHotelContent(rows);}}
   function current(run){return activeSearch===run&&run.generation===generation;}
   function stop(){
+    localContentAttempted.clear();
+    localContentQueue.length=0;
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
     activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();
@@ -1841,5 +1905,5 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     if(!['number','string'].includes(typeof value)||String(value).trim()==='')return null;
     const n=Number(value);return Number.isFinite(n)&&n>=0?n:null;
   }
-  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
+  root.AnyTourPrototypeData=Object.freeze({init,countries,regions,search,resumeCached,continueSearch,stop,calendar,calendarPrices,observedCalendar,observationScopeSupported,expandAnexGroup,verifyAnexConcrete,verifyAnexAdditional,verifyAnexFlights,verifyAnexPackage,anexPackagePrices,verifyAndromeda,hasAndromedaQuoteAttempt,quote,flights,leadSession,params,supplierScope,supplierScopeCovered,sameScope,project,amount,date,text,meal,mealPlan,operator,variantPrice,fuel,savedHotels,lookupHotels,restoreHotel,catalog,refreshHotelContent,hotelPresentation:hotel,get searchId(){return searchId;},get currentSupplierScope(){return currentSupplierScope;}});
 })(window);

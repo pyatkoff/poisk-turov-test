@@ -40,7 +40,10 @@ function hotelDetailFacts(h){
   ['Питание в отеле',info.meals],['Номера отеля',info.roomTypes],
   ['Год постройки',h.raw?.build],['Ремонт',h.raw?.repair],['Площадь территории',h.raw?.square]
  ];
- return sections.map(([label,value])=>hotelFactHTML(label,hotelSectionText(value))).join('');
+ const rendered=sections.map(([label,value])=>[label,hotelSectionText(value)]),seen=new Set(rendered.map(([,value])=>value).filter(Boolean));
+ const description=plainHotelText(h.raw?.description);if(description)seen.add(description);
+ for(const section of h.raw?.descriptionSections||[]){const text=plainHotelText(section?.text);if(text&&!seen.has(text)){rendered.push([plainHotelText(section.label)||'Сведения об отеле',text]);seen.add(text);}}
+ return rendered.map(([label,text])=>hotelFactHTML(label,text)).join('');
 }
 function hotelAmenitiesHTML(h){
  const groups=new Map();
