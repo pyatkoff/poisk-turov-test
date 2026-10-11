@@ -25,7 +25,8 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
    assert(boxes.action.x>=boxes.total.right-1||boxes.action.y>=boxes.total.bottom-1,'price and action never overlap at '+mobileWidth);
    assert(boxes.action.x>=boxes.panel.x&&boxes.action.right<=boxes.panel.right&&boxes.action.height>=48,'price action stays inside the card with a 48px target at '+mobileWidth);
    assert(boxes.photo.width>boxes.card.width*.9&&boxes.photo.height>=150,'hotel photo spans the mobile card at '+mobileWidth);
-   assert(boxes.photo.y>=boxes.identity.bottom-1,'hotel identity precedes its large photo at '+mobileWidth);
+   assert(boxes.identity.y>=boxes.photo.bottom-1,'hotel identity follows its large photo at '+mobileWidth);
+   assert(boxes.photo.x>=boxes.card.x-1&&boxes.photo.right<=boxes.card.right+1&&boxes.photo.y>=boxes.card.y-1&&boxes.photo.bottom<=boxes.card.bottom+1,'large photo stays inside the mobile card at '+mobileWidth);
    assert(boxes.arrows.every(b=>b.width>=44&&b.height>=44),'gallery arrows remain touch targets at '+mobileWidth);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
