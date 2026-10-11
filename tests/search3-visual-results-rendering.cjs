@@ -52,7 +52,7 @@ function observe(source,s){
  const search={origin:'Москва<&',country:'4',from:'2026-10-14',to:s.singleDay?'2026-10-14':'2026-10-16',minNights:7,maxNights:10,adults:2,ages:[0,17]};
  const items=Array.from({length:s.count??2},(_,i)=>({hotel:{id:i+1},offers:Array.from({length:i===0?s.total??2:1},(_,j)=>({key:`${i}:${j}`}))}));
  ctx={Math,Number,String,Array,Map,Set,WeakMap,WeakSet,JSON,esc,$:node,$$:selector=>[node(selector+'0'),node(selector+'1')],MutationObserver:class{observe(){}takeRecords(){return[];}},
-   selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
+   selectedOffer:null,sameSelectedTourConditions:()=>false,currentRowEntries:new Map(),currentCommonNote:'',currentInventory:null,currentMinimum:null,dateObj:d=>new Date(d+'T12:00:00Z'),state:{search,filters:{meal:['AI']},selectedDate:s.selected?'2026-10-15':'',sort:s.sort||'price',hasSearched:!s.pristine,onlyFavorites:!!s.favorites},
    searchEditSession:!!s.draft,filterDraft:!!s.filterDraft,modalType:s.modal||'',data:{scenario:'live',preview:true},operators:['tourvisor','anex'],searchResponse:{key:s.stale?'old':'current',phase:s.phase||'complete',pending:true},
   document:{activeElement:node('#active'),body:node('body'),getElementById:id=>{record('getElementById',id);return s.anchorMissing?null:node('#next-anchor');}},
   CSS:{escape:x=>'escaped-'+x},scrollY:400,window:{scrollTo:call('scrollTo')},
@@ -130,6 +130,9 @@ let oldCold=(cold.slice(0,groupStart)+oldGrouping+cold.slice(groupEnd))
  .replace(" const commonNote=groups.length?sharedOfferNote(all):'';\n"," const commonNote='';\n")
  .replace('  const entries=offers.slice(0,limit).map(o=>offerRowEntry(o,commonNote));','  const groupNote=sharedOfferNote(all),entries=offers.slice(0,limit).map(o=>offerRowEntry(o,groupNote));')
  .replace("offerListInventory(offerView.mode!=='compare'||reset)",'offerListInventory()');
+// Exact prepacket 7e076380 row owner is retained only as the historical test oracle.
+const historicalOfferRow="function offerRowEntry(listing,commonNote){\n const chosen=selectedOffer?.key===listing.key&&sameSelectedTourConditions(listing,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===listing.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.pricePending,o=chosen?selectedOffer:listing,actionLabel=chosen?'Смотреть тур':offerActionLabel(o),roomText=roomLabel(o),roomValue=roomText==='Номер уточняется'?'уточняется':roomText;\n return {offerKey:o.key,markup:`<article class=\"offer grouped-offer${chosen?' is-selected':''}\" data-offer-key=\"${esc(o.key)}\" aria-label=\"${esc(o.operator)}, ${esc(roomText)}, ${dateText(o.day)}${chosen?', выбранный тур':''}\"><div class=\"offer-departure\"><strong>${dateText(o.day)} → ${dateText(o.returnDay)} · ${nightsText(o.nights)}</strong>${chosen?'<span class=\"offer-selected\" role=\"status\">✓ Выбран</span>':''}</div><div class=\"offer-conditions\"><p>${icon('food')}${esc(displayMealLabel(o))}</p><p><span class=\"card-room-label\">Номер</span> ${esc(roomValue)}</p></div><div class=\"offer-flight-details\">${flightLabel(o)?`<span class=\"flight-tag ${o.flight}\">${flightLabel(o)}</span>`:''}${operatorBadge(o.operator)}${commonNote?'':`<small>${esc(offerMetaNote(o))}</small>`}</div><div class=\"offer-price\"><strong aria-label=\"${esc(money(o.total))} за всех туристов\">${money(o.total)}</strong><button class=\"primary\" data-action=\"offer\" data-key=\"${esc(o.key)}\" aria-label=\"${actionLabel}: ${esc(roomText)}, ${esc(displayMealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}\">${actionLabel} ${icon('arrow')}</button></div></article>`};\n}\n";
+oldCold=oldCold.replace(section(oldCold,'function offerRowEntry(','function offerMoreEntry('),()=>historicalOfferRow);
 // Reconstruct the prior raw presentation only for the historical oracle.
 // Runtime filtering/grouping still keeps these exact raw values; the current
 // owner changes only the labels shown for the confirmed On Request sentinel.
@@ -140,7 +143,7 @@ oldCold=oldCold
  .replace("mealNames[offerView.meal]||displayMealLabel({meal:offerView.meal})","mealNames[offerView.meal]||offerView.meal")
  .replaceAll('roomLabel(group.offers[0])','group.offers[0].room')
  .replaceAll('displayMealLabel(group.offers[0])','mealLabel(group.offers[0])');
-const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf('function offerRowEntry(',scopeStart);
+const scopeStart=oldCold.indexOf('function offerGroupScope('),scopeEnd=oldCold.indexOf(oldCold.includes('function offerListDisplay(')?'function offerListDisplay(':'function offerRowEntry(',scopeStart);
 if(scopeStart>=0){
  assert(scopeEnd>scopeStart,'current heading scope boundary');
  oldCold=(oldCold.slice(0,scopeStart)+oldCold.slice(scopeEnd))
@@ -192,11 +195,33 @@ for(const [index,row] of expected.entries()){
  trace.splice(range,1,['departureScopeValue'],scenarios[index].selected?['dateText','2026-10-15']:trace[range]);
  const node=row.result.dom.find(([key])=>key==='#compact-details');node[1].textContent=trace[write+1][3];
 }
-assert.deepEqual(actual,expected,'only the authorized compact departure context and bounded pure grouping/note work may change');
+// The final reference changes row composition and adds a visible comparison
+// delta. Compare its factual row contract, while the complete old markup remains
+// independently pinned above. Money formatting is checked in both the exact
+// amount/aria nodes and canonical action HTML instead of its extra delta calls.
+const {JSDOM:OfferObservationDOM}=require('jsdom');
+function factualOfferHTML(html){
+ const dom=new OfferObservationDOM('<div id="offer-observation">'+html+'</div>'),host=dom.window.document.querySelector('#offer-observation'),rows=[];
+ for(const row of host.querySelectorAll('article.grouped-offer')){
+  const oldRoom=row.querySelector('.card-room-label')?.parentElement.textContent.replace(/^Номер\s*/,''),room=row.querySelector('.offer-room-name')?.textContent??oldRoom;
+  const stay=row.querySelector('.offer-departure > span:not(.offer-selected)')?.textContent??row.querySelector('.offer-departure > strong')?.textContent;
+  rows.push({key:row.dataset.offerKey,className:row.className,aria:row.getAttribute('aria-label'),room,stay,meal:row.querySelector('.offer-conditions p')?.innerHTML,flight:row.querySelector('.offer-flight-details')?.innerHTML,total:row.querySelector('.offer-price > strong')?.outerHTML,action:row.querySelector('.offer-price > button')?.outerHTML,selected:row.querySelector('.offer-selected')?.outerHTML||''});row.remove();
+ }
+ const more=[...host.querySelectorAll('.group-more')].map(button=>{const html=button.outerHTML;button.remove();return html;});
+ const remaining=host.innerHTML;dom.window.close();return JSON.stringify({rows,more,remaining});
+}
+function factualPresentation(records){return records.map((row,index)=>{
+ if(scenarios[index].kind!=='offers')return row;
+ const result=copy(row.result);
+ for(const [key,node] of result.dom)if(key==='#all-offers-list')node.innerHTML=factualOfferHTML(node.innerHTML);
+ result.trace=result.trace.filter(call=>call[0]!=='money').map(call=>call[0]==='write'&&call[1]==='#all-offers-list'&&call[2]==='innerHTML'?[...call.slice(0,3),factualOfferHTML(call[3])]:call);
+ return {...row,result};
+});}
+assert.deepEqual(factualPresentation(actual),factualPresentation(expected),'only authorized room-first/delta composition, compact departure context and bounded pure work may change; exact eligible offer keys/conditions/amount/aria/action/control/state/other calls remain');
 if(i>=0){
  const coldIndex=process.argv.indexOf('--compare-offer-list');
  const reference=fs.readFileSync(process.argv[i+1],'utf8')+(coldIndex>=0?'\n'+section(fs.readFileSync(process.argv[coldIndex+1],'utf8'),'function offerListInventory(','function mountOfferList('):'');
- assert.deepEqual(actual,visibleRecords(records(reference)),'before/after retained result/calendar/offer-list observations');
+ assert.deepEqual(factualPresentation(actual),factualPresentation(visibleRecords(records(reference))),'before/after retained result/calendar/offer-list factual observations');
 }
 const original=actual.find(r=>r.name==='filter:true:false::false').result;
 assert(!original.trace.some(x=>['results','updateURL','cardHTML'].includes(x[0])),'editing form preserves cards and URL');

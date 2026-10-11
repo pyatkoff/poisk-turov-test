@@ -1254,8 +1254,6 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .room-offer-choice .room-choice-facts dd{font-size:14px;line-height:1.5}
 .room-offer-operator{font-size:12px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
 .hotel-room-card .room-offer-choice .hotel-room-price{margin:0;padding:0;border:0}
-.hotel-room-cards.single-direct-offer .room-offer-choice{grid-template-columns:minmax(0,1fr)}
-.hotel-room-cards.single-direct-offer .room-offer-choice .hotel-room-price{display:none}
 .hotel-data-note{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 22px;padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:#f7f9fc;color:var(--muted);font-size:13px;line-height:1.55}.hotel-data-note strong{flex-shrink:0;color:var(--brand);white-space:nowrap}
 .hotel-room-more>summary{cursor:pointer;min-height:48px;padding:14px 18px;font-size:14px;font-weight:600;line-height:1.5;color:var(--brand);border-top:1px solid var(--line)}
 .hotel-room-more>summary:focus-visible{outline:2px solid var(--brand);outline-offset:-3px}
@@ -1888,39 +1886,47 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 @media(max-width:760px){.destination-countries{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* Final Sites hotel composition uses the existing hotel and exact-offer owners. */
-.hotel-detail-title{font-size:31px;line-height:1.2;margin:4px 0 8px;font-weight:700;letter-spacing:-.6px}
+.hotel-detail-title{margin:0 0 18px}
+.hotel-detail-title h2{font-size:31px;line-height:1.2;margin:4px 0 8px;font-weight:700;letter-spacing:-.6px}
+.hotel-details-dialog:has(.hotel-detail-title) .modal-header h2,.hotel-details-dialog:has(.hotel-detail-title) #modal-kicker{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .hotel-detail-meta{font-size:14px;color:var(--muted);margin-bottom:18px}
 .hotel-detail-hero{margin:0 0 20px;position:relative}
-.hotel-detail-hero-photo{display:block;width:100%;height:330px;border-radius:14px;object-fit:cover}
+.hotel-detail-hero-photo{position:relative;display:block;width:100%;height:330px;border-radius:14px;overflow:hidden;background:var(--soft-blue)}
+.hotel-detail-hero-image{display:block;width:100%;height:100%;padding:0;border:0}
+.hotel-detail-hero-image img{display:block;width:100%;height:100%;object-fit:cover}
+.hotel-detail-photo-missing{display:grid;place-content:center;padding:16px}
 .hotel-detail-hero .hotel-all-photos{position:absolute;right:14px;bottom:14px;width:auto;margin:0;background:#fff;min-height:44px}
 .hotel-detail-tabs{display:flex;gap:25px;border-bottom:1px solid var(--line);margin:0 0 18px}
 .hotel-detail-tabs button{position:relative;min-height:48px;padding:10px 0;font-size:15px;white-space:normal;text-align:left}
 .hotel-detail-tabs [aria-selected=true]{color:var(--brand);font-weight:500}
 .hotel-detail-tabs [aria-selected=true]:after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--brand);border-radius:3px}
 .hotel-room-section .hotel-room-card{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:17px 0;background:transparent;box-shadow:none}
-.hotel-room-section .room-choice-main{padding:0;margin:0 0 8px}
+.hotel-room-section .room-choice-main{padding:0;margin:0 0 8px;background:transparent}
 .hotel-room-section .room-choice-main h4{font-size:16px;line-height:1.4;margin:0}
 .hotel-room-section .room-offer-choice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:0;border:0;background:transparent}
 .hotel-room-section .hotel-room-price{display:grid;grid-template-columns:auto auto;gap:4px 16px;align-items:center;padding:0}
 .hotel-room-section .hotel-room-price small{grid-column:1}
 .hotel-room-section .hotel-room-price strong{grid-column:1;font-size:24px;white-space:nowrap;line-height:1.3}
-.hotel-room-section .hotel-room-price .primary{grid-column:2;grid-row:1/4;min-width:132px;min-height:46px;margin:0}
+.hotel-room-section .hotel-room-price :is(.primary,.secondary){grid-column:2;grid-row:1/4;min-width:132px;min-height:46px;margin:0}
 .room-offer-delta,.offer-price-delta{font-size:12px;color:var(--muted);line-height:1.4}
+.hotel-room-price .room-offer-delta{grid-column:1}
 .tour-quick-summary{display:contents}
 .tour-quick-details,.tour-quick-room,.tour-quick-meal{display:none}
 @media(max-width:760px){
- .hotel-detail-title{font-size:28px}
+ .hotel-detail-title h2{font-size:28px}
  .hotel-detail-hero-photo{height:225px;border-radius:12px}
  .hotel-detail-tabs{gap:24px}
  .hotel-detail-tabs button{font-size:14px}
  .hotel-room-section .room-offer-choice{grid-template-columns:minmax(0,1fr);gap:12px}
  .hotel-room-section .hotel-room-price{grid-template-columns:minmax(0,1fr) 122px;gap:4px 12px}
- .hotel-room-section .hotel-room-price .primary{grid-column:2;grid-row:1/4;min-width:0;min-height:46px;font-size:14px;background:var(--orange);border-color:var(--orange);color:#26150A}
+ .hotel-room-section .hotel-room-price :is(.primary,.secondary){grid-column:2;grid-row:1/4;min-width:0;min-height:46px;font-size:14px}
+ .hotel-room-section .hotel-room-price .primary{background:var(--orange);border-color:var(--orange);color:#26150A}
  .hotel-details-dialog.hotel-offers-active #modal-footer{display:none}
  .tour-dialog .tour-quick-summary{display:block;padding:15px;border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:13px;margin:0 0 18px}
  .tour-quick-summary .tour-hero{display:flex;align-items:flex-start;gap:12px;margin:0}
  .tour-quick-summary .tour-quick-room,.tour-quick-summary .tour-quick-meal{display:block}
  .tour-quick-summary .tour-hero>img{width:60px;height:68px;object-fit:cover;border-radius:8px;flex:none}
+ .tour-quick-summary .tour-hero>.tour-photo-missing{width:60px;height:68px;min-height:68px;border-radius:8px;font-size:12px;flex:none}
  .tour-quick-summary .tour-hero h3{font-size:19px;line-height:1.3;margin:0 0 5px}
  .tour-quick-summary .tour-hero p,.tour-quick-details{font-size:13px;line-height:1.5;color:var(--text);margin:0}
  .tour-quick-details{display:block;padding-top:12px;margin-top:12px;border-top:1px solid var(--line)}
@@ -1937,7 +1943,7 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 }
 @media(max-width:350px){
  .hotel-room-section .hotel-room-price{grid-template-columns:minmax(0,1fr)}
- .hotel-room-section .hotel-room-price .primary{grid-column:1;grid-row:4;width:100%;margin-top:8px}
+ .hotel-room-section .hotel-room-price :is(.primary,.secondary){grid-column:1;grid-row:4;width:100%;margin-top:8px}
 }
 /* Selected tour and application: one presentation owner, existing state/transport. */
 dialog.tour-dialog{width:min(1000px,calc(100% - 40px))}
