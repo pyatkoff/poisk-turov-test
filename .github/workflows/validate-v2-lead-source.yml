@@ -2,7 +2,7 @@ name: Validate V2 lead source contracts
 
 on:
   pull_request:
-    branches: [main, release/search3-production-ready-v1]
+    branches: [main, release/search3-production-ready-v1, release/search3-design-v2]
     paths:
       - 'v2/prototype-search/lead.js'
       - 'v2/tour-controller-v4.js'

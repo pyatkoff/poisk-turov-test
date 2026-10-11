@@ -8,7 +8,7 @@ const presentationReference='Новый Sites v2 · форма и выдача';
 const optionalShortlistEnabled=false;
 $('.prototype-lab strong').textContent=presentationReference;
 $('#prototype-version').textContent=presentationReference;
-$('.footer-inner>span').textContent='NEXT · '+presentationReference+' · 11.10.2026';
+$('.footer-inner>span').textContent='AnyTour · Версия для проверки';
 const paths = {
  sort:'<path d="M8 4v16m-4-4 4 4 4-4M14 5h6M14 10h4M14 15h2"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>',
@@ -308,7 +308,8 @@ function updateSearchUI(){
  $('#dates-label').textContent=draftSelectedDate()?departureRangeText(draftSelectedDate(),draftSelectedDate()):departureRangeText(draft.from,draft.to);$('#nights-label').textContent=durationText(draft);$('#guests-label').textContent=partyLabel(draft);$('#guests-detail').hidden=!draft.ages.length;$('#guests-detail').textContent=draft.ages.map(age=>age===0?'До 1 года':childAgeText(age)).join(' и ');$('#form-ages-recheck').hidden=!agesNeedReview||!draft.ages.length;$('#form-ages-recheck').textContent='Даты или ночи изменены. Проверьте возраст детей на возвращение.';const conflict=destinationIds(place).map(destinationHotel).filter(h=>h&&state.filters.stars.length&&!state.filters.stars.includes(h.stars));$('#form-conflict').hidden=!conflict.length;$('#form-conflict').textContent=conflict.length?`${conflict[0].stars}★ у ${conflict[0].name} · выбраны ${state.filters.stars.map(n=>n+'★').join(' и ')}. Измените категории или выберите другой отель.`:'';
  $$('#quick-stars button').forEach(b=>{const active=b.dataset.action==='any-stars'?!state.filters.stars.length:state.filters.stars.includes(+b.dataset.value);b.setAttribute('aria-pressed',active);b.classList.toggle('active',active)});
  const meals=state.filters.meals.join(' · ');$('#meal-label').textContent=meals||'Любое';$('#quick-meal').setAttribute('aria-label','Питание: '+(meals||'любое'));$('#quick-meal').title=meals||'Любое питание';
- $('#budget-label').textContent=budgetText();
+ const budget=budgetText();$('#budget-label').textContent=budget;
+ const wishesSummary=$('#form-wishes-summary');if(wishesSummary)wishesSummary.textContent=[state.filters.stars.map(n=>n+'★').join(' и '),meals,state.filters.min>0||state.filters.max!==null?budget:''].filter(Boolean).join(' · ')||'Категория, питание, бюджет';
  $('.search-submit').disabled=!catalogReady||!data.preview&&destinationIds(place).some(id=>!destinationHotel(id)?.legacyIds.length);
  renderCatalogError();
 }
@@ -1034,7 +1035,7 @@ function uiRoute(){
  if(type==='form-filters')return {type,filters:structuredClone(formFiltersDraft),scroll:$('#modal-body').scrollTop};
  if(type==='stars')return {type,stars:[...starsDraft]};
  if(type==='guests')return {type,draft:{adults:guestDraft.adults,ages:[...(guestDraft.ages||[])]}};
- if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,phase:nightsDraft.phase===1?1:0}};
+ if(type==='nights')return {type,draft:{min:nightsDraft.min,max:nightsDraft.max,mode:nightsDraft.mode,bound:nightsDraft.bound}};
  if(type==='flights'){const o=flightDraft?.base,view=flightDraft?.ui?.snapshot(),focused=focusReference(document.activeElement,$('#modal')),focus=focused?.selector?{selector:focused.selector,top:focused.top}:null,scroll=$('#modal-body').scrollTop;if(o&&view)o.flightPickerState={view,focus,scroll};return {type,key:o?.key,flightChoiceId:flightDraft?.id,view,focus,scroll};}
  if(type==='selected-tour')return {type,key:selectedOffer?.key,scroll:$('#modal-body').scrollTop};
  if(type==='offer')return {type,key:selectedOffer?.key,flightChoiceId:selectedOffer?.flightChoiceId};
@@ -1449,12 +1450,22 @@ function openFormFilters(restore=null){formFiltersDraft=restoreFilterHistoryMode
 function renderFormFilters(){const f=formFiltersDraft;if(!f)return;const host=$('#modal-body'),focus=focusReference(document.activeElement,host);host.innerHTML=`<p class="picker-caption">${esc(draft.origin)} → ${esc(destinationLabel(currentDraftDestination()))} · ${esc(durationText(draft))} · ${esc(partyLabel(draft))}</p>${[['stars','Категория отеля',f.stars.map(n=>n+'★').join(' и ')||'Любая'],['meals','Питание',f.meals.join(' · ')||'Любое'],['budget','Бюджет за всех',budgetLabel(f)]].map(([action,label,value])=>`<button class="destination-row" data-action="${action}"><span><strong>${label}</strong><small>${esc(value)}</small></span><span class="chevron">›</span></button>`).join('')}<button class="text-button" data-action="reset-form-filters">Сбросить фильтры</button><p class="picker-caption">Сброс сохранит город, направление, даты, ночи и туристов.</p>`;const count=[f.stars.length,f.meals.length,f.min>0||f.max!==null].filter(Boolean).length;$('#form-filters-summary').textContent=count?count+(count===1?' группа условий':' группы условий'):'Без дополнительных условий';if(focus)restoreFocus(focus,$('#modal-title'),host);rememberUIRoute();}
 
 function restoredNightsDraft(value){
- const fallback={min:draft.minNights,max:draft.maxNights,phase:0};if(!value||typeof value!=='object')return fallback;
+ const fallback={min:draft.minNights,max:draft.maxNights,mode:draft.minNights===draft.maxNights?'exact':'range',bound:'min'};if(!value||typeof value!=='object')return fallback;
  const min=Number(value.min),max=Number(value.max);if(!Number.isInteger(min)||!Number.isInteger(max)||min<1||max>28||min>max||max-min>10)return fallback;
- return {min,max,phase:value.phase===1?1:0};
+ const mode=value.mode==='exact'||value.mode==='range'?value.mode:min===max?'exact':'range';if(mode==='exact'&&min!==max)return fallback;
+ return {min,max,mode,bound:value.bound==='max'?'max':'min'};
 }
-function openNights(restore=null){nightsDraft=restoredNightsDraft(restore?.draft);showModal('nights','Количество ночей','',`<p class="modal-intro">Первый тап — точная длительность, второй — диапазон. Между границами — до 10 ночей.</p><div class="night-grid" aria-label="Количество ночей">${Array.from({length:28},(_,i)=>`<button data-action="night-pick" data-value="${i+1}" aria-label="${nightsText(i+1)}">${i+1}</button>`).join('')}</div><p class="picker-caption">Даты вылета не изменятся</p><h3 class="picker-subtitle">Быстрый выбор</h3><div class="nights-options">${[7,10,14,21].map(n=>`<button data-action="night-preset" data-value="${n}">${nightsText(n)}</button>`).join('')}</div>`);$('#modal').classList.add('nights-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="nights-footer"><p class="night-selection" aria-live="polite"></p><p class="error-text" id="night-error" role="alert" hidden></p><button class="primary picker-apply" data-action="apply-nights"></button></div>';renderNightSelection();}
-function renderNightSelection(){$('#night-error').hidden=!nightsDraft.error;$('#night-error').textContent=nightsDraft.error||'';$$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',n>=nightsDraft.min&&n<=nightsDraft.max)});$$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value));const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent=nightsDraft.phase?'Выберите вторую границу или подтвердите '+label:'Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;rememberUIRoute();}
+function openNights(restore=null){nightsDraft=restoredNightsDraft(restore?.draft);showModal('nights','Количество ночей','',`<div class="night-modes" role="group" aria-label="Способ выбора ночей"><button type="button" data-action="night-mode" data-value="exact">Точно</button><button type="button" data-action="night-mode" data-value="range">Диапазон</button></div><div class="night-bounds" role="group" aria-label="Границы диапазона" hidden><button type="button" data-action="night-bound" data-value="min"><small>От</small><strong id="night-bound-min"></strong></button><button type="button" data-action="night-bound" data-value="max"><small>До</small><strong id="night-bound-max"></strong></button></div><p class="modal-intro" id="night-choice-help"></p><div class="night-grid" role="group" aria-label="Количество ночей" aria-describedby="night-choice-help">${Array.from({length:28},(_,i)=>`<button type="button" data-action="night-pick" data-value="${i+1}" aria-label="${nightsText(i+1)}">${i+1}</button>`).join('')}</div><p class="picker-caption">Даты вылета не изменятся</p><h3 class="picker-subtitle">Быстрый выбор</h3><div class="nights-options">${[7,10,14,21].map(n=>`<button type="button" data-action="night-preset" data-value="${n}">${nightsText(n)}</button>`).join('')}</div>`);$('#modal').classList.add('nights-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="nights-footer"><p class="night-selection" aria-live="polite"></p><p class="error-text" id="night-error" role="alert" hidden></p><button class="primary picker-apply" data-action="apply-nights"></button></div>';renderNightSelection();}
+function renderNightSelection(){
+ const range=nightsDraft.mode==='range';$('#night-error').hidden=!nightsDraft.error;$('#night-error').textContent=nightsDraft.error||'';
+ $$('[data-action="night-mode"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.value===nightsDraft.mode)));
+ $('.night-bounds').hidden=!range;$('#night-bound-min').textContent=nightsText(nightsDraft.min);$('#night-bound-max').textContent=nightsText(nightsDraft.max);
+ $$('[data-action="night-bound"]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.value===nightsDraft.bound)));
+ $('#night-choice-help').textContent=range?'Выберите число для «'+(nightsDraft.bound==='min'?'От':'До')+'». Между границами — до 10 ночей.':'Выберите точное количество ночей.';
+ $$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',String(n>=nightsDraft.min&&n<=nightsDraft.max));});
+ $$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',String(!range&&nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value)));
+ const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent='Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;rememberUIRoute();
+}
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(retry=false){
  const h=hotels.find(x=>x.id===gallery.id);if(!h?.photos.length)return;
@@ -2473,8 +2484,14 @@ function handleSearchParameterAction(action,b,id){
  case 'remove-child':{const index=Number(b.dataset.index);if(!Number.isInteger(index)||index<0||index>=guestDraft.ages.length)break;guestDraft.ages.splice(index,1);renderGuests();const target=$('[data-action="child-age"][data-index="'+Math.min(index,guestDraft.ages.length-1)+'"]')||$('[data-action="children-plus"]');target.focus();break;}
  case 'apply-guests':if(guestDraft.ages.some(a=>a===null)){$('#guest-error').textContent='Укажите возраст каждого ребёнка.';return true}draft.adults=guestDraft.adults;draft.ages=[...guestDraft.ages];agesNeedReview=false;closeModal();updateSearchUI();break;
 
- case 'night-pick':{const n=+b.dataset.value;if(nightsDraft.phase===1&&Math.abs(n-nightsDraft.min)>10){nightsDraft.error=`Слишком широкий диапазон. Выберите вторую границу от ${Math.max(1,nightsDraft.min-10)} до ${Math.min(28,nightsDraft.min+10)} ночей.`;renderNightSelection();break;}nightsDraft.error='';if(nightsDraft.phase===0){nightsDraft.min=n;nightsDraft.max=n;nightsDraft.phase=1}else{nightsDraft.max=Math.max(nightsDraft.min,n);nightsDraft.min=Math.min(nightsDraft.min,n);nightsDraft.phase=0}renderNightSelection();break}
- case 'night-preset':nightsDraft={min:+b.dataset.value,max:+b.dataset.value,phase:0};renderNightSelection();break;
+ case 'night-mode':{const mode=b.dataset.value;if(!['exact','range'].includes(mode))break;nightsDraft.mode=mode;nightsDraft.bound='min';nightsDraft.error='';if(mode==='exact')nightsDraft.max=nightsDraft.min;renderNightSelection();break;}
+ case 'night-bound':if(nightsDraft.mode==='range'&&['min','max'].includes(b.dataset.value)){nightsDraft.bound=b.dataset.value;nightsDraft.error='';renderNightSelection();}break;
+ case 'night-pick':{const n=+b.dataset.value;if(!Number.isInteger(n)||n<1||n>28)break;
+  if(nightsDraft.mode!=='range'){nightsDraft.min=n;nightsDraft.max=n;}
+  else{const min=nightsDraft.bound==='min'?n:Math.min(nightsDraft.min,n),max=nightsDraft.bound==='max'?n:Math.max(nightsDraft.max,n);if(max-min>10){nightsDraft.error='Между «От» и «До» может быть не больше 10 ночей. Измените другую границу или выберите ближе.';renderNightSelection();break;}nightsDraft.min=min;nightsDraft.max=max;if(nightsDraft.bound==='min')nightsDraft.bound='max';}
+  nightsDraft.error='';renderNightSelection();break;
+ }
+ case 'night-preset':{const n=+b.dataset.value;if(![7,10,14,21].includes(n))break;nightsDraft={min:n,max:n,mode:'exact',bound:'min'};renderNightSelection();break;}
  case 'apply-nights':agesNeedReview=agesNeedReview||draft.ages.length>0&&(draft.minNights!==nightsDraft.min||draft.maxNights!==nightsDraft.max);draft.minNights=nightsDraft.min;draft.maxNights=nightsDraft.max;closeModal();updateSearchUI();break;
  default:return false;
  }

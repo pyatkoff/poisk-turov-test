@@ -54,10 +54,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "7c230c3b901ead163f401b3be3976e2e68da04e6c8defe7202ff908f60b351a1",
+    "app.js": "0ffd967746d1bf77cd132d087af31a0b8fa2f3bba589243d80783f34a638a23c",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "4c8fbfe2ee9c170221569f7f30fc414ffaaca95415304277a2b70b9447fd1c80",
-    "styles.css": "b4cac06a2855116f1ea942d80de2bd91fe4fe57de9d5978516627a508f08ba5c",
+    "index.html": "4db1bf1d8d3dc3d64d55c9fa97d39d90042da0b83e865f739c14d274d96f129d",
+    "styles.css": "3fceb9af0f9a43540fd1f2afb9dfb8024597ef9ecfe0883f094c8f6caf076809",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
@@ -155,5 +155,19 @@
     "physicalSafariAcceptance": false,
     "supplierRequests": 0,
     "realLeads": 0
+  },
+  "newDesignV2Polish": {
+    "date": "2026-10-11",
+    "target": "/_preview/search3-design-v2-candidate/visual-search/",
+    "baseSourceSha": "01baa3a91e1d497aa928b9866ee97de5f0cc29e2",
+    "scope": [
+      "collapsed-form-wishes-with-selected-summary",
+      "explicit-exact-or-range-nights",
+      "compact-condition-groups-and-offer-rows"
+    ],
+    "publicationStatus": "candidate-awaiting-final-CI-and-visual-review",
+    "supplierRequests": 0,
+    "realLeads": 0,
+    "physicalSafariAcceptance": false
   }
 }
