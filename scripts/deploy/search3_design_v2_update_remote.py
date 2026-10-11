@@ -1,6 +1,6 @@
 """One reviewed update of the existing separate design preview; no other target.
 
-The predecessor is the terminal published creation, not a caller-selected path.
+The predecessor is the terminal published polish, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -12,16 +12,20 @@ import shutil
 import sys
 import tempfile
 from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIANTS,
-    SOURCE_SHA as PREDECESSOR_SOURCE, BUILD_RUN as ORIGINAL_BUILD, ARTIFACT_ID as ORIGINAL_ARTIFACT,
+    SOURCE_SHA as ORIGINAL_SOURCE, BUILD_RUN as ORIGINAL_BUILD, ARTIFACT_ID as ORIGINAL_ARTIFACT,
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
-PREDECESSOR_RUN = 38173086001
-PREDECESSOR_DIGEST = 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef'
+ORIGINAL_PUBLISH_RUN = 38173086001
+PREDECESSOR_SOURCE = '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
+PREDECESSOR_RUN = 38180461319
+PREDECESSOR_DIGEST = '0f489470b5621f4660b800c377f37dbbfe1ad5fbd65deea1890e053f751f8a33'
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
+    'visual-search/hotel-details-v1.js',
     'visual-search/index.html', 'visual-search/migration-manifest.json',
-    'visual-search/mobile-controls-v1.css', 'visual-search/styles.css')
+    'visual-search/mobile-controls-v1.css', 'visual-search/offer-list-v1.js',
+    'visual-search/styles.css')
 ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
     'prototype-search/config.js', 'prototype-search/data.js', 'search3-canonical-profiles-v1.js',
     'data/local-tv-catalog-read-v1.php', 'visual-search/asset-size.json')))
@@ -30,12 +34,12 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 def validate(q):
     for k in ('source_sha', 'source_tree', 'release_sha'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{40}', q[k]), 'invalid_' + k)
-    need(q['source_sha'] != PREDECESSOR_SOURCE, 'new_source_required')
+    need(q['source_sha'] not in (ORIGINAL_SOURCE, PREDECESSOR_SOURCE), 'new_source_required')
     for k in ('artifact_id', 'build_run', 'deploy_run'):
         need(type(q.get(k)) is int and 0 < q[k] < 10**15, 'invalid_' + k)
     for k in ('archive_sha256', 'manifest_sha256', 'payload_sha256', 'source_ZIP_sha256', 'target_digest'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{64}', q[k]), 'invalid_' + k)
-    need(q.get('attempt') == 1 and q['deploy_run'] != PREDECESSOR_RUN, 'no_replay')
+    need(q.get('attempt') == 1 and q['deploy_run'] not in (ORIGINAL_PUBLISH_RUN, PREDECESSOR_RUN), 'no_replay')
     need(type(q.get('file_count')) is int and q['file_count'] == 845, 'invalid_file_count')
 
 
@@ -59,7 +63,7 @@ def verify(root, q):
     need(m.get('derived_from') == {'artifact_id': q['artifact_id'], 'build_run': q['build_run'],
         'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'design-v2-route-and-ledger-v1',
         'changed_payload_files': list(ROUTE_CHANGES), 'changed_source_payload_files': changes,
-        'baseline': {'source_sha': PREDECESSOR_SOURCE, 'build_run': ORIGINAL_BUILD,
+        'baseline': {'source_sha': ORIGINAL_SOURCE, 'build_run': ORIGINAL_BUILD,
             'artifact_id': ORIGINAL_ARTIFACT, 'ZIP_sha256': ORIGINAL_ZIP}}, 'derivation_identity')
     files = {}
     for f in m['files']:
