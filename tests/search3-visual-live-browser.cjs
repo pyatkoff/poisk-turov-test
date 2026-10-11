@@ -49,6 +49,13 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
+const openFormWishes=async page=>{
+ await page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+ const wishes=page.locator('#form-wishes');assert(await wishes.isVisible(),'wishes belong to the visible editable form');
+ if(!await wishes.evaluate(el=>el.open))await page.locator('#form-wishes > summary').click();
+ assert.equal(await wishes.evaluate(el=>el.open),true,'native wishes disclosure opens before editing secondary controls');
+ await page.locator('#quick-meal').waitFor({state:'visible'});
+};
 const resultFilterViewportJourney=async(browser,origin,base,evidence)=>{
  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage(),records=[];transport.state.wideFacets=true;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
  try{
@@ -521,6 +528,7 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
  const summary=page.locator('#applied-search'),starts=transport.calls.filter(c=>c.action==='search_start').length;
  const originalCards=await page.locator('#cards').innerHTML(),originalURL=page.url();
  await editResultSearch(page,width);
+ await openFormWishes(page);
  const formValueStates=[];
  const formValues=async label=>{
   if(width!==390)return;
@@ -720,6 +728,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
    });
    await page.addInitScript(()=>{const viewport=new EventTarget();viewport.height=innerHeight;viewport.offsetTop=0;Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});window.__departureViewport=viewport;});
    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
+   assert.equal(await page.locator('#form-wishes').evaluate(el=>el.open),false,'secondary wishes start collapsed');await openFormWishes(page);
    await page.locator('#quick-stars [data-action="star"][data-value="5"]').click();
    const initialURL=page.url(),fields=()=>page.locator('#search-form').evaluate(el=>[...el.querySelectorAll('input,select')].map(control=>[control.name||control.id,control.value]));
    const initialFields=await fields(),initialStars=await page.locator('#quick-stars').innerHTML();
@@ -1165,6 +1174,7 @@ const server=http.createServer((req,res)=>{
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
+  assert.equal(await page.locator('#form-wishes').evaluate(el=>el.open),false,'hydration preserves the default closed wishes');await openFormWishes(page);
   await mobileQuickFieldLayout(page,width);
   assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
   assert.equal(await page.locator('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'false','a locked pre-hydration control cannot replace URL state');
@@ -1206,6 +1216,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(reloadedBudgetRequest.priceFrom,150000);assert.equal(reloadedBudgetRequest.priceTo,180000);
   assert.doesNotMatch(await page.locator('#date-calendar').textContent(),/97,5/,'reload cannot reopen an unbounded calendar');
   await page.locator('[data-action="close-modal"]').click();
+  await openFormWishes(page);
   await page.locator('#quick-budget').click();
   await page.locator('#budget-min').fill('');await page.locator('#budget-max').fill('');
   await page.locator('[data-action="apply-budget"]').click();

@@ -475,7 +475,7 @@ dialog.gallery-dialog .modal-header {
   dialog .modal-header .icon-button {width:44px;height:44px;}
   .selection-steps {grid-template-columns:1.2fr 1fr .85fr;gap:8px;margin-bottom:12px;}
   .selection-steps li {font-size:.875rem;align-items:flex-start;padding-bottom:8px;}
-  .selection-steps li > span {width:20px;height:20px;font-size:.75rem;margin-top:1px;}
+  .selection-steps li > span {width:1.25rem;height:1.25rem;font-size:.75rem;margin-top:1px;}
 
 
 

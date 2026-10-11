@@ -438,12 +438,19 @@ async function pickerRetainedDraftRegressions(){
  // for that transition, rather than racing it against the next picker under
  // the parallel source matrix. Keep the existing bounded wait and assertions.
  click('[data-action="close-modal"]');await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
- click('#search-form [data-action="nights"]');click('[data-action="night-pick"][data-value="10"]');click('[data-action="night-pick"][data-value="12"]');
+ const committedNights=q('#nights-label').textContent;
+ click('#search-form [data-action="nights"]');click('[data-action="night-mode"][data-value="exact"]');click('[data-action="night-pick"][data-value="10"]');click('[data-action="night-pick"][data-value="12"]');
+ assert.deepEqual([...d.querySelectorAll('.night-grid [aria-pressed="true"]')].map(b=>b.dataset.value),['12'],'repeated exact taps never silently create a range');
+ click('[data-action="night-mode"][data-value="range"]');click('[data-action="night-bound"][data-value="min"]');click('[data-action="night-pick"][data-value="10"]');click('[data-action="night-bound"][data-value="max"]');click('[data-action="night-pick"][data-value="12"]');
  w.history.back();await wait(()=>!q('#modal').open);assert(!q('#modal').open,'browser Back closes the nights picker without applying its draft');
+ assert.equal(q('#nights-label').textContent,committedNights,'Back leaves the committed duration unchanged');
  w.history.forward();await settle();await wait(()=>q('#modal').open);
+ assert.equal(q('[data-action="night-mode"][data-value="range"]').getAttribute('aria-pressed'),'true','browser Forward restores the explicitly selected range mode');
+ assert.equal(q('[data-action="night-bound"][data-value="max"]').getAttribute('aria-pressed'),'true','browser Forward restores the active upper boundary');
  assert(q('[data-action="night-pick"][data-value="10"]').classList.contains('active'),'browser Forward restores the first night boundary');
  assert(q('[data-action="night-pick"][data-value="11"]').classList.contains('in-range'),'browser Forward restores the nights range');
  assert(q('[data-action="night-pick"][data-value="12"]').classList.contains('active'),'browser Forward restores the second night boundary');
+ assert.equal(q('#nights-label').textContent,committedNights,'Forward restores only the draft, without applying it');assert.equal(starts(),0,'nights mode and Back/Forward never start a supplier search');
  click('[data-action="close-modal"]');await wait(()=>!q('#modal').open&&!w.history.state?.['anytour.prototype.v18.ui.v1']);
  click('#search-form [data-action="guests"]');click('[data-action="adults-plus"]');click('[data-action="children-plus"]');
  click('[data-action="child-age"][data-index="0"]');click('[data-action="age-pick"][data-value="8"]');click('[data-action="apply-age"]');

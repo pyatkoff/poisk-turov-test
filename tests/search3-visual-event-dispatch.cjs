@@ -1,4 +1,5 @@
-// Site100 accepted form: city confirmation, explicit destination replacement, multi-hotel OR and return-age review change 15 dispatch scenarios; disabled/state-order/ownership mutations stay required.
+// Explicit night modes replace only the night draft/actions;162 cases retain
+// disabled/state-order/ownership mutations and add named endpoint/invalid-input checks.
 // Characterize the real delegated event owner without starting the application,
 // supplier transport or lead delivery. Pinned observations come from app blob
 // db413a559e1789057e82293d4cb4c1a7f7d89c8e before structural extraction.
@@ -66,7 +67,7 @@ function characterize(source, scenario) {
     dateDraft:{from:'2026-10-14',to:'2026-10-20',phase:0},
     dateContext:{source:'results',search:{from:'2026-10-14',to:'2026-10-20'}},
     calendarMonth:'2026-10-01',startDay:'2026-10-01',endDay:'2026-12-31',
-    nightsDraft:{min:7,max:10,phase:0},modalHistory:[],modalType:'',optionalShortlistEnabled:false,
+    nightsDraft:{min:7,max:10,mode:'range',bound:'min'},modalHistory:[],modalType:'',optionalShortlistEnabled:false,
     editingFilterModel:()=>model,defaultFilters:filters,
     appliedFilterModel:()=>({filters:state.filters,onlyFavorites:state.onlyFavorites,selectedDate:state.selectedDate}),
     data:{catalog:{departures:[{name:'Moscow'},{name:'Kazan'}]},text:x=>x.name,continueSearch:()=>trace.push(['continueSearch'])},
@@ -136,8 +137,17 @@ add('valid guest apply',{type:'click',action:'apply-guests',setup:c=>c.guestDraf
 add('invalid date return',{type:'click',action:'apply-dates',setup:c=>c.dateDraft.from=''});
 add('changed results date submits',{type:'click',action:'apply-dates',setup:c=>c.dateDraft.to='2026-10-21'});
 add('date second boundary',{type:'click',action:'day-pick',dataset:{date:'2026-10-12'},setup:c=>c.dateDraft.phase=1});
-add('night second boundary',{type:'click',action:'night-pick',dataset:{value:'10'},setup:c=>c.nightsDraft.phase=1});
-add('night too wide',{type:'click',action:'night-pick',dataset:{value:'28'},setup:c=>c.nightsDraft.phase=1});
+add('night second boundary',{type:'click',action:'night-pick',dataset:{value:'10'},setup:c=>c.nightsDraft.bound='max'});
+add('night too wide',{type:'click',action:'night-pick',dataset:{value:'28'},setup:c=>c.nightsDraft.bound='max'});
+add('night exact mode',{type:'click',action:'night-mode',dataset:{value:'exact'}});
+add('night range mode',{type:'click',action:'night-mode',dataset:{value:'range'},setup:c=>c.nightsDraft={min:7,max:7,mode:'exact',bound:'min'}});
+add('night lower boundary',{type:'click',action:'night-bound',dataset:{value:'min'},setup:c=>c.nightsDraft.bound='max'});
+add('night upper boundary',{type:'click',action:'night-bound',dataset:{value:'max'}});
+add('night exact pick',{type:'click',action:'night-pick',dataset:{value:'21'},setup:c=>c.nightsDraft={min:7,max:7,mode:'exact',bound:'min'}});
+add('night valid preset',{type:'click',action:'night-preset',dataset:{value:'14'}});
+add('night invalid number',{type:'click',action:'night-pick',dataset:{value:'29'}});
+add('night invalid mode',{type:'click',action:'night-mode',dataset:{value:'unknown'}});
+add('night invalid boundary',{type:'click',action:'night-bound',dataset:{value:'unknown'}});
 add('filter panel reset',{type:'click',action:'reset',panel:true,filterDraft:true});
 add('recover applied filters',{type:'click',action:'recover-filters',dataset:{source:'results',value:'0'}});
 add('overlapping flight origin change',{type:'change',target:{name:'andromeda-outbound',id:'origin',value:'Kazan'}});
@@ -163,14 +173,14 @@ add('no draft filter',{type:'click',action:'remove-draft-filter'});
 add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setup:(c,t)=>t.closest=()=>null});
 // openHotel belonged to the retired inline result expansion. It never changed
 // connected markup. Project only that discarded field from each state snapshot;
-// all 153 retained actions, collaborator calls, DOM and ordering still compare.
+// all 153 retained actions plus9 explicit-night cases, collaborator calls, DOM and ordering still compare.
 function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
-const BASELINE='79c27bc86f9ac4d7d0a11d40648922a68e5f76192268f3a80cbca6d1489035ec';
-assert.equal(actual.length,153,'only nine comparison changes retired from the original 162 cases');
+const BASELINE='b6492fbda92404504ac6a78cac7f34acad5fe2d600be3bfa2830292d6236c772';
+assert.equal(actual.length,162,'153 retained dispatch cases plus9 explicit-night cases');
 if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
@@ -180,6 +190,13 @@ assert.deepEqual(result('jump stops later attributes').trace,[['jumpToFilterSect
 assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
+assert.deepEqual(result('night exact mode').nightsDraft,{min:7,max:7,mode:'exact',bound:'min',error:''});
+assert.deepEqual(result('night range mode').nightsDraft,{min:7,max:7,mode:'range',bound:'min',error:''});
+assert.equal(result('night lower boundary').nightsDraft.bound,'min');assert.equal(result('night upper boundary').nightsDraft.bound,'max');
+assert.deepEqual(result('night exact pick').nightsDraft,{min:21,max:21,mode:'exact',bound:'min',error:''});
+assert.deepEqual(result('night valid preset').nightsDraft,{min:14,max:14,mode:'exact',bound:'min'});
+assert.equal(result('night too wide').nightsDraft.min,7);assert.equal(result('night too wide').nightsDraft.max,10);assert.match(result('night too wide').nightsDraft.error,/10 ночей/);
+for(const name of ['night invalid number','night invalid mode','night invalid boundary']){assert.deepEqual(result(name).nightsDraft,{min:7,max:10,mode:'range',bound:'min'});assert(!result(name).trace.some(x=>x[0]==='renderNightSelection'),name+' stays inert');}
 assert.deepEqual(result('first new hotel focuses').trace.slice(-3),[['renderMoreDestinationHotels'],['focus','.destination-hotel[4]',{preventScroll:true}],['scrollIntoView','.destination-hotel[4]',{block:'nearest',behavior:'instant'}]],'destination page focuses and reveals the first appended hotel');
 const groupSetup=(c,t,node)=>{node('#group-room|AI').previousElementSibling=node('offer-group-heading');};
 const groupHandled=characterize(source,{type:'click',action:'offer-group',groupHandled:true,dataset:{value:'room|AI'},setup:groupSetup});

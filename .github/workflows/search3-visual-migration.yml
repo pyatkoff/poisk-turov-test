@@ -1,7 +1,7 @@
 name: Search3 full visual migration
 on:
   pull_request:
-    branches: [release/search3-production-ready-v1]
+    branches: [release/search3-production-ready-v1, release/search3-design-v2]
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/visual-search/**'
