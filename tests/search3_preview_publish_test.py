@@ -346,6 +346,34 @@ class Provenance(unittest.TestCase):
         api=self.api();self.data['/git/ref/heads/'+publish.RELEASE]['object']['sha']='f'*40
         with self.assertRaises(ValueError): publish.verify_provenance(api,fixture()[0],'d'*40)
 
+    def test_separate_fixed_design_ref_does_not_use_old_release(self):
+        api=self.api()
+        self.data['/git/ref/heads/'+publish.DESIGN_RELEASE]={'object':{'sha':RELEASE}}
+        del self.data['/git/ref/heads/'+publish.RELEASE]
+        self.assertEqual(publish.verify_provenance(api,fixture()[0],'d'*40,
+            release_branch=publish.DESIGN_RELEASE),(TREE,'e'*64))
+
+    def test_design_pin_must_match_its_own_ref(self):
+        api=self.api()
+        self.data['/git/ref/heads/'+publish.DESIGN_RELEASE]={'object':{'sha':'f'*40}}
+        with self.assertRaisesRegex(ValueError,'release_pin_changed'):
+            publish.verify_provenance(api,fixture()[0],'d'*40,release_branch=publish.DESIGN_RELEASE)
+
+    def test_existing_default_still_rejects_design_only_pin(self):
+        api=self.api()
+        self.data['/git/ref/heads/'+publish.DESIGN_RELEASE]={'object':{'sha':RELEASE}}
+        self.data['/git/ref/heads/'+publish.RELEASE]['object']['sha']='f'*40
+        with self.assertRaisesRegex(ValueError,'release_pin_changed'):
+            publish.verify_provenance(api,fixture()[0],'d'*40)
+
+    def test_arbitrary_receiving_ref_is_rejected_before_api_access(self):
+        for ref in ('main','release/other','release/search3-design-v2/extra','../main',None):
+            with self.subTest(ref=ref),patch.object(publish.Github,'get') as get:
+                with self.assertRaisesRegex(ValueError,'unreviewed_release_branch'):
+                    publish.verify_provenance(publish.Github('offline-test'),fixture()[0],'d'*40,
+                        release_branch=ref)
+                get.assert_not_called()
+
     def test_failed_build_and_expired_artifact_rejected(self):
         for key,field,value in [('/actions/runs/456','conclusion','failure'),('/actions/artifacts/123','expired',True),('/actions/runs/456','path','other.yml')]:
             api=self.api();self.data[key][field]=value
