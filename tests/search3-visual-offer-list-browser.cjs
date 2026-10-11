@@ -67,9 +67,14 @@ const server=http.createServer((req,res)=>{
    await page.evaluate(()=>{document.documentElement.style.fontSize='';document.querySelector('#price-strip').scrollLeft=0;scrollTo(0,0);});
    const resultSort=page.locator('#sort');await resultSort.selectOption('price');await calendarState(true);await resultSort.selectOption('recommended');
    if(width<=760){await page.locator('#calendar-toggle').click();await calendarState(false);await resultSort.selectOption('rating');await calendarState(false);await resultSort.selectOption('recommended');await page.locator('#calendar-toggle').click();await calendarState(true);}
-   const photo=await page.locator('.hotel-card').first().evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth};});
-   if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available');
-   await page.locator('.hotel-card').first().scrollIntoViewIfNeeded();await shot('card');
+   const firstCard=page.locator('.hotel-card').first();await firstCard.scrollIntoViewIfNeeded();let photoReadyError;
+   // Sort can replace the lazy image. Reveal the actual card before waiting for
+   // that same image resource; no source replacement, retry or fixture request.
+   try{await page.waitForFunction(image=>image.isConnected&&image.complete&&image.naturalWidth>0,await firstCard.locator('.hotel-image').elementHandle(),{timeout:3000,polling:'raf'});}catch(error){photoReadyError=String(error);}
+   const photo=await firstCard.evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth,complete:image.complete,src:image.getAttribute('src'),currentSrc:image.currentSrc,photoClass:card.querySelector('.hotel-photos').className};});
+   assert.equal(photo.complete,true,'saved demo photo has finished loading: '+JSON.stringify({...photo,photoReadyError}));
+   if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available: '+JSON.stringify({...photo,photoReadyError}));
+   await shot('card');
    const appliedURL=page.url(),appliedKeys=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id));
    await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('#search-form').waitFor({state:'visible'});await page.locator('#search-form').scrollIntoViewIfNeeded();await shot('form');
    for(const zoom of [100,200]){
