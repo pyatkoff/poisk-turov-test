@@ -25,6 +25,7 @@ REPO = 'pyatkoff/poisk-turov-test'
 OWNER_ID = 226193297
 COORDINATION_ISSUE = 4217
 RELEASE = 'release/search3-production-ready-v1'
+DESIGN_RELEASE = 'release/search3-design-v2'
 API = 'https://api.github.com/repos/' + REPO
 ORIGIN = 'https://anytoour.ru'
 BUILD = '.github/workflows/build-search3-whole-site-preview.yml'
@@ -94,9 +95,12 @@ class Github:
         return content
 
 
-def verify_provenance(api, q, control_sha):
+def verify_provenance(api, q, control_sha, *, release_branch=RELEASE):
+    # The separate create-only design publisher has its own fixed receiving ref.
+    # Existing publishers retain the original default; event data cannot select a ref.
+    need(release_branch in (RELEASE, DESIGN_RELEASE), 'unreviewed_release_branch')
     need(api.get('/git/ref/heads/main')['object']['sha'] == control_sha, 'control_main_changed')
-    need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_pin_changed')
+    need(api.get('/git/ref/heads/' + release_branch)['object']['sha'] == q['release_sha'], 'release_pin_changed')
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     source_tree = source['tree']['sha']; release_tree = release['tree']['sha']
     if source_tree != release_tree:
