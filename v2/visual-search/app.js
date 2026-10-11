@@ -321,7 +321,10 @@ function renderCatalogError(){
  node.hidden=!bootstrapPending&&!bootstrapFailed&&!countryFailed&&!hotelMissing;node.setAttribute('role',bootstrapPending||restoring?'status':'alert');node.classList.toggle('error-text',!bootstrapPending&&!restoring);node.classList.toggle('picker-caption',bootstrapPending||restoring);
  node.innerHTML=node.hidden?'':bootstrapPending?'Загружаем направления. Параметры поездки сохранены.':bootstrapFailed?'Не удалось загрузить направления. Параметры поездки сохранены. <button type="button" class="secondary" data-action="retry-catalog">Повторить загрузку</button>':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
  if(retrying&&!bootstrapPending)delete node.dataset.catalogRetry;
- if(focus)restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
+ if(focus){
+  restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
+  if(node.hidden&&document.activeElement===$('#country'))$('#country').scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+ }
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
 }
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();

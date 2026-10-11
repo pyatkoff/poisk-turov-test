@@ -1722,9 +1722,15 @@ const server=http.createServer((req,res)=>{
  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
  await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
- await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
- await multiHotelReload(browser,origin,base,evidence);
- await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+ // Preserve the existing order and all three independent matrices; a failure
+ // still retains evidence from the remaining contexts before reporting it.
+ const finalMatrices=[
+  ()=>require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence}),
+  ()=>multiHotelReload(browser,origin,base,evidence),
+  ()=>require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence})
+ ],finalFailures=[];
+ for(const matrix of finalMatrices){try{await matrix();}catch(error){finalFailures.push(error);}}
+ if(finalFailures.length)throw new AggregateError(finalFailures,'Final independent compiled matrices failed');
    })(),
    (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');
