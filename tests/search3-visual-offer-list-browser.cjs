@@ -63,7 +63,7 @@ const server=http.createServer((req,res)=>{
    if(width===360){assert(rail.contentWidth>rail.width&&rail.scrollLeft>0,'large saved prices use the internal rail and keyboard focus reveals the last date');assert.equal(rail.overflowX,'auto');}
    density.push({state:'date-rail-keyboard',zoom:200,lastDate,...rail});
    await page.evaluate(()=>{document.documentElement.style.fontSize='';document.querySelector('#price-strip').scrollLeft=0;scrollTo(0,0);});
-   const resultSort=page.locator(width<=760?'#mobile-sort':'#sort');await resultSort.selectOption('price');await calendarState(true);await resultSort.selectOption('recommended');
+   const resultSort=page.locator('#sort');await resultSort.selectOption('price');await calendarState(true);await resultSort.selectOption('recommended');
    if(width<=760){await page.locator('#calendar-toggle').click();await calendarState(false);await resultSort.selectOption('rating');await calendarState(false);await resultSort.selectOption('recommended');await page.locator('#calendar-toggle').click();await calendarState(true);}
    const photo=await page.locator('.hotel-card').first().evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth};});
    if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available');

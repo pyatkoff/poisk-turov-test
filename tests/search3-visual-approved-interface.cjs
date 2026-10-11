@@ -74,7 +74,7 @@ async function run(width,monthRange=null){
  click('#clear-date');assert.equal($('#compact-details').textContent,headerRange);assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');assert.equal($('#calendar-selected-date').parentElement.hidden,true);
  assert.match($('#results-summary').textContent,/1047/);
  // Expanded result dates remain independent of local sorting and filters.
- const sort=$(width<=760?'#mobile-sort':'#sort');sort.value='price';sort.dispatchEvent(new w.Event('change',{bubbles:true}));calendarState(true);
+ const sort=$('#sort');sort.value='price';sort.dispatchEvent(new w.Event('change',{bubbles:true}));calendarState(true);
  action('preset','.results-toolbar');calendarState(true);action('preset','.results-toolbar');calendarState(true);sort.value='recommended';sort.dispatchEvent(new w.Event('change',{bubbles:true}));
  if(width<=760){click('#calendar-toggle');calendarState(false);sort.value='rating';sort.dispatchEvent(new w.Event('change',{bubbles:true}));calendarState(false);sort.value='recommended';sort.dispatchEvent(new w.Event('change',{bubbles:true}));click('#calendar-toggle');calendarState(true);}
  // Unknown-price dates remain selectable after the mobile disclosure opens.
