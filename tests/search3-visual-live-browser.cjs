@@ -25,7 +25,8 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
    assert(boxes.action.x>=boxes.total.right-1||boxes.action.y>=boxes.total.bottom-1,'price and action never overlap at '+mobileWidth);
    assert(boxes.action.x>=boxes.panel.x&&boxes.action.right<=boxes.panel.right&&boxes.action.height>=48,'price action stays inside the card with a 48px target at '+mobileWidth);
    assert(boxes.photo.width>boxes.card.width*.9&&boxes.photo.height>=150,'hotel photo spans the mobile card at '+mobileWidth);
-   assert(boxes.photo.y>=boxes.identity.bottom-1,'hotel identity precedes its large photo at '+mobileWidth);
+   assert(boxes.identity.y>=boxes.photo.bottom-1,'hotel identity follows its large photo at '+mobileWidth);
+   assert(boxes.photo.x>=boxes.card.x-1&&boxes.photo.right<=boxes.card.right+1&&boxes.photo.y>=boxes.card.y-1&&boxes.photo.bottom<=boxes.card.bottom+1,'large photo stays inside the mobile card at '+mobileWidth);
    assert(boxes.arrows.every(b=>b.width>=44&&b.height>=44),'gallery arrows remain touch targets at '+mobileWidth);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
@@ -82,6 +83,7 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
  const allDates=await scope();assert.match(allDates,/ — /);
  for(const viewport of [360,390,430,768,1280]){
   await page.setViewportSize({width:viewport,height:900});
+  if(await page.locator('#calendar-preview').evaluate(el=>el.hidden))await page.locator('#calendar-toggle').click();
   await page.locator(`#price-strip [data-date="${day}"]`).click();
   assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
   assert.doesNotMatch(await scope(),/ — /);assert.equal(new URL(page.url()).searchParams.get('date'),day);
@@ -528,14 +530,6 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
     const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
     return{fields:buttons.map(button=>{const value=button.querySelector('strong'),range=document.createRange();range.selectNodeContents(value);return{button:rect(button),label:rect(button.querySelector('span')),value:rect(value),text:value.textContent,textRects:[...range.getClientRects()].map(b=>({x:b.x,y:b.y,right:b.right,bottom:b.bottom})),overflow:button.scrollWidth>button.clientWidth+1};}),documentOverflow:document.documentElement.scrollWidth>innerWidth};
    });
-   if(label==='default'&&viewportWidth===360){
-    await page.evaluate(()=>{
-     const visit=rules=>{for(const rule of rules){if(rule.cssRules)visit(rule.cssRules);if(rule.selectorText==='#search-form .quick-field'&&rule.style.alignContent==='stretch'){window.__formValueBaseline={rule,css:rule.style.cssText};rule.style.alignContent='start';rule.style.removeProperty('align-self');rule.style.removeProperty('grid-template-rows');}}};
-     for(const sheet of document.styleSheets)visit(sheet.cssRules);if(!window.__formValueBaseline)throw Error('Existing mobile value-row rule not found');
-    });
-    try{const baseline=await measure();assert(Math.abs(baseline.fields[0].value.height-baseline.fields[1].value.height)>5,'old declarations reproduce unequal default value boxes on360px');formValueStates.push({label:'baseline-old-declarations',width:viewportWidth,...baseline});await page.screenshot({path:path.join(evidence,'form-values-baseline-360.png')});}
-    finally{await page.evaluate(()=>{const saved=window.__formValueBaseline;saved.rule.style.cssText=saved.css;delete window.__formValueBaseline;});}
-   }
    const boxes=await measure();assert.equal(boxes.fields.length,2);assert.equal(boxes.documentOverflow,false,label+' has no horizontal form overflow at '+viewportWidth);
    for(const field of boxes.fields){assert(field.button.width>=44&&field.button.height>=44,label+' retains the whole row click target');assert.equal(field.overflow,false);assert(field.textRects.length&&field.textRects.every(text=>text.x>=field.button.x-1&&text.right<=field.button.right+1&&text.y>=field.button.y-1&&text.bottom<=field.button.bottom+1),label+' keeps complete value text inside its control at '+viewportWidth);}
    if(viewportWidth<=760){const [meal,budget]=boxes.fields;assert(Math.abs(meal.value.y-budget.value.y)<=1&&Math.abs(meal.value.bottom-budget.value.bottom)<=1,label+' aligns both value boxes at '+viewportWidth);assert(Math.abs(meal.label.y-budget.label.y)<=1,label+' aligns both field labels');}
@@ -1728,9 +1722,15 @@ const server=http.createServer((req,res)=>{
  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
  await boundedRepriceJourney(browser,origin,base,evidence);
  await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
- await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
- await multiHotelReload(browser,origin,base,evidence);
- await require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence});
+ // Preserve the existing order and all three independent matrices; a failure
+ // still retains evidence from the remaining contexts before reporting it.
+ const finalMatrices=[
+  ()=>require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence}),
+  ()=>multiHotelReload(browser,origin,base,evidence),
+  ()=>require('./search3-visual-initial-loading.cjs')({browser,origin,base,evidence})
+ ],finalFailures=[];
+ for(const matrix of finalMatrices){try{await matrix();}catch(error){finalFailures.push(error);}}
+ if(finalFailures.length)throw new AggregateError(finalFailures,'Final independent compiled matrices failed');
    })(),
    (async()=>{await require('./search3-visual-large-flight-choices.cjs')();})()
   ]),rejected=completed.filter(result=>result.status==='rejected');

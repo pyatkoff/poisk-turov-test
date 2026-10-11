@@ -14,7 +14,7 @@ const server=http.createServer((req,res)=>{
 });
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));let browser;const receipts=[];
- try{browser=await chromium.launch({headless:true});for(const width of [360,390,430,768,1280]){
+ try{browser=await chromium.launch({headless:true});for(const width of (process.env.ANYTOUR_QA_WIDTHS||'360,390,430,768,1280').split(',').map(Number)){
   const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[],geometry=[],density=[],calendarContext=[];let requests=0,release,pending;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('**/*',async route=>{
@@ -33,33 +33,48 @@ const server=http.createServer((req,res)=>{
    const record=await page.evaluate(({state,zoom})=>{
     const rect=el=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},fits=(el,box=el)=>{const bounds=box.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return [...range.getClientRects()].every(r=>r.x>=bounds.x-1&&r.right<=bounds.right+1&&r.y>=bounds.y-1&&r.bottom<=bounds.bottom+1);};
     const form=document.querySelector('#search-form'),first=document.querySelector('.hotel-card'),price=first?.querySelector('.starting-price strong'),actions=[...form.querySelectorAll('.search-actions button')].filter(el=>el.getClientRects().length),values=[...form.querySelectorAll('#origin-label,#destination-label,#destination-detail,#dates-label,#nights-label,#guests-label,#guests-detail,#meal-label,#budget-label')].filter(el=>el.getClientRects().length);
-    return{state,zoom,scrollY,form:rect(form),actions:actions.map(el=>({action:el.dataset.action||'submit',text:el.textContent,...rect(el),fullText:fits(el)})),values:values.map(el=>({id:el.id,text:el.textContent,fullText:fits(el,el.closest('.field-control')||el)})),firstCard:first?rect(first):null,firstPrice:price?rect(price):null,calendar:rect(document.querySelector('#price-calendar')),datePrices:[...document.querySelectorAll('#price-strip .date-price')].map(el=>({text:el.querySelector('strong').textContent,...rect(el),fullText:fits(el.querySelector('strong'),el)})),overflow:document.documentElement.scrollWidth>innerWidth+1};
+    return{state,zoom,scrollY,form:rect(form),actions:actions.map(el=>({action:el.dataset.action||'submit',text:el.textContent,...rect(el),fullText:fits(el)})),values:values.map(el=>({id:el.id,text:el.textContent,fullText:fits(el,el.closest('.field-control')||el)})),firstCard:first?rect(first):null,firstPrice:price?rect(price):null,calendar:rect(document.querySelector('#price-calendar')),calendarHidden:document.querySelector('#calendar-preview').hidden,datePrices:[...document.querySelectorAll('#price-strip .date-price')].map(el=>({text:el.querySelector('strong').textContent,...rect(el),fullText:fits(el.querySelector('strong'),el)})),overflow:document.documentElement.scrollWidth>innerWidth+1};
    },{state,zoom});
    assert.equal(record.overflow,false,state+' text'+zoom+' fits the document');
-   if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
+   if(state==='results'){assert.equal(record.scrollY,0,'first-card/price measurements share the top-of-page frame');assert(record.firstCard&&record.firstPrice);if(!record.calendarHidden)assert(record.datePrices.every(price=>price.width>=44&&price.height>=44&&price.fullText),'complete saved date prices stay inside44px date targets at '+width+' text'+zoom);}
    else{assert(record.values.every(value=>value.fullText),'complete form values stay readable at '+width+' text'+zoom);assert(record.actions.every(action=>action.height>=44&&action.fullText),'form actions keep44px targets and complete labels');}
    density.push(record);return record;
   };
   const reachable=async(control,label)=>{
-   await control.scrollIntoViewIfNeeded();const box=await control.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return{width:r.width,height:r.height,hit:hit===el||el.contains(hit),fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1)};});
-   assert(box.width>=44&&box.height>=44&&box.hit&&box.fullText,label+' keeps a reachable44px action and its complete label');return box;
+   await control.scrollIntoViewIfNeeded();let settleError;
+   try{await page.waitForFunction(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return r.width>=44&&r.height>=44&&(hit===el||el.contains(hit))&&[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1);},await control.elementHandle(),{timeout:2000,polling:'raf'});}catch(error){settleError=String(error);}
+   const box=await control.evaluate(el=>{const rect=node=>{if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return{...rect(el),hit:hit===el||el.contains(hit),hitElement:hit?{tag:hit.tagName,id:hit.id,className:hit.getAttribute('class')}:null,fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1),scrollY,compact:rect(document.querySelector('#compact-search')),mobileBottom:rect(document.querySelector('.mobile-bottom'))};});
+   assert(box.width>=44&&box.height>=44&&box.hit&&box.fullText,label+' keeps a reachable44px action and its complete label: '+JSON.stringify({...box,settleError}));return box;
   };
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
    const trigger=page.locator('.hotel-card [data-action="all-offers"]').first();await trigger.waitFor();assert.equal(requests,0,'form/results leave the offer-list renderer cold');
-   assert(await page.locator('#calendar-preview').isVisible(),'price calendar is open');assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot('results');await densityFrame('results',100);
+   const calendarState=async open=>{assert.equal(await page.locator('#calendar-preview').evaluate(el=>el.hidden),!open);assert.equal(await page.locator('#calendar-toggle').getAttribute('aria-expanded'),String(open));};
+   assert.equal(await page.locator('#calendar-toggle').getAttribute('data-action'),'toggle-result-calendar');assert.equal(await page.locator('#calendar-toggle').getAttribute('aria-controls'),'calendar-preview');assert.equal(await page.locator('#calendar-toggle').evaluate(el=>el.hidden),width>760);await calendarState(width>760);
+   assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot(width<=760?'results-calendar-closed':'results');await densityFrame('results',100);
+   if(width<=760){
+    await reachable(page.locator('#calendar-toggle'),'result dates disclosure');await page.evaluate(()=>document.documentElement.style.fontSize='200%');await reachable(page.locator('#calendar-toggle'),'result dates disclosure text200');await page.evaluate(()=>scrollTo(0,0));await densityFrame('results',200);await shot('results-calendar-closed-text200');await page.evaluate(()=>document.documentElement.style.fontSize='');
+    const savedURL=page.url(),savedCards=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id));await page.locator('#calendar-toggle').click();await calendarState(true);assert.equal(page.url(),savedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),savedCards);assert.equal(requests,0,'opening saved dates leaves the exact-offer renderer cold');await page.evaluate(()=>scrollTo(0,0));await shot('results-calendar-open');await densityFrame('results',100);
+   }
    await page.evaluate(()=>document.documentElement.style.fontSize='200%');await page.evaluate(()=>scrollTo(0,0));await densityFrame('results',200);await shot('results-text200');
    const dateTargets=page.locator('#price-strip .date-price');assert.equal(await dateTargets.count(),7,'large text retains all seven dates');
-   const passiveDateURL=page.url();await dateTargets.last().focus();const lastDate=await reachable(dateTargets.last(),'last saved date text200');
+   const passiveDateURL=page.url();await page.keyboard.press('Tab');await dateTargets.last().focus();const lastDate=await reachable(dateTargets.last(),'last saved date text200');
    assert(await dateTargets.last().evaluate(el=>document.activeElement===el),'the last date remains a keyboard target');assert.equal(page.url(),passiveDateURL,'keyboard rail navigation is passive');
    if(width<=760){const focus=await dateTargets.last().evaluate(el=>{const style=getComputedStyle(el);return {visible:el.matches(':focus-visible'),style:style.outlineStyle,offset:parseFloat(style.outlineOffset)};});assert(focus.visible&&focus.style!=='none'&&focus.offset<=0,'keyboard date focus remains visible inside the scrollable rail');}
    const rail=await page.locator('#price-strip').evaluate(el=>({width:el.clientWidth,contentWidth:el.scrollWidth,scrollLeft:el.scrollLeft,overflowX:getComputedStyle(el).overflowX}));
    if(width===360){assert(rail.contentWidth>rail.width&&rail.scrollLeft>0,'large saved prices use the internal rail and keyboard focus reveals the last date');assert.equal(rail.overflowX,'auto');}
    density.push({state:'date-rail-keyboard',zoom:200,lastDate,...rail});
    await page.evaluate(()=>{document.documentElement.style.fontSize='';document.querySelector('#price-strip').scrollLeft=0;scrollTo(0,0);});
-   const photo=await page.locator('.hotel-card').first().evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth};});
-   if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available');
-   await page.locator('.hotel-card').first().scrollIntoViewIfNeeded();await shot('card');
+   const resultSort=page.locator('#sort');await resultSort.selectOption('price');await calendarState(true);await resultSort.selectOption('recommended');
+   if(width<=760){await page.locator('#calendar-toggle').click();await calendarState(false);await resultSort.selectOption('rating');await calendarState(false);await resultSort.selectOption('recommended');await page.locator('#calendar-toggle').click();await calendarState(true);}
+   const firstCard=page.locator('.hotel-card').first();await firstCard.scrollIntoViewIfNeeded();let photoReadyError;
+   // Sort can replace the lazy image. Reveal the actual card before waiting for
+   // that same image resource; no source replacement, retry or fixture request.
+   try{await page.waitForFunction(image=>image.isConnected&&image.complete&&image.naturalWidth>0,await firstCard.locator('.hotel-image').elementHandle(),{timeout:3000,polling:'raf'});}catch(error){photoReadyError=String(error);}
+   const photo=await firstCard.evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth,complete:image.complete,src:image.getAttribute('src'),currentSrc:image.currentSrc,photoClass:card.querySelector('.hotel-photos').className};});
+   assert.equal(photo.complete,true,'saved demo photo has finished loading: '+JSON.stringify({...photo,photoReadyError}));
+   if(width<=760){assert(photo.width>=photo.card-4,'approved mobile photo spans the card');assert(Math.abs(photo.width/photo.height-1.8)<0.03,'approved mobile photo ratio 1.8');}assert(photo.natural>0,'saved demo photo is available: '+JSON.stringify({...photo,photoReadyError}));
+   await shot('card');
    const appliedURL=page.url(),appliedKeys=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id));
    await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();await page.locator('#search-form').waitFor({state:'visible'});await page.locator('#search-form').scrollIntoViewIfNeeded();await shot('form');
    for(const zoom of [100,200]){
@@ -88,13 +103,18 @@ const server=http.createServer((req,res)=>{
     if(name==='guests'){
      await page.locator('[data-action="children-plus"]').click();await page.locator('[data-action="child-age"]').first().click();await shot('child-age');await page.locator('#modal-back').click();
     }
+    if(name==='nights'){
+     const original=await page.locator('#nights-label').textContent();await page.locator('[data-action="night-pick"][data-value="7"]').click();assert.deepEqual(await page.locator('.night-grid [aria-pressed="true"]').evaluateAll(nodes=>nodes.map(node=>node.dataset.value)),['7']);await page.locator('[data-action="night-pick"][data-value="10"]').click();assert.deepEqual(await page.locator('.night-grid [aria-pressed="true"]').evaluateAll(nodes=>nodes.map(node=>node.dataset.value)),['7','8','9','10']);await shot('nights-range');await reachable(page.locator('[data-action="apply-nights"]'),'night range Apply');await page.evaluate(()=>document.documentElement.style.fontSize='200%');await reachable(page.locator('[data-action="apply-nights"]'),'night range Apply text200');await shot('nights-range-text200');await page.evaluate(()=>document.documentElement.style.fontSize='');await page.locator('[data-action="night-pick"][data-value="14"]').click();assert.deepEqual(await page.locator('.night-grid [aria-pressed="true"]').evaluateAll(nodes=>nodes.map(node=>node.dataset.value)),['14']);assert.equal(await page.locator('#nights-label').textContent(),original,'night draft does not alter the committed form');
+    }
     if(name==='form-filters'){await page.locator('#modal [data-action="stars"]').click();await shot('stars');await page.locator('#modal-back').click();}
     await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
    }
    await page.locator('[data-action="cancel-search-edit"]').click();assert.equal(requests,0,'all form states leave the exact-list owner cold');
+   await calendarState(true);
    assert.equal(page.url(),appliedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),appliedKeys,'Cancel preserves the applied results');
    if(width<=1100){await page.locator('.results-toolbar [data-action="filters"]').click();await shot('filters');await page.locator('.filter-operator-group>.filter-section-toggle').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Туроператор');assert(await page.locator('#filter-detail-back').evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#apply-filters').isVisible(),false);await shot('operators');await page.locator('#filter-detail-back').click();assert.equal(await page.locator('.filter-top h3').textContent(),'Фильтры');assert(await page.locator('.filter-operator-group>.filter-section-toggle').evaluate(el=>document.activeElement===el));await page.locator('#filter-panel [data-action="close-filters"]').click();}
    else{await page.locator('#filters').scrollIntoViewIfNeeded();await shot('filters');}
+   await calendarState(true);
    await trigger.click();await page.locator('[data-action="retry-offer-list"]').waitFor();assert.equal(requests,1);
    await page.locator('[data-action="retry-offer-list"]').click();while(!pending)await page.waitForTimeout(20);assert.equal(requests,2);
    await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);release();await page.waitForFunction(()=>!!window.AnyTourOfferList?.create);
@@ -127,7 +147,22 @@ const server=http.createServer((req,res)=>{
    await list.locator('[data-action="offer"]').first().click();const tourPrice=page.locator(width<=760?'#modal-footer .footer-total>strong':'#detail-total');await tourPrice.waitFor();assert.match(await tourPrice.textContent(),/\d.*₽/,'the selected offer has a visible total');await shot('tour');
    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[data-action="apply-flight"]').waitFor();await shot('flights');
    await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();await shot('application');
-   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
+   await calendarState(true);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   const foldedSelectedDates=[];
+   if(width<=760){
+    // A fresh document keeps this bounded selected-date scenario separate from
+    // the completed offer pagination, history and application journey above.
+    const beforeFoldedScenario=requests;await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);await page.locator('.hotel-card [data-action="all-offers"]').first().waitFor();await calendarState(false);
+    await page.locator('#calendar-toggle').click();await calendarState(true);const firstDate=page.locator('#price-strip [data-date]').first(),selectedDay=await firstDate.getAttribute('data-date');await firstDate.click();
+    const selectedURL=page.url(),selectedCards=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),selectedCaption=await page.locator('#calendar-selected-date').textContent();assert.equal(new URL(selectedURL).searchParams.get('date'),selectedDay);
+    await page.locator('#calendar-toggle').click();await calendarState(false);const summary=page.locator('#calendar-selected-summary');assert.equal(await summary.isVisible(),true);assert.equal(await summary.textContent(),selectedCaption);
+    for(const zoom of [100,200]){
+     await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);await page.evaluate(()=>document.fonts.ready);const toggle=await reachable(page.locator('#calendar-toggle'),'folded selected dates text'+zoom);
+     const summaryBox=await summary.evaluate(el=>{const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return{text:el.textContent,width:r.width,height:r.height,fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1)};});assert(summaryBox.width>0&&summaryBox.height>0&&summaryBox.fullText,'folded selected departure remains completely readable at '+width+' text'+zoom);
+     assert.equal(page.url(),selectedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),selectedCards);assert.equal(requests,beforeFoldedScenario,'selecting and folding a saved date never loads the exact-offer renderer');foldedSelectedDates.push({zoom,selectedDay,summary:summaryBox,toggle});await shot('results-calendar-selected-closed-text'+zoom);
+    }
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,mobile_calendar_initially_closed:width<=760,calendar_local_state_retained:true,nights_exact_range_restart:true,foldedSelectedDates,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled approved interface and cold offer-list browser',JSON.stringify(receipts));

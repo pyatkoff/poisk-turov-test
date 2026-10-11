@@ -1,4 +1,5 @@
-// Site100 accepted always-open price tape/month/year and flat exact-offer markup replace v147 presentation. Independent grouping/note reference, data sequences, pagination/draft/ownership mutations remain.
+// Retain the historical Site100 price tape/month/year and exact-offer oracle.
+// New Sites v2 mobile disclosure behavior is exercised by approved-interface.
 // Observe the actual result, calendar and offer-list owners at DOM/data boundaries.
 // Baseline is app blob 33bee027, before the combined structural extraction.
 // No application bootstrap, supplier transport, quote or lead submission executes.
@@ -43,7 +44,7 @@ function observe(source,s){
    closest:()=>s.noAnchor?null:node('#anchor'),
    getBoundingClientRect:()=>({top:key==='#next-anchor'?s.nextTop??130:100}),
    querySelector:selector=>{record('query',key,selector);return s.noFallback?null:node(key+':'+selector);},
-   setAttribute:(k,v)=>record('attribute',key,k,v),
+   setAttribute:(k,v)=>record('attribute',key,k,v),focus:()=>record('focus',key),
    classList:{toggle:(k,v)=>{record('classToggle',key,k,v);v?classes.add(k):classes.delete(k);},contains:k=>classes.has(k)}
   };
   const n=new Proxy(target,{set:(t,k,v)=>{record('write',key,k,v);t[k]=v;return true;}});nodes.set(key,n);return n;
@@ -65,7 +66,7 @@ function observe(source,s){
   addDays:call('addDays',d=>new Date(Date.parse(d)+86400000).toISOString().slice(0,10)),
   calendarMinimum:call('calendarMinimum',day=>s.prices?.[Number(day.slice(-2))-14]??null),
   calendarSourceLabel:call('calendarSourceLabel',()=> 'Найденные цены'),calendarScope:call('calendarScope',()=>({destination:'Кемер',filters:s.noFilters?[]:['meal']})),money:call('money',n=>n+' ₽'),
-  optionalShortlistEnabled:!!s.shortlist,innerWidth:s.mobile?390:1280,
+  optionalShortlistEnabled:!!s.shortlist,innerWidth:s.mobile?390:1280,resultCalendarExpanded:false,
   offerView:{id:1,departure:s.departure||'',flight:s.flight||'',room:s.room||'',meal:s.meal||'',sort:s.sort||'price',open:['r1-AI'],limits:{'r1-AI':1}},
   offerRefinementFields:['departure','flight','room','meal'],mealNames:{AI:'Всё включено'},comparisonQuotes:[{key:'old'}]
  };
@@ -150,7 +151,16 @@ if(scopeStart>=0){
 // baseline (which passed the original e76ff507 oracle), never from new output.
 const retiredNodes=new Set(['#modal','#offer-comparison-dates','[data-action="offer-view"]0','[data-action="offer-view"]1']);
 const stripComparisonAction=html=>html.replace(/<button class="text-button compare-tour-link" data-action="compare-tour" data-key="[^"]*">Сравнить на эти даты<\/button>/g,'');
+// Project only the new disclosure controls out of the retained data/price
+// oracle. Its own state, focus and Cancel contract is checked independently;
+// every price-strip, date/month/year and applied-selection observation remains.
+const resultDisclosureNodes=new Set(['#calendar-toggle','#calendar-preview','#price-calendar','#calendar-selected-summary']);
+function retainedCalendarRecord(row){
+ const trace=row.result.trace;
+ return {...row,result:{...row.result,dom:row.result.dom.filter(([key])=>!resultDisclosureNodes.has(key)),trace:trace.filter(call=>!resultDisclosureNodes.has(call[1]))}};
+}
 function visibleRecords(rows){return rows.map((row,index)=>{
+ if(scenarios[index].kind==='calendar')row=retainedCalendarRecord(row);
  if(scenarios[index].kind!=='offers')return {...row,result:{...row.result,trace:row.result.trace.map(call=>call[0]==='updateMealPicker'?call.slice(0,1):call)}};
  const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view,groups=result.dom.filter(([key])=>key.startsWith('#group-'));
  const list=result.dom.find(([key])=>key==='#all-offers-list');let listHTML=list?.[1].innerHTML||'';
@@ -370,11 +380,11 @@ const summaryBaseline=i>=0?fs.readFileSync(process.argv[i+1],'utf8'):source;
 // date roots must survive provider/status refreshes. Live-only edits still
 // invalidate the generated-markup binding and are repaired on the next pass.
 function calendarDOM(code=source){
- const dom=new JSDOM('<p id="calendar-units"></p><p id="calendar-month-label"></p><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
+ const dom=new JSDOM('<section id="price-calendar"><button id="calendar-toggle" aria-controls="calendar-preview" aria-expanded="true"></button><p id="calendar-month-label"></p><p id="calendar-units"></p><p id="calendar-selected-summary" hidden></p><div id="calendar-preview"><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button></div></section>'),document=dom.window.document,strip=document.querySelector('#price-strip');
  let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
- const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,innerWidth:1280,resultCalendarExpanded:false,
   state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
   calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
