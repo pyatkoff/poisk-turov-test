@@ -1449,6 +1449,8 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
  #prototype-lead-form>.form-row{flex-direction:column;gap:12px}
 }
 /* Search form: accepted Sites v2 composition in the existing reversible step. */
+/* A catalogue reply must not overtake an animated native keyboard reveal. */
+html:has(#catalog-error[data-catalog-retry="pending"]){scroll-behavior:auto}
 body.search-editing .results-heading,
 body.search-editing .results-main{display:none}
 body.search-editing #compact-search{display:none}
