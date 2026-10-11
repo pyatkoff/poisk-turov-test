@@ -30,11 +30,12 @@ async function run(width,monthRange=null){
  const lookup=async()=>{for(let i=0;i<35&&$('#destination-query').getAttribute('aria-busy')==='true';i++)await pause();assert.notEqual($('#destination-query').getAttribute('aria-busy'),'true');};
  const isOpen=()=>$('#modal').hasAttribute('open');
  const calendarState=open=>{assert.equal($('#calendar-preview').hidden,!open);assert.equal($('#calendar-toggle').getAttribute('aria-expanded'),String(open));};
+ const calendarViewportReady=async()=>{for(let i=0;i<35&&$('#calendar-toggle').hidden!==(w.innerWidth>760);i++)await pause();assert.equal($('#calendar-toggle').hidden,w.innerWidth>760,'Calendar disclosure finishes the queued responsive update');};
  assert.equal($('#calendar-toggle').dataset.action,'toggle-result-calendar');assert.equal($('#calendar-toggle').getAttribute('aria-controls'),'calendar-preview');
  assert.equal($('#calendar-toggle').hidden,width>760,'the inline disclosure belongs to mobile results');calendarState(width>760);
  if(width<=760){
-  const passiveURL=w.location.href;w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));await pause();calendarState(true);$('#price-strip button').focus();
-  w.innerWidth=width;w.dispatchEvent(new w.Event('resize'));await pause();calendarState(false);assert.equal(d.activeElement,$('#calendar-toggle'),'responsive collapse moves focus out of hidden dates');assert.equal(w.location.href,passiveURL);
+  const passiveURL=w.location.href;w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));await calendarViewportReady();calendarState(true);$('#price-strip button').focus();
+  w.innerWidth=width;w.dispatchEvent(new w.Event('resize'));await calendarViewportReady();calendarState(false);assert.equal(d.activeElement,$('#calendar-toggle'),'responsive collapse moves focus out of hidden dates');assert.equal(w.location.href,passiveURL);
  }
  if(monthRange){
   const [from,to,label]=monthRange;
