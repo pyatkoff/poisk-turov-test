@@ -101,4 +101,3 @@
 Перед NEXT публикацией нужны зелёные применимые проверки на **финальном SHA**, просмотр rendered compiled evidence затронутых экранов на390/1280 и значимых пограничных ширинах, затем fresh exclusive publisher claim, существующая one-shot exact-artifact команда и readback. Не повторять terminal PR4525 publisher command6108118997/run38132402512. Physical Safari и real supplier scopes остаются отдельными. Docs-only подготовка не запускает build/deploy/full journey.
 
 Этот handoff не является receipt публикации, утверждением production-ready или командой merge production draft1334.
-

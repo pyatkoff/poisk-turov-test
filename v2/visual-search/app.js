@@ -2685,4 +2685,3 @@ addEventListener('resize',scheduleCompactSearch);
 new IntersectionObserver(scheduleCompactSearch,{threshold:0}).observe($('#search'));
 updateCompactSearch();
 })();
-

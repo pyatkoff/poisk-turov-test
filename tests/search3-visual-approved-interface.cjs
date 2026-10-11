@@ -163,4 +163,3 @@ async function verify(){
 verify().catch(error=>{console.error(error.stack);process.exit(1);});
 // Keep the gallery regression in the current owner gate, without a new workflow.
 require('./search3-visual-gallery.cjs');
-

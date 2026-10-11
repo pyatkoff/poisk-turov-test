@@ -2106,4 +2106,3 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .hotel-price:not(.price-wide) {grid-template-columns:minmax(0,1fr) 122px;gap:6px 10px}
  .hotel-price>.primary {padding-left:8px;padding-right:8px;font-size:.875rem}
 }
-
