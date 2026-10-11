@@ -55,7 +55,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.waitForFunction(()=>document.querySelector('#search-status').hidden&&document.querySelector('[data-action="all-offers"][data-id="501"]'));
    const list=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
    const choose=async(p=provider)=>{await page.locator('#modal-body [data-action="offer"][data-key^="'+p+'%3A"]').first().click();};
-   await list();await choose();await page.locator('[data-action="refresh-hotel"]').click();
+   await list();await choose();await page.locator('[data-action="refresh-hotel"]:visible').first().click();
    let returnState;
    if(provider==='anex'){
     if(mode==='return'){
@@ -69,15 +69,15 @@ module.exports=async function({browser,origin,base,evidence}){
      const offer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await offer.focus();
      returnState=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
      await offer.click();
-    }else await page.locator('[data-action="select-anex-tour"]').waitFor();
-    await page.locator('[data-action="select-anex-tour"]').click();
+    }else await page.locator('#modal-footer [data-action="select-anex-tour"]').waitFor();
+    await page.locator('#modal-footer [data-action="select-anex-tour"]').click();
     if(mode==='editing')await page.locator('[data-action="anex-package-calculate"]:enabled').click();
    }
    if(provider==='andromeda'&&mode==='editing')await page.locator('[data-action="apply-andromeda-flights"]:enabled').click();
    await page.locator('[data-action="'+application+'"]').waitFor();
    assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice));
    if(mode==='other'){
-    await page.locator('[data-action="close-modal"]').click();
+    await page.locator('#modal .modal-header [data-action="close-modal"]').click();
     await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
     await list();await choose('tourvisor');const before=calls();
     await page.clock.fastForward(901000);await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
@@ -151,7 +151,7 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.locator('#modal-back').click();
      assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Back cannot restore an expired application action');
     }
-    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
+    await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
     await page.evaluate(()=>history.forward());
     await page.waitForTimeout(50);
     assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Forward does not restore expired price authority');
@@ -194,7 +194,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.locator('[name="flight-pair"][value="3"]').check();const total=await page.locator('#flight-total').textContent();await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();assert((await page.locator('#modal-footer').textContent()).includes(total),'application uses the exact pair whole-tour amount');await page.locator('#modal-back').click();await page.locator('[data-action="choose-flight"]').click();assert.equal(await pair(),'3','Apply preserves exact pair3');retained=await read();assert.equal(retained.view.direct,true);assert.deepEqual(retained.view.expanded,[3]);
    await page.locator('[data-flight-filter="direct"]').uncheck();while(await page.locator('[data-flight-load-more]').isVisible())await page.locator('[data-flight-load-more]').click();await page.locator('[name="flight-pair"][value="23"]').check();assert.equal(await page.locator('#flight-total').textContent(),'Цена уточняется');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);
    await page.locator('#modal-back').click();await page.locator('[data-action="choose-flight"]').click();assert.equal(await pair(),'3','unknown draft cannot replace applied pair');await page.locator('[name="flight-pair"][value="23"]').check();
-   const saved=await read();await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(key=>!document.querySelector('#modal').open&&!history.state?.[key],historyKey);await page.evaluate(()=>history.forward());await page.locator('#flight-total').waitFor();assert.equal(await pair(),'23');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);assert.deepEqual((await read()).view,saved.view,'Forward restores presentation/draft, not price authority');
+   const saved=await read();await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(key=>!document.querySelector('#modal').open&&!history.state?.[key],historyKey);await page.evaluate(()=>history.forward());await page.locator('#flight-total').waitFor();assert.equal(await pair(),'23');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);assert.deepEqual((await read()).view,saved.view,'Forward restores presentation/draft, not price authority');
    assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
    const bounds=await page.locator('#modal-footer [data-action="apply-flight"]').evaluate(el=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,vw:innerWidth,vh:innerHeight};});assert(bounds.width>=44&&bounds.height>=44&&bounds.left>=-1&&bounds.right<=bounds.vw+1&&bounds.top>=0&&bounds.bottom<=bounds.vh+1,'confirmation target remains inside viewport');
    await page.screenshot({path:path.join(evidence,'flight-session-unknown-'+width+'.png')});assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
@@ -207,13 +207,13 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.locator('[data-flight-query]').fill('Авиакомпания');await keyboard(420);await geometry('[data-flight-query]','[data-action="apply-flight"]','flights');assert.equal(await pair(),'23');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);assert.equal(await page.locator('#flight-total').textContent(),'Цена уточняется');await page.screenshot({path:path.join(evidence,'picker-keyboard-flights-'+width+'.png')});
    const internalScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await keyboard(420,64,'scroll');await geometry('[data-flight-query]','[data-action="apply-flight"]','flights-pan');assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),internalScroll,'pan does not reset internal scroll');assert.equal(await page.locator('[data-flight-query]').inputValue(),'Авиакомпания');await page.screenshot({path:path.join(evidence,'picker-keyboard-pan-'+width+'.png')});
    await keyboard(900);assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('viewport-keyboard')||el.style.getPropertyValue('--modal-viewport-height')!==''),false);assert.equal(await page.locator('[data-flight-query]').evaluate(el=>el===document.activeElement),true);assert.equal(await pair(),'23');assert.equal(await page.locator('[data-action="apply-flight"]').isDisabled(),true);await page.screenshot({path:path.join(evidence,'picker-keyboard-closed-'+width+'.png')});
-   const close=async()=>{await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(key=>!document.querySelector('#modal').open&&!history.state?.[key],historyKey);await keyboard(900);assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('viewport-keyboard')),false);};await close();
+   const close=async()=>{await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(key=>!document.querySelector('#modal').open&&!history.state?.[key],historyKey);await keyboard(900);assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('viewport-keyboard')),false);};await close();
    // The searched fixture has the approved form collapsed. Enter its existing
    // edit flow before operating fields; hidden controls are not user actions.
    await page.waitForFunction(()=>history.scrollRestoration==='auto');await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();assert.equal(await page.locator('#search-form').isVisible(),true,'the existing edit action exposes the full form');
    const wishes=page.locator('#form-wishes');assert(await wishes.isVisible(),'secondary wishes belong to the visible editable form');
-   if(!await wishes.evaluate(el=>el.open))await page.locator('#form-wishes > summary').click();
-   assert.equal(await wishes.evaluate(el=>el.open),true,'native wishes disclosure opens before editing meal and budget');await page.locator('#quick-meal').waitFor({state:'visible'});
+   assert.equal(await wishes.evaluate(el=>el.tagName),'SECTION','Final Sites keeps wishes directly visible');assert.equal(await wishes.locator('summary').count(),0);
+   for(const selector of ['#quick-stars','#quick-meal','#quick-budget'])assert(await page.locator(selector).isVisible(),'Direct wish control is visible: '+selector);
    const mealBefore=await page.locator('#quick-meal').textContent(),budgetBefore=await page.locator('#quick-budget').textContent();await page.locator('#quick-meal').click();await page.locator('#meal-query').fill('no-such-meal');await keyboard(420,64);await geometry('#meal-query','[data-action="apply-meals"]','meals');assert.equal(await page.locator('#meal-no-match').isVisible(),true);await page.screenshot({path:path.join(evidence,'picker-keyboard-meals-'+width+'.png')});await close();assert.equal(await page.locator('#quick-meal').textContent(),mealBefore,'meal query/Cancel does not change applied selection');
    await page.locator('#quick-budget').click();await page.locator('#budget-min').fill('-1');await keyboard(420);await geometry('#budget-min','[data-action="apply-budget"]','budget-invalid');assert.equal(await page.locator('[data-action="apply-budget"]').isDisabled(),true);await keyboard(900);assert.equal(await page.locator('#budget-min').inputValue(),'-1');assert.equal(await page.locator('#budget-min').evaluate(el=>el===document.activeElement),true);await close();assert.equal(await page.locator('#quick-budget').textContent(),budgetBefore,'invalid budget/Cancel preserves the form');
    await page.locator('.form-all-filters').click();await page.locator('#modal-body [data-action="budget"]').click();await page.locator('#budget-min').fill('150000');await page.locator('#budget-max').fill('200000');await keyboard(420,64);await geometry('#budget-max','[data-action="apply-budget"]','budget-nested');assert.equal(await page.locator('[data-action="apply-budget"]').isEnabled(),true);await page.screenshot({path:path.join(evidence,'picker-keyboard-budget-'+width+'.png')});await page.locator('[data-action="apply-budget"]').click();await page.locator('#form-filters-summary').waitFor();assert.match(await page.locator('#form-filters-summary').textContent(),/1 группа/);assert.equal(await page.locator('#modal').evaluate(el=>el.classList.contains('viewport-keyboard')),width<=760,'nested return adapts while the keyboard is closing');await page.screenshot({path:path.join(evidence,'picker-keyboard-form-filters-'+width+'.png')});await close();assert.equal(await page.locator('#quick-budget').textContent(),budgetBefore,'Cancel keeps nested draft out of applied form');

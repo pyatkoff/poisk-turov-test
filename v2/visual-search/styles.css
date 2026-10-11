@@ -1034,15 +1034,6 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 
 
 /* Nights: exact duration or endpoints, with one confirmation footer. */
-.night-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin-bottom:14px;padding:4px;border-radius:12px;background:#f0f3f8}
-.night-modes button{min-width:44px;min-height:44px;padding:9px 12px;border-radius:9px;font-size:.9375rem;line-height:1.4;font-weight:500}
-.night-modes button[aria-pressed=true]{background:#fff;color:var(--brand);box-shadow:0 1px 4px #1823330d}
-.night-bounds{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
-.night-bounds button{display:grid;align-content:center;gap:2px;min-width:44px;min-height:64px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;text-align:left}
-.night-bounds button small{font-size:.75rem;line-height:1.4;color:var(--muted)}
-.night-bounds button strong{font-size:1rem;line-height:1.4;font-weight:500;overflow-wrap:anywhere}
-.night-bounds button[aria-pressed=true]{border-color:var(--brand);background:var(--soft-blue);box-shadow:inset 0 0 0 1px var(--brand)}
-.night-bounds button[aria-pressed=true] small{color:var(--brand)}
 .night-grid{display:grid;grid-template-columns:repeat(7,minmax(44px,1fr));gap:4px;max-width:480px;margin:0 auto}
 .night-grid button{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:8px 2px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--ink);font-size:.875rem;font-weight:500;line-height:1.25;font-variant-numeric:tabular-nums}
 .night-grid button.in-range{background:var(--soft-blue);color:var(--brand)}
@@ -1475,10 +1466,10 @@ body.form-visible .search-section{padding-top:24px;padding-bottom:24px}
 body.form-visible .search-section>.wrap{max-width:920px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
 body.form-visible .intro{margin:0 0 16px}
 body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font-weight:700;letter-spacing:-.8px}
-#search-form.search-box{display:block;container-type:inline-size;container-name:search-form;padding:20px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);box-shadow:none}
+#search-form.search-box{display:block;container-type:inline-size;container-name:search-form;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);box-shadow:none}
 #search-form .search-primary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;background:transparent;border:0;border-radius:0}
-#search-form .search-field{display:grid;grid-template-columns:minmax(0,1fr);grid-column:auto;align-content:center;justify-content:normal;justify-items:stretch;min-width:0;min-height:70px;gap:4px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:none;text-align:left}
-#search-form .search-field:nth-child(1),#search-form .search-field:nth-child(2),#search-form .search-field:nth-child(5){grid-column:1/-1}
+#search-form .search-field{display:grid;grid-template-columns:minmax(0,1fr);grid-column:auto;align-content:center;justify-content:normal;justify-items:stretch;min-width:0;min-height:76px;gap:4px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:none;text-align:left}
+#search-form .search-field:nth-child(5){grid-column:1/-1}
 #search-form .search-field:hover{border-color:var(--brand);background:var(--soft-blue)}
 #search-form .search-field:focus-visible{outline:3px solid #ffb18f;outline-offset:2px}
 #search-form .field-label{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--muted);line-height:1.25}
@@ -1489,15 +1480,9 @@ body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font
 #search-form .field-value strong{font-weight:500}
 #search-form .field-value small{font-size:.75rem;line-height:1.4;color:var(--muted);font-weight:400}
 #search-form .chevron{margin-left:auto;flex:none;color:var(--muted);font-size:18px;line-height:1}
-#search-form .search-wishes{margin:8px 0 0;font-size:.9375rem;line-height:1.4;font-weight:500;letter-spacing:0}
-#search-form .search-wishes>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;cursor:pointer;list-style:none;color:var(--brand)}
-#search-form .search-wishes>summary>span:first-child{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
-#search-form #form-wishes-summary{flex:1;min-width:0;font-size:.75rem;line-height:1.4;font-weight:400;color:var(--muted);text-align:right;overflow-wrap:anywhere}
-#search-form .search-wishes>summary>.chevron{flex:none;margin-left:0}
-#search-form .search-wishes>summary::-webkit-details-marker{display:none}
-#search-form .search-wishes>summary:focus-visible{outline:3px solid #ffb18f;outline-offset:2px;border-radius:6px}
-#search-form .search-wishes[open]>summary .chevron{transform:rotate(180deg)}
-#search-form .search-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:4px 0 10px;margin:0}
+#search-form .search-wishes{margin:16px 0 0;font-size:.9375rem;line-height:1.4;font-weight:500;letter-spacing:0}
+#search-form .search-wishes h2{display:none;font-size:.8125rem;line-height:1.5;margin:0 0 8px;font-weight:500;letter-spacing:0}
+#search-form .search-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:0;margin:0}
 #search-form .quick-category{min-width:0;margin:0;padding:0;border:0;grid-column:1/-1;grid-row:1}
 #search-form .quick-category legend{float:left;max-width:calc(100% - 13.125rem);margin:0;padding:0;font-size:.75rem;color:var(--muted);line-height:44px}
 #search-form .quick-stars{display:grid;grid-template-columns:minmax(max-content,1fr) repeat(3,minmax(44px,1fr));gap:2px;width:13.125rem;max-width:100%;margin-left:auto}
@@ -1508,12 +1493,12 @@ body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font
 #search-form .quick-field>span:first-child{grid-column:1;grid-row:1;font-size:.75rem;line-height:1.25;color:var(--muted);padding:0;white-space:normal}
 #search-form .quick-field strong{display:flex;align-items:center;align-self:stretch;grid-column:1;grid-row:2;font-size:1rem;font-weight:500;line-height:1.35;color:var(--ink);white-space:normal;overflow:visible;overflow-wrap:anywhere}
 #search-form .quick-field .chevron{grid-column:2;grid-row:1/3;align-self:center}
-#search-form .search-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 12px;margin:8px 0 0;padding:0}
-#search-form .search-submit{width:340px;max-width:100%;min-width:0;min-height:50px;margin:0;border-color:var(--orange);border-radius:11px;background:var(--orange);color:#182333;font-size:1rem;font-weight:700;box-shadow:none}
+#search-form .search-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 12px;margin:20px 0 0;padding:0}
+#search-form .search-submit{width:100%;max-width:100%;min-width:0;min-height:50px;margin:0;border-color:var(--orange);border-radius:11px;background:var(--orange);color:#182333;font-size:1rem;font-weight:700;box-shadow:none}
 #search-form .search-submit:hover{background:#f34c08;border-color:#f34c08;box-shadow:none}
 #search-form #search-return{min-height:44px;font-size:13px;padding:10px 8px;color:var(--brand)}
 #search-form .search-edit-note{font-size:12px;line-height:1.5;margin:4px 0 0;color:var(--muted)}
-#search-form .form-all-filters{display:flex;justify-content:center;min-height:44px;margin:0;font-size:13px;order:-1}
+#search-form .form-all-filters{display:flex;justify-content:center;min-height:44px;margin:0;font-size:13px;order:1}
 #search-form .form-price-note{font-size:12px;line-height:1.5;text-align:center;color:var(--muted);margin-top:4px}
 #search-form #form-conflict{margin-top:8px;font-size:12px;line-height:1.5}
 @media(min-width:1101px){body.search-editing .results-section:not(.filters-requested){display:none}}
@@ -1538,6 +1523,9 @@ body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font
  #search-form.search-box{padding:0;background:transparent;box-shadow:none;border:0;border-radius:0}
  #search-form .quick-category legend{max-width:calc(100% - 11.5rem)}
  #search-form .quick-stars{width:11.5rem}
+ #search-form .search-wishes{padding-top:10px;border-top:1px solid var(--line)}
+ #search-form .search-wishes h2{display:block}
+ #search-form .quick-field{min-height:60px;padding:8px 0;border:0;border-radius:0;background:transparent}
  #search-form .search-actions{position:static;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0;border:0;background:transparent;box-shadow:none}
  #search-form .search-submit{width:100%;order:0}
  #search-form .form-all-filters{margin-top:0;order:1}
@@ -1552,14 +1540,10 @@ body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font
  #search-form .quick-category legend{float:none;max-width:none;line-height:1.4;margin-bottom:4px}
  #search-form .quick-stars{width:100%;margin-left:0}
 }
-@container search-form (max-width:19rem){
+@container search-form (max-width:17rem){
  #search-form .search-field:nth-child(3),#search-form .search-field:nth-child(4){grid-column:1/-1}
  #search-form .search-secondary{grid-template-columns:minmax(0,1fr)}
  #search-form .quick-field{grid-row:auto}
- #search-form .search-wishes>summary{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:2px 8px}
- #search-form .search-wishes>summary>span:first-child{grid-column:1;grid-row:1}
- #search-form #form-wishes-summary{grid-column:1;grid-row:2;text-align:left}
- #search-form .search-wishes>summary>.chevron{grid-column:2;grid-row:1/3;display:grid;align-self:start;place-items:center;min-width:44px;min-height:44px}
 }
 
 /* The approved pickers share the existing dialog, draft and history owners. */
@@ -1781,7 +1765,7 @@ body.form-visible .intro h1{color:var(--ink);font-size:30px;line-height:1.2;font
 
 /* v146: shared visual hierarchy across search, hotels and exact-tour selection.
    Photo geometry and interaction layout intentionally remain with their components. */
-:root{--ink:#182333;--text:#3e4b5d;--muted:#647184;--line:#e2e7ee;--bg:#f3f5f8;--soft-blue:#edf2ff}
+:root{--ink:#182844;--text:#3e4b5d;--muted:#657186;--line:#E4E8F1;--bg:#F5F7FB;--soft-blue:#EEF1FD}
 body{font-family:Aeroport,Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 .primary,.secondary,.input{border-radius:12px}
@@ -1903,8 +1887,62 @@ h1,h2,h3,h4{font-weight:650;letter-spacing:-.025em}
 .destination-more-countries[open] summary{margin-bottom:8px}
 @media(max-width:760px){.destination-countries{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+/* Final Sites hotel composition uses the existing hotel and exact-offer owners. */
+.hotel-detail-title{font-size:31px;line-height:1.2;margin:4px 0 8px;font-weight:700;letter-spacing:-.6px}
+.hotel-detail-meta{font-size:14px;color:var(--muted);margin-bottom:18px}
+.hotel-detail-hero{margin:0 0 20px;position:relative}
+.hotel-detail-hero-photo{display:block;width:100%;height:330px;border-radius:14px;object-fit:cover}
+.hotel-detail-hero .hotel-all-photos{position:absolute;right:14px;bottom:14px;width:auto;margin:0;background:#fff;min-height:44px}
+.hotel-detail-tabs{display:flex;gap:25px;border-bottom:1px solid var(--line);margin:0 0 18px}
+.hotel-detail-tabs button{position:relative;min-height:48px;padding:10px 0;font-size:15px;white-space:normal;text-align:left}
+.hotel-detail-tabs [aria-selected=true]{color:var(--brand);font-weight:500}
+.hotel-detail-tabs [aria-selected=true]:after{content:"";position:absolute;bottom:-1px;left:0;right:0;height:3px;background:var(--brand);border-radius:3px}
+.hotel-room-section .hotel-room-card{border:0;border-bottom:1px solid var(--line);border-radius:0;padding:17px 0;background:transparent;box-shadow:none}
+.hotel-room-section .room-choice-main{padding:0;margin:0 0 8px}
+.hotel-room-section .room-choice-main h4{font-size:16px;line-height:1.4;margin:0}
+.hotel-room-section .room-offer-choice{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;padding:0;border:0;background:transparent}
+.hotel-room-section .hotel-room-price{display:grid;grid-template-columns:auto auto;gap:4px 16px;align-items:center;padding:0}
+.hotel-room-section .hotel-room-price small{grid-column:1}
+.hotel-room-section .hotel-room-price strong{grid-column:1;font-size:24px;white-space:nowrap;line-height:1.3}
+.hotel-room-section .hotel-room-price .primary{grid-column:2;grid-row:1/4;min-width:132px;min-height:46px;margin:0}
+.room-offer-delta,.offer-price-delta{font-size:12px;color:var(--muted);line-height:1.4}
+.tour-quick-summary{display:contents}
+.tour-quick-details,.tour-quick-room,.tour-quick-meal{display:none}
+@media(max-width:760px){
+ .hotel-detail-title{font-size:28px}
+ .hotel-detail-hero-photo{height:225px;border-radius:12px}
+ .hotel-detail-tabs{gap:24px}
+ .hotel-detail-tabs button{font-size:14px}
+ .hotel-room-section .room-offer-choice{grid-template-columns:minmax(0,1fr);gap:12px}
+ .hotel-room-section .hotel-room-price{grid-template-columns:minmax(0,1fr) 122px;gap:4px 12px}
+ .hotel-room-section .hotel-room-price .primary{grid-column:2;grid-row:1/4;min-width:0;min-height:46px;font-size:14px;background:var(--orange);border-color:var(--orange);color:#26150A}
+ .hotel-details-dialog.hotel-offers-active #modal-footer{display:none}
+ .tour-dialog .tour-quick-summary{display:block;padding:15px;border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:13px;margin:0 0 18px}
+ .tour-quick-summary .tour-hero{display:flex;align-items:flex-start;gap:12px;margin:0}
+ .tour-quick-summary .tour-quick-room,.tour-quick-summary .tour-quick-meal{display:block}
+ .tour-quick-summary .tour-hero>img{width:60px;height:68px;object-fit:cover;border-radius:8px;flex:none}
+ .tour-quick-summary .tour-hero h3{font-size:19px;line-height:1.3;margin:0 0 5px}
+ .tour-quick-summary .tour-hero p,.tour-quick-details{font-size:13px;line-height:1.5;color:var(--text);margin:0}
+ .tour-quick-details{display:block;padding-top:12px;margin-top:12px;border-top:1px solid var(--line)}
+ .tour-quick-price{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;margin-top:12px}
+ .tour-quick-price strong{display:block;font-size:28px;line-height:1.3;white-space:nowrap}
+ .tour-quick-price small,.tour-quick-price>div:first-child>span{display:block;font-size:12px;color:var(--muted)}
+ .tour-quick-price .primary{min-height:46px;min-width:122px;font-size:14px;background:var(--orange);border-color:var(--orange);color:#26150A}
+ .tour-dialog:has(.tour-quick-summary) .chosen-stay .chosen-trip,.tour-dialog:has(.tour-quick-summary) .chosen-stay .saved-stay-summary{display:none}
+ .tour-dialog:has(.tour-quick-summary) .selection-steps{display:none}
+}
+@media(max-width:380px){
+ .tour-quick-price{grid-template-columns:minmax(0,1fr)}
+ .tour-quick-price .primary{width:100%;margin-top:8px}
+}
+@media(max-width:350px){
+ .hotel-room-section .hotel-room-price{grid-template-columns:minmax(0,1fr)}
+ .hotel-room-section .hotel-room-price .primary{grid-column:1;grid-row:4;width:100%;margin-top:8px}
+}
 /* Selected tour and application: one presentation owner, existing state/transport. */
-dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))}
+dialog.tour-dialog{width:min(1000px,calc(100% - 40px))}
+dialog.application-dialog{width:min(560px,calc(100% - 40px))}
+.application-dialog #prototype-lead-form>.form-row{display:flex;flex-direction:column;gap:0}
 .tour-dialog #modal-body,.application-dialog #modal-body{padding:20px 24px 24px;font-size:1rem;line-height:1.5}
 .tour-dialog .modal-header,.application-dialog .modal-header{padding:16px 24px;gap:12px}
 .tour-dialog .modal-header h2,.application-dialog .modal-header h2{font-size:1.375rem;line-height:1.3;margin:0}
@@ -1917,7 +1955,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-hero>div:last-child{min-width:0}
 .tour-hero h3{font-size:1.25rem;line-height:1.35;margin:4px 0;overflow-wrap:anywhere}
 .tour-hero p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}
-.tour-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.9fr);gap:24px;align-items:start}
+.tour-layout{display:grid;grid-template-columns:minmax(0,1fr) 274px;gap:24px;align-items:start}
 .tour-main-details,.tour-price-details{min-width:0}
 .tour-main-details{display:grid;gap:16px}
 .tour-price-details{position:sticky;top:0}
@@ -1932,14 +1970,14 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .chosen-stay .saved-stay-summary dd{color:var(--ink);overflow-wrap:anywhere}
 .chosen-stay .change-room{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;min-height:44px;margin-top:12px;padding:10px 0;border-top:1px solid var(--line);font-size:.875rem;line-height:1.5;text-align:left}
 .chosen-stay .change-room svg{display:none}
-.tour-dialog .tour-section{margin:0;padding-top:16px;border-top:1px solid var(--line)}
+.tour-dialog .tour-section{margin:0;padding:23px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .tour-dialog .tour-section-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0}
 .tour-dialog .tour-section h3{font-size:1rem;line-height:1.4;margin:0}
 .tour-dialog .flight-summary{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
 .tour-dialog .flight-summary .secondary{min-height:44px;padding:10px 14px;font-size:.875rem;line-height:1.4;white-space:normal}
 .tour-dialog .flight-summary .secondary svg{display:none}
 .tour-dialog .flight-summary>p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}
-.tour-dialog .price-breakdown{padding:18px;border:1px solid var(--line);border-radius:12px;background:#f8faff}
+.tour-dialog .price-breakdown{padding:23px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .tour-dialog .price-breakdown>h3{font-size:1rem;line-height:1.5;margin:0 0 12px}
 .tour-dialog .price-party{font-size:.875rem;color:var(--muted);margin:0 0 8px}
 .tour-dialog .price-line.total{display:grid;gap:4px;border:0;padding:0;margin:0}
@@ -1953,9 +1991,9 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-recording-limit .handoff-alternative{margin-top:8px;font-size:.875rem;line-height:1.5}
 .tour-recording-limit .handoff-alternative>summary{min-height:44px;align-content:center;color:var(--brand);cursor:pointer}
 .tour-dialog .error-text,.tour-dialog .saved-tour-notice{font-size:.875rem;line-height:1.5;margin:0;padding:12px;border-radius:10px}
-.application-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start}
+.application-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;width:100%;max-width:480px;margin:0 auto}
 .application-review,.application-contact{min-width:0}
-.application-review{padding-right:24px;border-right:1px solid var(--line)}
+.application-review{padding:0;border:0}
 .application-choice{padding:0;margin:0;border:0}
 .application-choice>h3{font-size:1.125rem;line-height:1.4;margin:0 0 16px;overflow-wrap:anywhere}
 .application-dialog .tour-handoff{padding:0;margin:0;border:0;border-radius:0;background:none}
@@ -1994,6 +2032,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .tour-hero h3{font-size:1.125rem}
  .tour-layout,.application-layout{grid-template-columns:minmax(0,1fr);gap:16px}
  .tour-price-details{position:static;padding-top:16px;border-top:1px solid var(--line)}
+ .tour-dialog .tour-section{padding:15px 0 0;border:0;border-top:1px solid var(--line);border-radius:0;background:none}
  .tour-dialog .price-breakdown{padding:0;border:0;border-radius:0;background:none}
  .tour-dialog .price-breakdown>h3{margin:0 0 8px}
  .tour-dialog .price-party,.tour-dialog .price-line.total,.tour-dialog .price-assurance{display:none}
@@ -2013,14 +2052,14 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 /* One owner for result cards and the compact trip header.
    Earlier card/header rules have been removed from the two shared stylesheets. */
 .hotel-card {
- display:grid;grid-template-columns:minmax(240px,30%) minmax(0,1fr) 13.125rem;grid-template-rows:auto auto 1fr auto;
- background:#fff;border:1px solid #dbe2ef;border-radius:16px;overflow:hidden;
- box-shadow:0 3px 12px #18233306;min-width:0;container-type:inline-size;container-name:hotel-card;
+ display:grid;grid-template-columns:minmax(220px,29%) minmax(0,1fr) 172px;grid-template-rows:auto auto 1fr auto;
+ padding-bottom:20px;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;overflow:visible;
+ box-shadow:none;min-width:0;container-type:inline-size;container-name:hotel-card;
 }
-.hotel-card:hover {border-color:#bbcbe8}
+.hotel-card:hover {border-color:var(--line)}
 .hotel-main,.hotel-info {display:contents}
-.hotel-photos {grid-column:1;grid-row:1/4;display:flex;flex-direction:column;gap:7px;min-width:0;padding:12px 0 12px 12px}
-.hotel-image-wrap {position:relative;aspect-ratio:1.42;min-height:210px;flex:1;border-radius:10px;overflow:hidden;background:#edf1f6}
+.hotel-photos {grid-column:1;grid-row:1/4;display:flex;flex-direction:column;gap:0;min-width:0;padding:0}
+.hotel-image-wrap {position:relative;aspect-ratio:auto;min-height:244px;flex:1;border-radius:12px;overflow:hidden;background:#edf1f6}
 .hotel-image-button {position:absolute;inset:0;display:block;padding:0;width:100%;height:100%;text-align:left}
 .hotel-image {display:block;width:100%;height:100%;object-fit:cover}
 .hotel-image-button:after {content:'';position:absolute;inset:72% 0 0;background:linear-gradient(transparent,#0e21404d);pointer-events:none}
@@ -2028,7 +2067,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .photo-count svg {display:none}
 .hotel-card .card-photo-arrow {position:absolute;z-index:2;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:44px;height:44px;min-width:44px;border-radius:50%;background:#fffffff2;color:var(--ink);box-shadow:0 1px 8px #10213e15;margin:0}
 .card-photo-arrow.prev {left:10px}.card-photo-arrow.next {right:10px}
-.card-thumbs {display:flex;gap:6px;min-width:0}
+.card-thumbs {display:none}
 .card-thumb,.card-more-photos {position:relative;flex:1;min-width:0;aspect-ratio:1.3;border:2px solid transparent;border-radius:7px;overflow:hidden;padding:0;background:#eef2f8}
 .card-thumb:only-child {flex:0 0 calc((100% - 18px)/4)}
 .card-thumb>svg {position:absolute;inset:0;margin:auto;width:20px;height:20px;color:var(--muted)}
@@ -2042,7 +2081,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .hotel-photos:not(.photo-unavailable) .photo-missing-label {display:none;position:absolute;inset:0 60px;justify-content:center;text-align:center;pointer-events:none}
 .hotel-photos.photo-failed .photo-missing-label,.hotel-photos.photo-loading .photo-missing-label {display:flex}
 .hotel-photos.photo-failed .hotel-image,.hotel-photos.photo-loading .hotel-image {visibility:hidden}
-.hotel-info-top {grid-column:2;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;padding:14px 18px 6px;min-width:0}
+.hotel-info-top {grid-column:2;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:4px 16px;padding:4px 0 4px 18px;min-width:0}
 .hotel-info-top>div:first-child {min-width:0}
 .hotel-stars {font-size:.875rem;line-height:1.3;letter-spacing:2px;color:var(--brand);margin-bottom:4px}
 .hotel-info-top h3 {font-size:1.25rem;line-height:1.35;letter-spacing:-.02em;font-weight:700}
@@ -2051,27 +2090,29 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .hotel-info-top h3 button>svg {flex:none;width:14px;height:14px;color:var(--muted)}
 .hotel-location {display:flex;align-items:flex-start;gap:5px;margin-top:3px;font-size:.875rem;line-height:1.5;color:#566174;overflow-wrap:anywhere}
 .hotel-location svg {width:16px;height:16px;margin-top:2px;flex:none}
-.rating-block {position:static;flex:none}
+.hotel-card .rating-block {display:none}
 .rating-block>strong {display:block;background:#eef2ff;color:var(--brand);border-radius:6px;padding:5px 7px;font-size:1rem;line-height:1.3;white-space:nowrap}
 .rating-block strong small {font-size:.75rem;font-weight:500;margin-left:3px}
 .rating-block>span,.rating-block>small {display:none}
 .hotel-popularity-badge {display:inline-block;margin-bottom:5px;font-size:.8125rem;line-height:1.4;color:var(--brand);background:#eef2ff;border-radius:5px;padding:3px 6px}
-.hotel-facts {grid-column:2;grid-row:2;min-width:0;margin:0;padding:0 18px 8px;font-size:.875rem;line-height:1.5}
+.hotel-facts {grid-column:2;grid-row:2;min-width:0;margin:0;padding:0 0 8px 18px;font-size:.875rem;line-height:1.5}
 .hotel-facts:empty {display:none}
 .hotel-highlight-list {display:flex;flex-wrap:wrap;gap:3px 0;list-style:none;padding:0;margin:0;min-width:0}
 .hotel-highlight-list li {font-size:inherit;line-height:inherit;overflow-wrap:anywhere}
 .hotel-highlight-list li+li:before {content:' · ';white-space:pre;color:var(--muted)}
-.card-minimum-offer {grid-column:2;grid-row:3;align-self:start;display:grid;gap:4px;min-width:0;margin:0 18px 12px;padding:8px 0 0;border-top:1px solid var(--line);background:transparent}
+.card-minimum-offer {grid-column:2;grid-row:3;align-self:start;display:grid;gap:4px;min-width:0;margin:0 0 12px 18px;padding:0;border-top:0;background:transparent}
 .card-minimum-offer>.minimum-label {position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .card-minimum-offer>strong {font-size:.9375rem;line-height:1.45;overflow-wrap:anywhere}
 .card-meal-line {display:flex;align-items:center;gap:6px;font-size:.9375rem;line-height:1.5}
 .card-meal-line>span {min-width:0;overflow-wrap:anywhere}
 .card-meal-line svg {width:16px;height:16px;flex:none}
-.card-room {font-size:.875rem;line-height:1.5;color:#566174;overflow-wrap:anywhere;padding:3px 0}
+.card-room {font-size:.875rem;line-height:1.5;color:var(--ink);overflow-wrap:anywhere;padding:0;order:1}
+.card-meal-line{order:2}
+.card-offer-flight{order:3}
 .card-offer-flight {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:.875rem;line-height:1.45}
 .card-offer-flight .flight-tag {min-width:0;max-width:100%;font-size:.875rem;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
 .card-offer-flight .operator-logo {min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
-.hotel-price {grid-column:3;grid-row:1/4;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:18px 18px;border-left:1px solid var(--line);min-width:0;background:#fff}
+.hotel-price {grid-column:3;grid-row:1/4;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:18px 0 18px 12px;border-left:1px solid var(--line);min-width:0;background:transparent}
 .starting-price>span {display:block;color:#566174;font-size:.875rem;line-height:1.4}
 .starting-price>strong {display:block;margin-top:4px;color:var(--ink);font-size:1.875rem;line-height:1.25;letter-spacing:-.025em;white-space:nowrap}
 .price-wide .starting-price>strong {font-size:1.625rem}
@@ -2079,10 +2120,10 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .fuel-note svg {width:14px;height:14px;margin-top:2px;flex:none}
 .hotel-price>.primary {width:100%;min-height:48px;margin:4px 0 0;padding:10px 12px;border-color:var(--orange);background:var(--orange);color:var(--ink);font-size:.9375rem;font-weight:700;line-height:1.4;white-space:normal;box-shadow:none}
 .hotel-price>.primary:hover {background:#f34c08;border-color:#f34c08;box-shadow:none}
-.hotel-more {grid-column:2/-1;grid-row:4;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 16px;padding:4px 18px;border-top:1px solid var(--line);min-width:0}
+.hotel-more {grid-column:2/-1;grid-row:4;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 16px;padding:4px 0 0 18px;border-top:1px solid var(--line);min-width:0}
 .hotel-more .text-button {min-height:44px;padding:7px 0;font-size:.875rem;line-height:1.4;white-space:normal}
 .hotel-more .text-button svg {display:none}
-.hotel-more .card-all-offers {min-height:44px;padding:9px 14px;font-size:.875rem;line-height:1.4;background:#fff;border-color:#c3cef7;color:var(--brand)}
+.hotel-more .card-all-offers {min-height:44px;padding:7px 0;font-size:.875rem;line-height:1.4;background:transparent;border:0;color:var(--brand)}
 .hotel-more .card-all-offers svg {width:16px;height:16px}
 
 .compact-search {position:fixed;z-index:25;top:0;left:0;right:0;background:#fffffff8;backdrop-filter:blur(14px);border-bottom:1px solid var(--line);box-shadow:0 3px 15px #172a8608}
@@ -2097,22 +2138,23 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 
 @media(min-width:761px) and (max-width:1000px) {
  .hotel-card {grid-template-columns:minmax(230px,40%) minmax(0,1fr)}
- .hotel-photos {grid-row:1/6;align-self:start;padding:12px 0 12px 12px}
+ .hotel-photos {grid-row:1/6;align-self:stretch;padding:0}
  .hotel-image-wrap {flex:none;min-height:190px}
  .hotel-price {grid-column:2;grid-row:4;justify-content:flex-start;margin:0 20px;padding:12px 0 16px;border-left:0;border-top:1px solid var(--line)}
  .hotel-more {grid-column:2;grid-row:5}
 }
 @media(max-width:760px) {
- .hotel-card {display:flex;flex-direction:column;padding-bottom:10px;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;overflow:visible}
- .hotel-info-top {order:1;padding:10px 0 6px;gap:8px}
+ .hotel-card {display:flex;flex-direction:column;padding-bottom:21px;border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;overflow:visible}
+ .hotel-info-top {order:1;padding:12px 0 6px;gap:8px}
  .hotel-info-top h3 {font-size:1.25rem;line-height:1.35}
  .hotel-stars {font-size:.8125rem;margin-bottom:2px}
  .hotel-photos {order:0;padding:0;gap:0}
- .hotel-image-wrap {width:100%;height:auto;min-height:0;aspect-ratio:1.8;flex:none;border-radius:12px}
+ .hotel-image-wrap {width:100%;height:156px;min-height:0;aspect-ratio:auto;flex:none;border-radius:12px}
  .hotel-card .card-thumbs {display:none}
- .hotel-photos.photo-unavailable .hotel-image-wrap {min-height:64px;justify-content:flex-start;padding:10px 12px}
+ @container hotel-card (max-width:349.99px){.hotel-image-wrap{height:148px}}
+ .hotel-photos.photo-unavailable .hotel-image-wrap {height:96px;min-height:96px;justify-content:flex-start;padding:10px 12px}
  .hotel-facts {order:2;padding:0 0 4px}
- .card-minimum-offer {order:3;margin:6px 0 0;padding-top:8px;gap:2px}
+ .card-minimum-offer {order:3;margin:6px 0 0;padding-top:0;gap:4px}
  @container hotel-card (min-width:19rem){
   .card-minimum-offer:not(.room-operator-inline) {grid-template-columns:minmax(0,1fr) minmax(80px,max-content);column-gap:12px}
   .card-minimum-offer:not(.room-operator-inline)>strong {grid-column:1/-1}
@@ -2126,10 +2168,10 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .room-operator-inline>strong,.room-operator-inline>.card-meal-line {grid-column:1/-1}
  .room-operator-inline>.card-room {grid-column:1;grid-row:3;min-width:0}
  .room-operator-inline>.card-offer-flight {grid-column:2;grid-row:3;justify-content:flex-end;min-width:0;max-width:140px}
- .hotel-price {order:4;display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;gap:6px 12px;align-items:center;margin:0;padding:8px 0;border:0}
+ .hotel-price {order:4;display:grid;grid-template-columns:minmax(0,1fr) 140px;justify-content:stretch;gap:6px 12px;align-items:center;margin:0;padding:8px 0;border:0}
  .hotel-price>.starting-price {grid-column:1;grid-row:1}
  .starting-price>strong {font-size:1.625rem;line-height:1.25}
- .hotel-price>.primary {grid-column:1;grid-row:3;width:100%;margin:0;max-width:none;font-size:.9375rem}
+ .hotel-price>.primary {grid-column:2;grid-row:1;width:100%;margin:0;max-width:none;font-size:.9375rem}
  .hotel-price>.fuel-note {grid-column:1/-1;grid-row:2}
  .hotel-price.price-wide {grid-template-columns:minmax(0,1fr)}
  .price-wide .starting-price>strong {font-size:1.875rem}

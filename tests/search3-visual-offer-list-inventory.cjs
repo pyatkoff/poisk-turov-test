@@ -178,7 +178,7 @@ assert(source.includes('<select id="offer-departure"><option value="">Все д�
 const hoisted=" const commonNote=reuseRows?currentCommonNote:groups.length?sharedOfferNote(all):'';\n";
 assert(source.includes(hoisted));
 const legacyNotes=source.replace(hoisted," const commonNote=reuseRows?currentCommonNote:'';\n")
- .replace('entry=offerRowEntry(o,commonNote);','entry=offerRowEntry(o,sharedOfferNote(all));');
+ .replace('entry=offerRowEntry(o,commonNote,minimum);','entry=offerRowEntry(o,sharedOfferNote(all),minimum);');
 const legacyCounts=legacyNotes
  .replace('  const counts=currentRefinementInventory.get(field).counts;\n','')
  .replace('   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(counts.get(option.value)||0)}`;','   const count=all.filter(o=>matchesOfferRefinements(o,{...offerView,[field]:option.value})).length;\n   option.textContent=`${option.dataset.baseLabel} · ${offerCountText(count)}`;')
@@ -190,7 +190,7 @@ const legacyValueRenderer=source
 assert.notEqual(legacyValueRenderer,source,'refinement value inventory legacy boundary');
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const unesc=v=>v.replace(/&quot;|&#39;|&lt;|&gt;|&amp;/g,c=>({'&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&#39;':"'"}[c]));
-function render(code,all,view,shortlist=false,reset=false,mount=false,precomputed){
+function render(code,all,view,shortlist=false,reset=false,mount=false,precomputed,chosen=null){
  const dom=new Map(),events=[];let noteCalls=0,noteVisits=0,keyCalls=0,hotelCalls=0,rowMarkupCalls=0,appendCalls=0,currentRows=all,mounted=!mount;
  const node=name=>{if(name==='#offer-count'&&!mounted)return null;if(!dom.has(name)){
   let html='',heading=null;const classes=new Set(),style={},label={hidden:false},n={hidden:false,open:false,textContent:'',value:'',options:[{value:'',textContent:'Any',dataset:{}}],classList:{contains:c=>classes.has(c),toggle:(c,on)=>on?classes.add(c):classes.delete(c)},style:{setProperty:(k,v)=>{style[k]=v;}},closest:()=>label};
@@ -198,7 +198,7 @@ function render(code,all,view,shortlist=false,reset=false,mount=false,precompute
   Object.defineProperty(n,'innerHTML',{get:()=>html,set:v=>{html=v;if(name==='#modal-body')mounted=true;if(name.startsWith('#offer-'))n.options=[...v.matchAll(/<option value="([^"]*)"[^>]*>(.*?)<\/option>/g)].map(m=>({value:unesc(m[1]),textContent:unesc(m[2]),dataset:{}}));}});
   n.snapshot=()=>({html,hidden:n.hidden,open:n.open,text:n.textContent,value:n.value,options:n.options,classes:[...classes],style,label,heading:heading&&{expanded:heading.expanded,focused:heading.focused,scopeHidden:heading.scope.hidden,minimumHidden:heading.minimum.hidden,arrowClasses:[...heading.arrowClasses]}});dom.set(name,n);
  }return dom.get(name);};
- const context={$:node,$$:()=>[],byId:id=>node('#'+id),hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
+ const context={selectedOffer:chosen,sameSelectedTourConditions:()=>chosen?.sameConditions!==false,$:node,$$:()=>[],byId:id=>node('#'+id),hotels:[{id:1,resort:'Resort'}],hotelOffers:()=>{hotelCalls++;return currentRows;},offerGroupKey:o=>{keyCalls++;return key(o);},offerView:structuredClone(view),offerRefinementFields:['departure','flight','room','meal'],innerWidth:1440,optionalShortlistEnabled:shortlist,state:{search:{origin:'Москва',from:'2026-10-10',minNights:7}},mealNames:{},esc,
   paintGeneratedRoots:(container,entries)=>{container.innerHTML=entries.map(entry=>entry.markup).join('');},appendGeneratedRoots:(container,entries)=>{appendCalls++;container.innerHTML=container.innerHTML.replace(/<button class="text-button group-more"[\s\S]*?<\/button>$/,'')+entries.map(entry=>entry.markup).join('');return true;},
   sharedOfferNote:input=>{assert.strictEqual(input,currentRows,'shared note uses current all, not filtered/group rows');noteCalls++;noteVisits+=input.length;return helpers.sharedOfferNote(input);},offerMetaNote:o=>o.note,
   mealLabel:o=>o.meal,flightLabel:o=>o.flight,needsRefresh:()=>false,cardPriceNote:()=>'',dateText:String,nightsText:String,offerCountText:String,money:String,rangeText:(a,b)=>a+'/'+b,durationText:()=>'',guestsText:()=>'',icon:()=>'',offerActionLabel:()=>{rowMarkupCalls++;return '';},offerSearchContext:()=>'',operatorBadge:String,selectionStepsHTML:()=>'',rememberUIRoute:()=>events.push('route'),renderComparisonFooter:()=>events.push('comparison'),setComparisonQuotes:values=>events.push(['quotes',values.map(o=>o.key)])};
@@ -229,6 +229,41 @@ for(const all of [rows.slice(0,100),rows.slice(0,1),[],rows.slice(0,25).map((o,i
   assert.deepEqual([after.noteCalls,after.noteVisits,after.keyCalls],[previous.noteCalls,previous.noteVisits,previous.keyCalls],'retained same-render list work');
  }
 }
+// A retained quote may reprice one selected row while its listing total remains
+// the receipt identity. The visible delta and default order use displayed totals;
+// pending/stale/mismatched receipts still keep the original listing unchanged.
+const priceRows=[{...offer(1),key:'repriced',room:'Room',meal:'AI',total:100000},{...offer(2),key:'other',room:'Room',meal:'BB',total:110000}];
+const quoted={...priceRows[0],quoteListingTotal:100000,total:200000};
+const quotedBefore=JSON.stringify(quoted),rowsBefore=JSON.stringify(priceRows);
+const listHTML=result=>result.snapshot.dom.find(([key])=>key==='#all-offers-list')[1].html;
+const quotedList=listHTML(render(source,priceRows,baseView(),false,false,true,undefined,quoted));
+assert(quotedList.indexOf('data-offer-key="other"')<quotedList.indexOf('data-offer-key="repriced"'),'repriced selected row retains truthful displayed price order');
+assert.match(quotedList,/data-offer-key="other"[\s\S]*?Минимальная цена/);
+assert.match(quotedList,/data-offer-key="repriced"[\s\S]*?>200000<\/strong>[\s\S]*?\+90000<\/span>/,'delta uses the actual minimum displayed eligible total');
+for(const override of [{loading:true},{flightsLoading:true},{pricePending:true},{quoteListingTotal:99999},{sameConditions:false}]){const html=listHTML(render(source,priceRows,baseView(),false,false,true,undefined,{...quoted,...override}));assert(html.indexOf('data-offer-key="repriced"')<html.indexOf('data-offer-key="other"'));assert.match(html,/data-offer-key="repriced"[\s\S]*?>100000<\/strong>[\s\S]*?Минимальная цена/);}
+assert.equal(JSON.stringify(quoted),quotedBefore);assert.equal(JSON.stringify(priceRows),rowsBefore,'presentation does not rewrite listings or price authority');
+const pagedPrices=Array.from({length:5},(_,i)=>({...offer(10+i),key:'paged-'+(i+1),room:'Same',meal:'AI',day:'2026-10-'+String(i+1).padStart(2,'0'),total:100*(i+1)}));
+const pageQuote={...pagedPrices[4],quoteListingTotal:500,total:50},pageQuoteBefore=JSON.stringify(pageQuote),pagedBefore=JSON.stringify(pagedPrices);
+const pricePage=render(source,pagedPrices,baseView(),false,false,true,undefined,pageQuote),priceHTML=listHTML(pricePage);
+const visibleOfferKeys=html=>[...html.matchAll(/<article[^>]+data-offer-key="([^"]+)"/g)].map(match=>match[1]);
+assert.deepEqual(visibleOfferKeys(priceHTML),['paged-5','paged-1','paged-2','paged-3'],'selected fifth repriced to50 enters the group before its four-row limit');
+assert.match(priceHTML,/data-offer-key="paged-5"[\s\S]*?>50<\/strong>[\s\S]*?Минимальная цена/);
+assert.match(priceHTML,/data-offer-key="paged-1"[\s\S]*?>100<\/strong>[\s\S]*?\+50<\/span>/);
+assert.match(priceHTML,/Ещё варианты:[\s\S]*?\(1\)/,'group-more retains the exact remaining eligible count');
+pricePage.paginate(key(pagedPrices[0]),5);const expandedPrice=listHTML({snapshot:pricePage.currentSnapshot()});
+assert.deepEqual(visibleOfferKeys(expandedPrice),['paged-5','paged-1','paged-2','paged-3','paged-4']);
+assert.match(expandedPrice,/data-offer-key="paged-4"[\s\S]*?>400<\/strong>[\s\S]*?\+350<\/span>/);
+const datePage=render(source,pagedPrices,{...baseView(),sort:'date'},false,false,true,undefined,pageQuote),dateHTML=listHTML(datePage);
+assert.deepEqual(visibleOfferKeys(dateHTML),['paged-1','paged-2','paged-3','paged-4'],'date sort keeps its original dates and group limits');
+assert.match(dateHTML,/data-offer-key="paged-1"[\s\S]*?>100<\/strong>[\s\S]*?Минимальная цена/,'date-page comparison uses the actually visible minimum');
+datePage.paginate(key(pagedPrices[0]),5);const expandedDate=listHTML({snapshot:datePage.currentSnapshot()});
+assert.deepEqual(visibleOfferKeys(expandedDate),['paged-1','paged-2','paged-3','paged-4','paged-5']);
+assert.match(expandedDate,/data-offer-key="paged-1"[\s\S]*?>100<\/strong>[\s\S]*?\+50<\/span>/,'pagination changing the visible minimum refreshes cached deltas');
+assert.match(expandedDate,/data-offer-key="paged-5"[\s\S]*?>50<\/strong>[\s\S]*?Минимальная цена/);
+const filteredPrice=listHTML(render(source,pagedPrices,{...baseView(),departure:pagedPrices[4].day},false,false,true,undefined,pageQuote));assert.deepEqual(visibleOfferKeys(filteredPrice),['paged-5']);assert.match(filteredPrice,/Минимальная цена/);assert(!filteredPrice.includes('group-more'));
+const pendingPrice=listHTML(render(source,pagedPrices,baseView(),false,false,true,undefined,{...pageQuote,pricePending:true}));assert.deepEqual(visibleOfferKeys(pendingPrice),['paged-1','paged-2','paged-3','paged-4'],'pending selected receipt cannot reprice/reorder the eligible listing');
+assert.equal(JSON.stringify(pageQuote),pageQuoteBefore);assert.equal(JSON.stringify(pagedPrices),pagedBefore);
+console.log('PASS list displayed price: quote delta/order before group limits, actual visible minimum, pagination cache refresh, date/filter/pending guards, raw listing/receipt unchanged');
 const before=render(legacyRenderer,rows,baseView()),after=render(source,rows,baseView());
 assert.equal(before.noteCalls,200);assert.equal(after.noteCalls,1);assert.equal(before.noteVisits,200000);assert.equal(after.noteVisits,1000);
 assert.deepEqual(after.snapshot,before.snapshot);

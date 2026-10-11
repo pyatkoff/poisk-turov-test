@@ -21,10 +21,11 @@ const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stri
 const placeholder=records(source,false,true).find(record=>record.mode==='incomplete'&&!record.long&&!record.meal);assert(placeholder);
 assert.match(placeholder.text,/Номер уточняется/);assert.match(placeholder.text,/Питание уточняется/);assert.doesNotMatch(placeholder.text,/on request/i);
 assert.match(placeholder.body,/data-room=" on request "/,'raw room identity stays on the existing grouping owner');assert.match(placeholder.body,/<option value="On Request">Питание уточняется<\/option>/,'raw meal filter value stays exact while its label is readable');
-if(!process.argv.includes('--capture'))assert.equal(digest,'d2debd3022a456ffcb1803db380fc87c57df6fe8f816cf6ce92e83fd910772e5','original hotel presentation observations');
-assert.notDeepEqual(records(source.replace('rows.slice(0,2)','rows.slice(0,1)')),actual,'lost visible room choice detected');
+if(!process.argv.includes('--capture'))assert.equal(digest,'1618b08bef172d93b8b84b03647f0175c9c5ce378587b8cbbff142671109a775','final-reference hotel presentation observations');
+assert.notDeepEqual(records(source.replace('sorted.map(o=>','sorted.slice(0,1).map(o=>')),actual,'lost visible room choice detected');
 assert.notDeepEqual(records(source.replace('o.meal===meal','o.meal!==meal')),actual,'wrong meal selection detected');
-console.log('PASS hotel presentation '+actual.length+' observations: original HTML/footer/rooms/meal/price/escaping and two mutations; '+digest);
+for(const record of actual){const dom=new JSDOM(record.body),doc=dom.window.document;assert.equal(doc.querySelectorAll('.hotel-detail-tabs [role=tab]').length,2);assert.equal(doc.querySelector('#hotel-about-panel').hidden,true);assert.equal(doc.querySelector('#hotel-offers-panel').hidden,false);assert(doc.querySelectorAll('.hotel-detail-hero img').length<=1);assert.equal(doc.querySelectorAll('.room-overview,.hotel-room-more').length,0,'all visible eligible offers are flat');const cards=[...doc.querySelectorAll('.hotel-room-card')];const totals=cards.map(card=>Number(card.querySelector('.hotel-room-price strong').textContent.replace(/[^0-9]/g,'')));assert.deepEqual(totals,[...totals].sort((a,b)=>a-b));if(totals.length)assert.equal(cards[0].querySelector('.room-offer-delta').textContent,'Минимальная цена');for(let i=1;i<totals.length;i++)assert.equal(cards[i].querySelector('.room-offer-delta').textContent,'+'+(totals[i]-totals[0])+' ₽');dom.window.close();}
+console.log('PASS hotel presentation '+actual.length+' observations: final single hero/two tabs/flat sorted exact eligible offers/deltas/footer/meal/escaping and two mutations; '+digest);
 
 // Execute the inventory inside the actual renderer, independently of the DOM.
 // The original Set + strict-equality filters remain the test-only reference.

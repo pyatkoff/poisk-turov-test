@@ -6,7 +6,7 @@ function create(context){
 const offerRefinementLabels={departure:'Дата',flight:'Перелёт',room:'Номер',meal:'Питание'};
 const offerRefinementAny={departure:'Любая дата',flight:'Любой перелёт',room:'Любой номер',meal:'Любое питание'};
 let currentRefinementInventory;
-let currentInventory,currentCommonNote='',currentRowEntries=new Map();
+let currentInventory,currentCommonNote='',currentRowEntries=new Map(),currentMinimum=null;
 function matchesOfferRefinements(o,view=offerView){return offerRefinementFields.every(field=>!view[field]||(field==='departure'?o.day:o[field])===view[field]);}
 function offerRefinementLabel(field,value){return field==='departure'?dateText(value):field==='flight'?flightLabel({flight:value}):field==='meal'?displayMealLabel({meal:value}):field==='room'?roomLabel({room:value}):value;}
 function renderOfferRefinements(all){
@@ -76,9 +76,13 @@ function offerGroupScope(offers){
  }
  return `${nights.join(' / ')} · ${sameDay?dateText(firstDay):'Вылеты '+rangeText(earliest,latest)}`;
 }
-function offerRowEntry(listing,commonNote){
- const chosen=selectedOffer?.key===listing.key&&sameSelectedTourConditions(listing,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===listing.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.pricePending,o=chosen?selectedOffer:listing,actionLabel=chosen?'Смотреть тур':offerActionLabel(o),roomText=roomLabel(o),roomValue=roomText==='Номер уточняется'?'уточняется':roomText;
- return {offerKey:o.key,markup:`<article class="offer grouped-offer${chosen?' is-selected':''}" data-offer-key="${esc(o.key)}" aria-label="${esc(o.operator)}, ${esc(roomText)}, ${dateText(o.day)}${chosen?', выбранный тур':''}"><div class="offer-departure"><strong>${dateText(o.day)} → ${dateText(o.returnDay)} · ${nightsText(o.nights)}</strong>${chosen?'<span class="offer-selected" role="status">✓ Выбран</span>':''}</div><div class="offer-conditions"><p>${icon('food')}${esc(displayMealLabel(o))}</p><p><span class="card-room-label">Номер</span> ${esc(roomValue)}</p></div><div class="offer-flight-details">${flightLabel(o)?`<span class="flight-tag ${o.flight}">${flightLabel(o)}</span>`:''}${operatorBadge(o.operator)}${commonNote?'':`<small>${esc(offerMetaNote(o))}</small>`}</div><div class="offer-price"><strong aria-label="${esc(money(o.total))} за всех туристов">${money(o.total)}</strong><button class="primary" data-action="offer" data-key="${esc(o.key)}" aria-label="${actionLabel}: ${esc(roomText)}, ${esc(displayMealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}">${actionLabel} ${icon('arrow')}</button></div></article>`};
+function offerListDisplay(listing){
+ const chosen=selectedOffer?.key===listing.key&&sameSelectedTourConditions(listing,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===listing.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.pricePending;return {chosen,offer:chosen?selectedOffer:listing};
+}
+function offerRowEntry(listing,commonNote,minimum){
+ const {chosen,offer:o}=offerListDisplay(listing),actionLabel=chosen?'Смотреть тур':offerActionLabel(o),roomText=roomLabel(o);
+ const delta=o.total-minimum,deltaText=delta>0?'+'+money(delta):'Минимальная цена';
+ return {offerKey:o.key,markup:`<article class="offer grouped-offer${chosen?' is-selected':''}" data-offer-key="${esc(o.key)}" aria-label="${esc(o.operator)}, ${esc(roomText)}, ${dateText(o.day)}${chosen?', выбранный тур':''}"><div class="offer-departure"><strong class="offer-room-name">${esc(roomText)}</strong><span>${dateText(o.day)} → ${dateText(o.returnDay)} · ${nightsText(o.nights)}</span>${chosen?'<span class="offer-selected" role="status">✓ Выбран</span>':''}</div><div class="offer-conditions"><p>${icon('food')}${esc(displayMealLabel(o))}</p></div><div class="offer-flight-details">${flightLabel(o)?`<span class="flight-tag ${o.flight}">${flightLabel(o)}</span>`:''}${operatorBadge(o.operator)}${commonNote?'':`<small>${esc(offerMetaNote(o))}</small>`}</div><div class="offer-price"><strong aria-label="${esc(money(o.total))} за всех туристов">${money(o.total)}</strong><span class="offer-price-delta" ${delta>0?`aria-label="На ${esc(money(delta))} больше минимальной цены ${esc(money(minimum))} в этом списке"`:''}>${deltaText}</span><button class="primary" data-action="offer" data-key="${esc(o.key)}" aria-label="${actionLabel}: ${esc(roomText)}, ${esc(displayMealLabel(o))}, ${dateText(o.day)}, ${esc(o.operator)}, ${money(o.total)}">${actionLabel} ${icon('arrow')}</button></div></article>`};
 }
 function offerMoreEntry(key,total,limit){return total>limit?{offerKey:'',markup:`<button class="text-button group-more" data-action="group-more" data-value="${key}">Ещё варианты (${total-limit}) ${icon('arrow')}</button>`}:null;}
 function renderOfferList(reset=false,inventory=offerListInventory(),reuseRows=false){
@@ -102,8 +106,12 @@ function renderOfferList(reset=false,inventory=offerListInventory(),reuseRows=fa
  }
  const commonNote=reuseRows?currentCommonNote:groups.length?sharedOfferNote(all):'';
  currentCommonNote=commonNote;
- const visibleKeys=new Set(groups.flatMap(({key,offers})=>offers.slice(0,offerView.limits[key]||4).map(o=>o.key)));
- const entries=sorted.filter(o=>visibleKeys.has(o.key)).map(o=>{let entry=currentRowEntries.get(o.key);if(!entry){entry=offerRowEntry(o,commonNote);currentRowEntries.set(o.key,entry);}return entry;});
+ const displayed=offerView.sort==='date'?sorted:sorted.slice().sort((a,b)=>offerListDisplay(a).offer.total-offerListDisplay(b).offer.total||a.day.localeCompare(b.day));
+ const displayRank=new Map(displayed.map((offer,index)=>[offer.key,index]));
+ const visibleKeys=new Set(groups.flatMap(({key,offers})=>offers.slice().sort((a,b)=>displayRank.get(a.key)-displayRank.get(b.key)).slice(0,offerView.limits[key]||4).map(o=>o.key)));
+ const visible=displayed.filter(o=>visibleKeys.has(o.key)),minimum=visible.reduce((value,o)=>Math.min(value,offerListDisplay(o).offer.total),Infinity);
+ if(currentMinimum!==minimum){currentRowEntries.clear();currentMinimum=minimum;}
+ const entries=visible.map(o=>{let entry=currentRowEntries.get(o.key);if(!entry){entry=offerRowEntry(o,commonNote,minimum);currentRowEntries.set(o.key,entry);}return entry;});
  for(const group of groups){const limit=offerView.limits[group.key]||4;if(group.offers.length>limit)entries.push({offerKey:'more-'+group.key,markup:`<button class="text-button group-more" data-action="group-more" data-value="${esc(group.key)}">Ещё варианты: ${esc(roomLabel(group.offers[0]))}, ${esc(displayMealLabel(group.offers[0]))} (${group.offers.length-limit}) ${icon('arrow')}</button>`});}
  const host=$('#all-offers-list');if(entries.length)paintGeneratedRoots(host,entries,true,'offerKey');else host.innerHTML=`<div class="destination-empty offer-recovery-empty"><h3>Нет такого сочетания</h3>${offerRefinementRecovery(all)}<button class="text-button" data-action="reset-offer-filters">Сбросить все условия выбора тура</button></div>`;
 }
