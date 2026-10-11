@@ -20,7 +20,7 @@ import gzip
 import base64
 from search3_design_v2_preview import (REPO, RELEASE, OLD_ROUTE, ROUTE_TRANSFORMS,
     LEDGER_PATH, LEDGER_JS, gzip_lengths, render_checks, live_checks)
-from search3_design_v2_update_remote import (ROUTE, INVARIANTS, PREDECESSOR_SOURCE,
+from search3_design_v2_update_remote import (ROUTE, INVARIANTS, ORIGINAL_SOURCE, PREDECESSOR_SOURCE,
     ORIGINAL_BUILD, ORIGINAL_ARTIFACT, ORIGINAL_ZIP, SOURCE_CHANGES, ROUTE_CHANGES,
     digest, inventory, json_bytes, need, verify, predecessor)
 from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
@@ -45,7 +45,7 @@ def checked_request(event, env):
     parts = body[len(PREFIX):].split(' ')
     need(len(parts) == 4 and all(re.fullmatch('[0-9a-f]{40}', x) for x in parts[:2])
          and all(re.fullmatch('[1-9][0-9]{0,14}', x) for x in parts[2:]), 'exact_pins')
-    need(parts[0] != PREDECESSOR_SOURCE, 'new_source_required')
+    need(parts[0] not in (ORIGINAL_SOURCE, PREDECESSOR_SOURCE), 'new_source_required')
     return {'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
         'artifact_id': int(parts[3]), 'deploy_run': int(env['GITHUB_RUN_ID']), 'attempt': 1}
 
@@ -123,7 +123,7 @@ def derive(source, baseline, output, request, zip_digest):
         derived_from={'artifact_id': request['artifact_id'], 'build_run': request['build_run'],
             'ZIP_sha256': zip_digest, 'transform': 'design-v2-route-and-ledger-v1',
             'changed_payload_files': list(ROUTE_CHANGES), 'changed_source_payload_files': changes,
-            'baseline': {'source_sha': PREDECESSOR_SOURCE, 'build_run': ORIGINAL_BUILD,
+            'baseline': {'source_sha': ORIGINAL_SOURCE, 'build_run': ORIGINAL_BUILD,
                 'artifact_id': ORIGINAL_ARTIFACT, 'ZIP_sha256': ORIGINAL_ZIP}})
     m['files'] = [{'path': n, 'sha256': h, 'size': (output / 'payload' / n).stat().st_size} for n, h in files.items()]
     m['file_count'] = len(files)
@@ -147,7 +147,7 @@ def derive(source, baseline, output, request, zip_digest):
 def prepare_inputs(api, q, tree, zip_hash, work):
     from search3_preview_publish import prepare_zip
     prepare_zip(api.download(q['artifact_id']), q, tree, zip_hash, work / 'original')
-    baseline = {'source_sha': PREDECESSOR_SOURCE, 'release_sha': PREDECESSOR_SOURCE,
+    baseline = {'source_sha': ORIGINAL_SOURCE, 'release_sha': ORIGINAL_SOURCE,
         'artifact_id': ORIGINAL_ARTIFACT, 'build_run': ORIGINAL_BUILD,
         'deploy_run': q['deploy_run'], 'attempt': 1}
     prepare_zip(api.download(ORIGINAL_ARTIFACT), baseline, ORIGINAL_TREE, ORIGINAL_ZIP, work / 'baseline')

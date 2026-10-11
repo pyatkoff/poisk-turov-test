@@ -23,9 +23,15 @@ class UpdateContracts(unittest.TestCase):
         paths = [p for p in remote.SOURCE_CHANGES if p != creator.LEDGER_PATH]
         for i, name in enumerate(paths):
             (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(self.baseline / 'payload' / name)
+        for i, name in enumerate(('visual-search/preview-lead.js', 'prototype-search/lead.js',
+                'tour-controller-v4.js', 'visual-search/assets/anytour-logo.svg',
+                'visual-search/fonts/Aeroport.woff2'), start=len(paths)):
+            target = self.baseline / 'payload' / name; target.parent.mkdir(parents=True, exist_ok=True)
+            (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
         self.original_pin = patch.object(creator, 'SOURCE_LEDGER_SHA256', remote.digest((self.baseline / 'payload' / creator.LEDGER_PATH).read_bytes()))
         self.original_pin.start(); self.addCleanup(self.original_pin.stop)
         creator.derive(self.baseline, self.root / 'installed', original_request(), creator.SOURCE_ZIP_SHA256)
+        (self.root / 'installed/payload/visual-search/app.js').write_text('previous published polish')
         self.source = self.root / 'source'; shutil.copytree(self.baseline, self.source)
         (self.source / 'payload/visual-search/app.js').write_text('reviewed explicit nights UX')
         m = json.loads((self.source / 'control/manifest.json').read_bytes())
@@ -69,7 +75,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38173086001)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38180461319)
 
     def test_owner_main_event_and_attempt_guards(self):
         for key, value in [('GITHUB_REF', 'refs/heads/work'), ('GITHUB_ACTOR', 'other'),
@@ -86,7 +93,8 @@ class UpdateContracts(unittest.TestCase):
         good = self.event['comment']['body']
         for body in [good + '\n', good + ';id', good + ' /_preview/search3-next-candidate/',
             good.replace(pub.PREFIX, creator.PREFIX), good.replace(' 123 ', '  123 '),
-            good.replace('a' * 40, remote.PREDECESSOR_SOURCE), good.replace(' 123 ', ' 0 ')]:
+            good.replace('a' * 40, remote.PREDECESSOR_SOURCE),
+            good.replace('a' * 40, remote.ORIGINAL_SOURCE), good.replace(' 123 ', ' 0 ')]:
             event = copy.deepcopy(self.event); event['comment']['body'] = body
             with self.subTest(body=body), self.assertRaises(ValueError): pub.checked_request(event, self.env)
 
@@ -103,7 +111,12 @@ class UpdateContracts(unittest.TestCase):
         checks.pop()
         with self.assertRaisesRegex(ValueError, 'required_visual_checks_missing'): pub.strict_checks(API(), self.q['source_sha'])
 
-    def test_only_six_presentation_paths_can_differ(self):
+    def test_only_eight_reviewed_presentation_paths_can_differ(self):
+        self.assertEqual(set(remote.SOURCE_CHANGES), {
+            'visual-search/app.js', 'visual-search/asset-size.json',
+            'visual-search/hotel-details-v1.js', 'visual-search/offer-list-v1.js',
+            'visual-search/index.html', 'visual-search/migration-manifest.json',
+            'visual-search/mobile-controls-v1.css', 'visual-search/styles.css'})
         before = remote.inventory(self.source / 'payload'); after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 845)
         self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.ROUTE_CHANGES))
@@ -112,8 +125,55 @@ class UpdateContracts(unittest.TestCase):
         q2, a2 = pub.derive(self.source, self.baseline, self.root / 'again', {k: self.q[k] for k in original_request()}, 'e' * 64)
         self.assertEqual(q2, self.q); self.assertEqual(a2, self.archive)
 
+    def test_hotel_and_offer_presentation_files_retain_every_other_payload_byte(self):
+        for i, name in enumerate(('visual-search/hotel-details-v1.js', 'visual-search/offer-list-v1.js')):
+            source_path = self.source / 'payload' / name; original = source_path.read_bytes()
+            source_path.write_bytes(b'reviewed final Sites presentation')
+            output = self.root / ('hotel-presentation-' + str(i))
+            try:
+                q, _ = pub.derive(self.source, self.baseline, output, self.q, 'e' * 64)
+                remote.verify(output, q)
+                manifest = json.loads((output / 'control/manifest.json').read_bytes())
+                self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
+                    sorted(['visual-search/app.js', name]))
+                before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
+                self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.ROUTE_CHANGES))
+                self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
+            finally:
+                source_path.write_bytes(original)
+
+    def test_original_baseline_remains_independent_of_installed_predecessor(self):
+        manifest = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
+        self.assertEqual(manifest['derived_from']['baseline'], {
+            'source_sha': creator.SOURCE_SHA, 'build_run': creator.BUILD_RUN,
+            'artifact_id': creator.ARTIFACT_ID, 'ZIP_sha256': creator.SOURCE_ZIP_SHA256})
+        self.assertNotEqual(remote.ORIGINAL_SOURCE, remote.PREDECESSOR_SOURCE)
+        with patch('search3_preview_publish.prepare_zip') as prepare_zip:
+            class API:
+                def download(self, artifact_id): return b'synthetic ZIP'
+            with patch.object(pub, 'derive', return_value=(self.q, self.archive)):
+                pub.prepare_inputs(API(), self.q, 'd' * 40, 'e' * 64, self.root / 'inputs')
+        baseline_request = prepare_zip.call_args_list[1].args[1]
+        self.assertEqual(baseline_request['source_sha'], remote.ORIGINAL_SOURCE)
+        self.assertEqual(baseline_request['release_sha'], remote.ORIGINAL_SOURCE)
+
+    def test_original_creation_and_consumed_polish_runs_cannot_replay(self):
+        for deploy_run in (remote.ORIGINAL_PUBLISH_RUN, remote.PREDECESSOR_RUN):
+            with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
+                remote.validate({**self.q, 'deploy_run': deploy_run})
+
+    def test_historical_creation_cannot_replace_current_predecessor(self):
+        before = {'target': 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef',
+            'owner': {'run': remote.ORIGINAL_PUBLISH_RUN, 'source': remote.ORIGINAL_SOURCE,
+                'digest': 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef',
+                'status': 'published'}}
+        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
+            remote.predecessor(before)
+
     def test_supplier_price_lead_logo_font_and_unknown_payload_changes_denied(self):
-        for name in ['prototype-search/data.js', 'search-page-v2.php', 'site-path-v1.php']:
+        for name in ['prototype-search/data.js', 'search-page-v2.php', 'site-path-v1.php',
+                'visual-search/preview-lead.js', 'prototype-search/lead.js', 'tour-controller-v4.js',
+                'visual-search/assets/anytour-logo.svg', 'visual-search/fonts/Aeroport.woff2']:
             p = self.source / 'payload' / name; original = p.read_bytes(); p.write_bytes(original + b' unreviewed')
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_source_delta'):
                 pub.derive(self.source, self.baseline, self.root / 'rejected', self.q, 'e' * 64)
@@ -154,6 +214,7 @@ class UpdateContracts(unittest.TestCase):
         q = self.staged(); self.site.activate(q)
         self.assertEqual(self.site.finish(q, True)['status'], 'rolled_back_to_exact_predecessor')
         self.assertEqual(self.site.snapshot(), q['before'])
+        self.assertEqual((self.site.target / 'visual-search/app.js').read_text(), 'previous published polish')
 
     def test_completed_publish_or_rollback_cannot_replay(self):
         q = self.staged(); self.site.activate(q); self.site.finish(q)
