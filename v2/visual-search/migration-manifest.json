@@ -54,10 +54,10 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "43eecfc0da807a8b8d0bc1ab7670289e839bf18f764cc946cb760354a1135e9f",
+    "app.js": "5d36ba981b59fdc417aa8c96dea1169391279954c62ec168d37bac8226f1292f",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "0c0839ec21765e18620bb08010c2119471c6f9a7049176a906cffbf67c0c85a8",
-    "styles.css": "bf186042ee9bbe2b855c2218c9fd5b0df784925429f94a56de8a2be381a655b8",
+    "styles.css": "ba6167a9646d0d3ee2732279dacf338d82c4c13463a23a189f76b4d89a975fda",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",

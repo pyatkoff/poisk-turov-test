@@ -77,19 +77,30 @@ for(const open of [false,true])for(const filterOpen of [false,true])for(const fr
 // DOM effect. Ignore only their intercepted callbacks, retaining every active
 // modal observation and original before/after comparison.
 function records(source){return scenarios.map(s=>{const result=observe(source,s);result.trace=result.trace.filter(record=>!['refreshSavedTourControls','cancelVerification'].includes(record[0]));return {name:s.name,result};});}
-// Only the two new viewport-sync call sites may differ from the retained pin.
+// Only the three explicit viewport-sync call sites may differ from the retained pin.
 // Prove their exact position/count and preserve every original observation.
 let retainedSource=source;
 for(const [current,retained] of [
  ['m.close();syncDestinationViewport();document.body.style.overflow=','m.close();document.body.style.overflow='],
- ['restoreModalStepFocus(previous);syncDestinationViewport();','restoreModalStepFocus(previous);']
+ ['restoreModalStepFocus(previous);syncDestinationViewport();','restoreModalStepFocus(previous);'],
+ ['updateModalBack();syncDestinationViewport();\n}','updateModalBack();\n}']
 ]){assert.equal(retainedSource.split(current).length,2,'one intentional viewport-sync call site');retainedSource=retainedSource.replace(current,retained);}
 const actual=records(source),projected=clone(actual),retained=records(retainedSource);let viewportSyncObservations=0;
 for(let index=0;index<actual.length;index++){
  const scenario=scenarios[index],trace=actual[index].result.trace,extra=scenario.kind==='close'&&scenario.open||scenario.kind==='back'&&trace.some(record=>record[0]==='restoreFocus');
  const syncs=trace.flatMap((record,index)=>record[0]==='syncDestinationViewport'?[index]:[]),originalCount=retained[index].result.trace.filter(record=>record[0]==='syncDestinationViewport').length;
- assert.equal(syncs.length,originalCount+(extra?1:0),scenario.name+' exact viewport synchronization count');
+ const snapshotSync=extra&&scenario.kind==='back';
+ assert.equal(syncs.length,originalCount+(extra?1:0)+(snapshotSync?1:0),scenario.name+' exact viewport synchronization count');
  if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'restorePageReturn':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
+ if(snapshotSync){
+  const at=syncs[1],preceding=trace[at-1];
+  assert.deepEqual(preceding.slice(0,3),['attribute','#modal-back','aria-label'],scenario.name+' snapshot sync follows restored Back state');
+  assert.equal(trace[at][1].restoring,true,scenario.name+' snapshot sync precedes focus restoration');
+  assert.equal(trace[at][1].footer,actual[index].result.dom.find(([key])=>key==='#modal-footer')[1].innerHTML,scenario.name+' snapshot footer is already restored');
+  assert.deepEqual(trace[at][1],preceding.at(-1),scenario.name+' synchronization cannot change snapshot identity or DOM');
+  assert(at<syncs.at(-1),scenario.name+' snapshot geometry is available before the focus pass');
+  projected[index].result.trace.splice(at,1);viewportSyncObservations++;
+ }
 }
 assert.deepEqual(projected,retained,'all original modal observations remain unchanged after only the explicit viewport synchronization');
 const digest=crypto.createHash('sha256').update(JSON.stringify(projected)).digest('hex'),i=process.argv.indexOf('--compare');

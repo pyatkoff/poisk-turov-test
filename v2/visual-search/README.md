@@ -1,5 +1,29 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Candidate: retained modal keyboard and focus — 2026-10-11
+
+The existing viewport owner now keeps every open mobile dialog inside the reduced
+visual viewport, including contact → retained tour while the keyboard is still
+open. Pinch zoom is excluded; short viewports have no 180px floor. Focused text
+controls reveal through modal-body scroll only, without replacing/refocusing the
+field or scrolling ancestors. Focus changes, restored modal snapshots, body resize
+from enlarged text/footer, dismissal and late events consume the same owner.
+Focused fields remain fully revealed after text/footer enlargement at mobile,
+tablet and desktop widths, with the keyboard dismissed too. Keyboard positioning
+remains mobile-only; tablet/desktop layout is unchanged.
+The filter-drawer branch is unchanged.
+The existing modal-position rule accounts for safe-area-top within the same bound.
+No new layout concept, card/profile redesign, renderer or style owner is included.
+
+Actual-owner source regression covers retained tour/contact at five widths with
+explicit rectangles, real DOM focus/caret and zero ancestor pan. The existing
+compiled application matrix additionally covers empty-phone validation, pinch,
+Back/reopen/history and exact price/pair/draft/operation guards. Source/compiled
+checks and final-head CI must be read separately; this candidate is not a published
+NEXT receipt or physical iPhone/Safari acceptance. The full Site135 design proposal
+and its owner visual+behavior approval gate remain separate and unchanged.
+
+
 ## Temporary SAMO pause — 2026-10-08
 
 The shared live configuration now enables only Tourvisor and direct ANEX. Both optional SAMO/Andromeda endpoints are disabled, so initial search, continuation and quote actions cannot send SAMO requests. The integration remains in the source for a later explicit re-enable; its retained regression journeys opt in only within fictional transport fixtures. The calendar still uses previously observed database prices.
