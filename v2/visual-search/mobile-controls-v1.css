@@ -545,11 +545,12 @@ dialog.gallery-dialog .modal-header {
  #calendar-toggle[aria-expanded=true]>.chevron{transform:rotate(180deg)}
  #calendar-selected-summary{display:block;flex:0 1 140px;min-width:0;max-width:40%;margin:0;color:var(--muted);font-size:.8125rem;line-height:1.4;text-align:right;overflow-wrap:anywhere}
  #calendar-preview{min-width:0;margin:4px 0 8px}
- #results:not(.results-pristine) .results-toolbar{order:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:6px 0}
- #results .results-toolbar>.drawer-trigger{grid-column:2;display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:var(--line);background:#fff}
- #results .results-toolbar>.sort-label:not([hidden]){grid-column:1;display:block;min-width:0;max-width:190px;border:0;border-radius:0;background:transparent}
+ #results:not(.results-pristine) .results-toolbar{order:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,10rem),1fr));gap:8px;margin:6px 0}
+ #results .results-toolbar>.drawer-trigger{order:1;grid-column:auto;grid-row:auto;display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:var(--line);background:#fff}
+ #results .results-toolbar>.sort-label:not([hidden]){order:0;grid-column:auto;grid-row:auto;display:block;min-width:0;max-width:none;justify-self:stretch;border:0;border-radius:0;background:transparent}
  #results .sort-label select{display:block;width:100%;max-width:100%;min-height:44px;padding:8px 22px 8px 10px;font-size:.875rem;font-weight:500;white-space:normal}
  #results .quick-chips:not(:has(.chip:not([hidden]))){display:none}
+ #results .quick-chips{order:2;grid-column:1/-1;grid-row:auto}
  #active-filters{order:2}
  #cards{order:4}
  #search-more{order:5}
