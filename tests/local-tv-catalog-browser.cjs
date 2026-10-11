@@ -22,7 +22,8 @@ async function lookupBeforeOffersAcceptance(configScript){
  for(const mode of ['ready','immediate','coalesced','restore','disabled','failure','missing','foreign-link','foreign-country','abort','stopped']){
   const dom=new JSDOM('<body></body>',{url:'https://anytoour.ru'+base+'visual-search/',runScripts:'outside-only'}),w=dom.window;
   Object.assign(w,{structuredClone,TextEncoder,AbortController,Response});
-  w.fetch=async()=>{throw new Error('Unexpected transport before lookup setup');};
+  let transport=async()=>{throw new Error('Unexpected transport before lookup setup');};
+  w.fetch=(...args)=>transport(...args);
   Object.defineProperty(w.document,'currentScript',{configurable:true,value:configScript});
   w.eval(fs.readFileSync(path.join(sourceRoot,'prototype-search/config.js'),'utf8'));
   Object.defineProperty(w.document,'currentScript',{configurable:true,value:null});
@@ -31,7 +32,7 @@ async function lookupBeforeOffersAcceptance(configScript){
   const contentEntered=new Promise(resolve=>entered=resolve),contentGate=new Promise(resolve=>release=resolve);
   data.catalog.countries.push({id:'104',name:'Турция',tourvisorIds:['4']});
   if(mode==='disabled')w.V2_CONFIG.localTvCatalogEnabled=false;
-  w.fetch=async(url,options={})=>{
+  transport=async(url,options={})=>{
    const u=new URL(url,w.location.href);calls.push(u.pathname);
    assert(!options.method||options.method==='GET','suggestions use read-only GETs');
    if(u.pathname==='/data/hotel-search-v1.php'){
@@ -86,7 +87,7 @@ async function lookupBeforeOffersAcceptance(configScript){
      assert.equal(shown.photos.length,126);assert.equal(shown.resort,profile.region.name);assert.equal(shown.stars,profile.category);
      assert.notEqual(shown.name,query,'accepted query survives a different saved display name');
      assert.equal(baseline.name,profile.name,'progressive hydration does not mutate previously delivered rows');
-     w.fetch=async(url,options={})=>{
+     transport=async(url,options={})=>{
       const u=new URL(url,w.location.href);assert.equal(u.pathname,reader);assert.equal(options.cache,'no-store');
       return new Response(JSON.stringify(updated));
      };
@@ -272,4 +273,3 @@ async function browserAcceptance(){
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS LOCAL compiled NEXT browser',JSON.stringify(receipts));
 }
 (async()=>{await adapterAcceptance();if(process.argv.includes('--browser'))await browserAcceptance();})().catch(e=>{console.error(e);process.exitCode=1;});
-
