@@ -1382,7 +1382,7 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 
 /* v129: the fixed mobile footer owns the total; the body keeps only price details. */
 
-.offers-dialog #all-offers-list{display:grid;gap:10px}
+.offers-dialog #all-offers-list{display:grid;gap:10px;container-type:inline-size;container-name:offer-list}
 
 .offers-dialog .grouped-offer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:start;min-width:0;padding:12px 14px;margin:0;border:1px solid var(--line);border-radius:12px;background:#fff}
 
@@ -1413,13 +1413,18 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
 .offers-dialog .compare-tour-link{grid-column:1/-1;min-height:44px}
 
 @media(max-width:760px){
- .offers-dialog .grouped-offer{grid-template-columns:minmax(0,1fr) minmax(80px,max-content);padding:12px;gap:6px 10px}
+ .offers-dialog .grouped-offer{grid-template-columns:minmax(0,1fr);padding:12px;gap:6px 10px}
  .offers-dialog .offer-departure>strong{font-size:.9375rem}
  .offers-dialog .grouped-offer .offer-conditions{grid-column:1;grid-row:2}
- .offers-dialog .grouped-offer .offer-flight-details{grid-column:2;grid-row:2;flex-direction:column;align-items:flex-end;justify-content:center;align-self:stretch;max-width:132px;gap:4px}
- .offers-dialog .grouped-offer .offer-price{grid-row:3}
+ .offers-dialog .grouped-offer .offer-flight-details{grid-column:1;grid-row:3;justify-content:flex-start}
+ .offers-dialog .grouped-offer .offer-price{grid-row:4}
  .offers-dialog .grouped-offer .offer-price>strong{font-size:1.375rem}
  .offers-dialog .grouped-offer .offer-price>.primary{min-width:124px;padding:10px 12px}
+ @container offer-list (min-width:19rem){
+  .offers-dialog .grouped-offer{grid-template-columns:minmax(0,1fr) minmax(80px,max-content)}
+  .offers-dialog .grouped-offer .offer-flight-details{grid-column:2;grid-row:2;flex-direction:column;align-items:flex-end;justify-content:center;align-self:stretch;max-width:132px;gap:4px}
+  .offers-dialog .grouped-offer .offer-price{grid-row:3}
+ }
 }
 
 /* One shared context and an independent card per exact offer (approved PDF v8). */
@@ -1999,7 +2004,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .hotel-card {
  display:grid;grid-template-columns:minmax(240px,30%) minmax(0,1fr) 210px;grid-template-rows:auto auto 1fr auto;
  background:#fff;border:1px solid #dbe2ef;border-radius:16px;overflow:hidden;
- box-shadow:0 3px 12px #18233306;min-width:0;
+ box-shadow:0 3px 12px #18233306;min-width:0;container-type:inline-size;container-name:hotel-card;
 }
 .hotel-card:hover {border-color:#bbcbe8}
 .hotel-main,.hotel-info {display:contents}
@@ -2053,7 +2058,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .card-meal-line svg {width:16px;height:16px;flex:none}
 .card-room {font-size:.875rem;line-height:1.5;color:#566174;overflow-wrap:anywhere;padding:3px 0}
 .card-offer-flight {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;font-size:.875rem;line-height:1.45}
-.card-offer-flight .flight-tag {font-size:.875rem;line-height:1.45}
+.card-offer-flight .flight-tag {min-width:0;max-width:100%;font-size:.875rem;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
 .card-offer-flight .operator-logo {min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .hotel-price {grid-column:3;grid-row:1/4;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:18px 18px;border-left:1px solid var(--line);min-width:0;background:#fff}
 .starting-price>span {display:block;color:#566174;font-size:.875rem;line-height:1.4}
@@ -2097,11 +2102,13 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
  .hotel-photos.photo-unavailable .hotel-image-wrap {min-height:64px;justify-content:flex-start;padding:10px 12px}
  .hotel-facts {order:2;padding:0 0 4px}
  .card-minimum-offer {order:3;margin:6px 0 0;padding-top:8px;gap:2px}
- .card-minimum-offer:not(.room-operator-inline) {grid-template-columns:minmax(0,1fr) minmax(80px,max-content);column-gap:12px}
- .card-minimum-offer:not(.room-operator-inline)>strong {grid-column:1/-1}
- .card-minimum-offer:not(.room-operator-inline)>.card-meal-line {grid-column:1;grid-row:2}
- .card-minimum-offer:not(.room-operator-inline)>.card-room {grid-column:1;grid-row:3;min-width:0}
- .card-minimum-offer:not(.room-operator-inline)>.card-offer-flight {grid-column:2;grid-row:2/4;flex-direction:column;align-items:flex-end;justify-content:center;align-self:stretch;gap:4px;max-width:132px}
+ @container hotel-card (min-width:19rem){
+  .card-minimum-offer:not(.room-operator-inline) {grid-template-columns:minmax(0,1fr) minmax(80px,max-content);column-gap:12px}
+  .card-minimum-offer:not(.room-operator-inline)>strong {grid-column:1/-1}
+  .card-minimum-offer:not(.room-operator-inline)>.card-meal-line {grid-column:1;grid-row:2}
+  .card-minimum-offer:not(.room-operator-inline)>.card-room {grid-column:1;grid-row:3;min-width:0}
+  .card-minimum-offer:not(.room-operator-inline)>.card-offer-flight {grid-column:2;grid-row:2/4;flex-direction:column;align-items:flex-end;justify-content:center;align-self:stretch;gap:4px;max-width:132px}
+ }
  .card-minimum-offer.room-operator-inline {grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:center}
  .room-operator-inline>strong,.room-operator-inline>.card-meal-line {grid-column:1/-1}
  .room-operator-inline>.card-room {grid-column:1;grid-row:3;min-width:0}
