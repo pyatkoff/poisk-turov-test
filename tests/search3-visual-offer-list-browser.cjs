@@ -41,8 +41,10 @@ const server=http.createServer((req,res)=>{
    density.push(record);return record;
   };
   const reachable=async(control,label)=>{
-   await control.scrollIntoViewIfNeeded();const box=await control.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return{width:r.width,height:r.height,hit:hit===el||el.contains(hit),fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1)};});
-   assert(box.width>=44&&box.height>=44&&box.hit&&box.fullText,label+' keeps a reachable44px action and its complete label');return box;
+   await control.scrollIntoViewIfNeeded();let settleError;
+   try{await page.waitForFunction(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return r.width>=44&&r.height>=44&&(hit===el||el.contains(hit))&&[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1);},await control.elementHandle(),{timeout:2000,polling:'raf'});}catch(error){settleError=String(error);}
+   const box=await control.evaluate(el=>{const rect=node=>{if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};},r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),range=document.createRange();range.selectNodeContents(el);return{...rect(el),hit:hit===el||el.contains(hit),hitElement:hit?{tag:hit.tagName,id:hit.id,className:hit.getAttribute('class')}:null,fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1),scrollY,compact:rect(document.querySelector('#compact-search')),mobileBottom:rect(document.querySelector('.mobile-bottom'))};});
+   assert(box.width>=44&&box.height>=44&&box.hit&&box.fullText,label+' keeps a reachable44px action and its complete label: '+JSON.stringify({...box,settleError}));return box;
   };
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
