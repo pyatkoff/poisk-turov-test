@@ -1192,7 +1192,7 @@ function modalBack(){
  if(previous.type==='hotel-details')restoreHotelDetailStep(previous);
  restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);
  restoreModalStepFocus(previous);syncDestinationViewport();
- syncHotelSectionNavigation();rememberUIRoute();
+ syncHotelSectionNavigation();refreshProviderQuoteExpiry();rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();cancelPicker();});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal()}});
@@ -1498,7 +1498,9 @@ function refreshProviderQuoteExpiry(){
  for(const status of $$('#anex-flight-price-status,#andromeda-flight-price-status'))status.textContent='Срок подтверждения цены истёк';
  for(const changed of $$('#modal-body .quote-price-change'))changed.hidden=true;
  const message=form?.querySelector('.lead-message');if(message)message.textContent='';
- $('#modal-title').textContent='Цена требует проверки';
+ // Keep the contact step's heading stable; the alert and footer announce expiry
+ // without moving the active field when enlarged text changes the title height.
+ if(!form)$('#modal-title').textContent='Цена требует проверки';
  body.insertAdjacentHTML('beforeend',`<p id="provider-price-expiry" class="error-text" role="alert">Срок подтверждения цены истёк. Выберите другой тур или выполните новый поиск.${form?' Контакты сохранены.':''}</p>`);
  $('#modal-footer').innerHTML=offerDetailFooterHTML({total:null,pricePending:true},`<button class="primary" data-action="all-offers" data-id="${offer.hotelId}">К вариантам тура</button>`,'Срок подтверждения цены истёк');
  // Keep contact input nodes and their viewport position. A removed footer action
