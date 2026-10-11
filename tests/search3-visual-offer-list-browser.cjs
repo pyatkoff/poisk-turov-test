@@ -142,7 +142,22 @@ const server=http.createServer((req,res)=>{
    await list.locator('[data-action="offer"]').first().click();const tourPrice=page.locator(width<=760?'#modal-footer .footer-total>strong':'#detail-total');await tourPrice.waitFor();assert.match(await tourPrice.textContent(),/\d.*₽/,'the selected offer has a visible total');await shot('tour');
    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[data-action="apply-flight"]').waitFor();await shot('flights');
    await page.locator('[data-action="apply-flight"]').click();await page.locator('#prototype-lead-form').waitFor();await shot('application');
-   await calendarState(true);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,mobile_calendar_initially_closed:width<=760,calendar_local_state_retained:true,nights_exact_range_restart:true,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
+   await calendarState(true);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   const foldedSelectedDates=[];
+   if(width<=760){
+    // A fresh document keeps this bounded selected-date scenario separate from
+    // the completed offer pagination, history and application journey above.
+    const beforeFoldedScenario=requests;await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);await page.locator('.hotel-card [data-action="all-offers"]').first().waitFor();await calendarState(false);
+    await page.locator('#calendar-toggle').click();await calendarState(true);const firstDate=page.locator('#price-strip [data-date]').first(),selectedDay=await firstDate.getAttribute('data-date');await firstDate.click();
+    const selectedURL=page.url(),selectedCards=await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),selectedCaption=await page.locator('#calendar-selected-date').textContent();assert.equal(new URL(selectedURL).searchParams.get('date'),selectedDay);
+    await page.locator('#calendar-toggle').click();await calendarState(false);const summary=page.locator('#calendar-selected-summary');assert.equal(await summary.isVisible(),true);assert.equal(await summary.textContent(),selectedCaption);
+    for(const zoom of [100,200]){
+     await page.evaluate(zoom=>document.documentElement.style.fontSize=zoom===200?'200%':'',zoom);await page.evaluate(()=>document.fonts.ready);const toggle=await reachable(page.locator('#calendar-toggle'),'folded selected dates text'+zoom);
+     const summaryBox=await summary.evaluate(el=>{const r=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);return{text:el.textContent,width:r.width,height:r.height,fullText:[...range.getClientRects()].every(t=>t.x>=r.x-1&&t.right<=r.right+1&&t.y>=r.y-1&&t.bottom<=r.bottom+1)};});assert(summaryBox.width>0&&summaryBox.height>0&&summaryBox.fullText,'folded selected departure remains completely readable at '+width+' text'+zoom);
+     assert.equal(page.url(),selectedURL);assert.deepEqual(await page.locator('.hotel-card').evaluateAll(cards=>cards.map(card=>card.id)),selectedCards);assert.equal(requests,beforeFoldedScenario,'selecting and folding a saved date never loads the exact-offer renderer');foldedSelectedDates.push({zoom,selectedDay,summary:summaryBox,toggle});await shot('results-calendar-selected-closed-text'+zoom);
+    }
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,mobile_calendar_initially_closed:width<=760,calendar_local_state_retained:true,nights_exact_range_restart:true,foldedSelectedDates,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled approved interface and cold offer-list browser',JSON.stringify(receipts));
