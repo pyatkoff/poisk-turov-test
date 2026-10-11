@@ -1209,8 +1209,9 @@
     catalog.countries=items;catalog.regions={};return {departures:catalog.departures,countries:items,origin:text(departure)};
   }
   async function savedHotels(ids,s){if(!owner)return[];const rows=await Promise.allSettled(ids.slice(0,20).map(id=>owner.readProfile(id)));return rows.filter(r=>r.status==='fulfilled'&&r.value).map(r=>hotel({...r.value,anytourHotelId:r.value.id},s));}
-  async function lookupHotels(q,country,signal){
+  async function lookupHotels(q,country,signal,onContent){
     if(q.trim().length<2)return[];
+    const epoch=generation;
     const read=async url=>{const r=await fetch(url,{signal,credentials:'same-origin',headers:{Accept:'application/json'}});if(!r.ok)throw new Error('Hotel catalogue unavailable');const p=await r.json();if(p?.ok!==true||!Array.isArray(p.items))throw new Error('Invalid hotel catalogue');return p;};
     const nativeCountryId=tourvisorCountryId(country);
     const found=await read('/data/hotel-search-v1.php?'+new URLSearchParams({q:q.trim(),countryId:nativeCountryId,limit:'10'}));
@@ -1219,12 +1220,20 @@
     const query=new URLSearchParams({catalog:'anytour'});ids.forEach(id=>query.append('legacyHotelIds[]',id));
     const p=await read(local+'data/hotel-details-read-v1.php?'+query);
     if(p.source!=='anytour-canonical-catalog'||p.catalog!=='anytour'||!Array.isArray(p.links)||!Array.isArray(p.requestedLegacyIds)||p.requestedLegacyIds.map(String).join(',')!==ids.join(','))throw new Error('Invalid canonical hotel lookup');
-    return p.items.map(raw=>{
+    const rows=p.items.map(raw=>{
       if(raw.catalog!=='anytour'||!Number.isSafeInteger(raw.id)||raw.id<1||typeof raw.name!=='string'||!raw.name.trim())throw new Error('Invalid canonical hotel');
       const legacyIds=p.links.filter(link=>Number(link.anytourHotelId)===raw.id&&ids.includes(String(link.legacyHotelId))).map(link=>String(link.legacyHotelId));
       if(!legacyIds.length)throw new Error('Missing hotel search identity');
-      return hotel({...raw,canonicalLegacyIds:legacyIds},{country});
+      return {...raw,canonicalLegacyIds:legacyIds};
     });
+    if(signal?.aborted||epoch!==generation)throw new DOMException('Aborted','AbortError');
+    const present=()=>rows.map(raw=>hotel(raw,{country})),initial=present();
+    // Optional saved content must not delay verified suggestions or ID restore.
+    // Reproject the same canonical rows only for the current lookup/generation.
+    Promise.resolve().then(()=>signal?.aborted||epoch!==generation?false:refreshHotelContent(rows.map(h=>h.id)))
+      .then(changed=>{if(changed&&!signal?.aborted&&epoch===generation&&typeof onContent==='function')onContent(present());})
+      .catch(()=>{});
+    return initial;
   }
   async function restoreHotel(id,country){
     if(!owner)throw new Error('Hotel catalogue unavailable');
