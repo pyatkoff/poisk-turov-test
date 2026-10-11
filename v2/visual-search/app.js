@@ -2,13 +2,13 @@
 (() => {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const prototypeVersion=154;
-const presentationReference='Новый Sites v2 · форма и выдача';
+const designRevision=34;
 // Optional shortlisting is paused by the owner. Keep stored choices intact, but
 // keep every visible route focused on search → hotel → exact tour.
 const optionalShortlistEnabled=false;
-$('.prototype-lab strong').textContent=presentationReference;
-$('#prototype-version').textContent=presentationReference;
-$('.footer-inner>span').textContent='NEXT · '+presentationReference+' · 11.10.2026';
+$('.prototype-lab strong').textContent='Дизайн · пакет '+designRevision;
+ $('#prototype-version').textContent='Дизайн · пакет '+designRevision;
+$('.footer-inner>span').textContent='Дизайн · пакет '+designRevision+' · 06.10.2026 · исходник v'+prototypeVersion;
 const paths = {
  sort:'<path d="M8 4v16m-4-4 4 4 4-4M14 5h6M14 10h4M14 15h2"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>',
@@ -94,7 +94,6 @@ function selectionStepsHTML(step,{flightDeferred=false}={}){return `<ol class="s
 const startDay=data.clockStart||addDays(iso(new Date()),1),endDay=addDays(startDay,180);
 let hotels=[];
 let resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
-let resultCalendarExpanded=false;
 
 const defaultFilters=()=>({hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
 const getStored=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
@@ -321,10 +320,7 @@ function renderCatalogError(){
  node.hidden=!bootstrapPending&&!bootstrapFailed&&!countryFailed&&!hotelMissing;node.setAttribute('role',bootstrapPending||restoring?'status':'alert');node.classList.toggle('error-text',!bootstrapPending&&!restoring);node.classList.toggle('picker-caption',bootstrapPending||restoring);
  node.innerHTML=node.hidden?'':bootstrapPending?'Загружаем направления. Параметры поездки сохранены.':bootstrapFailed?'Не удалось загрузить направления. Параметры поездки сохранены. <button type="button" class="secondary" data-action="retry-catalog">Повторить загрузку</button>':countryFailed?`${esc(catalogError)} <button type="button" class="text-button" data-action="retry-countries">Повторить загрузку направлений</button>`:restoring?'Восстанавливаем выбранные отели…':'Не удалось загрузить все выбранные отели. Выбор сохранён. <button type="button" class="text-button" data-action="retry-hotel-restore">Повторить загрузку отелей</button>';
  if(retrying&&!bootstrapPending)delete node.dataset.catalogRetry;
- if(focus){
-  restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
-  if(node.hidden&&document.activeElement===$('#country'))$('#country').scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
- }
+ if(focus)restoreFocus(bootstrapPending||retrying?null:focus,node.hidden?$('#country'):bootstrapPending?node:node.querySelector('[data-action="retry-catalog"]')||node,node.hidden?document:node);
  $('#country').setAttribute('aria-busy',String(!catalogReady&&!catalogError));
 }
 const normalizeSearch=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/ё/g,'е').trim();
@@ -752,13 +748,6 @@ function resultCalendarPrices(days){
 function calendarStripEntries({days,prices,min,max}){return days.map((day,i)=>{const price=prices[i];return {day,markup:`<button class="date-price ${price!==null&&price===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${price!==null?', от '+money(price):', цена не сохранена; дату можно выбрать'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${Number(day.slice(-2))}</span><strong>${price===null?'—':shortAmount(price,true)}</strong></button>`};});}
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
 function paintCalendarStrip(strip,entries){paintGeneratedRoots(strip,entries,true,'day');}
-function syncResultCalendarDisclosure(){
- const mobile=innerWidth<=760,expanded=!mobile||resultCalendarExpanded,toggle=$('#calendar-toggle');
- toggle.hidden=!mobile;toggle.setAttribute('aria-expanded',String(expanded));
- const preview=$('#calendar-preview');if(!expanded&&preview.contains(document.activeElement))toggle.focus({preventScroll:true});
- preview.hidden=!expanded;$('#price-calendar').classList.toggle('calendar-collapsed',!expanded);
- const summary=$('#calendar-selected-summary');summary.textContent=state.selectedDate?$('#calendar-selected-date').textContent:'';summary.hidden=expanded||!state.selectedDate;
-}
 function renderCalendarStrip(){
  const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;
  loadResultCalendar();
@@ -777,7 +766,6 @@ function renderCalendarStrip(){
  $('#calendar-selected-date').textContent=state.selectedDate?`Вылет ${dateLong(state.selectedDate)}`:'';
  $('#calendar-selected-date').parentElement.hidden=!state.selectedDate;
  $('#clear-date').hidden=!state.selectedDate;
- syncResultCalendarDisclosure();
  refreshEmptyCalendarContext();
 }
 const mobileDetailFilterKeys=new Set(['amenities','favorites','hotelId','hotelIds','q','resorts','operators','flight','spa']);
@@ -1204,7 +1192,7 @@ function modalBack(){
  if(previous.type==='hotel-details')restoreHotelDetailStep(previous);
  restoringModal=false;if(previous.type==='all-offers'&&offerView)renderOfferList();if(previous.type==='favorites')renderFavorites();if(previous.type==='selected-tour')window.AnyTourPrototypeLead.bind(selectedOffer);
  restoreModalStepFocus(previous);syncDestinationViewport();
- syncHotelSectionNavigation();refreshProviderQuoteExpiry();rememberUIRoute();
+ syncHotelSectionNavigation();rememberUIRoute();
 }
 $('#modal').addEventListener('cancel',e=>{e.preventDefault();cancelPicker();});
 $('#modal').addEventListener('click',e=>{if(e.target===$('#modal')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal()}});
@@ -1453,7 +1441,7 @@ function restoredNightsDraft(value){
  const min=Number(value.min),max=Number(value.max);if(!Number.isInteger(min)||!Number.isInteger(max)||min<1||max>28||min>max||max-min>10)return fallback;
  return {min,max,phase:value.phase===1?1:0};
 }
-function openNights(restore=null){nightsDraft=restoredNightsDraft(restore?.draft);showModal('nights','Количество ночей','',`<p class="modal-intro">Первый тап — точная длительность, второй — диапазон. Между границами — до 10 ночей.</p><div class="night-grid" aria-label="Количество ночей">${Array.from({length:28},(_,i)=>`<button data-action="night-pick" data-value="${i+1}" aria-label="${nightsText(i+1)}">${i+1}</button>`).join('')}</div><p class="picker-caption">Даты вылета не изменятся</p><h3 class="picker-subtitle">Быстрый выбор</h3><div class="nights-options">${[7,10,14,21].map(n=>`<button data-action="night-preset" data-value="${n}">${nightsText(n)}</button>`).join('')}</div>`);$('#modal').classList.add('nights-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="nights-footer"><p class="night-selection" aria-live="polite"></p><p class="error-text" id="night-error" role="alert" hidden></p><button class="primary picker-apply" data-action="apply-nights"></button></div>';renderNightSelection();}
+function openNights(restore=null){nightsDraft=restoredNightsDraft(restore?.draft);showModal('nights','Количество ночей','',`<p class="modal-intro">Нажмите одно число для точной длительности или два — для диапазона.</p><div class="night-grid" aria-label="Количество ночей">${Array.from({length:28},(_,i)=>`<button data-action="night-pick" data-value="${i+1}" aria-label="${nightsText(i+1)}">${i+1}</button>`).join('')}</div><p class="picker-caption">Даты вылета не изменятся</p><h3 class="picker-subtitle">Быстрый выбор</h3><div class="nights-options">${[7,10,14,21].map(n=>`<button data-action="night-preset" data-value="${n}">${nightsText(n)}</button>`).join('')}</div>`);$('#modal').classList.add('nights-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="nights-footer"><p class="night-selection" aria-live="polite"></p><p class="error-text" id="night-error" role="alert" hidden></p><button class="primary picker-apply" data-action="apply-nights"></button></div>';renderNightSelection();}
 function renderNightSelection(){$('#night-error').hidden=!nightsDraft.error;$('#night-error').textContent=nightsDraft.error||'';$$('.night-grid button').forEach(b=>{const n=+b.dataset.value,active=n===nightsDraft.min||n===nightsDraft.max;b.classList.toggle('active',active);b.classList.toggle('in-range',n>nightsDraft.min&&n<nightsDraft.max);b.setAttribute('aria-pressed',n>=nightsDraft.min&&n<=nightsDraft.max)});$$('.nights-options button').forEach(b=>b.setAttribute('aria-pressed',nightsDraft.min===+b.dataset.value&&nightsDraft.max===+b.dataset.value));const label=durationText({minNights:nightsDraft.min,maxNights:nightsDraft.max});$('.night-selection').textContent=nightsDraft.phase?'Выберите вторую границу или подтвердите '+label:'Выбрано: '+label;$('[data-action="apply-nights"]').textContent='Выбрать '+label;rememberUIRoute();}
 function openGallery(id,index=0){const h=hotels.find(x=>x.id===id);if(!h?.photos.length){toast('Фотографии этого отеля пока недоступны.');return;}showModal('gallery',h.name,'ФОТОГРАФИИ ОТЕЛЯ','');gallery={id,index};renderGallery();}
 function renderGallery(retry=false){
@@ -1510,9 +1498,7 @@ function refreshProviderQuoteExpiry(){
  for(const status of $$('#anex-flight-price-status,#andromeda-flight-price-status'))status.textContent='Срок подтверждения цены истёк';
  for(const changed of $$('#modal-body .quote-price-change'))changed.hidden=true;
  const message=form?.querySelector('.lead-message');if(message)message.textContent='';
- // Keep the contact step's heading stable; the alert and footer announce expiry
- // without moving the active field when enlarged text changes the title height.
- if(!form)$('#modal-title').textContent='Цена требует проверки';
+ $('#modal-title').textContent='Цена требует проверки';
  body.insertAdjacentHTML('beforeend',`<p id="provider-price-expiry" class="error-text" role="alert">Срок подтверждения цены истёк. Выберите другой тур или выполните новый поиск.${form?' Контакты сохранены.':''}</p>`);
  $('#modal-footer').innerHTML=offerDetailFooterHTML({total:null,pricePending:true},`<button class="primary" data-action="all-offers" data-id="${offer.hotelId}">К вариантам тура</button>`,'Срок подтверждения цены истёк');
  // Keep contact input nodes and their viewport position. A removed footer action
@@ -2330,7 +2316,6 @@ function renderSearchStatus(items,total){
 
 function prepareSearchRun(options={}){
  if(!data.preview&&destinationIds(state.filters).some(id=>!destinationHotel(id)?.legacyIds.length)){state.hasSearched=false;editSearch();renderResults();updateSearchUI();return null;}
- if(!options.exactRefresh)resultCalendarExpanded=false;
  resultCalendar.controller?.abort();resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
  selectionGeneration++;providerViews.clear();selectedOffer=null;andromedaQuoteDraft=null;andromedaApplicationDraft=null;anexCurrentDraft=null;window.AnyTourPrototypeLead.reset();updateNav();state.hasSearched=true;
  const key=searchKey(state.search);searchResponse={key,phase:'loading',operators:[],pending:true,exactRefresh:options.exactRefresh===true};collapseSearch();
@@ -2460,7 +2445,6 @@ function handleSearchParameterAction(action,b,id){
  case 'budget-adjust-max':$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();$('[data-action="apply-budget"]').focus({preventScroll:true});break;
  case 'apply-budget':{const budget=readBudget();if(!budget.valid){updateBudgetPreview();$(budget.invalidMin?'#budget-min':'#budget-max').focus();return true}filterBudgetEdit=null;pickerFilters().min=budget.min;pickerFilters().max=budget.max;finishFilterPicker();break}
  case 'nights':openNights();break;case 'guests':openGuests();break;case 'calendar':openCalendar();break;
- case 'toggle-result-calendar':resultCalendarExpanded=!resultCalendarExpanded;syncResultCalendarDisclosure();break;
  case 'top':case 'edit-search':editSearch();break;
  case 'cancel-search-edit':cancelSearchEdit();break;
  case 'month-prev':case 'month-next':{const d=dateObj(calendarMonth);d.setUTCMonth(d.getUTCMonth()+(action==='month-next'?1:-1));calendarMonth=iso(d);renderDateCalendar();loadCalendarPrices();rememberUIRoute();break}
@@ -2683,7 +2667,7 @@ const initialUIRoute=history.state?.[uiHistoryKey];
 hydrate();restoreURL(true);renderResults();bootRealData();
 if(initialUIRoute)addEventListener('pageshow',()=>restoreHistoryView(initialUIRoute),{once:true});
 // The trip bar follows this document's viewport, including in the responsive preview.
-function updateCompactSearch(){compactSearchFrame=0;const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession;document.body.classList.toggle('mobile-results',mobileResults);$('#compact-search').hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;syncResultCalendarDisclosure();}
+function updateCompactSearch(){compactSearchFrame=0;const mobileResults=innerWidth<=760&&state.hasSearched&&$('#search-form').hidden&&!searchEditSession;document.body.classList.toggle('mobile-results',mobileResults);$('#compact-search').hidden=!mobileResults&&$('#search').getBoundingClientRect().bottom>88;}
 function scheduleCompactSearch(){if(!compactSearchFrame)compactSearchFrame=requestAnimationFrame(updateCompactSearch);}
 addEventListener('scroll',scheduleCompactSearch,{passive:true});
 addEventListener('resize',scheduleCompactSearch);

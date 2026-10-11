@@ -5,13 +5,6 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const historyKey='anytour.prototype.v18.ui.v1';
-// Read-only failure evidence: keep the original expiry/history predicates and
-// clock sequence, including the scroll captured before any diagnostic frame.
-const sessionGeometry=page=>page.evaluate(key=>{
- const box=el=>{if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right,fontSize:s.fontSize,lineHeight:s.lineHeight,fontFamily:s.fontFamily,whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap};};
- const modal=document.querySelector('#modal'),body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),phone=document.querySelector('[name="phone"]'),active=document.activeElement,v=window.visualViewport;
- return{now:Date.now(),fonts:document.fonts?.status,viewport:{width:innerWidth,height:innerHeight,visual:v?{width:v.width,height:v.height,offsetTop:v.offsetTop,scale:v.scale}:null},routeType:history.state?.[key]?.type,modal:{open:modal.open,className:modal.className,quoteExpired:modal.dataset.quoteExpired,box:box(modal)},title:{text:document.querySelector('#modal-title').textContent,box:box(document.querySelector('#modal-title'))},body:{box:box(body),scrollTop:body.scrollTop,scrollHeight:body.scrollHeight,clientHeight:body.clientHeight},footer:{box:box(footer),hidden:footer.hidden,text:footer.textContent,amount:box(footer.querySelector('.footer-total strong')),status:box(footer.querySelector('.footer-price-status'))},phone:box(phone),focus:{tag:active?.tagName,id:active?.id,name:active?.name,samePhone:active===window.__selectedSessionPhone,sameForm:document.querySelector('#prototype-lead-form')===window.__selectedSessionForm},expiryNotice:box(document.querySelector('#provider-price-expiry')),applicationActions:[...document.querySelectorAll('[data-action="anex-application-preview"],[data-action="andromeda-application-preview"]')].map(el=>({action:el.dataset.action,enabled:!el.disabled,box:box(el)}))};
-},historyKey);
 module.exports=async function({browser,origin,base,evidence}){
  const records=[],started=Date.now();
  const scenario=async(provider,width,mode)=>{
@@ -114,11 +107,6 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.evaluate(()=>{window.__selectedSessionForm=document.querySelector('#prototype-lead-form');window.__selectedSessionPhone=document.activeElement;});
     }
     const before=calls(),scroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);
-    if(width===390&&mode==='application'){
-     const beforeScreenshot=await sessionGeometry(page);
-     await page.screenshot({path:path.join(evidence,`selected-session-preexpiry-${provider}-${mode}-${width}.png`)});
-     fs.writeFileSync(path.join(evidence,`selected-session-preexpiry-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,baselineScroll:scroll,beforeScreenshot,afterScreenshot:await sessionGeometry(page),compiled:true,physical_device:false},null,2)+'\n');
-    }
     await page.clock.fastForward(901000);
     await page.waitForFunction(()=>document.querySelector('#modal').dataset.quoteExpired==='1');
     await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
@@ -159,12 +147,6 @@ module.exports=async function({browser,origin,base,evidence}){
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    records.push({provider,width,mode,compiled:true,expiry_presentation:mode!=='other',same_hotel_return:mode==='return',independent_offer:mode==='other',root_200_reduced_height:width===390&&mode==='application',supplier_HTTP:0,real_leads:0,physical_device:false});
-  }catch(error){
-   const geometry=await sessionGeometry(page).catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
-   fs.writeFileSync(path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,error:error.stack,errors,forbidden,geometry,compiled:true,physical_device:false},null,2)+'\n');
-   console.error(`FAIL compiled selected session ${provider}/${mode}/${width}`,error.stack);
-   await page.screenshot({path:path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.png`)}).catch(()=>{});
-   throw error;
   }finally{await context.close();}
  };
  // Keep the existing full CI budget: at most four independent fixture contexts

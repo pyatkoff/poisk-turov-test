@@ -40,7 +40,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.waitForFunction(selector=>document.activeElement?.matches(selector),selector);
    assert.equal(await page.locator(selector).evaluate(el=>document.activeElement===el),true,'catalogue keyboard focus belongs to '+selector+' at '+label);
   };
-  const geometryOf=async(locator)=>locator.evaluate(el=>{const r=el.getBoundingClientRect(),form=el.closest('#search-form').getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),rootStyle=getComputedStyle(document.documentElement),style=getComputedStyle(el),pixels=value=>Number.parseFloat(value)||0,scroller=document.scrollingElement;return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,formLeft:form.x,formRight:form.right,viewportWidth:innerWidth,viewportHeight:innerHeight,centerHit:!!hit&&(hit===el||el.contains(hit)),scrollY,scrollPaddingTop:pixels(rootStyle.scrollPaddingTop),scrollPaddingBottom:pixels(rootStyle.scrollPaddingBottom),scrollMarginTop:pixels(style.scrollMarginTop),scrollMarginBottom:pixels(style.scrollMarginBottom),maxScroll:Math.max(0,scroller.scrollHeight-scroller.clientHeight)};});
+  const geometryOf=async(locator)=>locator.evaluate(el=>{const r=el.getBoundingClientRect(),form=el.closest('#search-form').getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{x:r.x,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,formLeft:form.x,formRight:form.right,viewportWidth:innerWidth,viewportHeight:innerHeight,centerHit:!!hit&&(hit===el||el.contains(hit)),scrollY};});
   const assertVisibleGeometry=(geometry,description)=>{
    assert(geometry.x>=geometry.formLeft-1&&geometry.right<=geometry.formRight+1&&geometry.right<=geometry.viewportWidth+1,description+' stays inside the form at '+label);
    assert(geometry.top>=-1&&geometry.bottom<=geometry.viewportHeight+1,description+' is fully visible in the viewport at '+label);
@@ -82,7 +82,7 @@ module.exports=async function({browser,origin,base,evidence}){
    geometry.completionScroll=await page.evaluate(()=>scrollY);
    return geometry;
   };
-  let releaseInitial,releaseRetry,markInitial,markRetry,markSuccess,completionReveal=null,completionBaseline=null;
+  let releaseInitial,releaseRetry,markInitial,markRetry,markSuccess;
   const initialReached=new Promise(resolve=>markInitial=resolve),retryReached=new Promise(resolve=>markRetry=resolve);
   transport.state.countryGates['1']=new Promise(resolve=>releaseInitial=resolve);
   try{
@@ -126,26 +126,11 @@ module.exports=async function({browser,origin,base,evidence}){
    const successReached=new Promise(resolve=>markSuccess=resolve);transport.state.countryGates['1']=new Promise(resolve=>releaseRetry=resolve);
    await page.locator('#catalog-error [data-action="retry-catalog"]').focus();await assertFocus('#catalog-error [data-action="retry-catalog"]');const successScroll=await page.evaluate(()=>scrollY);
    await page.keyboard.press('Enter');await successReached;const pendingSuccess=await pending(2,successScroll);
-   completionBaseline=pendingSuccess.completionScroll;
    releaseRetry();releaseRetry=null;transport.state.countryGates['1']=null;
    await page.waitForFunction(()=>document.querySelector('#search-form').getAttribute('aria-busy')==='false'&&!document.querySelector('#search-form .search-submit').disabled);
    await assertFocus(movedFocus?'#search-form .form-all-filters':'#country');
-   const settledScroll=await page.evaluate(()=>scrollY);
-   if(movedFocus)assert(Math.abs(settledScroll-pendingSuccess.completionScroll)<=2,'catalogue completion does not jump the retained focus position at '+label);
+   const settledScroll=await page.evaluate(()=>scrollY);assert(Math.abs(settledScroll-pendingSuccess.completionScroll)<=2,'catalogue completion does not jump the retained focus position at '+label);
    const settledFocus=await geometryOf(page.locator(movedFocus?'#search-form .form-all-filters':'#country'));assertVisibleGeometry(settledFocus,'settled keyboard focus');
-   assert(settledFocus.width>=44&&settledFocus.height>=44,'settled keyboard focus has a44px hit target at '+label);
-   if(!movedFocus){
-    // Completion replaces the focused pending status with the canonical country
-    // field. A tall form may need a reveal; accept only the native nearest move,
-    // never a center/top reset or a blanket tolerance on retained scroll.
-    const baseline=pendingSuccess.completionScroll,delta=settledFocus.scrollY-baseline;
-    const targetTop=settledFocus.top+delta-settledFocus.scrollMarginTop,targetBottom=settledFocus.bottom+delta+settledFocus.scrollMarginBottom;
-    const viewportTop=settledFocus.scrollPaddingTop,viewportBottom=settledFocus.viewportHeight-settledFocus.scrollPaddingBottom;
-    const required=targetTop<viewportTop?targetTop-viewportTop:targetBottom>viewportBottom?targetBottom-viewportBottom:0;
-    const expectedScroll=Math.max(0,Math.min(settledFocus.maxScroll,baseline+required));
-    completionReveal={baselineScroll:baseline,targetAtBaseline:{top:targetTop,bottom:targetBottom},safeViewport:{top:viewportTop,bottom:viewportBottom},requiredDelta:required,expectedScroll,actualScroll:settledFocus.scrollY,maxScroll:settledFocus.maxScroll};
-    assert(Math.abs(settledFocus.scrollY-expectedScroll)<=2,'catalogue completion reveals fallback country with only the minimum nearest scroll at '+label);
-   }
    await assertControls(false);await assertVisibleTrip('ready');await assertURL();assertPassive();
    assert.equal(countryReads(),3,'success belongs to the next explicit retry');
    assert.equal(await page.locator('#catalog-error').isVisible(),false,'successful canonical catalogue clears the existing error');
@@ -155,20 +140,11 @@ module.exports=async function({browser,origin,base,evidence}){
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
    await page.locator('#search-form .search-submit').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,`catalog-recovery-${label}-ready.png`)});
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({width,height:stress?650:900,root200:stress,compiled:true,fictional_catalogue:true,initial_pending_trip:true,visible_trip_through_recovery:true,initial_failure:true,explicit_retry_failure:true,duplicate_pending_reads:0,explicit_success:true,keyboard_enter_retry:true,pending_status_focus:true,completion_focus:movedFocus?'preserved-independent-control':'retry-or-country',moved_focus_not_stolen:movedFocus,initial_autofocus:false,country_reads:countryReads(),requested,geometry:{first,second,pendingFailure,pendingSuccess,settledFocus,completionReveal},supplier_HTTP:0,real_leads:0,physical_device:false});
-  }catch(error){
-   const country=await geometryOf(page.locator('#country')).catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
-   const documentState=await page.evaluate(()=>{const active=document.activeElement,root=document.scrollingElement,node=document.querySelector('#catalog-error');return{scrollY,scrollHeight:root.scrollHeight,clientHeight:root.clientHeight,fonts:document.fonts?.status,focus:{tag:active?.tagName,id:active?.id,className:active?.className},status:{hidden:node?.hidden,text:node?.textContent},formBusy:document.querySelector('#search-form').getAttribute('aria-busy'),submitDisabled:document.querySelector('#search-form .search-submit').disabled};}).catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
-   fs.writeFileSync(path.join(evidence,`catalog-recovery-${label}-failure.json`),JSON.stringify({width,stress,movedFocus,label,error:error.stack,errors,forbidden,country,documentState,completionBaseline,completionReveal,compiled:true,physical_device:false},null,2)+'\n');
-   console.error(`FAIL compiled catalogue recovery ${label}`,error.stack);
-   await page.screenshot({path:path.join(evidence,`catalog-recovery-${label}-failure.png`)}).catch(()=>{});
-   throw error;
+   records.push({width,height:stress?650:900,root200:stress,compiled:true,fictional_catalogue:true,initial_pending_trip:true,visible_trip_through_recovery:true,initial_failure:true,explicit_retry_failure:true,duplicate_pending_reads:0,explicit_success:true,keyboard_enter_retry:true,pending_status_focus:true,completion_focus:movedFocus?'preserved-independent-control':'retry-or-country',moved_focus_not_stolen:movedFocus,initial_autofocus:false,country_reads:countryReads(),requested,geometry:{first,second,pendingFailure,pendingSuccess,settledFocus},supplier_HTTP:0,real_leads:0,physical_device:false});
   }finally{releaseInitial?.();releaseRetry?.();await context.close();}
  };
  const jobs=[...[360,390,430,768,1280].map(width=>[width,false]),[390,true],[390,false,true]];
- const failures=[];
- for(let i=0;i<jobs.length;i+=3){const outcomes=await Promise.allSettled(jobs.slice(i,i+3).map(args=>scenario(...args)));failures.push(...outcomes.filter(r=>r.status==='rejected').map(r=>r.reason));}
- if(failures.length)throw new AggregateError(failures,'Compiled catalogue recovery failed');
+ for(let i=0;i<jobs.length;i+=3){const outcomes=await Promise.allSettled(jobs.slice(i,i+3).map(args=>scenario(...args))),failures=outcomes.filter(r=>r.status==='rejected');if(failures.length)throw new AggregateError(failures.map(r=>r.reason),'Compiled catalogue recovery failed');}
  const receipt={published:false,compiled:true,live_data:false,engine:'Chromium',physical_device:false,duration_ms:Date.now()-started,records};
  fs.writeFileSync(path.join(evidence,'catalog-recovery.json'),JSON.stringify(receipt,null,2)+'\n');
  console.log('PASS compiled catalogue recovery',JSON.stringify({cases:records.length,duration_ms:receipt.duration_ms,five_widths:true,root200_reduced_height:true,retries_explicit:true,keyboard_focus_retained:true,independent_focus_preserved:true,initial_visible_trip:true,visible_trip_through_recovery:true,exact_trip_retained:true,supplier_HTTP:0,real_leads:0}));return receipt;

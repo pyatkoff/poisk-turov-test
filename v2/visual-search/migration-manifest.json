@@ -54,15 +54,15 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "7c230c3b901ead163f401b3be3976e2e68da04e6c8defe7202ff908f60b351a1",
+    "app.js": "1cab78614f243d59ee3b0bc7c57c5173b1bd88a93a3a764876416aa7696624ec",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "4c8fbfe2ee9c170221569f7f30fc414ffaaca95415304277a2b70b9447fd1c80",
-    "styles.css": "b4cac06a2855116f1ea942d80de2bd91fe4fe57de9d5978516627a508f08ba5c",
+    "index.html": "0c0839ec21765e18620bb08010c2119471c6f9a7049176a906cffbf67c0c85a8",
+    "styles.css": "ba6167a9646d0d3ee2732279dacf338d82c4c13463a23a189f76b4d89a975fda",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
     "offer-list-v1.js": "5aacc75585b5ae98043aba5b3e3c3856ca4f52147d785407127ca200b49d103a",
-    "mobile-controls-v1.css": "75e8ade98b2c597acf58a9d0cdcb612356f47ce851798fb728592c52e22a6436",
+    "mobile-controls-v1.css": "1163ce427b4f3c1b9d026ce9ccf5df80cf587dfbfdf1a76f4976d32c84d3021a",
     "hotel-details-v1.js": "31ef740d4923cd6cde61c69f1a4e6b6c0837298e47edc48c519159e1535579e9",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "e4bd6ed9ecb93299a7ab88c225f56adbcb65d0ebaa7a835c43b357ae31e223f4",
@@ -129,31 +129,5 @@
     "globalUnknownSealsApplication": true,
     "realSupplierAcceptance": false,
     "physicalSafariAcceptance": false
-  },
-  "newSitesV2FormResults": {
-    "projectId": "appgprj_6acb7b6ce6e0819191db8389fd7b3fca",
-    "version": 2,
-    "sourceSha": "00fe6734c08acf234756bb59e5b61dbfecf41941",
-    "sourceUrl": "https://anytour-search-design-final.nifty-fawn-6604.chatgpt.site",
-    "releaseBasis": "037b58086dec5166ef485f4cea3992d79f9b2d8b",
-    "scope": [
-      "search-form",
-      "results-presentation",
-      "nights-editor",
-      "mobile-result-calendar-disclosure"
-    ],
-    "resultsPriceTape": "collapsed-by-default-on-mobile",
-    "desktopResultCalendar": "visible",
-    "modalEditors": "current NEXT owners retained",
-    "catalogPriceTransportLeadOwners": "current NEXT owners retained",
-    "originalFontAssets": {
-      "assets/aeroport-400.woff2": "8ddfbc7546044cc7e47bb853883781e76cd87220e0734f8d0ac223a2a134806b",
-      "assets/aeroport-500.woff2": "163463bae0608eb36cef2973386f6995f5562cf04b5d79f0948ef53972aca2e4",
-      "assets/aeroport-700.woff2": "5d58f4a3f40694bb866cbff0263b628734931662428865c2c49b6c0f5af49e0e"
-    },
-    "finalShaCI": "required before preview publication",
-    "physicalSafariAcceptance": false,
-    "supplierRequests": 0,
-    "realLeads": 0
   }
 }

@@ -1,39 +1,4 @@
-# Search3 NEXT — new Sites v2 form/results candidate
-
-## New Sites v2 form and results transfer — 2026-10-11
-
-The owner continued from the concrete [new Sites v2 handoff](../../docs/project/search3-new-sites-v2-handoff-20261011.md)
-in PR4526. Reference: separate new project `appgprj_6acb7b6ce6e0819191db8389fd7b3fca`,
-version2/source `00fe6734c08acf234756bb59e5b61dbfecf41941`.
-This first bounded implementation covers form, nights presentation and results;
-hotel tabs, selected-tour composition and contact transfer remain later packets.
-The original Sites100 approval and later installed fixes below remain history.
-
-Existing form controls now use the reference's white fields, route pair and three
-desktop trip fields, quieter wishes and orange search action. Original Aeroport
-400/500/700 files are recovered byte for byte from the supplied new reference.
-The existing nights owner retains 1–28, first exact/second range/third exact,
-endpoint spread10 and presets7/10/14/21; its grid and confirmation are restyled.
-Current modal/history/keyboard viewport owners remain in place.
-
-Mobile results start with the date-price tape collapsed. The accessible disclosure
-retains expansion and selected date through local filters/sort and passive returns;
-a genuinely new search collapses it again. Desktop remains open. Current calendar
-prices, source/month/year/party labels and unknown-date selection are unchanged.
-Result photo/identity/facts/total/action hierarchy consumes existing eligible offers;
-the mobile photo ratio remains1.8. Current canonical destination multi-ID selection,
-including real Rixos catalog entries, remains the data owner.
-
-No donor simulator, synthetic inventory/prices/flights, fake lead success, second
-renderer or extra stylesheet is imported. Optional shortlisting stays paused.
-Supplier/quote/flight/price/fuel/lead/lifecycle/URL contracts and the live PHP graph
-are unchanged. Lead delivery remains disabled in this preview.
-
-Status: source candidate, not a new NEXT publication receipt. Focused DOM evidence
-checks disclosure/selection/return and night draft cancellation; compiled rendered
-evidence and green applicable final-head CI remain required before preview update.
-Physical iPhone/Safari/system keyboard and real supplier/lead acceptance are separate.
-The conversational design rating is not a complete SEARCH-QUALITY-1 assessment.
+# Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
 ## Candidate: retained modal keyboard and focus — 2026-10-11
 
