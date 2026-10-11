@@ -82,6 +82,7 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
  const allDates=await scope();assert.match(allDates,/ — /);
  for(const viewport of [360,390,430,768,1280]){
   await page.setViewportSize({width:viewport,height:900});
+  if(await page.locator('#calendar-preview').evaluate(el=>el.hidden))await page.locator('#calendar-toggle').click();
   await page.locator(`#price-strip [data-date="${day}"]`).click();
   assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
   assert.doesNotMatch(await scope(),/ — /);assert.equal(new URL(page.url()).searchParams.get('date'),day);
@@ -528,14 +529,6 @@ const appliedSummaryControls=async(page,width,transport,evidence)=>{
     const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
     return{fields:buttons.map(button=>{const value=button.querySelector('strong'),range=document.createRange();range.selectNodeContents(value);return{button:rect(button),label:rect(button.querySelector('span')),value:rect(value),text:value.textContent,textRects:[...range.getClientRects()].map(b=>({x:b.x,y:b.y,right:b.right,bottom:b.bottom})),overflow:button.scrollWidth>button.clientWidth+1};}),documentOverflow:document.documentElement.scrollWidth>innerWidth};
    });
-   if(label==='default'&&viewportWidth===360){
-    await page.evaluate(()=>{
-     const visit=rules=>{for(const rule of rules){if(rule.cssRules)visit(rule.cssRules);if(rule.selectorText==='#search-form .quick-field'&&rule.style.alignContent==='stretch'){window.__formValueBaseline={rule,css:rule.style.cssText};rule.style.alignContent='start';rule.style.removeProperty('align-self');rule.style.removeProperty('grid-template-rows');}}};
-     for(const sheet of document.styleSheets)visit(sheet.cssRules);if(!window.__formValueBaseline)throw Error('Existing mobile value-row rule not found');
-    });
-    try{const baseline=await measure();assert(Math.abs(baseline.fields[0].value.height-baseline.fields[1].value.height)>5,'old declarations reproduce unequal default value boxes on360px');formValueStates.push({label:'baseline-old-declarations',width:viewportWidth,...baseline});await page.screenshot({path:path.join(evidence,'form-values-baseline-360.png')});}
-    finally{await page.evaluate(()=>{const saved=window.__formValueBaseline;saved.rule.style.cssText=saved.css;delete window.__formValueBaseline;});}
-   }
    const boxes=await measure();assert.equal(boxes.fields.length,2);assert.equal(boxes.documentOverflow,false,label+' has no horizontal form overflow at '+viewportWidth);
    for(const field of boxes.fields){assert(field.button.width>=44&&field.button.height>=44,label+' retains the whole row click target');assert.equal(field.overflow,false);assert(field.textRects.length&&field.textRects.every(text=>text.x>=field.button.x-1&&text.right<=field.button.right+1&&text.y>=field.button.y-1&&text.bottom<=field.button.bottom+1),label+' keeps complete value text inside its control at '+viewportWidth);}
    if(viewportWidth<=760){const [meal,budget]=boxes.fields;assert(Math.abs(meal.value.y-budget.value.y)<=1&&Math.abs(meal.value.bottom-budget.value.bottom)<=1,label+' aligns both value boxes at '+viewportWidth);assert(Math.abs(meal.label.y-budget.label.y)<=1,label+' aligns both field labels');}
@@ -1738,3 +1731,4 @@ const server=http.createServer((req,res)=>{
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
+

@@ -507,13 +507,14 @@ dialog.gallery-dialog .modal-header {
 }
 /* Results block: one composition for trip context, decision controls, hotel
    identity, exact package and price. This replaces the packet-13 composition. */
-.result-date-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:3px 8px;min-width:0;padding:0;margin-bottom:4px}
-.result-date-heading>div {min-width:0}
-.result-date-heading>.text-button {grid-column:2;grid-row:1/3;flex:none;min-height:44px;padding:6px 4px;font-size:.875rem;line-height:1.4}
+.result-date-heading {display:block;min-width:0;padding:0;margin-bottom:4px}
+.result-date-details {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 8px;min-width:0;margin-bottom:8px}
+.result-date-details>.text-button {grid-column:2;grid-row:1/3;flex:none;min-height:44px;padding:6px 4px;font-size:.875rem;line-height:1.4}
+.calendar-toggle,.calendar-selected-summary {display:none}
 .result-dates .calendar-foot {justify-content:space-between;flex-wrap:wrap;gap:4px 8px;color:var(--text);font-size:.8125rem;line-height:1.4}
-.result-date-heading strong {grid-column:1;grid-row:1;display:block;font-size:1rem;line-height:1.4}
+.result-date-heading strong {display:block;font-size:1rem;font-weight:500;line-height:1.4}
 .result-dates .calendar-units {grid-column:1;grid-row:2;margin:0;font-size:.8125rem;line-height:1.4;color:var(--muted)}
-.result-dates .calendar-month-label {grid-column:1;grid-row:3;margin:0;font-size:.875rem;line-height:1.4;font-weight:650;color:var(--text)}
+.result-dates .calendar-month-label {grid-column:1;grid-row:1;margin:0;font-size:.875rem;line-height:1.4;font-weight:500;color:var(--text)}
 .result-dates .calendar-minimum {margin:9px 0 3px;font-size:.875rem;line-height:1.4;font-weight:650;color:#276B3B}
 #price-calendar .calendar-caption {margin:0;font-size:.75rem;line-height:1.4;color:var(--muted)}
 .result-dates .calendar-heading p {font-size:.875rem;line-height:1.4;color:var(--muted)}
@@ -528,21 +529,35 @@ dialog.gallery-dialog .modal-header {
  .search-collapsed .applied-trip dt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
  .search-collapsed .applied-trip dd{font-size:.875rem;line-height:1.45}
  .search-collapsed .preview-disclosure{margin-top:2px;font-size:.8125rem;color:var(--text)}
- .results-section{padding-top:8px}
- .results-heading{margin-bottom:6px}
+ body.mobile-results{background:#fff}
+ .results-section{padding-top:12px}
+ .results-heading{margin-bottom:10px}
  .results-heading h2{font-size:1.25rem;line-height:1.3;letter-spacing:-.02em}
  .results-heading p{margin-top:0;font-size:.8125rem;line-height:1.4}
- #price-calendar.calendar-card{padding:4px 0;border-radius:12px}
- #results:not(.results-pristine) .results-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:6px 0}
- #results .results-toolbar>.drawer-trigger{display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:#ccd7f3;background:#fff}
- #results .results-toolbar>.sort-label:not([hidden]){display:block;min-width:0;max-width:190px;border:1px solid var(--line);border-radius:10px;background:#fff}
+ .results-main{display:flex;flex-direction:column;min-width:0}
+ #search-status{order:0}
+ #price-calendar.calendar-card{order:3;min-width:0;margin:8px 0 16px;padding:4px 0;border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;background:transparent}
+ #price-calendar .result-date-heading{margin:0}
+ #calendar-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:8px 0;color:var(--brand);font-size:.875rem;font-weight:500;line-height:1.4;text-align:left}
+ #calendar-toggle>svg{flex:none;width:16px;height:16px}
+ #calendar-toggle>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+ #calendar-toggle>.chevron{flex:none;margin-left:0;font-size:18px;color:var(--muted)}
+ #calendar-toggle[aria-expanded=true]>.chevron{transform:rotate(180deg)}
+ #calendar-selected-summary{display:block;flex:0 1 140px;min-width:0;max-width:40%;margin:0;color:var(--muted);font-size:.8125rem;line-height:1.4;text-align:right;overflow-wrap:anywhere}
+ #calendar-preview{min-width:0;margin:4px 0 8px}
+ #results:not(.results-pristine) .results-toolbar{order:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:6px 0}
+ #results .results-toolbar>.drawer-trigger{grid-column:2;display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:var(--line);background:#fff}
+ #results .results-toolbar>.sort-label:not([hidden]){grid-column:1;display:block;min-width:0;max-width:190px;border:0;border-radius:0;background:transparent}
  #results .sort-label select{display:block;width:100%;max-width:100%;min-height:44px;padding:8px 22px 8px 10px;font-size:.875rem;font-weight:500;white-space:normal}
  #results .quick-chips:not(:has(.chip:not([hidden]))){display:none}
+ #active-filters{order:2}
+ #cards{order:4}
+ #search-more{order:5}
  .mobile-bottom>.mobile-sort{display:none}
  .calendar-heading{gap:8px}
  .calendar-heading .text-button{padding-inline:4px;font-size:.875rem;min-height:44px}
  .result-date-heading>strong{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
- .result-date-heading .calendar-month-label{grid-row:1;font-size:1rem;line-height:1.4}
+ .result-date-details .calendar-month-label{font-size:1rem;line-height:1.4}
  .result-dates .calendar-minimum{margin:4px 0 2px}
  .price-strip{display:grid;grid-template-columns:repeat(7,minmax(min-content,1fr));gap:3px;overflow:auto;padding:0}
  .date-price{min-width:44px;min-height:54px;padding:3px 0;justify-content:center}
@@ -555,7 +570,7 @@ dialog.gallery-dialog .modal-header {
  @media(max-width:374px){body.mobile-results #results{padding-inline:9px}.date-price strong{font-size:.875rem}}
  .calendar-selection-hint{display:none}
  .calendar-foot{margin-top:2px;font-size:.8125rem;line-height:1.4}
- .cards{gap:14px}
+ .cards{gap:22px}
 
 }
 
@@ -623,3 +638,4 @@ dialog.gallery-dialog .modal-header {
   overflow-wrap:anywhere;
  }
 }
+

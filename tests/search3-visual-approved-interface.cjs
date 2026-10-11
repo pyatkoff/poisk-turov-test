@@ -29,6 +29,13 @@ async function run(width,monthRange=null){
  const close=async()=>{action('close-modal');await pause();};
  const lookup=async()=>{for(let i=0;i<35&&$('#destination-query').getAttribute('aria-busy')==='true';i++)await pause();assert.notEqual($('#destination-query').getAttribute('aria-busy'),'true');};
  const isOpen=()=>$('#modal').hasAttribute('open');
+ const calendarState=open=>{assert.equal($('#calendar-preview').hidden,!open);assert.equal($('#calendar-toggle').getAttribute('aria-expanded'),String(open));};
+ assert.equal($('#calendar-toggle').dataset.action,'toggle-result-calendar');assert.equal($('#calendar-toggle').getAttribute('aria-controls'),'calendar-preview');
+ assert.equal($('#calendar-toggle').hidden,width>760,'the inline disclosure belongs to mobile results');calendarState(width>760);
+ if(width<=760){
+  const passiveURL=w.location.href;w.innerWidth=1280;w.dispatchEvent(new w.Event('resize'));await pause();calendarState(true);$('#price-strip button').focus();
+  w.innerWidth=width;w.dispatchEvent(new w.Event('resize'));await pause();calendarState(false);assert.equal(d.activeElement,$('#calendar-toggle'),'responsive collapse moves focus out of hidden dates');assert.equal(w.location.href,passiveURL);
+ }
  if(monthRange){
   const [from,to,label]=monthRange;
   assert.equal($('#calendar-month-label').textContent,label);
@@ -48,6 +55,8 @@ async function run(width,monthRange=null){
  assert.equal($('#compact-search').hidden,width<=760?false:$('#search').getBoundingClientRect().bottom>88);
  assert.equal(d.body.classList.contains('mobile-results'),width<=760);
  assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');
+ const beforeCalendar={url:w.location.href,cards:[...d.querySelectorAll('.hotel-card')].map(card=>card.id),reads:reads.length};
+ if(width<=760){click('#calendar-toggle');calendarState(true);assert.equal(w.location.href,beforeCalendar.url);assert.deepEqual([...d.querySelectorAll('.hotel-card')].map(card=>card.id),beforeCalendar.cards);assert.equal(reads.length,beforeCalendar.reads,'expanding saved result dates is passive');}
  const headerRange=$('#compact-details').textContent;
  assert.match(headerRange,/Вылет.*1.*7/);
  click('#price-strip [data-date="2026-10-05"]');
@@ -60,9 +69,15 @@ async function run(width,monthRange=null){
  assert.match($('#calendar-minimum-legend').textContent.replace(/\s/g,''),/78087₽/);
  assert.match($('#calendar-selected-date').textContent,/5 октября/);
  assert.match($('#results-summary').textContent,/974/);
+ calendarState(true);
+ if(width<=760){click('#calendar-toggle');calendarState(false);assert.equal($('#calendar-selected-summary').hidden,false);assert.match($('#calendar-selected-summary').textContent,/5 октября/);assert.equal(new URL(w.location.href).searchParams.get('date'),'2026-10-05');click('#calendar-toggle');calendarState(true);assert.equal($('#calendar-selected-summary').hidden,true);}
  click('#clear-date');assert.equal($('#compact-details').textContent,headerRange);assert.equal($('#calendar-month-label').textContent,'Октябрь 2026');assert.equal($('#calendar-selected-date').parentElement.hidden,true);
  assert.match($('#results-summary').textContent,/1047/);
- // The price rail is always open; an unknown price never disables its date.
+ // Expanded result dates remain independent of local sorting and filters.
+ const sort=$(width<=760?'#mobile-sort':'#sort');sort.value='price';sort.dispatchEvent(new w.Event('change',{bubbles:true}));calendarState(true);
+ action('preset','.results-toolbar');calendarState(true);action('preset','.results-toolbar');calendarState(true);sort.value='recommended';sort.dispatchEvent(new w.Event('change',{bubbles:true}));
+ if(width<=760){click('#calendar-toggle');calendarState(false);sort.value='rating';sort.dispatchEvent(new w.Event('change',{bubbles:true}));calendarState(false);sort.value='recommended';sort.dispatchEvent(new w.Event('change',{bubbles:true}));click('#calendar-toggle');calendarState(true);}
+ // Unknown-price dates remain selectable after the mobile disclosure opens.
  assert.equal($('#price-calendar').tagName,'SECTION');assert.ok($('#price-strip').children.length>1);
  action('calendar','#price-calendar');await pause();await pause();
  click('[data-action="day-pick"][data-date="2026-10-05"]');
@@ -71,6 +86,7 @@ async function run(width,monthRange=null){
  assert.ok($('#date-calendar [data-date="2026-10-05"]').classList.contains('is-cheap'));
  assert.equal($('#date-calendar [data-date="2026-10-05"] small').textContent,'78,1');
  await close();
+ calendarState(true);
  // Exact offers are independent, sorted cards, and return retains the same choice.
  click('#cards [data-action="all-offers"][data-id="3678"]');
  const rows=[...d.querySelectorAll('#all-offers-list .grouped-offer')];assert.equal(rows.length,2);
@@ -82,6 +98,7 @@ async function run(width,monthRange=null){
  action('modal-back');await pause();
  const retained=$('#all-offers-list .is-selected');assert.equal(retained.dataset.offerKey,key);assert.match(retained.textContent,/✓ Выбран/);assert.equal(retained.querySelector('.primary').textContent.trim(),'Смотреть тур');
  retained.querySelector('.primary').click();await pause();assert.match($('#modal-body').textContent.replace(/\s/g,''),/99938₽/);action('modal-back');await pause();await close();
+ calendarState(true);
  assert.match($('#cards [data-action="all-offers"][data-id="3678"]').closest('.hotel-card').textContent.replace(/\s/g,''),/96953₽/);
  action('edit-search','#applied-search');
  assert.equal($('#search-form').hidden,false);assert.equal(d.querySelector('#quick-stars [data-value="2"]'),null);
@@ -96,7 +113,9 @@ async function run(width,monthRange=null){
  action('dates','#search-form');if(width>760){action('month-next');action('month-next');}click('[data-action="day-pick"][data-date="2026-12-30"]');
  click('[data-action="day-pick"][data-date="2027-01-02"]');assert.match($('#date-selection-label').textContent,/2026.*2027/);await close();
  // Nights are exact or an inclusive range. Invalid end preserves the first choice.
- action('nights','#search-form');click('[data-action="night-pick"][data-value="7"]');click('[data-action="night-pick"][data-value="21"]');assert.match($('#night-error').textContent,/диапазон/);click('[data-action="night-pick"][data-value="10"]');action('apply-nights');await pause();assert.equal($('#nights-label').textContent,'7–10 ночей');
+ action('nights','#search-form');click('[data-action="night-pick"][data-value="7"]');assert.deepEqual([...d.querySelectorAll('.night-grid [aria-pressed="true"]')].map(b=>b.dataset.value),['7']);click('[data-action="night-pick"][data-value="21"]');assert.match($('#night-error').textContent,/диапазон/);click('[data-action="night-pick"][data-value="10"]');assert.deepEqual([...d.querySelectorAll('.night-grid [aria-pressed="true"]')].map(b=>b.dataset.value),['7','8','9','10']);click('[data-action="night-pick"][data-value="14"]');assert.deepEqual([...d.querySelectorAll('.night-grid [aria-pressed="true"]')].map(b=>b.dataset.value),['14'],'third tap starts a new exact duration');await close();assert.equal($('#nights-label').textContent,initial.nights,'Cancel rolls the entire nights draft back');
+ action('nights','#search-form');click('[data-action="night-preset"][data-value="10"]');assert.deepEqual([...d.querySelectorAll('.night-grid [aria-pressed="true"]')].map(b=>b.dataset.value),['10']);await close();assert.equal($('#nights-label').textContent,initial.nights);
+ action('nights','#search-form');click('[data-action="night-pick"][data-value="7"]');click('[data-action="night-pick"][data-value="10"]');action('apply-nights');await pause();assert.equal($('#nights-label').textContent,'7–10 ночей');
  // Child zero differs from unset. Nested Back preserves the old age.
  action('guests','#search-form');action('children-plus');action('children-plus');assert.equal($('[data-action="apply-guests"]').disabled,true);
  click('[data-action="child-age"][data-index="0"]');assert.equal($('[data-action="apply-age"]').disabled,true);click('[data-action="age-pick"][data-value="0"]');action('apply-age');assert.equal($('#modal-title').textContent,'Туристы');assert.match($('.ages').textContent,/До 1 года/);
@@ -126,11 +145,13 @@ async function run(width,monthRange=null){
  const kept={direction:$('#destination-detail').textContent,dates:$('#dates-label').textContent,nights:$('#nights-label').textContent,ages:$('#guests-detail').textContent};action('form-filters','#search-form');action('reset-form-filters');action('apply-form-filters');await pause();assert.equal($('#meal-label').textContent,'Любое');assert.equal($('#budget-label').textContent,'Без ограничений');assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');for(const [id,value] of [['destination-detail',kept.direction],['dates-label',kept.dates],['nights-label',kept.nights],['guests-detail',kept.ages]])assert.equal($('#'+id).textContent,value);
  // Return to snapshot matching party/dates, submit both exact hotels, verify URL/result state.
  action('guests','#search-form');action('children-minus');action('children-minus');action('apply-guests');await pause();action('dates','#search-form');click('[data-action="day-pick"][data-date="2026-10-01"]');click('[data-action="day-pick"][data-date="2026-10-07"]');action('apply-dates');await pause();$('.search-submit').click();await pause();await pause();assert.equal($('#search-form').hidden,true);assert.match(w.location.search,/hotels=3678%7C5227/);assert.match($('#results-summary').textContent,/2 отеля/);assert.match($('#cards').textContent,/RIA SUITES HOTEL/);assert.match($('#cards').textContent,/FOUR-G HOTEL/);
- const committed=w.location.search;action('edit-search','#applied-search');click('#quick-stars [data-value="5"]');action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
+ calendarState(width>760);
+ if(width<=760){click('#calendar-toggle');calendarState(true);}
+ const committed=w.location.search;action('edit-search','#applied-search');click('#quick-stars [data-value="5"]');action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);calendarState(true);
  // A pending change from an exact hotel set to the country cannot reuse old counts.
  action('edit-search','#applied-search');action('destination','#search-form');action('destination-all');action('confirm-destination');action('apply-destination');await pause();action('meals','#search-form');assert.equal($('#meal-result-preview').textContent,'Любой выбранный вариант');await close();action('budget','#search-form');assert.match($('#budget-preview').textContent,/после поиска с новыми условиями/);await close();action('cancel-search-edit','#search-form');await pause();assert.equal(w.location.search,committed);assert.match($('#results-summary').textContent,/2 отеля/);
  assert.deepEqual(errors,[],'No errors from actual Site scripts');
- const result={width,checks:'PASS: open price rail, exact saved calendar minimum, independent offers and selected-tour return, drafts/cancellation, 22-date bound, cross-year label, nights, child zero/unset/nested Back, return-age recheck, meals, integer/zero/order budgets, canonical filters, direction replacement, multi-hotel OR, submit and return',local_fetches:reads,provider_requests:0,real_leads:0,browser_layout:false};dom.window.close();return result;
+ const result={width,checks:'PASS: mobile result calendar closed by default, passive disclosure and retained local state, changed-search collapse, exact saved calendar minimum, independent offers and selected-tour return, drafts/cancellation, 22-date bound, cross-year label, exact/range/restart nights and preset Cancel, child zero/unset/nested Back, return-age recheck, meals, integer/zero/order budgets, canonical filters, direction replacement, multi-hotel OR, submit and return',local_fetches:reads,provider_requests:0,real_leads:0,browser_layout:false};dom.window.close();return result;
 }
 
 async function verify(){
@@ -142,3 +163,4 @@ async function verify(){
 verify().catch(error=>{console.error(error.stack);process.exit(1);});
 // Keep the gallery regression in the current owner gate, without a new workflow.
 require('./search3-visual-gallery.cjs');
+
