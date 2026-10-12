@@ -26,3 +26,38 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
 }
 #design-v2-native-root #b4 .st-mobile .st-section-top { flex-wrap: wrap; }
+#design-v2-native-root #b4 .st-desktop .st-card-content {
+  container: native-card / inline-size;
+}
+#design-v2-native-root #b4 .st-desktop .st-card-info {
+  grid-template-columns: minmax(0, 1fr) minmax(172px, max-content);
+}
+#design-v2-native-root #b4 .st-desktop .st-hotel-card--wide-price .st-card-info {
+  grid-template-columns: minmax(0, 1fr) minmax(204px, max-content);
+}
+#design-v2-native-root #b4 .st-desktop :is([data-screen="hotel"], [data-screen="tour"]) {
+  container: native-selected / inline-size;
+}
+#design-v2-native-root #b4 .st-desktop .st-hotel-grid {
+  grid-template-columns: minmax(0, 1fr) max(245px, 14em);
+}
+#design-v2-native-root #b4 .st-desktop .st-tour-layout {
+  grid-template-columns: minmax(0, 1fr) max(274px, 14em);
+}
+#design-v2-native-root #b4 .q8c2 {
+  white-space: normal;
+  overflow-wrap: normal;
+  height: auto;
+}
+@container native-card (max-width: 20em) {
+  #design-v2-native-root #b4 .st-desktop .st-card-info { display: block; }
+  #design-v2-native-root #b4 .st-desktop .st-price-area {
+    flex-flow: row wrap;
+    border-left: 0;
+    padding-left: 0;
+    margin-top: 12px;
+  }
+}
+@container native-selected (max-width: 35em) {
+  #design-v2-native-root #b4 .st-desktop :is(.st-hotel-grid, .st-tour-layout) { display: block; }
+}

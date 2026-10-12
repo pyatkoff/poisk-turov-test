@@ -162,13 +162,19 @@ async function capture(page,side,width,percent,screen,row) {
       const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
       return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,
+    const buttons=[...root.querySelectorAll('button.q8c2')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,clipped=false;
+      while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;}
+      return{text:node.textContent,clipped};
+    });
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
+  if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
   return measurements;
 }
 
