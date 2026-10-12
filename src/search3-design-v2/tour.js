@@ -4,7 +4,7 @@
 (function (window) {
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const textFact = value => typeof value === 'string' ? value : value && typeof value === 'object' ? value.russianName || value.nameRu || value.name || '' : '';
-  const money = value => Number.isFinite(Number(value)) && Number(value) > 0 ? new Intl.NumberFormat('ru-RU').format(Number(value)) + ' ₽' : 'Цена требует проверки';
+  const money = value => Number.isFinite(Number(value)) && Number(value) > 0 ? new Intl.NumberFormat('ru-RU').format(Number(value)).replace(/[\u00a0\u202f]/g,' ') + ' ₽' : 'Цена требует проверки';
   const dateText = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).replace('.', '') : value || 'Дата уточняется';
   const nights = value => value+' '+(value%10===1 && value%100!==11 ? 'ночь' : value%10>=2 && value%10<=4 && (value%100<12 || value%100>14) ? 'ночи' : 'ночей');
   const party = offer => offer.adults + (offer.adults===1 ? ' взрослого' : ' взрослых') + (offer.ages?.length ? ' + ' + offer.ages.length + (offer.ages.length===1 ? ' ребёнка' : ' детей') : '');

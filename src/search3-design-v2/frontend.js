@@ -3,7 +3,7 @@
 // Search3 NEXT presentation are not dependencies of this owner.
 (function (window) {
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const money = value => new Intl.NumberFormat('ru-RU').format(value) + ' ₽';
+  const money = value => new Intl.NumberFormat('ru-RU').format(value).replace(/[\u00a0\u202f]/g,' ') + ' ₽';
   const dateText = value => new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU', {day:'numeric',month:'short',timeZone:'UTC'}).replace('.', '');
   const addDays = (value, days) => new Date(Date.parse(value + 'T12:00:00Z') + days * 86400000).toISOString().slice(0,10);
   const nights = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'ночь' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'ночи' : 'ночей');
@@ -129,7 +129,8 @@
       for(const key of ['stars','meals'])if(!coverage[key]&&state.filters[key].length){state.filters[key]=[];reset=true;}
       if(reset)updateURL();
       const found=rows(), s=state.search;
-      text('[data-country-title]','Туры в '+countryName(s.country));text('[data-origin]',s.origin);text('[data-country]',countryName(s.country));
+      const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
+      text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
       text('[data-departure-range]',dateText(s.from)+'–'+dateText(s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
       text('[data-party]',party(s));text('[data-route]',s.origin+' → '+countryName(s.country));text('[data-mobile-dates]','Вылет '+dateText(s.from)+'–'+dateText(s.to));
       text('[data-nights-copy]',s.minNights===s.maxNights?nights(s.minNights):s.minNights+'–'+s.maxNights+' ночей');text('[data-party-copy]',party(s));

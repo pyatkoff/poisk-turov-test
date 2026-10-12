@@ -189,7 +189,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         }
         // Headless canonical contracts are exercised separately in the same CI
         // job. Browser presentation fixtures have no canonical network startup.
-        if(url.pathname.endsWith('.js')&&!url.pathname.startsWith(base+'/visual-search/native-v2/')){
+        if(url.pathname.endsWith('.js')&&!url.pathname.startsWith(base+'/visual-search/native-v2/')&&!url.pathname.endsWith('/lead-form-guard-v1.js')){
           await route.fulfill({status:200,contentType:'application/javascript',body:'/* controlled presentation fixture: canonical transport disabled */'});return;
         }
         await route.continue();

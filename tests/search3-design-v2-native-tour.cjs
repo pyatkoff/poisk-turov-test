@@ -37,7 +37,7 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   assert(!root.querySelector('[data-native-flight-content]').textContent.includes('00:00'),'provider placeholder is not a real departure time');
   click('[data-native-tour-flight="1"]');await owner.ready();
   assert.deepEqual(selectedIndices,[1],'original supplier index retained');
-  assert(root.querySelector('[data-screen="tour"]').textContent.includes('112 000 ₽'),'full selected price shown without added delta/fuel');
+  assert(root.querySelector('[data-screen="tour"]').textContent.replace(/\s+/g,' ').includes('112 000 ₽'),'full selected price shown without added delta/fuel');
   assert.equal(owner.getState().ready,false,'changed quoted price needs explicit acceptance');
   assert([...root.querySelectorAll('[data-price-change]')].every(node=>!node.hidden));
   click('[data-action="accept-price"]');
@@ -71,7 +71,7 @@ async function staleAndExpiry(){
   resolvers[1].resolve(present);await view.ready();assert.equal(view.getState().ready,true);
   resolvers[0].resolve({...offer,offer,tour,variants,pricePending:false,total:999999});await new Promise(resolve=>v.setTimeout(resolve,0));
   assert.equal(r.querySelector('[data-tour-hotel]').textContent,'Second hotel','stale quote cannot repaint current offer');
-  assert.equal(r.querySelector('[data-tour-price]').textContent,'90 000 ₽');
+  assert.equal(r.querySelector('[data-tour-price]').textContent,'90 000 ₽');
   await new Promise(resolve=>v.setTimeout(resolve,1100));
   assert.equal(view.getState().ready,false,'expiry blocks contact even after acceptance');
   assert.match(r.querySelector('[data-native-tour-status]').textContent,/истёк/);assert(r.querySelector('[data-lead-form]').elements.phone.disabled);
@@ -94,7 +94,7 @@ async function anexPackageAndGroup(){
   view.render({offer:concrete,hotel,screen:'tour'});await view.ready();
   assert.equal(quoteCalls,1);assert.equal(r.querySelectorAll('[data-native-provider-flight]').length,2);assert.equal(view.getState().ready,false);
   r.querySelector('[data-native-provider-flight="canonical-choice-b"]').click();await view.ready();
-  assert.deepEqual(choiceCalls,[choices[1].choiceRef]);assert.match(r.querySelector('[data-native-flight-content]').textContent,/Туда: рейс 301/);assert.equal(r.querySelector('[data-tour-price]').textContent,'109 900 ₽');assert.equal(view.getState().ready,false);
+  assert.deepEqual(choiceCalls,[choices[1].choiceRef]);assert.match(r.querySelector('[data-native-flight-content]').textContent,/Туда: рейс 301/);assert.equal(r.querySelector('[data-tour-price]').textContent,'109 900 ₽');assert.equal(view.getState().ready,false);
   r.querySelector('[data-action="accept-price"]').click();assert.equal(view.getState().ready,true);
   const f=r.querySelector('[data-lead-form]');f.elements.phone.value='+7 999 123-45-67';f.elements.consent.checked=true;f.dispatchEvent(new v.Event('submit',{bubbles:true,cancelable:true}));assert.equal(payloadCalls,1);
   const group={...concrete,key:'anex:group',raw:{anexKind:'group_minimum'}};
