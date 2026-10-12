@@ -5,22 +5,23 @@ This is an UPDATE control only for the existing new target
 the original Sites project, any other preview or production.
 
 The exact required installed predecessor is source
-`634d1c97fd7bf499107d82036588f4bd77176d93`, published by run `38191104207`,
+`2eb237639c6c53c38f27d71684de43384842daf7`, published by run `38197437835`,
 with canonical inventory SHA256
-`6a2bf4b0e7defb8b19b8b1a62cf23b9eddcd28d49321bfee13edfc4e275cffcc`
+`a0c65362b556705188f97fb664a8cdfc823dd61850badfd0783d61aced2b0452`
 and a matching published owner. An absent, modified, activated, foreign or
 unknown target aborts. After one successful update this control cannot publish
 another source over the new predecessor.
 
 This review-only successor prepares later bounded design-v2 improvements after
-the owner's final-reference restoration. PR4532/source634d was published by
-OWNERcommand6116010191/run38191104207; terminal receipt11721399098 and
-#4217/comment6116067443 retain independently verified inventory and protected
-fingerprints. The creation/run38173086001, polish/run38180461319 and restoration/
-run38191104207, and all three completed sources remain explicitly rejected.
-Rollback can restore only the verified published634d predecessor, never an older
-creation or polish. Preparing this successor does not approve source PR4533 or
-any publication; independent HIGH control review and exact green CI remain required.
+the published meal-search/history correction. PR4533/source2eb was published by
+OWNERcommand6116872740/run38197437835; ready artifact11724235925 pins the exact
+installed digest above, and terminal receipt11724011658 plus #4217/comment6116944207
+retain completion and protected-surface evidence. The creation/run38173086001,
+polish/run38180461319, restoration/run38191104207 and meal-search/run38197437835,
+and all four completed sources remain explicitly rejected. Rollback can restore
+only the verified published2eb predecessor, never an older creation, polish or
+restoration. Preparing this successor does not approve source PR4535 or any
+publication; independent HIGH control review and exact green CI remain required.
 
 The only command form is a fresh OWNER-created #4217 issue comment on trusted
 main, run attempt1:
