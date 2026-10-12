@@ -230,7 +230,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-bounded','filters-active','filter-empty','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen==='tour-alternatives'?'tour':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen==='tour-alternatives'?'tour':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -340,7 +340,28 @@ async function referenceFrame(page,width,percent,screen,row) {
         await capture(page,'native',width,percent,'results-error',row);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
         row.proof.failedInitialCountNeutral=true;row.proof.failedInitialFriendlyCopy=true;row.proof.failedInitialExtraSearches=0;
-        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'complete'}));
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'partial',message:''}));
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Неполные данные');
+        assert.equal(await product.locator('[data-empty-title]').innerText(),'Поиск завершён не полностью');
+        assert.equal(await product.locator('[data-empty-action]').innerText(),'Вернуться к поиску');
+        assert.match(await product.locator('[data-empty-text]').innerText(),/Предложения не получены/);
+        assert.equal(await product.locator('[data-source-alert]').isVisible(),false,'No phantom received proposals in empty partial completion');
+        assert.equal(await product.locator('[data-empty]').getAttribute('aria-busy'),'false');
+        await capture(page,'native',width,percent,'results-partial-empty',row);
+        await product.locator('[data-empty-action]').click();await screen('search').waitFor({state:'visible'});
+        assert.equal(await screen('search').locator('[name="origin"]').inputValue(),fixture.trip.origin);
+        assert.equal(await screen('search').locator('[name="country"]').inputValue(),fixture.trip.country);
+        await page.goBack();await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Неполные данные');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSnapshot().status),'partial');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Partial retry preparation and Back start no search');
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'partial',message:''}));
+        assert.equal(await product.locator('.st-hotel-card').count(),4,'Partial completion retains every received hotel');
+        assert.equal(await product.locator('[data-result-count]').innerText(),'4 отеля');
+        assert.match(await product.locator('[data-source-alert]').innerText(),/Поиск завершён не полностью/);
+        await capture(page,'native',width,percent,'results-partial',row);
+        row.proof.partialEmptyNeutralCount=true;row.proof.partialSavedSearchRetained=true;row.proof.partialLoadedHotels=4;row.proof.partialExtraSearches=0;
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'complete',message:''}));
         await page.evaluate(()=>{
           const source=window.__nativeFixture.hotels;
           const bulk=Array.from({length:55},(_,index)=>{
@@ -423,6 +444,12 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.match(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-label'),/нет предложений по выбранным условиям/);
         row.proof.filteredCalendarTruthful=true;
         await capture(page,'native',width,percent,'filter-empty',row);
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'partial',message:''}));
+        assert.equal(await product.locator('[data-empty-title]').innerText(),'Нет подходящих туров среди полученных');
+        assert.equal(await product.locator('[data-empty-action]').getAttribute('data-native-remove-constraint'),'budget');
+        assert.match(await product.locator('[data-empty-text]').innerText(),/2 отеля из загруженных/);
+        await capture(page,'native',width,percent,'filter-empty-partial',row);
+        row.proof.partialFilteredRecoveryLoadedHotels=2;
         await product.locator('[data-empty-action]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Single-condition recovery preserves the applied meal');
         assert.equal(await activeMeal.innerText(),'Ультра всё включено');
@@ -432,6 +459,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Chip removal and local recovery start no supplier search');
         row.proof.activeConstraintsVisible=true;row.proof.recoveryLoadedHotels=2;row.proof.recoveryPreservedMeal=true;row.proof.recoveryExtraSearches=0;
         assert.equal(await product.locator('.st-hotel-card').count(),4);
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'complete',message:''}));
         const budgetPanel=width<=760?product.locator('[data-filter-form]'):product.locator('[data-filter-sidebar]');
         if(width<=760)await product.locator('[data-action="filters"]').first().click();
         const cap=budgetPanel.locator('input[type="number"][data-native-budget="max"]');
