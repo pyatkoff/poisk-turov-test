@@ -408,7 +408,7 @@
       const action=d.action;
       if(action==='search'){show('search');return;}if(action==='results'){closeEditor(true);show('results');return;}
       if(action==='hotel'){show('hotel');return;}if(action==='tour'){show('tour');return;}if(action==='lead'){show('lead');return;}
-      if(action==='best-tour'){state.selected=eligible(currentHotel())[0];show('tour');return;}
+      if(action==='best-tour'){state.selected=eligible(currentHotel())[0];rememberRoute(false);show('tour');return;}
       if(action==='gallery'){photoIndex=0;show('gallery');return;}
       if(action==='favorites'){state.onlyFavorites=!state.onlyFavorites;show('results');return;}
       if(action==='reset-draft'){if(filterDraft){filterDraft=defaultFilters();filterBudgetValues={min:'',max:''};renderFilterEditor();}return;}

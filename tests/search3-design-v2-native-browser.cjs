@@ -193,7 +193,7 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return{text:node.textContent,clipped,brokenWords};
     });
-    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-header-fav')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
+    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
     const sort=root.querySelector('.st-sort');let sortFit=null;
     if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
