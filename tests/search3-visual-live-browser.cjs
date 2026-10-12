@@ -1128,7 +1128,8 @@ const bootSearchIntentJourney=async(browser,origin,base,evidence)=>{
   assert.equal(starts(),2,'reload consumes the explicit boot intent once, without duplicate search');
   const reloadedURL=new URL(page.url());
   for(const [key,value] of Object.entries({...trip,ages:'',stars:'4',searched:'1'}))assert.equal(reloadedURL.searchParams.get(key),String(value),key+' survives reload URL normalisation');
-  assert(!transport.calls.some(call=>/quote|lead/.test(call.url)),'boot search never crosses quote or lead boundaries');
+  const protectedCalls=transport.calls.filter(call=>/quote|lead/.test(`${call.url}|${call.action||''}|${JSON.stringify(call.body)}`));
+  assert.deepEqual(protectedCalls,[],'boot search never crosses quote or lead boundaries');
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   await page.screenshot({path:path.join(evidence,'searched-link-boot-390.png')});
   fs.writeFileSync(path.join(evidence,'searched-link-boot-390.json'),JSON.stringify({width:390,initial_search_starts:1,reload_total_search_starts:2,searched_retained:true,exact_trip_retained:true,quote_requests:0,lead_requests:0,supplier_HTTP:0,physicalSafari:false},null,2));

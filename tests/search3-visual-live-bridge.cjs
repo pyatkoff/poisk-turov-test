@@ -78,7 +78,7 @@ const scripts=[...source('visual-search/index.php').match(/\$scripts = \[([\s\S]
 scripts.splice(scripts.indexOf('visual-search/app.js'),0,'visual-search/offer-list-v1.js','visual-search/hotel-details-v1.js');
 const transport=fixture({tvFuel:20686}),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
 transport.state.catalogueCountries=[{id:100,kind:'country',parentId:null,name:'Египет',slug:'egypt',revision:1,tourvisorIds:['100']}];
-const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,to:resultRangeTo,ages:'',searched:'1'}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,to:resultRangeTo,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
 // Outside-only JSDOM does not fetch script elements. Service the real third
 // cold loader with a bounded local file, keeping transport fixture calls apart.
