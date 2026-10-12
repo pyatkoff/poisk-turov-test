@@ -274,7 +274,13 @@ async function referenceFrame(page,width,percent,screen,row) {
         await capture(page,'native',width,percent,'budget-results',row);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Budget edits and viewport remount start no supplier search');
         row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;
-        await product.locator('[data-action="reset-filters"]').first().click();assert.equal(await product.locator('.st-hotel-card').count(),4);
+        if(width<=760){
+          await product.locator('[data-action="filters"]').first().click();
+          await screen('filters').locator('[data-action="reset-filters"]').click();
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 4 отеля');
+          await product.locator('[data-action="apply-filters"]').click();
+        }else await product.locator('[data-action="reset-filters"]').first().click();
+        assert.equal(await product.locator('.st-hotel-card').count(),4);
         await product.locator('[data-hotel-open="1"]').first().click();
         await screen('hotel').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'hotel',row);await referenceFrame(reference,width,percent,'hotel',row);
