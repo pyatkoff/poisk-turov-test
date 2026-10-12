@@ -276,7 +276,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;
         if(width<=760){
           await product.locator('[data-action="filters"]').first().click();
-          await screen('filters').locator('[data-action="reset-filters"]').click();
+          await screen('filters').locator('[data-action="reset-draft"]').click();
           assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 4 отеля');
           await product.locator('[data-action="apply-filters"]').click();
         }else await product.locator('[data-action="reset-filters"]').first().click();
