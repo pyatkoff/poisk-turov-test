@@ -400,7 +400,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         if(width<=760)await product.locator('[data-action="apply-filters"]').click();else await recoveryBudget.locator('input[type="number"][data-native-budget="max"]').press('Tab');
         assert.equal(await product.locator('.st-hotel-card').count(),0);
         assert.equal(await product.locator('[data-empty-action]').getAttribute('data-native-remove-constraint'),'budget');
-        assert.match(await product.locator('[data-empty-text]').innerText(),/2 отеля из уже загруженных/);
+        assert.match(await product.locator('[data-empty-text]').innerText(),/2 отеля из загруженных/);
         await capture(page,'native',width,percent,'filter-empty',row);
         await product.locator('[data-empty-action]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Single-condition recovery preserves the applied meal');
