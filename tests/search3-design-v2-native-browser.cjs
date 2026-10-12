@@ -56,6 +56,7 @@ function fixtureBridge(fixture) {
   const publish=value=>{latest=value;for(const listener of listeners)listener(value);return value;};
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
+  control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
   const api={
     async init(){calls.init++;return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
     subscribe(listener,{replay=true}={}){listeners.add(listener);if(replay)listener(latest);return()=>listeners.delete(listener);},
@@ -175,7 +176,17 @@ async function capture(page,side,width,percent,screen,row) {
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,
+    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;
+      while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
+        const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;
+        for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
+      }
+      return{text:node.textContent,clipped,brokenWords};
+    });
+    const sort=root.querySelector('.st-sort');let sortFit=null;
+    if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,readableText,sortFit,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
@@ -185,6 +196,8 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
   if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
   if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
+  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords)});
+  if(side==='native'&&measurements.sortFit&&measurements.sortFit.textWidth>measurements.sortFit.available+1)report.failures.push({width,percent,screen,error:'Selected sort label is clipped',details:measurements.sortFit});
   return measurements;
 }
 
@@ -237,10 +250,28 @@ async function referenceFrame(page,width,percent,screen,row) {
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
+        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–18 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        if(width===390&&percent===100){
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
+          await product.locator('[data-action="filters"]').first().click();
+          const drawer=product.locator('[data-filter-form]'),cap=drawer.locator('input[type="number"][data-native-budget="max"]'),min=drawer.locator('input[type="number"][data-native-budget="min"]');
+          await cap.fill('200000');
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 1 отель');
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels.slice(0,3)));
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 3 отеля','New same-generation inventory refreshes the open drawer');
+          assert.equal(await cap.inputValue(),'200000');assert.equal(await cap.evaluate(node=>node===document.activeElement),true,'Snapshot retains the typed input and focus');
+          await min.fill('250000');
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
+          assert.equal(await min.inputValue(),'250000');assert.equal(await min.evaluate(node=>node===document.activeElement),true);assert.equal(await product.locator('[data-filter-apply]').isEnabled(),false);
+          assert.equal(await drawer.locator('input[type="range"]').getAttribute('max'),'1059000');
+          await capture(page,'native',width,percent,'budget-progress-invalid',row);
+          await product.locator('[data-action="close-filters"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
+          assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);row.proof.progressiveDrawerRetainedDraftAndFocus=true;
+        }
         if(width<=760)await product.locator('[data-action="filters"]').first().click();
         const meal=product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first();
         await meal.check();
@@ -313,6 +344,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.deepEqual(await page.evaluate(()=>({price:window.__nativeFixture.payload.price,flightChoiceId:window.__nativeFixture.payload.flightChoiceId,preview:window.__nativeFixture.calls.preview,submit:window.__nativeFixture.calls.submit})),{price:112000,flightChoiceId:0,preview:1,submit:0});
         row.proof.contactPayloadFullTotal=112000;row.proof.contactPayloadFlightChoiceIndex=0;row.proof.contactPreviewCount=1;row.proof.realLeadSubmissions=0;
         await page.goBack();await screen('tour').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-hotel-offers] .st-offer--selected [data-offer="fixture:offer:1"]').count(),1,'Back highlights only the exact previously selected offer');
+        await capture(page,'native',width,percent,'hotel-return',row);
+        await page.goForward();await screen('tour').waitFor({state:'visible'});
         await page.goForward();await screen('lead').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Render/Back/Forward starts no supplier requests');
         row.proof.backForwardRetainedSelection=true;row.proof.backForwardExtraSearches=0;

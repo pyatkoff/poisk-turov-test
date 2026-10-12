@@ -1,4 +1,4 @@
-/* Host viewport only; product composition remains the exact donor stylesheet. */
+/* Host viewport and intrinsic reflow; the original donor styles are immutable. */
 html { color-scheme: light; }
 body { margin: 0; padding: 0; }
 #design-v2-native-root { max-width: 1280px; margin: 14px auto; }
@@ -26,6 +26,36 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
 }
 #design-v2-native-root #b4 .st-mobile .st-section-top { flex-wrap: wrap; }
+#design-v2-native-root #b4 .st-desktop [data-screen="results"] {
+  container: native-results / inline-size;
+}
+#design-v2-native-root #b4 .st-header,
+#design-v2-native-root #b4 .st-header-nav,
+#design-v2-native-root #b4 .st-filter-heading,
+#design-v2-native-root #b4 .st-condition-category,
+#design-v2-native-root #b4 .st-flight-label { flex-wrap: wrap; }
+#design-v2-native-root #b4 :is(.st-header-nav span, .st-filter-heading h2, .st-filter-heading button) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-condition-category > .st-condition-label {
+  flex-basis: max-content;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-condition-category-options {
+  grid-template-columns: repeat(4, max-content);
+  max-width: 100%;
+}
+#design-v2-native-root #b4 .st-condition-category-options .q8c8 { width: auto; }
+#design-v2-native-root #b4 .st-desktop .st-condition-category-options .q8c8 { min-width: 52px; }
+#design-v2-native-root #b4 .st-flight { container: native-flight / inline-size; }
+#design-v2-native-root #b4 .st-flight-row b {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 #design-v2-native-root #b4 .st-desktop .st-card-content {
   container: native-card / inline-size;
 }
@@ -71,13 +101,56 @@ body { margin: 0; padding: 0; }
   -webkit-appearance: none;
   margin: 0;
 }
-@container native-card (max-width: 20em) {
+@container native-card (max-width: 40em) {
   #design-v2-native-root #b4 .st-desktop .st-card-info { display: block; }
   #design-v2-native-root #b4 .st-desktop .st-price-area {
     flex-flow: row wrap;
     border-left: 0;
     padding-left: 0;
     margin-top: 12px;
+  }
+  #design-v2-native-root #b4 .st-desktop :is(.st-conditions-meal, .st-conditions-operator) {
+    grid-column: 1 / -1;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+@container native-results (max-width: 50em) {
+  #design-v2-native-root #b4 .st-desktop .st-search-bar {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10em), 1fr));
+  }
+  #design-v2-native-root #b4 .st-desktop .st-search-part :is(span, b) {
+    white-space: normal;
+    overflow: visible;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-sort {
+    max-width: 100% !important;
+    min-width: min(100%, 12em);
+  }
+}
+@container st-product (max-width: 18em) {
+  #design-v2-native-root #b4 .st-mobile .st-footer { flex-wrap: wrap; }
+  #design-v2-native-root #b4 .st-mobile .st-footer button {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #design-v2-native-root #b4 .st-mobile .st-sort {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    width: min(100%, 15em);
+    max-width: 100% !important;
+  }
+}
+@container native-flight (max-width: 12em) {
+  #design-v2-native-root #b4 .st-flight-row { grid-template-columns: 1fr 1fr; }
+  #design-v2-native-root #b4 .st-flight-middle {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    width: 100%;
+    max-width: 100%;
   }
 }
 @container native-selected (max-width: 35em) {

@@ -25,7 +25,7 @@
     state.hotels = snapshot.hotels;
     state.status = snapshot.status;
     state.message = snapshot.message || '';
-    if (state.screen === 'results') mounted.render();
+    if (state.screen === 'results' || state.screen === 'filters') mounted.render();
   }, {replay: false});
   function selectVariant() {
     const epoch = ++mountGeneration;

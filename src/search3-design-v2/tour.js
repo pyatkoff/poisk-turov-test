@@ -145,7 +145,7 @@
       const button=form.querySelector('button[type="submit"]');button.disabled=!ready;
       const message=form.querySelector('[data-native-contact-status]');
       if (!ready) {review=null;delete form.dataset.checked;const failure=error || current()?.quoteError || current()?.flightsError;message.textContent=failure || 'Сначала проверьте тур, выберите перелёт или уточнение менеджером и подтвердите изменившуюся цену.';message.setAttribute('role',failure?'alert':'status');}
-      else if (!review) {message.textContent='После проверки можно вернуться к туру и сохранить выбранные условия. Заявка не отправляется.';message.setAttribute('role','status');}
+      else if (!review) {message.textContent='';message.setAttribute('role','status');}
     }
     function scheduleExpiry() {
       if(expiryTimer!==null)window.clearTimeout(expiryTimer);expiryTimer=null;
