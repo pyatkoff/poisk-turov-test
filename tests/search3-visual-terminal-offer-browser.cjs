@@ -19,18 +19,18 @@ const server=http.createServer((req,res)=>{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=${scenario}`);
    await page.locator('.hotel-card [data-action="offer"]').first().click();
    if(scenario==='flights'){
-    await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
+    await page.locator('#modal-footer [data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
     await page.getByRole('button',{name:'К деталям тура',exact:true}).click();
-    await page.locator('[data-action="retry-flights"]').click();
+    await page.locator('#modal-body .flight-summary [data-action="retry-flights"]').click();
     await page.getByRole('heading',{name:'Выберите перелёт',exact:true}).waitFor();
     await page.locator('[data-action="apply-flight"]').waitFor({state:'attached',timeout:10000});
     assert.equal(await page.locator('[data-action="apply-flight"]').count(),1,'retry after application opens flight picker directly');
     await page.screenshot({path:path.join(evidence,`${scenario}-retry-${width}.png`)});
-   }else await page.locator('[data-action="start-tour-flights"]').click();
+   }else await page.locator('#modal-body .flight-summary [data-action="start-tour-flights"]').click();
    if(scenario==='flight-error'){
-    await page.locator('[data-action="retry-flights"]').waitFor();assert.equal(await page.locator('[data-action="confirm-tour"]').count(),1,'available tour keeps application after flight failure');
+    await page.locator('#modal-body .flight-summary [data-action="retry-flights"]').waitFor();assert.equal(await page.locator('#modal-footer [data-action="confirm-tour"]').count(),1,'available tour keeps application after flight failure');
     await page.screenshot({path:path.join(evidence,`${scenario}-${width}.png`)});
-    await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
+    await page.locator('#modal-footer [data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
    }else if(scenario!=='flights'){
     await page.locator('#modal-body .error-text[role="alert"]').waitFor();
     for(const action of ['start-tour-flights','offer-flights','retry-flights','choose-flight','confirm-tour','start-lead'])assert.equal(await page.locator(`#modal [data-action="${action}"]`).count(),0,`${scenario} removes ${action}`);

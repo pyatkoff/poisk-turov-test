@@ -24,7 +24,7 @@ function observe(source,s){
   photoUrl:call('photoUrl',h=>h.photos[0]),icon:call('icon',n=>'<i>'+n+'</i>'),
   window:{AnyTourPrototypeLead:{unavailableMarkup:call('unavailableMarkup',()=>'<offline-unavailable>')}}
  };
- for(const name of ['selectionStepsHTML','quotePriceChangeHTML','hotelStarsHTML','refreshOfferNotice','priceNote','chosenStayHTML','flightSummaryHTML','fuelDisclosureHTML','selectedPriceStatus','refreshOfferActionLabel'])ctx[name]=call(name);
+ for(const name of ['selectionStepsHTML','quotePriceChangeHTML','hotelStarsHTML','refreshOfferNotice','priceNote','chosenStayHTML','flightSummaryHTML','fuelDisclosureHTML','selectedPriceStatus','refreshOfferActionLabel','roomLabel','displayMealLabel','rangeText'])ctx[name]=call(name);
  vm.createContext(ctx);(typeof source==='string'?new vm.Script(owner(source)):source).runInContext(ctx);ctx.renderRealOffer();
  return JSON.parse(JSON.stringify({calls,dom:[...dom].map(([key,n])=>[key,{html:n.innerHTML,hidden:n.hidden}]),selectedOffer:ctx.selectedOffer}));
 }
@@ -38,7 +38,12 @@ function records(source){const script=new vm.Script(owner(source));return scenar
 // before checking the original complete-frame pin. Keep every policy result,
 // selected-offer value, footer and other collaborator invocation observable.
 const photoFailureHTML='<div class="tour-photo-missing" role="status" aria-label="Фото не загрузилось" hidden><i>image</i><span>Сбой загрузки</span></div>';
-function approvedFrame(rows,allowAbsent=false){return rows.map((record,index)=>{
+function historicalStayPanel(record){
+ const frame=record.calls.find(call=>call[0]==='showModal'),marker='<section class="tour-stay-panel"><p class="tour-stay-label">ОТЕЛЬ И ПРОЖИВАНИЕ</p>';if(!frame?.[4].includes(marker))return record;
+ const quick=frame[4].match(/<section class="tour-quick-summary"[^>]*>[\s\S]*?<\/section>/)?.[0];assert(quick&&frame[4].includes(marker+quick),'one existing quick summary sits inside the reference stay panel');assert(frame[4].includes('[chosenStayHTML]</section>'),'canonical stay conditions share the same panel');
+ const copy={...record,calls:record.calls.map(call=>[...call])};copy.calls.find(call=>call[0]==='showModal')[4]=frame[4].replace(marker+quick,'').replace('[chosenStayHTML]</section>','[chosenStayHTML]').replace('[quotePriceChangeHTML]','[quotePriceChangeHTML]'+quick);return copy;
+}
+function approvedFrame(rows,allowAbsent=false){return rows.map((original,index)=>{const record=historicalStayPanel(original);
  const s=scenarios[index],frame=record.calls.find(c=>c[0]==='showModal');
  if(s.noOffer||s.noHotel){assert(!frame);return record;}
  assert(frame,'complete tour frame remains observable');
@@ -48,16 +53,22 @@ function approvedFrame(rows,allowAbsent=false){return rows.map((record,index)=>{
  assert.equal(count,1,'real photo has exactly the approved hidden recovery status');
  const expected={...record,calls:record.calls.map(c=>[...c])},photo=expected.calls.findIndex(c=>c[0]==='photoUrl');
  assert(photo>=0,'canonical photo lookup is retained');
- assert.deepEqual(expected.calls[photo+1],['icon','image'],'only the recovery status icon is added');
+ assert.deepEqual(expected.calls[photo+1],['icon','image'],'canonical recovery status icon is retained');
  expected.calls.splice(photo+1,1);
  expected.calls.find(c=>c[0]==='showModal')[4]=frame[4].replace(photoFailureHTML,'');
  return expected;
 });}
 const actual=records(source),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex'),i=process.argv.indexOf('--compare');
+for(const record of actual){
+ const frame=record.calls.find(call=>call[0]==='showModal');if(!frame)continue;
+ const quickAction=frame[4].match(/<div class="tour-quick-action">([\s\S]*?)<\/div>/)?.[1],footer=record.dom.find(([selector])=>selector==='#modal-footer')?.[1].html;
+ assert(quickAction&&footer,'reference summary and canonical footer are both rendered');
+ assert.equal(quickAction,footer.match(/<button class="primary"[\s\S]*?<\/button>/)?.[0],'top CTA uses exactly the existing canonical footer policy in every pending/stale/error/provider/terminal state');
+}
 const flightGuard="${unavailable||terminalQuoteError?'':flightSummaryHTML(o)}";
 assert(source.includes(flightGuard),'terminal flight presentation guard');
 const baseline=records(source.replace(flightGuard,'${flightSummaryHTML(o)}'));
-assert.equal(crypto.createHash('sha256').update(JSON.stringify(approvedFrame(baseline))).digest('hex'),'b622b57c5d36aa7ea230bb5828db319698b24f151fac260e318a19ee8b0b26ad','approved journey frame and terminal flight-summary policy');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(approvedFrame(baseline))).digest('hex'),'765829554902cd07c2e528e45d96d4144677edceb756bc8d0b86a5a854db9d69','final reference quick summary and terminal flight-summary policy');
 function expectedDelta(before){return before.map((record,index)=>{
  const s=scenarios[index];if(!s.unavailable&&!(s.flags&64)&&!(s.flags&128))return record;
  const expected=JSON.parse(JSON.stringify(record));expected.calls=expected.calls.filter(c=>c[0]!=='flightSummaryHTML');

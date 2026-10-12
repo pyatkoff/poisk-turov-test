@@ -127,11 +127,14 @@ const continueToFlights=async()=>{
   if(scenario==='family')assert.deepEqual([...w.AnyTourPrototypeData.initialSearch.ages],[0,8]);
   if(scenario==='mixed'){
    click('.hotel-card [data-action="hotel-details"]');await settle();
-   const gallery=d.querySelector('.hotel-detail-photos');assert(gallery?.classList.contains('photo-count-2'),'Two supplied photos use the filled two-photo gallery');
+   const gallery=d.querySelector('.hotel-detail-hero-photo');assert(gallery,'Supplied photos use the approved single hero and gallery control');
    assert.equal(gallery.querySelectorAll('button').length,2);
-   const services=d.querySelector('#hotel-services-heading'),rooms=d.querySelector('#hotel-rooms-heading');
-   assert(services.compareDocumentPosition(rooms)&w.Node.DOCUMENT_POSITION_FOLLOWING,'Services precede the room-price list');
-   assert.deepEqual([...d.querySelectorAll('.hotel-section-nav button')].map(b=>b.textContent),['Фото','Об отеле','Услуги','Номера и цены']);
+   assert.match(gallery.querySelector('.hotel-all-photos').textContent,/Все фотографии · 2/,'Both supplied photos remain available through the gallery');
+   assert.deepEqual([...d.querySelectorAll('.hotel-section-nav button')].map(b=>b.textContent),['Номера и туры','Об отеле']);
+   const rooms=d.querySelector('#hotel-offers-panel'),about=d.querySelector('#hotel-about-panel'),roomChoices=()=>[...rooms.querySelectorAll('.hotel-room-card')].map(row=>({key:row.dataset.offerKey,price:row.querySelector('.hotel-room-price strong').textContent})),choices=roomChoices();
+   assert.equal(rooms.hidden,false,'Room-price list is the default section');assert.equal(about.hidden,true);assert(choices.length>0);
+   click('#hotel-about-tab');assert.equal(about.hidden,false);assert.equal(rooms.hidden,true);assert.match(about.querySelector('.hotel-information-sections').textContent,/Wi-Fi в общественных зонах · учебный пример/,'Canonical hotel services are available in About');assert.match(about.textContent,/Детский бассейн · учебный пример/);
+   click('#hotel-offers-tab');assert.equal(rooms.hidden,false);assert.equal(about.hidden,true);assert.deepEqual(roomChoices(),choices,'Switching sections preserves every exact offer and price');
 
    click('[data-action="close-modal"]');await settle();
   }
@@ -141,7 +144,7 @@ const continueToFlights=async()=>{
    const beforeFlight=d.querySelector('.flight-summary').textContent;
    click('[data-action="change-room"]');
    assert(d.querySelector('.offers-dialog'),'Direct card entry can reach other room/meal choices');
-   assert([...d.querySelectorAll('.offer-group-heading')].every(el=>el.getAttribute('aria-expanded')==='false'),'Multiple choices start as an overview');
+   assert.equal(d.querySelectorAll('.offer-group-heading').length,0,'Approved exact offer list has no collapsed room groups');assert(d.querySelectorAll('#all-offers-list .grouped-offer').length>1,'Multiple exact choices are available immediately');
    click('#modal-back');await settle();
    assert.equal(d.querySelector('#modal-footer .footer-total strong').textContent,before,'Browsing other rooms does not alter the chosen price');
    assert.equal(d.querySelector('.flight-summary').textContent,beforeFlight,'Cancel preserves the selected flight pair');
@@ -219,5 +222,5 @@ const continueToFlights=async()=>{
  await change('flights');assert.equal(d.querySelectorAll('.hotel-card').length,1);
  assertRetiredSelectionAbsent();
  assert.equal(requests.length,initialRequests,'No provider, quote, contact or live API request');assert.deepEqual(errors,[]);
- console.log('PASS comparison removed, stale route rejected, legacy storage untouched; test-only enabled favorites: persist/open/details/all-offers/filter/remove/recover; v132 direct application, no My tour persistence, services before rooms; v120 recorded import/identity/30-day/local-application guards plus v118: mixed/family/incomplete/reprice journeys to dry-run application, 48h stability, expired/unavailable/error guards, contact privacy, snapshot honesty and no external requests');dom.window.close();
+ console.log('PASS comparison removed, stale route rejected, legacy storage untouched; test-only enabled favorites: persist/open/details/all-offers/filter/remove/recover; v132 direct application, no My tour persistence, two hotel tabs with exact offers/services preserved; v120 recorded import/identity/30-day/local-application guards plus v118: mixed/family/incomplete/reprice journeys to dry-run application, 48h stability, expired/unavailable/error guards, contact privacy, snapshot honesty and no external requests');dom.window.close();
 })().catch(e=>{console.error(e);dom.window.close();process.exitCode=1;});

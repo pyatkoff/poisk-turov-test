@@ -9,7 +9,7 @@ function fixture(){
   setTimeout:fn=>{timers.set(++timer,fn);return timer;},clearTimeout:id=>timers.delete(id),
   $:s=>({'#hotel-details-load':load,'#modal':modal,'#modal-body':body,'.hotel-section-nav':nav,'#hotel-room-count':ready?{}:null}[s]),$$:()=>rooms,
   showModal:(type,title,kicker,html)=>{ctx.modalType=type;nav.dataset.hotelId=String(ctx.hotels.find(h=>h.name===title).id);modal.open=true;ready=false;},
-  hotelOffers:()=>{offerInventories++;return offerRows;},rememberUIRoute:()=>remembers++
+  showHotelSection:()=>{},hotelOffers:()=>{offerInventories++;return offerRows;},rememberUIRoute:()=>remembers++
  };for(const name of names)if(!(name in ctx))ctx[name]=()=>{};
  vm.createContext(ctx);vm.runInContext(source,ctx);
  const owner={create:()=>({openHotelDetails:id=>{const offers=ctx.hotelOffers();renders.push(['mount',id]);ready=true;return offers;},renderHotelRooms:(id,meal,restoredRooms,initialOffers)=>{if(!initialOffers)ctx.hotelOffers();roomInputs.push(initialOffers);renders.push(['rooms',id,meal,restoredRooms]);}})};

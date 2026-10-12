@@ -1,4 +1,4 @@
-// Explicit night modes replace only the night draft/actions;162 cases retain
+// Final reference tap selection replaces only night draft/actions;162 cases retain
 // disabled/state-order/ownership mutations and add named endpoint/invalid-input checks.
 // Characterize the real delegated event owner without starting the application,
 // supplier transport or lead delivery. Pinned observations come from app blob
@@ -175,13 +175,19 @@ add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setu
 // connected markup. Project only that discarded field from each state snapshot;
 // all 153 retained actions plus9 explicit-night cases, collaborator calls, DOM and ordering still compare.
 function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
+const historicalNightActions=" case 'night-mode':{const mode=b.dataset.value;if(!['exact','range'].includes(mode))break;nightsDraft.mode=mode;nightsDraft.bound='min';nightsDraft.error='';if(mode==='exact')nightsDraft.max=nightsDraft.min;renderNightSelection();break;}\n case 'night-bound':if(nightsDraft.mode==='range'&&['min','max'].includes(b.dataset.value)){nightsDraft.bound=b.dataset.value;nightsDraft.error='';renderNightSelection();}break;\n case 'night-pick':{const n=+b.dataset.value;if(!Number.isInteger(n)||n<1||n>28)break;\n  if(nightsDraft.mode!=='range'){nightsDraft.min=n;nightsDraft.max=n;}\n  else{const min=nightsDraft.bound==='min'?n:Math.min(nightsDraft.min,n),max=nightsDraft.bound==='max'?n:Math.max(nightsDraft.max,n);if(max-min>10){nightsDraft.error='Между «От» и «До» может быть не больше 10 ночей. Измените другую границу или выберите ближе.';renderNightSelection();break;}nightsDraft.min=min;nightsDraft.max=max;if(nightsDraft.bound==='min')nightsDraft.bound='max';}\n  nightsDraft.error='';renderNightSelection();break;\n }\n case 'night-preset':{const n=+b.dataset.value;if(![7,10,14,21].includes(n))break;nightsDraft={min:n,max:n,mode:'exact',bound:'min'};renderNightSelection();break;}\n";
+const nightStart=source.indexOf(" case 'night-pick':"),nightEnd=source.indexOf(" case 'apply-nights':",nightStart);assert(nightStart>=0&&nightEnd>nightStart);
+const historicalSource=source.slice(0,nightStart)+historicalNightActions+source.slice(nightEnd);
+const historical=records(historicalSource);
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
 if(compareIndex>=0)assert.deepEqual(actual,records(fs.readFileSync(process.argv[compareIndex+1],'utf8')),'before/after observable dispatch');
 const BASELINE='b6492fbda92404504ac6a78cac7f34acad5fe2d600be3bfa2830292d6236c772';
 assert.equal(actual.length,162,'153 retained dispatch cases plus9 explicit-night cases');
-if(!process.argv.includes('--capture'))assert.equal(digest,BASELINE,'approved form event observations');
+assert.equal(crypto.createHash('sha256').update(JSON.stringify(historical)).digest('hex'),BASELINE,'unchanged historical162-case event oracle, exact prepacket night handlers');
+const revisedNightActions=new Set(['night-mode','night-bound','night-pick','night-preset']);
+for(let i=0;i<scenarios.length;i++)if(!revisedNightActions.has(scenarios[i].action))assert.deepEqual(actual[i],historical[i],'unchanged protected non-night event '+scenarios[i].name);
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
@@ -190,13 +196,21 @@ assert.deepEqual(result('jump stops later attributes').trace,[['jumpToFilterSect
 assert.deepEqual(result('invalid sort stops later attributes').trace,[]);
 assert.equal(result('changed results date submits').trace.at(-1)[0],'requestSubmit');
 assert(!result('pending continue').trace.some(x=>x[0]==='continueSearch'));
-assert.deepEqual(result('night exact mode').nightsDraft,{min:7,max:7,mode:'exact',bound:'min',error:''});
-assert.deepEqual(result('night range mode').nightsDraft,{min:7,max:7,mode:'range',bound:'min',error:''});
-assert.equal(result('night lower boundary').nightsDraft.bound,'min');assert.equal(result('night upper boundary').nightsDraft.bound,'max');
-assert.deepEqual(result('night exact pick').nightsDraft,{min:21,max:21,mode:'exact',bound:'min',error:''});
-assert.deepEqual(result('night valid preset').nightsDraft,{min:14,max:14,mode:'exact',bound:'min'});
-assert.equal(result('night too wide').nightsDraft.min,7);assert.equal(result('night too wide').nightsDraft.max,10);assert.match(result('night too wide').nightsDraft.error,/10 ночей/);
-for(const name of ['night invalid number','night invalid mode','night invalid boundary']){assert.deepEqual(result(name).nightsDraft,{min:7,max:10,mode:'range',bound:'min'});assert(!result(name).trace.some(x=>x[0]==='renderNightSelection'),name+' stays inert');}
+const unknownNight=(action,value)=>characterize(source,{type:'click',action,dataset:{value},setup:c=>c.nightsDraft={min:7,max:10,phase:0,anchor:null}});
+for(const [action,value] of [['night-mode','exact'],['night-mode','range'],['night-mode','unknown'],['night-bound','min'],['night-bound','max'],['night-bound','unknown']])assert.deepEqual(unknownNight(action,value),unknownNight('unknown',value),'removed mode/bound controls are inert: '+action+'/'+value);
+const pickNight=(draft,value,action='night-pick')=>characterize(source,{type:'click',action,dataset:{value:String(value)},setup:c=>c.nightsDraft={...draft}});
+const firstNight=pickNight({min:7,max:10,phase:0,anchor:null},7);assert.deepEqual(firstNight.nightsDraft,{min:7,max:7,phase:1,anchor:7});
+const secondNight=pickNight(firstNight.nightsDraft,10);assert.deepEqual(secondNight.nightsDraft,{min:7,max:10,phase:0,anchor:null});
+const thirdNight=pickNight(secondNight.nightsDraft,14);assert.deepEqual(thirdNight.nightsDraft,{min:14,max:14,phase:1,anchor:14});
+const reverseFirst=pickNight({min:7,max:7,phase:0,anchor:null},10),reverseSecond=pickNight(reverseFirst.nightsDraft,7);assert.deepEqual(reverseSecond.nightsDraft,{min:7,max:10,phase:0,anchor:null});
+const wideNight=pickNight(firstNight.nightsDraft,28);assert.equal(wideNight.nightsDraft.min,7);assert.equal(wideNight.nightsDraft.max,7);assert.equal(wideNight.nightsDraft.phase,1);assert.equal(wideNight.nightsDraft.anchor,7);assert.match(wideNight.nightsDraft.error,/10 ночей/);assert.deepEqual(pickNight(wideNight.nightsDraft,17).nightsDraft,{min:7,max:17,phase:0,anchor:null});
+for(const n of [7,10,14,21])assert.deepEqual(pickNight(firstNight.nightsDraft,n,'night-preset').nightsDraft,{min:n,max:n,phase:0,anchor:null});
+for(const n of [0,29,1.5,NaN]){const invalid=pickNight(firstNight.nightsDraft,n);assert.deepEqual(invalid.nightsDraft,firstNight.nightsDraft);assert(!invalid.trace.some(x=>x[0]==='renderNightSelection'));}
+const restoreStart=source.indexOf('function restoredNightsDraft('),restoreEnd=source.indexOf('function openNights(',restoreStart);assert(restoreStart>=0&&restoreEnd>restoreStart);
+const restoreCtx={Number,draft:{minNights:7,maxNights:10}};vm.createContext(restoreCtx);vm.runInContext(source.slice(restoreStart,restoreEnd),restoreCtx);
+assert.deepEqual(JSON.parse(JSON.stringify(restoreCtx.restoredNightsDraft(firstNight.nightsDraft))),firstNight.nightsDraft,'Back/Forward restores exact first tap and anchor');
+assert.deepEqual(JSON.parse(JSON.stringify(restoreCtx.restoredNightsDraft(secondNight.nightsDraft))),secondNight.nightsDraft,'Back/Forward restores completed range');
+assert.deepEqual(JSON.parse(JSON.stringify(restoreCtx.restoredNightsDraft({min:7,max:10,phase:1,anchor:7}))),{min:7,max:10,phase:0,anchor:null},'forged active range anchor cannot grant another endpoint phase');
 assert.deepEqual(result('first new hotel focuses').trace.slice(-3),[['renderMoreDestinationHotels'],['focus','.destination-hotel[4]',{preventScroll:true}],['scrollIntoView','.destination-hotel[4]',{block:'nearest',behavior:'instant'}]],'destination page focuses and reveals the first appended hotel');
 const groupSetup=(c,t,node)=>{node('#group-room|AI').previousElementSibling=node('offer-group-heading');};
 const groupHandled=characterize(source,{type:'click',action:'offer-group',groupHandled:true,dataset:{value:'room|AI'},setup:groupSetup});

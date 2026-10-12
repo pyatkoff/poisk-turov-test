@@ -183,7 +183,9 @@ async function browserAcceptance(){
     try{const value=await transport.json(req.url(),{body:req.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}
     catch(e){forbidden.push(e.message);await route.abort();}
    });
-   const close=async()=>{await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);};
+   const close=async()=>{await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);};
+   const waitForHotelAbout=async()=>{await page.locator('#hotel-about-panel').waitFor();await page.locator('#hotel-room-count').waitFor({state:'attached'});assert.equal(await page.locator('#hotel-about-tab').getAttribute('aria-selected'),'true');};
+   const offerChoices=()=>page.locator('#hotel-offers-panel .hotel-room-card .room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent})));
    try{
     await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();
     const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
@@ -252,16 +254,16 @@ async function browserAcceptance(){
     const started=transport.calls.find(c=>c.action==='search_start');assert(started,'explicit submit remains the first tour search');
     assert.equal(started.query['hotelIds[]'],'101','submitted filter uses the verified legacy ID for the selected own501');
     assert.match(await card.locator('.photo-count').textContent(),/126/);
-    await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await page.locator('#hotel-room-count').waitFor();assert((await page.locator('#modal-body').textContent()).includes(original.items[0].description));
+    await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await waitForHotelAbout();assert((await page.locator('#modal-body').textContent()).includes(original.items[0].description));
     assert((await page.locator('#modal-body').textContent()).includes('Два тестовых бассейна'));assert((await page.locator('#modal-body').textContent()).includes('Wi-Fi в общественных местах'));
-    const choices=await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent})));assert(choices.length>0);
-    await close();current=updated;await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await page.locator('#hotel-room-count').waitFor();
+    const choices=await offerChoices();assert(choices.length>0);
+    await close();current=updated;await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await waitForHotelAbout();
     assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description));
     assert((await card.textContent()).includes(updated.items[0].name));assert.match(await card.locator('.photo-count').textContent(),/126/);
-    assert.equal(await card.locator('.starting-price strong').textContent(),price);assert.deepEqual(await page.locator('.room-offer-choice').evaluateAll(rows=>rows.map(el=>({key:el.dataset.offerKey,price:el.querySelector('.hotel-room-price strong')?.textContent}))),choices);
+    assert.equal(await card.locator('.starting-price strong').textContent(),price);assert.deepEqual(await offerChoices(),choices);
     const geometry=await page.locator('#modal-body').evaluate(el=>({modalOverflow:el.scrollWidth>el.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth+1}));assert.deepEqual(geometry,{modalOverflow:false,documentOverflow:false});
     await page.screenshot({path:path.join(evidence,'content-'+width+'.png')});await close();failed=true;
-    await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await page.locator('#hotel-room-count').waitFor();assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description),'reader failure preserves latest saved content');await close();failed=false;
+    await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await waitForHotelAbout();assert((await page.locator('#modal-body').textContent()).includes(updated.items[0].description),'reader failure preserves latest saved content');await close();failed=false;
     gate=new Promise(resolve=>release=resolve);const before=contentReads;await card.locator('[data-action="hotel-details"][data-target="hotel-about-heading"]').click();await page.waitForFunction(()=>document.querySelector('#hotel-details-load')?.textContent.includes('Загружаем'));
     for(let i=0;i<50&&contentReads===before;i++)await new Promise(r=>setTimeout(r,20));assert(contentReads>before);await close();release();gate=null;
     await page.waitForTimeout(100);assert.equal(await page.locator('#modal').evaluate(el=>el.open),false,'late content cannot reopen a closed dialog');
