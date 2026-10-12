@@ -18,18 +18,19 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = 'b53d5ca0bf541e66b684018fb7db332de8fefaf3'
-PREDECESSOR_RUN = 38238503101
-PREDECESSOR_DIGEST = '4c811808bd4fe9b5e7adee37024c09db938a9917f85a41c918bba637615e088f'
+PREDECESSOR_SOURCE = '4955ee078aa0827f745d737681b4ed9187a274bd'
+PREDECESSOR_RUN = 38255222254
+PREDECESSOR_DIGEST = 'b73e5dc35cdadb5936d8ba6a980b9f7014eed5a1d72f29397cc7f7b39570845e'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
     '2eb237639c6c53c38f27d71684de43384842daf7',
     'a0e5f1e7c0083b45678df5837c7faf1cad8751f6',
     '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
-    'b53d5ca0bf541e66b684018fb7db332de8fefaf3')
+    'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
+    '4955ee078aa0827f745d737681b4ed9187a274bd')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-    38197437835, 38203171197, 38207863194, 38237246171, 38238503101)
+    38197437835, 38203171197, 38207863194, 38237246171, 38238503101, 38255222254)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -43,14 +44,14 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact retained native source artifact; activation still requires all fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '4955ee078aa0827f745d737681b4ed9187a274bd',
-    'source_tree': '07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84',
-    'build_run': 38253455431,
-    'artifact_id': 11748403944,
-    'source_ZIP_sha256': '39350793d04a84c6f8d60941a0ef6eb2ef8fd0ef2b61876a60f68bedc6f1f15f',
-    'entry_html_sha256': '2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809',
+    'source_sha': '0674fa6cc7744ee21cb073b284f089c20171f38e',
+    'source_tree': 'fc82c5ba0e7326dfc41e85292cf358a86ddfff71',
+    'build_run': 38267274746,
+    'artifact_id': 11755033066,
+    'source_ZIP_sha256': 'a95b1b3de18f6b3b523dd97c8aa185bc429f4ed90216c5f7f0bfca17934d3edd',
+    'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': 'a8b1b50ce32301fae2006e932f9353f3c9f9d285890e5a43af91b5dc56c3277d',
+    'source_manifest_sha256': '28356f80ad1e6bfbb85c806de8b8671f6fdde1b8fcd3271f0ec3552fbf638818',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -61,11 +62,12 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# This successor replaces no paths: only these five existing native files differ
+# This successor replaces no paths: only these six existing native files differ
 # from the exact 855-file published predecessor. Historical baseline allowances
 # above do not authorize fresh legacy/provider/brand changes.
-NATIVE_SUCCESSOR_CHANGES = tuple('visual-search/native-v2/' + name for name in (
-    'bootstrap.js', 'frontend.js', 'source-manifest.json', 'tour.js', 'viewport.css'))
+NATIVE_SUCCESSOR_CHANGES = ('visual-search/index.html', *(
+    'visual-search/native-v2/' + name for name in (
+        'bootstrap.js', 'frontend.js', 'source-manifest.json', 'tour.js', 'viewport.css')))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
