@@ -90,8 +90,8 @@
       const recovery=!found.length?items.map(item=>{const next=withoutConstraint(item);return{...item,count:rows(next.filters,next.selectedDate,next.onlyFavorites).length};}).find(item=>item.count>0):null;
       if(recovery){
         delete action.dataset.action;action.dataset.nativeRemoveConstraint=recovery.group;action.dataset.nativeConstraintValue=recovery.value;
-        action.textContent='Снять: '+recovery.label;
-        description.textContent='Без этого условия можно показать '+countText(recovery.count)+' из уже загруженных предложений. Остальные условия сохранятся.';
+        action.textContent=recovery.group==='budget'?'Убрать бюджет':'Снять «'+recovery.label+'»';
+        description.textContent='Без этого условия: '+countText(recovery.count)+' из загруженных. Остальные условия сохранятся.';
       }
       $$('[data-empty-edit]').forEach(node=>node.hidden=!recovery);
     }
