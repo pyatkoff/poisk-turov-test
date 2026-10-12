@@ -67,7 +67,7 @@ module.exports=async function({browser,origin,base,evidence}){
      // Capture the exact position after the real offer action is focused, so
      // browser scrolling for a click is included in the expected return state.
      const offer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await offer.focus();
-     returnState=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
+     returnState=await page.evaluate(key=>{const action=document.activeElement,body=document.querySelector('#modal-body'),row=action.closest('.grouped-offer');return{route:structuredClone(history.state[key]),focus:action.dataset.key,scroll:body.scrollTop,offerTop:action.getBoundingClientRect().top-body.getBoundingClientRect().top,rowHeight:row.getBoundingClientRect().height,badgeCount:row.querySelectorAll('.offer-selected').length};},historyKey);
      await offer.click();
     }else await page.locator('#modal-footer [data-action="select-anex-tour"]').waitFor();
     await page.locator('#modal-footer [data-action="select-anex-tour"]').click();
@@ -98,9 +98,9 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.locator('[name="consent"]').check();
      if(mode==='return'){
       const before=calls();await page.locator('#modal-body [data-action="all-offers"]').click();await page.locator('#offer-room').waitFor();
-      const restored=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
+      const restored=await page.evaluate(key=>{const action=document.activeElement,body=document.querySelector('#modal-body'),row=action.closest('.grouped-offer');return{route:structuredClone(history.state[key]),focus:action.dataset.key,scroll:body.scrollTop,offerTop:action.getBoundingClientRect().top-body.getBoundingClientRect().top,rowHeight:row?.getBoundingClientRect().height??null,badgeCount:row?.querySelectorAll('.offer-selected').length??0};},historyKey);
       for(const field of ['id','departure','flight','room','meal','sort','open','limits','filtersOpen'])assert.deepEqual(restored.route[field],returnState.route[field],'same-hotel application return preserves '+field);
-      assert.equal(restored.scroll,returnState.scroll,'same-hotel return preserves scroll');assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');
+      fs.writeFileSync(path.join(evidence,`selected-session-return-position-${provider}-${width}.json`),JSON.stringify({provider,width,before:returnState,after:restored},null,2));assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');assert(Math.abs(restored.offerTop-returnState.offerTop)<=1,'same-hotel return preserves the exact offer viewport anchor');const rowGrowth=restored.rowHeight-returnState.rowHeight;if(Math.abs(rowGrowth)<1)assert.equal(restored.scroll,returnState.scroll,'unchanged row geometry preserves same-hotel scroll');else{assert.equal(returnState.badgeCount,0);assert.equal(restored.badgeCount,1);assert(Math.abs(rowGrowth-27)<=1,'only the selected badge grows the returning row by 27px');assert(Math.abs(restored.scroll-returnState.scroll-rowGrowth)<=1,'scroll changes only by the measured selected-badge height');}
       assert.equal(calls(),before,'application return uses retained offers');
       await page.screenshot({path:path.join(evidence,'selected-session-return-'+width+'.png')});
       await page.locator('#modal-back').click();await page.locator('#prototype-lead-form').waitFor();
