@@ -191,10 +191,13 @@ async function capture(page,side,width,percent,screen,row) {
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
-    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false,overlappingLines=false;
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
-        const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0){
+        const range=document.createRange();range.selectNodeContents(text);
+        const lines=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).sort((a,b)=>a.top-b.top);
+        if(lines.some((rect,index)=>lines.slice(index+1).some(next=>next.top>rect.top+1&&next.top<rect.bottom-1)))overlappingLines=true;
+        for(const rect of lines){
           if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
           // Glyph ink may extend vertically beyond its line box without clipping.
           // Vertical bounds matter only at an ancestor that actually clips paint.
@@ -202,7 +205,7 @@ async function capture(page,side,width,percent,screen,row) {
         }
         for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
       }
-      return{text:node.textContent,clipped,brokenWords};
+      return{text:node.textContent,clipped,brokenWords,overlappingLines};
     });
     const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
@@ -219,7 +222,7 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
   if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
   if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
-  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords)});
+  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords||node.overlappingLines))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips, overlaps lines or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords||node.overlappingLines)});
   if(side==='native'&&(measurements.headerFit.outside||measurements.headerFit.overlap))report.failures.push({width,percent,screen,error:'Header content overlaps or escapes the header',details:measurements.headerFit});
   if(side==='native'&&measurements.sortFit&&measurements.sortFit.textWidth>measurements.sortFit.available+1)report.failures.push({width,percent,screen,error:'Selected sort label is clipped',details:measurements.sortFit});
   return measurements;

@@ -40,6 +40,12 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
 }
+/* The donor's 15px caption line matches 12px text at ordinary size. Keep that
+   ratio when enlarged captions wrap, so successive lines never overlap. */
+#design-v2-native-root #b4 .q8c0 .st-search-fields > .q8c4.st-origin-field > span,
+#design-v2-native-root #b4 .q8c0 .st-destination-field .st-destination-toggle > .st-destination-caption {
+  line-height: 1.25;
+}
 #design-v2-native-root #b4 .st-condition-category > .st-condition-label {
   flex-basis: max-content;
   overflow-wrap: normal;
