@@ -378,7 +378,7 @@
       const d=button.dataset;
       if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){const id=Number(d.favorite||state.hotelId);state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}renderResults();return;}
       if(d.hotelOpen||d.hotelAbout){state.hotelId=Number(d.hotelOpen||d.hotelAbout);show('hotel');$('[data-about-hotel]').hidden=!d.hotelAbout;$('[data-hotel-offers-panel]').hidden=!!d.hotelAbout;return;}
-      if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;show('tour');}return;}
+      if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;rememberRoute(false);show('tour');}return;}
       if(d.hotelSection){$('[data-about-hotel]').hidden=d.hotelSection!=='about';$('[data-hotel-offers-panel]').hidden=d.hotelSection==='about';$$('[data-hotel-section]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));return;}
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
