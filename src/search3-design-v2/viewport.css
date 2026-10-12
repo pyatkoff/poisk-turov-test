@@ -1,0 +1,63 @@
+/* Host viewport only; product composition remains the exact donor stylesheet. */
+html { color-scheme: light; }
+body { margin: 0; padding: 0; }
+#design-v2-native-root { max-width: 1280px; margin: 14px auto; }
+#design-v2-native-root #b4 { width: 100%; }
+#design-v2-native-root #b4 > .st-stage { padding: 0; min-height: 0; }
+#design-v2-native-root #b4 > .st-stage[hidden] { display: none !important; }
+#design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] { width: 100%; max-width: 100%; }
+#design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] > .st-mobile { width: 100%; max-width: 100%; }
+@media (max-width: 760px) { #design-v2-native-root { margin: 0; } }
+/* Keep full totals legible when text grows; wrapping uses numeric groups. */
+#design-v2-native-root #b4 .st-mobile .st-price-area > div {
+  flex: 1 1 max-content;
+  max-width: 100%;
+}
+#design-v2-native-root #b4 :is(.st-price, .st-offer-price, .st-quick-price b) {
+  white-space: normal;
+  max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-mobile .st-quick-price > div {
+  flex: 1 1 max-content;
+  min-width: min-content;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+#design-v2-native-root #b4 .st-mobile .st-section-top { flex-wrap: wrap; }
+#design-v2-native-root #b4 .st-desktop .st-card-content {
+  container: native-card / inline-size;
+}
+#design-v2-native-root #b4 .st-desktop .st-card-info {
+  grid-template-columns: minmax(0, 1fr) minmax(172px, max-content);
+}
+#design-v2-native-root #b4 .st-desktop .st-hotel-card--wide-price .st-card-info {
+  grid-template-columns: minmax(0, 1fr) minmax(204px, max-content);
+}
+#design-v2-native-root #b4 .st-desktop :is([data-screen="hotel"], [data-screen="tour"]) {
+  container: native-selected / inline-size;
+}
+#design-v2-native-root #b4 .st-desktop .st-hotel-grid {
+  grid-template-columns: minmax(0, 1fr) max(245px, 14em);
+}
+#design-v2-native-root #b4 .st-desktop .st-tour-layout {
+  grid-template-columns: minmax(0, 1fr) max(274px, 14em);
+}
+#design-v2-native-root #b4 .q8c2 {
+  white-space: normal;
+  overflow-wrap: normal;
+  height: auto;
+}
+@container native-card (max-width: 20em) {
+  #design-v2-native-root #b4 .st-desktop .st-card-info { display: block; }
+  #design-v2-native-root #b4 .st-desktop .st-price-area {
+    flex-flow: row wrap;
+    border-left: 0;
+    padding-left: 0;
+    margin-top: 12px;
+  }
+}
+@container native-selected (max-width: 35em) {
+  #design-v2-native-root #b4 .st-desktop :is(.st-hotel-grid, .st-tour-layout) { display: block; }
+}

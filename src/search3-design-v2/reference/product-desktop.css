@@ -1,0 +1,51 @@
+/* Keep the approved mobile form. Compact only a sufficiently wide desktop form. */
+@container st-search (min-width: 740px) {
+  #b4 .st-desktop [data-search-form] {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 10px;
+    row-gap: 0;
+    align-items: stretch;
+  }
+
+  #b4 .st-desktop [data-search-form] > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  #b4 .st-desktop [data-search-form] > .st-form-pair {
+    display: contents;
+  }
+
+  #b4 .st-desktop [data-search-form] .st-form-pair > [data-search-date-toggle] {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 10px;
+  }
+
+  #b4 .st-desktop [data-search-form] .st-form-pair > [data-search-nights-toggle] {
+    grid-column: 2;
+    grid-row: 2;
+    margin-top: 10px;
+  }
+
+  #b4 .st-desktop [data-search-form] > [data-search-travelers-toggle] {
+    grid-column: 3;
+    grid-row: 2;
+    margin-top: 10px;
+  }
+
+  #b4 .st-desktop [data-search-form] :is([data-search-date-toggle], [data-search-nights-toggle], [data-search-travelers-toggle]) {
+    min-width: 0;
+    align-self: stretch;
+  }
+
+  #b4 .st-desktop [data-search-form] .st-compact-copy {
+    min-width: 0;
+  }
+
+  #b4 .st-desktop [data-search-form] .st-compact-copy > strong {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
