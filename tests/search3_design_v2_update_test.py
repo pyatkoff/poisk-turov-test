@@ -75,8 +75,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38180461319)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '634d1c97fd7bf499107d82036588f4bd77176d93')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38191104207)
 
     def test_owner_main_event_and_attempt_guards(self):
         for key, value in [('GITHUB_REF', 'refs/heads/work'), ('GITHUB_ACTOR', 'other'),
@@ -97,6 +97,16 @@ class UpdateContracts(unittest.TestCase):
             good.replace('a' * 40, remote.ORIGINAL_SOURCE), good.replace(' 123 ', ' 0 ')]:
             event = copy.deepcopy(self.event); event['comment']['body'] = body
             with self.subTest(body=body), self.assertRaises(ValueError): pub.checked_request(event, self.env)
+
+    def test_all_completed_sources_rejected_by_both_owners(self):
+        self.assertEqual(remote.COMPLETED_SOURCES, (remote.ORIGINAL_SOURCE,
+            '950c9b5c0a00430c5b5a711d1b95bc04449d069d', remote.PREDECESSOR_SOURCE))
+        for source in remote.COMPLETED_SOURCES:
+            event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
+            with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
+                pub.checked_request(event, self.env)
+            with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
+                remote.validate({**self.q, 'source_sha': source})
 
     def test_all_five_exact_source_ci_checks_required(self):
         checks = [{'name': n, 'head_sha': self.q['source_sha'], 'status': 'completed', 'conclusion': 'success',
@@ -157,8 +167,9 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(baseline_request['source_sha'], remote.ORIGINAL_SOURCE)
         self.assertEqual(baseline_request['release_sha'], remote.ORIGINAL_SOURCE)
 
-    def test_original_creation_and_consumed_polish_runs_cannot_replay(self):
-        for deploy_run in (remote.ORIGINAL_PUBLISH_RUN, remote.PREDECESSOR_RUN):
+    def test_original_creation_polish_and_restoration_runs_cannot_replay(self):
+        self.assertEqual(remote.COMPLETED_PUBLISH_RUNS, (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207))
+        for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
 
@@ -167,6 +178,13 @@ class UpdateContracts(unittest.TestCase):
             'owner': {'run': remote.ORIGINAL_PUBLISH_RUN, 'source': remote.ORIGINAL_SOURCE,
                 'digest': 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef',
                 'status': 'published'}}
+        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
+            remote.predecessor(before)
+
+    def test_consumed_polish_owner_cannot_claim_current_inventory(self):
+        before = {'target': self.digest, 'owner': {'run': 38180461319,
+            'source': '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
+            'digest': self.digest, 'status': 'published'}}
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 

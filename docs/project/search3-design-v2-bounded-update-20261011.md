@@ -5,18 +5,22 @@ This is an UPDATE control only for the existing new target
 the original Sites project, any other preview or production.
 
 The exact required installed predecessor is source
-`950c9b5c0a00430c5b5a711d1b95bc04449d069d`, published by run `38180461319`,
+`634d1c97fd7bf499107d82036588f4bd77176d93`, published by run `38191104207`,
 with canonical inventory SHA256
-`0f489470b5621f4660b800c377f37dbbfe1ad5fbd65deea1890e053f751f8a33`
+`6a2bf4b0e7defb8b19b8b1a62cf23b9eddcd28d49321bfee13edfc4e275cffcc`
 and a matching published owner. An absent, modified, activated, foreign or
 unknown target aborts. After one successful update this control cannot publish
 another source over the new predecessor.
 
-This successor prepares the owner's 12.10.2026 correction against the final Sites
-reference. The previous creation command/run38173086001 and polish update
-command/run38180461319 remain terminal/no-replay. Their sources cannot be used as
-a new update. Rollback during this transaction restores the verified published
-polish predecessor, never the original creation.
+This review-only successor prepares later bounded design-v2 improvements after
+the owner's final-reference restoration. PR4532/source634d was published by
+OWNERcommand6116010191/run38191104207; terminal receipt11721399098 and
+#4217/comment6116067443 retain independently verified inventory and protected
+fingerprints. The creation/run38173086001, polish/run38180461319 and restoration/
+run38191104207, and all three completed sources remain explicitly rejected.
+Rollback can restore only the verified published634d predecessor, never an older
+creation or polish. Preparing this successor does not approve source PR4533 or
+any publication; independent HIGH control review and exact green CI remain required.
 
 The only command form is a fresh OWNER-created #4217 issue comment on trusted
 main, run attempt1:

@@ -1,6 +1,6 @@
 """One reviewed update of the existing separate design preview; no other target.
 
-The predecessor is the terminal published polish, not a caller-selected path.
+The predecessor is the terminal final-reference restoration, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -16,9 +16,11 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
-PREDECESSOR_RUN = 38180461319
-PREDECESSOR_DIGEST = '0f489470b5621f4660b800c377f37dbbfe1ad5fbd65deea1890e053f751f8a33'
+PREDECESSOR_SOURCE = '634d1c97fd7bf499107d82036588f4bd77176d93'
+PREDECESSOR_RUN = 38191104207
+PREDECESSOR_DIGEST = '6a2bf4b0e7defb8b19b8b1a62cf23b9eddcd28d49321bfee13edfc4e275cffcc'
+COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d', PREDECESSOR_SOURCE)
+COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, PREDECESSOR_RUN)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -34,12 +36,12 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 def validate(q):
     for k in ('source_sha', 'source_tree', 'release_sha'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{40}', q[k]), 'invalid_' + k)
-    need(q['source_sha'] not in (ORIGINAL_SOURCE, PREDECESSOR_SOURCE), 'new_source_required')
+    need(q['source_sha'] not in COMPLETED_SOURCES, 'new_source_required')
     for k in ('artifact_id', 'build_run', 'deploy_run'):
         need(type(q.get(k)) is int and 0 < q[k] < 10**15, 'invalid_' + k)
     for k in ('archive_sha256', 'manifest_sha256', 'payload_sha256', 'source_ZIP_sha256', 'target_digest'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{64}', q[k]), 'invalid_' + k)
-    need(q.get('attempt') == 1 and q['deploy_run'] not in (ORIGINAL_PUBLISH_RUN, PREDECESSOR_RUN), 'no_replay')
+    need(q.get('attempt') == 1 and q['deploy_run'] not in COMPLETED_PUBLISH_RUNS, 'no_replay')
     need(type(q.get('file_count')) is int and q['file_count'] == 845, 'invalid_file_count')
 
 
