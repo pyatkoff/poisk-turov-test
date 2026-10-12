@@ -212,8 +212,8 @@
     }
     root.addEventListener('click',event=>{
       const button=event.target.closest('button');if(!button || !root.contains(button) || button.disabled)return;
-      const chooseFlight=action=>{flightAlternativesOpen=false;operation(action)?.then(()=>{
-        if(!alive || !current())return;
+      const chooseFlight=action=>{const choiceEpoch=epoch;flightAlternativesOpen=false;operation(action)?.then(()=>{
+        if(!alive || epoch!==choiceEpoch || !current())return;
         const target=$('[data-native-flight-alternatives] summary') || $('[data-native-flight-status]');
         if(target){if(target.tagName!=='SUMMARY')target.tabIndex=-1;target.focus({preventScroll:true});}
       });};
