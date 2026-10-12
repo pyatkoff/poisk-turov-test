@@ -195,6 +195,8 @@ body { margin: 0; padding: 0; }
 }
 /* Keep alternative flight pairs in the existing tour section, with one action row. */
 #design-v2-native-root #b4 .st-native-flight-options { margin-top: 12px; }
+#design-v2-native-root #b4 .st-native-flight-alternatives > summary { min-height: 44px; padding: 12px 0; color: var(--blue); font-weight: 600; line-height: 1.4; cursor: pointer; overflow-wrap: normal; }
+#design-v2-native-root #b4 .st-native-flight-alternatives > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 #design-v2-native-root #b4 .st-native-flight-option { padding: 14px 0; }
 #design-v2-native-root #b4 .st-native-flight-facts { display: grid; gap: 12px; }
 #design-v2-native-root #b4 .st-native-flight-leg { min-width: 0; }
@@ -203,7 +205,6 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-native-flight-time b { white-space: nowrap; }
 #design-v2-native-root #b4 .st-native-flight-route { overflow-wrap: normal; word-break: normal; }
 #design-v2-native-root #b4 .st-native-flight-option-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; }
-#design-v2-native-root #b4 .st-native-flight-option--selected .st-native-flight-option-footer { margin-top: 6px; }
 #design-v2-native-root #b4 .st-native-flight-option-footer .st-offer-select { min-height: 44px; }
 #design-v2-native-root #b4 .st-native-startup[hidden] { display: none !important; }
 #design-v2-native-root #b4 .st-native-startup .st-header { height: auto; min-height: 66px; padding: 10px 24px; }
