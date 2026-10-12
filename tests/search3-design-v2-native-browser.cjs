@@ -207,7 +207,7 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return false;
     };
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -471,6 +471,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         if(width<=760)assert.equal(await product.locator('.st-stay-details').isVisible(),false,'Original mobile quick summary replaces duplicate stay details');
         await product.locator('[data-native-tour-flight="0"]').waitFor({state:'visible'});
         await product.locator('[data-native-tour-flight="0"]').click();
+        await page.waitForFunction(()=>document.activeElement?.matches('[data-native-flight-alternatives] summary'));
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await product.locator('[data-action="lead"]:visible').first().waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().offer===window.__nativeFixture.hotels[0].offers[0]),true,'Exact loaded offer reference retained');
@@ -481,6 +482,31 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.match(await screen('tour').innerText(),/09:20/);
         assert.doesNotMatch(await screen('tour').innerText(),/08:10/,'Donor mock flight does not become a product fact');
         await capture(page,'native',width,percent,'tour',row);await referenceFrame(reference,width,percent,'tour',row);
+        const alternatives=product.locator('[data-native-flight-alternatives]'),disclosure=alternatives.locator('summary');
+        assert.equal(await alternatives.getAttribute('open'),null,'Selected schedule stays visible with alternatives collapsed');
+        assert.equal(await product.locator('[data-native-tour-flight="0"]').count(),0,'Selected pair/price has no repeated choice row');
+        assert.equal(await product.locator('[data-native-tour-flight="1"]').isVisible(),false);
+        assert.equal(await disclosure.evaluate(node=>node.getBoundingClientRect().height>=44),true);
+        const closedFlightHeight=await product.locator('[data-native-flight-section]').evaluate(node=>node.getBoundingClientRect().height);
+        await disclosure.focus();await page.keyboard.press('Enter');
+        await product.locator('[data-native-tour-flight="1"]').waitFor({state:'visible'});
+        const expandedFlightHeight=await product.locator('[data-native-flight-section]').evaluate(node=>node.getBoundingClientRect().height);
+        assert(expandedFlightHeight>closedFlightHeight+44,'Disclosure saves a material amount of tour-page height');
+        await capture(page,'native',width,percent,'tour-alternatives',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),1,'Opening loaded flight choices starts no quote');
+        assert.deepEqual(await page.evaluate(()=>window.__nativeFixture.calls.flight),[0]);
+        await product.locator('[data-native-tour-flight="1"]').click();
+        await page.waitForFunction(()=>window.__nativeFixture.getSelection().flightChoiceId===1);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),123000,'Alternative preserves its full canonical total');
+        assert.equal(await alternatives.getAttribute('open'),null,'New selected pair collapses alternatives');
+        await product.locator('[data-action="accept-price"]:visible').first().click();
+        await disclosure.click();await product.locator('[data-native-tour-flight="0"]').click();
+        await product.locator('[data-action="accept-price"]:visible').first().click();
+        assert.deepEqual(await page.evaluate(()=>window.__nativeFixture.calls.flight),[0,1,0],'Original indices survive filtered alternative list');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
+        row.proof.flightAlternativesClosedHeight=closedFlightHeight;row.proof.flightAlternativesExpandedHeight=expandedFlightHeight;
+        row.proof.flightAlternativesSavedHeight=expandedFlightHeight-closedFlightHeight;row.proof.flightAlternativesExtraQuotes=0;row.proof.flightAlternativeOriginalIndices=[0,1,0];
+        await disclosure.click();
         await product.locator('[data-action="lead"]:visible').first().click();
         await screen('lead').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'lead',row);await referenceFrame(reference,width,percent,'lead',row);
@@ -491,6 +517,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.deepEqual(await page.evaluate(()=>({price:window.__nativeFixture.payload.price,flightChoiceId:window.__nativeFixture.payload.flightChoiceId,preview:window.__nativeFixture.calls.preview,submit:window.__nativeFixture.calls.submit})),{price:112000,flightChoiceId:0,preview:1,submit:0});
         row.proof.contactPayloadFullTotal=112000;row.proof.contactPayloadFlightChoiceIndex=0;row.proof.contactPreviewCount=1;row.proof.realLeadSubmissions=0;
         await page.goBack();await screen('tour').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
+        assert.equal(await alternatives.getAttribute('open'),'','Back retains loaded-alternatives disclosure');
         await page.goBack();await screen('hotel').waitFor({state:'visible'});
         assert.equal(await product.locator('[data-hotel-offers] .st-offer--selected [data-offer="fixture:offer:1"]').count(),1,'Back highlights only the exact previously selected offer');
         await capture(page,'native',width,percent,'hotel-return',row);

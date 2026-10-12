@@ -15,6 +15,7 @@
     const controller = new window.AbortController();
     const form = $('[data-lead-form]'), tourScreen = $('[data-screen="tour"]');
     let alive = true, context = null, selection = null, epoch = 0, pending = Promise.resolve(), busy = false, error = '', review = null, expiryTimer = null;
+    let flightAlternativesOpen = false;
     const text = (selector, value) => $$(selector).forEach(node => { node.textContent = value; });
     const sameOffer = (value, offer = context?.offer) => Boolean(value && offer && (value.offer === offer || value.key === offer.key && value.raw === offer.raw));
     function current() {
@@ -88,16 +89,19 @@
     }
     function flightChoiceHTML(value) {
       const variants=Array.isArray(value?.variants) ? value.variants : [];
-      const option=(facts,amount,button,chosen)=>'<div class="st-offer-choice st-native-flight-option'+(chosen?' st-native-flight-option--selected':'')+'"><div class="st-native-flight-facts">'+facts+'</div><div class="st-native-flight-option-footer">'+(amount===null?'':'<div class="st-offer-price">'+money(amount)+'</div>')+button+'</div></div>';
+      const alternatives=(html,count,hasSelection)=>!html?'':hasSelection
+        ? '<details class="st-native-flight-alternatives" data-native-flight-alternatives '+(flightAlternativesOpen?'open':'')+'><summary>Другие перелёты · '+count+'</summary><div class="st-native-flight-options">'+html+'</div></details>'
+        : '<div class="st-native-flight-options">'+html+'</div>';
+      const option=(facts,amount,button)=>'<div class="st-offer-choice st-native-flight-option"><div class="st-native-flight-facts">'+facts+'</div><div class="st-native-flight-option-footer">'+(amount===null?'':'<div class="st-offer-price">'+money(amount)+'</div>')+button+'</div></div>';
       if (context.offer.provider==='anex') {
         const chosen=value?.quoteResult?.choice;
+        const otherVariants=variants.filter(variant=>variant.choiceRef!==chosen?.choiceRef);
         return (chosen ? chosen.legs.map((leg,index)=>'<div class="st-flight"><div class="st-flight-label"><span>'+(index ? 'Обратно' : 'Туда')+'</span></div><p>'+esc(leg.label)+'</p></div>').join('') : '')
-          + '<div class="st-native-flight-options">'+variants.map(variant=>{
-            const selected=chosen?.choiceRef===variant.choiceRef;
-            const facts=selected?'<div class="st-offer-name">Выбранный перелёт</div>':variant.legs.map((leg,index)=>'<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+(index?'Обратно':'Туда')+'</span><div class="st-native-flight-route">'+esc(leg.label)+'</div></div>').join('');
-            const button='<button type="button" class="st-secondary st-offer-select" data-native-provider-flight="'+esc(variant.choiceRef)+'" '+(busy ? 'disabled' : '')+' aria-pressed="'+String(selected)+'">'+(selected ? 'Выбран' : 'Проверить цену')+'</button>';
-            return option(facts,null,button,selected);
-          }).join('')+'</div>';
+          + alternatives(otherVariants.map(variant=>{
+            const facts=variant.legs.map((leg,index)=>'<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+(index?'Обратно':'Туда')+'</span><div class="st-native-flight-route">'+esc(leg.label)+'</div></div>').join('');
+            const button='<button type="button" class="st-secondary st-offer-select" data-native-provider-flight="'+esc(variant.choiceRef)+'" '+(busy ? 'disabled' : '')+'>Проверить цену</button>';
+            return option(facts,null,button);
+          }).join(''),otherVariants.length,Boolean(chosen));
       }
       const index=value?.flightChoiceId===null || value?.flightChoiceId===undefined ? null : Number(value.flightChoiceId),selected=index===null ? null : variants[index];
       let content=selected ? legHTML(selected.forward,'Туда')+legHTML(selected.backward,'Обратно') : '<p class="st-small st-muted">Выберите перелёт или оставьте уточнение рейсов менеджеру.</p>';
@@ -112,12 +116,13 @@
           return '<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+esc((connection?'Пересадка · ':'')+label)+'</span><div class="st-native-flight-time">'+(placeholder?'Расписание уточняется':'<b>'+esc(departure.time||'—')+'</b><span aria-hidden="true"> → </span><b>'+esc(arrival.time||'—')+'</b>')+'</div><div class="st-native-flight-route">'+esc(route)+'</div>'+(flight?'<div class="st-small st-muted">'+esc(flight)+'</div>':'')+'<div class="st-small st-muted">Багаж: '+esc(allowance('baggage'))+' · ручная кладь: '+esc(allowance('carryOn'))+'</div></div>';
         }).join('');
       };
-      content+='<div class="st-native-flight-options">'+variants.map((variant,originalIndex)=>{
+      const otherVariants=variants.map((variant,originalIndex)=>({variant,originalIndex})).filter(row=>row.originalIndex!==index);
+      content+=alternatives(otherVariants.map(({variant,originalIndex})=>{
         const amount=typeof variant?.price==='object' ? Number(variant.price.value ?? variant.price.amount) : Number(variant?.price);
-        const chosen=index===originalIndex,facts=chosen?'<div class="st-offer-name">Выбранный перелёт</div>':directionHTML(variant?.forward,'Туда')+directionHTML(variant?.backward,'Обратно');
-        const button='<button type="button" class="st-secondary st-offer-select" data-native-tour-flight="'+originalIndex+'" '+(!Number.isFinite(amount) || amount<=0 || busy ? 'disabled' : '')+' aria-pressed="'+String(chosen)+'">'+(chosen ? 'Выбран' : 'Выбрать')+'</button>';
-        return option(facts,amount,button,chosen);
-      }).join('')+'</div>';
+        const facts=directionHTML(variant?.forward,'Туда')+directionHTML(variant?.backward,'Обратно');
+        const button='<button type="button" class="st-secondary st-offer-select" data-native-tour-flight="'+originalIndex+'" '+(!Number.isFinite(amount) || amount<=0 || busy ? 'disabled' : '')+'>Выбрать</button>';
+        return option(facts,amount,button);
+      }).join(''),otherVariants.length,Boolean(selected));
       if (value?.tour && bridge.deferFlight) content+='<button type="button" class="st-link" data-native-defer-flight '+(busy ? 'disabled' : '')+'>Рейс уточнит менеджер</button>';
       if (value?.tour && bridge.retryFlights && value.flightsError) content+='<button type="button" class="st-secondary" data-native-retry-flights '+(busy ? 'disabled' : '')+'>Повторить загрузку рейсов</button>';
       return content;
@@ -194,6 +199,7 @@
       const replaced=!context || context.offer!==next.offer;
       context=next;
       if(replaced){
+        flightAlternativesOpen=initialState?.flightAlternativesOffer===next.offer && initialState.flightAlternativesOpen===true;
         ++epoch;selection=null;error='';review=null;busy=false;delete form.dataset.checked;form.elements.consent.checked=false;
         const cached=current();
         if((cached?.loading || cached?.flightsLoading) && bridge.waitSelection)operation(()=>bridge.waitSelection());
@@ -206,8 +212,9 @@
     }
     root.addEventListener('click',event=>{
       const button=event.target.closest('button');if(!button || !root.contains(button) || button.disabled)return;
-      if(button.hasAttribute('data-native-tour-flight'))operation(()=>bridge.selectFlight(Number(button.dataset.nativeTourFlight)));
-      if(button.hasAttribute('data-native-provider-flight'))operation(()=>bridge.selectProviderFlight(button.dataset.nativeProviderFlight));
+      const chooseFlight=action=>{flightAlternativesOpen=false;operation(action)?.then(()=>{if(alive && current())$('[data-native-flight-alternatives] summary')?.focus({preventScroll:true});});};
+      if(button.hasAttribute('data-native-tour-flight'))chooseFlight(()=>bridge.selectFlight(Number(button.dataset.nativeTourFlight)));
+      if(button.hasAttribute('data-native-provider-flight'))chooseFlight(()=>bridge.selectProviderFlight(button.dataset.nativeProviderFlight));
       if(button.hasAttribute('data-native-defer-flight'))operation(()=>bridge.deferFlight());
       if(button.hasAttribute('data-native-retry-flights'))operation(()=>bridge.retryFlights());
       if(button.hasAttribute('data-native-check-tour'))operation(offer=>bridge.quoteOffer(offer.key,{force:true,expectedOffer:offer}));
@@ -216,6 +223,9 @@
         try{selection=bridge.acceptPrice();error='';review=null;renderDetails();emit();}catch(failure){error=failure.message;renderDetails();emit();}
       }
     },{signal:controller.signal});
+    root.addEventListener('toggle',event=>{
+      if(event.target.matches?.('[data-native-flight-alternatives]'))flightAlternativesOpen=event.target.open;
+    },{capture:true,signal:controller.signal});
     form.addEventListener('input',()=>{review=null;delete form.dataset.checked;window.V2LeadFormGuard?.validatePhone(form.elements.phone);renderContact();},{signal:controller.signal});
     form.addEventListener('change',()=>{review=null;delete form.dataset.checked;renderContact();},{signal:controller.signal});
     form.addEventListener('submit',event=>{
@@ -231,7 +241,7 @@
       } catch(failure) {review=null;const message=form.querySelector('[data-native-contact-status]');message.setAttribute('role','alert');message.textContent=failure.message || 'Не удалось проверить выбранные условия.';}
     },{signal:controller.signal});
     prepare();renderContact();
-    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
+    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
   }
   window.AnyTourDesignV2Tour=Object.freeze({mount});
 })(window);
