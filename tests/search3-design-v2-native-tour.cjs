@@ -138,5 +138,9 @@ async function viewportRemount(){
   const restored=product.querySelector('[data-lead-form]');assert.equal(restored.elements.name.value,'Name');assert.equal(restored.elements.phone.value,'+7 999 123-45-67');assert(restored.elements.consent.checked,'same exact quote/flight/total may carry consent during viewport remount');
   assert(product.querySelector('[data-native-flight-alternatives]').open,'Responsive remount retains opened alternatives for the same exact offer');
   product.querySelector('[data-native-tour-flight="0"]').click();await view.ready();assert.equal(restored.elements.consent.checked,false,'changed flight revokes prior consent');assert.equal(calls,1);
+  present={...present,variants:[variants[0]],flightChoiceId:null,pricePending:true,priceAccepted:false};view.render({offer,hotel,screen:'tour'});
+  product.querySelector('[data-native-tour-flight="0"]').click();await view.ready();
+  assert.equal(product.querySelector('[data-native-flight-alternatives]'),null,'Single selected variant adds no empty disclosure');
+  assert.strictEqual(v.document.activeElement,product.querySelector('[data-native-flight-status]'),'Single variant restores focus to selected flight status');
   view.destroy();other.window.close();
 }
