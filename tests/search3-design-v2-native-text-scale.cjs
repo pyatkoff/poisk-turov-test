@@ -1,0 +1,21 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+const {JSDOM}=require('jsdom');
+const source=fs.readFileSync(path.join(__dirname,'search3-design-v2-native-browser.cjs'),'utf8');
+const start=source.indexOf('async function setTextSize('),end=source.indexOf('\nasync function capture(',start);
+assert(start>=0&&end>start);
+const dom=new JSDOM('<style>body{font-size:14px}.st-price{font-size:29px}.st-offer-price{font-size:20px}</style><div id="b4"><div class="st-stage"><main class="st-app st-desktop" data-product><section data-screen="results"><div class="st-card-list"><div class="st-price">156 400 ₽</div></div><div class="st-offer-price">112 000 ₽</div></section></main></div></div>',{runScripts:'outside-only'});
+const w=dom.window;w.CSS={escape:value=>value};
+const setTextSize=vm.runInNewContext('('+source.slice(start,end)+')');
+const page={async evaluate(fn,value){w.__argument=value;return w.eval('('+fn.toString()+')(window.__argument)');}};
+(async()=>{
+ await setTextSize(page,200);assert.equal(w.getComputedStyle(w.document.querySelector('.st-price')).fontSize,'58px');
+ w.document.querySelector('.st-card-list').innerHTML='<div class="st-price">149 900 ₽</div>';
+ const replaced=w.document.querySelector('.st-price');assert.equal(w.getComputedStyle(replaced).fontSize,'58px','desktop result replacement retains actual 200% text');
+ assert.equal(w.__nativeTextScaleBaseline.get(w.__nativeTextScaleKey(replaced)),29);
+ w.document.querySelector('.st-offer-price').outerHTML='<div class="st-offer-price">123 000 ₽</div>';
+ assert.equal(w.getComputedStyle(w.document.querySelector('.st-offer-price')).fontSize,'40px','replacement offers retain enlarged text');
+ await setTextSize(page,100);assert.equal(w.getComputedStyle(replaced).fontSize,'29px');
+ assert.equal(w.getComputedStyle(w.document.querySelector('.st-offer-price')).fontSize,'20px');
+ w.close();console.log('PASS text-scale evidence: dynamic desktop result/offer replacement remains 2x and restores baseline');
+})().catch(error=>{w.close();console.error(error);process.exitCode=1;});

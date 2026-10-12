@@ -130,8 +130,16 @@ const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixtur
 
 async function setTextSize(page,percent) {
   await page.evaluate(percent=>{
-    for(const node of document.querySelectorAll('[data-native-text200]')){node.style.fontSize=node.dataset.nativeOriginalFont||'';delete node.dataset.nativeText200;delete node.dataset.nativeOriginalFont;delete node.dataset.nativeBaselineFont;}
-    if(percent===200){const measured=[...document.querySelectorAll('#b4 *')].map(node=>[node,parseFloat(getComputedStyle(node).fontSize)]);for(const [node,size]of measured){if(Number.isFinite(size)){node.dataset.nativeOriginalFont=node.style.fontSize;node.dataset.nativeBaselineFont=String(size);node.dataset.nativeText200='1';node.style.fontSize=(size*2)+'px';}}}
+    document.getElementById('native-text-scale-evidence')?.remove();
+    const key=node=>{const parts=[];for(let item=node;item&&item.id!=='b4';item=item.parentElement){let part=item.localName+[...item.classList].sort().map(name=>'.'+CSS.escape(name)).join('');if(item.dataset.screen)part+='[data-screen='+JSON.stringify(item.dataset.screen)+']';parts.unshift(part);}return'#b4 > '+parts.join(' > ');};
+    window.__nativeTextScaleKey=key;window.__nativeTextScaleBaseline=new Map();
+    if(percent===200){
+      // Persistent selector rules also resize DOM recreated by the live renderer.
+      // Per-node inline styles disappear when that renderer replaces a row.
+      for(const node of document.querySelectorAll('#b4 *')){const size=parseFloat(getComputedStyle(node).fontSize);if(Number.isFinite(size))window.__nativeTextScaleBaseline.set(key(node),size);}
+      const sheet=document.createElement('style');sheet.id='native-text-scale-evidence';
+      sheet.textContent=[...window.__nativeTextScaleBaseline].map(([selector,size])=>selector+'{font-size:'+(size*2)+'px!important}').join('\n');document.head.append(sheet);
+    }
   },percent);
 }
 
@@ -151,8 +159,8 @@ async function capture(page,side,width,percent,screen,row) {
     const prices=[...root.querySelectorAll('.st-price,[data-tour-price],.st-offer-price')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       let fragmented=false;const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
       while((text=walker.nextNode()))for(const match of text.textContent.matchAll(/\d+/g)){const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)fragmented=true;}
-      const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=Number(node.dataset.nativeBaselineFont);
-      return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||node.dataset.nativeText200==='1'&&Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
+      const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
+      return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
     return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
