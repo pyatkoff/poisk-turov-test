@@ -31,6 +31,35 @@ test('passive URL hydration retains exact ages, hotel constraints and full-price
     await assert.rejects(harness({},query).bridge.init());
   }
 });
+test('loaded calendar pages 8, 14 and 22 days without requests and restores the selected page', async () => {
+  const frontend=fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8');
+  const add=(day,n)=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
+  for(const length of [8,14,22]){
+    const from='2026-10-01',to=add(from,length-1),selectedDate=to;
+    const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
+    w.lucide={createIcons(){}};w.eval(frontend);
+    const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
+    const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
+    const search={origin:'Москва',country:'4',from,to,minNights:7,maxNights:7,adults:2,ages:[]};
+    const offer={key:'fixture:last:'+length,hotelId:1,day:to,returnDay:add(to,7),nights:7,adults:2,ages:[],room:'Fixture room',meal:'Fixture meal',mealFacet:'Fixture meal',operator:'Fixture',provider:'tourvisor',total:100000+length,search,raw:{fixture:true}};
+    const state={screen:'results',search,filters,hotels:[{id:1,name:'Fixture hotel',country:'4',location:'Fixture',stars:4,photos:[],amenities:[],offers:[offer]}],status:'complete',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate,calendarOpen:true,hasSearched:true};
+    let externalCalls=0;const bridge={async init(){return{dictionaries:{origins:['Москва'],countries:[{id:'4',name:'Турция'}],meals:[]},requestedSearch:false};},async search(){externalCalls++;throw new Error('Calendar paging must stay local');}};
+    let owner=w.AnyTourDesignV2Native.mount({root,bridge,initialState:state});await owner.ready;
+    const dates=()=>[...root.querySelectorAll('[data-native-day]')].map(node=>node.dataset.nativeDay);
+    assert.equal(dates().at(-1),to,`Restored selected day is visible for ${length} days`);
+    assert.equal(root.querySelector('[data-native-day="'+to+'"]').getAttribute('aria-pressed'),'true');
+    assert.equal(dates().length,length%7||7,'Last calendar page is complete or the exact partial remainder');
+    const prev=root.querySelector('[data-native-calendar-page="prev"]');prev.focus();prev.click();
+    assert.equal(dates().length,7);assert.equal(w.document.activeElement.matches('[data-native-calendar-page]:not(:disabled)'),true,'Paging preserves keyboard focus on an enabled control');
+    root.querySelector('[data-native-calendar-page="next"]').click();assert.equal(dates().at(-1),to);
+    const retained=owner.getState();owner.destroy();owner=w.AnyTourDesignV2Native.mount({root,bridge,initialState:retained});await owner.ready;
+    assert.equal(dates().at(-1),to,'Responsive remount retains the selected page');
+    retained.search={...search,to:add(from,6)};retained.selectedDate=null;owner.render();
+    assert.deepEqual(dates(),Array.from({length:7},(_,i)=>add(from,i)),'A new range clamps the old page to its first valid page');
+    assert.equal(externalCalls,0,'Paging, selection restore, remount and clamp make no supplier/calendar call');
+    owner.destroy();w.close();
+  }
+});
 test('superseded restoreHotel never dispatches a stale supplier search (75c2513 regression)', async () => {
   const restoration = deferred();
   const h = harness({restoreHotel:()=>restoration.promise}); await h.bridge.init();

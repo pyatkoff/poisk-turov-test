@@ -34,7 +34,7 @@ fs.mkdirSync(evidence,{recursive:true});
 const fixture = {
   label:'DETERMINISTIC FICTIONAL BROWSER FIXTURE; not availability or a live price',
   verifiedSelection:{total:112000,flightChoiceId:0,forwardTimes:['09:20','13:20'],backwardTimes:['13:00','17:00']},
-  trip:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-18',minNights:7,maxNights:7,adults:2,ages:[]},
+  trip:{origin:'Москва',country:'4',from:'2026-10-12',to:'2026-10-25',minNights:7,maxNights:7,adults:2,ages:[]},
   hotels:[
     {id:1,donorId:'laguna',name:'FIXTURE Laguna Beach Resort',stars:5,room:'Стандартный номер',meal:'Ультра всё включено',food:'uai',total:156400},
     {id:2,donorId:'marina',name:'FIXTURE Marina Bay Hotel',stars:4,room:'Стандартный номер',meal:'Завтраки и ужины',food:'hb',total:149900},
@@ -48,7 +48,7 @@ function fixtureBridge(fixture) {
   const trip=fixture.trip, calls={init:0,search:0,quote:0,flight:[],preview:0,submit:0};
   const rawHotels=fixture.hotels.map(row=>({id:row.id,name:row.name,country:'4',location:'Турция · Кемер',region:'Кемер',stars:row.stars,photos:[],amenities:[],raw:{description:'FICTIONAL fixture hotel description'},offers:[{
     key:'fixture:offer:'+row.id,hotelId:row.id,day:trip.from,returnDay:'2026-10-19',nights:7,adults:2,ages:[],room:row.room,meal:row.meal,mealFacet:row.meal,operator:'FIXTURE TV',provider:'tourvisor',total:row.total,search:trip,raw:{fixture:true}
-  }]}));
+  },...(row.id===1?[{key:'fixture:later:1',hotelId:row.id,day:trip.to,returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:row.room,meal:row.meal,mealFacet:row.meal,operator:'FIXTURE TV',provider:'tourvisor',total:166400,search:trip,raw:{fixture:true}}]:[])]}));
   const emptyFilters=()=>({hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false});
   const dictionaries={origins:['Москва','Калининград'],countries:[{id:'4',name:'Турция'},{id:'1',name:'Египет'}],meals:fixture.hotels.map((row,i)=>({id:i+1,nameRu:row.meal,code:row.food,nativeIds:[]}))};
   let selection=null,latest={hotels:[],status:'idle'},generation=0;
@@ -230,7 +230,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='calendar-later'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -318,13 +318,32 @@ async function referenceFrame(page,width,percent,screen,row) {
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
-        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–18 окт/,'Same-month range keeps the donor compact copy');
+        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        const calendar=product.locator('.q8c9');
+        if(width<=760)await calendar.locator('[data-native-calendar]').click();
+        assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16','2026-10-17','2026-10-18']);
+        const nextDates=calendar.locator('[data-native-calendar-page="next"]');await nextDates.focus();await nextDates.press('Enter');
+        assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25']);
+        assert.equal(await calendar.locator('[data-native-calendar-page="prev"]').evaluate(node=>node===document.activeElement),true,'The enabled paging control keeps keyboard focus after the last page replaces its button');
+        assert.equal(await calendar.locator('[data-native-day="2026-10-25"] .st-pc-full').innerText(),'166 400 ₽','Later page uses the exact loaded full-tour total');
+        assert.match(await calendar.locator('[data-native-day="2026-10-24"]').getAttribute('aria-label'),/цена пока не получена/,'Unknown later-day price stays explicit without asserting availability');
+        await capture(page,'native',width,percent,'calendar-later',row);
+        await calendar.locator('[data-native-day="2026-10-25"]').click();
+        assert.equal(await product.locator('.st-hotel-card').count(),1,'A later loaded date filters existing cards locally');
+        assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-pressed'),'true','The selected later date remains visible on its page');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Paging and later-date selection start no supplier search');
+        await calendar.locator('[data-native-day="2026-10-25"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
+        await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});await page.goBack();await screen('results').waitFor({state:'visible'});
+        assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Back restores the same calendar page');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Calendar history return starts no supplier search');
+        row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;
         if(width===390&&percent===100){
           await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
+          assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Progressive results retain the visible calendar page');
           await product.locator('[data-action="filters"]').first().click();
           const drawer=product.locator('[data-filter-form]'),cap=drawer.locator('input[type="number"][data-native-budget="max"]'),min=drawer.locator('input[type="number"][data-native-budget="min"]');
           await cap.fill('200000');
@@ -434,7 +453,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-favorite="1"]').click();
         assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1],'Existing favorite key preserved');
         row.proof.favoriteStoragePreserved=true;
-        row.checks.push('passive init 0 searches','form submit exactly one search','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
+        row.checks.push('passive init 0 searches','form submit exactly one search','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}

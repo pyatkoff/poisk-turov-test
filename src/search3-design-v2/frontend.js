@@ -15,7 +15,7 @@
   function mount({root, bridge, initialState, onReady}) {
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const listeners = new AbortController(); let alive = true, editor = null, editorSnapshot = null, searchEpoch = 0, originEpoch = 0;
-    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:false};
+    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,hasSearched:false};
     let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
@@ -89,7 +89,7 @@
     function rememberRoute(push) {
       const previous = window.history.state?.anytourNative?.id;
       const id = push || !historyRoutes.has(previous) ? ++historySequence : previous;
-      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,searchGeneration:state.searchGeneration});
+      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,searchGeneration:state.searchGeneration});
       state.historyRoutes=historyRoutes;state.historySequence=historySequence;
       window.history[push?'pushState':'replaceState']({anytourNative:{id,screen:state.screen}},'',routeURL());
     }
@@ -172,11 +172,16 @@
       updateFilterDraft();
     }
     function renderCalendar() {
-      const days = [], s = state.search;
-      for(let day=s.from;day<=s.to && days.length<7;day=addDays(day,1))days.push(day);
-      const cells = days.map(day=>{const prices=state.hotels.flatMap(h=>eligible(h,state.filters,day).map(o=>o.total));return {day,price:prices.length?Math.min(...prices):null};});
+      const days = [], s = state.search, range=s.from+'|'+s.to;
+      for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
+      const selectedIndex=state.selectedDate?days.indexOf(state.selectedDate):-1,maxPage=Math.max(0,Math.ceil(days.length/7)-1);
+      if(state.calendarRange!==range){state.calendarRange=range;state.calendarPage=selectedIndex>=0?Math.floor(selectedIndex/7):0;}
+      if(!Number.isInteger(state.calendarPage))state.calendarPage=selectedIndex>=0?Math.floor(selectedIndex/7):0;
+      state.calendarPage=Math.max(0,Math.min(maxPage,state.calendarPage));
+      const pageDays=days.slice(state.calendarPage*7,state.calendarPage*7+7);
+      const cells = pageDays.map(day=>{const prices=state.hotels.flatMap(h=>eligible(h,state.filters,day).map(o=>o.total));return {day,price:prices.length?Math.min(...prices):null};});
       const minimum=cells.filter(c=>c.price!==null).sort((a,b)=>a.price-b.price)[0], opened=!root.classList.contains('st-mobile')||state.calendarOpen;
-      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" style="--date-count:${Math.max(1,cells.length)}">${cells.map(c=>`<button class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''}" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):'Цены по этим датам пока не получены'}</span></div></div>`;
+      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" style="--date-count:${Math.max(1,cells.length)}" role="group" aria-label="Дата вылета и цена за всех туристов">${cells.map(c=>`<button type="button" class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''} cursor-interaction" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}" aria-label="Вылет ${dateText(c.day)}${c.price===null?', цена пока не получена':', от '+money(c.price)+' за всех туристов'}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):'Цены по этим датам пока не получены'}</span>${days.length>7?`<nav class="st-pc-pager" aria-label="Другие даты вылета"><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="prev" aria-label="Предыдущие даты" ${state.calendarPage===0?'disabled':''}>${icon('chevron-left')}</button><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="next" aria-label="Следующие даты" ${state.calendarPage===maxPage?'disabled':''}>${icon('chevron-right')}</button></nav>`:''}</div></div>`;
     }
     function renderResults() {
       if (!state.search) return;
@@ -368,7 +373,7 @@
       const invalid=originPending?'Подождите загрузки стран для выбранного города.':editor?'Примените изменения в открытом поле или отмените выбор.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
       if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;return;}
       rememberRoute(false);
-      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;if(!preserveDate)state.selectedDate=null;state.hotels=[];state.status='loading';state.message='';
+      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
       try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
       catch(error){if(alive&&epoch===searchEpoch){state.status='error';state.message=error.message;renderResults();}}
@@ -383,6 +388,7 @@
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
       if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();return;}
+      if(d.nativeCalendarPage){state.calendarPage+=d.nativeCalendarPage==='prev'?-1:1;renderCalendar();redrawIcons();const same=$(`[data-native-calendar-page="${d.nativeCalendarPage}"]:not(:disabled)`),fallback=$(`[data-native-calendar-page="${d.nativeCalendarPage==='prev'?'next':'prev'}"]:not(:disabled)`);(same||fallback)?.focus({preventScroll:true});updateURL();return;}
       if(d.nativeDay){state.selectedDate=state.selectedDate===d.nativeDay?null:d.nativeDay;renderResults();updateURL();return;}
       const toggles={'searchDestinationToggle':'destination','searchDateToggle':'dates','searchNightsToggle':'nights','searchTravelersToggle':'travelers'};
       for(const [key,name]of Object.entries(toggles))if(button.hasAttribute('data-'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()))){openEditor(name,button);return;}
