@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "status": "native-published-live-ANEX-concretization-blocked",
+  "observed_at_utc": "2026-10-12T11:05:24.853000+00:00",
+  "published_url": "https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/",
+  "verified_browser_url": "https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/?origin=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0&country=4&from=2026-10-26&to=2026-11-01&minNights=7&maxNights=7&adults=2&ages=#search",
+  "source_sha": "b53d5ca0bf541e66b684018fb7db332de8fefaf3",
+  "release_sha": "e5d26cd746663b4feded62b86b51de77166e1612",
+  "control_sha": "4a02212502daec77ec676c3d09f82744dac28bed",
+  "publish_run": 38238503101,
+  "source_build": 38236619254,
+  "source_artifact": 11740981928,
+  "deployment_artifact": 11741514905,
+  "owner": {
+    "run": 38238503101,
+    "source": "b53d5ca0bf541e66b684018fb7db332de8fefaf3",
+    "digest": "4c811808bd4fe9b5e7adee37024c09db938a9917f85a41c918bba637615e088f",
+    "status": "published"
+  },
+  "form_frame": {
+    "path": "form-desktop.jpg",
+    "sha256": "ba971a40ccf90a2a5a3a445b8c3ccb5c835ea810ab0f716bb04c13016ead654e",
+    "width": 1363,
+    "height": 936
+  },
+  "controlled_rendered_acceptance": {
+    "widths": [
+      360,
+      390,
+      430,
+      768,
+      1280
+    ],
+    "text_percents": [
+      100,
+      200
+    ],
+    "cases": 10,
+    "frames": 110,
+    "independent_review": "pass",
+    "fixture_not_live_supplier_proof": true
+  },
+  "public_browser": {
+    "explicit_new_searches": 1,
+    "conditions": {
+      "origin": "Москва",
+      "country": 4,
+      "from": "2026-10-25",
+      "to": "2026-10-31",
+      "minNights": 7,
+      "maxNights": 7,
+      "adults": 2,
+      "ages": []
+    },
+    "loaded_hotels": 257,
+    "local_meal_filter_hotels": 56,
+    "filter_reset_hotels": 257,
+    "back_retained_hotels": 257,
+    "hotel_to_tour_factual_identity_retained": true,
+    "real_lead_submissions": 0,
+    "phone_or_contact_data_entered": false,
+    "public_mobile_or_text200_not_measured": true
+  },
+  "live_blocker": {
+    "step": "ANEX group_minimum -> concrete expand",
+    "UI_error": "ANEX не смог проверить выбранное предложение.",
+    "observed_hotels": [
+      {
+        "name": "THE LOLA HOTEL",
+        "listing_total_RUB": 88506
+      },
+      {
+        "name": "RAMADA RESORT BY WYNDHAM SIDE (EX. RAMADA RESORT SIDE)",
+        "listing_total_RUB": 98419,
+        "tested_after_explicit_new_search": true
+      }
+    ],
+    "native_application_disabled": true,
+    "underlying_HTTP_or_backend_reason": "not_measured",
+    "canonical_owner": "v2/prototype-search/data.js expandAnexGroup request guard",
+    "full_live_flight_contact_journey_accepted": false,
+    "provider_auth_or_backend_changes": false
+  },
+  "next_checkpoint": "Diagnose confirmed live ANEX concretization failure through existing provider owner without weakening receipt/expiry/generation/lead authority; separate design-v2 only. Current updater consumed and cannot publish over native owner."
+}
