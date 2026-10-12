@@ -339,7 +339,7 @@ class UpdateContracts(unittest.TestCase):
     def test_all_completed_publish_runs_cannot_replay(self):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197, 38207863194))
+                38197437835, 38203171197, 38207863194, 38237246171))
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
