@@ -507,7 +507,7 @@
       // Route snapshots omit it so Back cannot authorize another supplier start.
       if(initial.requestedSearch&&!state.urlSearchConsumed&&!state.hasSearched){state.urlSearchConsumed=true;openSearch();await runSearch(true);}
     })();
-    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
+    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();if(state.hasSearched)updateURL();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
   }
   window.AnyTourDesignV2Native=Object.freeze({mount});
 })(window);
