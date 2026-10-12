@@ -5,23 +5,24 @@ This is an UPDATE control only for the existing new target
 the original Sites project, any other preview or production.
 
 The exact required installed predecessor is source
-`2eb237639c6c53c38f27d71684de43384842daf7`, published by run `38197437835`,
+`a0e5f1e7c0083b45678df5837c7faf1cad8751f6`, published by run `38203171197`,
 with canonical inventory SHA256
-`a0c65362b556705188f97fb664a8cdfc823dd61850badfd0783d61aced2b0452`
+`ec062ae95a6ae5d1878c27f3f5a05248e9eb1482fc672f9d6d7967910ffb1171`
 and a matching published owner. An absent, modified, activated, foreign or
 unknown target aborts. After one successful update this control cannot publish
 another source over the new predecessor.
 
 This review-only successor prepares later bounded design-v2 improvements after
-the published meal-search/history correction. PR4533/source2eb was published by
-OWNERcommand6116872740/run38197437835; ready artifact11724235925 pins the exact
-installed digest above, and terminal receipt11724011658 plus #4217/comment6116944207
+the published meal-catalog reconciliation. PR4535/sourcea0e5 was published by
+OWNERcommand6117653542/run38203171197; ready artifact11726237032 pins the exact
+installed digest above, and terminal receipt11726550679 plus #4217/comment6117710519
 retain completion and protected-surface evidence. The creation/run38173086001,
-polish/run38180461319, restoration/run38191104207 and meal-search/run38197437835,
-and all four completed sources remain explicitly rejected. Rollback can restore
-only the verified published2eb predecessor, never an older creation, polish or
-restoration. Preparing this successor does not approve source PR4535 or any
-publication; independent HIGH control review and exact green CI remain required.
+polish/run38180461319, restoration/run38191104207, meal-search/run38197437835 and
+meal-catalog/run38203171197, and all five completed sources remain explicitly
+rejected. Rollback can restore only the verified publisheda0e5 predecessor,
+never an older creation, polish, restoration or meal-search update. Preparing
+this successor does not approve source PR4537 or any publication; independent
+HIGH control review and exact green CI remain required.
 
 The only command form is a fresh OWNER-created #4217 issue comment on trusted
 main, run attempt1:
