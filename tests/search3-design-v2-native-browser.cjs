@@ -191,12 +191,27 @@ async function capture(page,side,width,percent,screen,row) {
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
+    // Range rectangles include the font's em box, which is taller than the
+    // painted Aeroport glyphs. Compare actual ink height with line spacing.
+    window.__nativeTextLinesOverlap=node=>{
+      const context=document.createElement('canvas').getContext('2d');
+      const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
+      while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
+        const style=getComputedStyle(text.parentElement);
+        context.font=style.fontStyle+' '+style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+        const metrics=context.measureText(text.textContent),inkHeight=metrics.actualBoundingBoxAscent+metrics.actualBoundingBoxDescent;
+        if(!Number.isFinite(inkHeight))throw new Error('Painted text metrics unavailable');
+        const range=document.createRange();range.selectNodeContents(text);
+        const lines=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).sort((a,b)=>a.top-b.top);
+        if(lines.some((rect,index)=>lines.slice(index+1).some(next=>next.top>rect.top+1&&next.top-rect.top<inkHeight-1)))return true;
+      }
+      return false;
+    };
     const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false,overlappingLines=false;
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
         const lines=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).sort((a,b)=>a.top-b.top);
-        if(lines.some((rect,index)=>lines.slice(index+1).some(next=>next.top>rect.top+1&&next.top<rect.bottom-1)))overlappingLines=true;
         for(const rect of lines){
           if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
           // Glyph ink may extend vertically beyond its line box without clipping.
@@ -289,6 +304,17 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        if(percent===200&&(width===390||width===430)){
+          const overlapProof=await page.evaluate(()=>{
+            const caption=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]')).querySelector('.st-origin-field > span');
+            const repaired=window.__nativeTextLinesOverlap(caption),original=caption.style.lineHeight;
+            caption.style.lineHeight='15px';const regression=window.__nativeTextLinesOverlap(caption);
+            caption.style.lineHeight=original;const recovered=window.__nativeTextLinesOverlap(caption);
+            return{repaired,regression,recovered};
+          });
+          assert.deepEqual(overlapProof,{repaired:false,regression:true,recovered:false},'Painted-line guard detects the original fixed-height caption and accepts its repaired reflow');
+          row.proof.enlargedCaptionPaintOverlapRegressionChecked=true;
+        }
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
