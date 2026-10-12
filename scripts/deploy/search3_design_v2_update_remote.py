@@ -1,6 +1,6 @@
 """One reviewed update of the existing separate design preview; no other target.
 
-The predecessor is the terminal final-reference restoration, not a caller-selected path.
+The predecessor is the terminal meal-search update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -16,11 +16,12 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '634d1c97fd7bf499107d82036588f4bd77176d93'
-PREDECESSOR_RUN = 38191104207
-PREDECESSOR_DIGEST = '6a2bf4b0e7defb8b19b8b1a62cf23b9eddcd28d49321bfee13edfc4e275cffcc'
-COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d', PREDECESSOR_SOURCE)
-COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, PREDECESSOR_RUN)
+PREDECESSOR_SOURCE = '2eb237639c6c53c38f27d71684de43384842daf7'
+PREDECESSOR_RUN = 38197437835
+PREDECESSOR_DIGEST = 'a0c65362b556705188f97fb664a8cdfc823dd61850badfd0783d61aced2b0452'
+COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
+    '634d1c97fd7bf499107d82036588f4bd77176d93', PREDECESSOR_SOURCE)
+COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207, PREDECESSOR_RUN)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
