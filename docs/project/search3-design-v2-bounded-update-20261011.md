@@ -6,54 +6,58 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: visual predecessor published, repaired startup/visual successor selected
+## Current state: visual predecessor published, full-calendar successor selected
 
-PR #4542 against `release/search3-design-v2` published exact source
-`4955ee078aa0827f745d737681b4ed9187a274bd`, tree
-`07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84`, in terminal run38255222254
-attempt1. The published receipt and independently verified READY artifact11750031553
-agree on855 files and inventory digest
-`b73e5dc35cdadb5936d8ba6a980b9f7014eed5a1d72f29397cc7f7b39570845e`.
-Command6125148522 and that publication are completed/no-replay; the old updater
-cannot publish over this new owner.
+Source `0674fa6cc7744ee21cb073b284f089c20171f38e`, tree
+`fc82c5ba0e7326dfc41e85292cf358a86ddfff71`, is the exact public predecessor.
+Terminal run38269206819 attempt1 and command6127174112 installed its855-file
+inventory with digest
+`eafff576d5f4887f9d236e019a4e0f63cf72b9e2893bd2d64c20648a147bb6e2`.
+The command and publication are completed/no-replay; their bounded updater cannot
+be reused for another predecessor.
 
-This fresh successor is scoped to the owner's request to finish and show the liked
-standalone version: retain the donor composition, show a truthful startup state
-and repair confirmed tour/responsive presentation gaps. Claims6126232317 and6126353347 own only
-the four existing control/test/documentation paths. PR #4544 source
-`f4340621be70adf06474a25bcdac5a1de6b17595` / successful CI38265622200 /
-artifact11754497662 is superseded: independent visual inspection found overlapping
-origin-caption lines at430/text200. It is intermediate evidence, not an accepted
-publication source. The repaired exact source is
-`0674fa6cc7744ee21cb073b284f089c20171f38e`, tree
-`fc82c5ba0e7326dfc41e85292cf358a86ddfff71`. Native CI38267274746 and
-Security38267274834 succeeded. Artifact11755033066 has a verified ZIP hash,
-163 passing frames and both enlarged-caption detector calibration proofs. The
-eight values below select this repaired source/artifact, not the consumed
-publication or superseded f434 evidence.
-The receiving `release/search3-design-v2` must contain the selected repaired source
-and have an identical runtime
-projection before a fresh command; no receiving commit is inferred from the
-artifact alone. Independent final visual/HIGH review, exact-head control
-CI, fresh receiving refs and predecessor, exclusive publisher claim and one fresh
-guarded command remain mandatory. No successor publication is inferred from this
-preparatory work.
+This successor fixes one confirmed user-facing defect without changing the final
+Sites v2 composition: the price calendar now exposes every loaded departure date
+through the existing seven-day pager. Later pages use only exact totals already
+present in the loaded result set, preserve the page through local filters,
+progressive updates and Back/Forward, and initiate no additional supplier search.
+PR #4546 produced exact source
+`8c2d0308eb29e26d2819342d10501db1ed82e3db`, tree
+`18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00`. Native CI38273265388 and
+Security38273265377 succeeded. Artifact11757847419 has the verified ZIP hash below,
+855 payload files and173 passing frames. Independent source/runtime review approved
+the exact artifact. Receiving release commit
+`07ecfd601b7bb96af34c31784d14456f2285dabe` has the same exact tree after GitHub's
+squash merge and exact parent `09a5ca870dc5a254161664a30e56d0142f557ca8`.
+
+Claim6127907840 owns only the two deploy scripts, this test and this document.
+Retained derivation independently reproduced the public predecessor digest above,
+then produced target digest
+`ca35adc2185fcbcbeed6e1bf46f97c5effe14445561f57e37f256800961537fe`;
+both inventories contain the same855 paths and differ only in the two files listed
+below.
+Independent final HIGH control review, exact-head control CI, fresh predecessor
+readback, exclusive publisher claim and one fresh guarded command remain mandatory.
+No successor publication is inferred from this preparatory work.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `0674fa6cc7744ee21cb073b284f089c20171f38e` |
-| source_tree | `fc82c5ba0e7326dfc41e85292cf358a86ddfff71` |
-| build_run | `38267274746` |
-| artifact_id | `11755033066` |
-| source_ZIP_sha256 | `a95b1b3de18f6b3b523dd97c8aa185bc429f4ed90216c5f7f0bfca17934d3edd` |
+| source_sha | `8c2d0308eb29e26d2819342d10501db1ed82e3db` |
+| source_tree | `18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00` |
+| release_sha | `07ecfd601b7bb96af34c31784d14456f2285dabe` |
+| release_tree | `18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00` |
+| release_parent | `09a5ca870dc5a254161664a30e56d0142f557ca8` |
+| build_run | `38273265388` |
+| artifact_id | `11757847419` |
+| source_ZIP_sha256 | `1225f3c1a31e9cbcec96f86ce110780f5cb36b72a0e85cabe1266b6d0fb94286` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `28356f80ad1e6bfbb85c806de8b8671f6fdde1b8fcd3271f0ec3552fbf638818` |
+| source_manifest_sha256 | `9d1db6ce9d3f381ee2e5b547da1e247f64c341c60b1e284ec2f0c7a1b103a1ae` |
 
 The only installed predecessor accepted by this successor is source
-`4955ee078aa0827f745d737681b4ed9187a274bd`, publication run `38255222254`,
+`0674fa6cc7744ee21cb073b284f089c20171f38e`, publication run `38269206819`,
 attempt1, 855-file inventory digest
-`b73e5dc35cdadb5936d8ba6a980b9f7014eed5a1d72f29397cc7f7b39570845e`,
+`eafff576d5f4887f9d236e019a4e0f63cf72b9e2893bd2d64c20648a147bb6e2`,
 and the matching owner with `status:published`.
 
 An absent, foreign, modified, activated or unknown owner/target aborts. Previous
@@ -86,8 +90,9 @@ for the failed preparation and no publication is inferred from this correction.
 ## Exact acceptance pins and source gates
 
 The accepted configuration has exactly these fields: `source_sha`, `source_tree`,
-`build_run`, `artifact_id`, `source_ZIP_sha256`, `entry_html_sha256`,
-`entry_php_sha256`, `source_manifest_sha256`. Pins come from the final successful
+`release_sha`, `release_tree`, `release_parent`, `build_run`, `artifact_id`,
+`source_ZIP_sha256`, `entry_html_sha256`, `entry_php_sha256`,
+`source_manifest_sha256`. Pins come from the final successful
 retained artifact. Independent HIGH control review must cover their real values
 before trusted-main merge.
 
@@ -99,10 +104,14 @@ required checks must be successful GitHub Actions checks on the exact head; the
 accepted workflow must be a successful same-repository PR run, attempt1.
 Shared publisher workflow/artifact/gate defaults are not relaxed.
 
-The receiving branch is always `release/search3-design-v2`. Prepare and publish
-recheck fresh main/release refs, source ancestry/tree and unchanged runtime
-projection. Failed, pending, stale, foreign, skipped-required or expired evidence
-aborts. The review artifact is named
+The receiving branch is always `release/search3-design-v2`. GitHub squash-merged
+this exact source, so prepare and publish require the pinned release SHA, identical
+source/release tree, single pinned release parent and exact compare receipt:
+`diverged`, behind3, ahead1, merge base equal to that parent. This exception is
+specific to the fully pinned source/release pair; an arbitrary equal tree or any
+other history relation aborts. Prepare and publish also recheck fresh main/release
+refs. Failed, pending, stale, foreign, skipped-required or expired evidence aborts.
+The review artifact is named
 `search3-design-v2-native-<sourceSHA>-<buildRun>` and contains `payload/**`,
 `control/inventory.json`, `control/native-build.json`, rendered `evidence/**`.
 Review metadata retains `publication_authority:false` and route rewrites
@@ -125,13 +134,17 @@ The original110 mandatory frames remain required. This successor requires exactl
 positions; budget-invalid and budget-draft at all six mobile positions; and
 budget-progress-invalid only at390/text100. Those143 names remain mandatory. This
 startup package additionally requires exactly20 frames: native-startup-pending
-and native-startup-error at each matrix position. All163 names, bytes and PNG
+and native-startup-error at each matrix position. The full-calendar successor
+adds exactly ten `native-calendar-later-<width>-text<percent>.png` frames, one at
+each matrix position. All173 names, bytes and PNG
 hashes must match the bounded inventory; missing or arbitrary extra evidence is
 rejected. Each case must prove startupPendingFormHidden:true,
 startupErrorSearches:0 and startupRetrySearches:0. Startup frames must identify
 the startup screen, have no displayed prices, and preserve readable header/full
 text; error frames must have exactly one visible, readable retry action.
-All cases additionally prove budgetLoadedCount2 and budgetExtraSearches0. The
+All cases additionally prove budgetLoadedCount2, budgetExtraSearches0,
+calendarPages2, calendarLaterLoadedTotal166400, calendarPagingExtraSearches0 and
+calendarHistoryPageRetained:true. The
 390/text100 case must retain progressive-update draft/focus and breakpoint draft.
 Native frames require measured readable form captions and condition/navigation/flight
 text without clipping, broken words or overlapping lines. Every readableText row
@@ -169,16 +182,12 @@ with the current published predecessor under the existing lock before either
 target is moved. Path sets must be identical, the predecessor digest must match
 the pinned receipt, and exactly these existing files may differ:
 
-- `visual-search/index.html`
-- `visual-search/native-v2/bootstrap.js`
 - `visual-search/native-v2/frontend.js`
 - `visual-search/native-v2/source-manifest.json`
-- `visual-search/native-v2/tour.js`
-- `visual-search/native-v2/viewport.css`
 
 Historical baseline allowances do not permit new legacy presentation, bridge,
 canonical dependency, provider, lead, brand or font changes in this successor.
-Its activation receipt reports the exact six changed payload paths. A different
+Its activation receipt reports the exact two changed payload paths. A different
 delta, missing/additional file or changed predecessor stops before activation.
 The original845 baseline remains the canonical byte comparison; the current855
 owner is the exact backup/rollback predecessor, not a replacement baseline.

@@ -52,7 +52,7 @@ def checked_request(event, env):
     need(parts[0] not in COMPLETED_SOURCES, 'new_source_required')
     q = {'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
         'artifact_id': int(parts[3]), 'deploy_run': int(env['GITHUB_RUN_ID']), 'attempt': 1}
-    accepted_native(q, ('source_sha', 'build_run', 'artifact_id'))
+    accepted_native(q, ('source_sha', 'release_sha', 'build_run', 'artifact_id'))
     return q
 
 
@@ -83,20 +83,19 @@ def authorized():
 
 def native_provenance(api, q, control_sha):
     """Native-only verifier; shared publisher provenance is not relaxed."""
-    pin = accepted_native(q, ('source_sha', 'build_run', 'artifact_id'))
+    pin = accepted_native(q, ('source_sha', 'release_sha', 'build_run', 'artifact_id'))
     need(api.get('/git/ref/heads/main')['object']['sha'] == control_sha, 'control_main_changed')
     need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed')
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
+    need(release['tree']['sha'] == pin['release_tree'] == pin['source_tree'], 'native_release_tree_pin')
+    need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
+         'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') in ('identical', 'ahead') and relation.get('behind_by') == 0, 'source_not_in_release')
-    if source['tree']['sha'] != release['tree']['sha']:
-        def projection(tree):
-            value = api.get('/git/trees/' + tree + '?recursive=1')
-            need(value.get('truncated') is False, 'native_tree_truncated')
-            return {row['path']: (row['sha'], row['mode'], row['type']) for row in value['tree']
-                    if row['type'] != 'tree' and row['path'] != 'AUTOPILOT_STATE.json' and not row['path'].startswith('docs/')}
-        need(projection(source['tree']['sha']) == projection(release['tree']['sha']), 'release_runtime_differs')
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 3
+         and relation.get('ahead_by') == 1
+         and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
+         'native_exact_squash_relation')
     run = api.get('/actions/runs/' + str(q['build_run']))
     need(run.get('head_sha') == q['source_sha'] and run.get('path') == NATIVE_BUILD_WORKFLOW
          and run.get('event') == 'pull_request' and run.get('status') == 'completed'
@@ -175,6 +174,7 @@ def native_frame_inventory(width, percent):
               for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
     frames.update(f'native-{screen}-{width}-text{percent}.png'
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error'))
+    frames.add(f'native-calendar-later-{width}-text{percent}.png')
     if width in (360, 390, 430):
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
     if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
@@ -201,6 +201,8 @@ def native_evidence(archive, request, native):
         'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
         'retryRows': 4, 'favoriteStoragePreserved': True,
         'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
+        'calendarPages': 2, 'calendarLaterLoadedTotal': 166400,
+        'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
         'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
@@ -229,7 +231,8 @@ def native_evidence(archive, request, native):
                 screen = ('startup' if name.startswith('native-startup-')
                           else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
-                          else 'results' if name.startswith(('native-budget-results-', 'native-error-'))
+                          else 'results' if name.startswith(('native-budget-results-', 'native-error-',
+                                                            'native-calendar-later-'))
                           else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
@@ -289,7 +292,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 163, 'native_rendered_frame_count')
+    need(len(frames) == 173, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
