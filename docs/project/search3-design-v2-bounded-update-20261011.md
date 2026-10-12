@@ -6,57 +6,52 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: bounded-results predecessor published, filter-finish successor selected
+## Current state: filter-finish predecessor published, compact-flight successor selected
 
-The exact public predecessor is source9fec34cfeb5a7c97659b16188404ae02c166c770,
-receiving release11018b589afccdf07aa5d29314257e9bca9d6195, terminal publication
-run38290989467 attempt1 / command6130171803. Its855-file digest is
-`7194f32845417a16f5069a618fb930a5b353c10b23a3fcd48e34fe12844fe2bd`. READY artifact11766656018 / ZIP SHA256
-`8d4c8e93b36103ca161cca2beef67845026ebfa8d027a5dc86496cd86cf89953`
-rederives that inventory. This command/run is consumed and cannot replay;
-8c2d/run38276638172/ca35 remains explicit older history.
+The exact public predecessor is source20c6488c01d764ce9bdc19c7eb71f01108efbda5,
+receiving releasefdf4bc992f36297c3b061bd21ec5e7f2e3b567af, terminal publication
+run38312997899 attempt1 / command6133239791. Its855-file digest is
+`680bd97d65e705c7f0ee70f8d52e1f6cd6d655dcf7f6ba7533254c7c9d3e106a`.
+Actual READY11774759845 / ZIP16090cbbe1968ef477f08cb58093ca30f042cc9caf43ff580d808269223bd3fe
+and deployment11775324186 / ZIPc347165bf9bb37872d4c07079f2542b6ea8b19e7b517dc4884d4969b224a2dac
+establish the installed predecessor. Command/run are consumed; all older history remains.
 
-PR4550 final source20c6488c01d764ce9bdc19c7eb71f01108efbda5 passed native
-CI38311265185 and Security38311265305, both exact-head same-repository attempt1.
-Independent source reviewer /root/review_4548 approved its exact tree, all855
-payload bytes and223 rendered frames including resolved mobile status/sort
-clipping. Source receipt is PR4550/comment6133103119. The receiving squash
-`fdf4bc992f36297c3b061bd21ec5e7f2e3b567af` has the identical tree and single parent11018b589 above;
-its exact relation is diverged, behind11, ahead1, merge base equal to that parent.
-Earlier amended failed CI38309805073/38310258107 and the visually rejected
-a21/run38310868544 artifact are excluded; no failed source run is replayed.
+PR4552 final source9de4cdb3d044b060b039abc096f9351466147d86 passed native
+CI38317549028 and Security38317549044, exact-head same-repository attempt1.
+Independent source/runtime/visual review5496809811 approved the four-file
+presentation packet and verified all855 payload bytes and233 rendered-frame hashes.
+The receiving squash54daa24bc815ea1da80a9fb7da6a681276efadc8 has the identical tree
+and single parentfdf4bc992 above. Its exact relation is diverged, behind4, ahead1,
+merge base equal to that parent. The accepted retained run/artifact is fixed;
+a later successful build of the same source does not replace its bytes or pins.
 
-Root control claim6132794915 owns only the two deploy scripts, their existing
+Root control claim6134172594 owns only the two deploy scripts, their existing
 exact test and this document. Retained trusted derivation verifies the immutable
-845 baseline, final source artifact and actual855-file predecessor, and yields
-855 files / target digest `680bd97d65e705c7f0ee70f8d52e1f6cd6d655dcf7f6ba7533254c7c9d3e106a`. The exact three existing-path
-changes are frontend.js, source-manifest.json and viewport.css under native-v2.
-The local retained request is review-only; it makes no server or publisher call.
-Independent HIGH review, exact-head control CI, fresh refs/predecessor, exclusive
-publisher claim and one fresh guarded OWNER command remain mandatory.
+845 baseline, final source artifact and actual855-file predecessor. The exact
+three existing-path changes are source-manifest.json, tour.js and viewport.css
+under native-v2. Independent HIGH review, exact-head control CI, fresh refs and
+predecessor, exclusive publisher claim and one fresh guarded OWNER command
+remain mandatory. No publication is inferred from source integration or local derivation.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `20c6488c01d764ce9bdc19c7eb71f01108efbda5` |
-| source_tree | `cb25255d5a0a389cdd2f8bc817c20afaedf04168` |
-| release_sha | `fdf4bc992f36297c3b061bd21ec5e7f2e3b567af` |
-| release_tree | `cb25255d5a0a389cdd2f8bc817c20afaedf04168` |
-| release_parent | `11018b589afccdf07aa5d29314257e9bca9d6195` |
-| build_run | `38311265185` |
-| artifact_id | `11774199199` |
-| source_ZIP_sha256 | `b03ac9a275bb85d0160cc9c7052385cb6b9a4c53c0809884a6aa93d33e50eee0` |
+| source_sha | `9de4cdb3d044b060b039abc096f9351466147d86` |
+| source_tree | `1c5dd4c103c462c1b106a19daf3b58d5ffdd1402` |
+| release_sha | `54daa24bc815ea1da80a9fb7da6a681276efadc8` |
+| release_tree | `1c5dd4c103c462c1b106a19daf3b58d5ffdd1402` |
+| release_parent | `fdf4bc992f36297c3b061bd21ec5e7f2e3b567af` |
+| build_run | `38317549028` |
+| artifact_id | `11777562542` |
+| source_ZIP_sha256 | `6ce2a983c4395253a425ef88255dffc05c25200ba89e67b1ee4afc6ec2e1fe51` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `9664aa9689299ab06e0f83d2d564dc089ccd1ccf6a68fa8e1a5da3116be684ce` |
+| source_manifest_sha256 | `eb860cf9d9e3c6a69af84260d644db8bbdf0a1e02e860d146b1328259f13e2b2` |
 
-The only installed predecessor accepted is source9fec/run38290989467 with the
-855-file digest7194 above and matching status:published owner. An absent,
-foreign, modified, activated or unknown owner/target aborts. All previous
-completed/failed commands and runs remain terminal/no-replay; selecting the
-new predecessor appends its source/run to explicit history without deleting
-older entries. A successful update consumes this predecessor and cannot repeat
-over its new owner. No publication is inferred from source integration or this
-control preparation.
+An absent, foreign, modified, activated or unknown owner/target aborts. All
+previous completed/failed commands and runs remain terminal/no-replay. The new
+predecessor is appended to explicit completed-source/run history without deleting
+older entries. A successful update consumes this predecessor and cannot repeat over
+its new owner. No bridge/frontend/provider/price/lead/brand changes are accepted.
 
 ## Terminal preparation failure and bounded correction
 
@@ -128,9 +123,13 @@ adds exactly ten `native-calendar-later-<width>-text<percent>.png` frames, one a
 each matrix position. The bounded-results successor additionally requires all ten
 `native-results-bounded-<width>-text<percent>.png` frames. Those183 names remain mandatory. The filter-finish successor additionally
 requires exactly40 frames: filters-active, filter-empty, results-loading and
-results-error at each of the ten matrix positions. All223 names, bytes and PNG
-hashes must match the bounded inventory; missing or arbitrary extra evidence is
-rejected. Each case must prove startupPendingFormHidden:true,
+results-error at each of the ten matrix positions. Those223 names remain required.
+The compact-flight successor additionally requires native-tour-alternatives at
+each matrix position, for exactly233 frames. All names, bytes and PNG hashes
+must match the bounded inventory; missing or arbitrary extra evidence is rejected.
+Each case proves original flight indices0→1→0, extra quote count0 and finite
+closed/expanded heights with more than44px saved and a consistent height delta.
+Each case must prove startupPendingFormHidden:true,
 startupErrorSearches:0 and startupRetrySearches:0. Startup frames must identify
 the startup screen, have no displayed prices, and preserve readable header/full
 text; error frames must have exactly one visible, readable retry action.
@@ -191,8 +190,8 @@ with the current published predecessor under the existing lock before either
 target is moved. Path sets must be identical, the predecessor digest must match
 the pinned receipt, and exactly these existing files may differ:
 
-- `visual-search/native-v2/frontend.js`
 - `visual-search/native-v2/source-manifest.json`
+- `visual-search/native-v2/tour.js`
 - `visual-search/native-v2/viewport.css`
 
 Historical baseline allowances do not permit new legacy presentation, bridge,
