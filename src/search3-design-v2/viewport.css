@@ -123,6 +123,21 @@ body { margin: 0; padding: 0; }
   -webkit-appearance: none;
   margin: 0;
 }
+/* Keep very large loaded result sets quick to scan without changing the donor
+   card composition. The controller only reveals rows already held in memory. */
+#design-v2-native-root #b4 .st-result-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 16px;
+  margin: 16px 0 8px;
+  text-align: center;
+}
+#design-v2-native-root #b4 .st-result-more[hidden] { display: none; }
+#design-v2-native-root #b4 .st-result-more-count { color: var(--muted); font-size: 12px; }
+#design-v2-native-root #b4 .st-result-more .st-secondary { min-height: 44px; padding-inline: 24px; }
+#design-v2-native-root #b4 .st-mobile .st-result-more .st-secondary { width: 100%; }
 @container native-card (max-width: 40em) {
   #design-v2-native-root #b4 .st-desktop .st-card-info { display: block; }
   #design-v2-native-root #b4 .st-desktop .st-price-area {
