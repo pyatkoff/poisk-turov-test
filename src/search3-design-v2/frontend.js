@@ -442,7 +442,9 @@
       root.style.setProperty('--photo','none');root.style.setProperty('--marina-photo','none');
       $$('[data-screen="states"],[data-screen="success"]').forEach(node=>node.remove());
       const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());onReady?.();root.hidden=false;
-      if(initial.requestedSearch&&!state.hasSearched){openSearch();await runSearch(true);}
+      // This intent belongs to the page lifetime, not a historical screen.
+      // Route snapshots omit it so Back cannot authorize another supplier start.
+      if(initial.requestedSearch&&!state.urlSearchConsumed&&!state.hasSearched){state.urlSearchConsumed=true;openSearch();await runSearch(true);}
     })();
     return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
   }

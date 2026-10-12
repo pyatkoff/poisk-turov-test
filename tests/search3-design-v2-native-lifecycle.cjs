@@ -159,6 +159,10 @@ test('cold dictionary viewport remount starts a requested URL search once', asyn
   dictionary.resolve({origin:'Москва'});await tick();await tick();
   assert.equal(h.calls.length,1,'Only the latest bound mount dispatches the requested search');
   assert.equal(w.document.querySelector('[data-native-startup]').hidden,true,'Working results replace the startup shell');
-  media.matches=true;change();await tick();assert.equal(h.calls.length,1,'Later responsive remount does not restart suppliers');
+  await new Promise(resolve=>{w.addEventListener('popstate',resolve,{once:true});w.history.back();});
+  assert.equal(new URL(w.location.href).searchParams.get('searched'),null,'Back restores the original unsearched screen');
+  media.matches=true;change();await tick();assert.equal(h.calls.length,1,'Back plus responsive remount does not replay the consumed URL search');
+  assert.equal(w.document.querySelector('.st-mobile [data-screen="search"]').hidden,false);
+  media.matches=false;change();await tick();assert.equal(h.calls.length,1,'A second rotation also preserves the consumed intent');
   w.close();
 });
