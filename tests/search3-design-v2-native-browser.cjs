@@ -57,10 +57,19 @@ function fixtureBridge(fixture) {
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
   control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
-  let initResolve,initReject;
-  control.releaseInit=()=>initResolve?.();control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
+  let initResolve,initReject,initialization;
+  control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
-    async init(){calls.init++;if(window.__nativeHoldInit)await new Promise((resolve,reject)=>{initResolve=resolve;initReject=reject;});return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
+    init(){
+      calls.init++;
+      // Match the canonical bridge's shared catalogue initialization. Responsive
+      // mounts join this promise instead of creating another held request.
+      if(!initialization)initialization=(async()=>{
+        if(window.__nativeHoldInit)await new Promise((resolve,reject)=>{initResolve=resolve;initReject=reject;});
+        return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};
+      })().catch(error=>{initialization=null;throw error;});
+      return initialization;
+    },
     subscribe(listener,{replay=true}={}){listeners.add(listener);if(replay)listener(latest);return()=>listeners.delete(listener);},
     getSnapshot(){return latest;},
     async changeOrigin(){return dictionaries;},
@@ -203,6 +212,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -254,7 +264,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await route.continue();
       });
       try {
-        await page.addInitScript(()=>{window.__nativeHoldInit=true;});
+        await page.addInitScript(()=>{window.__nativeHoldInit=true;window.__nativeMediaChanges=[];matchMedia('(max-width:760px)').addEventListener('change',event=>window.__nativeMediaChanges.push({mobile:event.matches,width:innerWidth}));});
         await Promise.all([page.goto(origin+base+'/visual-search/'),reference.goto(origin+base+'/__donor-reference/')]);
         await page.locator('[data-native-startup-status]').waitFor({state:'visible'});
         assert.equal(await page.locator('[data-product]:visible').count(),0,'Unbound donor forms stay hidden during initialization');
@@ -397,7 +407,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.favoriteStoragePreserved=true;
         row.checks.push('passive init 0 searches','form submit exactly one search','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
-        row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
+        row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}
       } finally {
         if(row.errors.length)report.failures.push({width,percent,error:'Page errors',details:row.errors});

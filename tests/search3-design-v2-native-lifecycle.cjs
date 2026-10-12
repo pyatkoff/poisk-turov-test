@@ -166,3 +166,19 @@ test('cold dictionary viewport remount starts a requested URL search once', asyn
   media.matches=false;change();await tick();assert.equal(h.calls.length,1,'A second rotation also preserves the consumed intent');
   w.close();
 });
+
+
+test('rendered startup fixture joins catalogue readiness across responsive mounts', async () => {
+  const browserSource=fs.readFileSync(require.resolve('./search3-design-v2-native-browser.cjs'),'utf8');
+  const start=browserSource.indexOf('function fixtureBridge('),end=browserSource.indexOf('function donorReferenceHTML()',start);
+  assert(start>=0&&end>start);
+  const dom=new JSDOM('',{url:'https://fixture.test/',runScripts:'outside-only'}),w=dom.window;
+  w.__nativeHoldInit=true;
+  w.eval(browserSource.slice(start,end)+';fixtureBridge({trip:'+JSON.stringify(trip)+',hotels:[]});');
+  const api=w.AnyTourDesignV2Bridge.create(),first=api.init(),second=api.init();
+  assert.strictEqual(first,second,'Pending responsive mounts join the same fixture catalogue');
+  w.__nativeFixture.releaseInit();await first;
+  assert.strictEqual(api.init(),first,'A ready responsive mount cannot re-enter held startup');
+  assert.equal(w.__nativeHoldInit,false);
+  w.close();
+});
