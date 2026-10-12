@@ -130,29 +130,37 @@ const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixtur
 
 async function setTextSize(page,percent) {
   await page.evaluate(percent=>{
-    for(const node of document.querySelectorAll('[data-native-text200]')){node.style.fontSize=node.dataset.nativeOriginalFont||'';delete node.dataset.nativeText200;delete node.dataset.nativeOriginalFont;}
-    if(percent===200){const measured=[...document.querySelectorAll('#b4 *')].map(node=>[node,parseFloat(getComputedStyle(node).fontSize)]);for(const [node,size]of measured){if(Number.isFinite(size)){node.dataset.nativeOriginalFont=node.style.fontSize;node.dataset.nativeText200='1';node.style.fontSize=(size*2)+'px';}}}
+    for(const node of document.querySelectorAll('[data-native-text200]')){node.style.fontSize=node.dataset.nativeOriginalFont||'';delete node.dataset.nativeText200;delete node.dataset.nativeOriginalFont;delete node.dataset.nativeBaselineFont;}
+    if(percent===200){const measured=[...document.querySelectorAll('#b4 *')].map(node=>[node,parseFloat(getComputedStyle(node).fontSize)]);for(const [node,size]of measured){if(Number.isFinite(size)){node.dataset.nativeOriginalFont=node.style.fontSize;node.dataset.nativeBaselineFont=String(size);node.dataset.nativeText200='1';node.style.fontSize=(size*2)+'px';}}}
   },percent);
 }
 
 async function capture(page,side,width,percent,screen,row) {
+  if(side==='native')await page.waitForFunction(()=>window.__nativeFixture?.getSnapshot?.().status!=='loading');
   await page.evaluate(()=>document.fonts.ready);
+  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await setTextSize(page,percent);
   await page.evaluate(()=>window.scrollTo(0,0));
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
   await page.screenshot({path:path.join(evidence,file),fullPage:true,animations:'disabled'});
-  const measurements=await page.evaluate(()=>{
+  const measurements=await page.evaluate(percent=>{
     const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
     const stage=root?.closest('.st-stage');
     const box=selector=>{const element=root?.querySelector(selector);if(!element||element.closest('[hidden]'))return null;const r=element.getBoundingClientRect(),style=getComputedStyle(element);return{x:r.x,y:r.y,width:r.width,height:r.height,fontSize:style.fontSize,visible:r.width>0&&r.height>0};};
     const doc=document.documentElement;
-    const prices=[...root.querySelectorAll('.st-price,[data-tour-price]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>({text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1}));
+    const prices=[...root.querySelectorAll('.st-price,[data-tour-price],.st-offer-price')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      let fragmented=false;const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
+      while((text=walker.nextNode()))for(const match of text.textContent.matchAll(/\d+/g)){const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)fragmented=true;}
+      const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=Number(node.dataset.nativeBaselineFont);
+      return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||node.dataset.nativeText200==='1'&&Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
+    });
     return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
-  });
+  },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
+  if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
   return measurements;
 }
 

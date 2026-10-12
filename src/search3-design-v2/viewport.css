@@ -16,4 +16,13 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 :is(.st-price, .st-offer-price, .st-quick-price b) {
   white-space: normal;
   max-width: 100%;
+  overflow-wrap: normal;
+  word-break: normal;
 }
+#design-v2-native-root #b4 .st-mobile .st-quick-price > div {
+  flex: 1 1 max-content;
+  min-width: min-content;
+  max-width: 100%;
+  overflow-wrap: normal;
+}
+#design-v2-native-root #b4 .st-mobile .st-section-top { flex-wrap: wrap; }
