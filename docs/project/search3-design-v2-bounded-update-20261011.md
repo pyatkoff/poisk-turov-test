@@ -6,62 +6,57 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: full-calendar predecessor published, bounded-results successor selected
+## Current state: bounded-results predecessor published, filter-finish successor selected
 
-Source `8c2d0308eb29e26d2819342d10501db1ed82e3db`, receiving release
-`07ecfd601b7bb96af34c31784d14456f2285dabe`, is the exact public predecessor.
-Terminal run38276638172 attempt1 and command6128209556 installed its855-file
-inventory with digest
-`ca35adc2185fcbcbeed6e1bf46f97c5effe14445561f57e37f256800961537fe`.
-The command and publication are completed/no-replay; their updater cannot be
-reused for another predecessor. READY artifact11759785932 has ZIP hash
-`74054273bc1a220c85a9e99589024dfe0f70e4d3e7b7de499d8c922db9edf4f1` and
-rederives that exact inventory. The previous0674/eaff owner remains history.
+The exact public predecessor is source9fec34cfeb5a7c97659b16188404ae02c166c770,
+receiving release11018b589afccdf07aa5d29314257e9bca9d6195, terminal publication
+run38290989467 attempt1 / command6130171803. Its855-file digest is
+`7194f32845417a16f5069a618fb930a5b353c10b23a3fcd48e34fe12844fe2bd`. READY artifact11766656018 / ZIP SHA256
+`8d4c8e93b36103ca161cca2beef67845026ebfa8d027a5dc86496cd86cf89953`
+rederives that inventory. This command/run is consumed and cannot replay;
+8c2d/run38276638172/ca35 remains explicit older history.
 
-This successor addresses the confirmed initial rendering of258 loaded hotels
-without changing the final Sites v2 cards: it renders24 initially, then reveals
-already-loaded rows locally by24. The full factual count, filters, sorting,
-prices and favorites remain authoritative. Filter/date/sort changes start at the
-first batch; a revealed batch survives hotel navigation and Back. No new
-supplier/calendar/lead request is initiated by revealing rows.
-PR #4548 produced exact source
-`9fec34cfeb5a7c97659b16188404ae02c166c770`, tree
-`df823f000cd13ee6b037f7b6c78f809e7716c6f0`. Native CI38286826790 and
-Security38286826877 succeeded. Artifact11764071465 has the verified ZIP hash below,
-855 payload files and183 passing rendered frames.
-Independent source review6129933571 approved the exact source artifact and all ten
-new frames. Receiving release `11018b589afccdf07aa5d29314257e9bca9d6195` has the
-same exact tree after the approved squash merge, and single parent07ecfd60 above.
-The retained derivation yields target digest
-`7194f32845417a16f5069a618fb930a5b353c10b23a3fcd48e34fe12844fe2bd`.
-No publication is inferred from source integration or this preparation.
+PR4550 final source20c6488c01d764ce9bdc19c7eb71f01108efbda5 passed native
+CI38311265185 and Security38311265305, both exact-head same-repository attempt1.
+Independent source reviewer /root/review_4548 approved its exact tree, all855
+payload bytes and223 rendered frames including resolved mobile status/sort
+clipping. Source receipt is PR4550/comment6133103119. The receiving squash
+`fdf4bc992f36297c3b061bd21ec5e7f2e3b567af` has the identical tree and single parent11018b589 above;
+its exact relation is diverged, behind11, ahead1, merge base equal to that parent.
+Earlier amended failed CI38309805073/38310258107 and the visually rejected
+a21/run38310868544 artifact are excluded; no failed source run is replayed.
 
-Claim6129816876 owns only the two deploy scripts, their exact test and this document.
-Retained derivation verifies the immutable845 baseline and current855 predecessor,
-then requires exactly the three existing-path changes listed below. Independent
-HIGH control review, exact-head control CI, fresh predecessor readback, exclusive
-publisher claim and one fresh guarded command remain mandatory.
+Root control claim6132794915 owns only the two deploy scripts, their existing
+exact test and this document. Retained trusted derivation verifies the immutable
+845 baseline, final source artifact and actual855-file predecessor, and yields
+855 files / target digest `680bd97d65e705c7f0ee70f8d52e1f6cd6d655dcf7f6ba7533254c7c9d3e106a`. The exact three existing-path
+changes are frontend.js, source-manifest.json and viewport.css under native-v2.
+The local retained request is review-only; it makes no server or publisher call.
+Independent HIGH review, exact-head control CI, fresh refs/predecessor, exclusive
+publisher claim and one fresh guarded OWNER command remain mandatory.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `9fec34cfeb5a7c97659b16188404ae02c166c770` |
-| source_tree | `df823f000cd13ee6b037f7b6c78f809e7716c6f0` |
-| release_sha | `11018b589afccdf07aa5d29314257e9bca9d6195` |
-| release_tree | `df823f000cd13ee6b037f7b6c78f809e7716c6f0` |
-| release_parent | `07ecfd601b7bb96af34c31784d14456f2285dabe` |
-| build_run | `38286826790` |
-| artifact_id | `11764071465` |
-| source_ZIP_sha256 | `8f9de4e6c49426b4dd90127c01dd0c81d7b65cbfc7264238524eb16e02b73e31` |
+| source_sha | `20c6488c01d764ce9bdc19c7eb71f01108efbda5` |
+| source_tree | `cb25255d5a0a389cdd2f8bc817c20afaedf04168` |
+| release_sha | `fdf4bc992f36297c3b061bd21ec5e7f2e3b567af` |
+| release_tree | `cb25255d5a0a389cdd2f8bc817c20afaedf04168` |
+| release_parent | `11018b589afccdf07aa5d29314257e9bca9d6195` |
+| build_run | `38311265185` |
+| artifact_id | `11774199199` |
+| source_ZIP_sha256 | `b03ac9a275bb85d0160cc9c7052385cb6b9a4c53c0809884a6aa93d33e50eee0` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `661ee858ada8cd389ebb6e49ca2669d8d4c919dfcecfee61d9b69f490c0cd184` |
+| source_manifest_sha256 | `9664aa9689299ab06e0f83d2d564dc089ccd1ccf6a68fa8e1a5da3116be684ce` |
 
-The only installed predecessor accepted is source8c2d, publication run38276638172,
-attempt1, the855-file digestca35 above, and matching owner with status:published.
-An absent, foreign, modified, activated or unknown owner/target aborts. All prior
-completed/failed commands and runs remain terminal/no-replay. Historical rejection
-lists explicitly retain every consumed source/run when selecting this predecessor.
-A successful update consumes this predecessor and cannot repeat over its new owner.
+The only installed predecessor accepted is source9fec/run38290989467 with the
+855-file digest7194 above and matching status:published owner. An absent,
+foreign, modified, activated or unknown owner/target aborts. All previous
+completed/failed commands and runs remain terminal/no-replay; selecting the
+new predecessor appends its source/run to explicit history without deleting
+older entries. A successful update consumes this predecessor and cannot repeat
+over its new owner. No publication is inferred from source integration or this
+control preparation.
 
 ## Terminal preparation failure and bounded correction
 
@@ -101,7 +96,7 @@ Shared publisher workflow/artifact/gate defaults are not relaxed.
 The receiving branch is always `release/search3-design-v2`. GitHub squash-merged
 this exact source, so prepare and publish require the pinned release SHA, identical
 source/release tree, single pinned release parent and exact compare receipt:
-`diverged`, behind5, ahead1, merge base equal to that parent. This exception is
+`diverged`, behind11, ahead1, merge base equal to that parent. This exception is
 specific to the fully pinned source/release pair; an arbitrary equal tree or any
 other history relation aborts. Prepare and publish also recheck fresh main/release
 refs. Failed, pending, stale, foreign, skipped-required or expired evidence aborts.
@@ -131,12 +126,29 @@ startup package additionally requires exactly20 frames: native-startup-pending
 and native-startup-error at each matrix position. The full-calendar successor
 adds exactly ten `native-calendar-later-<width>-text<percent>.png` frames, one at
 each matrix position. The bounded-results successor additionally requires all ten
-`native-results-bounded-<width>-text<percent>.png` frames. All183 names, bytes and PNG
+`native-results-bounded-<width>-text<percent>.png` frames. Those183 names remain mandatory. The filter-finish successor additionally
+requires exactly40 frames: filters-active, filter-empty, results-loading and
+results-error at each of the ten matrix positions. All223 names, bytes and PNG
 hashes must match the bounded inventory; missing or arbitrary extra evidence is
 rejected. Each case must prove startupPendingFormHidden:true,
 startupErrorSearches:0 and startupRetrySearches:0. Startup frames must identify
 the startup screen, have no displayed prices, and preserve readable header/full
 text; error frames must have exactly one visible, readable retry action.
+All cases additionally prove activeConstraintsVisible:true, recoveryLoadedHotels2,
+recoveryPreservedMeal:true and recoveryExtraSearches0. Initial loading requires
+loadingInitialCountNeutral:true, loadingEmptyActionHidden:true and
+loadingExtraSearches0. A failed initial request requires
+failedInitialCountNeutral:true, failedInitialFriendlyCopy:true and
+failedInitialExtraSearches0. filteredCalendarTruthful:true distinguishes known
+loaded date offers excluded by current conditions from prices not received.
+Missing or changed values abort. Only the explicitly named filter-empty,
+results-loading and results-error frames may have no result prices, and their
+price arrays must be empty. Loading has no primary empty/recovery action;
+filter-empty and results-error each require exactly one readable primary action.
+Every other results/hotel/tour frame retains nonempty measured price proof.
+The final no-rows mobile error status moves sorting to its own row so that the
+selected label remains readable at360/390 and enlarged text. Date labels, result counts/statuses and
+empty-state titles are included in actual text-readability measurements.
 All cases additionally prove boundedInitialCards24, boundedLoadedHotels55,
 boundedBackCards48 and boundedExtraSearches0; missing or altered values abort.
 All cases retain budgetLoadedCount2, budgetExtraSearches0,
