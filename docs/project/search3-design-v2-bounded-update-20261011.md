@@ -6,68 +6,62 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: visual predecessor published, full-calendar successor selected
+## Current state: full-calendar predecessor published, bounded-results successor selected
 
-Source `0674fa6cc7744ee21cb073b284f089c20171f38e`, tree
-`fc82c5ba0e7326dfc41e85292cf358a86ddfff71`, is the exact public predecessor.
-Terminal run38269206819 attempt1 and command6127174112 installed its855-file
+Source `8c2d0308eb29e26d2819342d10501db1ed82e3db`, receiving release
+`07ecfd601b7bb96af34c31784d14456f2285dabe`, is the exact public predecessor.
+Terminal run38276638172 attempt1 and command6128209556 installed its855-file
 inventory with digest
-`eafff576d5f4887f9d236e019a4e0f63cf72b9e2893bd2d64c20648a147bb6e2`.
-The command and publication are completed/no-replay; their bounded updater cannot
-be reused for another predecessor.
+`ca35adc2185fcbcbeed6e1bf46f97c5effe14445561f57e37f256800961537fe`.
+The command and publication are completed/no-replay; their updater cannot be
+reused for another predecessor. READY artifact11759785932 has ZIP hash
+`74054273bc1a220c85a9e99589024dfe0f70e4d3e7b7de499d8c922db9edf4f1` and
+rederives that exact inventory. The previous0674/eaff owner remains history.
 
-This successor fixes one confirmed user-facing defect without changing the final
-Sites v2 composition: the price calendar now exposes every loaded departure date
-through the existing seven-day pager. Later pages use only exact totals already
-present in the loaded result set, preserve the page through local filters,
-progressive updates and Back/Forward, and initiate no additional supplier search.
-PR #4546 produced exact source
-`8c2d0308eb29e26d2819342d10501db1ed82e3db`, tree
-`18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00`. Native CI38273265388 and
-Security38273265377 succeeded. Artifact11757847419 has the verified ZIP hash below,
-855 payload files and173 passing frames. Independent source/runtime review approved
-the exact artifact. Receiving release commit
-`07ecfd601b7bb96af34c31784d14456f2285dabe` has the same exact tree after GitHub's
-squash merge and exact parent `09a5ca870dc5a254161664a30e56d0142f557ca8`.
+This successor addresses the confirmed initial rendering of258 loaded hotels
+without changing the final Sites v2 cards: it renders24 initially, then reveals
+already-loaded rows locally by24. The full factual count, filters, sorting,
+prices and favorites remain authoritative. Filter/date/sort changes start at the
+first batch; a revealed batch survives hotel navigation and Back. No new
+supplier/calendar/lead request is initiated by revealing rows.
+PR #4548 produced exact source
+`9fec34cfeb5a7c97659b16188404ae02c166c770`, tree
+`df823f000cd13ee6b037f7b6c78f809e7716c6f0`. Native CI38286826790 and
+Security38286826877 succeeded. Artifact11764071465 has the verified ZIP hash below,
+855 payload files and183 passing rendered frames.
+Independent source review6129933571 approved the exact source artifact and all ten
+new frames. Receiving release `11018b589afccdf07aa5d29314257e9bca9d6195` has the
+same exact tree after the approved squash merge, and single parent07ecfd60 above.
+The retained derivation yields target digest
+`7194f32845417a16f5069a618fb930a5b353c10b23a3fcd48e34fe12844fe2bd`.
+No publication is inferred from source integration or this preparation.
 
-Claim6127907840 owns only the two deploy scripts, this test and this document.
-Retained derivation independently reproduced the public predecessor digest above,
-then produced target digest
-`ca35adc2185fcbcbeed6e1bf46f97c5effe14445561f57e37f256800961537fe`;
-both inventories contain the same855 paths and differ only in the two files listed
-below.
-Independent final HIGH control review, exact-head control CI, fresh predecessor
-readback, exclusive publisher claim and one fresh guarded command remain mandatory.
-No successor publication is inferred from this preparatory work.
+Claim6129816876 owns only the two deploy scripts, their exact test and this document.
+Retained derivation verifies the immutable845 baseline and current855 predecessor,
+then requires exactly the three existing-path changes listed below. Independent
+HIGH control review, exact-head control CI, fresh predecessor readback, exclusive
+publisher claim and one fresh guarded command remain mandatory.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `8c2d0308eb29e26d2819342d10501db1ed82e3db` |
-| source_tree | `18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00` |
-| release_sha | `07ecfd601b7bb96af34c31784d14456f2285dabe` |
-| release_tree | `18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00` |
-| release_parent | `09a5ca870dc5a254161664a30e56d0142f557ca8` |
-| build_run | `38273265388` |
-| artifact_id | `11757847419` |
-| source_ZIP_sha256 | `1225f3c1a31e9cbcec96f86ce110780f5cb36b72a0e85cabe1266b6d0fb94286` |
+| source_sha | `9fec34cfeb5a7c97659b16188404ae02c166c770` |
+| source_tree | `df823f000cd13ee6b037f7b6c78f809e7716c6f0` |
+| release_sha | `11018b589afccdf07aa5d29314257e9bca9d6195` |
+| release_tree | `df823f000cd13ee6b037f7b6c78f809e7716c6f0` |
+| release_parent | `07ecfd601b7bb96af34c31784d14456f2285dabe` |
+| build_run | `38286826790` |
+| artifact_id | `11764071465` |
+| source_ZIP_sha256 | `8f9de4e6c49426b4dd90127c01dd0c81d7b65cbfc7264238524eb16e02b73e31` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `9d1db6ce9d3f381ee2e5b547da1e247f64c341c60b1e284ec2f0c7a1b103a1ae` |
+| source_manifest_sha256 | `661ee858ada8cd389ebb6e49ca2669d8d4c919dfcecfee61d9b69f490c0cd184` |
 
-The only installed predecessor accepted by this successor is source
-`0674fa6cc7744ee21cb073b284f089c20171f38e`, publication run `38269206819`,
-attempt1, 855-file inventory digest
-`eafff576d5f4887f9d236e019a4e0f63cf72b9e2893bd2d64c20648a147bb6e2`,
-and the matching owner with `status:published`.
-
-An absent, foreign, modified, activated or unknown owner/target aborts. Previous
-command6118298451/run38207863194, command6122730823/run38238503101 and
-command6125148522/run38255222254 are
-terminal/no-replay; every older completed source/run remains explicitly rejected.
-The completed lists no longer depend on the mutable predecessor constants, so
-selecting another predecessor cannot silently remove historical rejection entries.
-A successful native update consumes this predecessor.
-This successor cannot publish again over its newly installed owner.
+The only installed predecessor accepted is source8c2d, publication run38276638172,
+attempt1, the855-file digestca35 above, and matching owner with status:published.
+An absent, foreign, modified, activated or unknown owner/target aborts. All prior
+completed/failed commands and runs remain terminal/no-replay. Historical rejection
+lists explicitly retain every consumed source/run when selecting this predecessor.
+A successful update consumes this predecessor and cannot repeat over its new owner.
 
 ## Terminal preparation failure and bounded correction
 
@@ -107,7 +101,7 @@ Shared publisher workflow/artifact/gate defaults are not relaxed.
 The receiving branch is always `release/search3-design-v2`. GitHub squash-merged
 this exact source, so prepare and publish require the pinned release SHA, identical
 source/release tree, single pinned release parent and exact compare receipt:
-`diverged`, behind3, ahead1, merge base equal to that parent. This exception is
+`diverged`, behind5, ahead1, merge base equal to that parent. This exception is
 specific to the fully pinned source/release pair; an arbitrary equal tree or any
 other history relation aborts. Prepare and publish also recheck fresh main/release
 refs. Failed, pending, stale, foreign, skipped-required or expired evidence aborts.
@@ -136,13 +130,16 @@ budget-progress-invalid only at390/text100. Those143 names remain mandatory. Thi
 startup package additionally requires exactly20 frames: native-startup-pending
 and native-startup-error at each matrix position. The full-calendar successor
 adds exactly ten `native-calendar-later-<width>-text<percent>.png` frames, one at
-each matrix position. All173 names, bytes and PNG
+each matrix position. The bounded-results successor additionally requires all ten
+`native-results-bounded-<width>-text<percent>.png` frames. All183 names, bytes and PNG
 hashes must match the bounded inventory; missing or arbitrary extra evidence is
 rejected. Each case must prove startupPendingFormHidden:true,
 startupErrorSearches:0 and startupRetrySearches:0. Startup frames must identify
 the startup screen, have no displayed prices, and preserve readable header/full
 text; error frames must have exactly one visible, readable retry action.
-All cases additionally prove budgetLoadedCount2, budgetExtraSearches0,
+All cases additionally prove boundedInitialCards24, boundedLoadedHotels55,
+boundedBackCards48 and boundedExtraSearches0; missing or altered values abort.
+All cases retain budgetLoadedCount2, budgetExtraSearches0,
 calendarPages2, calendarLaterLoadedTotal166400, calendarPagingExtraSearches0 and
 calendarHistoryPageRetained:true. The
 390/text100 case must retain progressive-update draft/focus and breakpoint draft.
@@ -184,10 +181,11 @@ the pinned receipt, and exactly these existing files may differ:
 
 - `visual-search/native-v2/frontend.js`
 - `visual-search/native-v2/source-manifest.json`
+- `visual-search/native-v2/viewport.css`
 
 Historical baseline allowances do not permit new legacy presentation, bridge,
 canonical dependency, provider, lead, brand or font changes in this successor.
-Its activation receipt reports the exact two changed payload paths. A different
+Its activation receipt reports the exact three changed payload paths. A different
 delta, missing/additional file or changed predecessor stops before activation.
 The original845 baseline remains the canonical byte comparison; the current855
 owner is the exact backup/rollback predecessor, not a replacement baseline.

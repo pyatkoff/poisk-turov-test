@@ -92,7 +92,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 3
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 5
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -175,6 +175,7 @@ def native_frame_inventory(width, percent):
     frames.update(f'native-{screen}-{width}-text{percent}.png'
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
+    frames.add(f'native-results-bounded-{width}-text{percent}.png')
     if width in (360, 390, 430):
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
     if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
@@ -203,6 +204,8 @@ def native_evidence(archive, request, native):
         'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
         'calendarPages': 2, 'calendarLaterLoadedTotal': 166400,
         'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
+        'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
+        'boundedBackCards': 48, 'boundedExtraSearches': 0,
         'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
@@ -232,7 +235,7 @@ def native_evidence(archive, request, native):
                           else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if name.startswith(('native-budget-results-', 'native-error-',
-                                                            'native-calendar-later-'))
+                                                            'native-calendar-later-', 'native-results-bounded-'))
                           else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
@@ -292,7 +295,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 173, 'native_rendered_frame_count')
+    need(len(frames) == 183, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')

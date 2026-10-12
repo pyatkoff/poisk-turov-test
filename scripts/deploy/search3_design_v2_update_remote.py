@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '0674fa6cc7744ee21cb073b284f089c20171f38e'
-PREDECESSOR_RUN = 38269206819
-PREDECESSOR_DIGEST = 'eafff576d5f4887f9d236e019a4e0f63cf72b9e2893bd2d64c20648a147bb6e2'
+PREDECESSOR_SOURCE = '8c2d0308eb29e26d2819342d10501db1ed82e3db'
+PREDECESSOR_RUN = 38276638172
+PREDECESSOR_DIGEST = 'ca35adc2185fcbcbeed6e1bf46f97c5effe14445561f57e37f256800961537fe'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -29,10 +29,11 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
     'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
     '4955ee078aa0827f745d737681b4ed9187a274bd',
-    '0674fa6cc7744ee21cb073b284f089c20171f38e')
+    '0674fa6cc7744ee21cb073b284f089c20171f38e',
+    '8c2d0308eb29e26d2819342d10501db1ed82e3db')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
-    38255222254, 38269206819)
+    38255222254, 38269206819, 38276638172)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -46,17 +47,17 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact retained native source artifact; activation still requires all fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '8c2d0308eb29e26d2819342d10501db1ed82e3db',
-    'source_tree': '18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00',
-    'release_sha': '07ecfd601b7bb96af34c31784d14456f2285dabe',
-    'release_tree': '18c5c2f9ec56f67f7c4c2b6bf69d34ceb62d1a00',
-    'release_parent': '09a5ca870dc5a254161664a30e56d0142f557ca8',
-    'build_run': 38273265388,
-    'artifact_id': 11757847419,
-    'source_ZIP_sha256': '1225f3c1a31e9cbcec96f86ce110780f5cb36b72a0e85cabe1266b6d0fb94286',
+    'source_sha': '9fec34cfeb5a7c97659b16188404ae02c166c770',
+    'source_tree': 'df823f000cd13ee6b037f7b6c78f809e7716c6f0',
+    'release_sha': '11018b589afccdf07aa5d29314257e9bca9d6195',
+    'release_tree': 'df823f000cd13ee6b037f7b6c78f809e7716c6f0',
+    'release_parent': '07ecfd601b7bb96af34c31784d14456f2285dabe',
+    'build_run': 38286826790,
+    'artifact_id': 11764071465,
+    'source_ZIP_sha256': '8f9de4e6c49426b4dd90127c01dd0c81d7b65cbfc7264238524eb16e02b73e31',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '9d1db6ce9d3f381ee2e5b547da1e247f64c341c60b1e284ec2f0c7a1b103a1ae',
+    'source_manifest_sha256': '661ee858ada8cd389ebb6e49ca2669d8d4c919dfcecfee61d9b69f490c0cd184',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -67,11 +68,11 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# This successor replaces no paths: only the reviewed calendar frontend and its
-# generated source manifest differ from the exact 855-file published predecessor.
+# Only the reviewed result frontend, its load-more styles and generated source
+# manifest differ from the exact 855-file published predecessor.
 # Historical baseline allowances do not authorize fresh legacy/provider/brand changes.
 NATIVE_SUCCESSOR_CHANGES = tuple('visual-search/native-v2/' + name for name in (
-    'frontend.js', 'source-manifest.json'))
+    'frontend.js', 'source-manifest.json', 'viewport.css'))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',

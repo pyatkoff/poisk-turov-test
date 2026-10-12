@@ -73,8 +73,8 @@ class UpdateContracts(unittest.TestCase):
             'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
         # The predecessor is already a native 855-file publication, not a legacy
         # 845-file fixture with a patched owner. Its canonical and brand bytes
-        # stay identical while only the reviewed calendar runtime and generated
-        # manifest change for this visual package.
+        # stay identical while only the result runtime, local reveal styles and
+        # generated manifest change for this package.
         pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
         for name in remote.NATIVE_SUCCESSOR_CHANGES:
             if name == remote.NATIVE_MANIFEST: continue
@@ -141,6 +141,8 @@ class UpdateContracts(unittest.TestCase):
             'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
             'calendarPages': 2, 'calendarLaterLoadedTotal': 166400,
             'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
+            'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
+            'boundedBackCards': 48, 'boundedExtraSearches': 0,
             'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
@@ -158,7 +160,7 @@ class UpdateContracts(unittest.TestCase):
                     screen = ('startup' if name.startswith('native-startup-')
                               else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if name.startswith(('native-budget-results-', 'native-error-',
-                                                                 'native-calendar-later-'))
+                                                                 'native-calendar-later-', 'native-results-bounded-'))
                               else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     contents['evidence/' + name] = png
@@ -195,8 +197,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '0674fa6cc7744ee21cb073b284f089c20171f38e')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38269206819)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '8c2d0308eb29e26d2819342d10501db1ed82e3db')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38276638172)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -264,12 +266,12 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_173_frames_and_calendar_budget_header_sort(self):
+    def test_visual_successor_requires_exact_183_frames_and_bounded_calendar_budget_header_sort(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 173)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 173)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 183)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 183)
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
         changes = [lambda r: r['cases'][0]['proof'].update(budgetLoadedCount=3),
@@ -278,12 +280,19 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['proof'].update(calendarLaterLoadedTotal=0),
             lambda r: r['cases'][0]['proof'].update(calendarPagingExtraSearches=1),
             lambda r: r['cases'][0]['proof'].update(calendarHistoryPageRetained=False),
+            lambda r: r['cases'][0]['proof'].update(boundedInitialCards=55),
+            lambda r: r['cases'][0]['proof'].update(boundedLoadedHotels=24),
+            lambda r: r['cases'][0]['proof'].update(boundedBackCards=24),
+            lambda r: r['cases'][0]['proof'].update(boundedExtraSearches=1),
+            lambda r: r['cases'][0]['proof'].pop('boundedBackCards'),
             lambda r: r['cases'][2]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
             lambda r: r['cases'][2]['proof'].pop('budgetBreakpointDraftRetained'),
             lambda r: r['cases'][3]['proof'].update(enlargedCaptionPaintOverlapRegressionChecked=False),
             lambda r: r['cases'][5]['proof'].pop('enlargedCaptionPaintOverlapRegressionChecked'),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-hotel-return-')),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-calendar-later-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-bounded-')),
+            lambda r: frame(r, 'native-results-bounded-').update(screen='hotel'),
             lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
             lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'][0].update(textWidth=201.1),
@@ -382,12 +391,14 @@ class UpdateContracts(unittest.TestCase):
             '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
             'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
             '4955ee078aa0827f745d737681b4ed9187a274bd',
-            '0674fa6cc7744ee21cb073b284f089c20171f38e'))
+            '0674fa6cc7744ee21cb073b284f089c20171f38e',
+            '8c2d0308eb29e26d2819342d10501db1ed82e3db'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
             self.assertIn('4955ee078aa0827f745d737681b4ed9187a274bd', remote.COMPLETED_SOURCES)
             self.assertIn('0674fa6cc7744ee21cb073b284f089c20171f38e', remote.COMPLETED_SOURCES)
+            self.assertIn('8c2d0308eb29e26d2819342d10501db1ed82e3db', remote.COMPLETED_SOURCES)
         for source in remote.COMPLETED_SOURCES:
             event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
@@ -417,7 +428,7 @@ class UpdateContracts(unittest.TestCase):
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
             '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}},
             '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': 'b' * 40}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 3, 'ahead_by': 1,
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 5, 'ahead_by': 1,
                 'merge_base_commit': {'sha': 'b' * 40}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
@@ -435,7 +446,7 @@ class UpdateContracts(unittest.TestCase):
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=2)),
+             lambda row: row.update(behind_by=4)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row['merge_base_commit'].update(sha='0' * 40)),
         )
@@ -494,13 +505,14 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
-                38255222254, 38269206819))
+                38255222254, 38269206819, 38276638172))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38238503101, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38255222254, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38269206819, remote.COMPLETED_PUBLISH_RUNS)
+            self.assertIn(38276638172, remote.COMPLETED_PUBLISH_RUNS)
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
@@ -548,13 +560,14 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json'))
+            'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
                      'visual-search/native-v2/donor.css', 'prototype-search/data.js'):
