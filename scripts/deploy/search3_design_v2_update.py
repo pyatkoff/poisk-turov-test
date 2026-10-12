@@ -92,7 +92,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 11
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 4
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -176,6 +176,7 @@ def native_frame_inventory(width, percent):
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
+    frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     if width in (360, 390, 430):
@@ -213,13 +214,19 @@ def native_evidence(archive, request, native):
         'recoveryPreservedMeal': True, 'recoveryExtraSearches': 0,
         'loadingInitialCountNeutral': True, 'loadingEmptyActionHidden': True, 'loadingExtraSearches': 0,
         'failedInitialCountNeutral': True, 'failedInitialFriendlyCopy': True, 'failedInitialExtraSearches': 0,
-        'filteredCalendarTruthful': True}
+        'filteredCalendarTruthful': True,
+        'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0]}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
+        closed, expanded, saved = (actual.get(k) for k in (
+            'flightAlternativesClosedHeight', 'flightAlternativesExpandedHeight', 'flightAlternativesSavedHeight'))
+        need(all(type(value) in (int, float) and 0 < value < 10000 for value in (closed, expanded, saved))
+             and saved > 44 and abs(expanded - closed - saved) < 0.5,
+             'native_flight_disclosure_compactness_required')
         if key == (390, 100):
             need(actual.get('progressiveDrawerRetainedDraftAndFocus') is True
                  and actual.get('budgetBreakpointDraftRetained') is True, 'native_budget_progressive_draft_required')
@@ -311,7 +318,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 223, 'native_rendered_frame_count')
+    need(len(frames) == 233, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
