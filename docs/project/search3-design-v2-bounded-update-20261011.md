@@ -6,47 +6,59 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: native predecessor published, fresh visual successor selected
+## Current state: visual predecessor published, repaired startup/visual successor selected
 
-PR #4539 against `release/search3-design-v2` published exact source
-`b53d5ca0bf541e66b684018fb7db332de8fefaf3`, tree
-`65cdbc2658fd63e9782e34df4b2b83638e047aa0`, in terminal run38238503101
-attempt1. The published receipt and independently verified READY artifact11741379616
+PR #4542 against `release/search3-design-v2` published exact source
+`4955ee078aa0827f745d737681b4ed9187a274bd`, tree
+`07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84`, in terminal run38255222254
+attempt1. The published receipt and independently verified READY artifact11750031553
 agree on855 files and inventory digest
-`4c811808bd4fe9b5e7adee37024c09db938a9917f85a41c918bba637615e088f`.
-Command6122730823 and that publication are completed/no-replay; the old updater
+`b73e5dc35cdadb5936d8ba6a980b9f7014eed5a1d72f29397cc7f7b39570845e`.
+Command6125148522 and that publication are completed/no-replay; the old updater
 cannot publish over this new owner.
 
-This fresh successor is scoped to the visual/input package in PR #4542, exact
-source `4955ee078aa0827f745d737681b4ed9187a274bd`, tree
-`07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84`. Native CI38253455431 succeeded
-on that exact source, attempt1; artifact11748403944 is independently ZIP-hash
-verified. Receiving release `3e417d9e4d6f51344c1d7e66d4209a4bc2826911`
-has the same tree. These eight pins cover that final source/artifact, not the
-consumed publication. Independent final visual/HIGH review, exact-head control
+This fresh successor is scoped to the owner's request to finish and show the liked
+standalone version: retain the donor composition, show a truthful startup state
+and repair confirmed tour/responsive presentation gaps. Claims6126232317 and6126353347 own only
+the four existing control/test/documentation paths. PR #4544 source
+`f4340621be70adf06474a25bcdac5a1de6b17595` / successful CI38265622200 /
+artifact11754497662 is superseded: independent visual inspection found overlapping
+origin-caption lines at430/text200. It is intermediate evidence, not an accepted
+publication source. The repaired exact source is
+`0674fa6cc7744ee21cb073b284f089c20171f38e`, tree
+`fc82c5ba0e7326dfc41e85292cf358a86ddfff71`. Native CI38267274746 and
+Security38267274834 succeeded. Artifact11755033066 has a verified ZIP hash,
+163 passing frames and both enlarged-caption detector calibration proofs. The
+eight values below select this repaired source/artifact, not the consumed
+publication or superseded f434 evidence.
+The receiving `release/search3-design-v2` must contain the selected repaired source
+and have an identical runtime
+projection before a fresh command; no receiving commit is inferred from the
+artifact alone. Independent final visual/HIGH review, exact-head control
 CI, fresh receiving refs and predecessor, exclusive publisher claim and one fresh
 guarded command remain mandatory. No successor publication is inferred from this
 preparatory work.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `4955ee078aa0827f745d737681b4ed9187a274bd` |
-| source_tree | `07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84` |
-| build_run | `38253455431` |
-| artifact_id | `11748403944` |
-| source_ZIP_sha256 | `39350793d04a84c6f8d60941a0ef6eb2ef8fd0ef2b61876a60f68bedc6f1f15f` |
-| entry_html_sha256 | `2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809` |
+| source_sha | `0674fa6cc7744ee21cb073b284f089c20171f38e` |
+| source_tree | `fc82c5ba0e7326dfc41e85292cf358a86ddfff71` |
+| build_run | `38267274746` |
+| artifact_id | `11755033066` |
+| source_ZIP_sha256 | `a95b1b3de18f6b3b523dd97c8aa185bc429f4ed90216c5f7f0bfca17934d3edd` |
+| entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `a8b1b50ce32301fae2006e932f9353f3c9f9d285890e5a43af91b5dc56c3277d` |
+| source_manifest_sha256 | `28356f80ad1e6bfbb85c806de8b8671f6fdde1b8fcd3271f0ec3552fbf638818` |
 
 The only installed predecessor accepted by this successor is source
-`b53d5ca0bf541e66b684018fb7db332de8fefaf3`, publication run `38238503101`,
+`4955ee078aa0827f745d737681b4ed9187a274bd`, publication run `38255222254`,
 attempt1, 855-file inventory digest
-`4c811808bd4fe9b5e7adee37024c09db938a9917f85a41c918bba637615e088f`,
+`b73e5dc35cdadb5936d8ba6a980b9f7014eed5a1d72f29397cc7f7b39570845e`,
 and the matching owner with `status:published`.
 
 An absent, foreign, modified, activated or unknown owner/target aborts. Previous
-command6118298451/run38207863194 and command6122730823/run38238503101 are
+command6118298451/run38207863194, command6122730823/run38238503101 and
+command6125148522/run38255222254 are
 terminal/no-replay; every older completed source/run remains explicitly rejected.
 The completed lists no longer depend on the mutable predecessor constants, so
 selecting another predecessor cannot silently remove historical rejection entries.
@@ -111,12 +123,24 @@ readback remain separate requirements.
 The original110 mandatory frames remain required. This successor requires exactly
 33 additional native frames: budget-results and hotel-return at all ten matrix
 positions; budget-invalid and budget-draft at all six mobile positions; and
-budget-progress-invalid only at390/text100. All143 names, bytes and PNG hashes
-must match the bounded inventory; missing or arbitrary extra evidence is rejected.
+budget-progress-invalid only at390/text100. Those143 names remain mandatory. This
+startup package additionally requires exactly20 frames: native-startup-pending
+and native-startup-error at each matrix position. All163 names, bytes and PNG
+hashes must match the bounded inventory; missing or arbitrary extra evidence is
+rejected. Each case must prove startupPendingFormHidden:true,
+startupErrorSearches:0 and startupRetrySearches:0. Startup frames must identify
+the startup screen, have no displayed prices, and preserve readable header/full
+text; error frames must have exactly one visible, readable retry action.
 All cases additionally prove budgetLoadedCount2 and budgetExtraSearches0. The
 390/text100 case must retain progressive-update draft/focus and breakpoint draft.
-Native frames require measured readable condition/navigation/flight text without
-clipping or broken words, header bounds without overlap, readable sort text, and
+Native frames require measured readable form captions and condition/navigation/flight
+text without clipping, broken words or overlapping lines. Every readableText row
+must explicitly have overlappingLines:false; missing measurements are rejected.
+Cases390/text200 and430/text200 must explicitly prove
+enlargedCaptionPaintOverlapRegressionChecked:true: the browser detector measures
+actual glyph ink, detects collision when the old15px line height is restored
+under24px text, and observes no overlap with the repaired30px before and after.
+Frames also require header bounds without overlap, readable sort text, and
 budget inputs with measured text fitting their available width. Budget fonts must
 measure original13px desktop or16px mobile, doubled at text200, and desktop budget
 must preserve two columns at text100, one at text200. These added gates preserve
@@ -145,6 +169,7 @@ with the current published predecessor under the existing lock before either
 target is moved. Path sets must be identical, the predecessor digest must match
 the pinned receipt, and exactly these existing files may differ:
 
+- `visual-search/index.html`
 - `visual-search/native-v2/bootstrap.js`
 - `visual-search/native-v2/frontend.js`
 - `visual-search/native-v2/source-manifest.json`
@@ -153,7 +178,7 @@ the pinned receipt, and exactly these existing files may differ:
 
 Historical baseline allowances do not permit new legacy presentation, bridge,
 canonical dependency, provider, lead, brand or font changes in this successor.
-Its activation receipt reports the exact five changed payload paths. A different
+Its activation receipt reports the exact six changed payload paths. A different
 delta, missing/additional file or changed predecessor stops before activation.
 The original845 baseline remains the canonical byte comparison; the current855
 owner is the exact backup/rollback predecessor, not a replacement baseline.

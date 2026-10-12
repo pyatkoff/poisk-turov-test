@@ -76,7 +76,13 @@ class UpdateContracts(unittest.TestCase):
         pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
         for name in remote.NATIVE_SUCCESSOR_CHANGES:
             if name == remote.NATIVE_MANIFEST: continue
-            (self.source / 'payload' / name).write_text('reviewed native successor:' + name)
+            path = self.source / 'payload' / name
+            if name == 'visual-search/index.html':
+                path.write_text(path.read_text().replace('<main id="design-v2-native-root"></main>',
+                    '<main id="design-v2-native-root"><div role="status">Native startup fixture</div></main>'))
+            else: path.write_text('reviewed native successor:' + name)
+        native['entry']['html'] = remote.digest((self.source / 'payload/visual-search/index.html').read_bytes())
+        self.native_pin['entry_html_sha256'] = native['entry']['html']
         native['files'] = {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes())
                            for name in remote.NATIVE_ASSETS}
         native['graph'] = {'scripts': [row(src) for src in remote.NATIVE_SCRIPTS],
@@ -130,7 +136,8 @@ class UpdateContracts(unittest.TestCase):
             'contactPayloadFullTotal': 112000, 'contactPayloadFlightChoiceIndex': 0,
             'contactPreviewCount': 1, 'realLeadSubmissions': 0, 'backForwardRetainedSelection': True,
             'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
-            'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0}
+            'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
+            'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -140,9 +147,12 @@ class UpdateContracts(unittest.TestCase):
                 case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
                 if (width, percent) == (390, 100):
                     case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
+                if (width, percent) in ((390, 200), (430, 200)):
+                    case['proof']['enlargedCaptionPaintOverlapRegressionChecked'] = True
                 for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
                     side = name.split('-')[0]
-                    screen = ('filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
+                    screen = ('startup' if name.startswith('native-startup-')
+                              else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if name.startswith(('native-budget-results-', 'native-error-'))
                               else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
@@ -151,15 +161,15 @@ class UpdateContracts(unittest.TestCase):
                     size = (16 if width <= 430 else 13) * percent / 100
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'buttons': [{'text': 'Fixture action', 'clipped': False}],
-                        'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False}],
+                        'buttons': [] if name.startswith('native-startup-pending-') else [{'text': 'Fixture action', 'clipped': False}],
+                        'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False, 'overlappingLines': False}],
                         'headerFit': {'outside': False, 'overlap': False},
                         'sortFit': {'text': 'Fixture sort', 'available': 200, 'textWidth': 80} if screen == 'results' else None,
                         'budgetInputs': [{'text': text, 'available': 200, 'textWidth': 80, 'clipped': False,
                             'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
                                          for text in ('0', '150000')] if has_budget else [],
                         'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
-                        'prices': [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
+                        'prices': [] if screen == 'startup' else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
         contents['evidence/acceptance.json'] = remote.json_bytes(report)
@@ -180,8 +190,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'b53d5ca0bf541e66b684018fb7db332de8fefaf3')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38238503101)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '4955ee078aa0827f745d737681b4ed9187a274bd')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38255222254)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -249,18 +259,20 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_143_frames_and_readable_budget_header_sort(self):
+    def test_visual_successor_requires_exact_163_frames_and_readable_budget_header_sort(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 143)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 143)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 163)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 163)
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
         changes = [lambda r: r['cases'][0]['proof'].update(budgetLoadedCount=3),
             lambda r: r['cases'][0]['proof'].update(budgetExtraSearches=1),
             lambda r: r['cases'][2]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
             lambda r: r['cases'][2]['proof'].pop('budgetBreakpointDraftRetained'),
+            lambda r: r['cases'][3]['proof'].update(enlargedCaptionPaintOverlapRegressionChecked=False),
+            lambda r: r['cases'][5]['proof'].pop('enlargedCaptionPaintOverlapRegressionChecked'),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-hotel-return-')),
             lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
             lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
@@ -268,6 +280,8 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-budget-draft-', 1)['budgetInputs'][0].update(font='500 16px Aeroport, system-ui, sans-serif'),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'].pop(),
             lambda r: frame(r, 'native-results-')['readableText'][0].update(clipped=True),
+            lambda r: frame(r, 'native-search-')['readableText'][0].update(overlappingLines=True),
+            lambda r: frame(r, 'native-search-')['readableText'][0].pop('overlappingLines'),
             lambda r: frame(r, 'native-hotel-return-')['readableText'][0].update(brokenWords=True),
             lambda r: frame(r, 'native-tour-')['headerFit'].update(outside=True),
             lambda r: frame(r, 'native-lead-')['headerFit'].update(overlap=True),
@@ -282,6 +296,30 @@ class UpdateContracts(unittest.TestCase):
                 self.read_review(self.review_archive(mutate), 'bad-visual-evidence-' + str(i))
         with self.assertRaisesRegex(ValueError, 'native_rendered_evidence_inventory'):
             self.read_review(self.review_archive(lambda c: c.update({'evidence/unknown.png': b'unknown'})), 'extra-visual-frame')
+
+    def test_startup_proof_requires_exact_twenty_frames_no_prices_and_readable_retry(self):
+        def frame(report, name):
+            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith(name))
+        changes = [lambda r: r['cases'][0]['proof'].update(startupPendingFormHidden=False),
+            lambda r: r['cases'][0]['proof'].update(startupErrorSearches=1),
+            lambda r: r['cases'][0]['proof'].pop('startupRetrySearches'),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-startup-pending-')),
+            lambda r: frame(r, 'native-startup-error-').update(file='native-startup-unapproved-360-text100.png'),
+            lambda r: frame(r, 'native-startup-pending-').update(stageHidden=True),
+            lambda r: frame(r, 'native-startup-pending-').update(screen='results'),
+            lambda r: frame(r, 'native-startup-pending-')['prices'].append({'fontSize': 29}),
+            lambda r: frame(r, 'native-startup-error-')['buttons'].clear(),
+            lambda r: frame(r, 'native-startup-error-')['buttons'][0].update(clipped=True),
+            lambda r: frame(r, 'native-startup-pending-')['readableText'][0].update(clipped=True),
+            lambda r: frame(r, 'native-startup-pending-')['readableText'][0].update(overlappingLines=True),
+            lambda r: frame(r, 'native-startup-error-')['readableText'][0].pop('overlappingLines'),
+            lambda r: frame(r, 'native-startup-error-')['headerFit'].update(overlap=True)]
+        for i, change in enumerate(changes):
+            def mutate(contents):
+                report = json.loads(contents['evidence/acceptance.json']); change(report)
+                contents['evidence/acceptance.json'] = remote.json_bytes(report)
+            with self.subTest(index=i), self.assertRaises(ValueError):
+                self.read_review(self.review_archive(mutate), 'bad-startup-evidence-' + str(i))
 
     def test_native_inventory_cannot_accept_extra_or_missing_asset(self):
         path = self.source / 'payload/visual-search/native-v2/not-reviewed.js'; path.write_text('foreign')
@@ -332,10 +370,12 @@ class UpdateContracts(unittest.TestCase):
             '2eb237639c6c53c38f27d71684de43384842daf7',
             'a0e5f1e7c0083b45678df5837c7faf1cad8751f6',
             '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
-            'b53d5ca0bf541e66b684018fb7db332de8fefaf3'))
+            'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
+            '4955ee078aa0827f745d737681b4ed9187a274bd'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
+            self.assertIn('4955ee078aa0827f745d737681b4ed9187a274bd', remote.COMPLETED_SOURCES)
         for source in remote.COMPLETED_SOURCES:
             event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
@@ -405,11 +445,12 @@ class UpdateContracts(unittest.TestCase):
     def test_all_completed_publish_runs_cannot_replay(self):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197, 38207863194, 38237246171, 38238503101))
+                38197437835, 38203171197, 38207863194, 38237246171, 38238503101, 38255222254))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38238503101, remote.COMPLETED_PUBLISH_RUNS)
+            self.assertIn(38255222254, remote.COMPLETED_PUBLISH_RUNS)
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
@@ -450,12 +491,20 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_five_file_delta_and_same_855_paths(self):
+    def test_consumed_first_native_owner_cannot_claim_current_inventory(self):
+        before = {'target': self.digest, 'owner': {'run': 38238503101,
+            'source': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
+            'digest': self.digest, 'status': 'published'}}
+        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
+            remote.predecessor(before)
+
+    def test_successor_requires_exact_six_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'visual-search/native-v2/bootstrap.js', 'visual-search/native-v2/frontend.js',
+            'visual-search/index.html', 'visual-search/native-v2/bootstrap.js',
+            'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json', 'visual-search/native-v2/tour.js',
             'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
