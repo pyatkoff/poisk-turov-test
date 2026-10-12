@@ -1246,8 +1246,8 @@ function updateMealCounts(){
  return selectedInventory?.count;
 }
 function updateMealPicker(selectedCount=null){
- const query=($('#meal-query')?.value||'').trim().toLocaleLowerCase('ru-RU');let visible=0;
- $$('.meal-option').forEach(row=>{const value=row.querySelector('input').value;row.hidden=!!value&&!value.toLocaleLowerCase('ru-RU').includes(query);if(value&&!row.hidden)visible++;});
+ const query=normalizeSearch($('#meal-query')?.value||'');let visible=0;
+ $$('.meal-option').forEach(row=>{const value=row.querySelector('input').value,label=row.querySelector('strong')?.textContent||value,code=row.querySelector('small')?.textContent||'';row.hidden=!!value&&!normalizeSearch(label+' '+code).includes(query);if(value&&!row.hidden)visible++;});
  $('#meal-no-match').hidden=visible>0;
  $('#meal-selection-status').textContent=mealDraft.join(' · ')||'Любое питание';
  if($('#meal-clear-query'))$('#meal-clear-query').hidden=!query;
@@ -2476,7 +2476,7 @@ function handleSearchParameterAction(action,b,id){
  case 'age-pick':ageChoice.value=+b.dataset.value;updateAgeChoice();break;
  case 'apply-age':if(ageChoice.value!==null){guestDraft.ages[ageChoice.index]=ageChoice.value;modalBack();}break;
  case 'dates':openDates();break;case 'meals':openMeals();break;case 'budget':openBudget();break;
- case 'clear-meal-query':$('#meal-query').value='';updateMealPicker();$('#meal-query').focus();break;
+ case 'clear-meal-query':$('#meal-query').value='';updateMealPicker();rememberUIRoute();$('#meal-query').focus();break;
  case 'budget-preset':$('#budget-min').value=0;$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();break;
  case 'budget-adjust-max':$('#budget-max').value=b.dataset.value;updateBudgetPreview();rememberUIRoute();$('[data-action="apply-budget"]').focus({preventScroll:true});break;
  case 'apply-budget':{const budget=readBudget();if(!budget.valid){updateBudgetPreview();$(budget.invalidMin?'#budget-min':'#budget-max').focus();return true}filterBudgetEdit=null;pickerFilters().min=budget.min;pickerFilters().max=budget.max;finishFilterPicker();break}
