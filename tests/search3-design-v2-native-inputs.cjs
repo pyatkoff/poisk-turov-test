@@ -17,6 +17,31 @@ const click=selector=>node(selector).click(),tick=()=>new Promise(resolve=>w.set
 function input(selector,value,type='input'){const target=node(selector);target.value=value;target.dispatchEvent(new w.Event(type,{bubbles:true}));return target;}
 function submit(){node('[data-search-form]').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}
 const pop=direction=>new Promise((resolve,reject)=>{const timeout=w.setTimeout(()=>reject(new Error('history '+direction+' did not complete')),1000);w.addEventListener('popstate',()=>{w.clearTimeout(timeout);resolve();},{once:true});w.history[direction]();});
+async function loadedBudgetChecks(){
+ const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+ const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.add('st-mobile');
+ const cheap={...offer,key:'tourvisor:cheap',hotelId:8,total:99000},loaded=[hotel,{...hotel,id:8,name:'Cheaper fixture hotel',offers:[cheap]}];let searches=0;
+ const api={async init(){return{search:trip,filters:{...filters,min:0,max:null,hotelIds:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){searches++;const result={hotels:loaded,status:'complete'};cb(result);return result;}};
+ win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});await owner.ready;
+ const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click();
+ const edit=(s,value,type='input')=>{const n=el(s);n.value=value;n.dispatchEvent(new win.Event(type,{bubbles:true}));};
+ el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>win.setTimeout(r,0));
+ tap('[data-action="filters"]');assert.equal(el('[data-filter-apply]').textContent,'Показать 2 отеля');
+ edit('[data-filter-form] input[type="number"][data-native-budget="max"]','100000');
+ assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель','mobile budget updates the actual loaded result count before Apply');
+ assert.equal(el('[data-filter-form] input[type="range"]').value,'100000','number and slider agree');
+ edit('[data-filter-form] input[type="number"][data-native-budget="min"]','150000');
+ assert(el('[data-filter-apply]').disabled,'invalid range cannot silently apply prior valid values');assert(!el('[data-filter-form] [data-native-budget-error]').hidden);
+ assert.equal(owner.getState().filters.max,null,'unapplied budget remains a local draft');
+ tap('[data-action="close-filters"]');tap('[data-action="filters"]');assert.equal(el('[data-filter-form] input[type="number"][data-native-budget="max"]').value,'','Cancel restores the applied budget');
+ edit('[data-filter-form] input[type="number"][data-native-budget="max"]','100000');
+ const retained=owner.getState();owner.destroy();owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;
+ assert.equal(el('[data-filter-form] input[type="number"][data-native-budget="max"]').value,'100000','viewport remount retains the open filter draft');assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель');
+ tap('[data-action="apply-filters"]');assert.equal(product.querySelectorAll('.st-hotel-card').length,1);assert.strictEqual(owner.getState().hotels[1].offers[0],cheap,'local filtering preserves exact canonical offer reference');
+ tap('[data-action="filters"]');edit('[data-filter-form] input[type="range"]','112000');assert.equal(el('[data-filter-form] input[type="number"][data-native-budget="max"]').value,'112000');assert.equal(el('[data-filter-apply]').textContent,'Показать 2 отеля');
+ edit('[data-filter-form] input[type="number"][data-native-budget="max"]','');assert.equal(el('[data-filter-form] input[type="range"]').value,'112000');tap('[data-action="apply-filters"]');assert.equal(owner.getState().filters.max,null,'clearing the maximum really removes the cap');
+ assert.equal(searches,1,'budget edits, Cancel, Apply and viewport remount start no supplier search');owner.destroy();win.close();
+}
 (async()=>{
  await mounted.ready;assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
@@ -53,5 +78,5 @@ const pop=direction=>new Promise((resolve,reject)=>{const timeout=w.setTimeout((
  const container=w.document.createElement('div');container.innerHTML=builder.extract().markup;w.document.body.replaceChildren(container);const newRoot=container.querySelector('[data-product]');const remounted=w.AnyTourDesignV2Native.mount({root:newRoot,bridge,initialState:retained});await remounted.ready;
  assert(newRoot.querySelector('[data-search-form] [type="submit"]').disabled,'durable pending origin disables submit after remount');remounted.applyDictionarySnapshot({type:'complete',origin:'Калининград',generation:10,dictionaries});assert(!newRoot.querySelector('[data-search-form] [type="submit"]').disabled);assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград');remounted.applyDictionarySnapshot({type:'complete',origin:'Москва',generation:9,dictionaries});assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград','superseded durable dictionary receipt is ignored');remounted.applyDictionarySnapshot({type:'error',origin:'Калининград',generation:11,dictionaries,message:'Fixture dictionary unavailable'});assert(!newRoot.querySelector('[data-search-error]').hidden);
  assert(!newRoot.querySelector('[data-search-nights-editor]').hidden,'open input editor survives viewport remount');assert.equal(newRoot.querySelector('[name="minNights"]').value,'10');newRoot.querySelector('[data-native-night="14"]').click();assert.equal(newRoot.querySelector('[name="maxNights"]').value,'14','night range anchor survives remount');newRoot.querySelector('[data-search-editor-cancel="nights"]').click();assert.equal(newRoot.querySelector('[data-search-night-value]').textContent,'7 ночей','original editor cancel snapshot survives remount');assert.equal(starts,1);
- remounted.destroy();w.close();console.log('PASS native inputs: first/exact/range nights, month weekday alignment/Apply/Cancel, real dictionary destination/hotel constraints, budget/ages, stale origin/dictionary rejection, URL and Back/Forward exact offer identity, viewport draft/pending-origin remount; supplier starts only explicit submit');
+ remounted.destroy();await loadedBudgetChecks();w.close();console.log('PASS native inputs: first/exact/range nights, month weekday alignment/Apply/Cancel, real dictionary destination/hotel constraints, budget/ages, stale origin/dictionary rejection, URL and Back/Forward exact offer identity, viewport draft/pending-origin remount, loaded budget count/validation/slider/Cancel/remount; supplier starts only explicit submit');
 })().catch(error=>{console.error(error);mounted.destroy();w.close();process.exitCode=1;});

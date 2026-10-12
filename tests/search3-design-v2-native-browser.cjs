@@ -167,7 +167,12 @@ async function capture(page,side,width,percent,screen,row) {
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;}
       return{text:node.textContent,clipped};
     });
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,
+    const budgetInputs=[...root.querySelectorAll('.st-budget input[type="number"]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const style=getComputedStyle(node),canvas=document.createElement('canvas'),context=canvas.getContext('2d');context.font=style.font;
+      const text=node.value||node.placeholder,available=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),textWidth=context.measureText(text).width;
+      return{text,available,textWidth,clipped:textWidth>available+1,appearance:style.appearance};
+    });
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
@@ -175,6 +180,7 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
+  if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
   return measurements;
 }
 
@@ -244,6 +250,31 @@ async function referenceFrame(page,width,percent,screen,row) {
           await product.locator('[data-action="apply-filters"]').click();
         }else await product.locator('[data-action="reset-filters"]').first().click();
         assert.equal(await product.locator('.st-hotel-card').count(),4);
+        const budgetPanel=width<=760?product.locator('[data-filter-form]'):product.locator('[data-filter-sidebar]');
+        if(width<=760)await product.locator('[data-action="filters"]').first().click();
+        const cap=budgetPanel.locator('input[type="number"][data-native-budget="max"]');
+        await cap.fill('150000');
+        if(width<=760){
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля','Budget draft counts exact loaded rows');
+          assert.equal(await budgetPanel.locator('input[type="range"]').inputValue(),'150000');
+          await budgetPanel.locator('input[type="number"][data-native-budget="min"]').fill('200000');
+          assert.equal(await product.locator('[data-filter-apply]').isEnabled(),false,'Invalid budget cannot apply');
+          await capture(page,'native',width,percent,'budget-invalid',row);
+          await budgetPanel.locator('input[type="number"][data-native-budget="min"]').fill('0');
+          if(width===390&&percent===100){
+            await page.setViewportSize({width:768,height:900});await screen('filters').waitFor({state:'visible'});
+            await page.setViewportSize({width,height:900});await screen('filters').waitFor({state:'visible'});
+            assert.equal(await cap.inputValue(),'150000','Open budget draft survives real breakpoint remount');
+            assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля');row.proof.budgetBreakpointDraftRetained=true;
+          }
+          await capture(page,'native',width,percent,'budget-draft',row);
+          await product.locator('[data-action="apply-filters"]').click();
+        }else await cap.press('Tab');
+        assert.equal(await product.locator('.st-hotel-card').count(),2,'Budget cap uses the full loaded price');
+        await capture(page,'native',width,percent,'budget-results',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Budget edits and viewport remount start no supplier search');
+        row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;
+        await product.locator('[data-action="reset-filters"]').first().click();assert.equal(await product.locator('.st-hotel-card').count(),4);
         await product.locator('[data-hotel-open="1"]').first().click();
         await screen('hotel').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'hotel',row);await referenceFrame(reference,width,percent,'hotel',row);

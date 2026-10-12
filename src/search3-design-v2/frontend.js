@@ -15,7 +15,7 @@
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const listeners = new AbortController(); let alive = true, editor = null, editorSnapshot = null, searchEpoch = 0, originEpoch = 0;
     const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:false};
-    let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, photoIndex = 0, tourOwner = null;
+    let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
     const destinationHotels = new Map(), regionCache = new Map();
@@ -97,11 +97,13 @@
     }
     function show(screen, push = true) {
       if (!alive) return;
+      if(screen!=='filters'){filterDraft=null;filterBudgetValues=null;state.nativeFilters=null;}
       state.screen = screen;
       $$('[data-screen]').forEach(node => node.hidden = node.dataset.screen !== screen);
       $('.st-footer [data-action="search"]').hidden = screen === 'search';
       if (screen === 'search') openSearch();
       if (screen === 'results') renderResults();
+      if (screen === 'filters') renderFilterEditor();
       if (screen === 'hotel') renderHotel();
       if (screen === 'tour' || screen === 'lead') renderTour();
       if (screen === 'gallery') renderGallery();
@@ -117,9 +119,41 @@
       const coverage=facetCoverage();
       const options = [...new Set(state.hotels.flatMap(h => (h.offers || []).map(mealKey)))].filter(label => label !== 'Питание уточняется');
       const count = (group,value) => rows({...filters,[group]:[value]}).length;
-      const max = Math.max(1000,...state.hotels.flatMap(h => (h.offers || []).map(o => o.total).filter(Number.isFinite)));
+      const max = Math.max(1000,filters.min,filters.max || 0,...state.hotels.flatMap(h => (h.offers || []).map(o => o.total).filter(Number.isFinite)));
       const checkbox = (group,value,label) => `<label class="st-check"><input type="checkbox" data-native-filter="${group}" value="${esc(value)}" ${filters[group].includes(value) ? 'checked' : ''}><span>${esc(label)}</span><span class="st-filter-count" aria-label="${countText(count(group,value))}">${count(group,value)}</span></label>`;
-      return `<div class="st-group"><strong class="st-group-title">Бюджет за весь тур, ₽</strong><div class="st-budget"><label>От<input type="number" min="0" data-native-budget="min" aria-label="Бюджет от" value="${filters.min || ''}" placeholder="0"></label><label>До<input type="number" min="0" data-native-budget="max" aria-label="Бюджет до" value="${filters.max ?? ''}" placeholder="Без лимита"></label></div><input type="range" class="st-budget-range" data-native-budget="max" min="0" max="${max}" value="${filters.max ?? max}" aria-label="Максимальная цена тура"><p class="st-budget-caption">За всех туристов</p></div>${coverage.stars?`<div class="st-group"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:''}${coverage.meals?`<div class="st-group"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:''}`;
+      return `<div class="st-group"><strong class="st-group-title">Бюджет за весь тур, ₽</strong><div class="st-budget"><label>От<input type="number" inputmode="numeric" min="0" step="1" data-native-budget="min" aria-label="Бюджет от" value="${filters.min || ''}" placeholder="0"></label><label>До<input type="number" inputmode="numeric" min="0" step="1" data-native-budget="max" aria-label="Бюджет до" value="${filters.max ?? ''}" placeholder="Без лимита"></label></div><input type="range" class="st-budget-range" data-native-budget="max" min="0" max="${max}" value="${filters.max ?? max}" aria-label="Максимальная цена тура"><p class="st-budget-caption">За всех туристов</p><p class="st-budget-error" data-native-budget-error role="status" hidden></p></div>${coverage.stars?`<div class="st-group"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:''}${coverage.meals?`<div class="st-group"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:''}`;
+    }
+    function filterSnapshot(){return filterDraft?{filters:cloneFilters(filterDraft),budget:{...filterBudgetValues}}:null;}
+    function renderFilterEditor(){
+      if(!filterDraft){filterDraft=cloneFilters(state.nativeFilters?.filters||state.filters);filterBudgetValues=state.nativeFilters?.budget||{min:String(filterDraft.min||''),max:String(filterDraft.max??'')};}
+      const panel=$('[data-filter-form]');panel.innerHTML=filterHTML(filterDraft);
+      for(const node of panel.querySelectorAll('input[type="number"][data-native-budget]'))node.value=filterBudgetValues[node.dataset.nativeBudget];
+      validateResultBudget(panel);updateFilterDraft();
+    }
+    function updateFilterDraft(){
+      if(!filterDraft)return;
+      const panel=$('[data-filter-form]'),invalid=!!panel.querySelector('input[aria-invalid="true"]');
+      const apply=$('[data-filter-apply]');apply.disabled=invalid;apply.textContent=invalid?'Проверьте бюджет':'Показать '+countText(rows(filterDraft).length);
+      for(const node of panel.querySelectorAll('[data-native-filter]')){const group=node.dataset.nativeFilter,value=group==='stars'?Number(node.value):node.value,count=rows({...filterDraft,[group]:[value]}).length;const label=node.parentElement.querySelector('.st-filter-count');label.textContent=count;label.setAttribute('aria-label',countText(count));}
+      state.nativeFilters=filterSnapshot();
+    }
+    function validateResultBudget(panel){
+      const fields=[...panel.querySelectorAll('input[type="number"][data-native-budget]')],values={};let error='';
+      for(const node of fields){const raw=node.value.trim(),valid=!node.validity.badInput&&(raw===''||/^\d+$/.test(raw)&&Number.isSafeInteger(Number(raw)));node.setAttribute('aria-invalid',String(!valid));if(!valid)error='Укажите целую сумму в рублях.';else values[node.dataset.nativeBudget]=raw===''?(node.dataset.nativeBudget==='max'?null:0):Number(raw);}
+      if(!error&&values.max!==null&&values.min>values.max){error='Бюджет «от» должен быть не больше бюджета «до».';fields.forEach(node=>node.setAttribute('aria-invalid','true'));}
+      const hint=panel.querySelector('[data-native-budget-error]');hint.textContent=error;hint.hidden=!error;
+      return error?null:values;
+    }
+    function changeResultBudget(node,commit){
+      const panel=node.closest('[data-filter-form],[data-filter-sidebar]');if(!panel)return;
+      if(node.type==='range')panel.querySelector('input[type="number"][data-native-budget="max"]').value=node.value;
+      const values=validateResultBudget(panel);
+      if(filterDraft){filterBudgetValues=Object.fromEntries([...panel.querySelectorAll('input[type="number"][data-native-budget]')].map(field=>[field.dataset.nativeBudget,field.value]));}
+      if(values){
+        const range=panel.querySelector('input[type="range"]');range.max=Math.max(Number(range.max),values.min,values.max||0);range.value=values.max??range.max;
+        if(filterDraft)Object.assign(filterDraft,values);else if(commit){Object.assign(state.filters,values);renderResults();updateURL();}
+      }
+      updateFilterDraft();
     }
     function renderCalendar() {
       const days = [], s = state.search;
@@ -362,14 +396,14 @@
       if(action==='gallery'){photoIndex=0;show('gallery');return;}
       if(action==='favorites'){state.onlyFavorites=!state.onlyFavorites;show('results');return;}
       if(action==='reset-filters'){state.filters=defaultFilters();state.selectedDate=null;renderResults();updateURL();return;}
-      if(action==='filters'){filterDraft=cloneFilters(state.filters);$('[data-filter-form]').innerHTML=filterHTML(filterDraft);show('filters');return;}
+      if(action==='filters'){filterDraft=null;filterBudgetValues=null;state.nativeFilters=null;show('filters');return;}
       if(action==='close-filters'){filterDraft=null;show('results');return;}
-      if(action==='apply-filters'){state.filters=filterDraft;filterDraft=null;show('results');updateURL();return;}
+      if(action==='apply-filters'){if(!filterDraft||!validateResultBudget($('[data-filter-form]')))return;state.filters=filterDraft;show('results');updateURL();return;}
     }
     root.addEventListener('click',handleClick,{signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
-      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)text('[data-filter-apply]','Показать '+countText(rows(filterDraft).length));else{renderResults();updateURL();}}
-      if(d.nativeBudget){const f=filterDraft||state.filters,value=node.value===''?(d.nativeBudget==='max'?null:0):Number(node.value);if(value===null||Number.isSafeInteger(value)&&value>=0){const next={...f,[d.nativeBudget]:value};if(next.max===null||next.min<=next.max){f[d.nativeBudget]=value;node.removeAttribute('aria-invalid');if(!filterDraft){renderResults();updateURL();}}else node.setAttribute('aria-invalid','true');}else node.setAttribute('aria-invalid','true');}
+      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{renderResults();updateURL();}}
+      if(d.nativeBudget)changeResultBudget(node,true);
       if(d.nativeFormMeal){draftFilters.meals=node.checked?[...draftFilters.meals,d.nativeFormMeal]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);}
       if(d.nativeAge!==undefined){draft.ages[Number(d.nativeAge)]=node.value===''?null:Number(node.value);renderSearch();}
       if(node.classList.contains('st-sort')){state.sort=node.value;renderResults();updateURL();}
@@ -380,7 +414,7 @@
         finally{if(alive&&epoch===originEpoch)originPending=false;}
       }
     },{signal:listeners.signal});
-    root.addEventListener('input',event=>{const d=event.target.dataset;if(event.target.hasAttribute('data-destination-query'))loadDestination();if(d.searchBudget)validateBudget();}, {signal:listeners.signal});
+    root.addEventListener('input',event=>{const d=event.target.dataset;if(event.target.hasAttribute('data-destination-query'))loadDestination();if(d.searchBudget)validateBudget();if(d.nativeBudget)changeResultBudget(event.target,false);}, {signal:listeners.signal});
     root.addEventListener('keydown',event=>{if(event.key==='Escape'&&editor){event.preventDefault();closeEditor(true);}}, {signal:listeners.signal});
     $('[data-search-form]').addEventListener('submit',event=>{event.preventDefault();runSearch();},{signal:listeners.signal});
     $('[data-lead-form]').addEventListener('submit',event=>event.preventDefault(),{signal:listeners.signal});
