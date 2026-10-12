@@ -38,10 +38,8 @@ class UpdateContracts(unittest.TestCase):
             (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
         self.original_pin = patch.object(creator, 'SOURCE_LEDGER_SHA256', remote.digest((self.baseline / 'payload' / creator.LEDGER_PATH).read_bytes()))
         self.original_pin.start(); self.addCleanup(self.original_pin.stop)
-        creator.derive(self.baseline, self.root / 'installed', original_request(), creator.SOURCE_ZIP_SHA256)
-        (self.root / 'installed/payload/visual-search/app.js').write_text('previous published polish')
         self.source = self.root / 'source'; shutil.copytree(self.baseline, self.source)
-        (self.source / 'payload/visual-search/app.js').write_text('reviewed explicit nights UX')
+        (self.source / 'payload/visual-search/app.js').write_text('previous published polish')
         for name in remote.NATIVE_ASSETS:
             path = self.source / 'payload' / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('native fixture:' + name)
         html = '<!doctype html><meta name="robots" content="noindex,nofollow,noarchive"><main id="design-v2-native-root"></main>\n'
@@ -71,6 +69,20 @@ class UpdateContracts(unittest.TestCase):
         (self.source / 'control/manifest.json').write_bytes(remote.json_bytes(m))
         q = {**original_request(), 'source_sha': 'a' * 40, 'release_sha': 'a' * 40,
             'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
+        # The predecessor is already a native 855-file publication, not a legacy
+        # 845-file fixture with a patched owner. Its canonical and brand bytes
+        # stay identical while exactly four runtime owners and their manifest
+        # change for the new visual package.
+        pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
+        for name in remote.NATIVE_SUCCESSOR_CHANGES:
+            if name == remote.NATIVE_MANIFEST: continue
+            (self.source / 'payload' / name).write_text('reviewed native successor:' + name)
+        native['files'] = {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes())
+                           for name in remote.NATIVE_ASSETS}
+        native['graph'] = {'scripts': [row(src) for src in remote.NATIVE_SCRIPTS],
+                           'styles': [row(src) for src in remote.NATIVE_STYLES]}
+        (self.source / 'payload' / remote.NATIVE_MANIFEST).write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
+        self.native_pin['source_manifest_sha256'] = remote.digest((self.source / 'payload' / remote.NATIVE_MANIFEST).read_bytes())
         self.q, self.archive = pub.derive(self.source, self.baseline, self.root / 'derived', q, 'e' * 64)
         site_root = self.root / 'anytoour.ru'; parent = site_root / '_preview'; parent.mkdir(parents=True)
         for name in create_remote.REQUIRED:
@@ -118,7 +130,7 @@ class UpdateContracts(unittest.TestCase):
             'contactPayloadFullTotal': 112000, 'contactPayloadFlightChoiceIndex': 0,
             'contactPreviewCount': 1, 'realLeadSubmissions': 0, 'backForwardRetainedSelection': True,
             'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
-            'retryRows': 4, 'favoriteStoragePreserved': True}
+            'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -126,12 +138,27 @@ class UpdateContracts(unittest.TestCase):
         for width in (360,390,430,768,1280):
             for percent in (100,200):
                 case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
-                for side, screen in [(side,screen) for side in ('native','donor') for screen in ('search','results','hotel','tour','lead')] + [('native','error')]:
-                    name = f'{side}-{screen}-{width}-text{percent}.png'; png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
+                if (width, percent) == (390, 100):
+                    case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
+                for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
+                    side = name.split('-')[0]
+                    screen = ('filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
+                              else 'results' if name.startswith(('native-budget-results-', 'native-error-'))
+                              else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
+                    png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     contents['evidence/' + name] = png
-                    case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side,
+                    has_budget = screen == 'filters' or screen == 'results' and width >= 768
+                    size = (16 if width <= 430 else 13) * percent / 100
+                    case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
                         'buttons': [{'text': 'Fixture action', 'clipped': False}],
+                        'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False}],
+                        'headerFit': {'outside': False, 'overlap': False},
+                        'sortFit': {'text': 'Fixture sort', 'available': 200, 'textWidth': 80} if screen == 'results' else None,
+                        'budgetInputs': [{'text': text, 'available': 200, 'textWidth': 80, 'clipped': False,
+                            'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
+                                         for text in ('0', '150000')] if has_budget else [],
+                        'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
                         'prices': [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
@@ -153,8 +180,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38207863194)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'b53d5ca0bf541e66b684018fb7db332de8fefaf3')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38238503101)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -222,6 +249,40 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
+    def test_visual_successor_requires_exact_143_frames_and_readable_budget_header_sort(self):
+        content = self.review_archive()
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            report = json.loads(archive.read('evidence/acceptance.json'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 143)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 143)
+        def frame(report, prefix, case=0):
+            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
+        changes = [lambda r: r['cases'][0]['proof'].update(budgetLoadedCount=3),
+            lambda r: r['cases'][0]['proof'].update(budgetExtraSearches=1),
+            lambda r: r['cases'][2]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
+            lambda r: r['cases'][2]['proof'].pop('budgetBreakpointDraftRetained'),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-hotel-return-')),
+            lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
+            lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
+            lambda r: frame(r, 'native-budget-draft-')['budgetInputs'][0].update(textWidth=201.1),
+            lambda r: frame(r, 'native-budget-draft-', 1)['budgetInputs'][0].update(font='500 16px Aeroport, system-ui, sans-serif'),
+            lambda r: frame(r, 'native-budget-draft-')['budgetInputs'].pop(),
+            lambda r: frame(r, 'native-results-')['readableText'][0].update(clipped=True),
+            lambda r: frame(r, 'native-hotel-return-')['readableText'][0].update(brokenWords=True),
+            lambda r: frame(r, 'native-tour-')['headerFit'].update(outside=True),
+            lambda r: frame(r, 'native-lead-')['headerFit'].update(overlap=True),
+            lambda r: frame(r, 'native-results-')['sortFit'].update(textWidth=202),
+            lambda r: frame(r, 'native-results-', 8).update(budgetColumns=1),
+            lambda r: frame(r, 'native-budget-results-')['prices'].clear()]
+        for i, change in enumerate(changes):
+            def mutate(contents):
+                report = json.loads(contents['evidence/acceptance.json']); change(report)
+                contents['evidence/acceptance.json'] = remote.json_bytes(report)
+            with self.subTest(index=i), self.assertRaises(ValueError):
+                self.read_review(self.review_archive(mutate), 'bad-visual-evidence-' + str(i))
+        with self.assertRaisesRegex(ValueError, 'native_rendered_evidence_inventory'):
+            self.read_review(self.review_archive(lambda c: c.update({'evidence/unknown.png': b'unknown'})), 'extra-visual-frame')
+
     def test_native_inventory_cannot_accept_extra_or_missing_asset(self):
         path = self.source / 'payload/visual-search/native-v2/not-reviewed.js'; path.write_text('foreign')
         with self.assertRaisesRegex(ValueError, 'source_inventory_drift'):
@@ -269,7 +330,12 @@ class UpdateContracts(unittest.TestCase):
             '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
             '634d1c97fd7bf499107d82036588f4bd77176d93',
             '2eb237639c6c53c38f27d71684de43384842daf7',
-            'a0e5f1e7c0083b45678df5837c7faf1cad8751f6', remote.PREDECESSOR_SOURCE))
+            'a0e5f1e7c0083b45678df5837c7faf1cad8751f6',
+            '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
+            'b53d5ca0bf541e66b684018fb7db332de8fefaf3'))
+        with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
+            self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
+            self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
         for source in remote.COMPLETED_SOURCES:
             event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
@@ -339,7 +405,11 @@ class UpdateContracts(unittest.TestCase):
     def test_all_completed_publish_runs_cannot_replay(self):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197, 38207863194, 38237246171))
+                38197437835, 38203171197, 38207863194, 38237246171, 38238503101))
+        with patch.object(remote, 'PREDECESSOR_RUN', 999):
+            self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
+            self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
+            self.assertIn(38238503101, remote.COMPLETED_PUBLISH_RUNS)
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
@@ -373,6 +443,64 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
+    def test_consumed_meal_reconciliation_owner_cannot_claim_native_inventory(self):
+        before = {'target': self.digest, 'owner': {'run': 38207863194,
+            'source': '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
+            'digest': self.digest, 'status': 'published'}}
+        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
+            remote.predecessor(before)
+
+    def test_successor_requires_exact_five_file_delta_and_same_855_paths(self):
+        before = remote.inventory(self.site.target)
+        after = remote.inventory(self.root / 'derived/payload')
+        self.assertEqual(len(before), 855)
+        self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
+            'visual-search/native-v2/bootstrap.js', 'visual-search/native-v2/frontend.js',
+            'visual-search/native-v2/source-manifest.json', 'visual-search/native-v2/tour.js',
+            'visual-search/native-v2/viewport.css'))
+        self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
+        for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
+                     'visual-search/native-v2/donor.css', 'prototype-search/data.js'):
+            bad = {**after, name: 'f' * 64}
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
+                remote.predecessor_delta(before, bad)
+        missing = dict(after); missing.pop(remote.NATIVE_SUCCESSOR_CHANGES[0])
+        substituted = {**missing, 'visual-search/native-v2/unknown.js': 'f' * 64}
+        for bad in (missing, substituted, {**after, 'unknown.js': 'f' * 64}):
+            with self.assertRaisesRegex(ValueError, 'successor_inventory_drift'):
+                remote.predecessor_delta(before, bad)
+        incomplete = {**after, remote.NATIVE_SUCCESSOR_CHANGES[0]: before[remote.NATIVE_SUCCESSOR_CHANGES[0]]}
+        with self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
+            remote.predecessor_delta(before, incomplete)
+
+    def test_historical_allowances_cannot_activate_extra_legacy_or_bridge_change(self):
+        manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
+        manifest_original = manifest_path.read_bytes()
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/bridge.js')):
+            path = self.source / 'payload' / name; original = path.read_bytes()
+            try:
+                path.write_bytes(original + b' extra change outside successor scope')
+                native = copy.deepcopy(self.native)
+                if name in remote.NATIVE_ASSETS:
+                    native['files'][Path(name).name] = remote.digest(path.read_bytes())
+                    for rows in native['graph'].values():
+                        for row in rows:
+                            if row['path'] == name:
+                                row.update(sha256=remote.digest(path.read_bytes()), bytes=path.stat().st_size)
+                    manifest_path.write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
+                with patch.dict(self.native_pin, {'source_manifest_sha256': remote.digest(manifest_path.read_bytes())}):
+                    q, archive = pub.derive(self.source, self.baseline, self.root / ('extra-delta-' + str(i)), self.q, 'e' * 64)
+                    fd, upload_name = tempfile.mkstemp(prefix='search3-design-v2-update.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
+                    upload = Path(upload_name); upload.write_bytes(archive); self.uploads.append(upload)
+                    q.update(deploy_run=791 + i, archive=upload_name, before=self.site.snapshot())
+                    with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
+                        self.site.activate(q)
+                    self.assertEqual(self.site.snapshot(), q['before'])
+                    self.assertFalse((self.site.receipt(q) / 'predecessor').exists())
+                    self.assertEqual(self.site.finish(q, True)['status'], 'not_activated')
+            finally:
+                path.write_bytes(original); manifest_path.write_bytes(manifest_original)
+
     def test_supplier_price_lead_logo_font_and_unknown_payload_changes_denied(self):
         for name in ['prototype-search/data.js', 'search-page-v2.php', 'site-path-v1.php',
                 'visual-search/preview-lead.js', 'prototype-search/lead.js', 'tour-controller-v4.js',
@@ -405,19 +533,29 @@ class UpdateContracts(unittest.TestCase):
 
     def test_activate_and_publish_preserve_production_all_old_previews(self):
         q = self.staged(); old = self.site.protected()
-        self.assertEqual(self.site.activate(q)['status'], 'activated')
+        before_files = remote.inventory(self.site.target)
+        activation = self.site.activate(q)
+        self.assertEqual(activation['status'], 'activated')
+        self.assertEqual(activation['changed_payload_files'], list(remote.NATIVE_SUCCESSOR_CHANGES))
+        self.assertEqual(activation['files'], 855)
         self.assertEqual(self.site.finish(q)['status'], 'published')
         self.assertEqual(self.site.protected(), old)
         self.assertEqual(remote.digest(remote.json_bytes(remote.inventory(self.site.target))), self.q['target_digest'])
         self.assertEqual(remote.digest(remote.json_bytes(remote.inventory(self.site.receipt(q) / 'predecessor'))), self.digest)
+        self.assertEqual(remote.inventory(self.site.receipt(q) / 'predecessor'), before_files)
         self.assertEqual(json.loads(self.site.owner.read_bytes())['status'], 'published')
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'): self.site.activate(self.staged(run=790))
 
     def test_rollback_restores_exact_target_owner_and_old_previews(self):
+        before_files = remote.inventory(self.site.target)
         q = self.staged(); self.site.activate(q)
         self.assertEqual(self.site.finish(q, True)['status'], 'rolled_back_to_exact_predecessor')
         self.assertEqual(self.site.snapshot(), q['before'])
         self.assertEqual((self.site.target / 'visual-search/app.js').read_text(), 'previous published polish')
+        self.assertEqual(remote.inventory(self.site.target), before_files)
+        self.assertEqual(len(before_files), 855)
+        self.assertEqual((self.site.target / 'visual-search/native-v2/bootstrap.js').read_text(),
+                         'native fixture:visual-search/native-v2/bootstrap.js')
 
     def test_completed_publish_or_rollback_cannot_replay(self):
         q = self.staged(); self.site.activate(q); self.site.finish(q)

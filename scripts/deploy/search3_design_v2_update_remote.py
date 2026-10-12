@@ -1,6 +1,6 @@
 """One reviewed update of the existing separate design preview; no other target.
 
-The predecessor is the terminal meal-catalog reconciliation update, not a caller-selected path.
+The predecessor is the terminal standalone native update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -18,15 +18,18 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d'
-PREDECESSOR_RUN = 38207863194
-PREDECESSOR_DIGEST = '62c9d3fcd75fd696f71881220b1c7cd1ff0b6e569e752b737ed1f0c83d9f25d3'
+PREDECESSOR_SOURCE = 'b53d5ca0bf541e66b684018fb7db332de8fefaf3'
+PREDECESSOR_RUN = 38238503101
+PREDECESSOR_DIGEST = '4c811808bd4fe9b5e7adee37024c09db938a9917f85a41c918bba637615e088f'
+# Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
     '2eb237639c6c53c38f27d71684de43384842daf7',
-    'a0e5f1e7c0083b45678df5837c7faf1cad8751f6', PREDECESSOR_SOURCE)
+    'a0e5f1e7c0083b45678df5837c7faf1cad8751f6',
+    '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
+    'b53d5ca0bf541e66b684018fb7db332de8fefaf3')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-    38197437835, 38203171197, PREDECESSOR_RUN, 38237246171)
+    38197437835, 38203171197, 38207863194, 38237246171, 38238503101)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -40,14 +43,14 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact retained native source artifact; activation still requires all fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
-    'source_tree': '65cdbc2658fd63e9782e34df4b2b83638e047aa0',
-    'build_run': 38236619254,
-    'artifact_id': 11740981928,
-    'source_ZIP_sha256': '06d9e3a9f42d434d2fe02c6db2cd902474f9d16c2038cd330e82289896056c6d',
+    'source_sha': '4955ee078aa0827f745d737681b4ed9187a274bd',
+    'source_tree': '07009af0c6d0f3c45ec52ff5f5cbc0f92b082b84',
+    'build_run': 38253455431,
+    'artifact_id': 11748403944,
+    'source_ZIP_sha256': '39350793d04a84c6f8d60941a0ef6eb2ef8fd0ef2b61876a60f68bedc6f1f15f',
     'entry_html_sha256': '2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': 'c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650',
+    'source_manifest_sha256': 'a8b1b50ce32301fae2006e932f9353f3c9f9d285890e5a43af91b5dc56c3277d',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -58,6 +61,11 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
+# This successor replaces no paths: only these five existing native files differ
+# from the exact 855-file published predecessor. Historical baseline allowances
+# above do not authorize fresh legacy/provider/brand changes.
+NATIVE_SUCCESSOR_CHANGES = tuple('visual-search/native-v2/' + name for name in (
+    'bootstrap.js', 'frontend.js', 'source-manifest.json', 'tour.js', 'viewport.css'))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
@@ -188,6 +196,16 @@ def predecessor(before):
          and before.get('owner') == PREDECESSOR_OWNER, 'exact_published_predecessor_required')
 
 
+def predecessor_delta(before, after):
+    need(isinstance(before, dict) and isinstance(after, dict)
+         and len(before) == len(after) == 845 + len(NATIVE_ADDED)
+         and before.keys() == after.keys(), 'successor_inventory_drift')
+    need(digest(json_bytes(before)) == PREDECESSOR_DIGEST, 'successor_predecessor_drift')
+    changes = tuple(sorted(n for n in before if before[n] != after[n]))
+    need(changes == NATIVE_SUCCESSOR_CHANGES, 'unreviewed_predecessor_delta')
+    return changes
+
+
 def verify(root, q):
     validate(q)
     body = (root / 'control/manifest.json').read_bytes()
@@ -256,6 +274,7 @@ class Site(CreateSite):
             try:
                 safe_extract(archive, stage)
                 files = verify(stage, q)
+                changes = predecessor_delta(inventory(self.target), files)
                 shutil.copyfile(stage / 'control/manifest.json', receipt / 'manifest.json')
                 need(self.snapshot() == q['before'], 'predecessor_changed')
                 self.target.rename(receipt / 'predecessor')
@@ -263,7 +282,8 @@ class Site(CreateSite):
                 self.write_owner({'run': q['deploy_run'], 'source': q['source_sha'],
                     'digest': q['target_digest'], 'status': 'activated'}, q)
                 need(inventory(self.target) == files and self.protected() == q['before']['protected'], 'activation_readback')
-                return {'status': 'activated', 'files': len(files), 'predecessor_retained': True}
+                return {'status': 'activated', 'files': len(files), 'predecessor_retained': True,
+                    'changed_payload_files': list(changes)}
             finally:
                 if stage.exists(): shutil.rmtree(stage)
                 archive.unlink(missing_ok=True)
