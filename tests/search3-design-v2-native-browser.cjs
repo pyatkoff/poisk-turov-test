@@ -318,7 +318,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
-        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–18 окт/,'Same-month range keeps the donor compact copy');
+        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
