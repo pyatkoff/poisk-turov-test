@@ -126,7 +126,7 @@ const chosenDepartureJourney=async(browser,origin,base,evidence)=>{
    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
   });
   const to=new Date(Date.parse(trip.from+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
-  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to,ages:'',searched:'1'}));
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,to,ages:''}));
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(transport.calls.filter(call=>call.action==='search_start').length,0);
   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
@@ -1100,6 +1100,41 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   console.log('PASS compiled search delivery: pending unknown count, healthy native first page, explicit failed continuation/retained offers, passive disclosure/focus and five widths/text200; supplier HTTP0');
  }finally{releaseAnex();await context.close();}
 };
+const bootSearchIntentJourney=async(browser,origin,base,evidence)=>{
+ const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage();
+ page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+ try{
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());
+   if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+   if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+   try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+  });
+  const starts=()=>transport.calls.filter(call=>call.action==='search_start').length;
+  const waitForSearch=()=>page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта')&&document.querySelector('#search-form').hidden);
+  let releaseCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseCatalog=resolve);
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
+  assert.equal(starts(),0,'explicit searched link waits for exact catalogue and URL hydration');
+  assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true');
+  releaseCatalog();delete transport.state.countryGates['1'];
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await waitForSearch();
+  assert.equal(starts(),1,'explicit searched link starts exactly once after hydration');
+  const firstURL=new URL(page.url());
+  for(const [key,value] of Object.entries({...trip,ages:'',stars:'4',searched:'1'}))assert.equal(firstURL.searchParams.get(key),String(value),key+' survives boot URL normalisation');
+  let releaseReloadCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseReloadCatalog=resolve);
+  await page.reload();assert.equal(starts(),1,'reload remains passive until catalogue hydration completes');
+  releaseReloadCatalog();delete transport.state.countryGates['1'];
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await waitForSearch();await page.waitForTimeout(250);
+  assert.equal(starts(),2,'reload consumes the explicit boot intent once, without duplicate search');
+  const reloadedURL=new URL(page.url());
+  for(const [key,value] of Object.entries({...trip,ages:'',stars:'4',searched:'1'}))assert.equal(reloadedURL.searchParams.get(key),String(value),key+' survives reload URL normalisation');
+  assert(!transport.calls.some(call=>/quote|lead/.test(call.url)),'boot search never crosses quote or lead boundaries');
+  assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+  await page.screenshot({path:path.join(evidence,'searched-link-boot-390.png')});
+  fs.writeFileSync(path.join(evidence,'searched-link-boot-390.json'),JSON.stringify({width:390,initial_search_starts:1,reload_total_search_starts:2,searched_retained:true,exact_trip_retained:true,quote_requests:0,lead_requests:0,supplier_HTTP:0,physicalSafari:false},null,2));
+  console.log('PASS compiled searched=1 boot: delayed hydration, exact URL, one search per load, reload no duplicate; supplier HTTP0');
+ }finally{await context.close();}
+};
 // Off for the real-default regression below. Retained SAMO integration journeys
 // explicitly enable only this local fictional transport after that check passes.
 let enableSamoFixture=false;
@@ -1146,6 +1181,7 @@ const server=http.createServer((req,res)=>{
    fs.writeFileSync(path.join(evidence,'samo-paused-'+width+'.json'),JSON.stringify({width,providers:['tourvisor','anex'],samo_requests:0,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
   }
   console.log('PASS compiled default config at390/1280: TV + direct ANEX offers; SAMO requests0');
+  await bootSearchIntentJourney(browser,origin,base,evidence);
   await searchDeliveryJourney(browser,origin,base,evidence);
   enableSamoFixture=true;
   // Complete, independent matrices share only immutable compiled assets. The
@@ -1175,7 +1211,7 @@ const server=http.createServer((req,res)=>{
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    receipts.push({width,targeted_hotel_picker:true,supplier_requests:0,lead_requests:0});await context.close();continue;
   }
-  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
+  await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true','initial form discloses catalog/URL hydration');
   assert.equal(await hydrationControls.evaluateAll(controls=>controls.every(control=>control.disabled)),true,'initial controls cannot accept input that URL hydration would overwrite');

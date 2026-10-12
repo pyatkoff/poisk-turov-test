@@ -64,6 +64,10 @@ const amenityNames=new Map();
 const countriesTo={};
 const operators=[];
 const data=window.AnyTourPrototypeData;
+// URL rendering during catalogue hydration is deliberately passive and may
+// normalise the address. Preserve the caller's explicit boot intent before it
+// can be removed, then consume it only after the full URL state is restored.
+const bootSearchRequested=data.live&&new URLSearchParams(location.search).get('searched')==='1';
 const popularity=window.AnyTourHotelPopularityV1;
 const flightLabel=o=>o?.flight==='regular'?'Регулярный':o?.flight==='charter'?'Чартер':'';
 const needsRefresh=o=>o.cached||(!data.preview&&o.provider!=='tourvisor')||o.raw?.selectionEnabled===false;
@@ -2703,7 +2707,7 @@ async function bootRealData(){
  if(!urlStateHydrated&&catalogError&&errorNode)errorNode.dataset.catalogRetry='pending';
  catalogReady=false;$('.search-submit').disabled=true;catalogError='';$$('[data-action="retry-catalog"]').forEach(button=>button.disabled=true);updateSearchUI();if(modalType==='destination')renderDestination();
  if(retryFocused&&!errorNode?.hidden)restoreFocus(null,errorNode);
- try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();urlStateHydrated=true;await loadResorts(state.search.country);catalogReady=true;updateSearchUI();renderResults();if(modalType==='destination'){if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');renderCalendarScope();loadCalendarPrices();}await restoreURLHotel();if(!data.live)await restoreSavedHotels();$('#fixture-description').textContent=data.describe();if(data.live){const requestedSearch=new URLSearchParams(location.search).get('searched')==='1';state.hasSearched=requestedSearch;renderFilters();renderResults();updateSearchUI();if(requestedSearch)runSearch();}else{state.hasSearched=true;runSearch();}}
+ try{applyCatalog(await data.init(new URLSearchParams(location.search).get('origin')||draft.origin));state.search=structuredClone(draft);restoreURL();urlStateHydrated=true;await loadResorts(state.search.country);catalogReady=true;updateSearchUI();renderResults();if(modalType==='destination'){if(!countryNames[destinationChoice.country])destinationChoice=structuredClone(currentDraftDestination());lookupDestination();}if(modalType==='dates'){dateContext=createDateContext(dateContext?.source==='results'?'results':'form');renderCalendarScope();loadCalendarPrices();}await restoreURLHotel();if(!data.live)await restoreSavedHotels();$('#fixture-description').textContent=data.describe();if(data.live){state.hasSearched=bootSearchRequested;renderFilters();renderResults();updateSearchUI();if(bootSearchRequested)runSearch();}else{state.hasSearched=true;runSearch();}}
  catch(error){catalogError=error.message;updateSearchUI();$('#cards').innerHTML=`<div class="empty"><h3>Не удалось загрузить направления</h3><p>${esc(error.message)}</p><button class="primary" data-action="retry-catalog">Повторить</button></div>`;if(modalType==='destination')renderDestination();}
 }
 document.addEventListener('click',event=>{const b=event.target.closest('[data-action]');if(!b||b.disabled)return;if(b.dataset.action==='refresh-hotel')refreshHotel(Number(b.dataset.id),false,{continueSoleFlight:true});if(b.dataset.action==='retry-flights')loadRealFlights(selectionGeneration,{chooseFlight:true});if(b.dataset.action==='retry-catalog'&&catalogError)bootRealData();});
