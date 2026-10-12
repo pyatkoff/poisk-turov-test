@@ -1111,20 +1111,20 @@ const bootSearchIntentJourney=async(browser,origin,base,evidence)=>{
    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
   });
   const starts=()=>transport.calls.filter(call=>call.action==='search_start').length;
-  const waitForSearch=()=>page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта')&&document.querySelector('#search-form').hidden);
+  const waitForStart=()=>page.waitForResponse(response=>new URL(response.url()).searchParams.get('action')==='search_start');
   let releaseCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseCatalog=resolve);
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
   assert.equal(starts(),0,'explicit searched link waits for exact catalogue and URL hydration');
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true');
-  releaseCatalog();delete transport.state.countryGates['1'];
-  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await waitForSearch();
+  const firstStart=waitForStart();releaseCatalog();delete transport.state.countryGates['1'];
+  await firstStart;await page.waitForFunction(()=>!document.querySelector('#results').classList.contains('results-pristine')&&new URL(location.href).searchParams.get('searched')==='1');await page.waitForTimeout(250);
   assert.equal(starts(),1,'explicit searched link starts exactly once after hydration');
   const firstURL=new URL(page.url());
   for(const [key,value] of Object.entries({...trip,ages:'',stars:'4',searched:'1'}))assert.equal(firstURL.searchParams.get(key),String(value),key+' survives boot URL normalisation');
   let releaseReloadCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseReloadCatalog=resolve);
   await page.reload();assert.equal(starts(),1,'reload remains passive until catalogue hydration completes');
-  releaseReloadCatalog();delete transport.state.countryGates['1'];
-  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);await waitForSearch();await page.waitForTimeout(250);
+  const reloadStart=waitForStart();releaseReloadCatalog();delete transport.state.countryGates['1'];
+  await reloadStart;await page.waitForFunction(()=>!document.querySelector('#results').classList.contains('results-pristine')&&new URL(location.href).searchParams.get('searched')==='1');await page.waitForTimeout(250);
   assert.equal(starts(),2,'reload consumes the explicit boot intent once, without duplicate search');
   const reloadedURL=new URL(page.url());
   for(const [key,value] of Object.entries({...trip,ages:'',stars:'4',searched:'1'}))assert.equal(reloadedURL.searchParams.get(key),String(value),key+' survives reload URL normalisation');
