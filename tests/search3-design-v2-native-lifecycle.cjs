@@ -2,11 +2,16 @@
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm');
 const {test} = require('node:test');
 const {JSDOM} = require('jsdom');
+const builder = require('../scripts/build/search3_design_v2_native.cjs');
 const source = fs.readFileSync(require.resolve('../src/search3-design-v2/bridge.js'), 'utf8');
 const bootstrap = fs.readFileSync(require.resolve('../src/search3-design-v2/bootstrap.js'), 'utf8');
 const trip = {origin:'Москва', country:'4', from:'2026-10-25', to:'2026-10-31', minNights:7, maxNights:7, adults:2, ages:[0,17]};
 const deferred = () => {let resolve, reject; const promise = new Promise((a,b) => {resolve=a; reject=b;}); return {promise,resolve,reject};};
 const tick = () => new Promise(setImmediate);
+const startupShell = '<div class="st-app st-native-startup" data-native-startup><section role="status" aria-live="polite" aria-atomic="true" data-native-startup-status><h1 data-native-startup-heading>Готовим поиск туров</h1><p data-native-startup-message>Загружаем города вылета и направления…</p><button type="button" data-native-startup-retry hidden>Обновить страницу</button></section></div>';
+function bootstrapDOM() {
+  return new JSDOM('<main id="design-v2-native-root" aria-busy="true"><div id="b4">'+startupShell+'<div data-variant="Мобильная версия"><div class="st-mobile" data-product hidden><main class="st-main"></main></div></div><div data-variant="На компьютере"><div data-desktop-mount></div></div></div></main>',{runScripts:'outside-only'});
+}
 function harness(extra = {}, query = '') {
   const context = {URLSearchParams, Date, Promise, console}; context.window = context;
   vm.createContext(context); vm.runInContext(source, context);
@@ -58,23 +63,57 @@ test('durable search subscriptions replay current results and reject older strea
 });
 test('viewport remount receives pending results with no repeated supplier start or stale ready effect', async () => {
   const h=harness(); await h.bridge.init();
-  const dom=new JSDOM('<main id="design-v2-native-root" aria-busy="true"><div id="b4"><div data-variant="Мобильная версия"><div class="st-mobile" data-product hidden><main class="st-main"></main></div></div><div data-variant="На компьютере"><div data-desktop-mount></div></div></div></main>',{runScripts:'outside-only'});
+  const dom=bootstrapDOM();
   const w=dom.window; let change; const media={matches:true,addEventListener(name,callback){change=callback;}};
   w.matchMedia=()=>media; w.AnyTourDesignV2Bridge={create:()=>h.bridge}; const mounts=[];
-  w.AnyTourDesignV2Native={mount({root,initialState}){const d=deferred(),state=initialState||{screen:'results',search:trip,hasSearched:true,status:'loading',hotels:[]};
-    const mount={root,state,d,ready:d.promise,renders:0,getState:()=>state,render(){this.renders++;},destroy(){this.dead=true;}}; mounts.push(mount); return mount;}};
+  w.AnyTourDesignV2Native={mount({root,initialState,onReady}){const d=deferred(),state=initialState||{screen:'results',search:trip,hasSearched:true,status:'loading',hotels:[]};
+    const mount={root,state,d,onReady,ready:d.promise,renders:0,getState:()=>state,render(){this.renders++;},destroy(){this.dead=true;}}; mounts.push(mount); return mount;}};
   w.eval(bootstrap); await h.bridge.search(trip,{}); assert.equal(h.calls.length,1);
+  const startup=w.document.querySelector('[data-native-startup]');assert.equal(startup.hidden,false);assert.equal(startup.getAttribute('class').includes('st-mobile'),true);
   media.matches=false; change(); assert.equal(mounts.length,2); assert.equal(mounts[0].dead,true); assert.strictEqual(mounts[1].state,mounts[0].state);
   h.streams[0]({type:'results',hotels:[{id:7,country:'4',offers:[]}]}); h.streams[0]({type:'complete'});
   assert.equal(mounts[1].state.hotels[0].id,7); assert.equal(mounts[1].state.status,'complete'); assert.equal(h.calls.length,1);
   mounts[0].d.reject(new Error('Old initialization')); await tick();
+  mounts[0].onReady();assert.equal(startup.hidden,false,'stale bound callback cannot remove the latest pending shell');
   assert.equal(w.document.getElementById('design-v2-native-root').getAttribute('aria-busy'),'true');
   assert.equal(mounts[0].root.querySelector('.st-main').textContent,'');
   mounts[1].d.resolve(); await tick(); assert.equal(w.document.getElementById('design-v2-native-root').getAttribute('aria-busy'),'false');
+  assert.equal(startup.hidden,true);assert.equal(mounts[1].root.hidden,false);
   // A retained history view of another trip must not consume current results.
   mounts[1].state.search={...trip,from:'2026-09-01',to:'2026-09-07'};
   h.streams[0]({type:'results',hotels:[{id:8,country:'4',offers:[]}]}); assert.equal(mounts[1].state.hotels[0].id,7);
   w.close();
+});
+test('startup failure keeps donor forms hidden, exposes page reload and rejects stale remount recovery', async () => {
+  const dom=bootstrapDOM(),w=dom.window;let change;const media={matches:true,addEventListener(name,callback){change=callback;}};
+  w.matchMedia=()=>media;w.AnyTourDesignV2Bridge={create:()=>({subscribe(){}})};const mounts=[];
+  w.AnyTourDesignV2Native={mount({root,onReady}){const d=deferred(),mount={root,onReady,d,ready:d.promise,getState:()=>({}),destroy(){}};mounts.push(mount);return mount;}};
+  // A minimal document facade observes the actual reload listener without
+  // replacing jsdom's non-configurable Location or initiating any request.
+  let reloads=0;const context={document:w.document,matchMedia:w.matchMedia,window:{location:{reload(){reloads++;}},AnyTourDesignV2Bridge:w.AnyTourDesignV2Bridge,AnyTourDesignV2Native:w.AnyTourDesignV2Native},Promise};
+  vm.createContext(context);vm.runInContext(bootstrap,context);
+  const startup=w.document.querySelector('[data-native-startup]'),retry=startup.querySelector('[data-native-startup-retry]');
+  assert.equal(retry.hidden,true);media.matches=false;change();assert.equal(startup.hidden,false);
+  mounts[1].d.reject(new Error('Private transport detail'));await tick();
+  assert.equal(startup.querySelector('[data-native-startup-status]').getAttribute('role'),'alert');assert.equal(retry.hidden,false);
+  assert.equal(w.document.querySelector('#design-v2-native-root').getAttribute('aria-busy'),'false');
+  assert([...w.document.querySelectorAll('[data-product]')].every(product=>product.hidden));assert(!startup.textContent.includes('Private transport detail'));
+  mounts[0].onReady();mounts[0].d.resolve();await tick();assert.equal(startup.hidden,false,'stale resolution cannot cover current initialization failure');
+  retry.click();assert.equal(reloads,1,'only the explicit reload action retries startup');
+  media.matches=true;change();assert.equal(retry.hidden,true);assert.equal(startup.querySelector('[data-native-startup-status]').getAttribute('role'),'status');
+  mounts[2].onReady();assert.equal(startup.hidden,true);assert.equal(mounts[2].root.hidden,false);mounts[2].d.resolve();await tick();w.close();
+});
+test('dictionary-bound startup gives way to real loading results before an automatic URL search resolves', async () => {
+  const dictionaries=deferred(),search=deferred();let starts=0;
+  const h=harness({async init(){await dictionaries.promise;return {origin:'Москва'};},async search(){starts++;await search.promise;}},'?searched=1');
+  const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/?searched=1',runScripts:'outside-only'}),w=dom.window;
+  w.matchMedia=()=>({matches:true,addEventListener(){}});w.AnyTourDesignV2Bridge={create:()=>h.bridge};
+  w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8'));w.eval(bootstrap);
+  const startup=w.document.querySelector('[data-native-startup]');assert.equal(startup.hidden,false);assert.equal(starts,0);assert([...w.document.querySelectorAll('[data-product]')].every(product=>product.hidden));
+  dictionaries.resolve();await tick();await tick();assert.equal(startup.hidden,true);assert.equal(starts,1);
+  const product=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');assert.equal(product.hidden,false);
+  assert.equal(product.querySelector('[data-screen="results"]').hidden,false);assert.equal(product.querySelector('[data-source-alert]').hidden,false);
+  assert.equal(w.document.querySelector('#design-v2-native-root').getAttribute('aria-busy'),'false');search.resolve();await tick();assert.equal(starts,1);w.close();
 });
 test('exact ANEX choice receipt gates contact review and expiry without submitting', async () => {
   const choiceRef='anex_quote:'+'a'.repeat(64), choice={choiceRef,legs:[{label:'Fixture outbound'},{label:'Fixture return'}]};
@@ -107,4 +146,39 @@ test('quote and follow-up flight promises join responsive mounts and reject stal
   await h.bridge.search({...trip,from:'2026-11-01',to:'2026-11-07'},{});retry.resolve([{price:99000}]);await rejection;
   assert.equal(quotes,1);assert.equal(flights,2);assert.equal(h.bridge.getSelection(),null);
   await assert.rejects(h.bridge.quoteOffer(offer.key,{expectedOffer:{...offer}}),/актуализации/);
+});
+
+test('cold dictionary viewport remount starts a requested URL search once', async () => {
+  const dictionary=deferred(),h=harness({init:()=>dictionary.promise},'?origin=Москва&country=4&from=2026-10-25&to=2026-10-31&minNights=7&maxNights=7&adults=2&ages=&searched=1');
+  const builder=require('../scripts/build/search3_design_v2_native.cjs');
+  const dom=new JSDOM(builder.documentHTML(builder.extract().markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/?searched=1',runScripts:'outside-only'}),w=dom.window;
+  let change;const media={matches:true,addEventListener(name,callback){change=callback;}};
+  w.matchMedia=()=>media;w.AnyTourDesignV2Bridge={create:()=>h.bridge};
+  w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8'));w.eval(bootstrap);
+  media.matches=false;change();assert.equal(h.calls.length,0);
+  dictionary.resolve({origin:'Москва'});await tick();await tick();
+  assert.equal(h.calls.length,1,'Only the latest bound mount dispatches the requested search');
+  assert.equal(w.document.querySelector('[data-native-startup]').hidden,true,'Working results replace the startup shell');
+  await new Promise(resolve=>{w.addEventListener('popstate',resolve,{once:true});w.history.back();});
+  assert.equal(new URL(w.location.href).searchParams.get('searched'),null,'Back restores the original unsearched screen');
+  media.matches=true;change();await tick();assert.equal(h.calls.length,1,'Back plus responsive remount does not replay the consumed URL search');
+  assert.equal(w.document.querySelector('.st-mobile [data-screen="search"]').hidden,false);
+  media.matches=false;change();await tick();assert.equal(h.calls.length,1,'A second rotation also preserves the consumed intent');
+  w.close();
+});
+
+
+test('rendered startup fixture joins catalogue readiness across responsive mounts', async () => {
+  const browserSource=fs.readFileSync(require.resolve('./search3-design-v2-native-browser.cjs'),'utf8');
+  const start=browserSource.indexOf('function fixtureBridge('),end=browserSource.indexOf('function donorReferenceHTML()',start);
+  assert(start>=0&&end>start);
+  const dom=new JSDOM('',{url:'https://fixture.test/',runScripts:'outside-only'}),w=dom.window;
+  w.__nativeHoldInit=true;
+  w.eval(browserSource.slice(start,end)+';fixtureBridge({trip:'+JSON.stringify(trip)+',hotels:[]});');
+  const api=w.AnyTourDesignV2Bridge.create(),first=api.init(),second=api.init();
+  assert.strictEqual(first,second,'Pending responsive mounts join the same fixture catalogue');
+  w.__nativeFixture.releaseInit();await first;
+  assert.strictEqual(api.init(),first,'A ready responsive mount cannot re-enter held startup');
+  assert.equal(w.__nativeHoldInit,false);
+  w.close();
 });

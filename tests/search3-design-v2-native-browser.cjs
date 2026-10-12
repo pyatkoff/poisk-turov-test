@@ -57,8 +57,19 @@ function fixtureBridge(fixture) {
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
   control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
+  let initResolve,initReject,initialization;
+  control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
-    async init(){calls.init++;return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
+    init(){
+      calls.init++;
+      // Match the canonical bridge's shared catalogue initialization. Responsive
+      // mounts join this promise instead of creating another held request.
+      if(!initialization)initialization=(async()=>{
+        if(window.__nativeHoldInit)await new Promise((resolve,reject)=>{initResolve=resolve;initReject=reject;});
+        return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};
+      })().catch(error=>{initialization=null;throw error;});
+      return initialization;
+    },
     subscribe(listener,{replay=true}={}){listeners.add(listener);if(replay)listener(latest);return()=>listeners.delete(listener);},
     getSnapshot(){return latest;},
     async changeOrigin(){return dictionaries;},
@@ -157,7 +168,7 @@ async function capture(page,side,width,percent,screen,row) {
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
   await page.screenshot({path:path.join(evidence,file),fullPage:true,animations:'disabled'});
   const measurements=await page.evaluate(percent=>{
-    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'))||document.querySelector('[data-native-startup]:not([hidden])');
     const stage=root?.closest('.st-stage');
     const box=selector=>{const element=root?.querySelector(selector);if(!element||element.closest('[hidden]'))return null;const r=element.getBoundingClientRect(),style=getComputedStyle(element);return{x:r.x,y:r.y,width:r.width,height:r.height,fontSize:style.fontSize,visible:r.width>0&&r.height>0};};
     const doc=document.documentElement;
@@ -180,10 +191,28 @@ async function capture(page,side,width,percent,screen,row) {
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
-    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;
+    // Range rectangles include the font's em box, which is taller than the
+    // painted Aeroport glyphs. Compare actual ink height with line spacing.
+    window.__nativeTextLinesOverlap=node=>{
+      const context=document.createElement('canvas').getContext('2d');
+      const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
-        const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0){
+        const style=getComputedStyle(text.parentElement);
+        context.font=style.fontStyle+' '+style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+        const metrics=context.measureText(text.textContent),inkHeight=metrics.actualBoundingBoxAscent+metrics.actualBoundingBoxDescent;
+        if(!Number.isFinite(inkHeight))throw new Error('Painted text metrics unavailable');
+        const range=document.createRange();range.selectNodeContents(text);
+        const lines=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).sort((a,b)=>a.top-b.top);
+        if(lines.some((rect,index)=>lines.slice(index+1).some(next=>next.top>rect.top+1&&next.top-rect.top<inkHeight-1)))return true;
+      }
+      return false;
+    };
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
+      while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
+        const range=document.createRange();range.selectNodeContents(text);
+        const lines=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).sort((a,b)=>a.top-b.top);
+        for(const rect of lines){
           if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
           // Glyph ink may extend vertically beyond its line box without clipping.
           // Vertical bounds matter only at an ancestor that actually clips paint.
@@ -191,23 +220,24 @@ async function capture(page,side,width,percent,screen,row) {
         }
         for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
       }
-      return{text:node.textContent,clipped,brokenWords};
+      return{text:node.textContent,clipped,brokenWords,overlappingLines};
     });
-    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
+    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
     const sort=root.querySelector('.st-sort');let sortFit=null;
     if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
   if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
   if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
-  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords)});
+  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords||node.overlappingLines))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips, overlaps lines or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords||node.overlappingLines)});
   if(side==='native'&&(measurements.headerFit.outside||measurements.headerFit.overlap))report.failures.push({width,percent,screen,error:'Header content overlaps or escapes the header',details:measurements.headerFit});
   if(side==='native'&&measurements.sortFit&&measurements.sortFit.textWidth>measurements.sortFit.available+1)report.failures.push({width,percent,screen,error:'Selected sort label is clipped',details:measurements.sortFit});
   return measurements;
@@ -252,13 +282,39 @@ async function referenceFrame(page,width,percent,screen,row) {
         await route.continue();
       });
       try {
+        await page.addInitScript(()=>{window.__nativeHoldInit=true;window.__nativeMediaChanges=[];matchMedia('(max-width:760px)').addEventListener('change',event=>window.__nativeMediaChanges.push({mobile:event.matches,width:innerWidth}));});
         await Promise.all([page.goto(origin+base+'/visual-search/'),reference.goto(origin+base+'/__donor-reference/')]);
+        await page.locator('[data-native-startup-status]').waitFor({state:'visible'});
+        assert.equal(await page.locator('[data-product]:visible').count(),0,'Unbound donor forms stay hidden during initialization');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0);
+        await capture(page,'native',width,percent,'startup-pending',row);
+        await page.evaluate(()=>window.__nativeFixture.rejectInit());
+        await page.locator('[data-native-startup-status][role="alert"]').waitFor({state:'visible'});
+        await capture(page,'native',width,percent,'startup-error',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Initialization failure does not search');
+        await Promise.all([page.waitForNavigation(),page.locator('[data-native-startup-retry]').click()]);
+        await page.locator('[data-native-startup-status]').waitFor({state:'visible'});
+        await page.evaluate(()=>window.__nativeFixture.releaseInit());
         const product=page.locator('[data-product]:visible');
+        await page.locator('[data-native-startup]').waitFor({state:'hidden'});
+        row.proof.startupPendingFormHidden=true;row.proof.startupErrorSearches=0;row.proof.startupRetrySearches=0;
+
         const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        if(percent===200&&(width===390||width===430)){
+          const overlapProof=await page.evaluate(()=>{
+            const caption=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]')).querySelector('.st-origin-field > span');
+            const repaired=window.__nativeTextLinesOverlap(caption),original=caption.style.lineHeight;
+            caption.style.lineHeight='15px';const regression=window.__nativeTextLinesOverlap(caption);
+            caption.style.lineHeight=original;const recovered=window.__nativeTextLinesOverlap(caption);
+            return{repaired,regression,recovered};
+          });
+          assert.deepEqual(overlapProof,{repaired:false,regression:true,recovered:false},'Painted-line guard detects the original fixed-height caption and accepts its repaired reflow');
+          row.proof.enlargedCaptionPaintOverlapRegressionChecked=true;
+        }
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
@@ -380,7 +436,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.favoriteStoragePreserved=true;
         row.checks.push('passive init 0 searches','form submit exactly one search','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
-        row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
+        row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}
       } finally {
         if(row.errors.length)report.failures.push({width,percent,error:'Page errors',details:row.errors});

@@ -40,6 +40,12 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
 }
+/* The donor's 15px caption line matches 12px text at ordinary size. Keep that
+   ratio when enlarged captions wrap, so successive lines never overlap. */
+#design-v2-native-root #b4 .q8c0 .st-search-fields > .q8c4.st-origin-field > span,
+#design-v2-native-root #b4 .q8c0 .st-destination-field .st-destination-toggle > .st-destination-caption {
+  line-height: 1.25;
+}
 #design-v2-native-root #b4 .st-condition-category > .st-condition-label {
   flex-basis: max-content;
   overflow-wrap: normal;
@@ -48,6 +54,17 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 [data-screen="filters"] .st-filter-heading h2 {
   overflow-wrap: normal;
   word-break: normal;
+}
+#design-v2-native-root #b4 [data-screen="filters"] .st-filter-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: start;
+}
+#design-v2-native-root #b4 [data-screen="filters"] .st-filter-heading > button {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 44px;
+  width: 44px;
 }
 #design-v2-native-root #b4 .st-condition-category-options {
   grid-template-columns: repeat(4, max-content);
@@ -112,13 +129,45 @@ body { margin: 0; padding: 0; }
     flex-flow: row wrap;
     border-left: 0;
     padding-left: 0;
-    margin-top: 12px;
+    padding-top: 0;
+    margin-top: 6px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
+  #design-v2-native-root #b4 .st-desktop .st-price-area > div { flex: 1 1 max-content; }
+  #design-v2-native-root #b4 .st-desktop .st-price-area > .q8c2 { width: auto; flex: 0 0 auto; min-width: 112px; }
   #design-v2-native-root #b4 .st-desktop :is(.st-conditions-meal, .st-conditions-operator) {
     grid-column: 1 / -1;
     overflow-wrap: normal;
     word-break: normal;
   }
+}
+/* Keep alternative flight pairs in the existing tour section, with one action row. */
+#design-v2-native-root #b4 .st-native-flight-options { margin-top: 12px; }
+#design-v2-native-root #b4 .st-native-flight-option { padding: 14px 0; }
+#design-v2-native-root #b4 .st-native-flight-facts { display: grid; gap: 12px; }
+#design-v2-native-root #b4 .st-native-flight-leg { min-width: 0; }
+#design-v2-native-root #b4 .st-native-flight-direction { display: block; color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+#design-v2-native-root #b4 .st-native-flight-time { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+#design-v2-native-root #b4 .st-native-flight-time b { white-space: nowrap; }
+#design-v2-native-root #b4 .st-native-flight-route { overflow-wrap: normal; word-break: normal; }
+#design-v2-native-root #b4 .st-native-flight-option-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; }
+#design-v2-native-root #b4 .st-native-flight-option--selected .st-native-flight-option-footer { margin-top: 6px; }
+#design-v2-native-root #b4 .st-native-flight-option-footer .st-offer-select { min-height: 44px; }
+#design-v2-native-root #b4 .st-native-startup[hidden] { display: none !important; }
+#design-v2-native-root #b4 .st-native-startup .st-header { height: auto; min-height: 66px; padding: 10px 24px; }
+#design-v2-native-root #b4 .st-native-startup .st-logo { width: 144px; }
+#design-v2-native-root #b4 .st-native-startup .st-main { padding: 22px 24px 28px; }
+#design-v2-native-root #b4 .st-native-startup-title { color: var(--blue); font-size: 13px; font-weight: 500; }
+#design-v2-native-root #b4 .st-native-startup-card { max-width: 920px; min-height: 220px; margin: 18px auto; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+#design-v2-native-root #b4 .st-native-startup-card h1 { margin: 0 0 14px; }
+#design-v2-native-root #b4 .st-native-startup-card p { color: var(--muted); line-height: 1.5; margin: 0 0 20px; }
+@media (max-width: 760px) {
+  #design-v2-native-root #b4 .st-native-startup .st-header { min-height: 52px; padding: 4px 15px; gap: 12px; }
+  #design-v2-native-root #b4 .st-native-startup .st-logo { width: 132px; }
+  #design-v2-native-root #b4 .st-native-startup .st-main { padding: 10px 16px; }
+  #design-v2-native-root #b4 .st-native-startup-card { padding: 20px 16px; margin: 10px 0; }
 }
 @container native-results (max-width: 52em) {
   #design-v2-native-root #b4 .st-desktop .st-search-bar {

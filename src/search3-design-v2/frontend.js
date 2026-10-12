@@ -12,7 +12,7 @@
   const party = search => search.adults + ' взрослых' + (search.ages.length ? ' + ' + search.ages.length + ' детей' : '');
   const mealText = offer => /^(?:on request|питание уточняется)$/i.test(offer.meal || '') ? 'Питание уточняется' : offer.meal || 'Питание уточняется';
   const favoriteKey = 'anytour.prototype.v18.favorites.v1';
-  function mount({root, bridge, initialState}) {
+  function mount({root, bridge, initialState, onReady}) {
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const listeners = new AbortController(); let alive = true, editor = null, editorSnapshot = null, searchEpoch = 0, originEpoch = 0;
     const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:false};
@@ -441,8 +441,10 @@
       dictionaries=state.dictionaries||initial.dictionaries;state.dictionaries=dictionaries;if(!state.search){state.search=initial.search;state.filters={...defaultFilters(),...initial.filters};const p=new URLSearchParams(window.location.search);state.sort=['price','name'].includes(p.get('sort'))?p.get('sort'):'recommended';state.onlyFavorites=p.get('favoritesOnly')==='1';const chosen=p.get('selectedDate');state.selectedDate=chosen&&/^\d{4}-\d{2}-\d{2}$/.test(chosen)&&chosen>=state.search.from&&chosen<=state.search.to?chosen:null;try{const stored=JSON.parse(window.localStorage.getItem(favoriteKey)||'[]');state.favorites=Array.isArray(stored)?stored.filter(Number.isSafeInteger):[];}catch{}}
       root.style.setProperty('--photo','none');root.style.setProperty('--marina-photo','none');
       $$('[data-screen="states"],[data-screen="success"]').forEach(node=>node.remove());
-      const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());root.hidden=false;
-      if(initial.requestedSearch&&!initialState){openSearch();await runSearch(true);}
+      const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());onReady?.();root.hidden=false;
+      // This intent belongs to the page lifetime, not a historical screen.
+      // Route snapshots omit it so Back cannot authorize another supplier start.
+      if(initial.requestedSearch&&!state.urlSearchConsumed&&!state.hasSearched){state.urlSearchConsumed=true;openSearch();await runSearch(true);}
     })();
     return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
   }

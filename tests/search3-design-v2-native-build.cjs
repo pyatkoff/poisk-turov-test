@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs'), path = require('node:path'), os = require('node:os'), crypto = require('node:crypto');
 const builder = require('../scripts/build/search3_design_v2_native.cjs');
+const {JSDOM} = require('jsdom');
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'native-design-v2-build-'));
 try {
@@ -20,6 +21,14 @@ try {
   assert.deepEqual(fs.readFileSync(path.join(tmp, 'preview-lead-disabled.php')), guard);
   const entry = fs.readFileSync(path.join(tmp, 'visual-search/index.html'), 'utf8');
   assert(!entry.includes('./app.js') && !entry.includes('./styles.css'));
+  const dom=new JSDOM(entry),startup=dom.window.document.querySelector('[data-native-startup]');
+  assert(startup&&!startup.hidden,'Startup is visible in static HTML before JavaScript or catalogue responses');
+  assert.equal(startup.querySelector('[data-native-startup-status]').getAttribute('role'),'status');
+  assert.equal(startup.querySelector('[data-native-startup-retry]').hidden,true,'No phantom retry while pending');
+  assert.equal(startup.querySelector('img.st-logo').outerHTML,new JSDOM(builder.extract().markup).window.document.querySelector('[data-product] img.st-logo').outerHTML,'Exact donor artwork is reused without reconstruction');
+  assert.equal(startup.querySelectorAll('input,select,[data-action]').length,0,'Startup has no unbound form or fictional selections');
+  assert([...dom.window.document.querySelectorAll('[data-product]')].every(product=>product.hidden),'Unbound donor product remains hidden');
+  assert.equal(dom.window.document.querySelector('#design-v2-native-root').getAttribute('aria-busy'),'true');dom.window.close();
   for (const item of [...manifest.graph.scripts, ...manifest.graph.styles]) {
     const bytes = fs.readFileSync(path.join(tmp, item.path));
     assert.equal(hash(bytes), item.sha256); assert.equal(bytes.length, item.bytes);
