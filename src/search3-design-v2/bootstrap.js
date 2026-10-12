@@ -1,6 +1,12 @@
 'use strict';
 (() => {
+  const nativeRoot = document.getElementById('design-v2-native-root');
   const wrapper = document.getElementById('b4');
+  const startup = wrapper.querySelector('[data-native-startup]');
+  const startupStatus = startup.querySelector('[data-native-startup-status]');
+  const startupHeading = startup.querySelector('[data-native-startup-heading]');
+  const startupMessage = startup.querySelector('[data-native-startup-message]');
+  const startupRetry = startup.querySelector('[data-native-startup-retry]');
   const mobileStage = wrapper.querySelector('[data-variant="Мобильная версия"]');
   const desktopStage = wrapper.querySelector('[data-variant="На компьютере"]');
   const mobile = mobileStage.querySelector('[data-product]');
@@ -9,8 +15,34 @@
   desktop.classList.add('st-desktop');
   desktopStage.querySelector('[data-desktop-mount]').append(desktop);
   const media = matchMedia('(max-width:760px)');
-  const bridge = window.AnyTourDesignV2Bridge.create();
   let mounted = null, mountGeneration = 0;
+  startupRetry.addEventListener('click', () => window.location.reload());
+  function pendingStartup() {
+    mobile.hidden = desktop.hidden = true;
+    startup.hidden = false;
+    startup.classList.toggle('st-mobile', media.matches);
+    startup.classList.toggle('st-desktop', !media.matches);
+    startupStatus.setAttribute('role', 'status');
+    startupStatus.setAttribute('aria-live', 'polite');
+    startupHeading.textContent = 'Готовим поиск туров';
+    startupMessage.textContent = 'Загружаем города вылета и направления…';
+    startupRetry.hidden = true;
+    nativeRoot.setAttribute('aria-busy', 'true');
+  }
+  function failedStartup() {
+    mobile.hidden = desktop.hidden = true;
+    startup.hidden = false;
+    startupStatus.setAttribute('role', 'alert');
+    startupStatus.setAttribute('aria-live', 'assertive');
+    startupHeading.textContent = 'Не удалось загрузить поиск';
+    startupMessage.textContent = 'Обновите страницу, чтобы попробовать снова.';
+    startupRetry.hidden = false;
+    nativeRoot.setAttribute('aria-busy', 'false');
+  }
+  pendingStartup();
+  let bridge;
+  try { bridge = window.AnyTourDesignV2Bridge.create(); }
+  catch { failedStartup(); return; }
   const sameTrip = (a, b) => a && b && ['origin','country','from','to','minNights','maxNights','adults'].every(key => String(a[key]) === String(b[key]))
     && JSON.stringify(a.ages) === JSON.stringify(b.ages);
   // The bridge outlives responsive mounts. Its single stream delivers the
@@ -35,19 +67,23 @@
     const product = isMobile ? mobile : desktop;
     const previous = mounted?.getState?.();
     mounted?.destroy?.();
-    mounted = window.AnyTourDesignV2Native.mount({root: product,
-      bridge, initialState: previous});
-    const ownMount = mounted;
-    Promise.resolve(ownMount.ready).then(() => {
-      if (epoch !== mountGeneration || mounted !== ownMount) return;
+    mounted = null;
+    pendingStartup();
+    let ownMount = null;
+    const readyStartup = () => {
+      if (epoch !== mountGeneration || !ownMount || mounted !== ownMount) return;
+      startup.hidden = true;
       product.hidden = false;
-      document.getElementById('design-v2-native-root').setAttribute('aria-busy', 'false');
-    }).catch(error => {
+      nativeRoot.setAttribute('aria-busy', 'false');
+    };
+    try {
+      mounted = window.AnyTourDesignV2Native.mount({root: product,
+        bridge, initialState: previous, onReady: readyStartup});
+      ownMount = mounted;
+    } catch { failedStartup(); return; }
+    Promise.resolve(ownMount.ready).then(readyStartup).catch(() => {
       if (epoch !== mountGeneration || mounted !== ownMount) return;
-      product.hidden = false;
-      const main = product.querySelector('.st-main');
-      main.textContent = 'Не удалось подготовить поиск. Обновите страницу. ' + String(error.message || '');
-      document.getElementById('design-v2-native-root').setAttribute('aria-busy', 'false');
+      failedStartup();
     });
   }
   media.addEventListener('change', selectVariant);

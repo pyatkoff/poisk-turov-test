@@ -53,7 +53,23 @@ const scriptGraph = Object.freeze([
     './native-v2/bootstrap.js'
 ]);
 const styleGraph = Object.freeze(['./native-v2/donor.css', './native-v2/product-desktop.css', './native-v2/viewport.css']);
+function startupMarkup(markup) {
+  // The logo stays the exact supplied artwork from the immutable donor. This
+  // pending shell deliberately contains no unbound form or simulated facts.
+  const logo = markup.match(/<img class="st-logo"[^>]*>/)?.[0];
+  assert(logo, 'Original donor logo for immediately visible startup');
+  return '<div class="st-app st-native-startup" data-native-startup>' +
+    '<header class="st-header">' + logo + '<span class="st-native-startup-title">Поиск туров</span></header>' +
+    '<main class="st-main"><section class="st-native-startup-card" role="status" aria-live="polite" aria-atomic="true" data-native-startup-status>' +
+    '<h1 data-native-startup-heading>Готовим поиск туров</h1>' +
+    '<p data-native-startup-message>Загружаем города вылета и направления…</p>' +
+    '<button class="q8c2 cursor-interaction" type="button" data-native-startup-retry hidden>Обновить страницу</button>' +
+    '</section></main></div>';
+}
 function documentHTML(markup) {
+  const wrapper = /<div id="b4"[^>]*>/;
+  assert(wrapper.test(markup), 'Original donor product wrapper');
+  markup = markup.replace(wrapper, tag => tag + startupMarkup(markup));
   return '<!doctype html>\n<html lang="ru"><head>\n' +
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">\n' +
     '<meta name="robots" content="noindex,nofollow,noarchive">\n' +

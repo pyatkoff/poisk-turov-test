@@ -57,8 +57,10 @@ function fixtureBridge(fixture) {
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
   control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
+  let initResolve,initReject;
+  control.releaseInit=()=>initResolve?.();control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
-    async init(){calls.init++;return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
+    async init(){calls.init++;if(window.__nativeHoldInit)await new Promise((resolve,reject)=>{initResolve=resolve;initReject=reject;});return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
     subscribe(listener,{replay=true}={}){listeners.add(listener);if(replay)listener(latest);return()=>listeners.delete(listener);},
     getSnapshot(){return latest;},
     async changeOrigin(){return dictionaries;},
@@ -157,7 +159,7 @@ async function capture(page,side,width,percent,screen,row) {
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
   await page.screenshot({path:path.join(evidence,file),fullPage:true,animations:'disabled'});
   const measurements=await page.evaluate(percent=>{
-    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'))||document.querySelector('[data-native-startup]:not([hidden])');
     const stage=root?.closest('.st-stage');
     const box=selector=>{const element=root?.querySelector(selector);if(!element||element.closest('[hidden]'))return null;const r=element.getBoundingClientRect(),style=getComputedStyle(element);return{x:r.x,y:r.y,width:r.width,height:r.height,fontSize:style.fontSize,visible:r.width>0&&r.height>0};};
     const doc=document.documentElement;
@@ -180,7 +182,7 @@ async function capture(page,side,width,percent,screen,row) {
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
-    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0){
@@ -193,11 +195,11 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return{text:node.textContent,clipped,brokenWords};
     });
-    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
+    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
     const sort=root.querySelector('.st-sort');let sortFit=null;
     if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
@@ -252,8 +254,23 @@ async function referenceFrame(page,width,percent,screen,row) {
         await route.continue();
       });
       try {
+        await page.addInitScript(()=>{window.__nativeHoldInit=true;});
         await Promise.all([page.goto(origin+base+'/visual-search/'),reference.goto(origin+base+'/__donor-reference/')]);
+        await page.locator('[data-native-startup-status]').waitFor({state:'visible'});
+        assert.equal(await page.locator('[data-product]:visible').count(),0,'Unbound donor forms stay hidden during initialization');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0);
+        await capture(page,'native',width,percent,'startup-pending',row);
+        await page.evaluate(()=>window.__nativeFixture.rejectInit());
+        await page.locator('[data-native-startup-status][role="alert"]').waitFor({state:'visible'});
+        await capture(page,'native',width,percent,'startup-error',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Initialization failure does not search');
+        await Promise.all([page.waitForNavigation(),page.locator('[data-native-startup-retry]').click()]);
+        await page.locator('[data-native-startup-status]').waitFor({state:'visible'});
+        await page.evaluate(()=>window.__nativeFixture.releaseInit());
         const product=page.locator('[data-product]:visible');
+        await page.locator('[data-native-startup]').waitFor({state:'hidden'});
+        row.proof.startupPendingFormHidden=true;row.proof.startupErrorSearches=0;row.proof.startupRetrySearches=0;
+
         const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
