@@ -172,7 +172,9 @@ async function capture(page,side,width,percent,screen,row) {
       const text=node.value||node.placeholder,available=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),textWidth=context.measureText(text).width;
       return{text,available,textWidth,clipped:textWidth>available+1,appearance:style.appearance};
     });
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,
+    const budget=root.querySelector('[data-filter-sidebar] .st-budget');
+    const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
@@ -181,6 +183,7 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
   if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
+  if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
   return measurements;
 }
 

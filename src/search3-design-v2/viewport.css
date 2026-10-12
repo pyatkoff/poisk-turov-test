@@ -51,7 +51,7 @@ body { margin: 0; padding: 0; }
 }
 /* Keep the donor budget columns readable without native spinner chrome. */
 #design-v2-native-root #b4 .st-budget {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7em), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5em), 1fr));
 }
 #design-v2-native-root #b4 .st-budget input[type="number"] {
   appearance: textfield;
