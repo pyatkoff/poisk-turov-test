@@ -20,7 +20,7 @@ import gzip
 import base64
 from search3_design_v2_preview import (REPO, RELEASE, OLD_ROUTE, ROUTE_TRANSFORMS,
     LEDGER_PATH, LEDGER_JS, gzip_lengths, render_checks, live_checks)
-from search3_design_v2_update_remote import (ROUTE, INVARIANTS, ORIGINAL_SOURCE, PREDECESSOR_SOURCE,
+from search3_design_v2_update_remote import (ROUTE, INVARIANTS, ORIGINAL_SOURCE, PREDECESSOR_SOURCE, COMPLETED_SOURCES,
     ORIGINAL_BUILD, ORIGINAL_ARTIFACT, ORIGINAL_ZIP, SOURCE_CHANGES, ROUTE_CHANGES,
     digest, inventory, json_bytes, need, verify, predecessor)
 from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
@@ -45,7 +45,7 @@ def checked_request(event, env):
     parts = body[len(PREFIX):].split(' ')
     need(len(parts) == 4 and all(re.fullmatch('[0-9a-f]{40}', x) for x in parts[:2])
          and all(re.fullmatch('[1-9][0-9]{0,14}', x) for x in parts[2:]), 'exact_pins')
-    need(parts[0] not in (ORIGINAL_SOURCE, PREDECESSOR_SOURCE), 'new_source_required')
+    need(parts[0] not in COMPLETED_SOURCES, 'new_source_required')
     return {'source_sha': parts[0], 'release_sha': parts[1], 'build_run': int(parts[2]),
         'artifact_id': int(parts[3]), 'deploy_run': int(env['GITHUB_RUN_ID']), 'attempt': 1}
 
