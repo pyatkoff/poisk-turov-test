@@ -238,7 +238,7 @@
       $('.st-sort').value=state.sort;
       $('.st-search-done').hidden=state.status!=='complete';
       $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status)||loadingEmpty&&!state.message||(errorEmpty||partialEmpty)&&(!state.message||/^API HTTP \d{3}$/.test(state.message));
-      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Поиск завершён не полностью. Полученные туры доступны для просмотра.');
+      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Поиск завершён не полностью.');
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
       let more=$('[data-result-more]');
