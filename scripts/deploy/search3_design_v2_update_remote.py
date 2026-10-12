@@ -26,7 +26,7 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     '2eb237639c6c53c38f27d71684de43384842daf7',
     'a0e5f1e7c0083b45678df5837c7faf1cad8751f6', PREDECESSOR_SOURCE)
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-    38197437835, 38203171197, PREDECESSOR_RUN)
+    38197437835, 38203171197, PREDECESSOR_RUN, 38237246171)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -42,9 +42,9 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 NATIVE_ACCEPTANCE = {
     'source_sha': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
     'source_tree': '65cdbc2658fd63e9782e34df4b2b83638e047aa0',
-    'build_run': 38235455883,
-    'artifact_id': 11740615746,
-    'source_ZIP_sha256': 'f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f',
+    'build_run': 38236619254,
+    'artifact_id': 11740981928,
+    'source_ZIP_sha256': '06d9e3a9f42d434d2fe02c6db2cd902474f9d16c2038cd330e82289896056c6d',
     'entry_html_sha256': '2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
     'source_manifest_sha256': 'c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650',

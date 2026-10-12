@@ -10,8 +10,8 @@ reference, all sibling previews and production remain protected.
 
 PR #4539 against `release/search3-design-v2` has exact source
 `b53d5ca0bf541e66b684018fb7db332de8fefaf3`, tree
-`65cdbc2658fd63e9782e34df4b2b83638e047aa0`. Native CI38235455883 and
-Security38235455890 succeeded. Retained artifact11740615746 is independently
+`65cdbc2658fd63e9782e34df4b2b83638e047aa0`. Native CI38236619254 and
+Security38235455890 succeeded. Retained artifact11740981928 is independently
 ZIP-hash verified. Failed/superseded runs are negative evidence only.
 This source selection is not a publication receipt. Independent final visual/HIGH
 review, exact-head control CI, fresh receiving refs and predecessor, exclusive
@@ -21,9 +21,9 @@ publisher claim and one fresh guarded command remain mandatory.
 | --- | --- |
 | source_sha | `b53d5ca0bf541e66b684018fb7db332de8fefaf3` |
 | source_tree | `65cdbc2658fd63e9782e34df4b2b83638e047aa0` |
-| build_run | `38235455883` |
-| artifact_id | `11740615746` |
-| source_ZIP_sha256 | `f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f` |
+| build_run | `38236619254` |
+| artifact_id | `11740981928` |
+| source_ZIP_sha256 | `06d9e3a9f42d434d2fe02c6db2cd902474f9d16c2038cd330e82289896056c6d` |
 | entry_html_sha256 | `2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
 | source_manifest_sha256 | `c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650` |
@@ -38,6 +38,24 @@ An absent, foreign, modified, activated or unknown owner/target aborts. Previous
 command6118298451/run38207863194 are terminal/no-replay; every older completed
 source/run remains rejected. A successful native update consumes this predecessor.
 This successor cannot publish again over its newly installed owner.
+
+## Terminal preparation failure and bounded correction
+
+Command6122535492 / run38237246171 attempt1 is terminal/no-replay. Prepare
+failed with `invalid_source_tree` before SSH or activation; publish was skipped.
+The controller had verified the source tree separately but omitted it from the
+request passed into derivation. The correction propagates only that already
+verified tree into the retained request. A regression starts from the actual
+OWNER command shape with no preloaded tree and exercises review extraction,
+derivation and final remote verification. The failed run is explicitly blocked.
+
+This successor selects the separate successful source run38236619254 and retained
+artifact11740981928. Its complete payload, native manifest and110 rendered frames
+are byte-identical to accepted run38235455883; its build/artifact/ZIP identity is
+new. The old four-pin command must not be repeated or rerun. A distinct fresh
+command is permitted only after final control CI and independent HIGH review,
+fresh refs/predecessor and exclusive publisher claim. No server result exists
+for the failed preparation and no publication is inferred from this correction.
 
 ## Exact acceptance pins and source gates
 
