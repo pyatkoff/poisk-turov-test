@@ -60,6 +60,25 @@ test('loaded calendar pages 8, 14 and 22 days without requests and restores the 
     owner.destroy();w.close();
   }
 });
+test('large loaded result sets render in bounded local batches', async () => {
+  const frontend=fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8');
+  const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
+  w.lucide={createIcons(){}};w.eval(frontend);
+  const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
+  const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
+  const hotels=Array.from({length:55},(_,index)=>{const id=index+1,offer={key:'fixture:batch:'+id,hotelId:id,day:trip.from,returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:'Fixture room',meal:'Fixture meal',mealFacet:'Fixture meal',operator:'Fixture',provider:'tourvisor',total:100000+index,search:trip,raw:{fixture:true}};return{id,name:'FICTIONAL loaded hotel '+String(id).padStart(2,'0'),country:'4',location:'Fixture',stars:4,photos:[],amenities:[],offers:[offer]};});
+  const state={screen:'results',search:trip,filters,hotels,status:'complete',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:true};
+  let externalCalls=0;const bridge={async init(){return{dictionaries:{origins:['Москва'],countries:[{id:'4',name:'Турция'}],meals:[]},requestedSearch:false};},async search(){externalCalls++;throw new Error('Local result reveal must not search');}};
+  const owner=w.AnyTourDesignV2Native.mount({root,bridge,initialState:state});await owner.ready;
+  assert.equal(root.querySelectorAll('.st-hotel-card').length,24);assert.equal(root.querySelector('[data-result-count]').textContent,'55 отелей');
+  root.querySelector('[data-native-result-more]').click();assert.equal(root.querySelectorAll('.st-hotel-card').length,48);
+  const sort=root.querySelector('.st-sort');sort.value='name';sort.dispatchEvent(new w.Event('change',{bubbles:true}));
+  assert.equal(root.querySelectorAll('.st-hotel-card').length,24,'A changed result order starts at the first batch');
+  root.querySelector('[data-native-result-more]').click();root.querySelector('[data-native-result-more]').click();
+  assert.equal(root.querySelectorAll('.st-hotel-card').length,55);assert.equal(root.querySelector('[data-native-result-more]'),null);
+  assert.equal(externalCalls,0);assert.equal(owner.getState().resultLimit,72);
+  owner.destroy();w.close();
+});
 test('superseded restoreHotel never dispatches a stale supplier search (75c2513 regression)', async () => {
   const restoration = deferred();
   const h = harness({restoreHotel:()=>restoration.promise}); await h.bridge.init();
