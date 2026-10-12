@@ -177,7 +177,9 @@ add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setu
 function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 const historicalNightActions=" case 'night-mode':{const mode=b.dataset.value;if(!['exact','range'].includes(mode))break;nightsDraft.mode=mode;nightsDraft.bound='min';nightsDraft.error='';if(mode==='exact')nightsDraft.max=nightsDraft.min;renderNightSelection();break;}\n case 'night-bound':if(nightsDraft.mode==='range'&&['min','max'].includes(b.dataset.value)){nightsDraft.bound=b.dataset.value;nightsDraft.error='';renderNightSelection();}break;\n case 'night-pick':{const n=+b.dataset.value;if(!Number.isInteger(n)||n<1||n>28)break;\n  if(nightsDraft.mode!=='range'){nightsDraft.min=n;nightsDraft.max=n;}\n  else{const min=nightsDraft.bound==='min'?n:Math.min(nightsDraft.min,n),max=nightsDraft.bound==='max'?n:Math.max(nightsDraft.max,n);if(max-min>10){nightsDraft.error='Между «От» и «До» может быть не больше 10 ночей. Измените другую границу или выберите ближе.';renderNightSelection();break;}nightsDraft.min=min;nightsDraft.max=max;if(nightsDraft.bound==='min')nightsDraft.bound='max';}\n  nightsDraft.error='';renderNightSelection();break;\n }\n case 'night-preset':{const n=+b.dataset.value;if(![7,10,14,21].includes(n))break;nightsDraft={min:n,max:n,mode:'exact',bound:'min'};renderNightSelection();break;}\n";
 const nightStart=source.indexOf(" case 'night-pick':"),nightEnd=source.indexOf(" case 'apply-nights':",nightStart);assert(nightStart>=0&&nightEnd>nightStart);
-const historicalSource=source.slice(0,nightStart)+historicalNightActions+source.slice(nightEnd);
+const clearMealHistory="case 'clear-meal-query':$('#meal-query').value='';updateMealPicker();rememberUIRoute();$('#meal-query').focus();break;";
+assert.equal(source.split(clearMealHistory).length,2,'one existing clear action records its cleared query');
+const historicalSource=(source.slice(0,nightStart)+historicalNightActions+source.slice(nightEnd)).replace(clearMealHistory,clearMealHistory.replace('rememberUIRoute();',''));
 const historical=records(historicalSource);
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
@@ -187,7 +189,13 @@ const BASELINE='b6492fbda92404504ac6a78cac7f34acad5fe2d600be3bfa2830292d6236c772
 assert.equal(actual.length,162,'153 retained dispatch cases plus9 explicit-night cases');
 assert.equal(crypto.createHash('sha256').update(JSON.stringify(historical)).digest('hex'),BASELINE,'unchanged historical162-case event oracle, exact prepacket night handlers');
 const revisedNightActions=new Set(['night-mode','night-bound','night-pick','night-preset']);
-for(let i=0;i<scenarios.length;i++)if(!revisedNightActions.has(scenarios[i].action))assert.deepEqual(actual[i],historical[i],'unchanged protected non-night event '+scenarios[i].name);
+for(let i=0;i<scenarios.length;i++)if(!revisedNightActions.has(scenarios[i].action)){
+ if(scenarios[i].action==='clear-meal-query'){
+  const expected=structuredClone(historical[i]),trace=expected.result.trace,checkpoints=expected.result.checkpoints,paint=trace.findIndex(call=>call[0]==='updateMealPicker'),snapshot=checkpoints.findIndex(step=>step.name==='updateMealPicker');assert(paint>=0&&snapshot>=0);
+  trace.splice(paint+1,0,['rememberUIRoute']);checkpoints.splice(snapshot+1,0,{...structuredClone(checkpoints[snapshot]),name:'rememberUIRoute'});
+  assert.deepEqual(actual[i],expected,'clear changes only the exact history callback after paint/before focus; DOM/selection/order stay pinned');
+ }else assert.deepEqual(actual[i],historical[i],'unchanged protected non-night event '+scenarios[i].name);
+}
 const result=name=>actual.find(r=>r.name===name).result;
 assert.deepEqual(result('disabled click').trace,[]);
 assert.deepEqual(result('unmatched click').trace,[]);
