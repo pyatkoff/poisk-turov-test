@@ -56,6 +56,7 @@ function fixtureBridge(fixture) {
   const publish=value=>{latest=value;for(const listener of listeners)listener(value);return value;};
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
+  control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
   const api={
     async init(){calls.init++;return{search:{...trip,ages:[]},filters:emptyFilters(),dictionaries,hotels:[],status:'idle',requestedSearch:new URLSearchParams(location.search).get('searched')==='1'};},
     subscribe(listener,{replay=true}={}){listeners.add(listener);if(replay)listener(latest);return()=>listeners.delete(listener);},
@@ -104,7 +105,11 @@ function donorReferenceHTML() {
   replaceOnce('p(),A(),B("search")',`p(),A(),B("search");(globalThis.__designV2DonorControllers||(globalThis.__designV2DonorControllers=[])).push({root:t,setFixture(fixture,screen){r.query={...fixture.trip,country:"Турция"};r.priceDate=fixture.trip.from;r.dateFactor=1;r.filters=new Set;r.min=0;r.max=Infinity;r.onlyFavorites=false;r.favorites=new Set;g=fixture.hotels.map(hotel=>({...hotel,id:hotel.donorId,location:"Турция · Кемер",image:"missing",description:"FICTIONAL fixture hotel description",beach:false,private:false,sand:false,offers:[{id:"fixture:offer:"+hotel.id,hotelId:hotel.donorId,date:fixture.trip.from,nights:7,room:hotel.room,meal:hotel.meal,food:hotel.food,operator:"FIXTURE TV",price:hotel.total}]}));r.hotelId=g[0].id;r.selected={...g[0].offers[0],price:fixture.verifiedSelection.total};r.screen="results";A();B(screen);const flights=a('[data-screen="tour"] .st-flight-row');for(let index=0;index<flights.length;index++){const times=index?fixture.verifiedSelection.backwardTimes:fixture.verifiedSelection.forwardTimes;[...flights[index].querySelectorAll('b')].forEach((node,i)=>node.textContent=times[i]);}a('[data-flight-origin],[data-flight-return-destination]').forEach(node=>node.textContent='FIXTURE Moscow');a('[data-flight-destination],[data-flight-return-origin]').forEach(node=>node.textContent='FIXTURE Antalya');}})`);
   const originalMarkup=donor.replace(/^<style>[\s\S]*?<\/style>/,'').replace(/<script[^>]*>[\s\S]*?<\/script>/g,'');
   const parts=builder.extract();
-  return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+parts.css+'</style><style>'+parts.desktopCSS+'</style><style>'+fs.readFileSync(path.join(sourceRoot,'src/search3-design-v2/viewport.css'),'utf8')+'</style><script src="'+base+'/visual-search/native-v2/lucide.min.js"></script></head><body><main id="design-v2-native-root">'+originalMarkup+'</main><script>'+runtime+'</script></body></html>';
+  // The donor gets only the outer viewport adapter, never native UI repairs.
+  const viewport=fs.readFileSync(path.join(sourceRoot,'src/search3-design-v2/viewport.css'),'utf8');
+  assert.equal(viewport.split('/* Keep full totals').length,2,'One outer viewport adapter boundary');
+  const donorHostCSS=viewport.split('/* Keep full totals')[0];
+  return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>'+parts.css+'</style><style>'+parts.desktopCSS+'</style><style>'+donorHostCSS+'</style><script src="'+base+'/visual-search/native-v2/lucide.min.js"></script></head><body><main id="design-v2-native-root">'+originalMarkup+'</main><script>'+runtime+'</script></body></html>';
 }
 
 const referenceHTML=donorReferenceHTML();
@@ -167,7 +172,32 @@ async function capture(page,side,width,percent,screen,row) {
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;}
       return{text:node.textContent,clipped};
     });
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,
+    const budgetInputs=[...root.querySelectorAll('.st-budget input[type="number"]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const style=getComputedStyle(node),canvas=document.createElement('canvas'),context=canvas.getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+      if(!context.font.includes(style.fontSize))throw new Error('Budget text measurement lost its actual font size');
+      const text=node.value||node.placeholder,available=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),textWidth=context.measureText(text).width;
+      return{text,available,textWidth,font:context.font,clipped:textWidth>available+1,appearance:style.appearance};
+    });
+    const budget=root.querySelector('[data-filter-sidebar] .st-budget');
+    const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
+    const readableText=[...root.querySelectorAll('.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+      const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;
+      while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
+        const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0){
+          if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
+          // Glyph ink may extend vertically beyond its line box without clipping.
+          // Vertical bounds matter only at an ancestor that actually clips paint.
+          for(let ancestor=node;ancestor&&root.contains(ancestor);ancestor=ancestor.parentElement){const style=getComputedStyle(ancestor),bounds=ancestor.getBoundingClientRect();if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)&&(rect.top<bounds.top-1||rect.bottom>bounds.bottom+1))clipped=true;}
+        }
+        for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
+      }
+      return{text:node.textContent,clipped,brokenWords};
+    });
+    const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
+    const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
+    const sort=root.querySelector('.st-sort');let sortFit=null;
+    if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
+    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:stage?.hidden,screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen,prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
@@ -175,6 +205,11 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
   if(side==='native'&&measurements.buttons.some(button=>button.clipped))report.failures.push({width,percent,screen,error:'Primary action text exceeds its button',details:measurements.buttons.filter(button=>button.clipped)});
+  if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
+  if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
+  if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords)});
+  if(side==='native'&&(measurements.headerFit.outside||measurements.headerFit.overlap))report.failures.push({width,percent,screen,error:'Header content overlaps or escapes the header',details:measurements.headerFit});
+  if(side==='native'&&measurements.sortFit&&measurements.sortFit.textWidth>measurements.sortFit.available+1)report.failures.push({width,percent,screen,error:'Selected sort label is clipped',details:measurements.sortFit});
   return measurements;
 }
 
@@ -227,10 +262,28 @@ async function referenceFrame(page,width,percent,screen,row) {
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
+        assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–18 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        if(width===390&&percent===100){
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
+          await product.locator('[data-action="filters"]').first().click();
+          const drawer=product.locator('[data-filter-form]'),cap=drawer.locator('input[type="number"][data-native-budget="max"]'),min=drawer.locator('input[type="number"][data-native-budget="min"]');
+          await cap.fill('200000');
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 1 отель');
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels.slice(0,3)));
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 3 отеля','New same-generation inventory refreshes the open drawer');
+          assert.equal(await cap.inputValue(),'200000');assert.equal(await cap.evaluate(node=>node===document.activeElement),true,'Snapshot retains the typed input and focus');
+          await min.fill('250000');
+          await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
+          assert.equal(await min.inputValue(),'250000');assert.equal(await min.evaluate(node=>node===document.activeElement),true);assert.equal(await product.locator('[data-filter-apply]').isEnabled(),false);
+          assert.equal(await drawer.locator('input[type="range"]').getAttribute('max'),'1059000');
+          await capture(page,'native',width,percent,'budget-progress-invalid',row);
+          await product.locator('[data-action="close-filters"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
+          assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);row.proof.progressiveDrawerRetainedDraftAndFocus=true;
+        }
         if(width<=760)await product.locator('[data-action="filters"]').first().click();
         const meal=product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first();
         await meal.check();
@@ -241,6 +294,37 @@ async function referenceFrame(page,width,percent,screen,row) {
         if(width<=760){
           await product.locator('[data-action="filters"]').first().click();
           await product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first().uncheck();
+          await product.locator('[data-action="apply-filters"]').click();
+        }else await product.locator('[data-action="reset-filters"]').first().click();
+        assert.equal(await product.locator('.st-hotel-card').count(),4);
+        const budgetPanel=width<=760?product.locator('[data-filter-form]'):product.locator('[data-filter-sidebar]');
+        if(width<=760)await product.locator('[data-action="filters"]').first().click();
+        const cap=budgetPanel.locator('input[type="number"][data-native-budget="max"]');
+        await cap.fill('150000');
+        if(width<=760){
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля','Budget draft counts exact loaded rows');
+          assert.equal(await budgetPanel.locator('input[type="range"]').inputValue(),'150000');
+          await budgetPanel.locator('input[type="number"][data-native-budget="min"]').fill('200000');
+          assert.equal(await product.locator('[data-filter-apply]').isEnabled(),false,'Invalid budget cannot apply');
+          await capture(page,'native',width,percent,'budget-invalid',row);
+          await budgetPanel.locator('input[type="number"][data-native-budget="min"]').fill('0');
+          if(width===390&&percent===100){
+            await page.setViewportSize({width:768,height:900});await screen('filters').waitFor({state:'visible'});
+            await page.setViewportSize({width,height:900});await screen('filters').waitFor({state:'visible'});
+            assert.equal(await cap.inputValue(),'150000','Open budget draft survives real breakpoint remount');
+            assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля');row.proof.budgetBreakpointDraftRetained=true;
+          }
+          await capture(page,'native',width,percent,'budget-draft',row);
+          await product.locator('[data-action="apply-filters"]').click();
+        }else await cap.press('Tab');
+        assert.equal(await product.locator('.st-hotel-card').count(),2,'Budget cap uses the full loaded price');
+        await capture(page,'native',width,percent,'budget-results',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Budget edits and viewport remount start no supplier search');
+        row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;
+        if(width<=760){
+          await product.locator('[data-action="filters"]').first().click();
+          await screen('filters').locator('[data-action="reset-draft"]').click();
+          assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 4 отеля');
           await product.locator('[data-action="apply-filters"]').click();
         }else await product.locator('[data-action="reset-filters"]').first().click();
         assert.equal(await product.locator('.st-hotel-card').count(),4);
@@ -272,6 +356,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.deepEqual(await page.evaluate(()=>({price:window.__nativeFixture.payload.price,flightChoiceId:window.__nativeFixture.payload.flightChoiceId,preview:window.__nativeFixture.calls.preview,submit:window.__nativeFixture.calls.submit})),{price:112000,flightChoiceId:0,preview:1,submit:0});
         row.proof.contactPayloadFullTotal=112000;row.proof.contactPayloadFlightChoiceIndex=0;row.proof.contactPreviewCount=1;row.proof.realLeadSubmissions=0;
         await page.goBack();await screen('tour').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-hotel-offers] .st-offer--selected [data-offer="fixture:offer:1"]').count(),1,'Back highlights only the exact previously selected offer');
+        await capture(page,'native',width,percent,'hotel-return',row);
+        await page.goForward();await screen('tour').waitFor({state:'visible'});
         await page.goForward();await screen('lead').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Render/Back/Forward starts no supplier requests');
         row.proof.backForwardRetainedSelection=true;row.proof.backForwardExtraSearches=0;

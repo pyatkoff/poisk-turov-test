@@ -5,6 +5,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const money = value => new Intl.NumberFormat('ru-RU').format(value).replace(/[\u00a0\u202f]/g,' ') + ' ₽';
   const dateText = value => new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU', {day:'numeric',month:'short',timeZone:'UTC'}).replace('.', '');
+  const dateRange = (from,to) => from === to ? dateText(from) : from.slice(0,7) === to.slice(0,7) ? Number(from.slice(8)) + '–' + dateText(to) : dateText(from) + '–' + dateText(to);
   const addDays = (value, days) => new Date(Date.parse(value + 'T12:00:00Z') + days * 86400000).toISOString().slice(0,10);
   const nights = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'ночь' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'ночи' : 'ночей');
   const icon = name => '<i data-lucide="' + name + '" aria-hidden="true"></i>';
@@ -15,7 +16,7 @@
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const listeners = new AbortController(); let alive = true, editor = null, editorSnapshot = null, searchEpoch = 0, originEpoch = 0;
     const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:false};
-    let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, photoIndex = 0, tourOwner = null;
+    let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
     const destinationHotels = new Map(), regionCache = new Map();
@@ -97,11 +98,13 @@
     }
     function show(screen, push = true) {
       if (!alive) return;
+      if(screen!=='filters'){filterDraft=null;filterBudgetValues=null;state.nativeFilters=null;}
       state.screen = screen;
       $$('[data-screen]').forEach(node => node.hidden = node.dataset.screen !== screen);
       $('.st-footer [data-action="search"]').hidden = screen === 'search';
       if (screen === 'search') openSearch();
       if (screen === 'results') renderResults();
+      if (screen === 'filters') renderFilterEditor();
       if (screen === 'hotel') renderHotel();
       if (screen === 'tour' || screen === 'lead') renderTour();
       if (screen === 'gallery') renderGallery();
@@ -113,13 +116,60 @@
       const hasPhoto = !!hotel.photos?.length, selected = state.favorites.includes(hotel.id);
       return `<article class="st-hotel-card ${hotel.name.length > 28 ? 'st-hotel-card--long-name' : ''} ${offer.total >= 1000000 ? 'st-hotel-card--wide-price' : ''}" data-hotel-card="${hotel.id}"><div class="st-card-content"><div class="q8cb ${hasPhoto ? '' : 'q8c5'}" data-card-photo="${hotel.id}" aria-label="${hasPhoto ? 'Фото отеля ' + esc(hotel.name) : 'Фото отеля пока нет'}">${hasPhoto ? `<button class="st-photo-more cursor-interaction" data-gallery-hotel="${hotel.id}" aria-label="Открыть фотографию отеля">${icon('expand')}<span class="st-photo-label">Фото</span></button>` : `<div class="st-photo-empty-message">${icon('image')}<span>Фото пока нет</span></div>`}<button class="st-favorite cursor-interaction" data-favorite="${hotel.id}" aria-pressed="${selected}" aria-label="${selected ? 'Удалить из избранного' : 'Добавить в избранное'}">${icon('heart')}</button></div><div class="st-card-info"><div class="st-card-name"><button class="st-name-button cursor-interaction" data-hotel-open="${hotel.id}">${esc(hotel.name)}${icon('arrow-up-right')}</button><span class="st-stars" aria-label="${hotel.stars} звёзд">${'★'.repeat(Math.min(5,Math.max(0,hotel.stars || 0)))}</span></div><div class="st-location">${esc(hotel.location || [countryName(hotel.country),hotel.subRegion || hotel.region].filter(Boolean).join(' · '))}</div><div class="st-card-conditions"><span class="st-conditions-date">${icon('calendar-days')}${dateText(offer.day)} · ${nights(offer.nights)}</span><span class="st-conditions-room">${icon('bed-double')}${esc(offer.room || 'Номер уточняется')}</span><span class="st-conditions-meal">${icon('utensils')}${esc(mealText(offer))}</span><span class="st-conditions-operator">${esc(offer.operator)}</span></div><div class="st-price-area"><div><div class="st-price"><small>от</small>${money(offer.total)}</div><div class="st-price-caption">за ${party(offer)}</div></div><button class="q8c2 cursor-interaction" data-offer="${esc(offer.key)}">Смотреть тур${icon('arrow-up-right')}</button></div><div class="st-card-bottom">${icon('info')}Цена из поиска · требует подтверждения</div><div class="st-card-actions"><button class="st-card-about cursor-interaction" data-hotel-about="${hotel.id}">Об отеле</button><button class="st-card-all cursor-interaction" data-hotel-open="${hotel.id}">Все туры (${eligible(hotel).length})${icon('chevron-right')}</button></div></div></div></article>`;
     }
-    function filterHTML(filters) {
+    function budgetMaximum(filters){return Math.max(1000,filters.min,filters.max || 0,...state.hotels.flatMap(h=>(h.offers||[]).map(o=>o.total).filter(Number.isFinite)));}
+    function facetHTML(filters) {
       const coverage=facetCoverage();
       const options = [...new Set(state.hotels.flatMap(h => (h.offers || []).map(mealKey)))].filter(label => label !== 'Питание уточняется');
       const count = (group,value) => rows({...filters,[group]:[value]}).length;
-      const max = Math.max(1000,...state.hotels.flatMap(h => (h.offers || []).map(o => o.total).filter(Number.isFinite)));
       const checkbox = (group,value,label) => `<label class="st-check"><input type="checkbox" data-native-filter="${group}" value="${esc(value)}" ${filters[group].includes(value) ? 'checked' : ''}><span>${esc(label)}</span><span class="st-filter-count" aria-label="${countText(count(group,value))}">${count(group,value)}</span></label>`;
-      return `<div class="st-group"><strong class="st-group-title">Бюджет за весь тур, ₽</strong><div class="st-budget"><label>От<input type="number" min="0" data-native-budget="min" aria-label="Бюджет от" value="${filters.min || ''}" placeholder="0"></label><label>До<input type="number" min="0" data-native-budget="max" aria-label="Бюджет до" value="${filters.max ?? ''}" placeholder="Без лимита"></label></div><input type="range" class="st-budget-range" data-native-budget="max" min="0" max="${max}" value="${filters.max ?? max}" aria-label="Максимальная цена тура"><p class="st-budget-caption">За всех туристов</p></div>${coverage.stars?`<div class="st-group"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:''}${coverage.meals?`<div class="st-group"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:''}`;
+      return `${coverage.stars?`<div class="st-group" data-native-facet-group="stars"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:''}${coverage.meals?`<div class="st-group" data-native-facet-group="meals"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:''}`;
+    }
+    function filterHTML(filters) {
+      const max=budgetMaximum(filters);
+      return `<div class="st-group"><strong class="st-group-title">Бюджет за весь тур, ₽</strong><div class="st-budget"><label>От<input type="number" inputmode="numeric" min="0" step="1" data-native-budget="min" aria-label="Бюджет от" value="${filters.min || ''}" placeholder="0"></label><label>До<input type="number" inputmode="numeric" min="0" step="1" data-native-budget="max" aria-label="Бюджет до" value="${filters.max ?? ''}" placeholder="Без лимита"></label></div><input type="range" class="st-budget-range" data-native-budget="max" min="0" max="${max}" value="${filters.max ?? max}" aria-label="Максимальная цена тура"><p class="st-budget-caption">За всех туристов</p><p class="st-budget-error" data-native-budget-error role="status" hidden></p></div>${facetHTML(filters)}`;
+    }
+    function filterSnapshot(){return filterDraft?{filters:cloneFilters(filterDraft),budget:{...filterBudgetValues}}:null;}
+    function renderFilterEditor(){
+      if(!filterDraft){filterDraft=cloneFilters(state.nativeFilters?.filters||state.filters);filterBudgetValues=state.nativeFilters?.budget||{min:String(filterDraft.min||''),max:String(filterDraft.max??'')};}
+      const panel=$('[data-filter-form]');panel.innerHTML=filterHTML(filterDraft);
+      for(const node of panel.querySelectorAll('input[type="number"][data-native-budget]'))node.value=filterBudgetValues[node.dataset.nativeBudget];
+      validateResultBudget(panel);updateFilterDraft();
+    }
+    function updateFilterDraft(){
+      if(!filterDraft)return;
+      const panel=$('[data-filter-form]'),invalid=!!panel.querySelector('input[aria-invalid="true"]');
+      const apply=$('[data-filter-apply]');apply.disabled=invalid;apply.textContent=invalid?'Проверьте бюджет':'Показать '+countText(rows(filterDraft).length);
+      for(const node of panel.querySelectorAll('[data-native-filter]')){const group=node.dataset.nativeFilter,value=group==='stars'?Number(node.value):node.value,count=rows({...filterDraft,[group]:[value]}).length;const label=node.parentElement.querySelector('.st-filter-count');label.textContent=count;label.setAttribute('aria-label',countText(count));}
+      state.nativeFilters=filterSnapshot();
+    }
+    function refreshFilterEditor(){
+      if(!filterDraft)return;
+      const panel=$('[data-filter-form]'),coverage=facetCoverage(),active=window.document.activeElement;
+      const focusedFacet=active?.dataset.nativeFilter?{group:active.dataset.nativeFilter,value:active.value}:null;
+      for(const key of ['stars','meals'])if(!coverage[key])filterDraft[key]=[];
+      panel.querySelectorAll('[data-native-facet-group]').forEach(node=>node.remove());panel.insertAdjacentHTML('beforeend',facetHTML(filterDraft));
+      const range=panel.querySelector('input[type="range"]');range.max=budgetMaximum(filterDraft);range.value=filterDraft.max??range.max;
+      updateFilterDraft();
+      if(focusedFacet)[...panel.querySelectorAll('[data-native-filter]')].find(node=>node.dataset.nativeFilter===focusedFacet.group&&node.value===focusedFacet.value)?.focus({preventScroll:true});
+      redrawIcons();
+    }
+    function validateResultBudget(panel){
+      const fields=[...panel.querySelectorAll('input[type="number"][data-native-budget]')],values={};let error='';
+      for(const node of fields){const raw=node.value.trim(),valid=!node.validity.badInput&&(raw===''||/^\d+$/.test(raw)&&Number.isSafeInteger(Number(raw)));node.setAttribute('aria-invalid',String(!valid));if(!valid)error='Укажите целую сумму в рублях.';else values[node.dataset.nativeBudget]=raw===''?(node.dataset.nativeBudget==='max'?null:0):Number(raw);}
+      if(!error&&values.max!==null&&values.min>values.max){error='Бюджет «от» должен быть не больше бюджета «до».';fields.forEach(node=>node.setAttribute('aria-invalid','true'));}
+      const hint=panel.querySelector('[data-native-budget-error]');hint.textContent=error;hint.hidden=!error;
+      return error?null:values;
+    }
+    function changeResultBudget(node,commit){
+      const panel=node.closest('[data-filter-form],[data-filter-sidebar]');if(!panel)return;
+      if(node.type==='range')panel.querySelector('input[type="number"][data-native-budget="max"]').value=node.value;
+      const values=validateResultBudget(panel);
+      if(filterDraft){filterBudgetValues=Object.fromEntries([...panel.querySelectorAll('input[type="number"][data-native-budget]')].map(field=>[field.dataset.nativeBudget,field.value]));}
+      if(values){
+        const range=panel.querySelector('input[type="range"]');range.max=Math.max(Number(range.max),values.min,values.max||0);range.value=values.max??range.max;
+        if(filterDraft)Object.assign(filterDraft,values);else if(commit){Object.assign(state.filters,values);renderResults();updateURL();}
+      }
+      updateFilterDraft();
     }
     function renderCalendar() {
       const days = [], s = state.search;
@@ -136,8 +186,8 @@
       const found=rows(), s=state.search;
       const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
       text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
-      text('[data-departure-range]',dateText(s.from)+'–'+dateText(s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
-      text('[data-party]',party(s));text('[data-route]',s.origin+' → '+countryName(s.country));text('[data-mobile-dates]','Вылет '+dateText(s.from)+'–'+dateText(s.to));
+      text('[data-departure-range]',dateRange(s.from,s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
+      text('[data-party]',party(s));text('[data-route]',s.origin+' → '+countryName(s.country));text('[data-mobile-dates]','Вылет '+dateRange(s.from,s.to));
       text('[data-nights-copy]',s.minNights===s.maxNights?nights(s.minNights):s.minNights+'–'+s.maxNights+' ночей');text('[data-party-copy]',party(s));
       text('[data-result-count]',countText(found.length));
       $('.st-sort').value=state.sort;
@@ -157,7 +207,7 @@
       text('[data-hotel-min-price]',money(min.total));text('[data-hotel-price-caption]','За '+party(min)+' · '+nights(min.nights));
       text('[data-offer-context]','Все цены за '+party(min));text('[data-offer-comparison]','«+» — разница с минимальной ценой в этом списке.');
       $('[data-offer-comparison]').hidden=!list.some(o=>o.total>min.total);photo($('[data-hotel-hero]'),h);
-      $('[data-hotel-offers]').innerHTML=list.map(o=>`<div class="st-offer-choice"><div class="st-offer"><div><div class="st-offer-name">${esc(o.room)}</div><div class="st-offer-meal">${esc(mealText(o))}</div><div class="st-offer-meta"><span>${dateText(o.day)} · ${nights(o.nights)} · ${esc(o.operator)}</span></div></div><div><div class="st-offer-price">${money(o.total)}</div><div class="st-offer-delta">${o.total>min.total?'+'+money(o.total-min.total):'Минимальная цена'}</div></div><button class="${o===min?'q8c2':'st-secondary'} st-offer-select" data-offer="${esc(o.key)}">Выбрать тур</button></div></div>`).join('');
+      $('[data-hotel-offers]').innerHTML=list.map(o=>`<div class="st-offer-choice"><div class="st-offer ${state.selected===o?'st-offer--selected':''}"><div><div class="st-offer-name">${esc(o.room)}</div><div class="st-offer-meal">${esc(mealText(o))}</div><div class="st-offer-meta"><span>${dateText(o.day)} · ${nights(o.nights)} · ${esc(o.operator)}</span></div></div><div><div class="st-offer-price">${money(o.total)}</div><div class="st-offer-delta">${o.total>min.total?'+'+money(o.total-min.total):'Минимальная цена'}</div></div><button class="${o===min?'q8c2':'st-secondary'} st-offer-select" data-offer="${esc(o.key)}" aria-pressed="${state.selected===o}">${state.selected===o?'Выбран тур':'Выбрать тур'}</button></div></div>`).join('');
       const description=document.createElement('div');description.innerHTML=h.raw?.description||h.note||'';description.querySelectorAll('script,style,iframe,svg,object').forEach(n=>n.remove());
       text('.st-hotel-description',description.textContent||'Описание отеля пока не получено.');
       const about=$('[data-about-hotel]');about.querySelector('h2').textContent='Об отеле';about.querySelector('.st-amenities').innerHTML=(h.amenities||[]).map(a=>`<span class="st-amenity">${esc(a.label)}</span>`).join('');
@@ -187,7 +237,7 @@
       form.elements.origin.innerHTML=dictionaries.origins.map(name=>`<option ${name===draft.origin?'selected':''}>${esc(name)}</option>`).join('');
       form.elements.country.innerHTML=dictionaries.countries.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(draft.country)?'selected':''}>${esc(c.name)}</option>`).join('');
       text('[data-destination-country]',countryName(draft.country));text('[data-destination-summary]',destinationSummary());
-      text('[data-search-date-value]',dateText(draft.from)+'–'+dateText(draft.to));text('[data-search-night-value]',draft.minNights===draft.maxNights?nights(draft.minNights):draft.minNights+'–'+draft.maxNights+' ночей');
+      text('[data-search-date-value]',dateRange(draft.from,draft.to));text('[data-search-night-value]',draft.minNights===draft.maxNights?nights(draft.minNights):draft.minNights+'–'+draft.maxNights+' ночей');
       text('[data-search-travelers-value]',party(draft));text('[data-search-adult-value]',draft.adults);
       $('[data-search-children]').innerHTML=draft.ages.map((age,i)=>`<div class="st-search-child"><label class="q8c4"><span>Ребёнок ${i+1}</span><select data-native-age="${i}" aria-label="Возраст ребёнка ${i+1} на дату возвращения" required><option value="" ${age===null?'selected':''}>Укажите возраст</option>${Array.from({length:18},(_,n)=>`<option value="${n}" ${age===n?'selected':''}>${n}${n===0?' · до 1 года':''}</option>`).join('')}</select></label><button class="st-search-remove-child" type="button" data-native-remove-child="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('');
       $$('[data-search-adult]').forEach(n=>n.disabled=Number(n.dataset.searchAdult)<0?draft.adults<=1:draft.adults>=6);
@@ -320,7 +370,7 @@
       rememberRoute(false);
       state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;if(!preserveDate)state.selectedDate=null;state.hotels=[];state.status='loading';state.message='';
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
-      try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;if(state.screen==='results')renderResults();updateURL();}}
+      try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
       catch(error){if(alive&&epoch===searchEpoch){state.status='error';state.message=error.message;renderResults();}}
     }
     function handleClick(event){
@@ -328,7 +378,7 @@
       const d=button.dataset;
       if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){const id=Number(d.favorite||state.hotelId);state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}renderResults();return;}
       if(d.hotelOpen||d.hotelAbout){state.hotelId=Number(d.hotelOpen||d.hotelAbout);show('hotel');$('[data-about-hotel]').hidden=!d.hotelAbout;$('[data-hotel-offers-panel]').hidden=!!d.hotelAbout;return;}
-      if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;show('tour');}return;}
+      if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;rememberRoute(false);show('tour');}return;}
       if(d.hotelSection){$('[data-about-hotel]').hidden=d.hotelSection!=='about';$('[data-hotel-offers-panel]').hidden=d.hotelSection==='about';$$('[data-hotel-section]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));return;}
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
@@ -358,18 +408,19 @@
       const action=d.action;
       if(action==='search'){show('search');return;}if(action==='results'){closeEditor(true);show('results');return;}
       if(action==='hotel'){show('hotel');return;}if(action==='tour'){show('tour');return;}if(action==='lead'){show('lead');return;}
-      if(action==='best-tour'){state.selected=eligible(currentHotel())[0];show('tour');return;}
+      if(action==='best-tour'){state.selected=eligible(currentHotel())[0];rememberRoute(false);show('tour');return;}
       if(action==='gallery'){photoIndex=0;show('gallery');return;}
       if(action==='favorites'){state.onlyFavorites=!state.onlyFavorites;show('results');return;}
+      if(action==='reset-draft'){if(filterDraft){filterDraft=defaultFilters();filterBudgetValues={min:'',max:''};renderFilterEditor();}return;}
       if(action==='reset-filters'){state.filters=defaultFilters();state.selectedDate=null;renderResults();updateURL();return;}
-      if(action==='filters'){filterDraft=cloneFilters(state.filters);$('[data-filter-form]').innerHTML=filterHTML(filterDraft);show('filters');return;}
+      if(action==='filters'){filterDraft=null;filterBudgetValues=null;state.nativeFilters=null;show('filters');return;}
       if(action==='close-filters'){filterDraft=null;show('results');return;}
-      if(action==='apply-filters'){state.filters=filterDraft;filterDraft=null;show('results');updateURL();return;}
+      if(action==='apply-filters'){if(!filterDraft||!validateResultBudget($('[data-filter-form]')))return;state.filters=filterDraft;show('results');updateURL();return;}
     }
     root.addEventListener('click',handleClick,{signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
-      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)text('[data-filter-apply]','Показать '+countText(rows(filterDraft).length));else{renderResults();updateURL();}}
-      if(d.nativeBudget){const f=filterDraft||state.filters,value=node.value===''?(d.nativeBudget==='max'?null:0):Number(node.value);if(value===null||Number.isSafeInteger(value)&&value>=0){const next={...f,[d.nativeBudget]:value};if(next.max===null||next.min<=next.max){f[d.nativeBudget]=value;node.removeAttribute('aria-invalid');if(!filterDraft){renderResults();updateURL();}}else node.setAttribute('aria-invalid','true');}else node.setAttribute('aria-invalid','true');}
+      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{renderResults();updateURL();}}
+      if(d.nativeBudget)changeResultBudget(node,true);
       if(d.nativeFormMeal){draftFilters.meals=node.checked?[...draftFilters.meals,d.nativeFormMeal]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);}
       if(d.nativeAge!==undefined){draft.ages[Number(d.nativeAge)]=node.value===''?null:Number(node.value);renderSearch();}
       if(node.classList.contains('st-sort')){state.sort=node.value;renderResults();updateURL();}
@@ -380,7 +431,7 @@
         finally{if(alive&&epoch===originEpoch)originPending=false;}
       }
     },{signal:listeners.signal});
-    root.addEventListener('input',event=>{const d=event.target.dataset;if(event.target.hasAttribute('data-destination-query'))loadDestination();if(d.searchBudget)validateBudget();}, {signal:listeners.signal});
+    root.addEventListener('input',event=>{const d=event.target.dataset;if(event.target.hasAttribute('data-destination-query'))loadDestination();if(d.searchBudget)validateBudget();if(d.nativeBudget)changeResultBudget(event.target,false);}, {signal:listeners.signal});
     root.addEventListener('keydown',event=>{if(event.key==='Escape'&&editor){event.preventDefault();closeEditor(true);}}, {signal:listeners.signal});
     $('[data-search-form]').addEventListener('submit',event=>{event.preventDefault();runSearch();},{signal:listeners.signal});
     $('[data-lead-form]').addEventListener('submit',event=>event.preventDefault(),{signal:listeners.signal});
@@ -393,7 +444,7 @@
       const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());root.hidden=false;
       if(initial.requestedSearch&&!initialState){openSearch();await runSearch(true);}
     })();
-    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render:renderResults,destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
+    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
   }
   window.AnyTourDesignV2Native=Object.freeze({mount});
 })(window);
