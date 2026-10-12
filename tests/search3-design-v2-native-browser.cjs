@@ -330,7 +330,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25']);
         assert.equal(await calendar.locator('[data-native-calendar-page="prev"]').evaluate(node=>node===document.activeElement),true,'The enabled paging control keeps keyboard focus after the last page replaces its button');
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"] .st-pc-full').innerText(),'166 400 ₽','Later page uses the exact loaded full-tour total');
-        assert.match(await calendar.locator('[data-native-day="2026-10-24"]').getAttribute('aria-label'),/нет подходящих туров/,'Unknown later-day price stays explicit');
+        assert.match(await calendar.locator('[data-native-day="2026-10-24"]').getAttribute('aria-label'),/цена пока не получена/,'Unknown later-day price stays explicit without asserting availability');
         await capture(page,'native',width,percent,'calendar-later',row);
         await calendar.locator('[data-native-day="2026-10-25"]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),1,'A later loaded date filters existing cards locally');
