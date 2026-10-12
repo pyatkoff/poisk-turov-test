@@ -338,12 +338,12 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-native-result-more]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),48);
         assert.equal(await product.locator('[data-native-result-more]').evaluate(node=>node===document.activeElement),true,'The remaining load-more control keeps keyboard focus');
-        await product.locator('.st-hotel-card').first().locator('[data-hotel-open]').click();await screen('hotel').waitFor({state:'visible'});await page.goBack();await screen('results').waitFor({state:'visible'});
+        await product.locator('.st-hotel-card').first().locator('.st-name-button').click();await screen('hotel').waitFor({state:'visible'});await page.goBack();await screen('results').waitFor({state:'visible'});
         assert.equal(await product.locator('.st-hotel-card').count(),48,'Back retains the revealed result batch');
         await product.locator('[data-native-result-more]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),55);
         assert.equal(await product.locator('[data-native-result-more]').count(),0,'The control disappears after every loaded row is visible');
-        assert.equal(await product.locator('.st-hotel-card').nth(48).locator('[data-hotel-open]').evaluate(node=>node===document.activeElement),true,'The first final-batch card receives focus when the control disappears');
+        assert.equal(await product.locator('.st-hotel-card').nth(48).locator('.st-name-button').evaluate(node=>node===document.activeElement),true,'The first final-batch card receives focus when the control disappears');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Revealing loaded rows starts no supplier search');
         row.proof.boundedInitialCards=24;row.proof.boundedLoadedHotels=55;row.proof.boundedBackCards=48;row.proof.boundedExtraSearches=0;
         await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
