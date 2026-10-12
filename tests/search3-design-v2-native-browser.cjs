@@ -56,7 +56,7 @@ function fixtureBridge(fixture) {
   const publish=value=>{latest=value;for(const listener of listeners)listener(value);return value;};
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection};
-  control.deliverHotels=hotels=>publish({...latest,hotels,search:{...trip,ages:[]}});
+  control.deliverHotels=(hotels,values={})=>publish({...latest,...values,hotels,search:{...trip,ages:[]}});
   let initResolve,initReject,initialization;
   control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
@@ -160,7 +160,7 @@ async function setTextSize(page,percent) {
 }
 
 async function capture(page,side,width,percent,screen,row) {
-  if(side==='native')await page.waitForFunction(()=>window.__nativeFixture?.getSnapshot?.().status!=='loading');
+  if(side==='native')await page.waitForFunction(pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
   await page.evaluate(()=>document.fonts.ready);
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await setTextSize(page,percent);
@@ -207,7 +207,7 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return false;
     };
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p,[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -230,7 +230,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-bounded','filters-active','filter-empty','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-bounded','filters-active','filter-empty','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -323,6 +323,24 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'loading',message:''}));
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Ищем…');
+        assert.equal(await product.locator('[data-empty-action]').isVisible(),false);
+        assert.equal(await product.locator('[data-source-alert]').isVisible(),false);
+        assert.equal(await product.locator('[data-empty]').getAttribute('aria-busy'),'true');
+        await capture(page,'native',width,percent,'results-loading',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
+        row.proof.loadingInitialCountNeutral=true;row.proof.loadingEmptyActionHidden=true;row.proof.loadingExtraSearches=0;
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'error',message:'API HTTP 500'}));
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Поиск прерван');
+        assert.equal(await product.locator('[data-empty-title]').innerText(),'Не удалось загрузить туры');
+        assert.equal(await product.locator('[data-empty-action]').innerText(),'Вернуться к поиску');
+        assert.equal(await product.locator('[data-source-alert]').isVisible(),false);
+        assert.equal(await product.locator('[data-empty]').getAttribute('aria-busy'),'false');
+        await capture(page,'native',width,percent,'results-error',row);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
+        row.proof.failedInitialCountNeutral=true;row.proof.failedInitialFriendlyCopy=true;row.proof.failedInitialExtraSearches=0;
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels,{status:'complete'}));
         await page.evaluate(()=>{
           const source=window.__nativeFixture.hotels;
           const bulk=Array.from({length:55},(_,index)=>{
@@ -401,6 +419,9 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('.st-hotel-card').count(),0);
         assert.equal(await product.locator('[data-empty-action]').getAttribute('data-native-remove-constraint'),'budget');
         assert.match(await product.locator('[data-empty-text]').innerText(),/2 отеля из загруженных/);
+        assert.match(await calendar.locator('.st-pc-foot').innerText(),/По выбранным условиям на этих датах предложений нет/);
+        assert.match(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-label'),/нет предложений по выбранным условиям/);
+        row.proof.filteredCalendarTruthful=true;
         await capture(page,'native',width,percent,'filter-empty',row);
         await product.locator('[data-empty-action]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Single-condition recovery preserves the applied meal');
