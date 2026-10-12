@@ -42,11 +42,11 @@
       return {stars:state.hotels.every(hotel=>Number.isInteger(hotel.stars)&&hotel.stars>=1&&hotel.stars<=5),
         meals:state.hotels.every(hotel=>(hotel.offers||[]).every(offer=>mealKey(offer)!=='Питание уточняется'))};
     }
-    function eligible(hotel, filters = state.filters, selectedDate = state.selectedDate) {
+    function eligible(hotel, filters = state.filters, selectedDate = state.selectedDate, onlyFavorites = state.onlyFavorites) {
       if (!hotel || !state.search || String(hotel.country) !== String(state.search.country)) return [];
       if (filters.hotelIds?.length && !filters.hotelIds.includes(hotel.id)) return [];
       if (!filters.hotelIds?.length && filters.hotelId && hotel.id !== filters.hotelId) return [];
-      if (state.onlyFavorites && !state.favorites.includes(hotel.id)) return [];
+      if (onlyFavorites && !state.favorites.includes(hotel.id)) return [];
       if (filters.stars.length && !filters.stars.includes(hotel.stars)) return [];
       if (filters.resorts.length && !filters.resorts.some(r => [hotel.subRegion,hotel.region,hotel.resort].includes(r))) return [];
       return (hotel.offers || []).filter(offer => Number.isFinite(offer.total) && offer.total > 0
@@ -55,11 +55,45 @@
         && offer.total >= filters.min && (filters.max === null || offer.total <= filters.max))
         .slice().sort((a,b) => a.total - b.total || a.key.localeCompare(b.key));
     }
-    function rows(filters = state.filters) {
-      const result = state.hotels.filter(hotel => eligible(hotel,filters).length);
-      if (state.sort === 'price') result.sort((a,b) => eligible(a,filters)[0].total - eligible(b,filters)[0].total);
+    function rows(filters = state.filters, selectedDate = state.selectedDate, onlyFavorites = state.onlyFavorites) {
+      const result = state.hotels.filter(hotel => eligible(hotel,filters,selectedDate,onlyFavorites).length);
+      if (state.sort === 'price') result.sort((a,b) => eligible(a,filters,selectedDate,onlyFavorites)[0].total - eligible(b,filters,selectedDate,onlyFavorites)[0].total);
       if (state.sort === 'name') result.sort((a,b) => a.name.localeCompare(b.name,'ru'));
       return result;
+    }
+    function resultConstraints() {
+      const f=state.filters,items=[];
+      if(f.min||f.max!==null)items.push({group:'budget',value:'',label:[f.min?'от '+money(f.min):'',f.max!==null?'до '+money(f.max):''].filter(Boolean).join(' · ')});
+      for(const group of ['stars','meals','resorts'])for(const value of f[group])items.push({group,value:String(value),label:group==='stars'?value+' звёзд':String(value)});
+      for(const id of f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[])items.push({group:'hotel',value:String(id),label:state.hotels.find(h=>h.id===id)?.name||'Выбранный отель'});
+      if(state.selectedDate)items.push({group:'date',value:state.selectedDate,label:'Вылет '+dateText(state.selectedDate)});
+      if(state.onlyFavorites)items.push({group:'favorites',value:'',label:'Только избранное'});
+      return items;
+    }
+    function withoutConstraint(item) {
+      const filters=cloneFilters(state.filters);let selectedDate=state.selectedDate,onlyFavorites=state.onlyFavorites;
+      if(item.group==='budget'){filters.min=0;filters.max=null;}
+      else if(item.group==='date')selectedDate=null;
+      else if(item.group==='favorites')onlyFavorites=false;
+      else if(item.group==='hotel'){filters.hotelIds=(filters.hotelIds?.length?filters.hotelIds:filters.hotelId?[filters.hotelId]:[]).filter(id=>String(id)!==item.value);filters.hotelId=filters.hotelIds[0]||0;}
+      else filters[item.group]=filters[item.group].filter(value=>String(value)!==item.value);
+      return{filters,selectedDate,onlyFavorites};
+    }
+    function renderResultConstraints(found) {
+      const items=resultConstraints(),chips=$('[data-active-chips]');chips.hidden=!items.length;
+      chips.setAttribute('aria-label','Выбранные условия');
+      chips.innerHTML=items.map(item=>`<button type="button" class="st-chip cursor-interaction" data-native-remove-constraint="${item.group}" data-native-constraint-value="${esc(item.value)}" aria-label="Снять условие: ${esc(item.label)}"><span>${esc(item.label)}</span>${icon('x')}</button>`).join('');
+      $$('[data-action="favorites"]').forEach(node=>node.setAttribute('aria-pressed',String(state.onlyFavorites)));
+      const action=$('[data-empty-action]'),description=$('[data-empty-text]');
+      action.dataset.action='search';delete action.dataset.nativeRemoveConstraint;delete action.dataset.nativeConstraintValue;
+      action.textContent='Изменить поиск';description.textContent=state.status==='loading'?'Предложения ещё загружаются. Полученные туры появятся здесь.':'Попробуйте изменить даты или снять часть фильтров.';
+      const recovery=!found.length?items.map(item=>{const next=withoutConstraint(item);return{...item,count:rows(next.filters,next.selectedDate,next.onlyFavorites).length};}).find(item=>item.count>0):null;
+      if(recovery){
+        delete action.dataset.action;action.dataset.nativeRemoveConstraint=recovery.group;action.dataset.nativeConstraintValue=recovery.value;
+        action.textContent='Снять: '+recovery.label;
+        description.textContent='Без этого условия можно показать '+countText(recovery.count)+' из уже загруженных предложений. Остальные условия сохранятся.';
+      }
+      $$('[data-empty-edit]').forEach(node=>node.hidden=!recovery);
     }
     function photo(node, hotel, index = 0) {
       if (!node) return;
@@ -211,6 +245,7 @@
       more.innerHTML=remaining?`<span class="st-result-more-count" aria-live="polite">Показано ${visible.length} из ${found.length}</span><button type="button" class="st-secondary cursor-interaction" data-native-result-more>Показать ещё ${next}</button>`:'';
       $$('[data-card-photo]').forEach(node=>photo(node,state.hotels.find(h=>h.id===Number(node.dataset.cardPhoto))));
       $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',state.status==='loading'?'Ищем туры…':'Нет подходящих туров');
+      renderResultConstraints(found);
       text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
       renderCalendar();redrawIcons();
     }
@@ -389,6 +424,13 @@
     function handleClick(event){
       const button=event.target.closest('button');if(!button||!root.contains(button))return;
       const d=button.dataset;
+      if(button.hasAttribute('data-native-remove-constraint')){
+        const items=resultConstraints(),index=items.findIndex(item=>item.group===d.nativeRemoveConstraint&&item.value===d.nativeConstraintValue);
+        if(index<0)return;
+        const next=withoutConstraint(items[index]);Object.assign(state,next);resetResultLimit();renderResults();updateURL();
+        const chips=$$('[data-native-remove-constraint].st-chip');
+        (chips[Math.min(index,chips.length-1)]||$('[data-card-list] .st-name-button')||$('[data-empty-action]'))?.focus({preventScroll:true});return;
+      }
       if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){const id=Number(d.favorite||state.hotelId);state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}renderResults();return;}
       if(d.hotelOpen||d.hotelAbout){state.hotelId=Number(d.hotelOpen||d.hotelAbout);show('hotel');$('[data-about-hotel]').hidden=!d.hotelAbout;$('[data-hotel-offers-panel]').hidden=!!d.hotelAbout;return;}
       if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;rememberRoute(false);show('tour');}return;}
