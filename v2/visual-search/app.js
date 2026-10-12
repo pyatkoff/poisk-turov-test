@@ -1258,11 +1258,28 @@ function updateMealPicker(selectedCount=null){
  preview.textContent=count?`${hotelCountText(count)} · по загруженной выдаче`:complete?'Нет отелей с таким питанием и остальными условиями.':'В загруженной части выдачи пока нет подходящих отелей.';
  preview.classList.toggle('meal-preview-empty',count===0);
 }
+const mealCode=value=>({'Всё включено':'AI','Ультра всё включено':'UAI','Завтраки':'BB','Полупансион':'HB','Полный пансион':'FB','Без питания':'RO'}[value]||'');
+const mealChoices=()=>[...new Set([...Object.keys(mealNames),...mealDraft])].sort(compareMealLabels);
+function mealOptionHTML(value,label){return `<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(value)}" ${value?mealDraft.includes(value)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${value?`<small>${esc(mealCode(value))}</small>`:''}</span></label>`;}
+function reconcileMealChoices(){
+ if(modalType!=='meals')return;
+ const options=$('.meal-options');if(!options)return;
+ const active=document.activeElement,activeValue=active?.matches?.('[data-meal-choice]')?active.value:null;
+ let cursor=options.firstElementChild;
+ for(const value of ['',...mealChoices()]){
+  if(cursor?.querySelector('input')?.value===value){cursor.querySelector('input').checked=value?mealDraft.includes(value):!mealDraft.length;cursor=cursor.nextElementSibling;continue;}
+  const existing=[...options.children].find(row=>row.querySelector('input')?.value===value);
+  if(existing){existing.querySelector('input').checked=value?mealDraft.includes(value):!mealDraft.length;options.insertBefore(existing,cursor);}
+  else{const template=document.createElement('template');template.innerHTML=mealOptionHTML(value,value||'Любое питание');options.insertBefore(template.content.firstElementChild,cursor);}
+ }
+ const allowed=new Set(['',...mealChoices()]);[...options.children].forEach(row=>{if(!allowed.has(row.querySelector('input')?.value||''))row.remove();});
+ if(active&&!active.isConnected)(activeValue?options.querySelector(`[data-meal-choice][value="${CSS.escape(activeValue)}"]`):$('#meal-query'))?.focus({preventScroll:true});
+ const selectedCount=updateMealCounts();updateMealPicker(selectedCount);
+}
 function openMeals(restore=null){
  const restoredMeals=boundedHistoryStrings(restore?.meals);
  mealDraft=restoredMeals??[...pickerFilters().meals];
- const choices=[...new Set([...Object.keys(mealNames),...mealDraft])].sort(compareMealLabels);
- showModal('meals','Питание','УСЛОВИЯ ТУРА',`<p class="modal-intro">Можно выбрать несколько вариантов.</p>${true?'<div class="meal-search">'+icon('search')+'<label><span class="sr-only">Найти тип питания</span><input id="meal-query" type="search" placeholder="Найти тип питания" autocomplete="off"></label><button type="button" id="meal-clear-query" class="text-button" data-action="clear-meal-query" hidden>Сбросить поиск</button></div>':''}<div class="meal-options">${[['','Любое питание'],...choices.map(m=>[m,m])].map(([v,label])=>`<label class="meal-option"><input type="checkbox" data-meal-choice value="${esc(v)}" ${v?mealDraft.includes(v)?'checked':'':!mealDraft.length?'checked':''}><span><strong>${esc(label)}</strong>${v?`<small>${esc({'Всё включено':'AI','Ультра всё включено':'UAI','Завтраки':'BB','Полупансион':'HB','Полный пансион':'FB','Без питания':'RO'}[v]||'')}</small>`:''}</span></label>`).join('')}</div><p id="meal-no-match" class="meal-no-match" hidden>Такого названия нет. Попробуйте другое или сбросьте поиск.</p>`);
+ showModal('meals','Питание','УСЛОВИЯ ТУРА',`<p class="modal-intro">Можно выбрать несколько вариантов.</p>${true?'<div class="meal-search">'+icon('search')+'<label><span class="sr-only">Найти тип питания</span><input id="meal-query" type="search" placeholder="Найти тип питания" autocomplete="off"></label><button type="button" id="meal-clear-query" class="text-button" data-action="clear-meal-query" hidden>Сбросить поиск</button></div>':''}<div class="meal-options">${[['','Любое питание'],...mealChoices().map(m=>[m,m])].map(([value,label])=>mealOptionHTML(value,label)).join('')}</div><p id="meal-no-match" class="meal-no-match" hidden>Такого названия нет. Попробуйте другое или сбросьте поиск.</p>`);
  $('#modal').classList.add('meals-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML='<div class="meal-result-summary" role="status" aria-live="polite"><strong id="meal-result-preview"></strong><span id="meal-selection-status"></span></div><button class="primary picker-apply" data-action="apply-meals">Применить</button>';
  if($('#meal-query'))$('#meal-query').value=boundedHistoryText(restore?.query,'');
  updateMealPicker(updateMealCounts());
@@ -2647,7 +2664,7 @@ function applyCatalog(c){
  if(data.live){Object.keys(mealNames).forEach(key=>delete mealNames[key]);data.catalog.mealPlans.filter(plan=>plan.nativeIds?.length).forEach(plan=>{mealNames[plan.nameRu]=plan.id;});}
  else data.catalog.meals.forEach(x=>{const label=data.meal(x);if(label)mealNames[label]=label;});
  draft.origin=c.origin;if(!countryNames[draft.country])draft.country=String(c.countries.find(x=>data.text(x)==='Турция')?.id||c.countries[0].id);
- draftDestination=null;updateSearchUI();
+ draftDestination=null;updateSearchUI();if(modalType==='meals')reconcileMealChoices();
 }
 async function loadCountries(origin){
  const run=++catalogLoadGeneration;catalogReady=false;catalogError='';catalogDeparture=origin;updateSearchUI();

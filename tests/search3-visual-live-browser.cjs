@@ -1188,6 +1188,26 @@ const server=http.createServer((req,res)=>{
   releaseInitialCatalog();delete transport.state.countryGates['1'];
   await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled);
   assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'false');
+  // Reload can restore an open picker from native history before the delayed
+  // catalogue has hydrated. Its exact query and focus must survive while the
+  // real canonical choices join the already-open list without another click.
+  await page.locator('#quick-meal').click();await page.locator('#meal-query').fill('AI');
+  await page.locator('#meal-query').evaluate(el=>{el.focus({preventScroll:true});el.setSelectionRange(1,1);});
+  let releaseReloadCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseReloadCatalog=resolve);
+  const passiveCalls=transport.calls.filter(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)).length;
+  await page.reload();await page.waitForFunction(()=>document.querySelector('#modal')?.open&&document.querySelector('#meal-query'));
+  assert.equal(await page.locator('#search-form').getAttribute('aria-busy'),'true');
+  assert.equal(await page.locator('[data-meal-choice]').count(),1,'history restore begins with the locally available Any choice');
+  const restoredMealFocus=await page.evaluate(()=>document.activeElement.id||document.activeElement.dataset.action||document.activeElement.tagName);
+  const restoredMealCaret=await page.locator('#meal-query').evaluate(el=>[el.selectionStart,el.selectionEnd]);
+  releaseReloadCatalog();delete transport.state.countryGates['1'];
+  await page.waitForFunction(()=>!document.querySelector('.search-submit').disabled&&document.querySelectorAll('[data-meal-choice]').length>1);
+  assert.equal(await page.locator('#meal-query').inputValue(),'AI','late catalogue preserves the restored meal query');
+  assert.deepEqual(await page.locator('#meal-query').evaluate(el=>[el.selectionStart,el.selectionEnd]),restoredMealCaret,'late catalogue preserves the current query caret');
+  assert.equal(await page.evaluate(()=>document.activeElement.id||document.activeElement.dataset.action||document.activeElement.tagName),restoredMealFocus,'late catalogue does not steal picker focus');
+  assert(await page.locator('[data-meal-choice][value="Всё включено"]').count(),'late canonical meal becomes selectable without reopening');
+  assert.equal(transport.calls.filter(call=>call.action==='search_start'||/api-anex-|api-andromeda-|quote|lead/.test(call.url)).length,passiveCalls,'meal catalogue reconciliation starts no supplier, quote or lead request');
+  await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
   await openFormWishes(page);
   await mobileQuickFieldLayout(page,width);
   assert.equal(await page.locator('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true','URL stars restore after delayed catalog hydration');
