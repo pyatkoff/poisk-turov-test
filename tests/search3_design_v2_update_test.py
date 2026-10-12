@@ -143,7 +143,12 @@ class UpdateContracts(unittest.TestCase):
             'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
             'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
             'boundedBackCards': 48, 'boundedExtraSearches': 0,
-            'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
+            'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0,
+            'activeConstraintsVisible': True, 'recoveryLoadedHotels': 2,
+            'recoveryPreservedMeal': True, 'recoveryExtraSearches': 0,
+            'loadingInitialCountNeutral': True, 'loadingEmptyActionHidden': True, 'loadingExtraSearches': 0,
+            'failedInitialCountNeutral': True, 'failedInitialFriendlyCopy': True, 'failedInitialExtraSearches': 0,
+            'filteredCalendarTruthful': True}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -160,7 +165,9 @@ class UpdateContracts(unittest.TestCase):
                     screen = ('startup' if name.startswith('native-startup-')
                               else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if name.startswith(('native-budget-results-', 'native-error-',
-                                                                 'native-calendar-later-', 'native-results-bounded-'))
+                                                                 'native-calendar-later-', 'native-results-bounded-',
+                                                                 'native-filters-active-', 'native-filter-empty-',
+                                                                 'native-results-loading-', 'native-results-error-'))
                               else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     contents['evidence/' + name] = png
@@ -168,7 +175,7 @@ class UpdateContracts(unittest.TestCase):
                     size = (16 if width <= 430 else 13) * percent / 100
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'buttons': [] if name.startswith('native-startup-pending-') else [{'text': 'Fixture action', 'clipped': False}],
+                        'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
                         'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False, 'overlappingLines': False}],
                         'headerFit': {'outside': False, 'overlap': False},
                         'sortFit': {'text': 'Fixture sort', 'available': 200, 'textWidth': 80} if screen == 'results' else None,
@@ -176,7 +183,7 @@ class UpdateContracts(unittest.TestCase):
                             'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
                                          for text in ('0', '150000')] if has_budget else [],
                         'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
-                        'prices': [] if screen == 'startup' else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
+                        'prices': [] if screen == 'startup' or name.startswith(('native-filter-empty-', 'native-results-loading-', 'native-results-error-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
         contents['evidence/acceptance.json'] = remote.json_bytes(report)
@@ -197,8 +204,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '8c2d0308eb29e26d2819342d10501db1ed82e3db')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38276638172)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '9fec34cfeb5a7c97659b16188404ae02c166c770')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38290989467)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -266,12 +273,12 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_183_frames_and_bounded_calendar_budget_header_sort(self):
+    def test_visual_successor_requires_exact_223_frames_and_bounded_calendar_budget_header_sort(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 183)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 183)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 223)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 223)
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
         changes = [lambda r: r['cases'][0]['proof'].update(budgetLoadedCount=3),
@@ -285,6 +292,25 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['proof'].update(boundedBackCards=24),
             lambda r: r['cases'][0]['proof'].update(boundedExtraSearches=1),
             lambda r: r['cases'][0]['proof'].pop('boundedBackCards'),
+            lambda r: r['cases'][0]['proof'].update(recoveryExtraSearches=1),
+            lambda r: r['cases'][0]['proof'].update(recoveryPreservedMeal=False),
+            lambda r: r['cases'][0]['proof'].update(recoveryLoadedHotels=0),
+            lambda r: r['cases'][0]['proof'].pop('activeConstraintsVisible'),
+            lambda r: r['cases'][0]['proof'].update(loadingInitialCountNeutral=False),
+            lambda r: r['cases'][0]['proof'].update(loadingEmptyActionHidden=False),
+            lambda r: r['cases'][0]['proof'].update(loadingExtraSearches=1),
+            lambda r: r['cases'][0]['proof'].update(failedInitialCountNeutral=False),
+            lambda r: r['cases'][0]['proof'].update(failedInitialFriendlyCopy=False),
+            lambda r: r['cases'][0]['proof'].update(failedInitialExtraSearches=1),
+            lambda r: r['cases'][0]['proof'].update(filteredCalendarTruthful=False),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filters-active-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filter-empty-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-loading-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-error-')),
+            lambda r: frame(r, 'native-results-loading-')['buttons'].append({'text':'Change search','clipped':False}),
+            lambda r: frame(r, 'native-results-error-')['buttons'].clear(),
+            lambda r: frame(r, 'native-filter-empty-')['prices'].append({'text':'invented'}),
+            lambda r: frame(r, 'native-filters-active-')['prices'].clear(),
             lambda r: r['cases'][2]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
             lambda r: r['cases'][2]['proof'].pop('budgetBreakpointDraftRetained'),
             lambda r: r['cases'][3]['proof'].update(enlargedCaptionPaintOverlapRegressionChecked=False),
@@ -392,7 +418,8 @@ class UpdateContracts(unittest.TestCase):
             'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
             '4955ee078aa0827f745d737681b4ed9187a274bd',
             '0674fa6cc7744ee21cb073b284f089c20171f38e',
-            '8c2d0308eb29e26d2819342d10501db1ed82e3db'))
+            '8c2d0308eb29e26d2819342d10501db1ed82e3db',
+            '9fec34cfeb5a7c97659b16188404ae02c166c770'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -428,7 +455,7 @@ class UpdateContracts(unittest.TestCase):
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
             '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}},
             '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': 'b' * 40}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 5, 'ahead_by': 1,
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 11, 'ahead_by': 1,
                 'merge_base_commit': {'sha': 'b' * 40}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
@@ -446,7 +473,7 @@ class UpdateContracts(unittest.TestCase):
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=4)),
+             lambda row: row.update(behind_by=10)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row['merge_base_commit'].update(sha='0' * 40)),
         )
@@ -505,7 +532,7 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
-                38255222254, 38269206819, 38276638172))
+                38255222254, 38269206819, 38276638172, 38290989467))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)

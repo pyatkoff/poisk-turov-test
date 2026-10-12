@@ -92,7 +92,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 5
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 11
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -176,6 +176,8 @@ def native_frame_inventory(width, percent):
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
+    frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
+        'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     if width in (360, 390, 430):
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
     if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
@@ -206,7 +208,12 @@ def native_evidence(archive, request, native):
         'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
         'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
         'boundedBackCards': 48, 'boundedExtraSearches': 0,
-        'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0}
+        'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0,
+        'activeConstraintsVisible': True, 'recoveryLoadedHotels': 2,
+        'recoveryPreservedMeal': True, 'recoveryExtraSearches': 0,
+        'loadingInitialCountNeutral': True, 'loadingEmptyActionHidden': True, 'loadingExtraSearches': 0,
+        'failedInitialCountNeutral': True, 'failedInitialFriendlyCopy': True, 'failedInitialExtraSearches': 0,
+        'filteredCalendarTruthful': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
@@ -235,7 +242,9 @@ def native_evidence(archive, request, native):
                           else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if name.startswith(('native-budget-results-', 'native-error-',
-                                                            'native-calendar-later-', 'native-results-bounded-'))
+                                                            'native-calendar-later-', 'native-results-bounded-',
+                                                            'native-filters-active-', 'native-filter-empty-',
+                                                            'native-results-loading-', 'native-results-error-'))
                           else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
@@ -243,7 +252,9 @@ def native_evidence(archive, request, native):
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
-                if screen in ('results', 'hotel', 'tour'):
+                no_result_prices = name.startswith(('native-filter-empty-', 'native-results-loading-', 'native-results-error-'))
+                if no_result_prices: need(prices == [], 'native_empty_no_factual_prices')
+                elif screen in ('results', 'hotel', 'tour'):
                     need(bool(prices), 'native_visible_price_measurements_required')
                 buttons = frame.get('buttons')
                 need(isinstance(buttons, list) and all(isinstance(button, dict) and button.get('clipped') is False
@@ -252,6 +263,11 @@ def native_evidence(archive, request, native):
                     need(len(buttons) == (1 if name.startswith('native-startup-error-') else 0)
                          and all(isinstance(button.get('text'), str) and bool(button['text'].strip()) for button in buttons),
                          'native_startup_retry_readability_required')
+                if name.startswith('native-results-loading-'):
+                    need(buttons == [], 'native_loading_no_empty_action')
+                if name.startswith(('native-filter-empty-', 'native-results-error-')):
+                    need(len(buttons) == 1 and isinstance(buttons[0].get('text'), str)
+                         and bool(buttons[0]['text'].strip()), 'native_empty_action_readability_required')
                 for price in prices:
                     need(isinstance(price, dict) and price.get('overflow') is False
                          and price.get('fragmented') is False and price.get('textScaleVerified') is True,
@@ -295,7 +311,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 183, 'native_rendered_frame_count')
+    need(len(frames) == 223, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
