@@ -32,6 +32,9 @@
     const currentHotel = () => state.hotels.find(hotel => hotel.id === state.hotelId);
     const findOffer = key => state.hotels.flatMap(hotel => hotel.offers || []).find(offer => offer.key === key);
     const countText = n => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'отель' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'отеля' : 'отелей');
+    const resultBatch = 24;
+    if (!Number.isInteger(state.resultLimit) || state.resultLimit < resultBatch) state.resultLimit = resultBatch;
+    const resetResultLimit = () => { state.resultLimit = resultBatch; };
     // Result meal groups use exact loaded canonical label or exact displayed
     // supplier fact. They never create supplier IDs or modify form plan mapping.
     const mealKey = offer => offer.mealFacet || mealText(offer);
@@ -89,7 +92,7 @@
     function rememberRoute(push) {
       const previous = window.history.state?.anytourNative?.id;
       const id = push || !historyRoutes.has(previous) ? ++historySequence : previous;
-      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,searchGeneration:state.searchGeneration});
+      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,resultLimit:state.resultLimit,searchGeneration:state.searchGeneration});
       state.historyRoutes=historyRoutes;state.historySequence=historySequence;
       window.history[push?'pushState':'replaceState']({anytourNative:{id,screen:state.screen}},'',routeURL());
     }
@@ -167,7 +170,7 @@
       if(filterDraft){filterBudgetValues=Object.fromEntries([...panel.querySelectorAll('input[type="number"][data-native-budget]')].map(field=>[field.dataset.nativeBudget,field.value]));}
       if(values){
         const range=panel.querySelector('input[type="range"]');range.max=Math.max(Number(range.max),values.min,values.max||0);range.value=values.max??range.max;
-        if(filterDraft)Object.assign(filterDraft,values);else if(commit){Object.assign(state.filters,values);renderResults();updateURL();}
+        if(filterDraft)Object.assign(filterDraft,values);else if(commit){Object.assign(state.filters,values);resetResultLimit();renderResults();updateURL();}
       }
       updateFilterDraft();
     }
@@ -188,7 +191,7 @@
       const coverage=facetCoverage();let reset=false;
       for(const key of ['stars','meals'])if(!coverage[key]&&state.filters[key].length){state.filters[key]=[];reset=true;}
       if(reset)updateURL();
-      const found=rows(), s=state.search;
+      const found=rows(), visible=found.slice(0,state.resultLimit), s=state.search;
       const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
       text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
       text('[data-departure-range]',dateRange(s.from,s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
@@ -200,7 +203,12 @@
       $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status);
       $('[data-source-alert]').textContent=state.message || (state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Получена часть предложений.');
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
-      $('[data-card-list]').innerHTML=found.map(conditionRows).join('');
+      const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
+      let more=$('[data-result-more]');
+      if(!more){more=window.document.createElement('div');more.className='st-result-more';more.dataset.resultMore='';list.after(more);}
+      const remaining=Math.max(0,found.length-visible.length),next=Math.min(resultBatch,remaining);
+      more.hidden=!remaining;
+      more.innerHTML=remaining?`<span class="st-result-more-count" aria-live="polite">Показано ${visible.length} из ${found.length}</span><button type="button" class="st-secondary cursor-interaction" data-native-result-more>Показать ещё ${next}</button>`:'';
       $$('[data-card-photo]').forEach(node=>photo(node,state.hotels.find(h=>h.id===Number(node.dataset.cardPhoto))));
       $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',state.status==='loading'?'Ищем туры…':'Нет подходящих туров');
       text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
@@ -373,7 +381,7 @@
       const invalid=originPending?'Подождите загрузки стран для выбранного города.':editor?'Примените изменения в открытом поле или отмените выбор.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
       if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;return;}
       rememberRoute(false);
-      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';
+      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
       try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
       catch(error){if(alive&&epoch===searchEpoch){state.status='error';state.message=error.message;renderResults();}}
@@ -389,7 +397,8 @@
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
       if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();return;}
       if(d.nativeCalendarPage){state.calendarPage+=d.nativeCalendarPage==='prev'?-1:1;renderCalendar();redrawIcons();const same=$(`[data-native-calendar-page="${d.nativeCalendarPage}"]:not(:disabled)`),fallback=$(`[data-native-calendar-page="${d.nativeCalendarPage==='prev'?'next':'prev'}"]:not(:disabled)`);(same||fallback)?.focus({preventScroll:true});updateURL();return;}
-      if(d.nativeDay){state.selectedDate=state.selectedDate===d.nativeDay?null:d.nativeDay;renderResults();updateURL();return;}
+      if(button.hasAttribute('data-native-result-more')){const firstNew=rows()[state.resultLimit];state.resultLimit+=resultBatch;renderResults();const next=$('[data-native-result-more]'),first=firstNew?$(`[data-hotel-card="${firstNew.id}"] [data-hotel-open]`):null;(next||first)?.focus({preventScroll:true});rememberRoute(false);return;}
+      if(d.nativeDay){state.selectedDate=state.selectedDate===d.nativeDay?null:d.nativeDay;resetResultLimit();renderResults();updateURL();return;}
       const toggles={'searchDestinationToggle':'destination','searchDateToggle':'dates','searchNightsToggle':'nights','searchTravelersToggle':'travelers'};
       for(const [key,name]of Object.entries(toggles))if(button.hasAttribute('data-'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()))){openEditor(name,button);return;}
       if(d.conditionsOpen){openEditor(d.conditionsOpen,button);return;}
@@ -416,20 +425,20 @@
       if(action==='hotel'){show('hotel');return;}if(action==='tour'){show('tour');return;}if(action==='lead'){show('lead');return;}
       if(action==='best-tour'){state.selected=eligible(currentHotel())[0];rememberRoute(false);show('tour');return;}
       if(action==='gallery'){photoIndex=0;show('gallery');return;}
-      if(action==='favorites'){state.onlyFavorites=!state.onlyFavorites;show('results');return;}
+      if(action==='favorites'){state.onlyFavorites=!state.onlyFavorites;resetResultLimit();show('results');return;}
       if(action==='reset-draft'){if(filterDraft){filterDraft=defaultFilters();filterBudgetValues={min:'',max:''};renderFilterEditor();}return;}
-      if(action==='reset-filters'){state.filters=defaultFilters();state.selectedDate=null;renderResults();updateURL();return;}
+      if(action==='reset-filters'){state.filters=defaultFilters();state.selectedDate=null;resetResultLimit();renderResults();updateURL();return;}
       if(action==='filters'){filterDraft=null;filterBudgetValues=null;state.nativeFilters=null;show('filters');return;}
       if(action==='close-filters'){filterDraft=null;show('results');return;}
-      if(action==='apply-filters'){if(!filterDraft||!validateResultBudget($('[data-filter-form]')))return;state.filters=filterDraft;show('results');updateURL();return;}
+      if(action==='apply-filters'){if(!filterDraft||!validateResultBudget($('[data-filter-form]')))return;state.filters=filterDraft;resetResultLimit();show('results');updateURL();return;}
     }
     root.addEventListener('click',handleClick,{signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
-      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{renderResults();updateURL();}}
+      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();}}
       if(d.nativeBudget)changeResultBudget(node,true);
       if(d.nativeFormMeal){draftFilters.meals=node.checked?[...draftFilters.meals,d.nativeFormMeal]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);}
       if(d.nativeAge!==undefined){draft.ages[Number(d.nativeAge)]=node.value===''?null:Number(node.value);renderSearch();}
-      if(node.classList.contains('st-sort')){state.sort=node.value;renderResults();updateURL();}
+      if(node.classList.contains('st-sort')){state.sort=node.value;resetResultLimit();renderResults();updateURL();}
       if(node.name==='origin'){
         const epoch=++originEpoch,requested=node.value;originPending=true;
         try{const next=await bridge.changeOrigin(requested);if(!alive||epoch!==originEpoch||state.screen!=='search')return;dictionaries=next;state.dictionaries=next;draft.origin=requested;regionCache.clear();if(!dictionaries.countries.some(c=>String(c.id)===String(draft.country))){draft.country=dictionaries.countries[0]?.id;draftFilters.resorts=[];draftFilters.hotelIds=[];draftFilters.hotelId=0;}renderSearch();}
