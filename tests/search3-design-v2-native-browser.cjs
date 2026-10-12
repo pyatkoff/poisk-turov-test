@@ -207,7 +207,7 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return false;
     };
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-startup-card h1,.st-native-startup-card p,[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -230,7 +230,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='results-bounded'||screen==='calendar-later'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-bounded','filters-active','filter-empty','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -390,11 +390,26 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Loaded meal filter matches factual fixtures');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Local filter starts zero supplier requests');
         row.proof.localFilterExtraSearches=0;
-        if(width<=760){
-          await product.locator('[data-action="filters"]').first().click();
-          await product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first().uncheck();
-          await product.locator('[data-action="apply-filters"]').click();
-        }else await product.locator('[data-action="reset-filters"]').first().click();
+        const activeMeal=product.locator('[data-active-chips] [data-native-remove-constraint="meals"]');
+        assert.equal(await activeMeal.innerText(),'Ультра всё включено');
+        assert((await activeMeal.boundingBox()).height>=44,'Condition removal has a usable touch target');
+        await capture(page,'native',width,percent,'filters-active',row);
+        if(width<=760)await product.locator('[data-action="filters"]').first().click();
+        const recoveryBudget=width<=760?product.locator('[data-filter-form]'):product.locator('[data-filter-sidebar]');
+        await recoveryBudget.locator('input[type="number"][data-native-budget="max"]').fill('100000');
+        if(width<=760)await product.locator('[data-action="apply-filters"]').click();else await recoveryBudget.locator('input[type="number"][data-native-budget="max"]').press('Tab');
+        assert.equal(await product.locator('.st-hotel-card').count(),0);
+        assert.equal(await product.locator('[data-empty-action]').getAttribute('data-native-remove-constraint'),'budget');
+        assert.match(await product.locator('[data-empty-text]').innerText(),/2 отеля из уже загруженных/);
+        await capture(page,'native',width,percent,'filter-empty',row);
+        await product.locator('[data-empty-action]').click();
+        assert.equal(await product.locator('.st-hotel-card').count(),2,'Single-condition recovery preserves the applied meal');
+        assert.equal(await activeMeal.innerText(),'Ультра всё включено');
+        assert.equal(new URL(page.url()).searchParams.has('max'),false);
+        await activeMeal.click();
+        assert.equal(await product.locator('[data-active-chips]').isVisible(),false);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Chip removal and local recovery start no supplier search');
+        row.proof.activeConstraintsVisible=true;row.proof.recoveryLoadedHotels=2;row.proof.recoveryPreservedMeal=true;row.proof.recoveryExtraSearches=0;
         assert.equal(await product.locator('.st-hotel-card').count(),4);
         const budgetPanel=width<=760?product.locator('[data-filter-form]'):product.locator('[data-filter-sidebar]');
         if(width<=760)await product.locator('[data-action="filters"]').first().click();
