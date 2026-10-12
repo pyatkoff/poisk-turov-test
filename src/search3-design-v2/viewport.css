@@ -159,6 +159,14 @@ body { margin: 0; padding: 0; }
   line-height: 1.35;
 }
 /* A failed search status needs room without squeezing the selected sort label. */
+#design-v2-native-root #b4 .st-mobile.st-result-unavailable .st-toolbar > div:first-child {
+  grid-column: 1 / 3;
+}
+#design-v2-native-root #b4 .st-mobile.st-result-unavailable .st-count-line h2 {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 #design-v2-native-root #b4 .st-mobile.st-result-unavailable .st-sort {
   grid-column: 1 / -1;
   grid-row: 2;
