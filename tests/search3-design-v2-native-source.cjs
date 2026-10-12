@@ -48,7 +48,7 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
  assert.equal(root.querySelectorAll('.st-hotel-card').length,0);
  const recovery=root.querySelector('[data-empty-action]');
  assert.equal(recovery.dataset.nativeRemoveConstraint,'budget','Recovery removes only the proven blocking budget');
- assert.match(root.querySelector('[data-empty-text]').textContent,/1 отель из уже загруженных/);
+ assert.match(root.querySelector('[data-empty-text]').textContent,/1 отель из загруженных/);
  recovery.click();
  assert.equal(constrained.filters.max,null);assert.deepEqual(Array.from(constrained.filters.meals),['Всё включено']);assert.deepEqual(Array.from(constrained.filters.stars),[5]);assert.equal(constrained.selectedDate,trip.from);
  assert.equal(root.querySelectorAll('.st-hotel-card').length,1);assert.strictEqual(constrained.hotels[0].offers[0],one,'Recovery preserves canonical offer identity');
