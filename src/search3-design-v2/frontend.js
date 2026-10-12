@@ -42,11 +42,11 @@
       return {stars:state.hotels.every(hotel=>Number.isInteger(hotel.stars)&&hotel.stars>=1&&hotel.stars<=5),
         meals:state.hotels.every(hotel=>(hotel.offers||[]).every(offer=>mealKey(offer)!=='Питание уточняется'))};
     }
-    function eligible(hotel, filters = state.filters, selectedDate = state.selectedDate) {
+    function eligible(hotel, filters = state.filters, selectedDate = state.selectedDate, onlyFavorites = state.onlyFavorites) {
       if (!hotel || !state.search || String(hotel.country) !== String(state.search.country)) return [];
       if (filters.hotelIds?.length && !filters.hotelIds.includes(hotel.id)) return [];
       if (!filters.hotelIds?.length && filters.hotelId && hotel.id !== filters.hotelId) return [];
-      if (state.onlyFavorites && !state.favorites.includes(hotel.id)) return [];
+      if (onlyFavorites && !state.favorites.includes(hotel.id)) return [];
       if (filters.stars.length && !filters.stars.includes(hotel.stars)) return [];
       if (filters.resorts.length && !filters.resorts.some(r => [hotel.subRegion,hotel.region,hotel.resort].includes(r))) return [];
       return (hotel.offers || []).filter(offer => Number.isFinite(offer.total) && offer.total > 0
@@ -55,11 +55,46 @@
         && offer.total >= filters.min && (filters.max === null || offer.total <= filters.max))
         .slice().sort((a,b) => a.total - b.total || a.key.localeCompare(b.key));
     }
-    function rows(filters = state.filters) {
-      const result = state.hotels.filter(hotel => eligible(hotel,filters).length);
-      if (state.sort === 'price') result.sort((a,b) => eligible(a,filters)[0].total - eligible(b,filters)[0].total);
+    function rows(filters = state.filters, selectedDate = state.selectedDate, onlyFavorites = state.onlyFavorites) {
+      const result = state.hotels.filter(hotel => eligible(hotel,filters,selectedDate,onlyFavorites).length);
+      if (state.sort === 'price') result.sort((a,b) => eligible(a,filters,selectedDate,onlyFavorites)[0].total - eligible(b,filters,selectedDate,onlyFavorites)[0].total);
       if (state.sort === 'name') result.sort((a,b) => a.name.localeCompare(b.name,'ru'));
       return result;
+    }
+    function resultConstraints() {
+      const f=state.filters,items=[];
+      if(f.min||f.max!==null)items.push({group:'budget',value:'',label:[f.min?'от '+money(f.min):'',f.max!==null?'до '+money(f.max):''].filter(Boolean).join(' · ')});
+      for(const group of ['stars','meals','resorts'])for(const value of f[group])items.push({group,value:String(value),label:group==='stars'?value+' звёзд':String(value)});
+      for(const id of f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[])items.push({group:'hotel',value:String(id),label:state.hotels.find(h=>h.id===id)?.name||'Выбранный отель'});
+      if(state.selectedDate)items.push({group:'date',value:state.selectedDate,label:'Вылет '+dateText(state.selectedDate)});
+      if(state.onlyFavorites)items.push({group:'favorites',value:'',label:'Только избранное'});
+      return items;
+    }
+    function withoutConstraint(item) {
+      const filters=cloneFilters(state.filters);let selectedDate=state.selectedDate,onlyFavorites=state.onlyFavorites;
+      if(item.group==='budget'){filters.min=0;filters.max=null;}
+      else if(item.group==='date')selectedDate=null;
+      else if(item.group==='favorites')onlyFavorites=false;
+      else if(item.group==='hotel'){filters.hotelIds=(filters.hotelIds?.length?filters.hotelIds:filters.hotelId?[filters.hotelId]:[]).filter(id=>String(id)!==item.value);filters.hotelId=filters.hotelIds[0]||0;}
+      else filters[item.group]=filters[item.group].filter(value=>String(value)!==item.value);
+      return{filters,selectedDate,onlyFavorites};
+    }
+    function renderResultConstraints(found,loadingEmpty,errorEmpty) {
+      const items=resultConstraints(),chips=$('[data-active-chips]');chips.hidden=!items.length;
+      chips.setAttribute('aria-label','Выбранные условия');
+      chips.innerHTML=items.map(item=>`<button type="button" class="st-chip cursor-interaction" data-native-remove-constraint="${item.group}" data-native-constraint-value="${esc(item.value)}" aria-label="Снять условие: ${esc(item.label)}"><span>${esc(item.label)}</span>${icon('x')}</button>`).join('');
+      $$('[data-action="favorites"]').forEach(node=>node.setAttribute('aria-pressed',String(state.onlyFavorites)));
+      const action=$('[data-empty-action]'),description=$('[data-empty-text]');
+      action.dataset.action='search';delete action.dataset.nativeRemoveConstraint;delete action.dataset.nativeConstraintValue;
+      action.hidden=loadingEmpty;
+      action.textContent=errorEmpty?'Вернуться к поиску':'Изменить поиск';description.textContent=loadingEmpty?'Первые предложения появятся здесь.':errorEmpty?'Сервис поиска временно недоступен. Попробуйте повторить поиск позже.':state.status==='loading'?'Предложения ещё загружаются. Полученные туры появятся здесь.':'Попробуйте изменить даты или снять часть фильтров.';
+      const recovery=!loadingEmpty&&!found.length?items.map(item=>{const next=withoutConstraint(item);return{...item,count:rows(next.filters,next.selectedDate,next.onlyFavorites).length};}).find(item=>item.count>0):null;
+      if(recovery){
+        delete action.dataset.action;action.dataset.nativeRemoveConstraint=recovery.group;action.dataset.nativeConstraintValue=recovery.value;
+        action.textContent=recovery.group==='budget'?'Убрать бюджет':'Снять «'+recovery.label+'»';
+        description.textContent='Без этого условия: '+countText(recovery.count)+' из загруженных. Остальные условия сохранятся.';
+      }
+      $$('[data-empty-edit]').forEach(node=>node.hidden=!recovery);
     }
     function photo(node, hotel, index = 0) {
       if (!node) return;
@@ -182,26 +217,28 @@
       if(!Number.isInteger(state.calendarPage))state.calendarPage=selectedIndex>=0?Math.floor(selectedIndex/7):0;
       state.calendarPage=Math.max(0,Math.min(maxPage,state.calendarPage));
       const pageDays=days.slice(state.calendarPage*7,state.calendarPage*7+7);
-      const cells = pageDays.map(day=>{const prices=state.hotels.flatMap(h=>eligible(h,state.filters,day).map(o=>o.total));return {day,price:prices.length?Math.min(...prices):null};});
+      const unfiltered=defaultFilters();
+      const cells = pageDays.map(day=>{const prices=state.hotels.flatMap(h=>eligible(h,state.filters,day).map(o=>o.total));return {day,price:prices.length?Math.min(...prices):null,loaded:state.hotels.some(h=>eligible(h,unfiltered,day,false).length)};});
       const minimum=cells.filter(c=>c.price!==null).sort((a,b)=>a.price-b.price)[0], opened=!root.classList.contains('st-mobile')||state.calendarOpen;
-      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" style="--date-count:${Math.max(1,cells.length)}" role="group" aria-label="Дата вылета и цена за всех туристов">${cells.map(c=>`<button type="button" class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''} cursor-interaction" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}" aria-label="Вылет ${dateText(c.day)}${c.price===null?', цена пока не получена':', от '+money(c.price)+' за всех туристов'}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):'Цены по этим датам пока не получены'}</span>${days.length>7?`<nav class="st-pc-pager" aria-label="Другие даты вылета"><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="prev" aria-label="Предыдущие даты" ${state.calendarPage===0?'disabled':''}>${icon('chevron-left')}</button><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="next" aria-label="Следующие даты" ${state.calendarPage===maxPage?'disabled':''}>${icon('chevron-right')}</button></nav>`:''}</div></div>`;
+      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" style="--date-count:${Math.max(1,cells.length)}" role="group" aria-label="Дата вылета и цена за всех туристов">${cells.map(c=>`<button type="button" class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''} cursor-interaction" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}" aria-label="Вылет ${dateText(c.day)}${c.price===null?(c.loaded?', нет предложений по выбранным условиям':', цена пока не получена'):', от '+money(c.price)+' за всех туристов'}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):cells.some(c=>c.loaded)?'По выбранным условиям на этих датах предложений нет':'Цены по этим датам пока не получены'}</span>${days.length>7?`<nav class="st-pc-pager" aria-label="Другие даты вылета"><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="prev" aria-label="Предыдущие даты" ${state.calendarPage===0?'disabled':''}>${icon('chevron-left')}</button><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="next" aria-label="Следующие даты" ${state.calendarPage===maxPage?'disabled':''}>${icon('chevron-right')}</button></nav>`:''}</div></div>`;
     }
     function renderResults() {
       if (!state.search) return;
       const coverage=facetCoverage();let reset=false;
       for(const key of ['stars','meals'])if(!coverage[key]&&state.filters[key].length){state.filters[key]=[];reset=true;}
       if(reset)updateURL();
-      const found=rows(), visible=found.slice(0,state.resultLimit), s=state.search;
+      const found=rows(), visible=found.slice(0,state.resultLimit), s=state.search,loadingEmpty=state.status==='loading'&&!state.hotels.length,errorEmpty=state.status==='error'&&!state.hotels.length;
+      root.classList.toggle('st-result-unavailable',errorEmpty);
       const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
       text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
       text('[data-departure-range]',dateRange(s.from,s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
       text('[data-party]',party(s));text('[data-route]',s.origin+' → '+countryName(s.country));text('[data-mobile-dates]','Вылет '+dateRange(s.from,s.to));
       text('[data-nights-copy]',s.minNights===s.maxNights?nights(s.minNights):s.minNights+'–'+s.maxNights+' ночей');text('[data-party-copy]',party(s));
-      text('[data-result-count]',countText(found.length));
+      text('[data-result-count]',loadingEmpty?'Ищем…':errorEmpty?'Поиск прерван':countText(found.length));
       $('.st-sort').value=state.sort;
       $('.st-search-done').hidden=state.status!=='complete';
-      $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status);
-      $('[data-source-alert]').textContent=state.message || (state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Получена часть предложений.');
+      $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status)||loadingEmpty&&!state.message||errorEmpty&&(!state.message||/^API HTTP \d{3}$/.test(state.message));
+      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Получена часть предложений.');
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
       let more=$('[data-result-more]');
@@ -210,7 +247,9 @@
       more.hidden=!remaining;
       more.innerHTML=remaining?`<span class="st-result-more-count" aria-live="polite">Показано ${visible.length} из ${found.length}</span><button type="button" class="st-secondary cursor-interaction" data-native-result-more>Показать ещё ${next}</button>`:'';
       $$('[data-card-photo]').forEach(node=>photo(node,state.hotels.find(h=>h.id===Number(node.dataset.cardPhoto))));
-      $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',state.status==='loading'?'Ищем туры…':'Нет подходящих туров');
+      $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',loadingEmpty?'Ищем туры…':errorEmpty?'Не удалось загрузить туры':'Нет подходящих туров');
+      $('[data-empty]').setAttribute('aria-busy',String(loadingEmpty));
+      renderResultConstraints(found,loadingEmpty,errorEmpty);
       text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
       renderCalendar();redrawIcons();
     }
@@ -389,6 +428,13 @@
     function handleClick(event){
       const button=event.target.closest('button');if(!button||!root.contains(button))return;
       const d=button.dataset;
+      if(button.hasAttribute('data-native-remove-constraint')){
+        const items=resultConstraints(),index=items.findIndex(item=>item.group===d.nativeRemoveConstraint&&item.value===d.nativeConstraintValue);
+        if(index<0)return;
+        const next=withoutConstraint(items[index]);Object.assign(state,next);resetResultLimit();renderResults();updateURL();
+        const chips=$$('[data-native-remove-constraint].st-chip');
+        (chips[Math.min(index,chips.length-1)]||$('[data-card-list] .st-name-button')||$('[data-empty-action]'))?.focus({preventScroll:true});return;
+      }
       if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){const id=Number(d.favorite||state.hotelId);state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}renderResults();return;}
       if(d.hotelOpen||d.hotelAbout){state.hotelId=Number(d.hotelOpen||d.hotelAbout);show('hotel');$('[data-about-hotel]').hidden=!d.hotelAbout;$('[data-hotel-offers-panel]').hidden=!!d.hotelAbout;return;}
       if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;rememberRoute(false);show('tour');}return;}

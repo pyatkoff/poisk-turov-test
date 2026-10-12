@@ -160,7 +160,8 @@ test('dictionary-bound startup gives way to real loading results before an autom
   const startup=w.document.querySelector('[data-native-startup]');assert.equal(startup.hidden,false);assert.equal(starts,0);assert([...w.document.querySelectorAll('[data-product]')].every(product=>product.hidden));
   dictionaries.resolve();await tick();await tick();assert.equal(startup.hidden,true);assert.equal(starts,1);
   const product=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');assert.equal(product.hidden,false);
-  assert.equal(product.querySelector('[data-screen="results"]').hidden,false);assert.equal(product.querySelector('[data-source-alert]').hidden,false);
+  assert.equal(product.querySelector('[data-screen="results"]').hidden,false);assert.equal(product.querySelector('[data-source-alert]').hidden,true);
+  assert.equal(product.querySelector('[data-result-count]').textContent,'Ищем…');assert.equal(product.querySelector('[data-empty-action]').hidden,true);
   assert.equal(w.document.querySelector('#design-v2-native-root').getAttribute('aria-busy'),'false');search.resolve();await tick();assert.equal(starts,1);w.close();
 });
 test('exact ANEX choice receipt gates contact review and expiry without submitting', async () => {
