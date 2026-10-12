@@ -168,9 +168,10 @@ async function capture(page,side,width,percent,screen,row) {
       return{text:node.textContent,clipped};
     });
     const budgetInputs=[...root.querySelectorAll('.st-budget input[type="number"]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const style=getComputedStyle(node),canvas=document.createElement('canvas'),context=canvas.getContext('2d');context.font=style.font;
+      const style=getComputedStyle(node),canvas=document.createElement('canvas'),context=canvas.getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+      if(!context.font.includes(style.fontSize))throw new Error('Budget text measurement lost its actual font size');
       const text=node.value||node.placeholder,available=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),textWidth=context.measureText(text).width;
-      return{text,available,textWidth,clipped:textWidth>available+1,appearance:style.appearance};
+      return{text,available,textWidth,font:context.font,clipped:textWidth>available+1,appearance:style.appearance};
     });
     const budget=root.querySelector('[data-filter-sidebar] .st-budget');
     const budgetColumns=budget&&!budget.closest('[hidden]')?getComputedStyle(budget).gridTemplateColumns.split(' ').length:null;
