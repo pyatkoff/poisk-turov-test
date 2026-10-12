@@ -131,6 +131,7 @@ class UpdateContracts(unittest.TestCase):
                     contents['evidence/' + name] = png
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
+                        'buttons': [{'text': 'Fixture action', 'clipped': False}],
                         'prices': [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
@@ -191,6 +192,7 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['proof'].update({'realLeadSubmissions': 1}),
             lambda r: r['cases'][0]['proof'].update({'localFilterExtraSearches': 1}),
             lambda r: r['cases'][0]['frames'][0].update({'overflow': True}),
+            lambda r: r['cases'][0]['frames'][0]['buttons'][0].update({'clipped': True}),
             lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'fragmented': True}),
             lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'textScaleVerified': False}),
             lambda r: r['cases'][1]['frames'][0]['prices'][0].update({'fontSize': 29}),

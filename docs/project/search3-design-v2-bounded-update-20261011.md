@@ -6,17 +6,27 @@ frontend. It extends the existing update transaction; it adds no second publishe
 Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
 reference, all sibling previews and production remain protected.
 
-## Current state: no accepted native source yet
+## Current state: exact native source selected, not published
 
-`NATIVE_ACCEPTANCE = None` is intentional. Every new command, artifact derivation
-and remote activation fails closed with `native_acceptance_not_pinned` until a
-reviewed trusted-main successor records the eight real retained pins below.
-Source preparation, an open PR or an artifact upload does not authorize
-publication. No placeholder source/build/artifact values may be used.
+PR #4539 against `release/search3-design-v2` has exact source
+`b53d5ca0bf541e66b684018fb7db332de8fefaf3`, tree
+`65cdbc2658fd63e9782e34df4b2b83638e047aa0`. Native CI38235455883 and
+Security38235455890 succeeded. Retained artifact11740615746 is independently
+ZIP-hash verified. Failed/superseded runs are negative evidence only.
+This source selection is not a publication receipt. Independent final visual/HIGH
+review, exact-head control CI, fresh receiving refs and predecessor, exclusive
+publisher claim and one fresh guarded command remain mandatory.
 
-The source packet is PR #4539 against `release/search3-design-v2`. Failed and
-superseded heads/runs are negative evidence only. Select the final source after
-exact-head native CI and independent rendered/runtime review succeed.
+| Pin | Accepted value |
+| --- | --- |
+| source_sha | `b53d5ca0bf541e66b684018fb7db332de8fefaf3` |
+| source_tree | `65cdbc2658fd63e9782e34df4b2b83638e047aa0` |
+| build_run | `38235455883` |
+| artifact_id | `11740615746` |
+| source_ZIP_sha256 | `f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f` |
+| entry_html_sha256 | `2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809` |
+| entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
+| source_manifest_sha256 | `c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650` |
 
 The only installed predecessor accepted by this successor is source
 `16196410a8cb90b10e8d06b7ac8b38d4ce7d235d`, publication run `38207863194`,
@@ -57,7 +67,9 @@ and complete evidence before deriving a publishable transaction.
 
 Rendered proof requires 360/390/430/768/1280 at text100/200, five paired
 donor/native screens (search/results/hotel/tour/lead), native error frames,
-matching PNG hashes and no native horizontal overflow. It requires passive
+matching PNG hashes and no native horizontal overflow. Prices must prove actual
+2x computed fonts at200%, unfragmented numeric groups and no clipping; primary
+actions must have unclipped text bounds. It requires passive
 hydration0 searches, one submit search, local filtering0 extra searches, exact
 offer reference, original flight index/full price, accepted contact preview with
 real leads0, Back/Forward0 extra searches, explicit retry and favorite retention.

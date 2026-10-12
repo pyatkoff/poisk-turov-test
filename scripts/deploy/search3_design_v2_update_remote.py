@@ -38,9 +38,17 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
     'prototype-search/config.js', 'prototype-search/data.js', 'search3-canonical-profiles-v1.js',
     'data/local-tv-catalog-read-v1.php', 'visual-search/asset-size.json')))
 
-# Deliberately unset. This preparation grants no source or publication authority.
-# A reviewed exact-source successor must replace this with real retained pins.
-NATIVE_ACCEPTANCE = None
+# Exact retained native source artifact; activation still requires all fresh workflow gates.
+NATIVE_ACCEPTANCE = {
+    'source_sha': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
+    'source_tree': '65cdbc2658fd63e9782e34df4b2b83638e047aa0',
+    'build_run': 38235455883,
+    'artifact_id': 11740615746,
+    'source_ZIP_sha256': 'f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f',
+    'entry_html_sha256': '2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809',
+    'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
+    'source_manifest_sha256': 'c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650',
+}
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
 NATIVE_MANIFEST = 'visual-search/native-v2/source-manifest.json'

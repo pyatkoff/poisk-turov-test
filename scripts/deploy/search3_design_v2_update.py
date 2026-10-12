@@ -214,6 +214,9 @@ def native_evidence(archive, request, native):
                 need(isinstance(prices, list), 'native_price_measurements_required')
                 if name.split('-')[1] in ('results', 'hotel', 'tour', 'error'):
                     need(bool(prices), 'native_visible_price_measurements_required')
+                buttons = frame.get('buttons')
+                need(isinstance(buttons, list) and all(isinstance(button, dict) and button.get('clipped') is False
+                     for button in buttons), 'native_action_readability_required')
                 for price in prices:
                     need(isinstance(price, dict) and price.get('overflow') is False
                          and price.get('fragmented') is False and price.get('textScaleVerified') is True,
