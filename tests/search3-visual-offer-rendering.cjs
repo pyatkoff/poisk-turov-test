@@ -38,7 +38,12 @@ function records(source){const script=new vm.Script(owner(source));return scenar
 // before checking the original complete-frame pin. Keep every policy result,
 // selected-offer value, footer and other collaborator invocation observable.
 const photoFailureHTML='<div class="tour-photo-missing" role="status" aria-label="Фото не загрузилось" hidden><i>image</i><span>Сбой загрузки</span></div>';
-function approvedFrame(rows,allowAbsent=false){return rows.map((record,index)=>{
+function historicalStayPanel(record){
+ const frame=record.calls.find(call=>call[0]==='showModal'),marker='<section class="tour-stay-panel"><p class="tour-stay-label">ОТЕЛЬ И ПРОЖИВАНИЕ</p>';if(!frame?.[4].includes(marker))return record;
+ const quick=frame[4].match(/<section class="tour-quick-summary"[^>]*>[\s\S]*?<\/section>/)?.[0];assert(quick&&frame[4].includes(marker+quick),'one existing quick summary sits inside the reference stay panel');assert(frame[4].includes('[chosenStayHTML]</section>'),'canonical stay conditions share the same panel');
+ const copy={...record,calls:record.calls.map(call=>[...call])};copy.calls.find(call=>call[0]==='showModal')[4]=frame[4].replace(marker+quick,'').replace('[chosenStayHTML]</section>','[chosenStayHTML]').replace('[quotePriceChangeHTML]','[quotePriceChangeHTML]'+quick);return copy;
+}
+function approvedFrame(rows,allowAbsent=false){return rows.map((original,index)=>{const record=historicalStayPanel(original);
  const s=scenarios[index],frame=record.calls.find(c=>c[0]==='showModal');
  if(s.noOffer||s.noHotel){assert(!frame);return record;}
  assert(frame,'complete tour frame remains observable');

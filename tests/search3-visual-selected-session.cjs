@@ -55,7 +55,7 @@ module.exports=async function({browser,origin,base,evidence}){
    await page.waitForFunction(()=>document.querySelector('#search-status').hidden&&document.querySelector('[data-action="all-offers"][data-id="501"]'));
    const list=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#all-offers-list').waitFor();};
    const choose=async(p=provider)=>{await page.locator('#modal-body [data-action="offer"][data-key^="'+p+'%3A"]').first().click();};
-   await list();await choose();await page.locator('[data-action="refresh-hotel"]:visible').first().click();
+   await list();await choose();await page.locator('#modal-footer [data-action="refresh-hotel"]').click();
    let returnState;
    if(provider==='anex'){
     if(mode==='return'){

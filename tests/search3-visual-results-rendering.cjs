@@ -164,6 +164,7 @@ function retainedCalendarRecord(row){
 }
 function visibleRecords(rows){return rows.map((row,index)=>{
  if(scenarios[index].kind==='calendar')row=retainedCalendarRecord(row);
+ if(scenarios[index].kind==='results')row={...row,result:{...row.result,dom:row.result.dom.filter(([key])=>key!=='#results-hotel-count'),trace:row.result.trace.filter(call=>call[1]!=='#results-hotel-count')}};
  if(scenarios[index].kind!=='offers')return {...row,result:{...row.result,trace:row.result.trace.map(call=>call[0]==='updateMealPicker'?call.slice(0,1):call)}};
  const {comparisonQuotes,...result}=row.result,{mode,...view}=result.view,groups=result.dom.filter(([key])=>key.startsWith('#group-'));
  const list=result.dom.find(([key])=>key==='#all-offers-list');let listHTML=list?.[1].innerHTML||'';
@@ -173,7 +174,13 @@ function visibleRecords(rows){return rows.map((row,index)=>{
  if(listWrite)trace.push([...listWrite.slice(0,3),stripComparisonAction(listHTML)]);
  return {...row,result:{...result,view,dom:result.dom.filter(([key])=>!retiredNodes.has(key)&&!key.startsWith('#group-')).map(([key,dom])=>[key,{...dom,innerHTML:stripComparisonAction(key==='#all-offers-list'?listHTML:dom.innerHTML)}]),trace}};
  });}
-const actual=visibleRecords(records(source)),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
+const currentRecords=records(source);
+for(const [index,row] of currentRecords.entries()){
+ const scenario=scenarios[index];if(scenario.kind!=='results'||scenario.draft)continue;
+ const count=row.result.dom.find(([key])=>key==='#results-hotel-count')?.[1],summary=row.result.dom.find(([key])=>key==='#results-summary')?.[1];assert(count&&summary,'one canonical count span and summary are observed');
+ const hidden=!!scenario.pristine||((scenario.count??2)===0&&scenario.phase==='error');assert.equal(count.hidden,hidden);assert.equal(count.textContent,hidden?'':(scenario.count??2)+' отелей','count uses the same existing inventory/formatter');if(!hidden)assert(summary.textContent.startsWith(count.textContent+' · '),'span and canonical summary have identical eligible hotel count');
+}
+const actual=visibleRecords(currentRecords),digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 // Keep the historical digest intact; the owner-authorized departure fix changes
 // only the compact heading and its existing scope collaborator. Do not rebaseline
 // unrelated result/calendar/list observations from the new output.
