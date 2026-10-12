@@ -1,5 +1,6 @@
 """Bounded source proof, exact published predecessor and interrupted updates."""
 import copy
+import io
 import json
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
 import search3_design_v2_preview as creator
@@ -28,12 +30,42 @@ class UpdateContracts(unittest.TestCase):
                 'visual-search/fonts/Aeroport.woff2'), start=len(paths)):
             target = self.baseline / 'payload' / name; target.parent.mkdir(parents=True, exist_ok=True)
             (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
+        import posixpath
+        for i, src in enumerate(remote.NATIVE_SCRIPTS, start=50):
+            name = posixpath.normpath(posixpath.join('visual-search', src)); target = self.baseline / 'payload' / name
+            if target.exists() or name in remote.NATIVE_ASSETS: continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
         self.original_pin = patch.object(creator, 'SOURCE_LEDGER_SHA256', remote.digest((self.baseline / 'payload' / creator.LEDGER_PATH).read_bytes()))
         self.original_pin.start(); self.addCleanup(self.original_pin.stop)
         creator.derive(self.baseline, self.root / 'installed', original_request(), creator.SOURCE_ZIP_SHA256)
         (self.root / 'installed/payload/visual-search/app.js').write_text('previous published polish')
         self.source = self.root / 'source'; shutil.copytree(self.baseline, self.source)
         (self.source / 'payload/visual-search/app.js').write_text('reviewed explicit nights UX')
+        for name in remote.NATIVE_ASSETS:
+            path = self.source / 'payload' / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('native fixture:' + name)
+        html = '<!doctype html><meta name="robots" content="noindex,nofollow,noarchive"><main id="design-v2-native-root"></main>\n'
+        html += '\n'.join('<link rel="stylesheet" href="' + src + '">' for src in remote.NATIVE_STYLES) + '\n'
+        html += '\n'.join('<script src="' + src + '" defer></script>' for src in remote.NATIVE_SCRIPTS) + '\n'
+        (self.source / 'payload/visual-search/index.html').write_text(html)
+        (self.source / 'payload/visual-search/index.php').write_text("<?php $entry = '/_preview/search3-design-v2-candidate/visual-search/';\nif ($script !== $entry . 'index.php') { exit; }")
+        def row(src):
+            name = posixpath.normpath(posixpath.join('visual-search', src)); content = (self.source / 'payload' / name).read_bytes()
+            return {'src': src, 'path': name, 'sha256': remote.digest(content), 'bytes': len(content)}
+        native = {'schema': 2, 'donorSource': '00fe6734c08acf234756bb59e5b61dbfecf41941', 'donor': remote.NATIVE_DONOR,
+            'status': 'native-source-candidate-not-published', 'legacyPresentationLoaded': False, 'mockSimulatorLoaded': False,
+            'isolatedOverlay': True, 'canonicalDependenciesRewritten': False,
+            'entry': {'html': remote.digest(html.encode()), 'php': remote.digest((self.source / 'payload/visual-search/index.php').read_bytes())},
+            'graph': {'scripts': [row(src) for src in remote.NATIVE_SCRIPTS], 'styles': [row(src) for src in remote.NATIVE_STYLES]},
+            'files': {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes()) for name in remote.NATIVE_ASSETS}}
+        (self.source / 'payload' / remote.NATIVE_MANIFEST).write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
+        self.native = native
+        self.native_pin = {'source_sha': 'a' * 40, 'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456,
+            'source_ZIP_sha256': 'e' * 64, 'entry_html_sha256': native['entry']['html'], 'entry_php_sha256': native['entry']['php'],
+            'source_manifest_sha256': remote.digest((self.source / 'payload' / remote.NATIVE_MANIFEST).read_bytes())}
+        for change in (patch.object(remote, 'NATIVE_ACCEPTANCE', self.native_pin),
+                       patch.object(remote, 'NATIVE_BRAND', {name: native['files'][name] for name in remote.NATIVE_BRAND})):
+            change.start(); self.addCleanup(change.stop)
         m = json.loads((self.source / 'control/manifest.json').read_bytes())
         m.update(source_sha='a' * 40, source_tree_sha='d' * 40)
         (self.source / 'control/manifest.json').write_bytes(remote.json_bytes(m))
@@ -70,13 +102,128 @@ class UpdateContracts(unittest.TestCase):
         p = Path(name); p.write_bytes(self.archive); self.uploads.append(p)
         return {**self.q, 'deploy_run': run, 'archive': name, 'before': self.site.snapshot()}
 
+    def review_archive(self, mutate=None):
+        contents = {('payload/' + name): (self.source / 'payload' / name).read_bytes()
+                    for name in remote.inventory(self.source / 'payload')}
+        meta = {'schema': 1, 'source_sha': 'a' * 40, 'source_tree_sha': 'd' * 40, 'base_sha': 'b' * 40,
+            'run_id': '123', 'run_attempt': '1', 'donor_source_sha': self.native['donorSource'],
+            'intended_route': remote.ROUTE + 'visual-search/', 'status': 'review-artifact-not-published',
+            'publication_authority': False, 'canonical_route_rewrites_applied': False,
+            'file_count': 855, 'files': [{'path': name, 'sha256': remote.digest(value), 'bytes': len(value)}
+                                      for name, value in sorted((name[len('payload/'):], value) for name, value in contents.items())]}
+        contents['control/inventory.json'] = remote.json_bytes(meta)
+        contents['control/native-build.json'] = remote.json_bytes(self.native)
+        proof = {'passiveHydrationSearches': 0, 'formSubmitSearches': 1, 'localFilterExtraSearches': 0,
+            'exactLoadedOfferRetained': True, 'flightChoiceIndex': 0, 'selectedFullTotal': 112000,
+            'contactPayloadFullTotal': 112000, 'contactPayloadFlightChoiceIndex': 0,
+            'contactPreviewCount': 1, 'realLeadSubmissions': 0, 'backForwardRetainedSelection': True,
+            'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
+            'retryRows': 4, 'favoriteStoragePreserved': True}
+        report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
+            'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
+            'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
+            'cases': [], 'failures': []}
+        for width in (360,390,430,768,1280):
+            for percent in (100,200):
+                case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
+                for side, screen in [(side,screen) for side in ('native','donor') for screen in ('search','results','hotel','tour','lead')] + [('native','error')]:
+                    name = f'{side}-{screen}-{width}-text{percent}.png'; png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
+                    contents['evidence/' + name] = png
+                    case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side,
+                        'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
+                        'buttons': [{'text': 'Fixture action', 'clipped': False}],
+                        'prices': [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
+                                    'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
+                report['cases'].append(case)
+        contents['evidence/acceptance.json'] = remote.json_bytes(report)
+        contents['evidence/fixture.json'] = b'{"scope":"fictional offline verifier fixture"}\n'
+        if mutate: mutate(contents)
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, 'w') as archive:
+            for name, value in contents.items(): archive.writestr(name, value)
+        return output.getvalue()
+
+    def read_review(self, content, target='review'):
+        pin = {**self.native_pin, 'source_ZIP_sha256': remote.digest(content)}
+        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin):
+            return pub.prepare_native_zip(content, self.q, 'd' * 40, pin['source_ZIP_sha256'], self.root / target)
+
     def test_owner_command_has_no_target_or_predecessor_argument(self):
         q = pub.checked_request(self.event, self.env)
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'a0e5f1e7c0083b45678df5837c7faf1cad8751f6')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38203171197)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38207863194)
+
+    def test_preparation_has_no_publication_authority_without_real_pins(self):
+        with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
+            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'): pub.checked_request(self.event, self.env)
+            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'): remote.validate(self.q)
+            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'):
+                pub.derive(self.source, self.baseline, self.root / 'unpinned', self.q, 'e' * 64)
+        self.assertFalse((self.root / 'unpinned').exists())
+
+    def test_complete_review_zip_preserves_exact_native_payload(self):
+        files = self.read_review(self.review_archive())
+        self.assertEqual(files, remote.inventory(self.source / 'payload'))
+        self.assertEqual(remote.inventory(self.root / 'review/release/payload'), files)
+
+    def test_review_zip_rejects_identity_scope_and_byte_drift(self):
+        def meta_change(contents, key, value):
+            meta = json.loads(contents['control/inventory.json']); meta[key] = value
+            contents['control/inventory.json'] = remote.json_bytes(meta)
+        mutations = [lambda c: meta_change(c, 'source_sha', 'f' * 40),
+            lambda c: meta_change(c, 'publication_authority', True),
+            lambda c: meta_change(c, 'run_attempt', '2'),
+            lambda c: c.update({'payload/prototype-search/data.js': b'foreign provider byte'}),
+            lambda c: c.update({'payload/visual-search/native-v2/unknown.js': b'unapproved'}),
+            lambda c: c.update({'control/unknown.py': b'unapproved'}),
+            lambda c: c.update({'../escape': b'unapproved'})]
+        for i, mutate in enumerate(mutations):
+            with self.subTest(index=i), self.assertRaises(ValueError): self.read_review(self.review_archive(mutate), 'bad-zip-' + str(i))
+
+    def test_rendered_evidence_requires_full_matrix_factual_journey_and_hashes(self):
+        def report_change(contents, modify):
+            report = json.loads(contents['evidence/acceptance.json']); modify(report)
+            contents['evidence/acceptance.json'] = remote.json_bytes(report)
+        modifications = [lambda r: r.update({'sourceSHA': 'f' * 40}), lambda r: r['cases'].pop(),
+            lambda r: r['cases'][0]['proof'].update({'selectedFullTotal': 1000}),
+            lambda r: r['cases'][0]['proof'].update({'realLeadSubmissions': 1}),
+            lambda r: r['cases'][0]['proof'].update({'localFilterExtraSearches': 1}),
+            lambda r: r['cases'][0]['frames'][0].update({'overflow': True}),
+            lambda r: r['cases'][0]['frames'][0]['buttons'][0].update({'clipped': True}),
+            lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'fragmented': True}),
+            lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'textScaleVerified': False}),
+            lambda r: r['cases'][1]['frames'][0]['prices'][0].update({'fontSize': 29}),
+            lambda r: r['cases'][0]['frames'][0].update({'sha256': 'f' * 64}),
+            lambda r: r['cases'][0]['unexpectedRequests'].append('https://external.invalid/api'),
+            lambda r: r.update({'failures': ['confirmed failure']})]
+        for i, modify in enumerate(modifications):
+            with self.subTest(index=i), self.assertRaises(ValueError):
+                self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
+
+    def test_native_inventory_cannot_accept_extra_or_missing_asset(self):
+        path = self.source / 'payload/visual-search/native-v2/not-reviewed.js'; path.write_text('foreign')
+        with self.assertRaisesRegex(ValueError, 'source_inventory_drift'):
+            pub.derive(self.source, self.baseline, self.root / 'extra-native', self.q, 'e' * 64)
+        path.unlink(); (self.source / 'payload' / remote.NATIVE_ASSETS[0]).unlink()
+        with self.assertRaisesRegex(ValueError, 'source_inventory_drift'):
+            pub.derive(self.source, self.baseline, self.root / 'missing-native', self.q, 'e' * 64)
+
+    def test_native_entry_rejects_legacy_renderer_even_after_manifest_rehash(self):
+        payload = self.source / 'payload'; path = payload / 'visual-search/index.html'
+        path.write_text(path.read_text() + '<script src="./app.js" defer></script>')
+        manifest_path = payload / remote.NATIVE_MANIFEST; native = json.loads(manifest_path.read_bytes())
+        native['entry']['html'] = remote.digest(path.read_bytes()); manifest_path.write_text(json.dumps(native, indent=2) + '\n')
+        pin = {**self.native_pin, 'entry_html_sha256': native['entry']['html'], 'source_manifest_sha256': remote.digest(manifest_path.read_bytes())}
+        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin), self.assertRaisesRegex(ValueError, 'native_exact_entry_graph'):
+            remote.native_graph(payload)
+
+    def test_native_checksum_and_route_reversal_protect_original_owner(self):
+        manifest = self.root / 'derived/payload' / remote.NATIVE_MANIFEST; native = json.loads(manifest.read_bytes())
+        native['graph']['scripts'][0]['sha256'] = 'f' * 64; manifest.write_text(json.dumps(native, indent=2) + '\n')
+        with self.assertRaisesRegex(ValueError, 'native_graph_checksum'): remote.native_graph(self.root / 'derived/payload', rewritten=True)
 
     def test_owner_main_event_and_attempt_guards(self):
         for key, value in [('GITHUB_REF', 'refs/heads/work'), ('GITHUB_ACTOR', 'other'),
@@ -102,7 +249,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(remote.COMPLETED_SOURCES, (remote.ORIGINAL_SOURCE,
             '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
             '634d1c97fd7bf499107d82036588f4bd77176d93',
-            '2eb237639c6c53c38f27d71684de43384842daf7', remote.PREDECESSOR_SOURCE))
+            '2eb237639c6c53c38f27d71684de43384842daf7',
+            'a0e5f1e7c0083b45678df5837c7faf1cad8751f6', remote.PREDECESSOR_SOURCE))
         for source in remote.COMPLETED_SOURCES:
             event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
@@ -110,7 +258,7 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
                 remote.validate({**self.q, 'source_sha': source})
 
-    def test_all_five_exact_source_ci_checks_required(self):
+    def test_exact_source_native_ci_checks_required(self):
         checks = [{'name': n, 'head_sha': self.q['source_sha'], 'status': 'completed', 'conclusion': 'success',
             'app': {'slug': 'github-actions'}, 'started_at': '2026-10-11T21:30:00Z'} for n in pub.REQUIRED_CHECKS]
         class API:
@@ -130,10 +278,10 @@ class UpdateContracts(unittest.TestCase):
             'visual-search/index.html', 'visual-search/migration-manifest.json',
             'visual-search/mobile-controls-v1.css', 'visual-search/styles.css'})
         before = remote.inventory(self.source / 'payload'); after = remote.inventory(self.root / 'derived/payload')
-        self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 845)
-        self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.ROUTE_CHANGES))
+        self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 855)
+        self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
         m = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
-        self.assertEqual(m['derived_from']['changed_source_payload_files'], ['visual-search/app.js'])
+        self.assertEqual(m['derived_from']['changed_source_payload_files'], sorted(['visual-search/app.js', *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
         q2, a2 = pub.derive(self.source, self.baseline, self.root / 'again', {k: self.q[k] for k in original_request()}, 'e' * 64)
         self.assertEqual(q2, self.q); self.assertEqual(a2, self.archive)
 
@@ -147,9 +295,9 @@ class UpdateContracts(unittest.TestCase):
                 remote.verify(output, q)
                 manifest = json.loads((output / 'control/manifest.json').read_bytes())
                 self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
-                    sorted(['visual-search/app.js', name]))
+                    sorted(['visual-search/app.js', name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
                 before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
-                self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.ROUTE_CHANGES))
+                self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
                 self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
             finally:
                 source_path.write_bytes(original)
@@ -160,19 +308,19 @@ class UpdateContracts(unittest.TestCase):
             'source_sha': creator.SOURCE_SHA, 'build_run': creator.BUILD_RUN,
             'artifact_id': creator.ARTIFACT_ID, 'ZIP_sha256': creator.SOURCE_ZIP_SHA256})
         self.assertNotEqual(remote.ORIGINAL_SOURCE, remote.PREDECESSOR_SOURCE)
-        with patch('search3_preview_publish.prepare_zip') as prepare_zip:
+        with patch('search3_preview_publish.prepare_zip') as prepare_zip, patch.object(pub, 'prepare_native_zip'):
             class API:
                 def download(self, artifact_id): return b'synthetic ZIP'
             with patch.object(pub, 'derive', return_value=(self.q, self.archive)):
                 pub.prepare_inputs(API(), self.q, 'd' * 40, 'e' * 64, self.root / 'inputs')
-        baseline_request = prepare_zip.call_args_list[1].args[1]
+        baseline_request = prepare_zip.call_args_list[0].args[1]
         self.assertEqual(baseline_request['source_sha'], remote.ORIGINAL_SOURCE)
         self.assertEqual(baseline_request['release_sha'], remote.ORIGINAL_SOURCE)
 
     def test_all_completed_publish_runs_cannot_replay(self):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197))
+                38197437835, 38203171197, 38207863194))
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
@@ -293,7 +441,7 @@ class UpdateContracts(unittest.TestCase):
 
     def test_request_or_backup_drift_stops_transaction(self):
         q = self.staged(); self.site.activate(q)
-        with self.assertRaisesRegex(ValueError, 'request_changed'): self.site.finish({**q, 'artifact_id': 999}, True)
+        with self.assertRaisesRegex(ValueError, 'accepted_native_source_only'): self.site.finish({**q, 'artifact_id': 999}, True)
         (self.site.receipt(q) / 'predecessor/visual-search/app.js').write_text('modified backup')
         for rollback in (False, True):
             with self.subTest(rollback=rollback), self.assertRaisesRegex(ValueError, 'backup_changed'): self.site.finish(q, rollback)

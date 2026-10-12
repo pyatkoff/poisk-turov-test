@@ -11,19 +11,22 @@ import re
 import shutil
 import sys
 import tempfile
+from html.parser import HTMLParser
+import posixpath
 from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIANTS,
     SOURCE_SHA as ORIGINAL_SOURCE, BUILD_RUN as ORIGINAL_BUILD, ARTIFACT_ID as ORIGINAL_ARTIFACT,
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = 'a0e5f1e7c0083b45678df5837c7faf1cad8751f6'
-PREDECESSOR_RUN = 38203171197
-PREDECESSOR_DIGEST = 'ec062ae95a6ae5d1878c27f3f5a05248e9eb1482fc672f9d6d7967910ffb1171'
+PREDECESSOR_SOURCE = '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d'
+PREDECESSOR_RUN = 38207863194
+PREDECESSOR_DIGEST = '62c9d3fcd75fd696f71881220b1c7cd1ff0b6e569e752b737ed1f0c83d9f25d3'
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
-    '2eb237639c6c53c38f27d71684de43384842daf7', PREDECESSOR_SOURCE)
+    '2eb237639c6c53c38f27d71684de43384842daf7',
+    'a0e5f1e7c0083b45678df5837c7faf1cad8751f6', PREDECESSOR_SOURCE)
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-    38197437835, PREDECESSOR_RUN)
+    38197437835, 38203171197, PREDECESSOR_RUN)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -35,6 +38,137 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
     'prototype-search/config.js', 'prototype-search/data.js', 'search3-canonical-profiles-v1.js',
     'data/local-tv-catalog-read-v1.php', 'visual-search/asset-size.json')))
 
+# Exact retained native source artifact; activation still requires all fresh workflow gates.
+NATIVE_ACCEPTANCE = {
+    'source_sha': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
+    'source_tree': '65cdbc2658fd63e9782e34df4b2b83638e047aa0',
+    'build_run': 38235455883,
+    'artifact_id': 11740615746,
+    'source_ZIP_sha256': 'f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f',
+    'entry_html_sha256': '2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809',
+    'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
+    'source_manifest_sha256': 'c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650',
+}
+NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
+NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
+NATIVE_MANIFEST = 'visual-search/native-v2/source-manifest.json'
+NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
+    'bootstrap.js', 'bridge.js', 'donor.css', 'frontend.js', 'lucide-LICENSE',
+    'lucide.min.js', 'product-desktop.css', 'tour.js', 'viewport.css'))
+NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
+NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
+NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
+NATIVE_SCRIPTS = (
+    '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
+    './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
+    '../prototype-search/data.js', '../prototype-search/calendar-exact-hotel-v1.js',
+    '../prototype-search/source-receipt-v1.js', '../prototype-search/lead.js',
+    './native-v2/lucide.min.js', './native-v2/bridge.js', './native-v2/tour.js',
+    './native-v2/frontend.js', './native-v2/bootstrap.js')
+NATIVE_STYLES = ('./native-v2/donor.css', './native-v2/product-desktop.css', './native-v2/viewport.css')
+NATIVE_DONOR = {'anytour-fragment.html': 'cc4dde79750e45cbb9e236fd909e9050c44ab0d14c68ad9b5470b9d368c3e2fb',
+    'product-desktop.css': 'ab55fb2b1c8857d3d62e3826325c0f3bd4629418a555e5f021c95ab8f2995848'}
+NATIVE_BRAND = {'donor.css': 'fc695b915d1907b4c6ea422fa6a1c4fec4a26c30e851c38b3b68c16f82a3bbb8',
+    'product-desktop.css': NATIVE_DONOR['product-desktop.css'],
+    'lucide.min.js': 'ab85225ecc1daa2033607856f03dd2dabcbc08e2d260a5b97e17c690aa929766',
+    'lucide-LICENSE': 'b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57'}
+# The existing native entry already has its exact fixed design-v2 boundary.
+# Only these existing canonical JavaScript route literals affect its graph.
+NATIVE_SCRIPT_REWRITES = (
+    ('prototype-search/config.js', b'search3-(?:next|local)-candidate', b'search3-(?:design-v2|local)-candidate'),
+    ('prototype-search/data.js', b'/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php',
+     b'/_preview/search3-design-v2-candidate/data/local-tv-catalog-read-v1.php'),
+    ('prototype-search/data.js', b"'/_preview/search3-next-candidate/'", b"'/_preview/search3-design-v2-candidate/'"),
+    ('search3-canonical-profiles-v1.js', b'/_preview/search3-next-candidate/visual-search/',
+     b'/_preview/search3-design-v2-candidate/visual-search/'))
+
+
+def native_acceptance():
+    pin = NATIVE_ACCEPTANCE
+    keys = {'source_sha', 'source_tree', 'build_run', 'artifact_id', 'source_ZIP_sha256',
+            'entry_html_sha256', 'entry_php_sha256', 'source_manifest_sha256'}
+    need(isinstance(pin, dict) and set(pin) == keys, 'native_acceptance_not_pinned')
+    need(all(isinstance(pin[k], str) and re.fullmatch('[0-9a-f]{40}', pin[k])
+             for k in ('source_sha', 'source_tree')), 'native_source_pin')
+    need(pin['source_sha'] not in COMPLETED_SOURCES, 'native_completed_source_pin')
+    need(all(type(pin[k]) is int and 0 < pin[k] < 10**15 for k in ('build_run', 'artifact_id')), 'native_build_pin')
+    need(all(isinstance(pin[k], str) and re.fullmatch('[0-9a-f]{64}', pin[k])
+             for k in keys - {'source_sha', 'source_tree', 'build_run', 'artifact_id'}), 'native_hash_pin')
+    return pin
+
+
+def accepted_native(q, fields=('source_sha', 'source_tree', 'build_run', 'artifact_id', 'source_ZIP_sha256')):
+    pin = native_acceptance()
+    need(all(q.get(k) == pin[k] for k in fields), 'accepted_native_source_only')
+    return pin
+
+
+class NativeEntry(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True); self.scripts = []; self.styles = []; self.inline = False; self.in_script = False
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        need(len(values) == len(attrs), 'native_duplicate_attribute')
+        if tag == 'script':
+            need('src' in values and 'defer' in values, 'native_external_deferred_script_required')
+            self.scripts.append(values['src']); self.in_script = True
+        if tag == 'link' and values.get('rel') == 'stylesheet': self.styles.append(values.get('href'))
+        need(tag != 'style', 'native_inline_style_owner')
+
+    def handle_endtag(self, tag):
+        if tag == 'script': self.in_script = False
+
+    def handle_data(self, data):
+        if self.in_script and data.strip(): self.inline = True
+
+
+def native_graph(payload, rewritten=False, pinned=True):
+    pin = native_acceptance() if pinned else None
+    raw = (payload / NATIVE_MANIFEST).read_bytes(); manifest = json.loads(raw)
+    need(set(manifest) == {'schema', 'donorSource', 'donor', 'status', 'legacyPresentationLoaded',
+        'mockSimulatorLoaded', 'isolatedOverlay', 'canonicalDependenciesRewritten', 'entry', 'graph', 'files'}, 'native_manifest_fields')
+    need(manifest['schema'] == 2 and manifest['donorSource'] == '00fe6734c08acf234756bb59e5b61dbfecf41941'
+         and manifest['donor'] == NATIVE_DONOR and manifest['status'] == 'native-source-candidate-not-published'
+         and manifest['legacyPresentationLoaded'] is False and manifest['mockSimulatorLoaded'] is False
+         and manifest['isolatedOverlay'] is True and manifest['canonicalDependenciesRewritten'] is rewritten, 'native_manifest_identity')
+    html = (payload / 'visual-search/index.html').read_bytes(); php = (payload / 'visual-search/index.php').read_bytes()
+    need(manifest['entry'] == {'html': digest(html), 'php': digest(php)}, 'native_entry_hash')
+    if pin:
+        need(digest(html) == pin['entry_html_sha256'] and digest(php) == pin['entry_php_sha256'], 'native_entry_pin')
+    entry = NativeEntry(); entry.feed(html.decode()); entry.close()
+    need(not entry.inline and tuple(entry.scripts) == NATIVE_SCRIPTS and tuple(entry.styles) == NATIVE_STYLES, 'native_exact_entry_graph')
+    need(b'<meta name="robots" content="noindex,nofollow,noarchive">' in html
+         and b'id="design-v2-native-root"' in html, 'native_html_identity')
+    need(set(manifest['graph']) == {'scripts', 'styles'}, 'native_graph_fields')
+    for kind, sources in (('scripts', NATIVE_SCRIPTS), ('styles', NATIVE_STYLES)):
+        expected = []
+        for src in sources:
+            name = posixpath.normpath(posixpath.join('visual-search', src)); safe_name(name)
+            content = (payload / name).read_bytes()
+            expected.append({'src': src, 'path': name, 'sha256': digest(content), 'bytes': len(content)})
+        need(manifest['graph'][kind] == expected, 'native_graph_checksum:' + kind)
+    names = {Path(name).name for name in NATIVE_ASSETS}
+    need(set(manifest['files']) == names, 'native_asset_inventory')
+    for name in NATIVE_ASSETS:
+        need(manifest['files'][Path(name).name] == digest((payload / name).read_bytes()), 'native_asset_hash:' + name)
+    for name, value in NATIVE_BRAND.items(): need(manifest['files'][name] == value, 'native_donor_asset:' + name)
+    need({n for n in inventory(payload) if n.startswith('visual-search/native-v2/')} == set(NATIVE_ADDED), 'native_added_inventory')
+    if pin:
+        original = json.loads(raw)
+        if rewritten:
+            original['canonicalDependenciesRewritten'] = False
+            for row in original['graph']['scripts']:
+                content = (payload / row['path']).read_bytes()
+                for name, old, new in reversed(NATIVE_SCRIPT_REWRITES):
+                    if row['path'] == name:
+                        need(content.count(new) == 1 and old not in content, 'native_route_reverse:' + name)
+                        content = content.replace(new, old)
+                row.update(sha256=digest(content), bytes=len(content))
+        source_raw = (json.dumps(original, ensure_ascii=False, indent=2) + '\n').encode()
+        need(digest(source_raw) == pin['source_manifest_sha256'], 'native_source_manifest_pin')
+    return manifest
+
 
 def validate(q):
     for k in ('source_sha', 'source_tree', 'release_sha'):
@@ -45,7 +179,8 @@ def validate(q):
     for k in ('archive_sha256', 'manifest_sha256', 'payload_sha256', 'source_ZIP_sha256', 'target_digest'):
         need(isinstance(q.get(k), str) and re.fullmatch('[0-9a-f]{64}', q[k]), 'invalid_' + k)
     need(q.get('attempt') == 1 and q['deploy_run'] not in COMPLETED_PUBLISH_RUNS, 'no_replay')
-    need(type(q.get('file_count')) is int and q['file_count'] == 845, 'invalid_file_count')
+    accepted_native(q)
+    need(type(q.get('file_count')) is int and q['file_count'] == 845 + len(NATIVE_ADDED), 'invalid_file_count')
 
 
 def predecessor(before):
@@ -64,10 +199,11 @@ def verify(root, q):
          and m.get('source_tree_sha') == q['source_tree'] and m.get('invariants') == INVARIANTS, 'manifest_identity_or_invariants')
     changes = m.get('derived_from', {}).get('changed_source_payload_files')
     need(isinstance(changes, list) and changes == sorted(set(changes))
-         and bool(changes) and set(changes) <= set(SOURCE_CHANGES), 'unreviewed_source_delta')
+         and set(NATIVE_ADDED) <= set(changes)
+         and set(changes) <= set((*SOURCE_CHANGES, *NATIVE_REPLACED, *NATIVE_ADDED)), 'unreviewed_source_delta')
     need(m.get('derived_from') == {'artifact_id': q['artifact_id'], 'build_run': q['build_run'],
-        'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'design-v2-route-and-ledger-v1',
-        'changed_payload_files': list(ROUTE_CHANGES), 'changed_source_payload_files': changes,
+        'ZIP_sha256': q['source_ZIP_sha256'], 'transform': 'design-v2-native-route-and-ledger-v2',
+        'changed_payload_files': list(NATIVE_ROUTE_CHANGES), 'changed_source_payload_files': changes,
         'baseline': {'source_sha': ORIGINAL_SOURCE, 'build_run': ORIGINAL_BUILD,
             'artifact_id': ORIGINAL_ARTIFACT, 'ZIP_sha256': ORIGINAL_ZIP}}, 'derivation_identity')
     files = {}
@@ -86,8 +222,10 @@ def verify(root, q):
     need('metrikaCounter=0' in (root / 'payload/search-page-v2.php').read_text(), 'counter_not_zero')
     need('#^(/_preview/search3-design-v2-candidate)(?:/|$)#' in (root / 'payload/site-path-v1.php').read_text(), 'wrong_route_helper')
     visual = (root / 'payload/visual-search/index.php').read_text()
-    need(visual.count("if (!str_starts_with((string)($_SERVER['SCRIPT_NAME'] ?? ''), '/_preview/search3-design-v2-candidate/visual-search/')) {") == 1
+    need(visual.count("$entry = '/_preview/search3-design-v2-candidate/visual-search/';") == 1
+         and "if ($script !== $entry . 'index.php') {" in visual
          and '/_preview/search3-next-candidate/visual-search/' not in visual, 'wrong_visual_route_guard')
+    native_graph(root / 'payload', rewritten=True)
     return files
 
 

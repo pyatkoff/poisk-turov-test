@@ -1,90 +1,134 @@
-# Bounded update of the separate Search3 design preview
+# Bounded native update of the separate Search3 design preview
 
-This is an UPDATE control only for the existing new target
-`/_preview/search3-design-v2-candidate/`. It does not recreate or overwrite NEXT,
-the original Sites project, any other preview or production.
+This preparatory control work implements the owner's correction in
+#4217/comment6120089701: use the exact final Sites v2 layout as a standalone
+frontend. It extends the existing update transaction; it adds no second publisher.
+Only `/_preview/search3-design-v2-candidate/` may be replaced. NEXT, the Sites
+reference, all sibling previews and production remain protected.
 
-The exact required installed predecessor is source
-`a0e5f1e7c0083b45678df5837c7faf1cad8751f6`, published by run `38203171197`,
-with canonical inventory SHA256
-`ec062ae95a6ae5d1878c27f3f5a05248e9eb1482fc672f9d6d7967910ffb1171`
-and a matching published owner. An absent, modified, activated, foreign or
-unknown target aborts. After one successful update this control cannot publish
-another source over the new predecessor.
+## Current state: exact native source selected, not published
 
-This review-only successor prepares later bounded design-v2 improvements after
-the published meal-catalog reconciliation. PR4535/sourcea0e5 was published by
-OWNERcommand6117653542/run38203171197; ready artifact11726237032 pins the exact
-installed digest above, and terminal receipt11726550679 plus #4217/comment6117710519
-retain completion and protected-surface evidence. The creation/run38173086001,
-polish/run38180461319, restoration/run38191104207, meal-search/run38197437835 and
-meal-catalog/run38203171197, and all five completed sources remain explicitly
-rejected. Rollback can restore only the verified publisheda0e5 predecessor,
-never an older creation, polish, restoration or meal-search update. Preparing
-this successor does not approve source PR4537 or any publication; independent
-HIGH control review and exact green CI remain required.
+PR #4539 against `release/search3-design-v2` has exact source
+`b53d5ca0bf541e66b684018fb7db332de8fefaf3`, tree
+`65cdbc2658fd63e9782e34df4b2b83638e047aa0`. Native CI38235455883 and
+Security38235455890 succeeded. Retained artifact11740615746 is independently
+ZIP-hash verified. Failed/superseded runs are negative evidence only.
+This source selection is not a publication receipt. Independent final visual/HIGH
+review, exact-head control CI, fresh receiving refs and predecessor, exclusive
+publisher claim and one fresh guarded command remain mandatory.
 
-The only command form is a fresh OWNER-created #4217 issue comment on trusted
-main, run attempt1:
+| Pin | Accepted value |
+| --- | --- |
+| source_sha | `b53d5ca0bf541e66b684018fb7db332de8fefaf3` |
+| source_tree | `65cdbc2658fd63e9782e34df4b2b83638e047aa0` |
+| build_run | `38235455883` |
+| artifact_id | `11740615746` |
+| source_ZIP_sha256 | `f2956b1f9a4e04c313adacc7e0627d30a1d9054a7705a5f4f0f1f99c7814277f` |
+| entry_html_sha256 | `2fcf7ac0ee88befb27cb656fe8ed882daa75bcd9d6aee7d155747b9157f60809` |
+| entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
+| source_manifest_sha256 | `c434c71cb1f8f492dc4c5d15b640a39b320ccb11e14830e3e005700b855a4650` |
+
+The only installed predecessor accepted by this successor is source
+`16196410a8cb90b10e8d06b7ac8b38d4ce7d235d`, publication run `38207863194`,
+attempt1, 845-file inventory digest
+`62c9d3fcd75fd696f71881220b1c7cd1ff0b6e569e752b737ed1f0c83d9f25d3`,
+and the matching owner with `status:published`.
+
+An absent, foreign, modified, activated or unknown owner/target aborts. Previous
+command6118298451/run38207863194 are terminal/no-replay; every older completed
+source/run remains rejected. A successful native update consumes this predecessor.
+This successor cannot publish again over its newly installed owner.
+
+## Exact acceptance pins and source gates
+
+The accepted configuration has exactly these fields: `source_sha`, `source_tree`,
+`build_run`, `artifact_id`, `source_ZIP_sha256`, `entry_html_sha256`,
+`entry_php_sha256`, `source_manifest_sha256`. Pins come from the final successful
+retained artifact. Independent HIGH control review must cover their real values
+before trusted-main merge.
+
+Native provenance is scoped to
+`.github/workflows/search3-design-v2-native.yml`, job `native-acceptance`, and the
+exact source's `guard`. The native job owns source/bridge/canonical lead, price
+and idempotency regressions, isolated build, rendered widths and journeys. Both
+required checks must be successful GitHub Actions checks on the exact head; the
+accepted workflow must be a successful same-repository PR run, attempt1.
+Shared publisher workflow/artifact/gate defaults are not relaxed.
+
+The receiving branch is always `release/search3-design-v2`. Prepare and publish
+recheck fresh main/release refs, source ancestry/tree and unchanged runtime
+projection. Failed, pending, stale, foreign, skipped-required or expired evidence
+aborts. The review artifact is named
+`search3-design-v2-native-<sourceSHA>-<buildRun>` and contains `payload/**`,
+`control/inventory.json`, `control/native-build.json`, rendered `evidence/**`.
+Review metadata retains `publication_authority:false` and route rewrites
+unapplied. The controller verifies every byte/count, donor/brand/entry/graph hash
+and complete evidence before deriving a publishable transaction.
+
+Rendered proof requires 360/390/430/768/1280 at text100/200, five paired
+donor/native screens (search/results/hotel/tour/lead), native error frames,
+matching PNG hashes and no native horizontal overflow. Prices must prove actual
+2x computed fonts at200%, unfragmented numeric groups and no clipping; primary
+actions must have unclipped text bounds. It requires passive
+hydration0 searches, one submit search, local filtering0 extra searches, exact
+offer reference, original flight index/full price, accepted contact preview with
+real leads0, Back/Forward0 extra searches, explicit retry and favorite retention.
+These are fictional fixture checks. Independent visual review and public runtime
+readback remain separate requirements.
+
+## Bounded payload and trusted derivation
+
+Immutable original baseline: artifact11710372908, source
+`01baa3a91e1d497aa928b9866ee97de5f0cc29e2`, ZIP SHA256
+`5267c2eec2549d3117a87a71faedf410d699baa0bdbf364e5f371e9410f14e5f`.
+Both prepare and publish independently download and verify it. The native source
+build compiles the existing graph before its isolated overlay, preserving the
+accepted baseline comparison for canonical dependencies.
+
+Exactly ten files may be added under `visual-search/native-v2/`: `bootstrap.js`,
+`bridge.js`, `donor.css`, `frontend.js`, `lucide-LICENSE`, `lucide.min.js`,
+`product-desktop.css`, `source-manifest.json`, `tour.js`, `viewport.css`.
+The inventory has exactly855 files, all845 baseline paths retained. Only the
+already reviewed legacy presentation delta paths and native `index.html` /
+`index.php` entry replacement may differ. No prefix wildcard, arbitrary addition
+or deletion, or protected provider/lead delta is accepted.
+
+Schema2 native manifest pins final Sites source
+`00fe6734c08acf234756bb59e5b61dbfecf41941`, exact donor files, original CSS/Lucide,
+both entries, all9 assets and the explicit16-script/3-stylesheet headless/native
+graph. Legacy presentation and donor mock simulator cannot be loaded. Actual
+dependency checksums/lengths are verified. Unknown/missing assets, graph owners
+and inline scripts abort.
+
+Only previously reviewed canonical route literals are transformed in trusted
+prepare. Exact native PHP is already design-v2-only and hash-pinned, so receives
+no second boundary replacement. Old served-size ledger and native graph checksums
+are updated and verified. Reversing only approved JavaScript route literals must
+reproduce the pinned source manifest. All other source bytes remain unchanged.
+
+## One transaction and readback
+
+The retained command shape is:
 
 ```text
 /update-search3-design-v2-preview <source40SHA> <release40SHA> <buildRun> <artifactId>
 ```
 
-These placeholders are not a publication command. The receiving ref is always
-`release/search3-design-v2`; neither target nor branch nor predecessor is an
-argument. The shared fixed-ref provenance verifier, immutable source artifact
-digest and all five exact-source success checks are required in both prepare and
-publish: guard, build-preview-artifact, focused-presentation, visual-migration,
-lead-source. Publication also rechecks the command, fresh main and receiving ref.
+This syntax example is not a publication command. After green source/control CI
+and independent source/HIGH review, claim the exclusive publisher lane in #4217,
+recheck the published predecessor and issue one fresh OWNER-created command on
+trusted main, run attempt1. Never replay a completed, failed or UNKNOWN operation.
 
-The original accepted artifact11710372908 is downloaded and verified against its
-fixed SHA256 `5267c2eec2549d3117a87a71faedf410d699baa0bdbf364e5f371e9410f14e5f`.
-Its immutable source remains `01baa3a91e1d497aa928b9866ee97de5f0cc29e2`; changing the
-installed predecessor does not change this independent source-delta baseline.
-Both new source and baseline must have the same845-file inventory. Only these
-eight source payload paths can differ; every other payload byte must match:
+Prepare has no SSH secrets. Publish independently rederives the retained archive
+and request, comparing all bytes before server access. Artifact source is never
+executed with SSH secrets. Fixed target, shared concurrency/lock, production and
+sibling fingerprints, binding, durable receipt, exact predecessor backup and
+interruption recovery remain the existing transaction's owners. Rollback restores
+only that verified predecessor. Modified/foreign backup, target, owner or unknown
+state stops without takeover.
 
-- visual-search/app.js
-- visual-search/hotel-details-v1.js
-- visual-search/offer-list-v1.js
-- visual-search/index.html
-- visual-search/styles.css
-- visual-search/mobile-controls-v1.css
-- visual-search/migration-manifest.json
-- visual-search/asset-size.json
-
-The two added module paths cover only the confirmed final-reference hotel and
-flat-offer presentation correction. Their final exact-source diff requires
-independent presentation and protected-behavior review: file authorization alone
-does not prove unchanged identity, offer selection, lazy loading, filters,
-pagination, price or provider protocols. The five existing exact-source checks
-still apply. `prototype-search/lead.js`, `visual-search/preview-lead.js`, the tour
-controller, supplier/data owners, original logo and fonts remain excluded.
-
-The creator's seven fixed route/ledger boundary adaptations are then applied.
-Canonical supplier/price/lead owners, catalogue readers, original brand artwork
-and all fonts are not source-delta candidates. The no-secret prepare job performs
-PHP renders, negative route checks and retains the exact derived archive and
-request. The publisher independently rederives both source and baseline and
-compares every retained byte before server access. Payload PHP is never executed
-with SSH secrets.
-
-The updater inherits the creator's fixed-root/target inventory, production and
-older-preview fingerprints, binding check, lock and shared production concurrency
-group. Before activation it writes a durable request and retains the full exact
-predecessor directory and owner. Interrupted moves can restore only a verified
-predecessor and an unchanged new target owned by this request. Modified backup,
-modified target, different owner or unknown state stops without takeover or replay.
-A terminal published/rollback/not-activated receipt cannot be replayed. Complete
-keeps the predecessor backup for evidence; it does not offer later rollback of a
-completed operation.
-
-Existing live readback verifies the new route, served assets, noindex/counter0,
-disabled leads, internal PHP and LOCAL-only boundaries and unchanged production
-pages. It makes zero supplier searches and sends zero real leads.
-
-Independent HIGH review, green control CI and source visual review precede main
-merge and the single publisher command. Preparing this controller grants no
-server action or publication. Fixed control paths add no v2 runtime change and
-do not modify an existing creator or publisher.
+Readback checks exact native versioned graph/served hashes, negative entry routes,
+all existing noindex/counter0/lead403/LOCAL-only/catalogue boundaries, healthy
+production routes and unchanged sibling/production fingerprints. It starts no
+supplier search and sends no real lead. A terminal published receipt and verified
+public address are required before reporting publication.
