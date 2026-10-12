@@ -21,7 +21,8 @@ import base64
 import subprocess
 from search3_design_v2_preview import (REPO, RELEASE, OLD_ROUTE, ROUTE_TRANSFORMS,
     LEDGER_PATH, LEDGER_JS, gzip_lengths, render_checks, live_checks)
-from search3_design_v2_update_remote import (ROUTE, INVARIANTS, ORIGINAL_SOURCE, PREDECESSOR_SOURCE, COMPLETED_SOURCES,
+from search3_design_v2_update_remote import (ROUTE, INVARIANTS, ORIGINAL_SOURCE, PREDECESSOR_SOURCE,
+    PREDECESSOR_RUN, PREDECESSOR_DIGEST, COMPLETED_SOURCES, NATIVE_SUCCESSOR_CHANGES,
     ORIGINAL_BUILD, ORIGINAL_ARTIFACT, ORIGINAL_ZIP, SOURCE_CHANGES, ROUTE_CHANGES,
     digest, inventory, json_bytes, need, verify, predecessor, native_acceptance, accepted_native,
     native_graph, NATIVE_BUILD_WORKFLOW, NATIVE_REQUIRED_CHECKS, NATIVE_ADDED, NATIVE_REPLACED,
@@ -169,6 +170,17 @@ def prepare_native_zip(content, request, source_tree, expected_digest, directory
     return files
 
 
+def native_frame_inventory(width, percent):
+    frames = {f'{side}-{screen}-{width}-text{percent}.png'
+              for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
+    frames.update(f'native-{screen}-{width}-text{percent}.png'
+                  for screen in ('error', 'budget-results', 'hotel-return'))
+    if width in (360, 390, 430):
+        frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
+    if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
+    return frames
+
+
 def native_evidence(archive, request, native):
     """Rendered fixture proof, never a statement of live supplier acceptance."""
     report = json.loads(archive.read('evidence/acceptance.json'))
@@ -187,16 +199,18 @@ def native_evidence(archive, request, native):
         'contactPayloadFullTotal': 112000, 'contactPayloadFlightChoiceIndex': 0,
         'contactPreviewCount': 1, 'realLeadSubmissions': 0, 'backForwardRetainedSelection': True,
         'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
-        'retryRows': 4, 'favoriteStoragePreserved': True}
+        'retryRows': 4, 'favoriteStoragePreserved': True,
+        'budgetLoadedCount': 2, 'budgetExtraSearches': 0}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
-        required = {f'{side}-{screen}-{key[0]}-text{key[1]}.png'
-                    for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
-        required.add(f'native-error-{key[0]}-text{key[1]}.png')
+        if key == (390, 100):
+            need(actual.get('progressiveDrawerRetainedDraftAndFocus') is True
+                 and actual.get('budgetBreakpointDraftRetained') is True, 'native_budget_progressive_draft_required')
+        required = native_frame_inventory(*key)
         case_frames = case.get('frames'); need(isinstance(case_frames, list) and len(case_frames) == len(required), 'native_rendered_frames')
         case_seen = set()
         for frame in case_frames:
@@ -208,11 +222,16 @@ def native_evidence(archive, request, native):
             need(frame.get('viewportWidth') == key[0] and frame.get('textPercent') == key[1]
                  and frame.get('side') == name.split('-', 1)[0], 'native_rendered_frame_scope')
             if frame['side'] == 'native':
+                screen = ('filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-',
+                                                       'native-budget-progress-invalid-'))
+                          else 'results' if name.startswith(('native-budget-results-', 'native-error-'))
+                          else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
+                need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
-                if name.split('-')[1] in ('results', 'hotel', 'tour', 'error'):
+                if screen in ('results', 'hotel', 'tour'):
                     need(bool(prices), 'native_visible_price_measurements_required')
                 buttons = frame.get('buttons')
                 need(isinstance(buttons, list) and all(isinstance(button, dict) and button.get('clipped') is False
@@ -226,8 +245,40 @@ def native_evidence(archive, request, native):
                          and font > 0 and baseline > 0
                          and abs(font - baseline * (2 if key[1] == 200 else 1)) < 0.5,
                          'native_actual_text_scale_required')
+                text = frame.get('readableText')
+                need(isinstance(text, list) and bool(text)
+                     and all(isinstance(row, dict) and isinstance(row.get('text'), str)
+                             and row.get('clipped') is False and row.get('brokenWords') is False for row in text),
+                     'native_text_readability_required')
+                need(frame.get('headerFit') == {'outside': False, 'overlap': False}, 'native_header_fit_required')
+                sort = frame.get('sortFit')
+                if screen == 'results':
+                    need(isinstance(sort, dict) and isinstance(sort.get('text'), str) and bool(sort['text'])
+                         and type(sort.get('available')) in (int, float) and sort['available'] > 0
+                         and type(sort.get('textWidth')) in (int, float) and 0 <= sort['textWidth'] <= sort['available'] + 1,
+                         'native_sort_readability_required')
+                else: need(sort is None, 'native_sort_measurement_scope')
+                inputs = frame.get('budgetInputs')
+                need(isinstance(inputs, list)
+                     and len(inputs) == (2 if screen == 'filters' or screen == 'results' and key[0] >= 768 else 0),
+                     'native_budget_measurements_required')
+                for row in inputs:
+                    need(isinstance(row, dict) and isinstance(row.get('text'), str) and bool(row['text'])
+                         and row.get('clipped') is False and row.get('appearance') == 'textfield'
+                         and type(row.get('available')) in (int, float) and row['available'] > 0
+                         and type(row.get('textWidth')) in (int, float) and 0 <= row['textWidth'] <= row['available'] + 1,
+                         'native_budget_readability_required')
+                    font = row.get('font')
+                    measured = re.fullmatch(r'500 ([0-9]+(?:\.[0-9]+)?)px Aeroport, system-ui, sans-serif', font) if isinstance(font, str) else None
+                    expected = (16 if key[0] <= 430 else 13) * (2 if key[1] == 200 else 1)
+                    need(measured is not None and abs(float(measured[1]) - expected) < 0.5,
+                         'native_budget_actual_text_scale_required')
+                if screen == 'results' and key[0] >= 768:
+                    need(type(frame.get('budgetColumns')) is int
+                         and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
+    need(len(frames) == 143, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
@@ -461,7 +512,9 @@ def publish():
     files = inventory(work / 'derived/payload')
     evidence = {'route': ROUTE, 'source_sha': q['source_sha'], 'release_sha': q['release_sha'],
         'source_artifact': q['artifact_id'], 'derived_artifact': int(artifact_id), 'derived_ZIP_sha256': digest(packed),
-        'predecessor_source': PREDECESSOR_SOURCE, 'status': 'checked_not_published'}
+        'predecessor_source': PREDECESSOR_SOURCE, 'predecessor_run': PREDECESSOR_RUN,
+        'predecessor_digest': PREDECESSOR_DIGEST,
+        'expected_predecessor_delta': list(NATIVE_SUCCESSOR_CHANGES), 'status': 'checked_not_published'}
     host = os.environ['PREVIEW_HOST']; user = os.environ['PREVIEW_USER']
     need(re.fullmatch('[A-Za-z0-9][A-Za-z0-9.-]*', host) and re.fullmatch('[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}', user), 'SSH_identity')
     key = work / 'key'; known = work / 'known_hosts'; raw = os.environ['PREVIEW_KEY'].replace('\r', '')
