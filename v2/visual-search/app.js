@@ -1246,8 +1246,8 @@ function updateMealCounts(){
  return selectedInventory?.count;
 }
 function updateMealPicker(selectedCount=null){
- const query=($('#meal-query')?.value||'').trim().toLocaleLowerCase('ru-RU');let visible=0;
- $$('.meal-option').forEach(row=>{const value=row.querySelector('input').value;row.hidden=!!value&&!value.toLocaleLowerCase('ru-RU').includes(query);if(value&&!row.hidden)visible++;});
+ const query=normalizeSearch($('#meal-query')?.value||'');let visible=0;
+ $$('.meal-option').forEach(row=>{const value=row.querySelector('input').value,label=row.querySelector('strong')?.textContent||value,code=row.querySelector('small')?.textContent||'';row.hidden=!!value&&!normalizeSearch(label+' '+code).includes(query);if(value&&!row.hidden)visible++;});
  $('#meal-no-match').hidden=visible>0;
  $('#meal-selection-status').textContent=mealDraft.join(' · ')||'Любое питание';
  if($('#meal-clear-query'))$('#meal-clear-query').hidden=!query;
