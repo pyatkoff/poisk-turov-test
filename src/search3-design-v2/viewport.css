@@ -56,6 +56,9 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-budget label {
   padding-inline: 4px;
 }
+#design-v2-native-root #b4 .st-desktop .st-budget input[type="number"] {
+  font-size: 13px;
+}
 #design-v2-native-root #b4 .st-mobile .st-budget {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8em), 1fr));
 }
