@@ -63,6 +63,11 @@
       node.style.backgroundImage = source && /^(https?:\/\/|\/)/.test(source) ? 'url(' + JSON.stringify(source) + ')' : 'none';
       node.style.backgroundPosition = 'center'; node.style.backgroundSize = 'cover';
       node.classList.toggle('st-no-photo', !source); node.setAttribute('aria-label', source ? 'Фото отеля ' + hotel.name : 'Фото отеля пока нет');
+      if(node.hasAttribute('data-hotel-hero')){
+        node.classList.toggle('q8c5',!source);let empty=node.querySelector('.st-photo-empty-message');
+        if(!source&&!empty){empty=window.document.createElement('div');empty.className='st-photo-empty-message';empty.innerHTML=icon('image')+'<span>Фото пока нет</span>';node.prepend(empty);}
+        if(empty)empty.hidden=!!source;
+      }
     }
     function routeURL(screen = state.screen) {
       const p = new URLSearchParams(window.location.search), s = state.search;

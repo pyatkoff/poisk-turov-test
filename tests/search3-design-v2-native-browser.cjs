@@ -227,6 +227,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await capture(page,'native',width,percent,'hotel',row);await referenceFrame(reference,width,percent,'hotel',row);
         await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();
         await screen('tour').waitFor({state:'visible'});
+        if(width<=760)assert.equal(await product.locator('.st-stay-details').isVisible(),false,'Original mobile quick summary replaces duplicate stay details');
         await product.locator('[data-native-tour-flight="0"]').waitFor({state:'visible'});
         await product.locator('[data-native-tour-flight="0"]').click();
         await product.locator('[data-action="accept-price"]:visible').first().click();

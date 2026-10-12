@@ -51,6 +51,7 @@
       node.setAttribute('role',failure ? 'alert' : 'status');
     }
     function prepare() {
+      tourScreen.querySelector('[data-stay-section-marker]')?.closest('.st-tour-section')?.classList.add('st-stay-details');
       const sections = [...tourScreen.querySelectorAll('.st-tour-layout > div > .st-tour-section')];
       if (sections[1]) {
         sections[1].dataset.nativeFlightSection = '';
