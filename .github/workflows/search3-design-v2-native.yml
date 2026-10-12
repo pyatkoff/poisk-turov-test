@@ -1,0 +1,172 @@
+name: Search3 design-v2 native source and rendered acceptance
+
+on:
+  pull_request:
+    branches: [release/search3-design-v2]
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths:
+      - 'src/search3-design-v2/**'
+      - 'scripts/build/search3_design_v2_native.cjs'
+      - 'scripts/build/search3-js/lead-runtime.cjs'
+      - 'v2/prototype-search/config.js'
+      - 'v2/prototype-search/data.js'
+      - 'v2/prototype-search/lead.js'
+      - 'v2/prototype-search/calendar-exact-hotel-v1.js'
+      - 'v2/prototype-search/source-receipt-v1.js'
+      - 'v2/prototype-search/search-lifecycle-v1.js'
+      - 'v2/runtime-v3.js'
+      - 'v2/lead-search-context.js'
+      - 'v2/tour-controller-v4.js'
+      - 'v2/lead-form-guard-v1.js'
+      - 'v2/search3-canonical-profiles-v1.js'
+      - 'v2/search3-local-db-provider-v1.js'
+      - 'tests/search3-design-v2-native-*'
+      - '.github/workflows/search3-design-v2-native.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: search3-design-v2-native-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  PREVIEW_BASE: /_preview/search3-design-v2-candidate
+
+jobs:
+  native-acceptance:
+    # Native source recovery needs rendered evidence even while its PR is draft.
+    # This job creates review artifacts only; it has no deployment credentials.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact PR source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Install pinned verification tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+          npm install --prefix "$RUNNER_TEMP/native-tools" --no-audit --no-fund --no-save jsdom@26.1.0 playwright@1.55.0
+          "$RUNNER_TEMP/native-tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Verify exact source, native owners and canonical authority regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.base.ref }}" = release/search3-design-v2
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git merge-base --is-ancestor "$BASE_SHA" "$SOURCE_SHA"
+          git diff --check "$BASE_SHA" "$SOURCE_SHA"
+          export NODE_PATH="$RUNNER_TEMP/native-tools/node_modules"
+          find src/search3-design-v2 -maxdepth 1 -name '*.js' -print0 | xargs -0 -r -n 1 node --check
+          node --check scripts/build/search3_design_v2_native.cjs
+          node --check tests/search3-design-v2-native-browser.cjs
+          node scripts/build/search3-js/lead-runtime.cjs v2
+          for test_file in tests/search3-design-v2-native-*.cjs; do
+            if [ "$test_file" != tests/search3-design-v2-native-browser.cjs ]; then node "$test_file"; fi
+          done
+          node tests/search3-prototype-inventory-lifecycle.cjs
+          node tests/search3-prototype-search-lifecycle-v1.cjs
+          node tests/search3-prototype-selected-tour-retention.cjs
+          node tests/search3-provider-lead-delivery.cjs
+          node tests/search3-prototype-lead-bind.cjs
+          php tests/search3-provider-lead-mapping.php
+          php scripts/ci/lead/validate-price.php
+          php scripts/ci/lead/validate-idempotency.php
+          php -l src/search3-design-v2/entry.php
+      - name: Build isolated native review payload and complete inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="$RUNNER_TEMP/search3-design-v2-native"
+          payload="$root/payload"
+          control="$root/control"
+          test ! -e "$root"
+          mkdir -p "$payload" "$control"
+          rsync -a \
+            --exclude='*.md' --exclude='_preview/' \
+            --exclude='api.php' --exclude='api-v2.php' \
+            --exclude='lead-adapter.php' --exclude='lead-adapter-v2.php' \
+            --exclude='lead-bridge-v1.php' --exclude='lead-receiver-v1.php' \
+            --exclude='lead-price-v1.php' --exclude='lead-idempotency-v1.php' \
+            v2/ "$payload/"
+          cp "$payload/index.php" "$payload/search-page-v2.php"
+          cp "$payload/home-entry-v1.php" "$payload/index.php"
+          python3 -B scripts/build/search3_site_preview_isolation.py "$payload"
+          cat > "$payload/.htaccess" <<'HTACCESS'
+          Options -Indexes
+          <FilesMatch "\.php$">
+            Require all denied
+          </FilesMatch>
+          <Files "index.php">
+            Require all granted
+          </Files>
+          <Files "bundle-v1.php">
+            Require all granted
+          </Files>
+          <Files "preview-lead-disabled.php">
+            Require all granted
+          </Files>
+          HTACCESS
+          node scripts/build/search3-js/lead-runtime.cjs "$payload" --write
+          # Retain the reviewed canonical compiled bytes of the predecessor.
+          # Its old presentation assets remain unloaded by the native graph.
+          node scripts/build/search3-js/visual-entry.cjs "$payload"
+          node scripts/build/search3_design_v2_native.cjs "$payload" --isolated > "$control/native-build.json"
+          test -z "$(find "$payload" -type l -print -quit)"
+          find "$payload" -type f -name '*.php' -print0 | xargs -0 -r -n 1 -P 2 php -l >/dev/null
+          find "$payload" -type f -name '*.js' -print0 | xargs -0 -r -n 1 -P 2 node --check >/dev/null
+          export SOURCE_TREE="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'search3-design-v2-native'
+          files = []
+          for path in sorted((root / 'payload').rglob('*')):
+              if path.is_symlink():
+                  raise SystemExit('Symlink in native review artifact')
+              if path.is_file():
+                  data = path.read_bytes()
+                  files.append({'path': path.relative_to(root / 'payload').as_posix(),
+                                'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)})
+          inventory = {'schema': 1, 'source_sha': os.environ['SOURCE_SHA'],
+                       'source_tree_sha': os.environ['SOURCE_TREE'], 'base_sha': os.environ['BASE_SHA'],
+                       'run_id': os.environ['GITHUB_RUN_ID'], 'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'],
+                       'donor_source_sha': '00fe6734c08acf234756bb59e5b61dbfecf41941',
+                       'intended_route': os.environ['PREVIEW_BASE'] + '/visual-search/',
+                       'status': 'review-artifact-not-published', 'publication_authority': False,
+                       'canonical_route_rewrites_applied': False,
+                       'file_count': len(files), 'files': files}
+          (root / 'control' / 'inventory.json').write_text(json.dumps(inventory, indent=2) + '\n')
+          print('NATIVE_REVIEW_INVENTORY', len(files), os.environ['SOURCE_SHA'])
+          PY
+      - name: Render donor/native frame pairs and verify controlled journey
+        shell: bash
+        env:
+          SEARCH3_NATIVE_ASSET_ROOT: ${{ runner.temp }}/search3-design-v2-native/payload
+          SEARCH3_NATIVE_EVIDENCE: ${{ runner.temp }}/search3-design-v2-native/evidence
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/native-tools/node_modules"
+          node tests/search3-design-v2-native-browser.cjs
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Retain exact-head native review artifact and rendered evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-design-v2-native-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-design-v2-native/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14

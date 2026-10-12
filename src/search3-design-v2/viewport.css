@@ -1,0 +1,10 @@
+/* Host viewport only; product composition remains the exact donor stylesheet. */
+html { color-scheme: light; }
+body { margin: 0; padding: 0; }
+#design-v2-native-root { max-width: 1280px; margin: 14px auto; }
+#design-v2-native-root #b4 { width: 100%; }
+#design-v2-native-root #b4 > .st-stage { padding: 0; min-height: 0; }
+#design-v2-native-root #b4 > .st-stage[hidden] { display: none !important; }
+#design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] { width: 100%; max-width: 100%; }
+#design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] > .st-mobile { width: 100%; max-width: 100%; }
+@media (max-width: 760px) { #design-v2-native-root { margin: 0; } }
