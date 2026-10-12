@@ -414,7 +414,8 @@ def prepare_inputs(api, q, tree, zip_hash, work):
         'artifact_id': ORIGINAL_ARTIFACT, 'build_run': ORIGINAL_BUILD,
         'deploy_run': q['deploy_run'], 'attempt': 1}
     prepare_zip(api.download(ORIGINAL_ARTIFACT), baseline, ORIGINAL_TREE, ORIGINAL_ZIP, work / 'baseline')
-    return derive(work / 'original/release', work / 'baseline/release', work / 'derived', q, zip_hash)
+    return derive(work / 'original/release', work / 'baseline/release', work / 'derived',
+                  {**q, 'source_tree': tree}, zip_hash)
 
 
 def prepare():

@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
 import search3_design_v2_preview as creator
 import search3_design_v2_preview_remote as create_remote
@@ -169,6 +169,25 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(files, remote.inventory(self.source / 'payload'))
         self.assertEqual(remote.inventory(self.root / 'review/release/payload'), files)
 
+    def test_command_request_propagates_verified_tree_through_prepare_inputs(self):
+        import search3_preview_publish as shared
+        content = self.review_archive()
+        pin = {**self.native_pin, 'source_ZIP_sha256': remote.digest(content)}
+        q = pub.checked_request(self.event, self.env)
+        self.assertNotIn('source_tree', q)  # This is the actual authorized command shape.
+        api = Mock(); api.download.side_effect = lambda artifact: content if artifact == 456 else b'baseline fixture'
+        def baseline(content, request, tree, zip_hash, directory):
+            self.assertEqual(request['artifact_id'], remote.ORIGINAL_ARTIFACT)
+            shutil.copytree(self.baseline, directory / 'release')
+        work = self.root / 'prepare-inputs'; work.mkdir()
+        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin), patch.object(shared, 'prepare_zip', baseline):
+            ready, archive = pub.prepare_inputs(api, q, 'd' * 40, pin['source_ZIP_sha256'], work)
+            self.assertEqual(remote.verify(work / 'derived', ready), remote.inventory(work / 'derived/payload'))
+        self.assertEqual(ready['source_tree'], 'd' * 40)
+        self.assertNotIn('source_tree', q)
+        self.assertEqual(ready['archive_sha256'], remote.digest(archive))
+        self.assertEqual(api.download.call_args_list[0].args, (456,))
+
     def test_review_zip_rejects_identity_scope_and_byte_drift(self):
         def meta_change(contents, key, value):
             meta = json.loads(contents['control/inventory.json']); meta[key] = value
@@ -320,7 +339,7 @@ class UpdateContracts(unittest.TestCase):
     def test_all_completed_publish_runs_cannot_replay(self):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197, 38207863194))
+                38197437835, 38203171197, 38207863194, 38237246171))
         for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
             with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
                 remote.validate({**self.q, 'deploy_run': deploy_run})
