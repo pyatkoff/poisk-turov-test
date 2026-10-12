@@ -230,7 +230,7 @@ async function capture(page,side,width,percent,screen,row) {
       boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='calendar-later'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':screen==='budget-results'||screen==='results-bounded'||screen==='calendar-later'||screen==='error'?'results':screen==='hotel-return'?'hotel':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -323,6 +323,30 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.formSubmitSearches=1;
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        await page.evaluate(()=>{
+          const source=window.__nativeFixture.hotels;
+          const bulk=Array.from({length:55},(_,index)=>{
+            const template=source[index%source.length],id=1000+index;
+            return{...template,id,name:'FICTIONAL loaded hotel '+String(index+1).padStart(2,'0'),offers:template.offers.slice(0,1).map(offer=>({...offer,key:'fixture:bulk:'+id,hotelId:id}))};
+          });
+          window.__nativeFixture.deliverHotels(bulk);
+        });
+        assert.equal(await product.locator('.st-hotel-card').count(),24,'Only the first bounded batch is rendered');
+        assert.equal(await product.locator('[data-result-count]').innerText(),'55 отелей','Full factual loaded count remains visible');
+        assert.equal(await product.locator('[data-native-result-more]').innerText(),'Показать ещё 24');
+        await capture(page,'native',width,percent,'results-bounded',row);
+        await product.locator('[data-native-result-more]').click();
+        assert.equal(await product.locator('.st-hotel-card').count(),48);
+        assert.equal(await product.locator('[data-native-result-more]').evaluate(node=>node===document.activeElement),true,'The remaining load-more control keeps keyboard focus');
+        await product.locator('.st-hotel-card').first().locator('[data-hotel-open]').click();await screen('hotel').waitFor({state:'visible'});await page.goBack();await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('.st-hotel-card').count(),48,'Back retains the revealed result batch');
+        await product.locator('[data-native-result-more]').click();
+        assert.equal(await product.locator('.st-hotel-card').count(),55);
+        assert.equal(await product.locator('[data-native-result-more]').count(),0,'The control disappears after every loaded row is visible');
+        assert.equal(await product.locator('.st-hotel-card').nth(48).locator('[data-hotel-open]').evaluate(node=>node===document.activeElement),true,'The first final-batch card receives focus when the control disappears');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Revealing loaded rows starts no supplier search');
+        row.proof.boundedInitialCards=24;row.proof.boundedLoadedHotels=55;row.proof.boundedBackCards=48;row.proof.boundedExtraSearches=0;
+        await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
         const calendar=product.locator('.q8c9');
         if(width<=760)await calendar.locator('[data-native-calendar]').click();
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16','2026-10-17','2026-10-18']);
