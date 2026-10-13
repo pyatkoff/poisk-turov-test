@@ -32,10 +32,13 @@ from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
 
 PREFIX = '/update-search3-design-v2-preview '
 REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
-# This reviewed packet has exactly one product commit and one harness-only child.
-# These trusted parent pins are not supplied by a command or artifact.
-NATIVE_SOURCE_PARENT = '221cf41f414837e57455d9bd55b088445b34337f'
-NATIVE_SOURCE_PARENT_TREE = '06ddaa5f27e5c2350c4aa4bcef76b918fbbcbf1c'
+# Exact reviewed source ancestry, newest parent first. These static pins are never
+# supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
+NATIVE_SOURCE_ANCESTORS = (
+    ('ff1a83ccfb68243ea2cb2025c14be70fcf68716f', '5138540fef1e8d8c49fd5936c34b9cef41ad254b'),
+    ('e2a27be403a583ca0fe9fbf31abba5249f35ff99', '20d818ab97a6f3c404ae14aff13b91d95e59be89'),
+    ('018445e301d75858215b27e61f3fc31fd4961609', '41907579798937d88d5167050539a099939f7db1'))
+NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -105,15 +108,18 @@ def native_provenance(api, q, control_sha):
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
     need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT],
          'native_source_parent_pin')
-    source_parent = api.get('/git/commits/' + NATIVE_SOURCE_PARENT)
-    need(source_parent['tree']['sha'] == NATIVE_SOURCE_PARENT_TREE
-         and [row.get('sha') for row in source_parent.get('parents', [])] == [pin['release_parent']],
-         'native_source_parent_lineage_pin')
+    for index, (parent_sha, parent_tree) in enumerate(NATIVE_SOURCE_ANCESTORS):
+        parent = api.get('/git/commits/' + parent_sha)
+        next_sha = (NATIVE_SOURCE_ANCESTORS[index + 1][0]
+                    if index + 1 < len(NATIVE_SOURCE_ANCESTORS) else pin['release_parent'])
+        need(parent['tree']['sha'] == parent_tree
+             and [row.get('sha') for row in parent.get('parents', [])] == [next_sha],
+             'native_source_parent_lineage_pin')
     need(release['tree']['sha'] == pin['release_tree'] == pin['source_tree'], 'native_release_tree_pin')
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 2
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 4
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -247,7 +253,9 @@ def native_evidence(archive, request, native):
         'partialLoadedHotels': 4, 'partialExtraSearches': 0,
         'partialFilteredRecoveryLoadedHotels': 2,
         'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
-        'familyExtraSearches': 0, 'familyAgeReviewRetained': True}
+        'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
+        'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
+        'familyInputFocusRetained': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
