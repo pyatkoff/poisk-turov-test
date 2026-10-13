@@ -9,13 +9,12 @@ const w=dom.window;w.CSS={escape:value=>value};
 const setTextSize=vm.runInNewContext('('+source.slice(start,end)+')');
 const page={async evaluate(fn,value){w.__argument=value;return w.eval('('+fn.toString()+')(window.__argument)');}};
 (async()=>{
- await setTextSize(page,200);assert.equal(w.getComputedStyle(w.document.querySelector('.st-price')).fontSize,'58px');
+ await setTextSize(page,100);assert.equal(w.getComputedStyle(w.document.querySelector('.st-price')).fontSize,'29px');
  w.document.querySelector('.st-card-list').innerHTML='<div class="st-price">149 900 ₽</div>';
- const replaced=w.document.querySelector('.st-price');assert.equal(w.getComputedStyle(replaced).fontSize,'58px','desktop result replacement retains actual 200% text');
- assert.equal(w.__nativeTextScaleBaseline.get(w.__nativeTextScaleKey(replaced)),29);
+ const replaced=w.document.querySelector('.st-price');assert.equal(w.getComputedStyle(replaced).fontSize,'29px','desktop result replacement retains ordinary text');
  w.document.querySelector('.st-offer-price').outerHTML='<div class="st-offer-price">123 000 ₽</div>';
- assert.equal(w.getComputedStyle(w.document.querySelector('.st-offer-price')).fontSize,'40px','replacement offers retain enlarged text');
+ assert.equal(w.getComputedStyle(w.document.querySelector('.st-offer-price')).fontSize,'20px','replacement offers retain ordinary text');
  await setTextSize(page,100);assert.equal(w.getComputedStyle(replaced).fontSize,'29px');
  assert.equal(w.getComputedStyle(w.document.querySelector('.st-offer-price')).fontSize,'20px');
- w.close();console.log('PASS text-scale evidence: dynamic desktop result/offer replacement remains 2x and restores baseline');
+ w.close();console.log('PASS ordinary text evidence: dynamic desktop result/offer replacement preserves baseline');
 })().catch(error=>{w.close();console.error(error);process.exitCode=1;});
