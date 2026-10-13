@@ -966,12 +966,12 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('10 вариантов'));
  click('[data-action="hotel-details"][data-id="501"]');
  const movingRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');movingRoom.open=true;
- const movingOffer=movingRoom.querySelector('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');
- assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="start-tour-flights"]');
+ const movingOffer=movingRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
+ assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
  await wait(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(q('#modal-body').textContent));
  releaseMovedOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
  click('#modal-back');
- const movedOffer=q('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');
+ const movedOffer=q('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');
  assert(movedMore,'late cheaper offer moves the exact returning choice below the first two');
  assert(movedMore.open,'Back reveals the exact returning offer after its position changes');
  assert.equal(starts(),beforeMovedOfferSearch+1);

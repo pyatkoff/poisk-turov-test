@@ -16,7 +16,7 @@ function observe(source,s){
  const checkpoint=()=>({type:ctx.modalType,restoring:ctx.restoringModal,history:ctx.modalHistory.map(x=>x.type),selected:ctx.selectedOffer?.key,open:node('#modal').open,footer:node('#modal-footer').innerHTML});
  const record=(name,...args)=>trace.push([name,...args,checkpoint()]);
  function node(key){if(nodes.has(key))return nodes.get(key);const n={key,id:key,value:'AI',dataset:{hotelId:'7',room:'standard'},textContent:'old '+key,innerHTML:'<old>'+key+'</old>',hidden:false,scrollTop:37,className:'wide-dialog',open:key==='#modal'?!!s.open:false,top:key==='#modal-body'?100:150,
-  getBoundingClientRect:()=>({top:n.top}),contains:x=>x?.key==='focus-target',matches:selector=>selector==='[data-action="offer"]'&&!!s.returningOffer,
+  getBoundingClientRect:()=>({top:n.top}),contains:x=>x?.key==='focus-target',matches:selector=>selector.split(',').includes('[data-action="offer"]')&&!!s.returningOffer,
   focus:options=>{ctx.document.activeElement=n;record('focus',key,options);},
   setAttribute:(k,v)=>{n[k]=v;record('attribute',key,k,v);},
   closest:selector=>node(selector),querySelector:selector=>node(selector),
@@ -132,6 +132,17 @@ const roomSnapshotMutation=source.replace("!['all-offers','hotel-details'].inclu
 assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot guard is exercised');
 assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
 console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards retained digest ${digest} plus ${viewportSyncObservations} exact viewport sync observations; supplier and lead HTTP 0`);
+
+// The approved room draft continues through the footer. Its passive return
+// target is the exact selected row, including when a late cheaper row moves it.
+const continuedRoom={kind:'show',open:true,current:'hotel-details',next:'offer',setup:(c,n)=>{
+ c.actionTrigger.dataset={action:'continue-hotel-offer',key:'exact-room'};
+ n('#modal-body [data-action="select-hotel-offer"][0]').dataset.key='exact-room';
+}};
+const continued=observe(source,continuedRoom),continuedFocus=continued.trace.find(row=>row[0]==='focusReference');
+assert.equal(continuedFocus[1],'#modal-body [data-action="select-hotel-offer"][0]','footer continuation captures the exact selected room row');
+const oldCapture=source.replace(/modalType==='hotel-details'&&actionTrigger\?\.dataset.action==='continue-hotel-offer'\?\$\$\('#modal-body \[data-action="select-hotel-offer"\]'\)\.find\(row=>row.dataset.key===actionTrigger.dataset.key\)\|\|actionTrigger:actionTrigger\|\|document.activeElement/,'actionTrigger||document.activeElement');
+assert.notDeepEqual(observe(oldCapture,continuedRoom),continued,'footer-only return target regression detected');
 
 // Execute the actual passive route owner: browser history is a locator, never
 // enough to rebuild absent/expired/foreign inventory or authorize a request.

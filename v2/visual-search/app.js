@@ -914,7 +914,7 @@ function loadHotelDetails(){
  });
  return hotelDetailsLoad;
 }
-function hotelDetailsOwner(){return window.AnyTourHotelDetails.create({get hotelOfferDraft(){return hotelOfferDraft;},set hotelOfferDraft(value){hotelOfferDraft=value;},get selectedOffer(){return selectedOffer;},sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel,roomLabel,dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText});}
+function hotelDetailsOwner(){return window.AnyTourHotelDetails.create({get hotelOfferDraft(){return hotelOfferDraft;},set hotelOfferDraft(value){hotelOfferDraft=value;},get selectedOffer(){return selectedOffer&&searchKey(selectedOffer.search||{})===searchKey(state.search)?selectedOffer:null;},sameSelectedTourConditions,selectedPriceStatus,needsRefresh,operatorBadge,syncHotelOfferSelection,$,$$,data,hotels,modalType,plainHotelText,esc,hotelOffers,mealLabel,displayMealLabel,roomLabel,dateText,nightsText,flightLabel,guestsText,money,icon,offerCountText,cardPriceNote,observeHotelRoomChoices,syncHotelSectionNavigation,rememberUIRoute,ratingValue,ratingText,departureScopeText,durationText});}
 function renderHotelRooms(id,meal='',restoredRooms=null,initialOffers=null){
  if(!window.AnyTourHotelDetails?.create||modalType!=='hotel-details'||!$('#hotel-room-count')||Number($('.hotel-section-nav')?.dataset.hotelId)!==id)return;
  hotelDetailsOwner().renderHotelRooms(id,meal,restoredRooms,initialOffers);
@@ -1215,7 +1215,7 @@ function updateModalBack(){
  $('#modal-back-label').textContent=label;
 }
 function captureModalStep(m){
- return {type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,route:uiRoute(),focus:focusReference(actionTrigger||document.activeElement,m)};
+ return {type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,route:uiRoute(),focus:focusReference(modalType==='hotel-details'&&actionTrigger?.dataset.action==='continue-hotel-offer'?$$('#modal-body [data-action="select-hotel-offer"]').find(row=>row.dataset.key===actionTrigger.dataset.key)||actionTrigger:actionTrigger||document.activeElement,m)};
 }
 function restoreModalStepSnapshot(previous){
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;
@@ -1231,7 +1231,7 @@ function restoreHotelDetailStep(previous){
   renderHotelRooms(id,!meal||meals.has(meal)?meal:'',openRooms);
   for(const room of $$('.hotel-room-card[data-room]'))if(expandedMore.includes(room.dataset.room)){const more=room.querySelector('.hotel-room-more');if(more)more.open=true;}
   const returningOffer=previous.focus?.selector?$('#modal-body').querySelector(previous.focus.selector):null;
-  if(returningOffer?.matches('[data-action="offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
+  if(returningOffer?.matches('[data-action="offer"],[data-action="select-hotel-offer"]'))returningOffer.closest('.hotel-room-more')?.setAttribute('open','');
 }
 function restoreModalStepFocus(previous){
  const modalBody=$('#modal-body');restoreFocus(previous.focus,$('#modal-title'),$('#modal'));modalBody.scrollTop=previous.scroll;
@@ -1572,7 +1572,7 @@ function refreshProviderQuoteExpiry(){
  for(const price of $$('#modal-body .flight-option-price'))price.textContent='Цена тура с этими рейсами больше не подтверждена';
  for(const status of $$('#anex-flight-price-status,#andromeda-flight-price-status'))status.textContent='Срок подтверждения цены истёк';
  for(const changed of $$('#modal-body .quote-price-change'))changed.hidden=true;
- for(const price of $('#modal-body > .footer-total'))price.remove();
+ for(const price of $$('#modal-body > .footer-total'))price.remove();
  const message=form?.querySelector('.lead-message');if(message)message.textContent='';
  // Keep the contact step's heading stable; the alert and footer announce expiry
  // without moving the active field when enlarged text changes the title height.
@@ -1728,11 +1728,11 @@ async function openLeadWithQuote(key){
  const run=++selectionGeneration;selectedOffer={...initial,loading:true,quoteError:''};renderRealOffer();
  await quoteSelectedOffer(initial,run);
 }
-function quotePriceChangeHTML(o){
+function quotePriceChangeHTML(o,compact=false){
  const before=Number(o?.quoteListingTotal),after=o?.pricePending?null:data.amount(o?.total);
  if(o?.loading||o?.quoteError||!Number.isFinite(before)||before<=0||!after||before===after)return '';
  const title=flightPairFor(o)?'Цена с выбранным перелётом':'Цена изменилась после проверки';
- return `<p class="quote-price-change" role="status"><strong>${title}</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
+ return `<p class="quote-price-change${compact?' compact':''}" role="status"><strong>${title}</strong><span>Было ${money(before)} → стало ${money(after)} за всех туристов.</span></p>`;
 }
 function chosenStayHTML(o,editable=false){
  const placement=data.text(o.tour?.placement)||o.placement;
