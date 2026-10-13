@@ -59,6 +59,33 @@ async function progressiveBudgetChecks(){
  assert.strictEqual(win.document.activeElement,min);assert.equal(min.value,'150000','progress retains an invalid raw draft');assert(el('[data-filter-apply]').disabled);assert.equal(el('[data-filter-form] input[type="range"]').max,'250000','slider extent includes the newly loaded full price');
  min.value='';min.dispatchEvent(new win.Event('input',{bubbles:true}));assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель');el('[data-action="apply-filters"]').click();assert.equal(product.querySelectorAll('.st-hotel-card').length,1);assert.equal(owner.getState().filters.max,100000);assert.equal(starts,1);owner.destroy();win.close();
 }
+async function destinationFocusChecks(){
+ for(const mobile of [false,true]){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.href,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;const pending=[];
+  const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw Error('Destination edits must not search');},async regions(country){return country==='4'?[{id:'41',name:'Кемер',country:'4'},{id:'42',name:'Сиде',country:'4'}]:[];},lookupHotels(query,country,signal){return new Promise(resolve=>pending.push({resolve,query,country,signal}));}};
+  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();},settle=()=>new Promise(r=>win.setTimeout(r,0));
+  const country=id=>'[data-native-destination="country"][data-native-destination-id="'+id+'"]',resort=id=>'[data-native-destination="resort"][data-native-destination-id="'+id+'"]';
+  const escape=()=>win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  try{
+   await owner.ready;tap('[data-search-destination-toggle]');await settle();tap(country('4'));
+   assert.strictEqual(win.document.activeElement,el(country('4')),'Same-country selection retains a keyboard target');await settle();assert.strictEqual(win.document.activeElement,el(country('4')),'Dictionary completion retains the chosen country');
+   escape();assert(el('[data-destination-editor]').hidden,'Escape closes the direction editor after choosing');assert.strictEqual(win.document.activeElement,el('[data-search-destination-toggle]'));
+   tap('[data-search-destination-toggle]');await settle();tap(resort('41'));assert.strictEqual(win.document.activeElement,el(resort('41')));tap(resort('42'));
+   tap('[data-native-destination-remove="resort"][data-native-destination-value="Кемер"]');assert.strictEqual(win.document.activeElement,el('[data-native-destination-remove="resort"][data-native-destination-value="Сиде"]'),'Removing a chip focuses the surviving adjacent chip');
+   tap('[data-native-destination-remove="resort"][data-native-destination-value="Сиде"]');assert.strictEqual(win.document.activeElement,el('[data-destination-all]'),'Removing the final chip focuses whole country');
+   tap(country('8'));assert(!el('[data-destination-confirm]').hidden);assert.strictEqual(win.document.activeElement,el('[data-destination-keep]'),'Replacement confirmation focuses the visible Keep action');assert.equal(el('[data-destination-country]').textContent,'Турция','A pending country does not mutate the draft');
+   tap('[data-destination-keep]');assert(el('[data-destination-confirm]').hidden);assert.strictEqual(win.document.activeElement,el(country('8')),'Keep returns to the rejected choice');assert.equal(el('[data-destination-country]').textContent,'Турция');
+   tap(country('8'));tap('[data-destination-replace]');assert.strictEqual(win.document.activeElement,el(country('8')),'Replacement returns focus to the accepted country');await settle();assert.strictEqual(win.document.activeElement,el(country('8')));assert.equal(el('[data-destination-country]').textContent,'Египет');
+   escape();assert.equal(el('[data-destination-country]').textContent,'Турция','Escape restores the original country after replacement');assert.equal(el('[data-destination-summary]').textContent,'Вся страна');
+   tap('[data-search-destination-toggle]');await settle();const query=el('[data-destination-query]');query.focus();query.value='Ту';query.dispatchEvent(new win.Event('input',{bubbles:true}));await settle();assert.equal(pending.length,1);
+   tap(country('4'));await settle();assert.equal(pending.length,2);assert(pending[0].signal.aborted,'Previous lookup is invalidated');assert.strictEqual(win.document.activeElement,el(country('4')));
+   pending[0].resolve([{id:999,name:'Obsolete country hotel',country:'4'}]);await settle();assert.strictEqual(win.document.activeElement,el(country('4')));assert(!product.querySelector('[data-native-destination-id="999"]'),'Obsolete lookup cannot reinsert an identity');
+   pending[1].resolve([]);await settle();assert.strictEqual(win.document.activeElement,el(country('4')),'Latest asynchronous lookup completion preserves country focus');escape();assert(el('[data-destination-editor]').hidden);assert.equal(searches,0);
+  }finally{owner.destroy();win.close();}
+ }
+}
 async function formFocusChecks(){
  for(const mobile of [false,true]){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
@@ -151,7 +178,7 @@ async function familyCopyChecks(){
  }finally{owner.destroy();win.close();}
 }
 (async()=>{
- await mounted.ready;assert.equal(starts,0,'passive hydration does not search suppliers');
+ await mounted.ready;await destinationFocusChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');
  click('[data-native-night="14"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'14','second tap creates range from first tap');
@@ -187,5 +214,5 @@ async function familyCopyChecks(){
  const container=w.document.createElement('div');container.innerHTML=builder.extract().markup;w.document.body.replaceChildren(container);const newRoot=container.querySelector('[data-product]');const remounted=w.AnyTourDesignV2Native.mount({root:newRoot,bridge,initialState:retained});await remounted.ready;
  assert(newRoot.querySelector('[data-search-form] [type="submit"]').disabled,'durable pending origin disables submit after remount');remounted.applyDictionarySnapshot({type:'complete',origin:'Калининград',generation:10,dictionaries});assert(!newRoot.querySelector('[data-search-form] [type="submit"]').disabled);assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград');remounted.applyDictionarySnapshot({type:'complete',origin:'Москва',generation:9,dictionaries});assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград','superseded durable dictionary receipt is ignored');remounted.applyDictionarySnapshot({type:'error',origin:'Калининград',generation:11,dictionaries,message:'Fixture dictionary unavailable'});assert(!newRoot.querySelector('[data-search-error]').hidden);
  assert(!newRoot.querySelector('[data-search-nights-editor]').hidden,'open input editor survives viewport remount');assert.equal(newRoot.querySelector('[name="minNights"]').value,'10');newRoot.querySelector('[data-native-night="14"]').click();assert.equal(newRoot.querySelector('[name="maxNights"]').value,'14','night range anchor survives remount');newRoot.querySelector('[data-search-editor-cancel="nights"]').click();assert.equal(newRoot.querySelector('[data-search-night-value]').textContent,'7 ночей','original editor cancel snapshot survives remount');assert.equal(starts,1);
- remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();await familyCopyChecks();await formFocusChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; 24 family compositions use correct summary/price cases; form focus survives night/range, child-age/add/remove and calendar paging; supplier starts only explicit submit');
+ remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();await familyCopyChecks();await formFocusChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; 24 family compositions use correct summary/price cases; form focus survives night/range, child-age/add/remove and calendar paging; destination choice/confirmation/chip removal/async lookup focus and Escape cancellation; supplier starts only explicit submit');
 })().catch(error=>{console.error(error);mounted.destroy();w.close();process.exitCode=1;});

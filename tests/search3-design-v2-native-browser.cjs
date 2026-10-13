@@ -395,6 +395,28 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        await product.locator('[data-search-destination-toggle]').click();
+        const sameCountry=product.locator('[data-native-destination="country"][data-native-destination-id="4"]');
+        await sameCountry.press('Enter');
+        assert.equal(await sameCountry.evaluate(node=>node===document.activeElement),true,'Same-country choice survives its rendered dictionary');
+        await page.keyboard.press('Escape');
+        assert.equal(await product.locator('[data-search-destination-toggle]').evaluate(node=>node===document.activeElement),true,'Direction Escape restores its opener');
+        await product.locator('[data-search-destination-toggle]').click();
+        const otherCountry=product.locator('[data-native-destination="country"][data-native-destination-id="1"]');
+        await otherCountry.press('Enter');
+        assert.equal(await product.locator('[data-destination-keep]').evaluate(node=>node===document.activeElement),true,'Country replacement focuses its decision');
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Турция','Unconfirmed choice leaves the original country');
+        await product.locator('[data-destination-keep]').press('Enter');
+        assert.equal(await otherCountry.evaluate(node=>node===document.activeElement),true,'Keep restores the rejected country choice');
+        await otherCountry.press('Enter');await product.locator('[data-destination-replace]').press('Enter');
+        assert.equal(await otherCountry.evaluate(node=>node===document.activeElement),true,'Accepted country remains focused after dictionary refresh');
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Египет');
+        await page.keyboard.press('Escape');
+        assert.equal(await product.locator('[data-search-destination-toggle]').evaluate(node=>node===document.activeElement),true);
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Турция','Escape discards the replacement draft');
+        assert.equal(await product.locator('[data-destination-summary]').innerText(),'Вся страна');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Direction choices never initiate a supplier search');
+        row.proof.destinationKeyboardFocusRetained=true;
         if(percent===200&&(width===390||width===430)){
           const overlapProof=await page.evaluate(()=>{
             const caption=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]')).querySelector('.st-origin-field > span');
