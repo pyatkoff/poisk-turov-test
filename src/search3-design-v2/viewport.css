@@ -56,6 +56,11 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
 }
+@container st-search (max-width: 22em) {
+  #design-v2-native-root #b4 [data-native-popup-panel] .st-night-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 @media (max-width: 760px) {
   #design-v2-native-root #b4 [data-native-form-popup][data-editor] {
     width: 100%;
