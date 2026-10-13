@@ -121,6 +121,7 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-condition-category,
 #design-v2-native-root #b4 .st-flight-label { flex-wrap: wrap; }
 #design-v2-native-root #b4 .st-desktop .st-header { height: auto; min-height: 66px; }
+#design-v2-native-root #b4 .st-mobile .st-header { height: auto; min-height: 52px; }
 #design-v2-native-root #b4 :is(.st-header-nav span, [data-filter-sidebar] .st-filter-heading h2, .st-filter-heading button) {
   white-space: nowrap;
   overflow-wrap: normal;

@@ -341,6 +341,17 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,countFit,sortFit,
       popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
+  if(side==='native'&&screen.startsWith('terminal-')){
+    measurements.terminalState=await page.evaluate(()=>{
+      const control=window.__nativeTerminalFixture,snapshot=control.bridge.getSnapshot();
+      const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+      const alert=root.querySelector('[data-source-alert]');
+      return{status:snapshot.status,message:snapshot.message,searchGeneration:snapshot.searchGeneration,
+        searchStarts:control.calls.search,otherCalls:control.calls.other,
+        alertVisible:!alert.hidden,alertText:alert.textContent};
+    });
+    measurements.terminalState.ownerSHA256=manifest.files['bridge.js'];
+  }
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
   assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
