@@ -59,6 +59,34 @@ async function progressiveBudgetChecks(){
  assert.strictEqual(win.document.activeElement,min);assert.equal(min.value,'150000','progress retains an invalid raw draft');assert(el('[data-filter-apply]').disabled);assert.equal(el('[data-filter-form] input[type="range"]').max,'250000','slider extent includes the newly loaded full price');
  min.value='';min.dispatchEvent(new win.Event('input',{bubbles:true}));assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель');el('[data-action="apply-filters"]').click();assert.equal(product.querySelectorAll('.st-hotel-card').length,1);assert.equal(owner.getState().filters.max,100000);assert.equal(starts,1);owner.destroy();win.close();
 }
+async function unstartedNavigationChecks(){
+ for(const mobile of [false,true]){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;
+  win.localStorage.setItem('anytour.prototype.v18.favorites.v1','[7]');
+  const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){searches++;const result={hotels:[],status:'complete',searchGeneration:searches};cb(result);return result;}};
+  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;};
+  try{
+   await owner.ready;const back=el('[data-screen="search"] [data-action="results"]');
+   assert(back.hidden,'No saved-results return is offered before any search');
+   back.click();assert.equal(owner.getState().screen,'search','A stale results action cannot fabricate a completed search');
+   el('[data-action="favorites"]').click();assert.equal(owner.getState().screen,'results');
+   assert.equal(el('[data-result-count]').textContent,'Поиск ещё не запускали');
+   assert.equal(el('[data-empty-title]').textContent,'Начните с поиска');
+   assert.equal(el('[data-empty-action]').textContent,'К параметрам поиска');
+   assert(!el('[data-empty]').textContent.includes('Нет подходящих туров'));
+   assert.equal(product.querySelectorAll('.st-hotel-card').length,0);assert.equal(searches,0);
+   assert.equal(win.localStorage.getItem('anytour.prototype.v18.favorites.v1'),'[7]','Presearch navigation retains saved favorites');
+   el('[data-empty-action]').click();assert.equal(owner.getState().screen,'search');assert(back.hidden);
+   el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>win.setTimeout(r,0));
+   assert.equal(searches,1);assert.equal(el('[data-result-count]').textContent,'0 отелей');
+   assert.equal(el('[data-empty-title]').textContent,'Нет подходящих туров','An actually completed empty search retains its factual empty state');
+   el('[data-action="search"]').click();assert(!back.hidden,'A real completed search enables its saved-results return');back.click();
+   assert.equal(owner.getState().screen,'results');assert.equal(searches,1,'Returning to the actual empty result starts no new search');
+  }finally{owner.destroy();win.close();}
+ }
+}
 async function destinationFocusChecks(){
  for(const mobile of [false,true]){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.href,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
@@ -202,7 +230,7 @@ async function familyCopyChecks(){
  }finally{owner.destroy();win.close();}
 }
 (async()=>{
- await mounted.ready;await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
+ await mounted.ready;await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');
  click('[data-native-night="14"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'14','second tap creates range from first tap');

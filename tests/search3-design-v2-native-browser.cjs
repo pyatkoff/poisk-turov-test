@@ -294,7 +294,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -317,6 +317,10 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       assert.deepEqual(cardIds,[],'Non-results and empty frames show no result cards');
       assert.deepEqual(notice,{visibleCount:0,beforeList:false,cardNoticeCount:0,text:''},'Empty and non-results frames show no price explanation');
       assert.equal(measurements.readableText.filter(item=>item.kind==='result-notice').length,0);
+    }
+    if(logicalScreen==='initial-favorites'){
+      assert.equal(measurements.prices.length,0,'Unstarted results invent no prices');
+      assert.equal(measurements.readableText.find(item=>item.text==='Поиск ещё не запускали')?.text,'Поиск ещё не запускали');
     }
     if(logicalScreen==='results'){
       assert.deepEqual(cardIds,fixture.hotels.map(hotel=>hotel.id),'Standard and short-desktop results retain all four factual hotel identities');
@@ -423,6 +427,22 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        assert.equal(await product.locator('[data-screen="search"] [data-action="results"]').isVisible(),false,'There is no saved-result return before the first search');
+        const originalFavorites=await page.evaluate(()=>localStorage.getItem('anytour.prototype.v18.favorites.v1'));
+        await product.locator('[data-action="favorites"]').click();await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Поиск ещё не запускали');
+        assert.equal(await product.locator('[data-empty-title]').innerText(),'Начните с поиска');
+        assert.equal(await product.locator('[data-empty-action]').innerText(),'К параметрам поиска');
+        assert.equal(await product.locator('.st-hotel-card').count(),0);
+        await capture(page,'native',width,percent,'initial-favorites',row);
+        await product.locator('[data-action="favorites"]').click();
+        assert.equal(await product.locator('[data-action="favorites"]').getAttribute('aria-pressed'),'false');
+        await product.locator('[data-empty-action]').click();await screen('search').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-screen="search"] [data-action="results"]').isVisible(),false);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Presearch navigation never starts a supplier search');
+        assert.equal(await page.evaluate(()=>localStorage.getItem('anytour.prototype.v18.favorites.v1')),originalFavorites,'Presearch navigation keeps saved favorite identities');
+        await capture(page,'native',width,percent,'initial-search-return',row);
+        row.proof.presearchNavigationTruthful=true;
         await product.locator('[data-search-destination-toggle]').click();
         const sameCountry=product.locator('[data-native-destination="country"][data-native-destination-id="4"]');
         await sameCountry.press('Enter');
