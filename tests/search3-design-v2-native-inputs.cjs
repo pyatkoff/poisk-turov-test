@@ -59,6 +59,47 @@ async function progressiveBudgetChecks(){
  assert.strictEqual(win.document.activeElement,min);assert.equal(min.value,'150000','progress retains an invalid raw draft');assert(el('[data-filter-apply]').disabled);assert.equal(el('[data-filter-form] input[type="range"]').max,'250000','slider extent includes the newly loaded full price');
  min.value='';min.dispatchEvent(new win.Event('input',{bubbles:true}));assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель');el('[data-action="apply-filters"]').click();assert.equal(product.querySelectorAll('.st-hotel-card').length,1);assert.equal(owner.getState().filters.max,100000);assert.equal(starts,1);owner.destroy();win.close();
 }
+async function formFocusChecks(){
+ for(const mobile of [false,true]){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;
+  const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw new Error('Input edits must not search');}};
+  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
+  try{
+   await owner.ready;
+   tap('[data-search-nights-toggle]');const night=el('[data-native-night="10"]');tap('[data-native-night="10"]');
+   assert.strictEqual(win.document.activeElement,night,'Selected night retains focus and its DOM identity');
+   tap('[data-native-night="14"]');assert.strictEqual(win.document.activeElement,el('[data-native-night="14"]'),'Second range endpoint retains focus');
+   tap('[data-native-night="28"]');tap('[data-native-night="1"]');assert(!el('[data-search-night-error]').hidden);
+   assert.strictEqual(win.document.activeElement,el('[data-native-night="1"]'),'An invalid range leaves focus on its rejected endpoint');
+   tap('[data-search-editor-cancel="nights"]');assert.strictEqual(win.document.activeElement,el('[data-search-nights-toggle]'));
+   assert.equal(el('[data-search-night-value]').textContent,'7 ночей','Cancel restores the untouched duration');
+   tap('[data-search-nights-toggle]');tap('[data-native-night="10"]');
+   win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   assert.strictEqual(win.document.activeElement,el('[data-search-nights-toggle]'),'Escape restores the duration opener after a keyboard edit');
+   assert(el('[data-search-nights-editor]').hidden);assert.equal(el('[data-search-night-value]').textContent,'7 ночей','Escape discards the duration draft');
+   tap('[data-search-travelers-toggle]');tap('[data-search-add-child]');
+   assert.strictEqual(win.document.activeElement,el('[data-native-age="0"]'),'Adding a child focuses the required age');
+   const age=el('[data-native-age="0"]');age.value='0';age.dispatchEvent(new win.Event('change',{bubbles:true}));
+   assert.strictEqual(el('[data-native-age="0"]'),age,'Changing age preserves the native select');assert.strictEqual(win.document.activeElement,age);
+   tap('[data-search-add-child]');const second=el('[data-native-age="1"]');assert.strictEqual(win.document.activeElement,second);
+   second.value='7';second.dispatchEvent(new win.Event('change',{bubbles:true}));assert.strictEqual(win.document.activeElement,second);
+   tap('[data-native-remove-child="0"]');assert.equal(el('[data-native-age="0"]').value,'7','Removing a child preserves the remaining age');
+   assert.strictEqual(win.document.activeElement,el('[data-native-age="0"]'),'Removed row moves focus to the next remaining age');
+   tap('[data-native-remove-child="0"]');assert.strictEqual(win.document.activeElement,el('[data-search-add-child]'),'Last removed child returns focus to Add');
+   tap('[data-search-editor-cancel="travelers"]');assert.strictEqual(win.document.activeElement,el('[data-search-travelers-toggle]'));
+   tap('[data-search-date-toggle]');
+   const next=()=>product.querySelector('[data-calendar-month="1"]:not(.st-calendar-mobile-next)');
+   next().focus();next().click();assert.strictEqual(win.document.activeElement,next(),'Paging retains focus on the visible next-month action');
+   tap('[data-calendar-month="-1"]');assert(el('[data-calendar-month="-1"]').disabled);
+   assert.strictEqual(win.document.activeElement,next(),'At the earliest month the enabled next action receives focus');
+   win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   assert.strictEqual(win.document.activeElement,el('[data-search-date-toggle]'),'Escape restores the date opener after paging');assert(el('[data-search-calendar]').hidden);
+   assert.equal(el('[data-search-date-value]').textContent,'25–31 окт');assert.equal(searches,0);
+  }finally{owner.destroy();win.close();}
+ }
+}
 async function familyCopyChecks(){
  // Literal language expectations keep nominative summaries separate from prices after «за».
  const adultSummary=['','1 взрослый','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
@@ -146,5 +187,5 @@ async function familyCopyChecks(){
  const container=w.document.createElement('div');container.innerHTML=builder.extract().markup;w.document.body.replaceChildren(container);const newRoot=container.querySelector('[data-product]');const remounted=w.AnyTourDesignV2Native.mount({root:newRoot,bridge,initialState:retained});await remounted.ready;
  assert(newRoot.querySelector('[data-search-form] [type="submit"]').disabled,'durable pending origin disables submit after remount');remounted.applyDictionarySnapshot({type:'complete',origin:'Калининград',generation:10,dictionaries});assert(!newRoot.querySelector('[data-search-form] [type="submit"]').disabled);assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград');remounted.applyDictionarySnapshot({type:'complete',origin:'Москва',generation:9,dictionaries});assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград','superseded durable dictionary receipt is ignored');remounted.applyDictionarySnapshot({type:'error',origin:'Калининград',generation:11,dictionaries,message:'Fixture dictionary unavailable'});assert(!newRoot.querySelector('[data-search-error]').hidden);
  assert(!newRoot.querySelector('[data-search-nights-editor]').hidden,'open input editor survives viewport remount');assert.equal(newRoot.querySelector('[name="minNights"]').value,'10');newRoot.querySelector('[data-native-night="14"]').click();assert.equal(newRoot.querySelector('[name="maxNights"]').value,'14','night range anchor survives remount');newRoot.querySelector('[data-search-editor-cancel="nights"]').click();assert.equal(newRoot.querySelector('[data-search-night-value]').textContent,'7 ночей','original editor cancel snapshot survives remount');assert.equal(starts,1);
- remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();await familyCopyChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; 24 family compositions use correct summary/price cases; supplier starts only explicit submit');
+ remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();await familyCopyChecks();await formFocusChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; 24 family compositions use correct summary/price cases; form focus survives night/range, child-age/add/remove and calendar paging; supplier starts only explicit submit');
 })().catch(error=>{console.error(error);mounted.destroy();w.close();process.exitCode=1;});
