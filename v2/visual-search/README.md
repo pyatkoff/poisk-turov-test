@@ -1,5 +1,32 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Confirmed live meal and contact repair — 2026-10-13
+
+Direct ANEX listing groups and their concrete offers now carry the same canonical
+search meal identity. The adapter reads a separate provider-qualified ANEX/global
+catalogue; it never borrows Tourvisor native IDs or infers identity from Russian
+display labels. Accepted mappings are the only authority when `available:true`.
+While a validated ANEX catalogue reports `available:false` and every native mapping
+is empty, the reviewed `anex-explicit-meal-code-v1` source policy classifies only
+the exact protocol strings `RO/BB/HB/FB/AI/UAI` through that catalogue's canonical
+codes and IDs. Unknown, branded, numeric, padded and lower-case values remain
+unclassified. Cross-catalogue conflicts fail closed. Raw provenance records the
+classification source and catalogue revision; this is not a DB mapping acceptance
+or a package/meal equivalence decision. Supplier payloads and native IDs are unchanged.
+
+The provider application already includes dates, nights and party. Its existing
+review now shows them by restricting the redundant-context CSS rule to the
+prototype's `details` review. Expanded flight details show each direction once;
+the compact names remain in the closed mobile summary. No lead runtime, payload,
+money, fuel, repricing cap or supplier mutation owner changes are included.
+
+Controlled adapter coverage includes mixed TV/ANEX groups and concrete offers,
+all six exact codes, negative/conflicting catalogues and a different canonical ID.
+The compiled contact matrix checks visible trip context, state-dependent flight
+names, wrapping, overflow, disclosure actions and contacts at all five widths.
+Final-source CI, inspected compiled evidence and installed NEXT readback are
+required separately; this entry is not a live supplier or physical Safari receipt.
+
 ## Candidate: retained modal keyboard and focus — 2026-10-11
 
 The existing viewport owner now keeps every open mobile dialog inside the reduced

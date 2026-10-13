@@ -178,18 +178,22 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
  console.log('PASS compiled verified-pair journey: five widths, exact/swapped/foreign/legacy, application gate and passive reopen');
 };
 const providerApplicationFlightSummary=async(page,width,names,evidence,label)=>{
- const disclosure=page.locator('.summary-flight-details'),summary=disclosure.locator(':scope>summary'),lines=summary.locator('.selected-flight-line');
- assert.equal(await summary.locator('.selected-flight-summary>strong').textContent(),'Выбранные рейсы');assert.equal(await lines.count(),2,'the application exposes only the two receipt flights');
+ const disclosure=page.locator('.summary-flight-details'),summary=disclosure.locator(':scope>summary'),summaryLines=summary.locator('.selected-flight-line'),detailLines=disclosure.locator(':scope>p');
+ assert.equal(await summary.locator('.selected-flight-summary>strong').textContent(),'Выбранные рейсы');assert.equal(await summaryLines.count(),2,'the application retains only the two receipt flights');assert.equal(await detailLines.count(),2,'expanded details retain the same two complete receipt flights');
  const wasOpen=await disclosure.evaluate(el=>el.open);assert.equal(wasOpen,width>760,'full receipt details retain native mobile/desktop disclosure state');
+ const lines=wasOpen?detailLines:summaryLines,hiddenLines=wasOpen?summaryLines:detailLines;
+ for(let i=0;i<2;i++)assert.equal(await hiddenLines.nth(i).isVisible(),false,'each receipt flight has only one visible presentation');
+ const chosenTrip=page.locator('.application-choice .chosen-trip');assert.equal(await chosenTrip.isVisible(),true,'provider application visibly preserves dates, nights and party');
+ assert.match(await chosenTrip.locator('strong').textContent(),/7 ночей/);assert.match(await chosenTrip.locator('span').textContent(),/2 взр\./);
  await summary.scrollIntoViewIfNeeded();
  const boxes=await lines.evaluateAll(nodes=>nodes.map(el=>{const r=el.getBoundingClientRect(),style=getComputedStyle(el);return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,overflow:style.overflow,textOverflow:style.textOverflow,whiteSpace:style.whiteSpace,text:el.textContent};}));
  for(const [index,name] of names.entries()){
-  const line=lines.nth(index);assert.equal(await line.isVisible(),true,'receipt flight stays visible before mobile expansion');assert.match(await line.locator('strong').textContent(),new RegExp(index?'Обратно':'Туда'));assert((await line.textContent()).includes(name),'the visible summary retains the full canonical receipt flight name');assert.equal(boxes[index].textOverflow,'clip');assert.notEqual(boxes[index].whiteSpace,'nowrap');
+  const line=lines.nth(index);assert.equal(await line.isVisible(),true,'receipt flight stays visible in the current disclosure state');assert.match(await line.locator('strong').textContent(),new RegExp(index?'Обратно':'Туда'));assert((await line.textContent()).includes(name),'the visible presentation retains the full canonical receipt flight name');assert.equal(boxes[index].textOverflow,'clip');assert.notEqual(boxes[index].whiteSpace,'nowrap');
  }
- const bounds=await summary.evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x,right:r.right};});assert(boxes.every(box=>box.x>=bounds.x-1&&box.right<=bounds.right+1),'long canonical receipt names wrap inside the summary at '+width);
+ const bounds=await disclosure.evaluate(el=>{const r=el.getBoundingClientRect();return{x:r.x,right:r.right};});assert(boxes.every(box=>box.x>=bounds.x-1&&box.right<=bounds.right+1),'long canonical receipt names wrap inside the disclosure at '+width);
  assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.screenshot({path:path.join(evidence,`selected-flight-summary-${label}-${width}.png`)});
- if(!wasOpen){const detail=disclosure.locator(':scope>:not(summary)').first();assert.equal(await detail.isVisible(),false);await summary.click();assert.equal(await detail.isVisible(),true,'native disclosure still opens complete receipt details');await summary.click();assert.equal(await disclosure.evaluate(el=>el.open),false);}
+ if(!wasOpen){const detail=detailLines.first();assert.equal(await detail.isVisible(),false);await summary.click();assert.equal(await detail.isVisible(),true,'native disclosure still opens complete receipt details');for(let i=0;i<2;i++){assert.equal(await summaryLines.nth(i).isVisible(),false);assert((await detailLines.nth(i).textContent()).includes(names[i]),'opening retains each full canonical receipt name once');}await summary.click();assert.equal(await disclosure.evaluate(el=>el.open),false);for(let i=0;i<2;i++){assert.equal(await summaryLines.nth(i).isVisible(),true);assert.equal(await detailLines.nth(i).isVisible(),false);}}
  await page.locator('#prototype-lead-form').scrollIntoViewIfNeeded();assert.equal(await page.locator('[name="name"]').isEnabled(),true);assert.equal(await page.locator('[name="phone"]').isEnabled(),true);assert.equal(await page.locator('#modal-footer .primary').isVisible(),true);
  return{open:wasOpen,names,boxes,canonical_receipt_summary:true,native_details_toggle:true};
 };
