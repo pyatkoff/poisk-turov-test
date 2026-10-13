@@ -1626,7 +1626,9 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();
   const backRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await backRoom.locator(':scope>summary').click();
   const backOffer=backRoom.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');await backOffer.scrollIntoViewIfNeeded();await backOffer.focus();
-  const hotelBackPosition=await backOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await backOffer.click();await page.locator('[data-action="continue-hotel-offer"]').click();await continueToFlights(page);
+  // Compare the actual leaving state: selection changes the row and footer before Continue.
+  await backOffer.click();await settledHotelScroll(page);
+  const hotelBackPosition=await backOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await page.locator('[data-action="continue-hotel-offer"]').click();await continueToFlights(page);
   await page.waitForFunction(()=>document.querySelector('[data-action="confirm-tour"]')&&!document.querySelector('[data-action="confirm-tour"]').disabled);
   releaseHotelBackSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
   await page.locator('#modal-back').click();
@@ -1634,6 +1636,7 @@ const server=http.createServer((req,res)=>{
   assert.match(await page.locator('#hotel-detail-min').textContent(),/120\s*000/,'footer retains the explicitly selected exact TV whole-tour total');assert.equal(await page.locator('#hotel-detail-offers').getAttribute('data-key'),'tourvisor%3Avisual-tv-101');assert.match(await page.locator('.hotel-room-cards').textContent(),/119\s*000/,'new independent minimum remains in current inventory');assert.equal(await page.locator('#hotel-room-meal').count(),1);
   assert(await backRoom.evaluate(el=>el.open));assert(await backOffer.evaluate(el=>document.activeElement===el));
   const hotelBackReturned=await backOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));
+  fs.writeFileSync(path.join(evidence,`hotel-back-anchor-${width}.json`),JSON.stringify({beforeContinue:hotelBackPosition,returned:hotelBackReturned},null,2));
   assert(Math.abs(hotelBackReturned.top-hotelBackPosition.top)<2,'late rooms keep the returning offer at its viewport position');assert(hotelBackReturned.scroll>=hotelBackPosition.scroll);
   await page.screenshot({path:path.join(evidence,`progressive-hotel-back-${width}.png`)});
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeHotelBackSearch+1);
@@ -1645,7 +1648,8 @@ const server=http.createServer((req,res)=>{
   const manyRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await manyRoom.locator(':scope>summary').click();
   const moreTours=manyRoom.locator('.hotel-room-more');await moreTours.locator(':scope>summary').click();
   const nestedOffer=moreTours.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');await nestedOffer.scrollIntoViewIfNeeded();await nestedOffer.focus();
-  const moreBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await nestedOffer.click();await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
+  await nestedOffer.click();await settledHotelScroll(page);
+  const moreBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
   await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('Не удалось подтвердить цену'));await page.locator('#modal-back').click();
   assert(await manyRoom.evaluate(el=>el.open));assert(await moreTours.evaluate(el=>el.open),'Back retains the expanded nested tour list');
   assert(await nestedOffer.evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),moreBackScroll);
@@ -1672,7 +1676,8 @@ const server=http.createServer((req,res)=>{
   const movingRoom=page.locator('.room-overview[data-room="STANDARD SEA VIEW"]');await movingRoom.locator(':scope>summary').click();
   const movingOffer=movingRoom.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
   assert.equal(await movingOffer.evaluate(el=>Boolean(el.closest('.hotel-room-more'))),false,'chosen offer starts in the visible first two');
-  await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await movingOffer.click();await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
+  await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();await movingOffer.click();await settledHotelScroll(page);
+  const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
   await page.waitForFunction(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(document.querySelector('#modal-body').textContent));
   releaseMovedOfferSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов'));
   await page.locator('#modal-back').click();
@@ -1681,6 +1686,7 @@ const server=http.createServer((req,res)=>{
   assert(await movedMore.evaluate(el=>el.open),'Back reveals the exact returning offer after its position changes');
   assert(await movedOffer.evaluate(el=>document.activeElement===el));assert(await movedOffer.isVisible());
   const returnedPosition=await movedOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));
+  fs.writeFileSync(path.join(evidence,`hotel-moved-offer-anchor-${width}.json`),JSON.stringify({beforeContinue:movedOfferPosition,returned:returnedPosition},null,2));
   assert(Math.abs(returnedPosition.top-movedOfferPosition.top)<2,'Back preserves the chosen offer viewport position after reordering');assert(returnedPosition.scroll>=movedOfferPosition.scroll);
   await page.screenshot({path:path.join(evidence,`hotel-moved-offer-back-${width}.png`)});
   assert.equal(transport.calls.filter(c=>c.action==='search_start').length,beforeMovedOfferSearch+1);
