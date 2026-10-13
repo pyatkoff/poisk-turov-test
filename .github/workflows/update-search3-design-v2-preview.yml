@@ -1,6 +1,6 @@
-# Reviewed successor: retain terminal source receipts and show factual partial-source summaries.
+# Reviewed successor: move the shared price explanation after the loaded hotel batch.
 # Requires 423 retained frames, exact source/release ancestry, and the published
-# form-focus fbbd23/run384518 predecessor.
+# partial-source 740ed/run384642 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 
