@@ -255,6 +255,15 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       text:notices.map(node=>node.textContent.trim()).join('\n')};
     const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
+    const count=root.querySelector('[data-result-count]'),toolbar=count?.closest('.st-toolbar');let countFit=null;
+    if(count&&visible(count)&&toolbar){
+      const bounds=toolbar.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(count);
+      const textRects=[...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).map(rect=>({left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom}));
+      const controls=[...toolbar.querySelectorAll('button,select')].filter(visible).map(node=>{const rect=node.getBoundingClientRect();return{text:node.innerText.trim(),left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};});
+      countFit={text:count.textContent,toolbar:{left:bounds.left,right:bounds.right},textRects,controls,
+        outside:textRects.some(rect=>rect.left<bounds.left-1||rect.right>bounds.right+1),
+        overlap:textRects.some(a=>controls.some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
+    }
     const sort=root.querySelector('.st-sort');let sortFit=null;
     if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
     const calendar=root.querySelector('.q8c9'),calendarPanel=calendar?.querySelector('.st-pc-panel');let calendarFit=null;
@@ -289,12 +298,12 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     });
     const popup=root.querySelector('[data-native-form-popup][open]');let popupFit=null;
     if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),find=popup.querySelector('[type="submit"]'),action=find.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,findVisible:action.top>=0&&action.bottom<=innerHeight,findEnabled:!find.disabled,findHeight:action.height,submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
-    return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
+    return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,countFit,sortFit,
       popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -317,6 +326,10 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       assert.deepEqual(cardIds,[],'Non-results and empty frames show no result cards');
       assert.deepEqual(notice,{visibleCount:0,beforeList:false,cardNoticeCount:0,text:''},'Empty and non-results frames show no price explanation');
       assert.equal(measurements.readableText.filter(item=>item.kind==='result-notice').length,0);
+    }
+    if(logicalScreen==='initial-favorites'){
+      assert.equal(measurements.prices.length,0,'Unstarted results invent no prices');
+      assert.equal(measurements.readableText.find(item=>item.text==='Поиск ещё не запускали')?.text,'Поиск ещё не запускали');
     }
     if(logicalScreen==='results'){
       assert.deepEqual(cardIds,fixture.hotels.map(hotel=>hotel.id),'Standard and short-desktop results retain all four factual hotel identities');
@@ -342,6 +355,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     if(fit.outside||fit.overlap||fit.actions.some(action=>action.height<44||action.disabled)||fit.queryNarrow&&!fit.stacked)report.failures.push({width,percent,screen,error:'Country replacement decisions clip, overlap or fail accessible narrow reflow',details:fit});
     if(percent===100&&fit.stacked)report.failures.push({width,percent,screen,error:'Ordinary country replacement lost its donor side-by-side decisions',details:fit});
   }
+  if(side==='native'&&measurements.countFit&&(measurements.countFit.outside||measurements.countFit.overlap))report.failures.push({width,percent,screen,error:'Result count/status text escapes its toolbar or overlaps a control',details:measurements.countFit});
   if(side==='native'&&measurements.calendarFit?.clipped)report.failures.push({width,percent,screen,error:'Calendar note or paging actions escape the calendar',details:measurements.calendarFit});
   if(side==='native'&&percent===200&&measurements.summaryFit.some(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94)))report.failures.push({width,percent,screen,error:'Enlarged selected-hotel summary did not promote its factual copy to the full row',details:measurements.summaryFit.filter(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94))});
   if(side==='native'&&percent===100&&width===390&&measurements.summaryFit.some(item=>item.queryNarrow||item.stacked))report.failures.push({width,percent,screen,error:'Ordinary mobile selected-hotel summary lost the donor side-by-side composition',details:measurements.summaryFit});
@@ -423,6 +437,22 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        assert.equal(await product.locator('[data-screen="search"] [data-action="results"]').isVisible(),false,'There is no saved-result return before the first search');
+        const originalFavorites=await page.evaluate(()=>localStorage.getItem('anytour.prototype.v18.favorites.v1'));
+        await product.locator('[data-action="favorites"]').click();await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-result-count]').innerText(),'Поиск ещё не запускали');
+        assert.equal(await product.locator('[data-empty-title]').innerText(),'Начните с поиска');
+        assert.equal(await product.locator('[data-empty-action]').innerText(),'К параметрам поиска');
+        assert.equal(await product.locator('.st-hotel-card').count(),0);
+        await capture(page,'native',width,percent,'initial-favorites',row);
+        await product.locator('[data-action="favorites"]').click();
+        assert.equal(await product.locator('[data-action="favorites"]').getAttribute('aria-pressed'),'false');
+        await product.locator('[data-empty-action]').click();await screen('search').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-screen="search"] [data-action="results"]').isVisible(),false);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Presearch navigation never starts a supplier search');
+        assert.equal(await page.evaluate(()=>localStorage.getItem('anytour.prototype.v18.favorites.v1')),originalFavorites,'Presearch navigation keeps saved favorite identities');
+        await capture(page,'native',width,percent,'initial-search-return',row);
+        row.proof.presearchNavigationTruthful=true;
         await product.locator('[data-search-destination-toggle]').click();
         const sameCountry=product.locator('[data-native-destination="country"][data-native-destination-id="4"]');
         await sameCountry.press('Enter');

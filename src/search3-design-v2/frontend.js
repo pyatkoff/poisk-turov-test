@@ -126,7 +126,7 @@
       const action=$('[data-empty-action]'),description=$('[data-empty-text]');
       action.dataset.action='search';delete action.dataset.nativeRemoveConstraint;delete action.dataset.nativeConstraintValue;
       action.hidden=loadingEmpty;
-      action.textContent=errorEmpty||partialEmpty?'Вернуться к поиску':'Изменить поиск';description.textContent=loadingEmpty?'Первые предложения появятся здесь.':partialEmpty?'Предложения не получены. Вернитесь к сохранённым условиям и попробуйте повторить поиск.':errorEmpty?'Сервис поиска временно недоступен. Попробуйте повторить поиск позже.':state.status==='loading'?'Предложения ещё загружаются. Полученные туры появятся здесь.':'Попробуйте изменить даты или снять часть фильтров.';
+      action.textContent=!state.hasSearched?'К параметрам поиска':errorEmpty||partialEmpty?'Вернуться к поиску':'Изменить поиск';description.textContent=!state.hasSearched?'Выберите условия поездки и нажмите «Найти туры».':loadingEmpty?'Первые предложения появятся здесь.':partialEmpty?'Предложения не получены. Вернитесь к сохранённым условиям и попробуйте повторить поиск.':errorEmpty?'Сервис поиска временно недоступен. Попробуйте повторить поиск позже.':state.status==='loading'?'Предложения ещё загружаются. Полученные туры появятся здесь.':'Попробуйте изменить даты или снять часть фильтров.';
       const recovery=!loadingEmpty&&!found.length?items.map(item=>{const next=withoutConstraint(item);return{...item,count:rows(next.filters,next.selectedDate,next.onlyFavorites).length};}).find(item=>item.count>0):null;
       if(recovery){
         delete action.dataset.action;action.dataset.nativeRemoveConstraint=recovery.group;action.dataset.nativeConstraintValue=recovery.value;
@@ -279,13 +279,13 @@
       for(const key of ['stars','meals'])if(!coverage[key]&&state.filters[key].length){state.filters[key]=[];reset=true;}
       if(reset)updateURL();
       const found=rows(), visible=found.slice(0,state.resultLimit), s=state.search,loadingEmpty=state.status==='loading'&&!state.hotels.length,errorEmpty=state.status==='error'&&!state.hotels.length,partialEmpty=state.status==='partial'&&!state.hotels.length;
-      root.classList.toggle('st-result-unavailable',errorEmpty||partialEmpty);
+      root.classList.toggle('st-result-unavailable',!state.hasSearched||errorEmpty||partialEmpty);
       const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
       text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
       text('[data-departure-range]',dateRange(s.from,s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
       text('[data-party]',party(s));text('[data-route]',s.origin+' → '+countryName(s.country));text('[data-mobile-dates]','Вылет '+dateRange(s.from,s.to));
       text('[data-nights-copy]',s.minNights===s.maxNights?nights(s.minNights):s.minNights+'–'+s.maxNights+' ночей');text('[data-party-copy]',party(s));
-      text('[data-result-count]',loadingEmpty?'Ищем…':partialEmpty?'Неполные данные':errorEmpty?'Поиск прерван':countText(found.length));
+      text('[data-result-count]',!state.hasSearched?'Поиск ещё не запускали':loadingEmpty?'Ищем…':partialEmpty?'Неполные данные':errorEmpty?'Поиск прерван':countText(found.length));
       $('.st-sort').value=state.sort;
       $('.st-search-done').hidden=state.status!=='complete';
       $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status)||loadingEmpty&&!state.message||(errorEmpty||partialEmpty)&&(!state.message||/^API HTTP \d{3}$/.test(state.message));
@@ -304,7 +304,7 @@
       more.hidden=!remaining;
       more.innerHTML=remaining?`<span class="st-result-more-count" aria-live="polite">Показано ${visible.length} из ${found.length}</span><button type="button" class="st-secondary cursor-interaction" data-native-result-more>Показать ещё ${next}</button>`:'';
       $$('[data-card-photo]').forEach(node=>photo(node,state.hotels.find(h=>h.id===Number(node.dataset.cardPhoto))));
-      $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',loadingEmpty?'Ищем туры…':partialEmpty?'Поиск завершён не полностью':errorEmpty?'Не удалось загрузить туры':state.status==='partial'?'Нет подходящих туров среди полученных':'Нет подходящих туров');
+      $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',!state.hasSearched?'Начните с поиска':loadingEmpty?'Ищем туры…':partialEmpty?'Поиск завершён не полностью':errorEmpty?'Не удалось загрузить туры':state.status==='partial'?'Нет подходящих туров среди полученных':'Нет подходящих туров');
       $('[data-empty]').setAttribute('aria-busy',String(loadingEmpty));
       renderResultConstraints(found,loadingEmpty,errorEmpty,partialEmpty);
       text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
@@ -340,6 +340,7 @@
     }
     function renderSearch() {
       if(!draft||!dictionaries)return;
+      $$('[data-screen="search"] [data-action="results"]').forEach(node=>node.hidden=!state.hasSearched);
       const form=$('[data-search-form]');
       form.querySelector('[type="submit"]').disabled=originPending;
       form.elements.origin.setAttribute('aria-busy',String(originPending));
@@ -538,7 +539,7 @@
       if(d.searchCategory){const n={three:3,four:4,five:5}[d.searchCategory];draftFilters.stars=n?(draftFilters.stars.includes(n)?draftFilters.stars.filter(x=>x!==n):[...draftFilters.stars,n]):[];renderSearch();return;}
       if(button.hasAttribute('data-search-food-any')){draftFilters.meals=[];renderSearch();return;}
       const action=d.action;
-      if(action==='search'){show('search');return;}if(action==='results'){closeEditor(true);show('results');return;}
+      if(action==='search'){show('search');return;}if(action==='results'){closeEditor(true);show(state.hasSearched?'results':'search');return;}
       if(action==='hotel'){show('hotel');return;}if(action==='tour'){show('tour');return;}if(action==='lead'){show('lead');return;}
       if(action==='best-tour'){state.selected=eligible(currentHotel())[0];rememberRoute(false);show('tour');return;}
       if(action==='gallery'){photoIndex=0;show('gallery');return;}
