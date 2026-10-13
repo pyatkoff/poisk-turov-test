@@ -1,4 +1,4 @@
-# Reviewed successor: move the shared price explanation after the loaded hotel batch.
+# Reviewed accumulated successor: finish result density, hotel cards, and calendar.
 # Requires 423 retained frames, exact source/release ancestry, and the published
 # partial-source 740ed/run384642 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.

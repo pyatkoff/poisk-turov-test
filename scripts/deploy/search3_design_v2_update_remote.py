@@ -66,17 +66,17 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact reviewed source and receiving release; activation requires fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': 'd338f12d1db5b64feb644dba0078963202fe52b9',
-    'source_tree': '4758c20b4b6b5e79a5e5afd501e2013946e914c9',
-    'release_sha': '0e40a91903506f464bd0a1e12be1e725d98c3108',
-    'release_tree': '4758c20b4b6b5e79a5e5afd501e2013946e914c9',
-    'release_parent': '188337f2700f980c2518e01aac9014a3d601001c',
-    'build_run': 38472620788,
-    'artifact_id': 11852732415,
-    'source_ZIP_sha256': 'cdb2a30e63c5fc6ada4e3d5bdcec41b9581f59498a5eaef08cf2e021f7b7a8a9',
+    'source_sha': 'b8b14e89931fbaab363895065d53ed7063339eb3',
+    'source_tree': '08f8a3b4d4b0ac98fc722b9daea2b17196e185f4',
+    'release_sha': 'bdbf18b51a071c8537b618e09ac378ecb66a3d1c',
+    'release_tree': '08f8a3b4d4b0ac98fc722b9daea2b17196e185f4',
+    'release_parent': '0e40a91903506f464bd0a1e12be1e725d98c3108',
+    'build_run': 38474590234,
+    'artifact_id': 11853333244,
+    'source_ZIP_sha256': '737ee7ede8d200ff137d8fab0d48505e6478d1bc283065439bb70bd60c1868d3',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '2765aeb637121872a95d7986edcac54aed9bb6b835b855385a2bd29d0bc1cbad',
+    'source_manifest_sha256': 'b3153e998d176469d6f35969941ac80ac8b82e451317257b8292c78fa5927e53',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -87,11 +87,11 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# Only the reviewed result-density owner and generated source manifest differ from
+# Only the reviewed result-density/card/calendar owners and generated source manifest differ from
 # the exact 855-file published predecessor.
 # Historical baseline allowances do not authorize fresh legacy/provider/brand changes.
 NATIVE_SUCCESSOR_CHANGES = tuple(sorted('visual-search/native-v2/' + name for name in (
-    'frontend.js', 'source-manifest.json')))
+    'frontend.js', 'source-manifest.json', 'viewport.css')))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
