@@ -26,6 +26,21 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
 }
 #design-v2-native-root #b4 .st-mobile .st-section-top { flex-wrap: wrap; }
+/* Country replacement keeps its two decisions together; enlarged text can
+   move them onto separate rows without splitting either action label. */
+#design-v2-native-root #b4 .st-destination-confirm {
+  container: native-direction-confirm / inline-size;
+}
+@container native-direction-confirm (max-width: 18em) {
+  #design-v2-native-root #b4 .st-destination-confirm > div { flex-direction: column; }
+  #design-v2-native-root #b4 .st-destination-confirm button {
+    flex: none;
+    width: 100%;
+    white-space: nowrap;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
 #design-v2-native-root #b4 .st-desktop [data-screen="results"] {
   container: native-results / inline-size;
 }
