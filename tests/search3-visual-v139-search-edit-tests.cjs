@@ -29,7 +29,7 @@ const {JSDOM,VirtualConsole}=require('jsdom');
  context.catalogError='unavailable';assert.match(render(),/Не все подсказки/);
  context.catalogReady=true;context.dateDraft={from:'2026-10-19',to:'2026-10-13'};assert.match(render(),/корректные даты/);
  assert.match(source,/loads\.set\(month,snapshot\.partial\?'error':'complete'\);legend\(\)/);
- assert.match(source,/const legend=\(\)=>\{[^\n]+renderDateSelectionPrice\(\);\}/,'async phase changes rerender the selected summary');
+ assert.match(source,/const legend=\(\)=>\{[^\n]+renderDateSelectionPrice\(\);revealCalendarMonth\(true,true\);if\(!loading\)calendarOpeningAnchor=null;\}/,'async phase changes repaint the selected summary before guarded reveal and final anchor retirement');
  console.log('PASS calendar selected summary: loading, partial, failure, empty, unobserved and cross-month states');
 }
 
