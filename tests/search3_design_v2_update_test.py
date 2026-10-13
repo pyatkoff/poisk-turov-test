@@ -314,8 +314,9 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38388948150)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'd341f7648749f2f8a3272a1e51e2d923c1db80a6')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38404222823)
+        self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
