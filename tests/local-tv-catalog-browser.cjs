@@ -211,9 +211,12 @@ async function browserAcceptance(){
      }
      await page.waitForFunction(name=>document.querySelector('.destination-hotel[data-id="501"] strong')?.textContent===name,original.items[0].name);
      const row=page.locator('.destination-hotel[data-id="501"]');
-     assert((await row.locator('small').textContent()).includes(profile.region.name),'existing canonical geography remains visible');
-     assert((await row.locator('small').textContent()).includes(profile.country.name));
-     assert((await row.locator('small').textContent()).includes(profile.category+'★'));
+     const geography=row.locator('.destination-hotel-copy>small');
+     assert((await geography.textContent()).includes(profile.region.name),'existing canonical geography remains visible');
+     assert((await geography.textContent()).includes(profile.country.name));
+     const stars=Number(profile.category),starOwner=row.locator('.destination-hotel-copy>.hotel-stars');
+     assert.equal(await starOwner.textContent(),'★'.repeat(stars),'separate star owner preserves the exact canonical category');
+     assert.equal(await starOwner.getAttribute('aria-label'),stars===1?'1 звезда':stars<5?stars+' звезды':stars+' звёзд','canonical category remains accessible');
      assert.equal(await row.locator('img').getAttribute('src'),original.items[0].primaryImage||original.items[0].images[0],'saved LOCAL thumbnail reaches the existing renderer');
      assert.equal(await page.locator('#destination-query').inputValue(),profile.name,'hydration preserves the accepted legacy query');
      assert.equal(starts(),0,'opening/typing/reading LOCAL content starts no tour search');
