@@ -245,6 +245,8 @@ async function browserAcceptance(){
     await page.waitForFunction(()=>document.querySelector('#destination-query')?.getAttribute('aria-busy')==='false');
     assert.equal(await page.locator('[data-action="destination-remove"][data-id="501"]').count(),1,'query change does not change selection');
     await page.locator('[data-action="clear-destination-query"]').first().click();assert.equal(await page.locator('#destination-query').inputValue(),'');
+    if(await page.locator('#destination-selection:not([open])>summary').count())await page.locator('#destination-selection>summary').click();
+    assert(await page.locator('[data-action="destination-remove"][data-id="501"]').isVisible(),'approved selected-hotels disclosure exposes the exact removal action');
     await page.locator('[data-action="destination-remove"][data-id="501"]').click();await close();
     assert((await page.locator('#destination-detail').textContent()).includes(original.items[0].name),'Cancel restores applied selection after clear/removal');
     assert.equal(starts(),0);await page.locator('.search-submit').click();
