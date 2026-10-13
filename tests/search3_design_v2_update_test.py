@@ -158,7 +158,8 @@ class UpdateContracts(unittest.TestCase):
             'flightAlternativesSavedHeight': 300,
             'familyAges': [0, 7, 17], 'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
             'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
-            'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True}
+            'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
+            'formPopupSingleSubmitRetained': True}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -175,7 +176,7 @@ class UpdateContracts(unittest.TestCase):
                     short_desktop = name.startswith('native-short-desktop-')
                     logical_name = name.replace('native-short-desktop-', 'native-', 1) if short_desktop else name
                     screen = ('startup' if logical_name.startswith('native-startup-')
-                              else 'search' if logical_name.startswith(('native-family-', 'native-destination-'))
+                              else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-'))
                               else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
                                                                  'native-calendar-later-', 'native-results-bounded-',
@@ -225,6 +226,9 @@ class UpdateContracts(unittest.TestCase):
                             'outside': False} for text in ('Выбрать тур', 'Выбран тур')]
                     readable_text = [{'text': 'Fixture condition', 'clipped': False,
                         'brokenWords': False, 'overlappingLines': False, 'kind': 'other', 'cardId': None}]
+                    if name.startswith('native-popup-nights-'):
+                        readable_text.extend({**readable_text[0], 'text': text, 'kind': 'night-preset'}
+                                             for text in ('7 ночей', '10 ночей', '14 ночей', '21 ночь'))
                     result_card_ids = []
                     result_notice = {'visibleCount': 0, 'beforeList': False, 'cardNoticeCount': 0, 'text': ''}
                     if side == 'native' and screen == 'results' and not name.startswith((
@@ -279,10 +283,17 @@ class UpdateContracts(unittest.TestCase):
                                 'width': 270 if narrow else 125, 'height': 44, 'disabled': False}
                                 for index, text in enumerate(('Оставить', 'Заменить'))]}
                         readable_text.extend({**readable_text[0], 'text': text} for text in ('Оставить', 'Заменить'))
+                    popup_editor = ('dates' if logical_name.startswith('native-popup-calendar-')
+                        else 'nights' if logical_name.startswith('native-popup-nights-')
+                        else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
+                        else 'destination' if logical_name.startswith('native-destination-') else None)
+                    popup_fit = {'editor': popup_editor, 'modal': True, 'outside': False,
+                        'panelOverflow': False, 'findVisible': True, 'findEnabled': True,
+                        'findHeight': 50, 'submitCount': 1} if popup_editor else None
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
                         'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'calendarFit': calendar_fit, 'destinationFit': destination_fit, 'summaryFit': summary_fit,
+                        'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit, 'summaryFit': summary_fit,
                         'offerActionFit': offer_action_fit,
                         'resultCardIds': result_card_ids, 'resultNotice': result_notice,
                         'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
@@ -329,8 +340,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38420411530)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38429562174)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -399,15 +410,16 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_353_frames_and_preserves_333_baseline_frames(self):
+    def test_visual_successor_requires_exact_373_frames_and_preserves_353_baseline_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 353)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 353)
-            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 373)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 373)
+            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-'))
                 for case in report['cases'] for frame in case['frames']), 263)
-            self.assertEqual(sum(not frame['file'].startswith('native-destination-') for case in report['cases'] for frame in case['frames']), 333)
+            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-')) for case in report['cases'] for frame in case['frames']), 333)
+            self.assertEqual(sum(not frame['file'].startswith('native-popup-') for case in report['cases'] for frame in case['frames']), 353)
             self.assertEqual(sum(frame['file'].startswith('native-family-')
                 for case in report['cases'] for frame in case['frames']), 60)
             self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
@@ -609,11 +621,28 @@ class UpdateContracts(unittest.TestCase):
     def test_form_focus_proofs_are_required_in_every_case(self):
         changes = []
         for case in range(10):
-            for key in ('nightKeyboardFocusRetained', 'formCalendarPagingFocusRetained', 'familyInputFocusRetained', 'destinationKeyboardFocusRetained'):
+            for key in ('nightKeyboardFocusRetained', 'formCalendarPagingFocusRetained', 'familyInputFocusRetained', 'destinationKeyboardFocusRetained', 'formPopupSingleSubmitRetained'):
                 changes.extend((
                     lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
                     lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: False}),
                     lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: 1})))
+        self.assert_evidence_rejected(changes)
+
+    def test_popup_frames_and_one_visible_native_submit_are_required(self):
+        def frame(report):
+            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-calendar-'))
+        changes = [lambda r: frame(r).pop('popupFit'), lambda r: frame(r)['popupFit'].update(editor='nights'),
+            lambda r: frame(r)['popupFit'].update(modal=1), lambda r: frame(r)['popupFit'].update(outside=True),
+            lambda r: frame(r)['popupFit'].update(panelOverflow=True), lambda r: frame(r)['popupFit'].update(findVisible=False),
+            lambda r: frame(r)['popupFit'].update(findEnabled=False), lambda r: frame(r)['popupFit'].update(findHeight=43),
+            lambda r: frame(r)['popupFit'].update(findHeight=True), lambda r: frame(r)['popupFit'].update(findHeight=float('nan')),
+            lambda r: frame(r)['popupFit'].update(submitCount=True), lambda r: frame(r)['popupFit'].update(submitCount=2)]
+        def nights(report):
+            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-nights-'))
+        changes.extend((lambda r: nights(r)['readableText'].pop(),
+            lambda r: nights(r)['readableText'][-1].update(kind='other'),
+            lambda r: nights(r)['readableText'][-1].update(text='21 ночей'),
+            lambda r: nights(r)['readableText'][-1].update(clipped=True)))
         self.assert_evidence_rejected(changes)
 
     def test_destination_frames_decisions_and_readable_actions_are_required(self):
@@ -772,7 +801,8 @@ class UpdateContracts(unittest.TestCase):
             'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510',
             'd341f7648749f2f8a3272a1e51e2d923c1db80a6',
             '002dc0d636c5ad6e5597d37259baba574fe9ed88',
-            'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5'))
+            'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5',
+            '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -845,9 +875,9 @@ class UpdateContracts(unittest.TestCase):
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=2)),
+             lambda row: row.update(behind_by=len(pub.NATIVE_SOURCE_ANCESTORS)+1)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=1)),
+             lambda row: row.update(behind_by=len(pub.NATIVE_SOURCE_ANCESTORS)-1)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row.update(ahead_by=2)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
@@ -867,7 +897,7 @@ class UpdateContracts(unittest.TestCase):
                 else: row['parents'] = [{'sha': 'b' * 40}] if parent_sha != pub.NATIVE_SOURCE_ANCESTORS[-1][0] else [{'sha': pub.NATIVE_SOURCE_PARENT}]
                 with self.subTest(parent=parent_sha, defect=defect), self.assertRaisesRegex(ValueError, 'native_source_parent_lineage_pin'):
                     pub.native_provenance(API(rows), q, 'f' * 40)
-        for count in (0, 1, 2, 4, 5):
+        for count in sorted(set(range(6)) - {len(pub.NATIVE_SOURCE_ANCESTORS)}):
             rows = copy.deepcopy(values)
             rows['/compare/' + 'a' * 40 + '...' + 'c' * 40]['behind_by'] = count
             with self.subTest(commit_count=count), self.assertRaisesRegex(ValueError, 'native_exact_squash_relation'):
@@ -929,7 +959,7 @@ class UpdateContracts(unittest.TestCase):
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
-             38413259110, 38420411530))
+             38413259110, 38420411530, 38429562174))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
