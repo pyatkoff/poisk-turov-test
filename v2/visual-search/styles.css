@@ -1725,7 +1725,7 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
 
 .form-picker .destination-hotel-photo svg{width:20px;height:20px;margin:auto}
 
-.form-picker .destination-hotel-photo small{font-size:.625rem;line-height:1.3;margin:0}
+.form-picker .destination-hotel-photo>span{font-size:.625rem;line-height:1.3;margin:0}
 
 .form-picker .destination-hotel-copy{min-width:0}
 
