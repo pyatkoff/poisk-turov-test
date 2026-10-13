@@ -35,9 +35,9 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('a3783a0608e6f779028a1f8d9260b117748ca98e', '3bc5b66fed33e574c9b81e2e2a02078e09514615'),)
+    ('188337f2700f980c2518e01aac9014a3d601001c', '4c39f903ce047e1119f6f037dd75d83631d49d4c'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '0dd523c048392aed45b65c77b94b5458a88384e0'
+NATIVE_SOURCE_BASE_PARENT = 'a3783a0608e6f779028a1f8d9260b117748ca98e'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -510,10 +510,10 @@ def native_evidence(archive, request, native):
                      and len(set(card_ids)) == len(card_ids), 'native_result_card_identity_required')
                 notice = frame.get('resultNotice')
                 need(isinstance(notice, dict)
-                     and set(notice) == {'visibleCount', 'beforeList', 'cardNoticeCount', 'text'}
+                     and set(notice) == {'visibleCount', 'afterBatch', 'cardNoticeCount', 'text'}
                      and type(notice['visibleCount']) is int and notice['visibleCount'] >= 0
                      and type(notice['cardNoticeCount']) is int and notice['cardNoticeCount'] == 0
-                     and type(notice['beforeList']) is bool and isinstance(notice['text'], str),
+                     and type(notice['afterBatch']) is bool and isinstance(notice['text'], str),
                      'native_result_notice_measurement_required')
                 presets = [row['text'] for row in text if row.get('kind') == 'night-preset']
                 need(presets == (['7 ночей', '10 ночей', '14 ночей', '21 ночь']
@@ -538,7 +538,7 @@ def native_evidence(archive, request, native):
                                  for card_id in card_ids), 'native_result_card_scope_required')
                     if logical_name == f'native-results-{key[0]}-text{key[1]}.png':
                         need(card_ids == [1, 2, 3, 4], 'native_result_standard_identity_required')
-                    need(notice == {'visibleCount': 1, 'beforeList': True,
+                    need(notice == {'visibleCount': 1, 'afterBatch': True,
                                     'cardNoticeCount': 0, 'text': RESULT_NOTICE_TEXT}
                          and len(note_rows) == 1 and note_rows[0]['text'].strip() == RESULT_NOTICE_TEXT,
                          'native_result_shared_notice_required')
@@ -556,7 +556,7 @@ def native_evidence(archive, request, native):
                                  'native_result_factual_copy_required:' + kind)
                 else:
                     need(card_ids == [] and result_rows == [] and note_rows == []
-                         and notice == {'visibleCount': 0, 'beforeList': False,
+                         and notice == {'visibleCount': 0, 'afterBatch': False,
                                         'cardNoticeCount': 0, 'text': ''},
                          'native_result_empty_scope_required')
                 if screen == 'tour':
