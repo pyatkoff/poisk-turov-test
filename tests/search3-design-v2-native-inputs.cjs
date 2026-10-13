@@ -59,6 +59,56 @@ async function progressiveBudgetChecks(){
  assert.strictEqual(win.document.activeElement,min);assert.equal(min.value,'150000','progress retains an invalid raw draft');assert(el('[data-filter-apply]').disabled);assert.equal(el('[data-filter-form] input[type="range"]').max,'250000','slider extent includes the newly loaded full price');
  min.value='';min.dispatchEvent(new win.Event('input',{bubbles:true}));assert.equal(el('[data-filter-apply]').textContent,'Показать 1 отель');el('[data-action="apply-filters"]').click();assert.equal(product.querySelectorAll('.st-hotel-card').length,1);assert.equal(owner.getState().filters.max,100000);assert.equal(starts,1);owner.destroy();win.close();
 }
+async function familyCopyChecks(){
+ // Literal language expectations keep nominative summaries separate from prices after «за».
+ const adultSummary=['','1 взрослый','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
+ const adultPrice=['','1 взрослого','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
+ const childSummary=['',' + 1 ребёнок',' + 2 ребёнка',' + 3 ребёнка'];
+ const childPrice=['',' + 1 ребёнка',' + 2 детей',' + 3 детей'];
+ const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+ const win=doc.window,product=win.document.querySelector('[data-product]');let searches=0,loadedOffer=null;
+ const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,min:0,max:null,hotelId:0,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){
+  searches++;loadedOffer={...offer,adults:s.adults,ages:s.ages,search:s};
+  const result={search:s,filters:f,hotels:[{...hotel,offers:[loadedOffer]}],status:'complete',searchGeneration:searches};cb(result);return result;
+ }};
+ win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+ const el=s=>{const n=product.querySelector(s);assert(n,s);return n;};
+ const tap=s=>{const n=el(s);assert(!n.disabled,s+' must be available');n.click();};
+ try{
+  await owner.ready;let checked=0;
+  for(let adults=1;adults<=6;adults++)for(let children=0;children<=3;children++){
+   const summary=adultSummary[adults]+childSummary[children],price=adultPrice[adults]+childPrice[children],ages=[0,7,17].slice(0,children);
+   tap('[data-search-travelers-toggle]');
+   while(Number(el('[data-search-adult-value]').textContent)>adults)tap('[data-search-adult="-1"]');
+   while(Number(el('[data-search-adult-value]').textContent)<adults)tap('[data-search-adult="1"]');
+   while(product.querySelector('[data-native-remove-child]'))tap('[data-native-remove-child="0"]');
+   for(let index=0;index<children;index++){
+    tap('[data-search-add-child]');const age=el('[data-native-age="'+index+'"]');age.value=String(ages[index]);age.dispatchEvent(new win.Event('change',{bubbles:true}));
+   }
+   assert.equal(el('[data-search-travelers-value]').textContent,summary,'form summary: '+summary);
+   assert.equal(el('[data-search-family-status]').textContent,summary,'family editor summary: '+summary);
+   tap('[data-search-editor-done="travelers"]');
+   assert.equal(el('[data-search-travelers-value]').textContent,summary,'applied family summary');
+   tap('[data-search-date-toggle]');
+   assert(el('[data-calendar-price-context]').textContent.endsWith(' · '+summary),'calendar context uses a free summary');
+   tap('[data-search-calendar-close]');
+   assert.equal(searches,checked,'editing family and calendar copy never starts a search');
+   el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await new Promise(resolve=>win.setTimeout(resolve,0));checked++;
+   assert.equal(searches,checked,'one existing explicit submit per composition');
+   assert.equal(owner.getState().search.adults,adults);assert.deepEqual(Array.from(owner.getState().search.ages),ages);
+   assert.strictEqual(owner.getState().hotels[0].offers[0],loadedOffer,'copy retains exact loaded offer identity');
+   assert.equal(loadedOffer.total,offer.total);assert.equal(loadedOffer.adults,adults);assert.deepEqual(Array.from(loadedOffer.ages),ages);
+   assert.equal(el('[data-party]').textContent,summary,'desktop results summary');
+   assert.equal(el('[data-party-copy]').textContent,summary,'mobile results summary');
+   assert.equal(el('.st-hotel-card .st-price-caption').textContent,'за '+price,'result price caption uses accusative');
+   tap('[data-hotel-open="'+hotel.id+'"]');
+   assert.equal(el('[data-hotel-price-caption]').textContent,'За '+price+' · 7 ночей','hotel summary price caption');
+   assert.equal(el('[data-offer-context]').textContent,'Все цены за '+price,'hotel offer price context');
+   tap('[data-action="search"]');
+  }
+  assert.equal(checked,24,'all adult 1–6 × child 0–3 compositions reach form/results/hotel owners');
+ }finally{owner.destroy();win.close();}
+}
 (async()=>{
  await mounted.ready;assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
@@ -75,7 +125,7 @@ async function progressiveBudgetChecks(){
  click('[data-search-date-toggle]');click('[data-native-date="2026-11-12"]');click('[data-search-calendar-close]');assert(node('[data-search-date-value]').textContent.includes('2–10 ноя'),'date cancel restores applied draft');
  click('[data-search-date-toggle]');click('[data-calendar-month="-1"]');click('[data-native-date="2026-10-25"]');click('[data-native-date="2026-10-31"]');click('[data-calendar-done]');assert.equal(node('[data-search-date-value]').textContent,'25–31 окт','same-month date range keeps the donor compact presentation');assert.equal(starts,0,'calendar navigation/selections never starts suppliers');
  click('[data-conditions-open="budget"]');input('[data-search-budget="min"]','150 000');input('[data-search-budget="max"]','100000');assert(node('[data-conditions-apply="budget"]').disabled);assert(!node('[data-search-budget-error]').hidden);input('[data-search-budget="max"]','abc');assert.equal(node('[data-search-budget="max"]').getAttribute('aria-invalid'),'true');input('[data-search-budget="min"]','100000');input('[data-search-budget="max"]','150000');click('[data-conditions-apply="budget"]');assert(node('[data-search-budget-editor]').hidden);
- click('[data-search-travelers-toggle]');click('[data-search-add-child]');click('[data-search-add-child]');assert(node('[data-search-editor-done="travelers"]').disabled);input('[data-native-age="0"]','0','change');input('[data-native-age="1"]','17','change');click('[data-search-editor-done="travelers"]');assert(node('[data-search-travelers-value]').textContent.includes('2 детей'));
+ click('[data-search-travelers-toggle]');click('[data-search-add-child]');click('[data-search-add-child]');assert(node('[data-search-editor-done="travelers"]').disabled);input('[data-native-age="0"]','0','change');input('[data-native-age="1"]','17','change');click('[data-search-editor-done="travelers"]');assert(node('[data-search-travelers-value]').textContent.includes('2 ребёнка'));
  click('[data-search-destination-toggle]');await tick();assert.equal(regions,1);click('[data-native-destination="resort"][data-native-destination-id="41"]');click('[data-destination-apply]');assert.equal(node('[data-destination-summary]').textContent,'Кемер');
  click('[data-search-destination-toggle]');input('[data-destination-query]','Verified');await tick();assert.equal(lookups,1);click('[data-native-destination="hotel"][data-native-destination-id="7"]');assert(!node('[data-destination-confirm]').hidden,'hotel replacement requires visible confirmation');click('[data-destination-keep]');assert.equal(node('[data-destination-footer-summary]').textContent,'Турция · Кемер');click('[data-native-destination="hotel"][data-native-destination-id="7"]');click('[data-destination-replace]');click('[data-destination-apply]');assert.equal(node('[data-destination-summary]').textContent,'Verified hotel');
  click('[data-search-destination-toggle]');click('[data-destination-clear]');await tick();click('[data-native-destination="country"][data-native-destination-id="8"]');click('[data-destination-replace]');await tick();click('[data-destination-cancel]');assert.equal(node('[data-destination-country]').textContent,'Турция');assert.equal(node('[data-destination-summary]').textContent,'Verified hotel','destination cancel restores own exact hotel constraint');assert.equal(starts,0);
@@ -96,5 +146,5 @@ async function progressiveBudgetChecks(){
  const container=w.document.createElement('div');container.innerHTML=builder.extract().markup;w.document.body.replaceChildren(container);const newRoot=container.querySelector('[data-product]');const remounted=w.AnyTourDesignV2Native.mount({root:newRoot,bridge,initialState:retained});await remounted.ready;
  assert(newRoot.querySelector('[data-search-form] [type="submit"]').disabled,'durable pending origin disables submit after remount');remounted.applyDictionarySnapshot({type:'complete',origin:'Калининград',generation:10,dictionaries});assert(!newRoot.querySelector('[data-search-form] [type="submit"]').disabled);assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград');remounted.applyDictionarySnapshot({type:'complete',origin:'Москва',generation:9,dictionaries});assert.equal(newRoot.querySelector('[name="origin"]').value,'Калининград','superseded durable dictionary receipt is ignored');remounted.applyDictionarySnapshot({type:'error',origin:'Калининград',generation:11,dictionaries,message:'Fixture dictionary unavailable'});assert(!newRoot.querySelector('[data-search-error]').hidden);
  assert(!newRoot.querySelector('[data-search-nights-editor]').hidden,'open input editor survives viewport remount');assert.equal(newRoot.querySelector('[name="minNights"]').value,'10');newRoot.querySelector('[data-native-night="14"]').click();assert.equal(newRoot.querySelector('[name="maxNights"]').value,'14','night range anchor survives remount');newRoot.querySelector('[data-search-editor-cancel="nights"]').click();assert.equal(newRoot.querySelector('[data-search-night-value]').textContent,'7 ночей','original editor cancel snapshot survives remount');assert.equal(starts,1);
- remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; supplier starts only explicit submit');
+ remounted.destroy();await loadedBudgetChecks();await progressiveBudgetChecks();await familyCopyChecks();w.close();console.log('PASS native inputs: dates/nights/party/canonical destination identity, compact date ranges, budget validation/Reset/Cancel/remount and progressive count/range updates retaining typed invalid draft/focus; 24 family compositions use correct summary/price cases; supplier starts only explicit submit');
 })().catch(error=>{console.error(error);mounted.destroy();w.close();process.exitCode=1;});

@@ -71,7 +71,8 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   await staleAndExpiry();
   await anexPackageAndGroup();
   await viewportRemount();
-  console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry');
+  await familyCopyChecks();
+  console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry; 24 family compositions use correct summary/price/contact cases');
 })().catch(error=>{console.error(error);owner.destroy();w.close();process.exitCode=1;});
 
 async function staleAndExpiry(){
@@ -143,4 +144,35 @@ async function viewportRemount(){
   assert.equal(product.querySelector('[data-native-flight-alternatives]'),null,'Single selected variant adds no empty disclosure');
   assert.strictEqual(v.document.activeElement,product.querySelector('[data-native-flight-status]'),'Single variant restores focus to selected flight status');
   view.destroy();other.window.close();
+}
+
+async function familyCopyChecks(){
+  const adultSummary=['','1 взрослый','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
+  const adultPrice=['','1 взрослого','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
+  const childSummary=['',' + 1 ребёнок',' + 2 ребёнка',' + 3 ребёнка'];
+  const childPrice=['',' + 1 ребёнка',' + 2 детей',' + 3 детей'];
+  const other=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'});
+  const v=other.window,r=v.document.querySelector('[data-product]');v.eval(fs.readFileSync(path.resolve(__dirname,'../v2/lead-form-guard-v1.js'),'utf8'));v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+  let present=null,quoteCalls=0;const adapter={getSelection:()=>present,quoteOffer(){quoteCalls++;throw new Error('Existing exact selection must not be requoted for copy');}};
+  const view=v.AnyTourDesignV2Tour.mount({root:r,bridge:adapter});const el=s=>{const n=r.querySelector(s);assert(n,s);return n;};
+  try{
+    let checked=0;
+    for(let adults=1;adults<=6;adults++)for(let children=0;children<=3;children++){
+      const summary=adultSummary[adults]+childSummary[children],price=adultPrice[adults]+childPrice[children],ages=[0,7,17].slice(0,children);
+      const familyOffer={...offer,adults,ages,search:{...trip,adults,ages}};
+      present={...familyOffer,offer:familyOffer,tour,variants,flightChoiceId:1,total:112000,pricePending:false,priceAccepted:true};
+      view.render({offer:familyOffer,hotel,screen:'tour'});
+      assert.equal(el('[data-tour-party]').textContent,summary,'tour summary: '+summary);
+      assert.equal(el('[data-cost-party]').textContent,summary,'tour cost table uses a free summary');
+      assert.equal(el('[data-quick-party]').textContent,'За '+price,'mobile tour price uses accusative');
+      assert.equal(el('[data-tour-price]').textContent,'112 000 ₽','copy preserves the canonical full total');
+      view.render({offer:familyOffer,hotel,screen:'lead'});
+      assert(el('[data-lead-context]').textContent.endsWith(' · '+summary),'contact context uses a free summary');
+      assert.strictEqual(view.getState().selection,present);assert.strictEqual(present.offer,familyOffer);assert.strictEqual(present.tour,tour);assert.strictEqual(present.variants[1],variants[1]);
+      assert.equal(present.adults,adults);assert.deepEqual(present.ages,ages);assert.equal(present.flightChoiceId,1);assert.equal(view.getState().ready,true);
+      checked++;
+    }
+    assert.equal(checked,24,'all adult 1–6 × child 0–3 compositions reach tour/contact owners');
+    assert.equal(quoteCalls,0,'rendering family copy reuses exact quote authority');
+  }finally{view.destroy();other.window.close();}
 }

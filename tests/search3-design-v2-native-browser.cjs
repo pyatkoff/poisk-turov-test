@@ -160,14 +160,14 @@ async function setTextSize(page,percent) {
   },percent);
 }
 
-async function capture(page,side,width,percent,screen,row) {
+async function capture(page,side,width,percent,screen,row,fullPage=true) {
   if(side==='native')await page.waitForFunction(pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
   await page.evaluate(()=>document.fonts.ready);
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   await setTextSize(page,percent);
   await page.evaluate(()=>window.scrollTo(0,0));
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
-  await page.screenshot({path:path.join(evidence,file),fullPage:true,animations:'disabled'});
+  await page.screenshot({path:path.join(evidence,file),fullPage,animations:'disabled'});
   const measurements=await page.evaluate(percent=>{
     const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'))||document.querySelector('[data-native-startup]:not([hidden])');
     const stage=root?.closest('.st-stage');
@@ -208,7 +208,7 @@ async function capture(page,side,width,percent,screen,row) {
       }
       return false;
     };
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -248,11 +248,12 @@ async function capture(page,side,width,percent,screen,row) {
         queryNarrow:containerBounds.width<=fontSize*22+1,actionOnOwnRow:action.top>=price.bottom-1,
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
-    return{viewportWidth:innerWidth,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
+    return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
       calendarFit,summaryFit,offerActionFit,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
-  assert.equal(measurements.screen,screen.startsWith('startup-')?'startup':screen==='budget-draft'||screen==='budget-invalid'||screen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(screen)?'results':screen==='hotel-return'?'hotel':screen==='tour-alternatives'?'tour':screen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  const logicalScreen=screen.replace(/^short-desktop-/,'');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -268,6 +269,11 @@ async function capture(page,side,width,percent,screen,row) {
   if(side==='native'&&percent===100&&width<=430&&measurements.offerActionFit.some(item=>item.queryNarrow||item.actionOnOwnRow||item.actionWidthRatio>0.6))report.failures.push({width,percent,screen,error:'Ordinary mobile hotel offer lost the donor price/action row',details:measurements.offerActionFit});
   if(side==='native'&&(measurements.headerFit.outside||measurements.headerFit.overlap))report.failures.push({width,percent,screen,error:'Header content overlaps or escapes the header',details:measurements.headerFit});
   if(side==='native'&&measurements.sortFit&&measurements.sortFit.textWidth>measurements.sortFit.available+1)report.failures.push({width,percent,screen,error:'Selected sort label is clipped',details:measurements.sortFit});
+  if(side==='native'&&width===1280&&['search','results','hotel','tour','lead'].includes(screen)){
+    const viewport=page.viewportSize();
+    try{await page.setViewportSize({width,height:720});await capture(page,side,width,percent,'short-desktop-'+screen,row,false);}
+    finally{await page.setViewportSize(viewport);}
+  }
   return measurements;
 }
 
@@ -347,6 +353,41 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.deepEqual(overlapProof,{repaired:false,regression:true,recovered:false},'Painted-line guard detects the original fixed-height caption and accepts its repaired reflow');
           row.proof.enlargedCaptionPaintOverlapRegressionChecked=true;
         }
+        await product.locator('[data-search-travelers-toggle]').click();
+        await product.locator('[data-search-adult="-1"]').click();
+        assert.equal(await product.locator('[data-search-travelers-value]').innerText(),'1 взрослый');
+        await capture(page,'native',width,percent,'family-0',row);
+        for(let index=0;index<3;index++){
+          await product.locator('[data-search-add-child]').click();
+          assert.equal(await product.locator('[data-search-editor-done="travelers"]').isEnabled(),false,'Each child requires an explicit age');
+          await product.locator('[data-native-age="'+index+'"]').selectOption(String([0,7,17][index]));
+          assert.equal(await product.locator('[data-search-editor-done="travelers"]').isEnabled(),true);
+          assert.equal(await product.locator('[data-search-travelers-value]').innerText(),['','1 взрослый + 1 ребёнок','1 взрослый + 2 ребёнка','1 взрослый + 3 ребёнка'][index+1]);
+          await capture(page,'native',width,percent,'family-'+(index+1),row);
+        }
+        assert.equal(await product.locator('[data-search-add-child]').isEnabled(),false,'At most three children');
+        await product.locator('[data-search-editor-done="travelers"]').click();
+        await capture(page,'native',width,percent,'family-applied',row);
+        await product.locator('[data-search-date-toggle]').click();
+        await product.locator('[data-calendar-boundary="to"]').click();
+        await product.locator('[data-native-date="2026-10-24"]').click();
+        await product.locator('[data-calendar-done]').click();
+        await product.locator('[data-search-travelers-toggle]').click();
+        assert.match(await product.locator('[data-search-child-hint]').innerText(),/Проверьте возраста/);
+        for(let index=0;index<3;index++)assert.equal(await product.locator('[data-native-age="'+index+'"]').inputValue(),String([0,7,17][index]));
+        await capture(page,'native',width,percent,'family-review',row);
+        await product.locator('[data-search-editor-done="travelers"]').click();
+        await product.locator('[data-search-date-toggle]').click();
+        await product.locator('[data-calendar-boundary="to"]').click();
+        await product.locator('[data-native-date="2026-10-25"]').click();
+        await product.locator('[data-calendar-done]').click();
+        await product.locator('[data-search-travelers-toggle]').click();
+        for(let index=2;index>=0;index--)await product.locator('[data-native-remove-child="'+index+'"]').click();
+        await product.locator('[data-search-adult="1"]').click();
+        await product.locator('[data-search-editor-done="travelers"]').click();
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Family edits and age review start no search');
+        row.proof.familyAges=[0,7,17];row.proof.familyExtraSearches=0;row.proof.familyAgeReviewRetained=true;
+
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
         await product.locator('.st-hotel-card').nth(3).waitFor();
