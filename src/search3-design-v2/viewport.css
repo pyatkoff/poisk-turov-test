@@ -29,6 +29,9 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-desktop [data-screen="results"] {
   container: native-results / inline-size;
 }
+#design-v2-native-root #b4 .st-desktop .st-layout {
+  grid-template-columns: 208px minmax(0, 1fr);
+}
 #design-v2-native-root #b4 .st-header,
 #design-v2-native-root #b4 .st-header-nav,
 #design-v2-native-root #b4 .st-filter-heading,
@@ -95,6 +98,22 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-hotel-card .st-name-button {
   display: block;
   width: 100%;
+}
+#design-v2-native-root #b4 .st-hotel-title-main {
+  display: block;
+}
+#design-v2-native-root #b4 .st-hotel-title-former {
+  display: block;
+  margin-top: 5px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+#design-v2-native-root #b4 [data-hotel-name] .st-hotel-title-former {
+  font-size: 16px;
+  margin-top: 8px;
 }
 #design-v2-native-root #b4 .st-hotel-card .st-location {
   font-size: 13px;
@@ -265,10 +284,13 @@ body { margin: 0; padding: 0; }
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5em), 1fr));
 }
 #design-v2-native-root #b4 .st-budget label {
-  padding-inline: 4px;
+  padding: 9px 7px;
+  background: var(--paper);
+  font-size: 12px;
+  line-height: 1.4;
 }
 #design-v2-native-root #b4 .st-desktop .st-budget input[type="number"] {
-  font-size: 13px;
+  font-size: 14px;
 }
 #design-v2-native-root #b4 .st-mobile .st-budget {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 8em), 1fr));
@@ -281,6 +303,37 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-budget input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+#design-v2-native-root #b4 .st-sidebar .st-group-title {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 11px;
+}
+#design-v2-native-root #b4 .st-sidebar .st-check {
+  min-height: 44px;
+  font-size: 14px;
+  gap: 10px;
+  cursor: pointer;
+}
+#design-v2-native-root #b4 .st-check input {
+  width: 18px;
+  height: 18px;
+}
+#design-v2-native-root #b4 .st-check:hover > span:not(.st-filter-count) {
+  color: var(--blue);
+}
+#design-v2-native-root #b4 .st-check:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+#design-v2-native-root #b4 .st-budget label:focus-within {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px var(--blue);
+}
+#design-v2-native-root #b4 .st-budget-caption {
+  font-size: 12px;
+  line-height: 1.5;
 }
 /* Keep very large loaded result sets quick to scan without changing the donor
    card composition. The controller only reveals rows already held in memory. */
@@ -316,6 +369,54 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
   line-height: 1.35;
+}
+#design-v2-native-root #b4 .st-desktop .q8c9 {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+#design-v2-native-root #b4 .st-desktop .q8c9 .st-pc-head {
+  font-size: 15px;
+  line-height: 1.45;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+#design-v2-native-root #b4 .st-desktop .st-pc-head > span:last-child {
+  font-size: 12px;
+}
+#design-v2-native-root #b4 .st-desktop .st-pc-date {
+  min-height: 76px;
+  padding: 10px 5px;
+  gap: 7px;
+}
+#design-v2-native-root #b4 .st-desktop .st-pc-day {
+  font-size: 14px;
+}
+#design-v2-native-root #b4 .st-pc-date:focus-visible,
+#design-v2-native-root #b4 .st-pc-page:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+#design-v2-native-root #b4 .st-pc-date[aria-pressed="true"] {
+  background: var(--blue);
+  color: var(--paper);
+}
+#design-v2-native-root #b4 .st-desktop .st-pc-foot {
+  font-size: 12px;
+  margin-top: 9px;
+}
+@container at-price-calendar (min-width: 40em) {
+  #design-v2-native-root #b4 .st-desktop .st-pc-full {
+    display: block;
+    font-size: 15px;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-pc-short {
+    display: none;
+  }
 }
 /* Keep the factual calendar note and both paging actions inside the calendar
    when enlarged text no longer leaves enough room for a single row. Normal
@@ -366,9 +467,9 @@ body { margin: 0; padding: 0; }
     word-break: normal;
   }
 }
-/* When enlarged copy makes a tablet card narrow, its real photo becomes a
-   shallow full-width row rather than stretching into a tall image strip. */
-@container native-card (max-width: 28em) {
+/* At the same narrow-card boundary as the stacked facts, keep the real photo
+   as a shallow full-width row instead of a tall image strip. */
+@container native-card (max-width: 40em) {
   #design-v2-native-root #b4 .st-desktop .st-card-content > .q8cb {
     grid-column: 1 / -1;
     height: 200px;

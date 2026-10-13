@@ -154,13 +154,21 @@
       if (state.search) rememberRoute(push);
       redrawIcons();
     }
+    function hotelNameHTML(name, withArrow = false) {
+      // Only a complete trailing EX. alias gets a quieter second line. Every
+      // literal character remains in the heading, including its whitespace.
+      const former = name.match(/^([\s\S]*?\S)(\s*\(\s*EX\.[^()]*\))(\s*)$/i);
+      const tail = former ? former[2] + former[3] : name;
+      const nameEnd = withArrow && tail.match(/^([\s\S]*?)(\S+)(\s*)$/);
+      const end = nameEnd
+        ? esc(nameEnd[1]) + '<span class="st-hotel-title-end"><span>' + esc(nameEnd[2]) + '</span>' + icon('arrow-up-right') + '</span>' + esc(nameEnd[3])
+        : esc(tail) + (withArrow ? icon('arrow-up-right') : '');
+      return former ? '<span class="st-hotel-title-main">' + esc(former[1]) + '</span><span class="st-hotel-title-former">' + end + '</span>' : end;
+    }
     function conditionRows(hotel) {
       const offer = eligible(hotel)[0]; if (!offer) return '';
       const hasPhoto = !!hotel.photos?.length, selected = state.favorites.includes(hotel.id);
-      const nameEnd = hotel.name.match(/^([\s\S]*?)(\S+)(\s*)$/);
-      const title = nameEnd
-        ? esc(nameEnd[1]) + '<span class="st-hotel-title-end"><span>' + esc(nameEnd[2]) + '</span>' + icon('arrow-up-right') + '</span>' + esc(nameEnd[3])
-        : esc(hotel.name) + icon('arrow-up-right');
+      const title = hotelNameHTML(hotel.name, true);
       return `<article class="st-hotel-card ${hotel.name.length > 28 ? 'st-hotel-card--long-name' : ''} ${offer.total >= 1000000 ? 'st-hotel-card--wide-price' : ''}" data-hotel-card="${hotel.id}"><div class="st-card-content"><div class="q8cb ${hasPhoto ? '' : 'q8c5'}" data-card-photo="${hotel.id}" aria-label="${hasPhoto ? 'Фото отеля ' + esc(hotel.name) : 'Фото отеля пока нет'}">${hasPhoto ? `<button class="st-photo-more cursor-interaction" data-gallery-hotel="${hotel.id}" aria-label="Открыть фотографию отеля">${icon('expand')}<span class="st-photo-label">Фото</span></button>` : `<div class="st-photo-empty-message">${icon('image')}<span>Фото пока нет</span></div>`}<button class="st-favorite cursor-interaction" data-favorite="${hotel.id}" aria-pressed="${selected}" aria-label="${selected ? 'Удалить из избранного' : 'Добавить в избранное'}">${icon('heart')}</button></div><div class="st-card-info"><div class="st-card-name"><button class="st-name-button cursor-interaction" data-hotel-open="${hotel.id}">${title}</button><span class="st-stars" aria-label="${hotel.stars} звёзд">${'★'.repeat(Math.min(5,Math.max(0,hotel.stars || 0)))}</span></div><div class="st-location">${esc(hotel.location || [countryName(hotel.country),hotel.subRegion || hotel.region].filter(Boolean).join(' · '))}</div><div class="st-card-conditions"><span class="st-conditions-date">${icon('calendar-days')}${dateText(offer.day)} · ${nights(offer.nights)}</span><span class="st-conditions-room">${icon('bed-double')}${esc(offer.room || 'Номер уточняется')}</span><span class="st-conditions-meal">${icon('utensils')}${esc(mealText(offer))}</span><span class="st-conditions-operator">${esc(offer.operator)}</span></div><div class="st-price-area"><div><div class="st-price"><small>от</small>${money(offer.total)}</div><div class="st-price-caption">за ${party(offer,true)}</div></div><button class="q8c2 cursor-interaction" data-offer="${esc(offer.key)}">Смотреть тур${icon('arrow-up-right')}</button></div><div class="st-card-actions"><button class="st-card-about cursor-interaction" data-hotel-about="${hotel.id}">Об отеле</button><button class="st-card-all cursor-interaction" data-hotel-open="${hotel.id}">Все туры (${eligible(hotel).length})${icon('chevron-right')}</button></div></div></div></article>`;
     }
     function budgetMaximum(filters){return Math.max(1000,filters.min,filters.max || 0,...state.hotels.flatMap(h=>(h.offers||[]).map(o=>o.total).filter(Number.isFinite)));}
@@ -270,7 +278,7 @@
     }
     function renderHotel() {
       const h=currentHotel(), list=h?eligible(h):[];if(!h||!list.length){show('results',false);return;}
-      const min=list[0];text('[data-hotel-name]',h.name);text('[data-hotel-stars]','★'.repeat(Math.min(5,h.stars||0)));text('[data-hotel-location]',h.location);
+      const min=list[0];$('[data-hotel-name]').innerHTML=hotelNameHTML(h.name);text('[data-hotel-stars]','★'.repeat(Math.min(5,h.stars||0)));text('[data-hotel-location]',h.location);
       text('[data-hotel-min-price]',money(min.total));text('[data-hotel-price-caption]','За '+party(min,true)+' · '+nights(min.nights));
       text('[data-offer-context]','Все цены за '+party(min,true));text('[data-offer-comparison]','«+» — разница с минимальной ценой в этом списке.');
       $('[data-offer-comparison]').hidden=!list.some(o=>o.total>min.total);photo($('[data-hotel-hero]'),h);
