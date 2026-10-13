@@ -145,6 +145,10 @@ const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixtur
   knownSemanticDifferences:['Native package inclusions remain unknown until verified; donor demo inclusion copy is reference only.','Native quote/flight/contact authority comes from controlled bridge fixtures; donor demo authority is not transferred.'],
   cases:[],failures:[]};
 
+// Bound fixture-state polling independently of animation frames, so a stalled
+// background-tab RAF cannot consume the CI job without exposing the state.
+const waitForFixture=(page,predicate,arg)=>page.waitForFunction(predicate,arg,{timeout:6000,polling:50});
+
 async function setTextSize(page,percent) {
   await page.evaluate(percent=>{
     document.getElementById('native-text-scale-evidence')?.remove();
@@ -161,9 +165,13 @@ async function setTextSize(page,percent) {
 }
 
 async function capture(page,side,width,percent,screen,row,fullPage=true) {
-  if(side==='native')await page.waitForFunction(pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
+  console.log('NATIVE_FRAME',side,width,percent,screen);
+  if(side==='native')await waitForFixture(page,pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
   await page.evaluate(()=>document.fonts.ready);
-  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.evaluate(()=>new Promise((resolve,reject)=>{
+    const deadline=setTimeout(()=>reject(new Error('Two paint frames did not complete within 6 seconds')),6000);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(deadline);resolve();}));
+  }));
   await setTextSize(page,percent);
   await page.evaluate(()=>window.scrollTo(0,0));
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
@@ -208,7 +216,12 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       }
       return false;
     };
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-conditions-meal,.st-conditions-operator,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const visible=node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0&&node.getBoundingClientRect().height>0;
+    const resultKinds=[['.st-name-button','result-title'],['.st-location','result-location'],
+      ['.st-conditions-date','result-date'],['.st-conditions-room','result-room'],
+      ['.st-conditions-meal','result-meal'],['.st-conditions-operator','result-operator'],
+      ['.st-price-caption','result-party']];
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -221,8 +234,17 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         }
         for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
       }
-      return{text:node.textContent,clipped,brokenWords,overlappingLines};
+      const card=node.closest('.st-hotel-card');
+      const kind=card?resultKinds.find(([selector])=>node.matches(selector))?.[1]||'other':node.matches('.st-results-note > span')?'result-notice':'other';
+      const cardId=card?.hasAttribute('data-hotel-card')?Number(card.dataset.hotelCard):null;
+      return{text:node.textContent,clipped,brokenWords,overlappingLines,kind,cardId};
     });
+    const resultCardIds=[...root.querySelectorAll('.st-hotel-card')].filter(visible).map(node=>Number(node.dataset.hotelCard));
+    const notices=[...root.querySelectorAll('.st-results-note')].filter(visible),resultList=root.querySelector('[data-card-list]');
+    const resultNotice={visibleCount:notices.length,
+      beforeList:notices.length===1&&Boolean(resultList&&notices[0].compareDocumentPosition(resultList)&Node.DOCUMENT_POSITION_FOLLOWING),
+      cardNoticeCount:[...root.querySelectorAll('.st-hotel-card .st-card-bottom')].filter(visible).length,
+      text:notices.map(node=>node.textContent.trim()).join('\n')};
     const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
     const sort=root.querySelector('.st-sort');let sortFit=null;
@@ -249,11 +271,42 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
-      calendarFit,summaryFit,offerActionFit,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
+      calendarFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
   assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  if(side==='native'){
+    const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
+    assert.ok(cardIds.every(id=>Number.isInteger(id)&&id>0),'Every measured result card retains its exact hotel ID');
+    assert.equal(new Set(cardIds).size,cardIds.length,'Measured result card identities are unique');
+    assert.equal(notice.cardNoticeCount,0,'Price explanation has no duplicate per-card owner');
+    if(measurements.screen==='results'&&cardIds.length){
+      assert.equal(notice.visibleCount,1,'Populated results have exactly one readable price explanation');
+      assert.equal(notice.beforeList,true,'The shared price explanation precedes the hotel list');
+      assert.equal(notice.text,'Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим цену, наличие и состав пакета, включая обязательные доплаты.');
+      const notes=measurements.readableText.filter(item=>item.kind==='result-notice');
+      assert.equal(notes.length,1,'The visible shared notice has measured text');
+      assert.equal(notes[0].cardId,null,'The shared notice belongs to the result list');
+      for(const cardId of cardIds)for(const kind of ['result-title','result-location','result-date','result-room','result-meal','result-operator','result-party']){
+        const facts=measurements.readableText.filter(item=>item.cardId===cardId&&item.kind===kind);
+        assert.equal(facts.length,1,'Each result card measures one '+kind+' for hotel '+cardId);
+        assert.ok(facts[0].text.trim(),'Measured result facts remain nonempty');
+      }
+    }else{
+      assert.deepEqual(cardIds,[],'Non-results and empty frames show no result cards');
+      assert.deepEqual(notice,{visibleCount:0,beforeList:false,cardNoticeCount:0,text:''},'Empty and non-results frames show no price explanation');
+      assert.equal(measurements.readableText.filter(item=>item.kind==='result-notice').length,0);
+    }
+    if(logicalScreen==='results'){
+      assert.deepEqual(cardIds,fixture.hotels.map(hotel=>hotel.id),'Standard and short-desktop results retain all four factual hotel identities');
+      for(const hotel of fixture.hotels){
+        const expected={'result-title':hotel.name,'result-location':'Турция · Кемер','result-date':'12 окт · 7 ночей',
+          'result-room':hotel.room,'result-meal':hotel.meal,'result-operator':'FIXTURE TV','result-party':'за 2 взрослых'};
+        for(const [kind,text]of Object.entries(expected))assert.equal(measurements.readableText.find(item=>item.cardId===hotel.id&&item.kind===kind)?.text,text,'Standard and short-desktop results retain complete '+kind+' for hotel '+hotel.id);
+      }
+    }
+  }
   if(side==='native'&&measurements.overflow)report.failures.push({width,percent,screen,error:'Native document horizontal overflow: '+measurements.documentWidth+' > '+measurements.viewportWidth});
   if(side==='native'&&measurements.prices.some(price=>price.overflow))report.failures.push({width,percent,screen,error:'Full price exceeds its rendered container',details:measurements.prices.filter(price=>price.overflow)});
   if(side==='native'&&measurements.prices.some(price=>price.fragmented||!price.textScaleVerified))report.failures.push({width,percent,screen,error:'Price digits fragment or dynamic text did not receive the requested scale',details:measurements.prices.filter(price=>price.fragmented||!price.textScaleVerified)});
@@ -394,6 +447,12 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
+        assert.deepEqual(await product.locator('.st-name-button').allTextContents(),fixture.hotels.map(hotel=>hotel.name),'Complete hotel names survive title/arrow wrapping');
+        assert.equal(await product.locator('.st-hotel-card .st-card-bottom').count(),0,'Provisional price explanation has one shared owner');
+        const notice=product.locator('.st-results-note');
+        assert.equal(await notice.isVisible(),true);
+        assert.match(await notice.textContent(),/за весь тур и всех туристов.*проверим цену, наличие и состав пакета.*обязательные доплаты/);
+        assert.equal(await notice.evaluate(node=>Boolean(node.compareDocumentPosition(node.parentElement.querySelector('[data-card-list]'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Price explanation precedes the hotel list');
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
         await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'loading',message:''}));
@@ -572,7 +631,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         if(width<=760)assert.equal(await product.locator('.st-stay-details').isVisible(),false,'Original mobile quick summary replaces duplicate stay details');
         await product.locator('[data-native-tour-flight="0"]').waitFor({state:'visible'});
         await product.locator('[data-native-tour-flight="0"]').click();
-        await page.waitForFunction(()=>document.activeElement?.matches('[data-native-flight-alternatives] summary'));
+        await waitForFixture(page,()=>document.activeElement?.matches('[data-native-flight-alternatives] summary'));
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await product.locator('[data-action="lead"]:visible').first().waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().offer===window.__nativeFixture.hotels[0].offers[0]),true,'Exact loaded offer reference retained');
@@ -597,7 +656,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),1,'Opening loaded flight choices starts no quote');
         assert.deepEqual(await page.evaluate(()=>window.__nativeFixture.calls.flight),[0]);
         await product.locator('[data-native-tour-flight="1"]').click();
-        await page.waitForFunction(()=>window.__nativeFixture.getSelection().flightChoiceId===1);
+        await waitForFixture(page,()=>window.__nativeFixture.getSelection().flightChoiceId===1);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),123000,'Alternative preserves its full canonical total');
         assert.equal(await alternatives.getAttribute('open'),null,'New selected pair collapses alternatives');
         await product.locator('[data-action="accept-price"]:visible').first().click();
@@ -614,7 +673,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         const form=product.locator('[data-lead-form]');
         await form.locator('[name="name"]').fill('FICTIONAL QA');await form.locator('[name="phone"]').fill('+7 999 000 00 00');await form.locator('[name="consent"]').check();
         await form.locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-lead-form]')].some(form=>form.dataset.checked==='1'));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-lead-form]')].some(form=>form.dataset.checked==='1'));
         assert.deepEqual(await page.evaluate(()=>({price:window.__nativeFixture.payload.price,flightChoiceId:window.__nativeFixture.payload.flightChoiceId,preview:window.__nativeFixture.calls.preview,submit:window.__nativeFixture.calls.submit})),{price:112000,flightChoiceId:0,preview:1,submit:0});
         row.proof.contactPayloadFullTotal=112000;row.proof.contactPayloadFlightChoiceIndex=0;row.proof.contactPreviewCount=1;row.proof.realLeadSubmissions=0;
         await page.goBack();await screen('tour').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
@@ -629,13 +688,13 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});
         await page.evaluate(()=>{window.__nativeFixture.failNextSearch=true;});
         await screen('search').locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('FICTIONAL controlled search failure')));
         await capture(page,'native',width,percent,'error',row);
         assert.equal(await product.locator('.st-hotel-card').count(),4,'Search failure retains received rows');
         row.proof.errorRetainedRows=4;
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});await screen('search').locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>window.__nativeFixture.calls.search===3);
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden||!node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>window.__nativeFixture.calls.search===3);
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden||!node.textContent.includes('FICTIONAL controlled search failure')));
         assert.equal(await product.locator('.st-hotel-card').count(),4);
         row.proof.explicitSearchRetryCount=1;row.proof.retryRows=4;
         await product.locator('[data-favorite="1"]').click();
