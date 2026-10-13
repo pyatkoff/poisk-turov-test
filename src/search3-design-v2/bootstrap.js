@@ -57,6 +57,7 @@
     state.hotels = snapshot.hotels;
     state.status = snapshot.status;
     state.message = snapshot.message || '';
+    state.sources = snapshot.sources || null;
     if (state.screen === 'results' || state.screen === 'filters') mounted.render();
   }, {replay: false});
   function selectVariant() {

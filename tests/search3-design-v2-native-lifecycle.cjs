@@ -79,6 +79,32 @@ test('large loaded result sets render in bounded local batches', async () => {
   assert.equal(externalCalls,0);assert.equal(owner.getState().resultLimit,72);
   owner.destroy();w.close();
 });
+test('Back and Forward restore each result generation with its exact source receipt', async () => {
+  const frontend=fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8');
+  const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
+  w.lucide={createIcons(){}};w.eval(frontend);
+  const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
+  const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
+  const offer=(key,hotelId,provider,total,search)=>({key,hotelId,day:search.from,returnDay:search.to,nights:7,adults:2,ages:[],room:'Fixture room',meal:'Fixture meal',mealFacet:'Fixture meal',operator:'Fixture',provider,total,search,raw:{fixture:true}});
+  const searchA={...trip,ages:[]},searchB={...searchA,from:'2026-11-01',to:'2026-11-07'};
+  const hotelA={id:1,name:'ANEX fixture hotel',country:'4',location:'Fixture',stars:4,photos:[],amenities:[],offers:[offer('anex:a',1,'anex',100000,searchA)]};
+  const hotelB={id:2,name:'Tourvisor fixture hotel',country:'4',location:'Fixture',stars:4,photos:[],amenities:[],offers:[offer('tv:b',2,'tourvisor',110000,searchB)]};
+  const sourcesA={tourvisor:{status:'error',hotels:0,offers:0},anex:{status:'complete',hotels:1,offers:1},andromeda:{status:'error',hotels:0,offers:0}};
+  const sourcesB={tourvisor:{status:'complete',hotels:1,offers:1},anex:{status:'error',hotels:0,offers:0},andromeda:{status:'error',hotels:0,offers:0}};
+  const state={screen:'results',search:searchA,filters,hotels:[hotelA],status:'partial',message:'API HTTP 403',sources:sourcesA,searchGeneration:1,sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,hasSearched:true};
+  let supplierCalls=0;const bridge={async init(){return{dictionaries:{origins:['Москва'],countries:[{id:'4',name:'Турция'}],meals:[]},requestedSearch:false};},async search(){supplierCalls++;throw new Error('History traversal must stay local');}};
+  const owner=w.AnyTourDesignV2Native.mount({root,bridge,initialState:state});await owner.ready;
+  root.querySelector('[data-hotel-open="1"]').click();
+  Object.assign(state,{screen:'results',search:searchB,hotels:[hotelB],status:'partial',message:'API HTTP 403',sources:sourcesB,searchGeneration:2,hotelId:null});owner.render();
+  await new Promise(resolve=>{w.addEventListener('popstate',resolve,{once:true});w.history.back();});
+  assert.equal(state.hotels[0].id,1);assert.equal(state.searchGeneration,1);assert.equal(state.sources.anex.status,'complete');assert.equal(state.sources.tourvisor.status,'error');
+  assert.match(root.querySelector('[data-source-alert]').textContent,/Показаны предложения: ANEX/);
+  await new Promise(resolve=>{w.addEventListener('popstate',resolve,{once:true});w.history.forward();});
+  assert.equal(state.hotels[0].id,2);assert.equal(state.searchGeneration,2);assert.equal(state.sources.tourvisor.status,'complete');assert.equal(state.sources.anex.status,'error');
+  assert.match(root.querySelector('[data-source-alert]').textContent,/Показаны предложения: Tourvisor/);
+  assert.equal(supplierCalls,0,'Back and Forward restore local snapshots without a supplier search');
+  owner.destroy();w.close();
+});
 test('superseded restoreHotel never dispatches a stale supplier search (75c2513 regression)', async () => {
   const restoration = deferred();
   const h = harness({restoreHotel:()=>restoration.promise}); await h.bridge.init();
@@ -110,7 +136,7 @@ test('durable search subscriptions replay current results and reject older strea
   assert.equal(h.calls.length,2); assert.equal(snapshots.length,3);
 });
 test('late presentation events retain authoritative terminal state and exact offers until a new search', async () => {
-  for (const event of [{type:'complete'}, {type:'complete',partial:true,message:'Fixture partial'},
+  for (const event of [{type:'complete'}, {type:'complete',partial:true,message:'Fixture partial',sources:{tourvisor:{status:'error',hotels:0,offers:0},anex:{status:'complete',hotels:1,offers:1}}},
                        {type:'error',message:'Fixture error'}]) {
     const h=harness(),received=[];h.bridge.subscribe(value=>received.push(value));
     await h.bridge.search(trip,{});
@@ -122,12 +148,13 @@ test('late presentation events retain authoritative terminal state and exact off
                        {type:'provider',status:'complete'}, {type:'progress',progress:100}, {type:'loading'}]) {
       h.streams[0](late);const current=h.bridge.getSnapshot();
       assert.equal(current.status,terminal.status);assert.equal(current.message,terminal.message);
+      assert.strictEqual(current.sources,terminal.sources,'Late presentation retains the exact terminal source receipt');
       assert.equal(current.error,terminal.error);assert.equal(current.searchGeneration,terminal.searchGeneration);
       assert.strictEqual(current.hotels[0].offers[0],offer);assert.equal(current.hotels[0].offers[0].total,112000);
     }
     assert.equal(h.calls.length,1,'Late metadata does not dispatch another search');
     await h.bridge.search({...trip,from:'2026-11-01',to:'2026-11-07'},{});
-    assert.equal(h.bridge.getSnapshot().status,'loading');assert.equal(h.bridge.getSnapshot().message,'');
+    assert.equal(h.bridge.getSnapshot().status,'loading');assert.equal(h.bridge.getSnapshot().message,'');assert.equal(h.bridge.getSnapshot().sources,null);
     assert.equal(h.bridge.getSnapshot().hotels.length,0);assert.equal(h.calls.length,2);
     h.streams[0]({type:'error',message:'Stale terminal'});
     h.streams[0]({type:'results',hotels:[hotel]});
@@ -151,8 +178,8 @@ test('viewport remount receives pending results with no repeated supplier start 
   w.eval(bootstrap); await h.bridge.search(trip,{}); assert.equal(h.calls.length,1);
   const startup=w.document.querySelector('[data-native-startup]');assert.equal(startup.hidden,false);assert.equal(startup.getAttribute('class').includes('st-mobile'),true);
   media.matches=false; change(); assert.equal(mounts.length,2); assert.equal(mounts[0].dead,true); assert.strictEqual(mounts[1].state,mounts[0].state);
-  h.streams[0]({type:'results',hotels:[{id:7,country:'4',offers:[]}]}); h.streams[0]({type:'complete'});
-  assert.equal(mounts[1].state.hotels[0].id,7); assert.equal(mounts[1].state.status,'complete'); assert.equal(h.calls.length,1);
+  h.streams[0]({type:'results',hotels:[{id:7,country:'4',offers:[]}]}); h.streams[0]({type:'complete',partial:true,sources:{tourvisor:{status:'error'},anex:{status:'complete',hotels:1,offers:1}}});
+  assert.equal(mounts[1].state.hotels[0].id,7); assert.equal(mounts[1].state.status,'partial'); assert.equal(mounts[1].state.sources.anex.status,'complete'); assert.equal(h.calls.length,1);
   mounts[0].d.reject(new Error('Old initialization')); await tick();
   mounts[0].onReady();assert.equal(startup.hidden,false,'stale bound callback cannot remove the latest pending shell');
   assert.equal(w.document.getElementById('design-v2-native-root').getAttribute('aria-busy'),'true');
