@@ -1,6 +1,6 @@
-# Reviewed successor: owner-requested popup field selection and direct Find.
-# Requires373 retained frames including20 popup states,54 typed journey
-# values, exact source ancestry and terminal674/run384295 predecessor.
+# Reviewed successor: distinguish unstarted search from real empty availability.
+# Requires393 retained frames including20 presearch states,55 typed journey
+# values, recomputed count geometry, exact ancestry and terminale42/run384371 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 

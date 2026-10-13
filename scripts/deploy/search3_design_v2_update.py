@@ -35,11 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('99efd35919f00311093da657b560385b4a6bf572', '88303b7369c5472af9f4e0b0c60befe3b56fa67e'),
-    ('b34c329974278933b31f44789ca773aa8f8af33d', 'd3194507fab76f8cdca2c2d39a776971c2c2459c'),
-    ('0ba4d1195e3423cae2537d09d40a55d725589d6b', '19c141c0faad33cad9b97c338d3395b6bd484b6c'),)
+    ('4076e6eeea96105362411f4c09a9b9dabc12d554', 'f0b116b7d1d8e82f1864d5fe5f11a5ab1b82fe68'),
+    ('da2eb82a88c784a762dc843833b73bd71d207970', 'f6741e339ca76a21549758eb1cd7c5011006c57a'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '160d957dd0aecef1ac6e3eb8f7df881d527b0e7f'
+NATIVE_SOURCE_BASE_PARENT = '0ba4d1195e3423cae2537d09d40a55d725589d6b'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -203,7 +202,8 @@ def native_frame_inventory(width, percent):
               for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
     frames.update(f'native-{screen}-{width}-text{percent}.png'
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error',
-                                 'destination-choice', 'destination-confirm', 'popup-calendar', 'popup-nights'))
+                                 'destination-choice', 'destination-confirm', 'popup-calendar', 'popup-nights',
+                                 'initial-favorites', 'initial-search-return'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
@@ -259,7 +259,7 @@ def native_evidence(archive, request, native):
         'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
         'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-        'formPopupSingleSubmitRetained': True}
+        'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
@@ -316,11 +316,11 @@ def native_evidence(archive, request, native):
                          'native_popup_choice_and_single_submit_required')
                 else: need(popup is None, 'native_popup_measurement_scope')
                 screen = ('startup' if logical_name.startswith('native-startup-')
-                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-'))
+                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
                           else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
-                                                            'native-calendar-later-', 'native-results-bounded-',
+                                                            'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
                                                             'native-results-partial-', 'native-filter-empty-partial-'))
@@ -453,7 +453,7 @@ def native_evidence(archive, request, native):
                     need(prices == [], 'native_family_no_factual_prices')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
                 no_result_prices = name.startswith(('native-filter-empty-', 'native-results-loading-',
-                                                     'native-results-error-', 'native-results-partial-empty-'))
+                                                     'native-results-error-', 'native-results-partial-empty-', 'native-initial-favorites-'))
                 if no_result_prices: need(prices == [], 'native_empty_no_factual_prices')
                 elif screen in ('results', 'hotel', 'tour'):
                     need(bool(prices), 'native_visible_price_measurements_required')
@@ -466,7 +466,7 @@ def native_evidence(archive, request, native):
                          'native_startup_retry_readability_required')
                 if name.startswith('native-results-loading-'):
                     need(buttons == [], 'native_loading_no_empty_action')
-                if name.startswith(('native-filter-empty-', 'native-results-error-', 'native-results-partial-empty-')):
+                if name.startswith(('native-filter-empty-', 'native-results-error-', 'native-results-partial-empty-', 'native-initial-favorites-')):
                     need(len(buttons) == 1 and isinstance(buttons[0].get('text'), str)
                          and bool(buttons[0]['text'].strip()), 'native_empty_action_readability_required')
                 for price in prices:
@@ -553,6 +553,48 @@ def native_evidence(archive, request, native):
                              and any(row['text'] == 'Подтвердите возраста детей на дату возвращения.' for row in text),
                              'native_family_age_review_copy_required')
                 need(frame.get('headerFit') == {'outside': False, 'overlap': False}, 'native_header_fit_required')
+                count = frame.get('countFit')
+                if screen == 'results':
+                    need(isinstance(count, dict) and set(count) == {'text', 'toolbar', 'textRects',
+                         'controls', 'outside', 'overlap'} and isinstance(count.get('text'), str)
+                         and bool(count['text'].strip()) and count.get('outside') is False
+                         and count.get('overlap') is False, 'native_count_readability_required')
+                    toolbar = count.get('toolbar')
+                    need(isinstance(toolbar, dict) and set(toolbar) == {'left', 'right'}
+                         and all(type(toolbar.get(k)) in (int, float) and -100000 < toolbar[k] < 100000
+                                 for k in ('left', 'right'))
+                         and 0 < toolbar['right'] - toolbar['left'] <= key[0] + 1,
+                         'native_count_toolbar_geometry_required')
+                    text_rects, controls = count.get('textRects'), count.get('controls')
+                    need(isinstance(text_rects, list) and 0 < len(text_rects) <= 100
+                         and isinstance(controls, list) and 0 < len(controls) <= 20,
+                         'native_count_geometry_required')
+                    for row, fields in ([(row, {'left', 'right', 'top', 'bottom'}) for row in text_rects]
+                                        + [(row, {'left', 'right', 'top', 'bottom', 'text'}) for row in controls]):
+                        need(isinstance(row, dict)
+                             and set(row) == fields
+                             and all(type(row.get(k)) in (int, float) and -100000 < row[k] < 100000
+                                     for k in ('left', 'right', 'top', 'bottom'))
+                             and row['right'] > row['left'] and row['bottom'] > row['top'],
+                             'native_count_rectangle_required')
+                    need(all(isinstance(row['text'], str) for row in controls),
+                         'native_count_control_identity_required')
+                    need(all(row['left'] >= toolbar['left'] - 1 and row['right'] <= toolbar['right'] + 1
+                             for row in text_rects), 'native_count_text_outside_toolbar')
+                    need(not any(min(a['right'], b['right']) - max(a['left'], b['left']) > 1
+                                 and min(a['bottom'], b['bottom']) - max(a['top'], b['top']) > 1
+                                 for a in text_rects for b in controls), 'native_count_control_overlap')
+                else: need(count is None, 'native_count_measurement_scope')
+                if name.startswith('native-initial-favorites-'):
+                    need(count['text'] == 'Поиск ещё не запускали'
+                         and {'Поиск ещё не запускали', 'Начните с поиска',
+                              'Выберите условия поездки и нажмите «Найти туры».'}
+                              <= {row['text'].strip() for row in text}
+                         and not any(row['text'].strip() == 'Нет подходящих туров' for row in text)
+                         and buttons == [{'text': 'К параметрам поиска', 'clipped': False}],
+                         'native_unstarted_availability_copy_required')
+                if name.startswith('native-initial-search-return-'):
+                    need(prices == [], 'native_unstarted_search_no_factual_prices')
                 sort = frame.get('sortFit')
                 if screen == 'results':
                     need(isinstance(sort, dict) and isinstance(sort.get('text'), str) and bool(sort['text'])
@@ -580,7 +622,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 373, 'native_rendered_frame_count')
+    need(len(frames) == 393, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
