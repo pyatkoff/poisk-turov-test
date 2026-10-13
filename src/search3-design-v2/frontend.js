@@ -302,17 +302,17 @@
       $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':partialSourceMessage(state)||'Поиск завершён не полностью.');
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
-      const notice=$('.st-results-note');
-      if(notice){
-        notice.innerHTML=icon('info')+'<span>Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим цену, наличие и состав пакета, включая обязательные доплаты.</span>';
-        notice.hidden=!found.length;
-        list.before(notice);
-      }
       let more=$('[data-result-more]');
       if(!more){more=window.document.createElement('div');more.className='st-result-more';more.dataset.resultMore='';list.after(more);}
       const remaining=Math.max(0,found.length-visible.length),next=Math.min(resultBatch,remaining);
       more.hidden=!remaining;
       more.innerHTML=remaining?`<span class="st-result-more-count" aria-live="polite">Показано ${visible.length} из ${found.length}</span><button type="button" class="st-secondary cursor-interaction" data-native-result-more>Показать ещё ${next}</button>`:'';
+      const notice=$('.st-results-note');
+      if(notice){
+        notice.innerHTML=icon('info')+'<span>Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим цену, наличие и состав пакета, включая обязательные доплаты.</span>';
+        notice.hidden=!found.length;
+        more.after(notice);
+      }
       $$('[data-card-photo]').forEach(node=>photo(node,state.hotels.find(h=>h.id===Number(node.dataset.cardPhoto))));
       $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',!state.hasSearched?'Начните с поиска':loadingEmpty?'Ищем туры…':partialEmpty?'Поиск завершён не полностью':errorEmpty?'Не удалось загрузить туры':state.status==='partial'?'Нет подходящих туров среди полученных':'Нет подходящих туров');
       $('[data-empty]').setAttribute('aria-busy',String(loadingEmpty));

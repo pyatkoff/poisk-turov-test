@@ -288,9 +288,9 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       return{text:node.textContent,clipped,brokenWords,overlappingLines,kind,cardId};
     });
     const resultCardIds=[...root.querySelectorAll('.st-hotel-card')].filter(visible).map(node=>Number(node.dataset.hotelCard));
-    const notices=[...root.querySelectorAll('.st-results-note')].filter(visible),resultList=root.querySelector('[data-card-list]');
+    const notices=[...root.querySelectorAll('.st-results-note')].filter(visible),resultList=root.querySelector('[data-card-list]'),resultMore=root.querySelector('[data-result-more]');
     const resultNotice={visibleCount:notices.length,
-      beforeList:notices.length===1&&Boolean(resultList&&notices[0].compareDocumentPosition(resultList)&Node.DOCUMENT_POSITION_FOLLOWING),
+      afterBatch:notices.length===1&&Boolean((resultMore||resultList)?.compareDocumentPosition(notices[0])&Node.DOCUMENT_POSITION_FOLLOWING),
       cardNoticeCount:[...root.querySelectorAll('.st-hotel-card .st-card-bottom')].filter(visible).length,
       text:notices.map(node=>node.textContent.trim()).join('\n')};
     const header=root.querySelector('.st-header'),headerBounds=header.getBoundingClientRect(),headerItems=[...header.querySelectorAll('.st-logo,.st-header-nav span,.st-fav-top,.st-native-startup-title')].map(node=>node.getBoundingClientRect()).filter(rect=>rect.width>0&&rect.height>0);
@@ -363,7 +363,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     assert.equal(notice.cardNoticeCount,0,'Price explanation has no duplicate per-card owner');
     if(measurements.screen==='results'&&cardIds.length){
       assert.equal(notice.visibleCount,1,'Populated results have exactly one readable price explanation');
-      assert.equal(notice.beforeList,true,'The shared price explanation precedes the hotel list');
+      assert.equal(notice.afterBatch,true,'The shared price explanation follows the current hotel batch and its progressive control');
       assert.equal(notice.text,'Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим цену, наличие и состав пакета, включая обязательные доплаты.');
       const notes=measurements.readableText.filter(item=>item.kind==='result-notice');
       assert.equal(notes.length,1,'The visible shared notice has measured text');
@@ -375,7 +375,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       }
     }else{
       assert.deepEqual(cardIds,[],'Non-results and empty frames show no result cards');
-      assert.deepEqual(notice,{visibleCount:0,beforeList:false,cardNoticeCount:0,text:''},'Empty and non-results frames show no price explanation');
+      assert.deepEqual(notice,{visibleCount:0,afterBatch:false,cardNoticeCount:0,text:''},'Empty and non-results frames show no price explanation');
       assert.equal(measurements.readableText.filter(item=>item.kind==='result-notice').length,0);
     }
     if(logicalScreen==='initial-favorites'){
@@ -627,7 +627,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         const notice=product.locator('.st-results-note');
         assert.equal(await notice.isVisible(),true);
         assert.match(await notice.textContent(),/за весь тур и всех туристов.*проверим цену, наличие и состав пакета.*обязательные доплаты/);
-        assert.equal(await notice.evaluate(node=>Boolean(node.compareDocumentPosition(node.parentElement.querySelector('[data-card-list]'))&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Price explanation precedes the hotel list');
+        assert.equal(await notice.evaluate(node=>Boolean(node.parentElement.querySelector('[data-result-more]').compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Price explanation follows the current result batch and its progressive control');
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
         await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'loading',message:''}));
