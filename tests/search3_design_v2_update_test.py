@@ -159,7 +159,8 @@ class UpdateContracts(unittest.TestCase):
             'familyAges': [0, 7, 17], 'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
             'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
             'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-            'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True}
+            'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
+            'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -182,7 +183,7 @@ class UpdateContracts(unittest.TestCase):
                                                                  'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
-                                                                 'native-results-partial-', 'native-filter-empty-partial-'))
+                                                                 'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
                               else 'hotel' if logical_name.startswith('native-hotel-return-') else logical_name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     if short_desktop:
@@ -300,7 +301,17 @@ class UpdateContracts(unittest.TestCase):
                     popup_fit = {'editor': popup_editor, 'modal': True, 'outside': False,
                         'panelOverflow': False, 'findVisible': True, 'findEnabled': True,
                         'findHeight': 50, 'submitCount': 1} if popup_editor else None
-                    case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
+                    terminal_state = None
+                    if name.startswith('native-terminal-'):
+                        status = name.split('-')[2]
+                        message = ('' if status == 'complete' else 'Поиск завершён не полностью.'
+                                   if status == 'partial' else
+                                   'Не удалось завершить поиск. Полученные предложения сохранены.')
+                        terminal_state = {'status': status, 'message': message, 'searchGeneration': 1,
+                            'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
+                            'alertText': message or 'Поиск завершён не полностью.',
+                            'ownerSHA256': self.native['files']['bridge.js']}
+                    case['frames'].append({'terminalState': terminal_state, 'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
                         'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
                         'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit, 'summaryFit': summary_fit,
@@ -350,8 +361,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'e42e2a19c134a79127cb22a6dd26fc1abcd19e41')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38437139126)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '2da88e41fb436acefd293066bcc98db013e07ee0')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38444580624)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -420,17 +431,18 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_393_frames_and_preserves_373_baseline_frames(self):
+    def test_visual_successor_requires_exact_423_frames_and_preserves_393_baseline_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 393)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 393)
-            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 423)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 423)
+            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-'))
                 for case in report['cases'] for frame in case['frames']), 263)
-            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-')) for case in report['cases'] for frame in case['frames']), 333)
-            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-')) for case in report['cases'] for frame in case['frames']), 353)
-            self.assertEqual(sum(not frame['file'].startswith('native-initial-') for case in report['cases'] for frame in case['frames']), 373)
+            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 333)
+            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 353)
+            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 373)
+            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 393)
             self.assertEqual(sum(frame['file'].startswith('native-family-')
                 for case in report['cases'] for frame in case['frames']), 60)
             self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
@@ -700,6 +712,35 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r)['countFit'].update(overlap=True)]
         self.assert_evidence_rejected(changes)
 
+    def test_terminal_status_owner_and_zero_extra_searches_are_required_in_every_case(self):
+        def frame(report, case, status):
+            return next(row for row in report['cases'][case]['frames']
+                        if row['file'].startswith('native-terminal-' + status + '-'))
+        changes = []
+        for case in range(10):
+            for key, wrong in (('latePresentationTerminalStatesRetained', 1),
+                               ('latePresentationExtraSearches', False)):
+                changes.extend((lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
+                    lambda r, c=case, k=key, v=wrong: r['cases'][c]['proof'].update({k: v})))
+            for status in ('complete', 'partial', 'error'):
+                changes.extend((
+                    lambda r, c=case, s=status: r['cases'][c]['frames'].remove(frame(r, c, s)),
+                    lambda r, c=case, s=status: frame(r, c, s).update(screen='search'),
+                    lambda r, c=case, s=status: frame(r, c, s).pop('terminalState')))
+                for key, wrong in (('status', 'loading'), ('message', 'changed'),
+                    ('searchGeneration', True), ('searchStarts', 2), ('otherCalls', 1),
+                    ('alertVisible', status == 'complete'), ('alertText', ''),
+                    ('ownerSHA256', 'f' * 64)):
+                    changes.append(lambda r, c=case, s=status, k=key, v=wrong:
+                                   frame(r, c, s)['terminalState'].update({k: v}))
+                changes.extend((
+                    lambda r, c=case, s=status: frame(r, c, s)['terminalState'].update(otherCalls=False),
+                    lambda r, c=case, s=status: frame(r, c, s)['terminalState'].update(extra=True),
+                    lambda r, c=case, s=status: frame(r, c, s)['headerFit'].update(outside=True),
+                    lambda r, c=case, s=status: frame(r, c, s)['resultCardIds'].pop(),
+                    lambda r, c=case, s=status: frame(r, c, s)['prices'].clear()))
+        self.assert_evidence_rejected(changes)
+
     def test_family_and_short_desktop_proof_cannot_be_missing_or_mislabelled(self):
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
@@ -837,7 +878,8 @@ class UpdateContracts(unittest.TestCase):
             '002dc0d636c5ad6e5597d37259baba574fe9ed88',
             'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5',
             '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190',
-            'e42e2a19c134a79127cb22a6dd26fc1abcd19e41'))
+            'e42e2a19c134a79127cb22a6dd26fc1abcd19e41',
+            '2da88e41fb436acefd293066bcc98db013e07ee0'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -994,7 +1036,7 @@ class UpdateContracts(unittest.TestCase):
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
-             38413259110, 38420411530, 38429562174, 38437139126))
+             38413259110, 38420411530, 38429562174, 38437139126, 38444580624))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1056,17 +1098,18 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json'))
+            'visual-search/native-v2/bridge.js',
+            'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js', 'visual-search/native-v2/bootstrap.js',
-                     'visual-search/native-v2/bridge.js', 'visual-search/native-v2/donor.css',
-                     'prototype-search/data.js', 'visual-search/native-v2/viewport.css'):
+                     'visual-search/native-v2/frontend.js', 'visual-search/native-v2/donor.css',
+                     'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, bad)
@@ -1080,10 +1123,10 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(missing_change=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, incomplete)
 
-    def test_historical_allowances_cannot_activate_extra_legacy_or_bridge_change(self):
+    def test_historical_allowances_cannot_activate_extra_legacy_or_frontend_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/bridge.js')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/frontend.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')
