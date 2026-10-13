@@ -1,10 +1,10 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');
 const app=fs.readFileSync(__dirname+'/../v2/visual-search/app.js','utf8'),start=app.indexOf('// The hotel shell enters history immediately;'),end=app.indexOf("let renderedCardLimit=24",start);assert(start>=0&&end>start);
-const source=app.slice(start,end),names=source.match(/\.create\(\{([^}]+)\}\)/)[1].split(','),flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
+const source=app.slice(start,end),names=source.slice(source.indexOf('.create({')+9,source.indexOf('});}',source.indexOf('.create({'))).replace(/get hotelOfferDraft\(\)\{[^}]*\},set hotelOfferDraft\(value\)\{[^}]*\},get selectedOffer\(\)\{[^}]*\},/,'').split(','),flush=async()=>{for(let n=0;n<5;n++)await Promise.resolve();};
 function fixture(){
  const scripts=[],timers=new Map(),renders=[],roomInputs=[],load={innerHTML:'old'},body={scrollTop:0},modal={open:true,classList:{add(){}}},nav={dataset:{hotelId:'1'}},rooms=[{dataset:{room:'Standard'},querySelector:()=>more}],more={open:false},offerRows=[{meal:'BB'}];let timer=0,ready=false,remembers=0,offerInventories=0;
- const ctx={window:{},Promise,Error,Number,Array,modalType:'hotel-details',hotels:[{id:1,name:'One',resort:'Place',stars:5},{id:2,name:'Two',resort:'Place',stars:4}],
+ const ctx={window:{},Promise,Error,Number,Array,modalType:'hotel-details',hotelOfferDraft:null,selectedOffer:null,hotels:[{id:1,name:'One',resort:'Place',stars:5},{id:2,name:'Two',resort:'Place',stars:4}],
   document:{head:{dataset:{hotelDetailsSrc:'./hotel-details-v1.js?v=exact'},append:s=>scripts.push(s)},createElement:()=>({remove(){this.removed=true;}})},
   setTimeout:fn=>{timers.set(++timer,fn);return timer;},clearTimeout:id=>timers.delete(id),
   $:s=>({'#hotel-details-load':load,'#modal':modal,'#modal-body':body,'.hotel-section-nav':nav,'#hotel-room-count':ready?{}:null}[s]),$$:()=>rooms,

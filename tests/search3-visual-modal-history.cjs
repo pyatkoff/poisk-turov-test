@@ -23,9 +23,9 @@ function observe(source,s){
   showModal:()=>{n.open=true;record('showModal');},close:()=>{n.open=false;record('close');},
   classList:{contains:()=>!!s.filterOpen,toggle:()=>{}},style:{overflow:'initial'}
  };nodes.set(key,n);return n;}
- const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
+ const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
-  modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
+  renderedResultItems:[],hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
   hotels:[{id:7}],hotelOffers:()=>[{meal:'AI'}],
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},
@@ -85,13 +85,15 @@ for(const [current,retained] of [
  ['restoreModalStepFocus(previous);syncDestinationViewport();','restoreModalStepFocus(previous);'],
  ['updateModalBack();syncDestinationViewport();\n}','updateModalBack();\n}']
 ]){assert.equal(retainedSource.split(current).length,2,'one intentional viewport-sync call site');retainedSource=retainedSource.replace(current,retained);}
-const actual=records(source),projected=clone(actual),retained=records(retainedSource);let viewportSyncObservations=0;
+retainedSource=retainedSource.replace('renderResultCards(renderedResultItems,{selectionOnly:true});','');
+const actual=records(source),projected=clone(actual),retained=records(retainedSource);
+for(const row of projected)row.result.trace=row.result.trace.filter(c=>c[0]!=='renderResultCards');let viewportSyncObservations=0;
 for(let index=0;index<actual.length;index++){
  const scenario=scenarios[index],trace=actual[index].result.trace,extra=scenario.kind==='close'&&scenario.open||scenario.kind==='back'&&trace.some(record=>record[0]==='restoreFocus');
  const syncs=trace.flatMap((record,index)=>record[0]==='syncDestinationViewport'?[index]:[]),originalCount=retained[index].result.trace.filter(record=>record[0]==='syncDestinationViewport').length;
  const snapshotSync=extra&&scenario.kind==='back';
  assert.equal(syncs.length,originalCount+(extra?1:0)+(snapshotSync?1:0),scenario.name+' exact viewport synchronization count');
- if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'restorePageReturn':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
+ if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'renderResultCards':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
  if(snapshotSync){
   const at=syncs[1],preceding=trace[at-1];
   assert.deepEqual(preceding.slice(0,3),['attribute','#modal-back','aria-label'],scenario.name+' snapshot sync follows restored Back state');

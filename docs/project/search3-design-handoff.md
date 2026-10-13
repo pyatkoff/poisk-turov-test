@@ -21,3 +21,46 @@ Physical iPhone/Safari, keyboard, safe area and 200% text are UNVERIFIED. Demos 
 ## Next authorized completion
 
 Finish any confirmed regression within these existing owners; green applicable final-head checks -> inspect the compiled browser artifact -> fresh exclusive preview publisher claim -> normal exact-artifact NEXT preview update/readback -> terminal receipt and release claim. Production/main transfer requires a separate concrete owner decision. Preserve refactor/canonical data/price/fuel/auth/provider/lead/lifecycle/analytics, LOCAL#4191, sibling previews and shared AUTOPILOT state/workflows. Do not restart paused Sites automation or create a new cosmetic queue.
+
+
+## 2026-10-13 — original Site185 transfer to existing NEXT (implementation candidate)
+
+Owner whole-version visual+behavior approval: direct «давай переносить», recorded
+in #4217/6140805640. Donor remains PUBLIC original project
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a, Site185/package88/v224,
+source dee9043bfce695de275223c417902f393f6c9114, native version
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_71bf1c751c348191b6790481583f2eaf,
+archive SHA256 e7b6c44438eb98e0cebaf774d56c45bd21c9c6a23879edf1d8f5e5a16914f115.
+Receiver only /_preview/search3-next-candidate/visual-search/ on
+release/search3-production-ready-v1, base919bb3a1aa30a6e50845a7998388f9e0c091f66f.
+Installed predecessor source7691cc485fb3b32effe0fc6c28850c9e0d1c8b29.
+No design-v2 score, evidence, branch or publisher is part of this transfer.
+
+The existing owners receive the approved card hierarchy and separate exact saved
+choice, country/count summaries, thumbnail/geography/stars picker presentation,
+hotel-room draft + explicit continue, same-tour flight editing and explicit
+application continuation, compact contact review and bounded visible viewport.
+Raw canonical catalogue/OR/generation/lookup cache, cold loader fences, incremental
+rendering, original numeric/ranking/calendar/list oracles and all transport/money/
+fuel/FX/lead owners remain. Two CSS owners only. Immutable brand/media unchanged.
+
+Independent read-only review found and corrected bare-defer live-graph template
+serialization, a cold draft-context access, a stale raw-generation selection
+strip, lost saved fixture pair on reopen, and old relocated price on provider
+receipt expiry. Expiry clears presentation only, without recalculation. Historical
+Site100 approval and complete historical test pins remain explicit inputs; changes
+to test collaborators/actions apply solely to approved presentation boundaries.
+
+Local source matrices and compiled static offline demo geometry passed at
+360/390/430/768/1280, including pair3/whole total190300, explicit continuation and
+passive exact saved-choice reopen. The static offline layout harness is not the
+PHP live-entry or installed-runtime gate. Final exact-head stock CI, PHP compiled
+browser evidence and artifact readback are still required before publication.
+No supplier HTTP or real lead delivery was used in this acceptance. Physical
+iPhone/Safari/OS keyboard/safe-area/text-only200% remains UNVERIFIED.
+
+SEARCH-QUALITY-1 retains12 historical/11 required rows and five0/1/1.5/2 criteria.
+Design-lab mockup, design-lab clickable path and installed NEXT remain independent.
+Installed NEXT stays unchanged until publication; no donor score inheritance, no
+new quality increase for approval, source adaptation, CI or branch integration.
+New NEXT visual/UX criteria remain not_measured until exact installed acceptance.

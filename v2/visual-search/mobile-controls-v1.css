@@ -257,42 +257,40 @@
     line-height:1.5;
   }
 
-  .hotel-details-dialog .room-offer-choice {
-    gap:14px;
-    padding:16px;
-  }
+  .hotel-details-dialog .room-offer-choice {gap:12px;padding:16px}
 
   .hotel-details-dialog .room-offer-conditions {
     gap:8px;
   }
+.hotel-details-dialog .room-choice-facts > div {
+    grid-template-columns:64px minmax(0,1fr);
+    align-items:baseline;
+    gap:8px;
+  }
+
 
   .hotel-details-dialog .room-choice-facts dd {
     font-size:1rem;
   }
 
-  .hotel-details-dialog .room-offer-choice .hotel-room-price {
-    grid-template-columns:minmax(0,1fr);
-    gap:4px;
-  }
+  .hotel-details-dialog .room-offer-choice .hotel-room-price {grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
 
-  .hotel-details-dialog .room-offer-choice .hotel-room-price > small {
-    font-size:.875rem;
-  }
+  .hotel-details-dialog .room-offer-choice .hotel-room-price > small {font-size:.875rem;grid-column:1/-1}
 
-  .hotel-details-dialog .room-offer-choice .hotel-room-price > strong {
-    font-size:1.625rem;
-    line-height:1.3;
-  }
-
-  .hotel-details-dialog .room-offer-choice .hotel-room-price > .primary {
-    grid-column:1;
-    grid-row:auto;
-    width:100%;
+  .hotel-details-dialog .room-offer-choice .hotel-room-price > strong {font-size:1.5rem;line-height:1.3;white-space:normal;overflow-wrap:anywhere}
+.hotel-details-dialog .room-offer-choice .hotel-room-price > button {
+    grid-column:2;
+    grid-row:2;
+    width:auto;
     max-width:none;
     min-height:48px;
-    margin-top:8px;
+    margin:0;
+    padding:10px 14px;
     font-size:1rem;
   }
+
+
+  
 
 
 
@@ -440,7 +438,7 @@ dialog.gallery-dialog .modal-header {
   .calendar-heading {align-items:center;margin-bottom:4px;}
   .calendar-heading .text-button {font-size:.875rem;min-height:44px;white-space:normal;text-align:right;}
   .calendar-caption {font-size:.875rem;line-height:1.4;margin:0 0 8px;}
-  .date-price {flex-basis:96px;min-height:64px;}
+  .date-price {min-height:60px;flex:1 1 max-content;min-inline-size:44px;max-inline-size:100%;padding:4px 0;justify-content:center;overflow:visible}
   .calendar-foot {font-size:.875rem;line-height:1.4;}
   .calendar-selection-hint {margin:8px 0 0;font-size:.875rem;line-height:1.4;color:var(--muted);}
 
@@ -507,14 +505,24 @@ dialog.gallery-dialog .modal-header {
 }
 /* Results block: one composition for trip context, decision controls, hotel
    identity, exact package and price. This replaces the packet-13 composition. */
-.result-date-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:3px 8px;min-width:0;padding:0;margin-bottom:4px}
-.result-date-heading>div {min-width:0}
+.result-date-heading {display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:3px 12px;min-width:0;padding:0;margin-bottom:4px}
+
 .result-date-heading>.text-button {grid-column:2;grid-row:1/3;flex:none;min-height:44px;padding:6px 4px;font-size:.875rem;line-height:1.4}
+.result-date-heading>.text-button>svg {display:none}
+
+#results:not(.results-pristine) .results-heading>.results-toolbar {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0;min-width:0}
+
+.results-heading .sort-label select {min-height:44px}
+
+.results-heading .quick-chips .chip {min-height:44px}
+
 .result-dates .calendar-foot {justify-content:space-between;flex-wrap:wrap;gap:4px 8px;color:var(--text);font-size:.8125rem;line-height:1.4}
 .result-date-heading strong {grid-column:1;grid-row:1;display:block;font-size:1rem;line-height:1.4}
 .result-dates .calendar-units {grid-column:1;grid-row:2;margin:0;font-size:.8125rem;line-height:1.4;color:var(--muted)}
-.result-dates .calendar-month-label {grid-column:1;grid-row:3;margin:0;font-size:.875rem;line-height:1.4;font-weight:650;color:var(--text)}
-.result-dates .calendar-minimum {margin:9px 0 3px;font-size:.875rem;line-height:1.4;font-weight:650;color:#276B3B}
+.result-dates .calendar-month-label {grid-column:1;grid-row:3;margin:0;font-size:1rem;line-height:1.4;font-weight:650;color:var(--text)}
+.calendar-result-notes {display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 16px;margin-top:7px}
+
+.result-dates .calendar-minimum {margin:0;font-size:.875rem;line-height:1.4;font-weight:650;color:#276B3B}
 #price-calendar .calendar-caption {margin:0;font-size:.75rem;line-height:1.4;color:var(--muted)}
 .result-dates .calendar-heading p {font-size:.875rem;line-height:1.4;color:var(--muted)}
 
@@ -530,29 +538,61 @@ dialog.gallery-dialog .modal-header {
  .search-collapsed .preview-disclosure{margin-top:2px;font-size:.8125rem;color:var(--text)}
  .results-section{padding-top:8px}
  .results-heading{margin-bottom:6px}
- .results-heading h2{font-size:1.25rem;line-height:1.3;letter-spacing:-.02em}
+ .results-heading h2{font-size:1.125rem;line-height:1.3;letter-spacing:-.02em}
  .results-heading p{margin-top:0;font-size:.8125rem;line-height:1.4}
  #price-calendar.calendar-card{padding:4px 0;border-radius:12px}
- #results:not(.results-pristine) .results-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin:6px 0}
- #results .results-toolbar>.drawer-trigger{display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:#ccd7f3;background:#fff}
- #results .results-toolbar>.sort-label:not([hidden]){display:block;min-width:0;max-width:190px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.result-date-heading{grid-template-columns:minmax(0,1fr) auto;gap:3px 8px}
+
+html:not(.quality-text-200) .result-date-heading>.text-button{width:44px;padding:10px;justify-self:end}
+
+html:not(.quality-text-200) .result-date-heading>.text-button>svg{display:block;width:20px;height:20px}
+
+html:not(.quality-text-200) .result-date-heading .calendar-toggle-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+#results:not(.results-pristine) .results-heading{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+
+#results:not(.results-pristine) .results-heading>.results-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 8px;margin:0;width:100%}
+
+ 
+ #results .results-toolbar>.drawer-trigger{display:inline-flex;min-height:44px;font-size:.875rem;justify-content:center;justify-self:stretch;border-color:#ccd7f3;background:#fff;grid-column:2;grid-row:1;padding:6px 10px}
+ #results .results-toolbar>.sort-label:not([hidden]){display:block;min-width:0;max-width:none;border:1px solid var(--line);border-radius:10px;background:#fff;grid-column:1;grid-row:1;margin:0}
+#results .results-toolbar:has(.sort-label[hidden]){grid-template-columns:minmax(0,1fr)}
+
+#results .results-toolbar:has(.sort-label[hidden])>.drawer-trigger{grid-column:1;justify-self:end}
+
+html:not(.quality-text-200) #results:not(.results-pristine) .results-heading:has(.sort-label[hidden]):not(:has(.quick-chips .chip.active:not([hidden]))){grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 8px}
+
+html:not(.quality-text-200) #results:not(.results-pristine) .results-heading:has(.sort-label[hidden]):not(:has(.quick-chips .chip.active:not([hidden])))>.results-toolbar{width:auto}
+
+html:not(.quality-text-200) #results:not(.results-pristine) .results-heading:has(.sort-label[hidden]):not(:has(.quick-chips .chip.active:not([hidden])))>div:first-child{min-inline-size:0}
+
  #results .sort-label select{display:block;width:100%;max-width:100%;min-height:44px;padding:8px 22px 8px 10px;font-size:.875rem;font-weight:500;white-space:normal}
- #results .quick-chips:not(:has(.chip:not([hidden]))){display:none}
+#results .quick-chips .chip:not(.active){display:none}
+
+#results .quick-chips:not(:has(.chip.active:not([hidden]))){display:none}
+
+#results .results-toolbar .quick-chips{grid-column:1/-1;grid-row:2;flex-wrap:wrap;overflow:visible}
+
+ 
  .mobile-bottom>.mobile-sort{display:none}
  .calendar-heading{gap:8px}
  .calendar-heading .text-button{padding-inline:4px;font-size:.875rem;min-height:44px}
  .result-date-heading>strong{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
  .result-date-heading .calendar-month-label{grid-row:1;font-size:1rem;line-height:1.4}
  .result-dates .calendar-minimum{margin:4px 0 2px}
- .price-strip{display:grid;grid-template-columns:repeat(7,minmax(min-content,1fr));gap:3px;overflow:auto;padding:0}
- .date-price{min-width:44px;min-height:54px;padding:3px 0;justify-content:center}
+ .price-strip{display:flex;gap:3px;overflow:auto;padding:0;flex-wrap:wrap}
+ 
  #price-strip .date-price:focus-visible{outline-offset:-3px}
  .date-price .date{font-size:1.125rem;font-weight:650;line-height:1.35}
  .date-price strong{font-size:.9375rem;font-weight:400;margin:2px 0 0;line-height:1.35}
  .date-price.best strong{font-weight:650;color:#276B3B}
  .date-price.selected.best strong{padding:0 3px;border-radius:4px;background:#fff}
  body.mobile-results>.header,body.mobile-results #search{display:none}
- @media(max-width:374px){body.mobile-results #results{padding-inline:9px}.date-price strong{font-size:.875rem}}
+ @media(max-width:374px){body.mobile-results #results{padding-inline:9px}
+.price-strip{gap:2px}
+
+.date-price.selected.best strong{padding-inline:1px}
+}
  .calendar-selection-hint{display:none}
  .calendar-foot{margin-top:2px;font-size:.8125rem;line-height:1.4}
  .cards{gap:14px}
@@ -602,24 +642,7 @@ dialog.gallery-dialog .modal-header {
    behind the mobile filter count. Stars, meals and budget stay in the compact
    search summary instead of repeating here. */
 @media(max-width:760px){
- #active-filters.mobile-filter-details{
-  display:flex;
-  flex-wrap:nowrap;
-  gap:7px;
-  margin:0 0 9px;
-  padding:2px 2px 7px;
-  overflow-x:auto;
-  overscroll-behavior-x:contain;
-  scrollbar-width:thin;
- }
- #active-filters.mobile-filter-details .active-filter:not(.mobile-filter-detail){display:none}
- #active-filters.mobile-filter-details .mobile-filter-detail{
-  flex:0 0 auto;
-  max-width:min(82vw,320px);
-  min-height:44px;
-  white-space:normal;
-  text-align:left;
-  line-height:1.35;
-  overflow-wrap:anywhere;
- }
+ 
+ 
+ 
 }

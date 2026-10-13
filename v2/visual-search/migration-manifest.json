@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "stage": "approved-sites100-presentation-candidate",
-  "visualVersion": 155,
+  "stage": "approved-sites185-presentation-candidate",
+  "visualVersion": 225,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
   "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
@@ -54,16 +54,16 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "0f6d39d2b99007c5f87b81f144f99b0014008fe01fefe5146abc96dd9ebbe396",
+    "app.js": "eae6e8e47ffb0c71409cf038941daf843d768d846acbb90229eb500bedf0c825",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "0c0839ec21765e18620bb08010c2119471c6f9a7049176a906cffbf67c0c85a8",
-    "styles.css": "ba6167a9646d0d3ee2732279dacf338d82c4c13463a23a189f76b4d89a975fda",
+    "index.html": "7aef92c78cf04c7469d845b519db16107c0f2b96e6000cf20a58c0e373152d7d",
+    "styles.css": "cd3e1f29f704d43a084a6c0dbd730e9ad0a6de348e62fb8aeeed5e639ccd0248",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
     "offer-list-v1.js": "5aacc75585b5ae98043aba5b3e3c3856ca4f52147d785407127ca200b49d103a",
-    "mobile-controls-v1.css": "1163ce427b4f3c1b9d026ce9ccf5df80cf587dfbfdf1a76f4976d32c84d3021a",
-    "hotel-details-v1.js": "31ef740d4923cd6cde61c69f1a4e6b6c0837298e47edc48c519159e1535579e9",
+    "mobile-controls-v1.css": "201a7ab61992a1f4e3dd80333560835eed3a150c41f79963942d8862a9834b3f",
+    "hotel-details-v1.js": "17a6a154fde630967d7ddcba0b09691faa309439a3a1c6ce266259bd9183d1eb",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "e4bd6ed9ecb93299a7ab88c225f56adbcb65d0ebaa7a835c43b357ae31e223f4",
     "flight-picker-ui-v1.js": "4eef99bf61415e7a4a943f790ff4c822a8494dacfb17e68b8ea650da9c9cb7e6",
@@ -77,18 +77,18 @@
     "realSupplierAcceptance": false
   },
   "approvedPresentation": {
-    "site": 100,
-    "package": 34,
-    "visualVersion": 154,
+    "site": 185,
+    "package": 88,
+    "visualVersion": 224,
     "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "sourceSha": "05051662c25cf8258991475e2e7536a12f7248d4",
-    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_c787e6e54144819197a0bbd94d678ad9",
-    "documentarySite": 102,
-    "documentarySourceSha": "a33878d9798e6f7c1a4ff0a3f245f27254580a27",
-    "designApproval": "DESIGN_APPROVED_FOR_PREVIEW_TRANSFER",
+    "sourceSha": "dee9043bfce695de275223c417902f393f6c9114",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_71bf1c751c348191b6790481583f2eaf",
+    "archiveSha256": "e7b6c44438eb98e0cebaf774d56c45bd21c9c6a23879edf1d8f5e5a16914f115",
+    "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261013",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6140805640",
     "mobilePhotoRatio": 1.8,
     "resultsPriceTape": "always-open",
-    "transportOwners": "retained from current NEXT; no donor transport copied",
+    "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
     "physicalSafariAcceptance": false,
     "keyboardSafeAreaText200Acceptance": false
   },
@@ -129,5 +129,23 @@
     "globalUnknownSealsApplication": true,
     "realSupplierAcceptance": false,
     "physicalSafariAcceptance": false
-  }
+  },
+  "approvedPresentationHistory": [
+    {
+      "site": 100,
+      "package": 34,
+      "visualVersion": 154,
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "sourceSha": "05051662c25cf8258991475e2e7536a12f7248d4",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_c787e6e54144819197a0bbd94d678ad9",
+      "documentarySite": 102,
+      "documentarySourceSha": "a33878d9798e6f7c1a4ff0a3f245f27254580a27",
+      "designApproval": "DESIGN_APPROVED_FOR_PREVIEW_TRANSFER",
+      "mobilePhotoRatio": 1.8,
+      "resultsPriceTape": "always-open",
+      "transportOwners": "retained from current NEXT; no donor transport copied",
+      "physicalSafariAcceptance": false,
+      "keyboardSafeAreaText200Acceptance": false
+    }
+  ]
 }
