@@ -107,6 +107,16 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   height: auto;
 }
+/* Cost labels keep whole words; values take the next row when text grows. */
+#design-v2-native-root #b4 .st-cost-list { container: native-cost / inline-size; }
+@container native-cost (max-width: 16em) {
+  #design-v2-native-root #b4 .st-cost-list > div { flex-wrap: wrap; }
+  #design-v2-native-root #b4 .st-cost-list > div > span {
+    min-width: min-content;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
 /* Keep the donor budget columns readable without native spinner chrome. */
 #design-v2-native-root #b4 .st-budget {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5em), 1fr));
