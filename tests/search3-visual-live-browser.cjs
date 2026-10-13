@@ -178,7 +178,7 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
  console.log('PASS compiled verified-pair journey: five widths, exact/swapped/foreign/legacy, application gate and passive reopen');
 };
 const providerApplicationFlightSummary=async(page,width,names,evidence,label)=>{
- const disclosure=page.locator('.summary-flight-details'),summary=disclosure.locator(':scope>summary'),summaryLines=summary.locator('.selected-flight-line'),detailLines=disclosure.locator(':scope>p');
+ const disclosure=page.locator('.summary-flight-details'),summary=disclosure.locator(':scope>summary'),summaryLines=summary.locator('.selected-flight-line'),detailLines=disclosure.locator(':scope>p, :scope>.flight-leg>.flight-leg-label');
  assert.equal(await summary.locator('.selected-flight-summary>strong').textContent(),'Выбранные рейсы');assert.equal(await summaryLines.count(),2,'the application retains only the two receipt flights');assert.equal(await detailLines.count(),2,'expanded details retain the same two complete receipt flights');
  const wasOpen=await disclosure.evaluate(el=>el.open);assert.equal(wasOpen,width>760,'full receipt details retain native mobile/desktop disclosure state');
  const lines=wasOpen?detailLines:summaryLines,hiddenLines=wasOpen?summaryLines:detailLines;
