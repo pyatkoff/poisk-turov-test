@@ -168,14 +168,20 @@
         if (epoch === searchGeneration) publish({hotels, status: 'error', message: error.message, error: error.message, search: intent, filters: constraints});
         throw error;
       }
+      let terminal = null;
       const emit = event => {
         if (epoch !== searchGeneration) return;
         if (event.type === 'results') hotels = present(event.hotels || []);
-        const status = event.type === 'error' ? 'error'
-          : event.type === 'complete' ? (event.partial ? 'partial' : 'complete')
-          : 'loading';
-        publish({hotels, status, message: event.message || '', event, search: intent, filters: constraints,
-          error: status === 'error' ? event.message || 'Не удалось завершить поиск.' : null});
+        // Canonical profile enrichment can publish results after completion.
+        // Only a new search generation or an explicit terminal event changes
+        // that generation's terminal status; metadata is not another search.
+        if (event.type === 'error' || event.type === 'complete') {
+          terminal = {status: event.type === 'error' ? 'error' : event.partial ? 'partial' : 'complete',
+            message: event.message || ''};
+        }
+        const status = terminal?.status || 'loading', message = terminal ? terminal.message : event.message || '';
+        publish({hotels, status, message, event, search: intent, filters: constraints,
+          error: status === 'error' ? message || 'Не удалось завершить поиск.' : null});
         if (typeof onEvent === 'function') onEvent(latest);
       };
       if (epoch !== searchGeneration) throw new Error('Поиск заменён новым запросом.');

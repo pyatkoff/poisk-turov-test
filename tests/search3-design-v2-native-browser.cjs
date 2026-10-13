@@ -105,6 +105,46 @@ function fixtureBridge(fixture) {
   window.AnyTourDesignV2Bridge={create:()=>api};
 }
 
+// This separate journey loads the compiled native bridge, not fixtureBridge.
+// Only its canonical data dependency is replaced; all transport is forbidden.
+function terminalDataFixture(fixture) {
+  const calls={search:0,other:0},control=window.__nativeTerminalFixture={calls};
+  let emit,hotels=[];
+  const forbidden=()=>{calls.other++;throw new Error('Unexpected transport/quote/lead in terminal metadata fixture');};
+  window.AnyTourPrototypeData={catalog:{departures:[{name:'Москва'}],countries:[{id:4,name:'Турция'}],mealPlans:[]},
+    text:row=>row.name,params(){return{};},async init(){return{origin:'Москва'};},stop(){},
+    async search(search,callback){
+      calls.search++;emit=callback;
+      hotels=fixture.hotels.map(row=>({id:row.id,donorId:row.donorId,name:row.name,country:'4',region:'Кемер',
+        stars:row.stars,photos:[],amenities:[],raw:{description:'FICTIONAL before local enrichment'},
+        offers:[{key:'fixture:terminal:'+row.id,hotelId:row.id,day:search.from,returnDay:'2026-10-19',nights:7,
+          adults:search.adults,ages:[...search.ages],room:row.room,meal:row.meal,mealFacet:row.meal,
+          operator:'FIXTURE TV',provider:'tourvisor',total:row.total,search,raw:{fixture:true}}]}));
+      callback({type:'results',hotels});callback({type:'complete'});
+    },quote:forbidden,flights:forbidden,leadSession:forbidden,regions:forbidden,lookupHotels:forbidden,calendarPrices:forbidden};
+  control.terminal=(kind)=>emit(kind==='complete'?{type:'complete'}:kind==='partial'
+    ?{type:'complete',partial:true,message:'Поиск завершён не полностью.'}
+    :{type:'error',message:'Не удалось завершить поиск. Полученные предложения сохранены.'});
+  control.refresh=()=>{
+    const before=control.bridge.getSnapshot(),references=before.hotels.map(hotel=>hotel.offers[0]);
+    emit({type:'results',hotels:hotels.map(hotel=>({...hotel,raw:{description:'FICTIONAL after local enrichment'}}))});
+    emit({type:'provider',status:'complete'});emit({type:'progress',progress:100});
+    const after=control.bridge.getSnapshot();
+    return{before:before.status,after:after.status,messageBefore:before.message,messageAfter:after.message,
+      generationRetained:before.searchGeneration===after.searchGeneration,
+      exactOffersRetained:after.hotels.every((hotel,index)=>hotel.offers[0]===references[index]),
+      ids:after.hotels.map(hotel=>hotel.id),totals:after.hotels.map(hotel=>hotel.offers[0].total),searches:calls.search,other:calls.other};
+  };
+}
+function recordTerminalBridge() {
+  const create=window.AnyTourDesignV2Bridge.create;
+  window.AnyTourDesignV2Bridge=Object.freeze({create(options){
+    const bridge=create(options),control=window.__nativeTerminalFixture;
+    control.bridge=bridge;control.getSnapshot=()=>bridge.getSnapshot();window.__nativeFixture=control;
+    return bridge;
+  }});
+}
+
 function donorReferenceHTML() {
   const donor=builder.reference()['anytour-fragment.html'];
   let runtime=donor.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
@@ -303,7 +343,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -399,14 +439,17 @@ async function referenceFrame(page,width,percent,screen,row) {
       page.setDefaultTimeout(6000);reference.setDefaultTimeout(6000);
       page.setDefaultNavigationTimeout(10000);reference.setDefaultNavigationTimeout(10000);
       page.on('pageerror',error=>row.errors.push(error.message));reference.on('pageerror',error=>row.errors.push('donor: '+error.message));
+      let terminalJourney=false;
       await context.route('**/*',async route=>{
         const request=route.request(),url=new URL(request.url());
         if(url.origin!==origin||request.method()!=='GET'||/\/(?:api[^/]*|lead-(?:adapter|bridge|receiver)[^/]*)\.(?:php|json)(?:$|\?)/.test(url.pathname)){
           row.unexpectedRequests.push({method:request.method(),url:request.url()});await route.abort();return;
         }
         if(url.pathname===base+'/visual-search/native-v2/bridge.js'){
+          if(terminalJourney){const actual=fs.readFileSync(path.join(assetRoot,'visual-search/native-v2/bridge.js'),'utf8');assert.equal(hash(actual),manifest.files['bridge.js']);await route.fulfill({status:200,contentType:'application/javascript',body:actual+'\n('+recordTerminalBridge.toString()+')();'});return;}
           await route.fulfill({status:200,contentType:'application/javascript',body:'('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');'});return;
         }
+        if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){await route.fulfill({status:200,contentType:'application/javascript',body:'('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');'});return;}
         // Headless canonical contracts are exercised separately in the same CI
         // job. Browser presentation fixtures have no canonical network startup.
         if(url.pathname.endsWith('.js')&&!url.pathname.startsWith(base+'/visual-search/native-v2/')&&!url.pathname.endsWith('/lead-form-guard-v1.js')){
@@ -821,6 +864,30 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-favorite="1"]').click();
         assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1],'Existing favorite key preserved');
         row.proof.favoriteStoragePreserved=true;
+        // Revisit the controlled native entry with its actual compiled bridge.
+        // The previous 393 frames/proofs remain untouched by this extra journey.
+        terminalJourney=true;
+        const params=new URLSearchParams({...fixture.trip,ages:''});
+        await page.goto(origin+base+'/visual-search/?'+params);
+        await page.locator('[data-native-startup]').waitFor({state:'hidden'});
+        const actualProduct=page.locator('[data-product]:visible');
+        assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.search),0);
+        await actualProduct.locator('[data-screen="search"] button[type="submit"]').click();
+        await actualProduct.locator('[data-screen="results"]').waitFor({state:'visible'});
+        for(const kind of ['complete','partial','error']){
+          const retained=await page.evaluate(kind=>{const control=window.__nativeTerminalFixture;control.terminal(kind);return control.refresh();},kind);
+          assert.equal(retained.before,kind);assert.equal(retained.after,kind);
+          assert.equal(retained.messageAfter,retained.messageBefore);
+          assert.equal(retained.generationRetained,true);assert.equal(retained.exactOffersRetained,true);
+          assert.deepEqual(retained.ids,[1,2,3,4]);assert.deepEqual(retained.totals,[156400,149900,98700,1059000]);
+          assert.equal(retained.searches,1);assert.equal(retained.other,0);
+          const alert=actualProduct.locator('[data-source-alert]');
+          assert.equal(await alert.isVisible(),kind!=='complete');
+          if(kind!=='complete')assert.equal(await alert.innerText(),retained.messageBefore);
+          assert.equal(await actualProduct.locator('[data-result-count]').innerText(),'4 отеля');
+          await capture(page,'native',width,percent,'terminal-'+kind,row);
+        }
+        row.proof.latePresentationTerminalStatesRetained=true;row.proof.latePresentationExtraSearches=0;
         row.checks.push('passive init 0 searches','form submit exactly one search','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});

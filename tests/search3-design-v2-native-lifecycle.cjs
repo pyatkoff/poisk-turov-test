@@ -109,6 +109,38 @@ test('durable search subscriptions replay current results and reject older strea
   assert.equal(current.hotels.length,0,'new conditions never inherit previous offer prices'); h.streams[1]({type:'complete'}); assert.equal(current.status,'complete');
   assert.equal(h.calls.length,2); assert.equal(snapshots.length,3);
 });
+test('late presentation events retain authoritative terminal state and exact offers until a new search', async () => {
+  for (const event of [{type:'complete'}, {type:'complete',partial:true,message:'Fixture partial'},
+                       {type:'error',message:'Fixture error'}]) {
+    const h=harness(),received=[];h.bridge.subscribe(value=>received.push(value));
+    await h.bridge.search(trip,{});
+    const offer={key:'fixture:exact',total:112000,raw:{id:'provider-7'}};
+    const hotel={id:7,country:'4',offers:[offer],raw:{description:'Before enrichment'}};
+    h.streams[0]({type:'results',hotels:[hotel]});h.streams[0](event);
+    const terminal=h.bridge.getSnapshot();
+    for (const late of [{type:'results',hotels:[{...hotel,raw:{description:'After enrichment'}}]},
+                       {type:'provider',status:'complete'}, {type:'progress',progress:100}, {type:'loading'}]) {
+      h.streams[0](late);const current=h.bridge.getSnapshot();
+      assert.equal(current.status,terminal.status);assert.equal(current.message,terminal.message);
+      assert.equal(current.error,terminal.error);assert.equal(current.searchGeneration,terminal.searchGeneration);
+      assert.strictEqual(current.hotels[0].offers[0],offer);assert.equal(current.hotels[0].offers[0].total,112000);
+    }
+    assert.equal(h.calls.length,1,'Late metadata does not dispatch another search');
+    await h.bridge.search({...trip,from:'2026-11-01',to:'2026-11-07'},{});
+    assert.equal(h.bridge.getSnapshot().status,'loading');assert.equal(h.bridge.getSnapshot().message,'');
+    assert.equal(h.bridge.getSnapshot().hotels.length,0);assert.equal(h.calls.length,2);
+    h.streams[0]({type:'error',message:'Stale terminal'});
+    h.streams[0]({type:'results',hotels:[hotel]});
+    assert.equal(h.bridge.getSnapshot().status,'loading');assert.equal(h.bridge.getSnapshot().hotels.length,0);
+    h.streams[1]({type:'results',hotels:[hotel]});h.streams[1]({type:'progress',progress:20});
+    assert.equal(h.bridge.getSnapshot().status,'loading','Pending rows never fabricate completion');
+    h.streams[1]({type:'complete',partial:true,message:'New terminal'});
+    h.streams[1]({type:'complete'});
+    assert.equal(h.bridge.getSnapshot().status,'complete','A fresh explicit terminal event remains authoritative');
+    const count=received.length;h.bridge.stop();h.streams[1]({type:'results',hotels:[hotel]});
+    assert.equal(h.bridge.getSnapshot().status,'stopped');assert.equal(received.length,count+1);
+  }
+});
 test('viewport remount receives pending results with no repeated supplier start or stale ready effect', async () => {
   const h=harness(); await h.bridge.init();
   const dom=bootstrapDOM();
