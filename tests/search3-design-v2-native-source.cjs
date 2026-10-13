@@ -43,7 +43,7 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
  assert.equal(root.querySelector('[data-hotel-open="1"] .st-hotel-title-former'),null,'An ordinary hotel name is not split');
  const notice=root.querySelector('.st-results-note');
  assert.equal(notice.hidden,false);assert.match(notice.textContent,/за весь тур и всех туристов.*проверим цену, наличие и состав пакета.*обязательные доплаты/);
- assert(notice.compareDocumentPosition(root.querySelector('[data-card-list]'))&w.Node.DOCUMENT_POSITION_FOLLOWING,'Shared price explanation precedes the cards');
+ assert(root.querySelector('[data-result-more]').compareDocumentPosition(notice)&w.Node.DOCUMENT_POSITION_FOLLOWING,'Shared price explanation follows the current result batch and its progressive control');
  assert.equal(root.querySelectorAll('.st-hotel-card .st-card-bottom').length,0);
  const pending=mounted.getState();pending.hotels=[];pending.status='loading';mounted.render();
  assert.equal(notice.hidden,true,'A price explanation is hidden when no offers are shown');
