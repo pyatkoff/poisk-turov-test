@@ -32,6 +32,20 @@ from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
 
 PREFIX = '/update-search3-design-v2-preview '
 REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
+# This reviewed packet has exactly one product commit and one harness-only child.
+# These trusted parent pins are not supplied by a command or artifact.
+NATIVE_SOURCE_PARENT = '221cf41f414837e57455d9bd55b088445b34337f'
+NATIVE_SOURCE_PARENT_TREE = '06ddaa5f27e5c2350c4aa4bcef76b918fbbcbf1c'
+RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
+                     'result-meal', 'result-operator', 'result-party')
+RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
+                      'цену, наличие и состав пакета, включая обязательные доплаты.')
+RESULT_FIXTURE_FACTS = (
+    ('FIXTURE Laguna Beach Resort', 'Стандартный номер', 'Ультра всё включено'),
+    ('FIXTURE Marina Bay Hotel', 'Стандартный номер', 'Завтраки и ужины'),
+    ('FIXTURE Seaside Garden Hotel & Residence', 'Стандартный номер', 'Завтраки'),
+    ('FIXTURE Laguna Collection Premium Resort & Private Villas',
+     'Вилла с двумя спальнями · свой бассейн', 'Ультра всё включено'))
 
 
 def checked_request(event, env):
@@ -89,11 +103,17 @@ def native_provenance(api, q, control_sha):
     need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed')
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
+    need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT],
+         'native_source_parent_pin')
+    source_parent = api.get('/git/commits/' + NATIVE_SOURCE_PARENT)
+    need(source_parent['tree']['sha'] == NATIVE_SOURCE_PARENT_TREE
+         and [row.get('sha') for row in source_parent.get('parents', [])] == [pin['release_parent']],
+         'native_source_parent_lineage_pin')
     need(release['tree']['sha'] == pin['release_tree'] == pin['source_tree'], 'native_release_tree_pin')
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 1
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 2
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -401,6 +421,56 @@ def native_evidence(archive, request, native):
                              and row.get('clipped') is False and row.get('brokenWords') is False
                              and row.get('overlappingLines') is False for row in text),
                      'native_text_readability_required')
+                card_ids = frame.get('resultCardIds')
+                need(isinstance(card_ids, list)
+                     and all(type(card_id) is int and card_id > 0 for card_id in card_ids)
+                     and len(set(card_ids)) == len(card_ids), 'native_result_card_identity_required')
+                notice = frame.get('resultNotice')
+                need(isinstance(notice, dict)
+                     and set(notice) == {'visibleCount', 'beforeList', 'cardNoticeCount', 'text'}
+                     and type(notice['visibleCount']) is int and notice['visibleCount'] >= 0
+                     and type(notice['cardNoticeCount']) is int and notice['cardNoticeCount'] == 0
+                     and type(notice['beforeList']) is bool and isinstance(notice['text'], str),
+                     'native_result_notice_measurement_required')
+                need(all(row.get('kind') in (*RESULT_FACT_KINDS, 'result-notice', 'other')
+                         and (row.get('cardId') is None
+                              or type(row['cardId']) is int and row['cardId'] in card_ids)
+                         and ('cardId' in row)
+                         and (row['kind'] not in RESULT_FACT_KINDS or row['cardId'] is not None)
+                         and (row['kind'] != 'result-notice' or row['cardId'] is None)
+                         for row in text), 'native_result_fact_identity_required')
+                result_rows = [row for row in text if row['kind'] in RESULT_FACT_KINDS]
+                note_rows = [row for row in text if row['kind'] == 'result-notice']
+                populated = screen == 'results' and not no_result_prices
+                if populated:
+                    bounded = logical_name.startswith('native-results-bounded-')
+                    expected_count = (24 if bounded else 2 if logical_name.startswith(
+                        ('native-budget-results-', 'native-filters-active-')) else 4)
+                    need(len(card_ids) == expected_count
+                         and all(1000 <= card_id < 1024 if bounded else 1 <= card_id <= 4
+                                 for card_id in card_ids), 'native_result_card_scope_required')
+                    if logical_name == f'native-results-{key[0]}-text{key[1]}.png':
+                        need(card_ids == [1, 2, 3, 4], 'native_result_standard_identity_required')
+                    need(notice == {'visibleCount': 1, 'beforeList': True,
+                                    'cardNoticeCount': 0, 'text': RESULT_NOTICE_TEXT}
+                         and len(note_rows) == 1 and note_rows[0]['text'].strip() == RESULT_NOTICE_TEXT,
+                         'native_result_shared_notice_required')
+                    need(len(result_rows) == len(card_ids) * len(RESULT_FACT_KINDS),
+                         'native_result_fact_measurements_required')
+                    for card_id in card_ids:
+                        template = RESULT_FIXTURE_FACTS[(card_id - 1000) % 4 if bounded else card_id - 1]
+                        title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else template[0]
+                        expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
+                            '12 окт · 7 ночей', template[1], template[2], 'FIXTURE TV', 'за 2 взрослых')))
+                        for kind, value in expected.items():
+                            rows = [row for row in result_rows if row['cardId'] == card_id and row['kind'] == kind]
+                            need(len(rows) == 1 and rows[0]['text'].strip() == value,
+                                 'native_result_factual_copy_required:' + kind)
+                else:
+                    need(card_ids == [] and result_rows == [] and note_rows == []
+                         and notice == {'visibleCount': 0, 'beforeList': False,
+                                        'cardNoticeCount': 0, 'text': ''},
+                         'native_result_empty_scope_required')
                 if screen == 'tour':
                     need({'Туристы', 'Туроператор', 'Обязательные доплаты'}
                          <= {row['text'].strip() for row in text},

@@ -221,7 +221,34 @@ class UpdateContracts(unittest.TestCase):
                             'actionWidthRatio': 1 if offer_narrow else 110 / offer_width,
                             'queryNarrow': offer_narrow, 'actionOnOwnRow': offer_narrow,
                             'outside': False} for text in ('Выбрать тур', 'Выбран тур')]
-                    readable_text = [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False, 'overlappingLines': False}]
+                    readable_text = [{'text': 'Fixture condition', 'clipped': False,
+                        'brokenWords': False, 'overlappingLines': False, 'kind': 'other', 'cardId': None}]
+                    result_card_ids = []
+                    result_notice = {'visibleCount': 0, 'beforeList': False, 'cardNoticeCount': 0, 'text': ''}
+                    if side == 'native' and screen == 'results' and not name.startswith((
+                            'native-filter-empty-', 'native-results-loading-', 'native-results-error-',
+                            'native-results-partial-empty-')):
+                        result_card_ids = (list(range(1000, 1024)) if logical_name.startswith('native-results-bounded-')
+                            else [2, 3] if logical_name.startswith('native-budget-results-')
+                            else [1, 4] if logical_name.startswith('native-filters-active-') else [1, 2, 3, 4])
+                        fixture_hotels = [
+                            ('FIXTURE Laguna Beach Resort', 'Стандартный номер', 'Ультра всё включено'),
+                            ('FIXTURE Marina Bay Hotel', 'Стандартный номер', 'Завтраки и ужины'),
+                            ('FIXTURE Seaside Garden Hotel & Residence', 'Стандартный номер', 'Завтраки'),
+                            ('FIXTURE Laguna Collection Premium Resort & Private Villas',
+                             'Вилла с двумя спальнями · свой бассейн', 'Ультра всё включено')]
+                        for card_id in result_card_ids:
+                            bounded = card_id >= 1000
+                            hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
+                            title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
+                            facts = {'result-title': title, 'result-location': 'Турция · Кемер',
+                                'result-date': '12 окт · 7 ночей', 'result-room': hotel[1],
+                                'result-meal': hotel[2], 'result-operator': 'FIXTURE TV', 'result-party': 'за 2 взрослых'}
+                            readable_text.extend({**readable_text[0], 'text': value, 'kind': kind, 'cardId': card_id}
+                                                 for kind, value in facts.items())
+                        result_notice = {'visibleCount': 1, 'beforeList': True, 'cardNoticeCount': 0,
+                            'text': 'Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим цену, наличие и состав пакета, включая обязательные доплаты.'}
+                        readable_text.append({**readable_text[0], 'text': result_notice['text'], 'kind': 'result-notice'})
                     if side == 'native' and screen == 'tour':
                         readable_text.extend({**readable_text[0], 'text': text} for text in (
                             'Туристы', 'Туроператор', 'Обязательные доплаты'))
@@ -240,6 +267,7 @@ class UpdateContracts(unittest.TestCase):
                         'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
                         'calendarFit': calendar_fit, 'summaryFit': summary_fit,
                         'offerActionFit': offer_action_fit,
+                        'resultCardIds': result_card_ids, 'resultNotice': result_notice,
                         'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
                         'readableText': readable_text,
                         'headerFit': {'outside': False, 'overlap': False},
@@ -264,13 +292,28 @@ class UpdateContracts(unittest.TestCase):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', pin):
             return pub.prepare_native_zip(content, self.q, 'd' * 40, pin['source_ZIP_sha256'], self.root / target)
 
+    def assert_evidence_rejected(self, changes):
+        # Exercise rendered proof tampering without repeatedly extracting 855
+        # already-verified payload files; complete ZIP tests retain that boundary.
+        with zipfile.ZipFile(io.BytesIO(self.review_archive())) as archive:
+            original = json.loads(archive.read('evidence/acceptance.json'))
+            class ChangedEvidence:
+                def __init__(self, report): self.report = remote.json_bytes(report)
+                def read(self, name):
+                    return self.report if name == 'evidence/acceptance.json' else archive.read(name)
+                def infolist(self): return archive.infolist()
+            for index, change in enumerate(changes):
+                report = copy.deepcopy(original); change(report)
+                with self.subTest(index=index), self.assertRaises(ValueError):
+                    pub.native_evidence(ChangedEvidence(report), self.q, self.native)
+
     def test_owner_command_has_no_target_or_predecessor_argument(self):
         q = pub.checked_request(self.event, self.env)
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38363323689)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38388948150)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -476,6 +519,72 @@ class UpdateContracts(unittest.TestCase):
                     with self.subTest(capture=prefix, label=label, defect=defect), self.assertRaisesRegex(ValueError, expected):
                         self.read_review(self.review_archive(mutate), f'bad-cost-label-{capture_index}-{label_index}-{defect}')
 
+    def test_result_facts_require_complete_identity_copy_and_readability(self):
+        def frame(report, prefix='native-results-', case=1):
+            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
+        def fact(report, kind, prefix='native-results-', case=1):
+            return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == kind)
+        changes = []
+        for prefix, case in (('native-results-', 1), ('native-short-desktop-results-', 9),
+                             ('native-results-bounded-', 5)):
+            for kind in ('result-title', 'result-location', 'result-date', 'result-room',
+                         'result-meal', 'result-operator', 'result-party'):
+                changes.extend((
+                    lambda r, p=prefix, c=case, k=kind: frame(r, p, c)['readableText'].remove(fact(r, k, p, c)),
+                    lambda r, p=prefix, c=case, k=kind: fact(r, k, p, c).update(kind='other'),
+                    lambda r, p=prefix, c=case, k=kind: fact(r, k, p, c).update(text='Lost factual copy')))
+            for field in ('clipped', 'brokenWords', 'overlappingLines'):
+                changes.append(lambda r, p=prefix, c=case, f=field: fact(r, 'result-title', p, c).update({f: True}))
+        changes.extend((
+            lambda r: frame(r).pop('resultCardIds'),
+            lambda r: frame(r).update(resultCardIds=None),
+            lambda r: frame(r).update(resultCardIds=[True, 2, 3, 4]),
+            lambda r: frame(r).update(resultCardIds=[1.0, 2, 3, 4]),
+            lambda r: frame(r).update(resultCardIds=[1, 2, 3, 3]),
+            lambda r: frame(r).update(resultCardIds=[2, 1, 3, 4]),
+            lambda r: frame(r).update(resultCardIds=[1, 2, 3, 5]),
+            lambda r: frame(r).update(resultCardIds=[]),
+            lambda r: fact(r, 'result-title').pop('kind'),
+            lambda r: fact(r, 'result-title').pop('cardId'),
+            lambda r: fact(r, 'result-title').update(kind='unreviewed-role'),
+            lambda r: fact(r, 'result-title').update(cardId=True),
+            lambda r: fact(r, 'result-title').update(cardId=1.0),
+            lambda r: fact(r, 'result-title').update(cardId=None),
+            lambda r: fact(r, 'result-title').update(cardId=2),
+            lambda r: frame(r)['readableText'].append(copy.deepcopy(fact(r, 'result-title'))),
+            lambda r: frame(r, 'native-results-bounded-', 5)['resultCardIds'].pop(),
+            lambda r: frame(r, 'native-results-bounded-', 5)['resultCardIds'].append(1024)))
+        self.assert_evidence_rejected(changes)
+
+    def test_shared_notice_requires_one_truthful_owner_and_correct_scope(self):
+        def frame(report, prefix='native-results-', case=1):
+            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
+        def note(report, prefix='native-results-', case=1):
+            return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == 'result-notice')
+        changes = []
+        for prefix, case in (('native-results-', 1), ('native-short-desktop-results-', 9)):
+            changes.extend((
+                lambda r, p=prefix, c=case: frame(r, p, c).pop('resultNotice'),
+                lambda r, p=prefix, c=case: frame(r, p, c).update(resultNotice=None),
+                lambda r, p=prefix, c=case: frame(r, p, c)['resultNotice'].update(extra=True),
+                lambda r, p=prefix, c=case: frame(r, p, c)['readableText'].remove(note(r, p, c)),
+                lambda r, p=prefix, c=case: note(r, p, c).update(kind='other'),
+                lambda r, p=prefix, c=case: note(r, p, c).update(cardId=1),
+                lambda r, p=prefix, c=case: note(r, p, c).update(text='Цена уже подтверждена')))
+            for field, value in (('visibleCount', 0), ('visibleCount', 2), ('visibleCount', True),
+                                 ('visibleCount', 1.0), ('beforeList', False), ('beforeList', 1),
+                                 ('cardNoticeCount', 1), ('cardNoticeCount', False),
+                                 ('text', 'Цена подтверждена'), ('text', 'За одного туриста')):
+                changes.append(lambda r, p=prefix, c=case, f=field, v=value: frame(r, p, c)['resultNotice'].update({f: v}))
+            for field in ('clipped', 'brokenWords', 'overlappingLines'):
+                changes.append(lambda r, p=prefix, c=case, f=field: note(r, p, c).update({f: True}))
+        for prefix in ('native-results-loading-', 'native-results-partial-empty-', 'native-filter-empty-', 'native-lead-'):
+            changes.extend((
+                lambda r, p=prefix: frame(r, p).update(resultCardIds=[1]),
+                lambda r, p=prefix: frame(r, p)['resultNotice'].update(visibleCount=1, beforeList=True, text='Unexpected price notice'),
+                lambda r, p=prefix: frame(r, p)['readableText'].append(copy.deepcopy(note(r)))))
+        self.assert_evidence_rejected(changes)
+
     def test_family_and_short_desktop_proof_cannot_be_missing_or_mislabelled(self):
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
@@ -607,7 +716,8 @@ class UpdateContracts(unittest.TestCase):
             '5a84a0d66394116f9845de3565563ce1d025b6bc',
             '75e52f2597172469fbcb6f742dc8c7b5934cd173',
             '660a760d9d0a0c0121d05d53bdc0895689600bc8',
-            '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026'))
+            '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026',
+            'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -641,9 +751,11 @@ class UpdateContracts(unittest.TestCase):
         values = {
             '/git/ref/heads/main': {'object': {'sha': 'f' * 40}},
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
-            '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}},
+            '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': pub.NATIVE_SOURCE_PARENT}]},
+            '/git/commits/' + pub.NATIVE_SOURCE_PARENT: {'tree': {'sha': pub.NATIVE_SOURCE_PARENT_TREE},
+                'parents': [{'sha': 'b' * 40}]},
             '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': 'b' * 40}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 1, 'ahead_by': 1,
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 2, 'ahead_by': 1,
                 'merge_base_commit': {'sha': 'b' * 40}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
@@ -658,10 +770,24 @@ class UpdateContracts(unittest.TestCase):
         q = {'source_sha': 'a' * 40, 'release_sha': 'c' * 40, 'build_run': 123, 'artifact_id': 456}
         self.assertEqual(pub.native_provenance(API(values), q, 'f' * 40), ('d' * 40, 'e' * 64))
         mutations = (
+            ('native_source_parent_pin', '/git/commits/' + 'a' * 40, lambda row: row.update(parents=[])),
+            ('native_source_parent_pin', '/git/commits/' + 'a' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
+            ('native_source_parent_pin', '/git/commits/' + 'a' * 40,
+             lambda row: row['parents'].append({'sha': '0' * 40})),
+            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
+             lambda row: row['tree'].update(sha='0' * 40)),
+            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
+             lambda row: row.update(parents=[{'sha': '0' * 40}])),
+            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
+             lambda row: row['parents'].append({'sha': '0' * 40})),
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=2)),
+             lambda row: row.update(behind_by=1)),
+            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+             lambda row: row.update(behind_by=3)),
+            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+             lambda row: row.update(ahead_by=2)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row['merge_base_commit'].update(sha='0' * 40)),
         )
@@ -669,6 +795,10 @@ class UpdateContracts(unittest.TestCase):
             rows = copy.deepcopy(values); mutate(rows[path])
             with self.subTest(index=i), self.assertRaisesRegex(ValueError, message):
                 pub.native_provenance(API(rows), q, 'f' * 40)
+        rows = copy.deepcopy(values)
+        rows['/git/commits/' + 'a' * 40]['parents'] = [{'sha': '0' * 40}]
+        with self.assertRaisesRegex(ValueError, 'native_source_parent_pin'):
+            pub.native_provenance(API(rows), {**q, 'source_parent': '0' * 40, 'source_commit_count': 1}, 'f' * 40)
 
     def test_only_eight_reviewed_presentation_paths_can_differ(self):
         self.assertEqual(set(remote.SOURCE_CHANGES), {
@@ -721,7 +851,7 @@ class UpdateContracts(unittest.TestCase):
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-             38320934646, 38331033682, 38336349915, 38354248961, 38363323689))
+             38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -776,17 +906,23 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_four_file_delta_and_same_855_paths(self):
+    def test_consumed_cost_label_predecessor_cannot_claim_current_inventory(self):
+        before = {'target': self.digest, 'owner': {'run': 38363323689,
+            'source': '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026',
+            'digest': self.digest, 'status': 'published'}}
+        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
+            remote.predecessor(before)
+
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/tour.js',
             'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/bootstrap.js',
+        for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js', 'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/bridge.js', 'visual-search/native-v2/donor.css', 'prototype-search/data.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
