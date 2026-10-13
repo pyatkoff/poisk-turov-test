@@ -6,6 +6,34 @@ const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators
 const day=i=>new Date(Date.UTC(2026,9,28+i)).toISOString().slice(0,10);
 function fixture(){return Array.from({length:12},(_,i)=>({id:i+1,country:i===11?'9':'4',name:'Hotel '+i,subRegion:i%2?'Кемер':'Анталья',region:'Анталья',resort:'Кемер',stars:i%4+2,rating:i%3?4.8:3.2,beach:i%2?100:null,family:!!(i%2),spa:!!(i%3),amenities:i%2?[{key:'pool'}]:[],offers:Array.from({length:18},(_,j)=>({key:i+':'+j,search:{origin:j===17?'Казань':'Москва',country:j===16?'9':'4'},adults:j===15?3:2,ages:j===14?[0]:j===13?['17',0]:j===12?[17,0]:[0,17],day:day(j%7),nights:j===11?10:7,meal:j%2?'AI':'BB',mealPlanId:j%2?7:3,total:j===0?0:j===1?Infinity:100000+i*100+j*10,operator:j%2?'A':'B',flight:j%2?'charter':'regular'}))}));}
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first);return source.slice(a,b);}
+// Execute the connected reveal owner: initial selection stays visible
+// through late ordinary price notices, until the user takes over the view.
+{
+ const run=(revealSelection,{top=620,bottom=670,missing=false,width=1280}={})=>{
+  const listeners=new Map(),geometry={bottom:400,notice:0},body={scrollTop:97,getBoundingClientRect:()=>({top:100,bottom:geometry.bottom}),addEventListener:(event,fn)=>listeners.set('body:'+event,fn)},modal={addEventListener:(event,fn)=>listeners.set('modal:'+event,fn)};
+  const selected=missing?null:{getBoundingClientRect:()=>({top:top+geometry.notice-body.scrollTop,bottom:bottom+geometry.notice-body.scrollTop})};
+  const draft={from:'2026-10-27',to:'2026-11-02',phase:0};
+  const dateContext={source:'form'};
+  const context={innerWidth:width,modalType:'dates',dateContext,calendarOpeningAnchor:null,calendarMonth:'2026-10-01',dateDraft:draft,$:selector=>selector==='#modal'?modal:selector==='#modal-body'?body:selector.includes('data-date=')?selected:null};
+  vm.createContext(context);vm.runInContext(section(source,'// Initial price notices may change','let dateContext='),context);vm.runInContext(section(source,'function revealCalendarMonth(','function syncCalendarScopeDisclosure('),context);
+  context.revealCalendarMonth(revealSelection);
+  assert.deepEqual(draft,{from:'2026-10-27',to:'2026-11-02',phase:0},'reveal never changes the chosen range');
+  return {context,body,geometry,listeners,get scroll(){return body.scrollTop;},get selected(){return selected?.getBoundingClientRect();}};
+ };
+ const short=run(true);assert(short.selected.top>=100&&short.selected.bottom<=400,'selected departure is visible on initial short-desktop open');
+ short.geometry.bottom-=20;short.context.revealCalendarMonth(true,true);assert(short.selected.bottom<=short.geometry.bottom,'late price footer growth retains the initial visible departure');
+ short.geometry.notice=26;short.context.revealCalendarMonth(true,true);assert(short.selected.bottom<=short.geometry.bottom,'late error notice retains the initial visible departure');
+ const settled=short.scroll;short.context.revealCalendarMonth(true,true);assert.equal(short.scroll,settled,'unchanged geometry does not restart the scroll');
+ for(const event of ['pointerdown','wheel','touchstart','keydown','focusin']){const owned=run(true),scroll=owned.scroll;owned.listeners.get('modal:'+event)();owned.geometry.notice=26;owned.context.revealCalendarMonth(true,true);assert.equal(owned.scroll,scroll,event+' keeps the user view during late prices');}
+ const manual=run(true);manual.body.scrollTop-=80;manual.listeners.get('body:scroll')();const manualScroll=manual.scroll;manual.geometry.notice=26;manual.context.revealCalendarMonth(true,true);assert.equal(manual.scroll,manualScroll,'manual scroll wins over a late response');
+ const chosen=run(true);chosen.context.dateDraft.from='2026-10-28';const chosenScroll=chosen.scroll;chosen.geometry.notice=26;chosen.context.revealCalendarMonth(true,true);assert.equal(chosen.scroll,chosenScroll,'a new selected range disables the old opening anchor');
+ const restored=run(false);restored.body.scrollTop=83;restored.geometry.notice=26;restored.context.revealCalendarMonth(true,true);assert.equal(restored.scroll,83,'history/explicit month scope is never re-anchored by prices');
+ const mobile=run(false,{width:390});mobile.body.scrollTop=83;mobile.context.revealCalendarMonth(true,true);assert.equal(mobile.scroll,83,'mobile keeps its existing month scroll owner');
+ assert.equal(run(false).scroll,0,'explicit month navigation preserves the existing month-top behavior');
+ assert.equal(run(true,{top:220,bottom:270}).scroll,0,'a visible selected date does not cause unnecessary scrolling');
+ assert.equal(run(true,{missing:true}).scroll,0,'missing or disabled date does not invent a selection');
+ console.log('PASS ordinary selected-date reveal: short-desktop initial/late footer/error, user scroll/focus/action ownership, unchanged mobile/history/month scope and exact range retained');
+}
 const facetSection=source=>section(source,source.includes('function facetCountPlan(')?'function facetCountPlan(':'function countFacetOptions(','const hotelCountText=');
 const matchingCountSection=source=>source.includes('function matchingHotelPlan(')?section(source,'function matchingHotelPlan(','// Facet counts'):source.match(/^const countMatchingHotels=[^\n]+/m)[0];
 function make(source,hotels){

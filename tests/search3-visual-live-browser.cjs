@@ -744,6 +744,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
  const receipts=[];
  for(const width of [360,390,430,768,1280]){
   const transport=fixture(),errors=[],forbidden=[],hotelReads=[],hotelReadWaiters=new Map(),releases=[],context=await browser.newContext({viewport:{width,height:650}}),page=await context.newPage();
+  let calendarReadMode=null;
   page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
   page.on('requestfailed',request=>{const read=hotelReads.find(entry=>entry.request===request);if(read){read.failure=request.failure()?.errorText||null;read.failedResolve(read.failure);}});
   try{
@@ -754,7 +755,14 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
     let finished,failedResolve;const read=url.pathname==='/data/hotel-search-v1.php'?{request,query:url.searchParams.get('q'),country:url.searchParams.get('countryId'),held:!!transport.state.hotelLookupGates[url.searchParams.get('countryId')],done:new Promise(resolve=>finished=resolve),failed:new Promise(resolve=>failedResolve=resolve),failedResolve,expectAbort:false,cancelled:false}:null;
     if(read){hotelReads.push(read);hotelReadWaiters.get(request)?.(read);}
-    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}
+    try{
+     const body=request.postData()?JSON.parse(request.postData()):{},calendarMode=calendarReadMode;
+     if(calendarMode&&url.pathname.endsWith('/search3-local-results-read-v1.php')&&(body.params||body.action==='price_calendar')){
+      calendarMode.reads++;await calendarMode.gate;
+      if(calendarMode.fail){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'Controlled calendar read unavailable'})});return;}
+     }
+     const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+    }
     catch(error){
      // Only a deliberately held canonical read cancelled by these native actions
      // may finish without a response. Retain its explicit abort receipt; all
@@ -817,7 +825,41 @@ async function formPickerActionJourney(browser,origin,base,evidence){
     const reset=await target(page.locator('[data-action="reset-form-filters"]'),'form filter reset');await page.locator('[data-action="reset-form-filters"]').press('Enter');assert.equal(await page.locator('#form-filters-summary').textContent(),'Без дополнительных условий');assert.equal(await focused(),'reset-form-filters','keyboard reset retains the same logical control');
     await page.keyboard.press('Tab');assert.equal(await focused(),'apply-form-filters','Tab after reset continues to Apply');await page.keyboard.press('Shift+Tab');assert.equal(await focused(),'reset-form-filters','reverse Tab returns to the reset control');await page.keyboard.press('Enter');assert.equal(await focused(),'reset-form-filters','repeated reset retains focus');
     await page.screenshot({path:path.join(evidence,`form-actions-filters-${width}-${zoom}.png`)});await close('form-filters');
+    let releaseInitialCalendar;
+    if(zoom===100&&width>760){calendarReadMode={gate:new Promise(resolve=>releaseInitialCalendar=resolve),fail:true,reads:0};releases.push(releaseInitialCalendar);}
     await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();let next=null;
+    if(zoom===100&&width>760){
+     // Ordinary initial-open/late-error proof, before any locator could scroll
+     // the day into view. Existing enlarged-text coverage is unchanged.
+     const geometry=()=>page.locator('#date-calendar [data-date="'+trip.from+'"]:not(:disabled)').evaluate(el=>{
+      const day=el.getBoundingClientRect(),body=document.querySelector('#modal-body'),view=body.getBoundingClientRect();
+      const months=[...document.querySelectorAll('#date-calendar .calendar-month')].map(month=>{const title=month.querySelector('h3'),head=title.getBoundingClientRect(),week=month.querySelector('.weekday').getBoundingClientRect(),hit=document.elementFromPoint((head.left+head.right)/2,(head.top+head.bottom)/2);return{month:month.dataset.month,label:title.textContent,top:head.top,bottom:head.bottom,weekdayTop:week.top,weekdayBottom:week.bottom,hit:hit===title||title.contains(hit)};});
+      const navigation=document.querySelector('.calendar-navigation').getBoundingClientRect(),arrows=[...document.querySelectorAll('.calendar-navigation button')].map(button=>{const r=button.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return{action:button.dataset.action,top:r.top,bottom:r.bottom,hit:hit===button||button.contains(hit)};});
+      return{date:el.dataset.date,selected:el.getAttribute('aria-pressed')==='true',top:day.top,bottom:day.bottom,bodyTop:view.top,bodyBottom:view.bottom,scroll:body.scrollTop,viewportWidth:innerWidth,viewportHeight:innerHeight,months,navigation:{top:navigation.top,bottom:navigation.bottom,arrows}};
+     });
+     const monthContext=(box,label)=>{assert.equal(box.months.length,2);assert(box.navigation.top>=box.bodyTop-1&&box.navigation.bottom<=box.bodyBottom+1,label+' retains visible month navigation');assert(box.navigation.arrows.every(button=>button.hit&&button.top>=box.bodyTop-1&&button.bottom<=box.bodyBottom+1),label+' retains reachable month arrows');for(const month of box.months){assert(month.label.includes(month.month.slice(0,4)),label+' shows the exact month year');assert(month.top>=box.navigation.bottom-1&&month.bottom<=box.bodyBottom+1&&month.hit,label+' keeps the month heading visible below navigation');assert(month.weekdayTop>=month.bottom-1&&month.weekdayBottom<=box.bodyBottom+1,label+' keeps weekday labels below their month');}};
+     const visible=(box,label)=>{assert.equal(box.date,trip.from);assert.equal(box.selected,true);monthContext(box,label);assert(box.top>=Math.max(...box.months.map(month=>month.weekdayBottom))-1&&box.bottom<=box.bodyBottom+1,label);};
+     const initialOpen=await geometry();visible(initialOpen,'the initial departure is visible on an ordinary short screen');
+     await page.screenshot({path:path.join(evidence,`calendar-selected-pending-${width}.png`)});
+     releaseInitialCalendar();
+     await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
+     const errorSettled=await geometry();visible(errorSettled,'late price failure keeps the initial departure visible');assert(calendarReadMode.reads>0,'the controlled price failure reached the calendar owner');
+     await page.screenshot({path:path.join(evidence,`calendar-selected-error-${width}.png`)});
+     await close('dates');
+     let releaseManualCalendar;calendarReadMode={gate:new Promise(resolve=>releaseManualCalendar=resolve),fail:true,reads:0};releases.push(releaseManualCalendar);
+     await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();
+     const beforeManual=await geometry(),manualScroll=await page.locator('#modal-body').evaluate(el=>{el.scrollTop=Math.max(0,el.scrollTop-60);return el.scrollTop;});
+     assert(manualScroll<beforeManual.scroll-1,'manual scrolling moves away from the initial anchor');
+     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));releaseManualCalendar();
+     await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
+     const manualSettled=await geometry();assert.equal(manualSettled.scroll,manualScroll,'late prices preserve the user scroll');monthContext(manualSettled,'manual scroll');
+     await page.screenshot({path:path.join(evidence,`calendar-selected-manual-${width}.png`)});await close('dates');calendarReadMode=null;
+     await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();
+     await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false');
+     const complete=await geometry();visible(complete,'settled prices keep the departure visible before explicit month navigation');
+     await page.screenshot({path:path.join(evidence,`calendar-selected-visible-${width}.png`)});
+     fs.writeFileSync(path.join(evidence,`calendar-selected-visible-${width}.json`),JSON.stringify({initialOpen,errorSettled,manualSettled,manualScroll,complete,fixture_only:true,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+    }
     if(await page.locator('#modal [data-action="month-next"]').isVisible()){
      const month=await page.locator('.calendar-month h3').first().textContent();next=await target(page.locator('#modal [data-action="month-next"]'),'calendar next month');await page.locator('#modal [data-action="month-next"]').press('Enter');const advanced=await page.locator('.calendar-month h3').first().textContent();assert.notEqual(advanced,month,'one Enter advances the displayed month');assert.equal(await focused(),'month-next','next month retains keyboard focus');
      await page.keyboard.press('Enter');assert.notEqual(await page.locator('.calendar-month h3').first().textContent(),advanced,'a second Enter advances the next month');assert.equal(await focused(),'month-next');

@@ -164,7 +164,19 @@ add('facet without host',{type:'change',target:{dataset:{filter:'resorts'}},setu
 // openHotel belonged to the retired inline result expansion. It never changed
 // connected markup. Project only that discarded field from each state snapshot;
 // all 153 retained actions, collaborator calls, DOM and ordering still compare.
-function records(source){return scenarios.map(s=>{const result=characterize(source,s);delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
+function records(source){return scenarios.map(s=>{const result=characterize(source,s);
+ // Explicit month navigation now resets its new month independently of focus.
+ // Assert the exact added call and unchanged state, then project only that call
+ // to retain the historical observations for every other dispatcher boundary.
+ if(['click:month-prev','click:month-next'].includes(s.name)&&source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();')){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['renderDateCalendar'],['revealCalendarMonth'],['loadCalendarPrices'],['rememberUIRoute']],s.name+' reset belongs between render and loading');
+  const reset=result.checkpoints.findIndex(c=>c.name==='revealCalendarMonth');
+  assert(reset>0,'month reset checkpoint exists');
+  assert.deepEqual({...result.checkpoints[reset],name:'renderDateCalendar'},result.checkpoints[reset-1],'month reset preserves the exact draft/state');
+  result.trace.splice(2,1);result.checkpoints.splice(reset,1);
+ }
+ delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
+assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
