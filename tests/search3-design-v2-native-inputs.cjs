@@ -127,6 +127,30 @@ async function formFocusChecks(){
   }finally{owner.destroy();win.close();}
  }
 }
+async function popupSubmitChecks(){
+ for(const mobile of [false,true]){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);const intents=[];
+  const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle'};},async search(s,f,cb){intents.push(s);const result={hotels:[],status:'complete',searchGeneration:intents.length};cb(result);return result;},async regions(){return[];}};
+  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click(),send=()=>el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true})),settle=()=>new Promise(r=>win.setTimeout(r,0));
+  try{
+   await owner.ready;const submit=el('[type="submit"]'),home=submit.parentElement,popup=el('[data-native-form-popup]');
+   tap('[data-search-nights-toggle]');assert(popup.open);assert.strictEqual(submit.closest('dialog'),popup);assert.equal(el('[data-search-form]').querySelectorAll('[type="submit"]').length,1,'Popup reuses the one canonical Find control');
+   tap('[data-native-night="10"]');popup.dispatchEvent(new win.Event('cancel',{cancelable:true}));assert(!popup.open);assert.equal(el('[data-search-night-value]').textContent,'7 ночей');assert.strictEqual(submit.parentElement,home);assert.strictEqual(win.document.activeElement,el('[data-search-nights-toggle]'));
+   tap('[data-search-date-toggle]');tap('[data-calendar-boundary="to"]');tap('[data-native-date="2026-10-30"]');send();await settle();
+   assert.equal(intents.length,1,'Find applies a valid open calendar and starts exactly once');assert.equal(intents[0].from,trip.from);assert.equal(intents[0].to,'2026-10-30');assert(!popup.open);assert.strictEqual(submit.parentElement,home);
+   tap('[data-action="search"]');tap('[data-search-travelers-toggle]');tap('[data-search-add-child]');send();await settle();assert.equal(intents.length,1,'Incomplete child age blocks Find locally');assert(popup.open);assert.strictEqual(win.document.activeElement,el('[data-native-age="0"]'));assert.match(el('[data-search-family-status]').textContent,/Укажите возраст ребёнка 1/);
+   const age=el('[data-native-age="0"]');age.value='7';age.dispatchEvent(new win.Event('change',{bubbles:true}));send();await settle();assert.equal(intents.length,2);assert.deepEqual(Array.from(intents[1].ages),[7]);assert(!popup.open);
+   tap('[data-action="search"]');tap('[data-search-date-toggle]');tap('[data-calendar-boundary="to"]');tap('[data-native-date="2026-10-31"]');send();await settle();assert.equal(intents.length,2,'Date change still requires age review before a supplier start');assert(popup.open);assert.equal(popup.dataset.editor,'travelers');assert.equal(el('[data-native-age="0"]').value,'7');assert.match(el('[data-search-family-status]').textContent,/Подтвердите возраста/);
+   send();await settle();assert.equal(intents.length,3,'Find from the age-review popup confirms retained ages and starts once');assert.equal(intents[2].to,trip.to);assert.deepEqual(Array.from(intents[2].ages),[7]);
+   tap('[data-action="search"]');tap('[data-conditions-open="budget"]');const cap=el('[data-search-budget="max"]');cap.value='abc';cap.dispatchEvent(new win.Event('input',{bubbles:true}));send();await settle();assert.equal(intents.length,3);assert(popup.open);assert.equal(cap.value,'abc');assert.strictEqual(win.document.activeElement,cap);assert(!el('[data-search-budget-error]').hidden);
+   cap.value='100000';cap.dispatchEvent(new win.Event('input',{bubbles:true}));const min=el('[data-search-budget="min"]');min.value='200000';min.dispatchEvent(new win.Event('input',{bubbles:true}));submit.focus();send();await settle();assert.equal(intents.length,3);assert.strictEqual(win.document.activeElement,cap,'Reversed numeric budget focuses its upper bound');assert.equal(min.value,'200000');assert.equal(cap.value,'100000');tap('[data-conditions-cancel="budget"]');
+   tap('[data-search-destination-toggle]');await settle();tap('[data-native-destination="country"][data-native-destination-id="8"]');send();await settle();assert.equal(intents.length,3,'Find does not silently accept a pending destination replacement');assert(!el('[data-destination-confirm]').hidden);assert.strictEqual(win.document.activeElement,el('[data-destination-keep]'));tap('[data-destination-cancel]');
+   owner.destroy();assert.strictEqual(submit.parentElement,home);assert.equal(product.querySelector('dialog'),null,'Responsive teardown removes the modal and returns the original fields');
+  }finally{owner.destroy();win.close();}
+ }
+}
 async function familyCopyChecks(){
  // Literal language expectations keep nominative summaries separate from prices after «за».
  const adultSummary=['','1 взрослый','2 взрослых','3 взрослых','4 взрослых','5 взрослых','6 взрослых'];
@@ -178,7 +202,7 @@ async function familyCopyChecks(){
  }finally{owner.destroy();win.close();}
 }
 (async()=>{
- await mounted.ready;await destinationFocusChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
+ await mounted.ready;await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');
  click('[data-native-night="14"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'14','second tap creates range from first tap');

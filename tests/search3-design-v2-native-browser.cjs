@@ -187,7 +187,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
       return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
-    const buttons=[...root.querySelectorAll('button.q8c2,[data-destination-keep],[data-destination-cancel]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const buttons=[...root.querySelectorAll('button.q8c2,[data-destination-keep],[data-destination-cancel],[data-search-night]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,clipped=false;
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;}
       return{text:node.textContent,clipped};
@@ -221,7 +221,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       ['.st-conditions-date','result-date'],['.st-conditions-room','result-room'],
       ['.st-conditions-meal','result-meal'],['.st-conditions-operator','result-operator'],
       ['.st-price-caption','result-party']];
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status],[data-destination-cancel],[data-destination-confirm-title],[data-destination-confirm-copy],[data-destination-keep],[data-destination-replace]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-night],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status],[data-destination-cancel],[data-destination-confirm-title],[data-destination-confirm-copy],[data-destination-keep],[data-destination-replace]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -230,12 +230,20 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
           if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
           // Glyph ink may extend vertically beyond its line box without clipping.
           // Vertical bounds matter only at an ancestor that actually clips paint.
-          for(let ancestor=node;ancestor&&root.contains(ancestor);ancestor=ancestor.parentElement){const style=getComputedStyle(ancestor),bounds=ancestor.getBoundingClientRect();if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)&&(rect.top<bounds.top-1||rect.bottom>bounds.bottom+1))clipped=true;}
+          const modal=node.closest('dialog:modal');
+          for(let ancestor=node;ancestor&&root.contains(ancestor);ancestor=ancestor.parentElement){
+            const style=getComputedStyle(ancestor),bounds=ancestor.getBoundingClientRect();
+            // Modal content can be reached by its own vertical scroll. The
+            // browser's top layer is not clipped by the underlying form/stage.
+            if(modal&&ancestor.matches('[data-native-popup-panel]')&&/^(auto|scroll)$/.test(style.overflowY)&&ancestor.scrollHeight>ancestor.clientHeight+1)break;
+            if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)&&(rect.top<bounds.top-1||rect.bottom>bounds.bottom+1))clipped=true;
+            if(ancestor===modal)break;
+          }
         }
         for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
       }
       const card=node.closest('.st-hotel-card');
-      const kind=card?resultKinds.find(([selector])=>node.matches(selector))?.[1]||'other':node.matches('.st-results-note > span')?'result-notice':'other';
+      const kind=node.matches('[data-search-night]')?'night-preset':card?resultKinds.find(([selector])=>node.matches(selector))?.[1]||'other':node.matches('.st-results-note > span')?'result-notice':'other';
       const cardId=card?.hasAttribute('data-hotel-card')?Number(card.dataset.hotelCard):null;
       return{text:node.textContent,clipped,brokenWords,overlappingLines,kind,cardId};
     });
@@ -279,13 +287,16 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         queryNarrow:containerBounds.width<=fontSize*22+1,actionOnOwnRow:action.top>=price.bottom-1,
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
+    const popup=root.querySelector('[data-native-form-popup][open]');let popupFit=null;
+    if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),find=popup.querySelector('[type="submit"]'),action=find.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,findVisible:action.top>=0&&action.bottom<=innerHeight,findEnabled:!find.disabled,findHeight:action.height,submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
-      calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
+      popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
+    if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
     assert.ok(cardIds.every(id=>Number.isInteger(id)&&id>0),'Every measured result card retains its exact hotel ID');
     assert.equal(new Set(cardIds).size,cardIds.length,'Measured result card identities are unique');
@@ -456,6 +467,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Tab continues to the next night after choosing');
         await page.keyboard.press('Enter');
         assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Keyboard range endpoint retains focus');
+        await capture(page,'native',width,percent,'popup-nights',row,false);
         await page.keyboard.press('Escape');
         assert.equal(await product.locator('[data-search-nights-toggle]').evaluate(node=>node===document.activeElement),true,'Escape restores focus to the night opener');
         assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей','Keyboard Cancel retains the original duration');
@@ -513,8 +525,15 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.familyAges=[0,7,17];row.proof.familyExtraSearches=0;row.proof.familyAgeReviewRetained=true;
         row.proof.familyInputFocusRetained=true;
 
+        const formBefore=await product.locator('[data-search-form]').boundingBox();
+        await product.locator('[data-search-date-toggle]').click();
+        const formAfter=await product.locator('[data-search-form]').boundingBox();
+        assert(Math.abs(formAfter.height-formBefore.height)<1.1,'Opening a popup does not expand the form');
+        await capture(page,'native',width,percent,'popup-calendar',row,false);
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-native-form-popup]').isVisible(),false,'Find applies the valid popup selection and closes it');
+        row.proof.formPopupSingleSubmitRetained=true;
         await product.locator('.st-hotel-card').nth(3).waitFor();
         assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
