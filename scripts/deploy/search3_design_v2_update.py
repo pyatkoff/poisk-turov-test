@@ -305,12 +305,15 @@ def native_evidence(archive, request, native):
                 terminal_state = frame.get('terminalState')
                 if name.startswith('native-terminal-'):
                     status = name.split('-')[2]
-                    message = ('' if status == 'complete' else 'Поиск завершён не полностью.'
+                    message = ('' if status == 'complete' else 'API HTTP 403'
                                if status == 'partial' else
                                'Не удалось завершить поиск. Полученные предложения сохранены.')
+                    alert = ('Показаны предложения: ANEX. Не все источники завершили поиск: '
+                             'Tourvisor и Andromeda.' if status == 'partial' else
+                             message or 'Поиск завершён не полностью.')
                     expected = {'status': status, 'message': message, 'searchGeneration': 1,
                         'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
-                        'alertText': message or 'Поиск завершён не полностью.',
+                        'alertText': alert,
                         'ownerSHA256': native['files']['bridge.js']}
                     need(isinstance(terminal_state, dict) and set(terminal_state) == set(expected)
                          and all(type(terminal_state.get(k)) is type(v)
