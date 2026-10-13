@@ -227,8 +227,8 @@ async function capture(page,side,width,percent,screen,row) {
     const headerFit={outside:headerItems.some(rect=>rect.left<headerBounds.left-1||rect.right>headerBounds.right+1||rect.top<headerBounds.top-1||rect.bottom>headerBounds.bottom+1),overlap:headerItems.some((a,i)=>headerItems.slice(i+1).some(b=>Math.min(a.right,b.right)>Math.max(a.left,b.left)+1&&Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1))};
     const sort=root.querySelector('.st-sort');let sortFit=null;
     if(sort&&!sort.closest('[hidden]')&&sort.getBoundingClientRect().width>0){const style=getComputedStyle(sort),context=document.createElement('canvas').getContext('2d');context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;const text=sort.selectedOptions[0]?.textContent||'',available=sort.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-20;sortFit={text,available,textWidth:context.measureText(text).width};}
-    const calendar=root.querySelector('.q8c9');let calendarFit=null;
-    if(calendar&&!calendar.closest('[hidden]')&&calendar.getBoundingClientRect().width>0){
+    const calendar=root.querySelector('.q8c9'),calendarPanel=calendar?.querySelector('.st-pc-panel');let calendarFit=null;
+    if(calendar&&!calendar.closest('[hidden]')&&calendar.getBoundingClientRect().width>0&&calendarPanel&&!calendarPanel.hidden&&calendarPanel.getBoundingClientRect().width>0){
       const bounds=calendar.getBoundingClientRect(),foot=calendar.querySelector('.st-pc-foot'),pager=calendar.querySelector('.st-pc-pager');
       const buttons=[...calendar.querySelectorAll('.st-pc-page')].map(node=>{const rect=node.getBoundingClientRect();return{disabled:node.disabled,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height};});
       const pagerBounds=pager?.getBoundingClientRect();
