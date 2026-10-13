@@ -65,11 +65,16 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.locator('#offer-sort').selectOption('date');
      for(const [name,value] of Object.entries({room:'ANEX CONCRETE',meal:'Всё включено',departure:trip.from,flight:'charter'}))await page.locator('#offer-'+name).selectOption(value);
      await page.locator('[data-action="group-more"]').click();
-     // Capture the exact position after the real offer action is focused, so
-     // browser scrolling for a click is included in the expected return state.
-     const offer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();await offer.focus();
-     returnState=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
-     await offer.click();
+     // group-more scrolls to its new rows. Position the exact existing row
+     // before choosing it, then capture the real click before the source handler.
+     await page.evaluate(()=>document.fonts.ready);
+     const offer=page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').first();
+     await offer.evaluate(el=>el.closest('.offer').scrollIntoView({block:'center',behavior:'instant'}));await offer.focus();await settleSessionViewport(page);
+     const preClick=await offer.evaluate(el=>{const b=document.querySelector('#modal-body'),r=el.closest('.offer').getBoundingClientRect(),v=b.getBoundingClientRect();return{scroll:b.scrollTop,key:el.dataset.key,rowTop:r.top,rowBottom:r.bottom,bodyTop:v.top,bodyBottom:v.bottom};});
+     assert(preClick.rowTop>=preClick.bodyTop-1&&preClick.rowBottom<=preClick.bodyBottom+1,'the exact return offer is fully visible before choosing it');
+     await offer.evaluate((el,key)=>{window.__selectedSessionReturn=null;el.addEventListener('click',()=>{const b=document.querySelector('#modal-body');window.__selectedSessionReturn={route:structuredClone(history.state[key]),focus:el.dataset.key,scroll:b.scrollTop,top:el.getBoundingClientRect().top-b.getBoundingClientRect().top};},{capture:true,once:true});},historyKey);
+     await offer.click();returnState=await page.evaluate(()=>window.__selectedSessionReturn);
+     assert(returnState&&returnState.focus===preClick.key,'baseline is the exact user choice before source navigation');returnState.preClick=preClick;
     }else await page.locator('[data-action="select-anex-tour"]').waitFor();
     await page.locator('[data-action="select-anex-tour"]').click();
     if(mode==='editing')await page.locator('[data-action="anex-package-calculate"]:enabled').click();
@@ -98,10 +103,12 @@ module.exports=async function({browser,origin,base,evidence}){
      for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))await page.locator('[name="'+name+'"]').fill(value);
      await page.locator('[name="consent"]').check();
      if(mode==='return'){
-      const before=calls();await page.locator('#modal-body [data-action="all-offers"]').click();await page.locator('#offer-room').waitFor();
-      const restored=await page.evaluate(key=>({route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:document.querySelector('#modal-body').scrollTop}),historyKey);
+      const before=calls();await page.locator('#modal-body [data-action="all-offers"]').click();await page.locator('#offer-room').waitFor();await settleSessionViewport(page);
+      const restored=await page.evaluate(key=>{const b=document.querySelector('#modal-body');return{route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:b.scrollTop,top:document.activeElement.getBoundingClientRect().top-b.getBoundingClientRect().top};},historyKey);
       for(const field of ['id','departure','flight','room','meal','sort','open','limits','filtersOpen'])assert.deepEqual(restored.route[field],returnState.route[field],'same-hotel application return preserves '+field);
       assert.equal(restored.scroll,returnState.scroll,'same-hotel return preserves scroll');assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');
+      assert(Math.abs(restored.top-returnState.top)<=1,'same-hotel return preserves the exact chosen action position');
+      fs.writeFileSync(path.join(evidence,'selected-session-return-anchor-'+width+'.json'),JSON.stringify({beforeClick:returnState.preClick,actualChoice:returnState,returned:restored,compiled:true,physical_device:false},null,2)+'\n');
       assert.equal(calls(),before,'application return uses retained offers');
       await page.screenshot({path:path.join(evidence,'selected-session-return-'+width+'.png')});
       await page.locator('#modal-back').click();await page.locator('#prototype-lead-form').waitFor();
