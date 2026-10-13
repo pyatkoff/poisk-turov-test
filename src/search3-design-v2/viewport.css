@@ -158,6 +158,20 @@ body { margin: 0; padding: 0; }
   word-break: normal;
   line-height: 1.35;
 }
+/* Keep the factual calendar note and both paging actions inside the calendar
+   when enlarged text no longer leaves enough room for a single row. Normal
+   mobile text retains the donor's one-line composition; enlarged text wraps
+   the note above the same controls instead of clipping the next-page action. */
+#design-v2-native-root #b4 .st-pc-foot {
+  flex-wrap: wrap;
+}
+#design-v2-native-root #b4 .st-pc-foot > span {
+  flex: 1 1 18em;
+  min-width: 0;
+}
+#design-v2-native-root #b4 .st-pc-foot .st-pc-pager {
+  margin-left: auto;
+}
 /* A failed search status needs room without squeezing the selected sort label. */
 #design-v2-native-root #b4 .st-mobile.st-result-unavailable .st-toolbar > div:first-child {
   grid-column: 1 / 3;
