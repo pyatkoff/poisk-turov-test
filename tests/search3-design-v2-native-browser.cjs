@@ -187,7 +187,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
       return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
-    const buttons=[...root.querySelectorAll('button.q8c2')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const buttons=[...root.querySelectorAll('button.q8c2,[data-destination-keep],[data-destination-cancel]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,clipped=false;
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){const range=document.createRange();range.selectNodeContents(text);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&(rect.left<box.left-1||rect.right>box.right+1||rect.top<box.top-1||rect.bottom>box.bottom+1))clipped=true;}
       return{text:node.textContent,clipped};
@@ -221,7 +221,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       ['.st-conditions-date','result-date'],['.st-conditions-room','result-room'],
       ['.st-conditions-meal','result-meal'],['.st-conditions-operator','result-operator'],
       ['.st-price-caption','result-party']];
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status],[data-destination-cancel],[data-destination-confirm-title],[data-destination-confirm-copy],[data-destination-keep],[data-destination-replace]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
@@ -258,6 +258,15 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         pager:pagerBounds?{left:pagerBounds.left,right:pagerBounds.right,top:pagerBounds.top,bottom:pagerBounds.bottom}:null,buttons,
         clipped:Boolean(pagerBounds&&(pagerBounds.left<bounds.left-1||pagerBounds.right>bounds.right+1)||buttons.some(rect=>rect.left<bounds.left-1||rect.right>bounds.right+1)||foot&&foot.scrollWidth>foot.clientWidth+1)};
     }
+    const decision=root.querySelector('[data-destination-confirm]');let destinationFit=null;
+    if(decision&&visible(decision)){
+      const bounds=decision.getBoundingClientRect(),style=getComputedStyle(decision),fontSize=parseFloat(style.fontSize),available=decision.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+      const actions=[...decision.querySelectorAll('[data-destination-keep],[data-destination-replace]')].map(node=>{const rect=node.getBoundingClientRect();return{text:node.textContent.trim(),left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height,disabled:node.disabled};});
+      destinationFit={available,fontSize,queryNarrow:available<=fontSize*18+1,actions,
+        stacked:actions.length===2&&actions[1].top>=actions[0].bottom-1,
+        outside:actions.some(rect=>rect.left<bounds.left-1||rect.right>bounds.right+1),
+        overlap:actions.length===2&&Math.min(actions[0].right,actions[1].right)>Math.max(actions[0].left,actions[1].left)+1&&Math.min(actions[0].bottom,actions[1].bottom)>Math.max(actions[0].top,actions[1].top)+1};
+    }
     const summaryFit=[...root.querySelectorAll('.st-tour-hotel,.st-quick-context')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
       const bounds=node.getBoundingClientRect(),image=node.firstElementChild?.getBoundingClientRect(),copy=node.lastElementChild?.getBoundingClientRect(),fontSize=parseFloat(getComputedStyle(node).fontSize);
       return{className:node.className,width:bounds.width,fontSize,imageWidth:image?.width||0,copyWidth:copy?.width||0,copyWidthRatio:copy?.width/bounds.width||0,
@@ -271,11 +280,11 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
-      calendarFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
+      calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
     assert.ok(cardIds.every(id=>Number.isInteger(id)&&id>0),'Every measured result card retains its exact hotel ID');
@@ -314,6 +323,14 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   if(side==='native'&&measurements.budgetInputs.some(input=>input.clipped))report.failures.push({width,percent,screen,error:'Budget number or unlimited placeholder is clipped',details:measurements.budgetInputs.filter(input=>input.clipped)});
   if(side==='native'&&width===1280&&percent===100&&measurements.screen==='results'&&measurements.budgetColumns!==2)report.failures.push({width,percent,screen,error:'Normal desktop budget must retain the donor two-column composition'});
   if(side==='native'&&measurements.readableText.some(node=>node.clipped||node.brokenWords||node.overlappingLines))report.failures.push({width,percent,screen,error:'Condition, navigation or flight text clips, overlaps lines or splits inside a word',details:measurements.readableText.filter(node=>node.clipped||node.brokenWords||node.overlappingLines)});
+  if(side==='native'&&logicalScreen==='destination-confirm'){
+    const fit=measurements.destinationFit;
+    assert.ok(fit,'Country replacement frame must measure its visible decisions');
+    assert.deepEqual(fit.actions.map(action=>action.text),['Оставить','Заменить']);
+    assert.equal(measurements.readableText.filter(item=>['Оставить','Заменить'].includes(item.text.trim())).length,2,'Both complete decision labels receive readable text measurements');
+    if(fit.outside||fit.overlap||fit.actions.some(action=>action.height<44||action.disabled)||fit.queryNarrow&&!fit.stacked)report.failures.push({width,percent,screen,error:'Country replacement decisions clip, overlap or fail accessible narrow reflow',details:fit});
+    if(percent===100&&fit.stacked)report.failures.push({width,percent,screen,error:'Ordinary country replacement lost its donor side-by-side decisions',details:fit});
+  }
   if(side==='native'&&measurements.calendarFit?.clipped)report.failures.push({width,percent,screen,error:'Calendar note or paging actions escape the calendar',details:measurements.calendarFit});
   if(side==='native'&&percent===200&&measurements.summaryFit.some(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94)))report.failures.push({width,percent,screen,error:'Enlarged selected-hotel summary did not promote its factual copy to the full row',details:measurements.summaryFit.filter(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94))});
   if(side==='native'&&percent===100&&width===390&&measurements.summaryFit.some(item=>item.queryNarrow||item.stacked))report.failures.push({width,percent,screen,error:'Ordinary mobile selected-hotel summary lost the donor side-by-side composition',details:measurements.summaryFit});
@@ -395,6 +412,32 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Passive form hydration starts no supplier fixture');
         row.proof.passiveHydrationSearches=0;
         await capture(page,'native',width,percent,'search',row);await referenceFrame(reference,width,percent,'search',row);
+        await product.locator('[data-search-destination-toggle]').click();
+        const sameCountry=product.locator('[data-native-destination="country"][data-native-destination-id="4"]');
+        await sameCountry.press('Enter');
+        assert.equal(await sameCountry.evaluate(node=>node===document.activeElement),true,'Same-country choice survives its rendered dictionary');
+        await capture(page,'native',width,percent,'destination-choice',row,false);
+        assert.equal(await sameCountry.evaluate(node=>node===document.activeElement),true,'Direction choice capture retains keyboard focus');
+        await page.keyboard.press('Escape');
+        assert.equal(await product.locator('[data-search-destination-toggle]').evaluate(node=>node===document.activeElement),true,'Direction Escape restores its opener');
+        await product.locator('[data-search-destination-toggle]').click();
+        const otherCountry=product.locator('[data-native-destination="country"][data-native-destination-id="1"]');
+        await otherCountry.press('Enter');
+        assert.equal(await product.locator('[data-destination-keep]').evaluate(node=>node===document.activeElement),true,'Country replacement focuses its decision');
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Турция','Unconfirmed choice leaves the original country');
+        await capture(page,'native',width,percent,'destination-confirm',row,false);
+        assert.equal(await product.locator('[data-destination-keep]').evaluate(node=>node===document.activeElement),true,'Country decision capture retains keyboard focus');
+        await product.locator('[data-destination-keep]').press('Enter');
+        assert.equal(await otherCountry.evaluate(node=>node===document.activeElement),true,'Keep restores the rejected country choice');
+        await otherCountry.press('Enter');await product.locator('[data-destination-replace]').press('Enter');
+        assert.equal(await otherCountry.evaluate(node=>node===document.activeElement),true,'Accepted country remains focused after dictionary refresh');
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Египет');
+        await page.keyboard.press('Escape');
+        assert.equal(await product.locator('[data-search-destination-toggle]').evaluate(node=>node===document.activeElement),true);
+        assert.equal(await product.locator('[data-destination-country]').innerText(),'Турция','Escape discards the replacement draft');
+        assert.equal(await product.locator('[data-destination-summary]').innerText(),'Вся страна');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Direction choices never initiate a supplier search');
+        row.proof.destinationKeyboardFocusRetained=true;
         if(percent===200&&(width===390||width===430)){
           const overlapProof=await page.evaluate(()=>{
             const caption=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]')).querySelector('.st-origin-field > span');

@@ -380,8 +380,14 @@
     }
     function destinationSummary(){const ids=draftFilters.hotelIds?.length?draftFilters.hotelIds:draftFilters.hotelId?[draftFilters.hotelId]:[];return ids.length?ids.map(id=>destinationHotels.get(id)?.name||state.hotels.find(h=>h.id===id)?.name||'Выбранный отель').join(', '):draftFilters.resorts.length?draftFilters.resorts.join(', '):'Вся страна';}
     const normalizeQuery=value=>String(value||'').toLocaleLowerCase('ru').replace(/ё/g,'е').trim();
+    function focusDestinationChoice(choice){
+      ($$('[data-native-destination]').find(node=>node.dataset.nativeDestination===choice.kind&&node.dataset.nativeDestinationId===String(choice.id))||$('[data-destination-query]')).focus({preventScroll:true});
+    }
     function renderDestination(){
       if(!draft)return;const q=normalizeQuery($('[data-destination-query]').value),matches=value=>!q||normalizeQuery(value).includes(q);
+      const active=window.document.activeElement;
+      const focusedChoice=active?.dataset.nativeDestination?{kind:active.dataset.nativeDestination,id:active.dataset.nativeDestinationId}:null;
+      const focusedChip=active?.dataset.nativeDestinationRemove?{kind:active.dataset.nativeDestinationRemove,value:active.dataset.nativeDestinationValue,index:$$('[data-native-destination-remove]').indexOf(active)}:null;
       const selectedIds=draftFilters.hotelIds?.length?draftFilters.hotelIds:draftFilters.hotelId?[draftFilters.hotelId]:[];
       const regionRows=regionCache.get(String(draft.country))||[];
       const groups=[{label:'Страны',rows:dictionaries.countries.filter(c=>matches(c.name)).map(c=>({kind:'country',id:String(c.id),name:c.name,detail:'Страна',selected:String(c.id)===String(draft.country)&&!draftFilters.resorts.length&&!selectedIds.length}))},{label:'Курорты',rows:regionRows.filter(r=>matches(r.name+' '+countryName(draft.country))).map(r=>({kind:'resort',id:r.id,name:r.name,detail:'Курорт · '+countryName(draft.country),selected:draftFilters.resorts.includes(r.name)}))},{label:'Отели',rows:destinationRows.filter(h=>matches(h.name)).map(h=>({kind:'hotel',id:h.id,name:h.name,detail:['Отель',h.subRegion||h.region||h.resort,countryName(draft.country)].filter(Boolean).join(' · '),selected:selectedIds.includes(h.id)}))}];
@@ -393,6 +399,8 @@
       $('[data-destination-confirm]').hidden=!destinationPending;$('[data-destination-apply]').disabled=!!destinationPending;
       if(destinationPending){text('[data-destination-confirm-title]',destinationPending.kind==='country'?'Заменить направление?':'Заменить уточнения?');text('[data-destination-confirm-copy]','Сейчас: '+countryName(draft.country)+' · '+destinationSummary()+'. Новый выбор: '+destinationPending.name+'. Прежние уточнения будут заменены.');}
       redrawIcons();
+      if(focusedChoice){if(destinationPending)$('[data-destination-keep]').focus();else focusDestinationChoice(focusedChoice);}
+      if(focusedChip){const chips=$$('[data-native-destination-remove]');(chips.find(node=>node.dataset.nativeDestinationRemove===focusedChip.kind&&node.dataset.nativeDestinationValue===focusedChip.value)||chips[Math.min(focusedChip.index,chips.length-1)]||$('[data-destination-all]')).focus();}
     }
     async function loadDestination(){
       const epoch=++destinationEpoch,country=String(draft.country),query=$('[data-destination-query]').value.trim();destinationController?.abort();destinationController=new AbortController();const signal=destinationController.signal;
@@ -412,6 +420,7 @@
       if(choice.kind==='resort'){draftFilters.hotelIds=[];draftFilters.hotelId=0;draftFilters.resorts=draftFilters.resorts.includes(choice.name)?draftFilters.resorts.filter(x=>x!==choice.name):[...draftFilters.resorts,choice.name];}
       if(choice.kind==='hotel'){draftFilters.resorts=[];draftFilters.hotelId=choice.id;draftFilters.hotelIds=[choice.id];}
       renderSearch();
+      if(confirmed)focusDestinationChoice(choice);
     }
     function openEditor(name,opener){if(editor)closeEditor(true);editorSnapshot={draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),agesReviewNeeded};editor=name;editorOpener=opener||null;nightAnchor=null;nightError='';calendarMonth=firstMonth(draft.from);calendarBoundary='from';calendarError='';destinationPending=null;renderSearch();if(name==='destination'){loadDestination();$('[data-destination-query]').focus();}}
     function validateBudget(){
@@ -486,7 +495,7 @@
       if(d.nativeDate){if(calendarBoundary==='from'){draft.from=draft.to=d.nativeDate;calendarBoundary='to';calendarError='';}else{const invalid=dateError(draft.from,d.nativeDate);if(invalid)calendarError=invalid;else{draft.to=d.nativeDate;calendarError='';}}renderDates();$('[data-native-date="'+d.nativeDate+'"]').focus();return;}
       if(d.nativeDestination){const kind=d.nativeDestination,id=d.nativeDestinationId;const row=kind==='country'?dictionaries.countries.find(c=>String(c.id)===id):kind==='resort'?(regionCache.get(String(draft.country))||[]).find(r=>String(r.id)===id):destinationRows.find(h=>String(h.id)===id);if(row)selectDestination({kind,id:kind==='hotel'?Number(id):id,name:row.name});return;}
       if(button.hasAttribute('data-destination-replace')){if(destinationPending)selectDestination(destinationPending,true);return;}
-      if(button.hasAttribute('data-destination-keep')){destinationPending=null;renderDestination();return;}
+      if(button.hasAttribute('data-destination-keep')){const choice=destinationPending;destinationPending=null;renderDestination();if(choice)focusDestinationChoice(choice);return;}
       if(button.hasAttribute('data-destination-clear')){$('[data-destination-query]').value='';loadDestination();$('[data-destination-query]').focus();return;}
       if(button.hasAttribute('data-destination-all')){draftFilters.resorts=[];draftFilters.hotelIds=[];draftFilters.hotelId=0;destinationPending=null;renderSearch();return;}
       if(d.nativeDestinationRemove){if(d.nativeDestinationRemove==='hotel'){draftFilters.hotelIds=draftFilters.hotelIds.filter(id=>id!==Number(d.nativeDestinationValue));draftFilters.hotelId=draftFilters.hotelIds[0]||0;}else draftFilters.resorts=draftFilters.resorts.filter(name=>name!==d.nativeDestinationValue);renderSearch();return;}
