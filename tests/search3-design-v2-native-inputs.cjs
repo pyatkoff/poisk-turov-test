@@ -86,7 +86,7 @@ async function formFocusChecks(){
    tap('[data-native-remove-child="0"]');assert.strictEqual(win.document.activeElement,el('[data-search-add-child]'),'Last removed child returns focus to Add');
    tap('[data-search-editor-cancel="travelers"]');assert.strictEqual(win.document.activeElement,el('[data-search-travelers-toggle]'));
    tap('[data-search-date-toggle]');
-   const next=()=>product.querySelector(mobile?'[data-calendar-month="1"].st-calendar-mobile-next':'[data-calendar-month="1"]:not(.st-calendar-mobile-next)');
+   const next=()=>product.querySelector('[data-calendar-month="1"]:not(.st-calendar-mobile-next)');
    next().focus();next().click();assert.strictEqual(win.document.activeElement,next(),'Paging retains focus on the visible next-month action');
    tap('[data-calendar-month="-1"]');assert(el('[data-calendar-month="-1"]').disabled);
    assert.strictEqual(win.document.activeElement,next(),'At the earliest month the enabled next action receives focus');
