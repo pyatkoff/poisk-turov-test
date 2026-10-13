@@ -188,7 +188,7 @@ class UpdateContracts(unittest.TestCase):
                         png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', 1280, 720) + b'fictional offline verifier fixture'
                     contents['evidence/' + name] = png
                     has_budget = screen == 'filters' or screen == 'results' and width >= 768
-                    size = (16 if width <= 430 else 13) * percent / 100
+                    size = (16 if width <= 430 else 14) * percent / 100
                     calendar_fit = None
                     if name.startswith('native-calendar-later-'):
                         calendar_fit = {'left': 17, 'right': width - 17,
@@ -314,8 +314,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'd341f7648749f2f8a3272a1e51e2d923c1db80a6')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38404222823)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '002dc0d636c5ad6e5597d37259baba574fe9ed88')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38413259110)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -484,6 +484,8 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'][0].update(textWidth=201.1),
             lambda r: frame(r, 'native-budget-draft-', 1)['budgetInputs'][0].update(font='500 16px Aeroport, system-ui, sans-serif'),
+            lambda r: frame(r, 'native-budget-results-', 6)['budgetInputs'][0].update(font='500 13px Aeroport, system-ui, sans-serif'),
+            lambda r: frame(r, 'native-budget-results-', 9)['budgetInputs'][0].update(font='500 26px Aeroport, system-ui, sans-serif'),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'].pop(),
             lambda r: frame(r, 'native-results-')['readableText'][0].update(clipped=True),
             lambda r: frame(r, 'native-search-')['readableText'][0].update(overlappingLines=True),
@@ -731,7 +733,8 @@ class UpdateContracts(unittest.TestCase):
             '660a760d9d0a0c0121d05d53bdc0895689600bc8',
             '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026',
             'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510',
-            'd341f7648749f2f8a3272a1e51e2d923c1db80a6'))
+            'd341f7648749f2f8a3272a1e51e2d923c1db80a6',
+            '002dc0d636c5ad6e5597d37259baba574fe9ed88'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -759,6 +762,8 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'required_visual_checks_missing'): pub.strict_checks(API(), self.q['source_sha'])
 
     def test_native_provenance_requires_exact_reviewed_squash_commit_and_relation(self):
+        base_pin = patch.dict(self.native_pin, release_parent=pub.NATIVE_SOURCE_PARENT)
+        base_pin.start(); self.addCleanup(base_pin.stop)
         checks = [{'name': n, 'head_sha': 'a' * 40, 'status': 'completed', 'conclusion': 'success',
             'app': {'slug': 'github-actions'}, 'started_at': '2026-10-12T15:00:00Z'}
             for n in pub.REQUIRED_CHECKS]
@@ -767,10 +772,10 @@ class UpdateContracts(unittest.TestCase):
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
             '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': pub.NATIVE_SOURCE_PARENT}]},
             '/git/commits/' + pub.NATIVE_SOURCE_PARENT: {'tree': {'sha': pub.NATIVE_SOURCE_PARENT_TREE},
-                'parents': [{'sha': 'b' * 40}]},
-            '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': 'b' * 40}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 4, 'ahead_by': 1,
-                'merge_base_commit': {'sha': 'b' * 40}},
+                'parents': [{'sha': pub.NATIVE_SOURCE_BASE_PARENT}]},
+            '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': pub.NATIVE_SOURCE_PARENT}]},
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 1, 'ahead_by': 1,
+                'merge_base_commit': {'sha': pub.NATIVE_SOURCE_PARENT}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
                 'repository': {'full_name': pub.REPO}, 'head_repository': {'full_name': pub.REPO}},
@@ -780,7 +785,7 @@ class UpdateContracts(unittest.TestCase):
         }
         for index, (parent_sha, parent_tree) in enumerate(pub.NATIVE_SOURCE_ANCESTORS):
             next_sha = (pub.NATIVE_SOURCE_ANCESTORS[index + 1][0]
-                        if index + 1 < len(pub.NATIVE_SOURCE_ANCESTORS) else 'b' * 40)
+                        if index + 1 < len(pub.NATIVE_SOURCE_ANCESTORS) else pub.NATIVE_SOURCE_BASE_PARENT)
             values['/git/commits/' + parent_sha] = {
                 'tree': {'sha': parent_tree}, 'parents': [{'sha': next_sha}]}
         class API:
@@ -802,7 +807,7 @@ class UpdateContracts(unittest.TestCase):
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=1)),
+             lambda row: row.update(behind_by=2)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row.update(behind_by=3)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
@@ -824,7 +829,7 @@ class UpdateContracts(unittest.TestCase):
                 else: row['parents'] = [{'sha': 'b' * 40}] if parent_sha != pub.NATIVE_SOURCE_ANCESTORS[-1][0] else [{'sha': pub.NATIVE_SOURCE_PARENT}]
                 with self.subTest(parent=parent_sha, defect=defect), self.assertRaisesRegex(ValueError, 'native_source_parent_lineage_pin'):
                     pub.native_provenance(API(rows), q, 'f' * 40)
-        for count in (0, 1, 2, 3, 5):
+        for count in (0, 2, 3, 4, 5):
             rows = copy.deepcopy(values)
             rows['/compare/' + 'a' * 40 + '...' + 'c' * 40]['behind_by'] = count
             with self.subTest(commit_count=count), self.assertRaisesRegex(ValueError, 'native_exact_squash_relation'):
@@ -885,7 +890,8 @@ class UpdateContracts(unittest.TestCase):
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-             38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823))
+             38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
+             38413259110))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -947,17 +953,18 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json'))
+            'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js', 'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/bridge.js', 'visual-search/native-v2/donor.css',
-                     'visual-search/native-v2/viewport.css', 'prototype-search/data.js'):
+                     'prototype-search/data.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, bad)

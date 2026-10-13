@@ -35,10 +35,9 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('ff1a83ccfb68243ea2cb2025c14be70fcf68716f', '5138540fef1e8d8c49fd5936c34b9cef41ad254b'),
-    ('e2a27be403a583ca0fe9fbf31abba5249f35ff99', '20d818ab97a6f3c404ae14aff13b91d95e59be89'),
-    ('018445e301d75858215b27e61f3fc31fd4961609', '41907579798937d88d5167050539a099939f7db1'))
+    ('8edd9617c41b0a81c86b10cdeed7a52a086e3e2e', '93bea85061224370e20b813521b3ac8db3d003d0'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
+NATIVE_SOURCE_BASE_PARENT = '4523fa0e227d41ed69e47671ac753301419ecde9'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -106,12 +105,13 @@ def native_provenance(api, q, control_sha):
     need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed')
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
-    need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT],
+    need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT]
+         and NATIVE_SOURCE_PARENT == pin['release_parent'],
          'native_source_parent_pin')
     for index, (parent_sha, parent_tree) in enumerate(NATIVE_SOURCE_ANCESTORS):
         parent = api.get('/git/commits/' + parent_sha)
         next_sha = (NATIVE_SOURCE_ANCESTORS[index + 1][0]
-                    if index + 1 < len(NATIVE_SOURCE_ANCESTORS) else pin['release_parent'])
+                    if index + 1 < len(NATIVE_SOURCE_ANCESTORS) else NATIVE_SOURCE_BASE_PARENT)
         need(parent['tree']['sha'] == parent_tree
              and [row.get('sha') for row in parent.get('parents', [])] == [next_sha],
              'native_source_parent_lineage_pin')
@@ -119,7 +119,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 4
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 1
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -513,7 +513,7 @@ def native_evidence(archive, request, native):
                          'native_budget_readability_required')
                     font = row.get('font')
                     measured = re.fullmatch(r'500 ([0-9]+(?:\.[0-9]+)?)px Aeroport, system-ui, sans-serif', font) if isinstance(font, str) else None
-                    expected = (16 if key[0] <= 430 else 13) * (2 if key[1] == 200 else 1)
+                    expected = (16 if key[0] <= 430 else 14) * (2 if key[1] == 200 else 1)
                     need(measured is not None and abs(float(measured[1]) - expected) < 0.5,
                          'native_budget_actual_text_scale_required')
                 if screen == 'results' and key[0] >= 768:

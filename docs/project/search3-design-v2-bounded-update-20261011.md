@@ -1,84 +1,86 @@
-# Bounded form-focus update of the separate Search3 design-v2 preview
+# Bounded visual-finish update of the separate Search3 design-v2 preview
 
 This package prepares one exact successor only for
 `/_preview/search3-design-v2-candidate/`, preserving final Sites v2 source
 `00fe6734c08acf234756bb59e5b61dbfecf41941`. NEXT, production, siblings,
 Sites, providers/auth, DB/mappings, lead/CRM and analytics remain outside scope.
 
-## Current state: result-card predecessor published, form-focus successor reviewed
+## Current state: form-focus predecessor published, visual-finish successor reviewed
 
-Installed source `d341f7648749f2f8a3272a1e51e2d923c1db80a6`, receiving
-release `4523fa0e227d41ed69e47671ac753301419ecde9`, completed publication
-`38404222823` and installed 855-file digest
-`9a814998e5fc49963a83a85ebe391c53ad748d90a3c028b16a900918ff17d614`
-are independently established by terminal #4217 comment `6146777255`.
-Actual READY artifact `11818480639`, ZIP
-`9c30ec186b8dcc55d4854b997602ef844b7a0d3bab7ccfb353a52985a80d59c7`,
-and deployment artifact `11818926437`, ZIP
-`8a6d8618a9d87d875309b4088cffb9f77b8e3e044789478154043d66a9b4d613`
-establish that transaction. Its command `6146503714` is consumed. All previous
-completed sources/runs remain explicit no-replay history, including a3b/38388948150
-and 08a/38363323689. No previous updater authorizes this successor.
+Installed source `002dc0d636c5ad6e5597d37259baba574fe9ed88`, receiving
+release `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e`, completed publication
+`38413259110` and installed 855-file digest
+`806cc596a5a5dc803303e72f0a2dd3d1e6eccb9e289da5d2074c32d1ddf2c15a`
+are independently established by terminal #4217 comment `6148172462`.
+Actual READY artifact `11822128874`, ZIP
+`2df4d2af24e21ada31ac0dbf34a4653ad531410d61366c0ab44c1f99b9148902`,
+and deployment artifact `11823174408`, ZIP
+`4437a1f76c3f568ac7a2da60bbb798bd83d17f8375805001face662b63b1b9b8`
+establish that transaction. The retained READY tar, control files and every
+payload hash independently reproduce the installed digest. The prior control
+writer `6147457091` and publisher `6147801668` are released. All previous
+completed sources/runs remain explicit no-replay history, including d341/38404222823,
+a3b/38388948150 and 08a/38363323689. No previous updater authorizes this successor.
 
-Source PR #4569 final `002dc0d636c5ad6e5597d37259baba574fe9ed88`, tree
-`93bea85061224370e20b813521b3ac8db3d003d0`, fixes reproducible focus loss
-on night selection and native child-age changes. It retains existing controls,
-focuses the required new age or surviving control after family changes, and
-restores focus to the visible calendar pager after month rendering. Drafts,
-Cancel/Escape, age0/null, family reconfirmation, bounds and supplier authority
-remain intact. There is no new presentation layer or design concept.
+Source PR #4571 final `f4b343ecce2411899ce2f2138c8fc5f64ea27eb5`, tree
+`844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065`, completes the reviewed native
+frontend and viewport presentation. Desktop budget input text changes from
+13/26 px to 14/28 px at 100/200% text; mobile remains 16/32 px. Existing
+readable facts, full hotel titles, shared price notice, focus handling, family,
+drafts, Cancel/Escape and supplier authority remain required. There is no new
+presentation layer or design concept.
 
-Exact source Security `38410154798` and native `38410155304` passed, attempt1.
-Artifact `11820438474` has 45,105,973 bytes and ZIP SHA256
-`f59b94128826ebe95f38e043ef5c3597efcc5cfcb57aaef0ace1e2e8092df94d`.
-Independent source approval is #4217 `6147401118`; complete compiled review is
-`6147533431`: all855 payload hashes,333 frame hashes,10 cases/zero failures,
+Exact source Security `38415568088` and native `38415567799` passed, attempt1.
+Artifact `11825035915` has 45,377,481 bytes and ZIP SHA256
+`67c4d806bb23464e88f2506c927da3c9e3a5b8d9cb64c9e5443056350983262e`.
+Independent source approval is #4217 `6148237365`; complete compiled review is
+`6148370552`: all855 payload hashes,333 frame hashes,10 cases/zero failures,
 five widths100/200, donor/native composition and historical factual journey.
-Earlier failed runs38408419933/38409523563 and troubleshooting artifact11820106387
-are not acceptable alternatives. The former harness ambiguity was corrected;
-the intermittent unchanged canonical wait failure is superseded by the exact
-successful final run, without canonical edits or relaxed assertions.
+Earlier source builds and troubleshooting artifacts are not acceptable
+alternatives to this exact final run.
 
-Receiving squash `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e` has the exact source
-tree and sole parent `4523fa0e227d41ed69e47671ac753301419ecde9`.
-Source integration is not publication. Source writer is `6146908211`; bounded
-four-path controller writer is `6147457091`. There is no publication command in
+Receiving squash `160d957dd0aecef1ac6e3eb8f7df881d527b0e7f` has the exact source
+tree and sole parent `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e`.
+Source integration is not publication. Source writer was released by `6148398011`;
+bounded four-path controller writer is `6148265015`. There is no publication command in
 this document. Control needs independent HIGH approval, green exact-head CI,
 fresh source/release/main/predecessor validation and an exclusive publisher claim
 before one new guarded OWNER command.
 
 | Pin | Exact reviewed value |
 | --- | --- |
-| source_sha | `002dc0d636c5ad6e5597d37259baba574fe9ed88` |
-| source_tree | `93bea85061224370e20b813521b3ac8db3d003d0` |
-| release_sha | `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e` |
-| release_tree | `93bea85061224370e20b813521b3ac8db3d003d0` |
-| release_parent | `4523fa0e227d41ed69e47671ac753301419ecde9` |
-| build_run | `38410155304` |
-| artifact_id | `11820438474` |
-| source_ZIP_sha256 | `f59b94128826ebe95f38e043ef5c3597efcc5cfcb57aaef0ace1e2e8092df94d` |
+| source_sha | `f4b343ecce2411899ce2f2138c8fc5f64ea27eb5` |
+| source_tree | `844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065` |
+| release_sha | `160d957dd0aecef1ac6e3eb8f7df881d527b0e7f` |
+| release_tree | `844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065` |
+| release_parent | `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e` |
+| build_run | `38415567799` |
+| artifact_id | `11825035915` |
+| source_ZIP_sha256 | `67c4d806bb23464e88f2506c927da3c9e3a5b8d9cb64c9e5443056350983262e` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `18dcda0cf9811a06c0c29c21cd61bc401a3db696632962f73b9b8edb0eb02a5c` |
+| source_manifest_sha256 | `28295a2d82fe75361e1494d8fdc0c34e59cf24249417590707a7dcdce1726b4d` |
 
 ## Exact source lineage and required proof
 
-The trusted controller pins precisely four source commits, newest first:
+The trusted controller pins precisely one source commit from the verified
+installed predecessor's receiving release, and verifies that base's tree and
+sole parent:
 
 | Commit | Tree | Sole parent |
 | --- | --- | --- |
-| `002dc0d636c5ad6e5597d37259baba574fe9ed88` | `93bea85061224370e20b813521b3ac8db3d003d0` | `ff1a83ccfb68243ea2cb2025c14be70fcf68716f` |
-| `ff1a83ccfb68243ea2cb2025c14be70fcf68716f` | `5138540fef1e8d8c49fd5936c34b9cef41ad254b` | `e2a27be403a583ca0fe9fbf31abba5249f35ff99` |
-| `e2a27be403a583ca0fe9fbf31abba5249f35ff99` | `20d818ab97a6f3c404ae14aff13b91d95e59be89` | `018445e301d75858215b27e61f3fc31fd4961609` |
-| `018445e301d75858215b27e61f3fc31fd4961609` | `41907579798937d88d5167050539a099939f7db1` | `4523fa0e227d41ed69e47671ac753301419ecde9` |
+| `f4b343ecce2411899ce2f2138c8fc5f64ea27eb5` | `844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065` | `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e` |
+| `8edd9617c41b0a81c86b10cdeed7a52a086e3e2e` | `93bea85061224370e20b813521b3ac8db3d003d0` | `4523fa0e227d41ed69e47671ac753301419ecde9` |
 
-The source/release comparison must be diverged, exactly behind4/ahead1, with
-merge base4523. Each static parent SHA/tree and sole-parent relation is checked;
+The source/release comparison must be diverged, exactly behind1/ahead1, with
+merge base8edd. Each static parent SHA/tree and sole-parent relation is checked;
 skipped/substituted/extra parents or another commit count abort. These pins
 cannot be supplied or overwritten by a command/artifact. All original exact-head
 CI, tree, run attempt, trusted-main, artifact, backup and activation gates remain.
-The focused suite rejects missing/false/nonboolean focus proof in every case,
-foreign viewport changes, lineage corruption and all historical replay sources/runs.
+The existing 50-test focused suite rejects missing/false/nonboolean focus proof
+in every case, omitted or foreign delta paths, lineage corruption and all
+historical replay sources/runs. It also rejects the former desktop 13/26 px
+budget measurements while preserving mobile 16/32 px and all measured fit guards.
 
 Native provenance is scoped to
 `.github/workflows/search3-design-v2-native.yml`, job `native-acceptance`, and
@@ -191,11 +193,12 @@ files may differ:
 
 - `visual-search/native-v2/frontend.js`
 - `visual-search/native-v2/source-manifest.json`
+- `visual-search/native-v2/viewport.css`
 
-The predecessor's family, cost-label, hotel-action and selected-tour fixes
-remain intact. This packet changes only the reviewed search-form focus handling. Duration buttons
-and existing age selects retain their identity; family add/remove and calendar
-paging focus a meaningful visible control. `viewport.css` and `tour.js` remain identical. Historical
+Exactly 852 payload files remain byte-identical to the installed predecessor.
+The predecessor's family, cost-label, hotel-action, selected-tour and form-focus
+fixes remain intact. This packet changes only the reviewed frontend/viewport
+presentation and its generated manifest; `tour.js` remains identical. Historical
 baseline allowances do not permit new legacy presentation, bridge,
 canonical dependency, provider, lead, brand or font changes. A different delta,
 missing/additional file or changed predecessor stops before activation.
