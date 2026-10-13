@@ -2351,15 +2351,13 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-dialog .summary-flight-details{margin:16px 0 0}
 .application-dialog .summary-flight-details>summary{font-size:.875rem;line-height:1.5}
 .tour-dialog #modal-footer,.application-dialog #modal-footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px;padding:14px 24px max(14px,env(safe-area-inset-bottom));background:#fff}
-.tour-dialog .footer-total,.application-dialog .footer-total{display:grid;gap:2px;min-width:0;border:0;padding:0;margin:0;background:none}
+.tour-dialog .footer-total,.application-dialog .footer-total{display:grid;grid-template-columns:minmax(0,1fr);gap:2px;min-width:0;border:0;padding:0;margin:0;background:none}
 
-.tour-dialog .footer-total>span,.application-dialog .footer-total>span,.application-dialog .footer-total>small{font-size:.875rem;line-height:1.4;color:var(--muted);margin:0}
+.tour-dialog .footer-total>span,.application-dialog .footer-total>span,.application-dialog .footer-total>small{min-width:0;max-width:100%;overflow-wrap:anywhere;font-size:.875rem;line-height:1.4;color:var(--muted);margin:0}
 
 .tour-dialog .footer-total>strong,.application-dialog .footer-total>strong{font-size:1.75rem;line-height:1.2;letter-spacing:-.03em}
 
 .tour-dialog .footer-total>strong{white-space:normal;overflow-wrap:anywhere}
-
-.application-dialog .footer-total>strong{white-space:nowrap}
 
 .tour-dialog #modal-body>.footer-total{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
 
@@ -2372,7 +2370,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 
 
 
-.application-dialog #modal-footer .footer-total>strong{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.application-dialog .footer-total>strong{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .tour-dialog #modal-footer .primary,.application-dialog #modal-footer .primary{min-height:48px;max-width:none;padding:12px 24px;font-size:1rem;line-height:1.4;color:#fff;white-space:normal}
 .tour-dialog #modal-footer .primary svg,.application-dialog #modal-footer .primary svg{display:none}
 @media(min-width:761px){}
@@ -2470,7 +2468,8 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 
 .tour-flight-actions>.secondary{width:100%;padding:12px 8px}
 
-.application-dialog #modal-footer .primary{width:auto;flex:1 1 120px;max-width:140px;white-space:normal;padding:12px 14px}
+.application-dialog #modal-footer .primary{width:auto;flex:1 1 120px;max-width:none;white-space:normal;padding:12px 14px;overflow-wrap:normal;word-break:normal}
+.application-dialog #modal-footer:has(>.footer-total) .primary{min-width:min-content;max-width:8.75rem}
 
 .application-dialog .rehearsal-field{margin-top:10px}
 
