@@ -13,6 +13,7 @@ import re
 import secrets
 import shlex
 import shutil
+import struct
 import sys
 import tarfile
 import zipfile
@@ -184,6 +185,11 @@ def native_frame_inventory(width, percent):
     if width in (360, 390, 430):
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
     if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
+    frames.update(f'native-family-{state}-{width}-text{percent}.png'
+                  for state in ('0', '1', '2', '3', 'applied', 'review'))
+    if width == 1280:
+        frames.update(f'native-short-desktop-{screen}-{width}-text{percent}.png'
+                      for screen in ('search', 'results', 'hotel', 'tour', 'lead'))
     return frames
 
 
@@ -220,13 +226,17 @@ def native_evidence(archive, request, native):
         'partialEmptyNeutralCount': True, 'partialSavedSearchRetained': True,
         'partialLoadedHotels': 4, 'partialExtraSearches': 0,
         'partialFilteredRecoveryLoadedHotels': 2,
-        'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0]}
+        'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
+        'familyExtraSearches': 0, 'familyAgeReviewRetained': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
+        ages = actual.get('familyAges')
+        need(isinstance(ages, list) and ages == [0, 7, 17]
+             and all(type(age) is int for age in ages), 'native_family_age_identity_required')
         closed, expanded, saved = (actual.get(k) for k in (
             'flightAlternativesClosedHeight', 'flightAlternativesExpandedHeight', 'flightAlternativesSavedHeight'))
         need(all(type(value) in (int, float) and 0 < value < 10000 for value in (closed, expanded, saved))
@@ -249,16 +259,25 @@ def native_evidence(archive, request, native):
             need(value.startswith(b'\x89PNG\r\n\x1a\n') and digest(value) == frame.get('sha256'), 'native_rendered_frame_hash')
             need(frame.get('viewportWidth') == key[0] and frame.get('textPercent') == key[1]
                  and frame.get('side') == name.split('-', 1)[0], 'native_rendered_frame_scope')
+            short_desktop = name.startswith('native-short-desktop-')
+            logical_name = name.replace('native-short-desktop-', 'native-', 1) if short_desktop else name
+            if short_desktop:
+                need(key[0] == 1280 and type(frame.get('viewportHeight')) is int
+                     and frame['viewportHeight'] == 720, 'native_short_desktop_viewport_required')
+                need(len(value) >= 24 and value[8:16] == b'\x00\x00\x00\rIHDR'
+                     and struct.unpack('>II', value[16:24]) == (1280, 720),
+                     'native_short_desktop_png_dimensions_required')
             if frame['side'] == 'native':
-                screen = ('startup' if name.startswith('native-startup-')
-                          else 'filters' if name.startswith(('native-budget-invalid-', 'native-budget-draft-',
+                screen = ('startup' if logical_name.startswith('native-startup-')
+                          else 'search' if logical_name.startswith('native-family-')
+                          else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
-                          else 'results' if name.startswith(('native-budget-results-', 'native-error-',
+                          else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
                                                             'native-calendar-later-', 'native-results-bounded-',
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
                                                             'native-results-partial-', 'native-filter-empty-partial-'))
-                          else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
+                          else 'hotel' if logical_name.startswith('native-hotel-return-') else logical_name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
@@ -347,6 +366,8 @@ def native_evidence(archive, request, native):
                     need(offers == [], 'native_hotel_offer_action_scope')
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
+                if name.startswith('native-family-'):
+                    need(prices == [], 'native_family_no_factual_prices')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
                 no_result_prices = name.startswith(('native-filter-empty-', 'native-results-loading-',
                                                      'native-results-error-', 'native-results-partial-empty-'))
@@ -380,6 +401,20 @@ def native_evidence(archive, request, native):
                              and row.get('clipped') is False and row.get('brokenWords') is False
                              and row.get('overlappingLines') is False for row in text),
                      'native_text_readability_required')
+                if screen == 'tour':
+                    need({'Туристы', 'Туроператор', 'Обязательные доплаты'}
+                         <= {row['text'].strip() for row in text},
+                         'native_tour_cost_labels_required')
+                if name.startswith('native-family-'):
+                    state = name[len('native-family-'):].split('-', 1)[0]
+                    expected = {'0': '1 взрослый', '1': '1 взрослый + 1 ребёнок',
+                        '2': '1 взрослый + 2 ребёнка', '3': '1 взрослый + 3 ребёнка',
+                        'applied': '1 взрослый + 3 ребёнка', 'review': '1 взрослый + 3 ребёнка'}[state]
+                    need(any(row['text'] == expected for row in text), 'native_family_copy_required')
+                    if state == 'review':
+                        need(any('Проверьте возраста детей на дату возвращения' in row['text'] for row in text)
+                             and any(row['text'] == 'Подтвердите возраста детей на дату возвращения.' for row in text),
+                             'native_family_age_review_copy_required')
                 need(frame.get('headerFit') == {'outside': False, 'overlap': False}, 'native_header_fit_required')
                 sort = frame.get('sortFit')
                 if screen == 'results':
@@ -408,7 +443,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 263, 'native_rendered_frame_count')
+    need(len(frames) == 333, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
