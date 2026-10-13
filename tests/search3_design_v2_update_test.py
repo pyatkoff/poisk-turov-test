@@ -248,9 +248,10 @@ class UpdateContracts(unittest.TestCase):
                             bounded = card_id >= 1000
                             hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
                             title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
+                            operator = 'FIXTURE ANEX' if logical_name.startswith('native-terminal-') else 'FIXTURE TV'
                             facts = {'result-title': title, 'result-location': 'Турция · Кемер',
                                 'result-date': '12 окт · 7 ночей', 'result-room': hotel[1],
-                                'result-meal': hotel[2], 'result-operator': 'FIXTURE TV', 'result-party': 'за 2 взрослых'}
+                                'result-meal': hotel[2], 'result-operator': operator, 'result-party': 'за 2 взрослых'}
                             readable_text.extend({**readable_text[0], 'text': value, 'kind': kind, 'cardId': card_id}
                                                  for kind, value in facts.items())
                         result_notice = {'visibleCount': 1, 'beforeList': True, 'cardNoticeCount': 0,
