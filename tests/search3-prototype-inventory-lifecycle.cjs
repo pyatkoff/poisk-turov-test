@@ -78,7 +78,28 @@ function rehydratableSnapshot(params,provider){
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
 const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,clock=()=>Date.now()}={}){
+function canonicalMealCatalogue(provider,accepted=true){
+ const rows=[
+  [2,'breakfast','Завтраки','3','BB'],
+  [3,'half-board','Полупансион','4','HB'],
+  [7,'all-inclusive','Всё включено','7','AI'],
+  [8,'ultra-all-inclusive','Ультра всё включено','9','UAI']
+ ];
+ return {source:'anytour-search-meal-v1',provider,scopeKey:'global',available:accepted,revision:hash('meal-catalog-fixture-'+provider),
+  plans:rows.map(([id,code,nameRu,tvNative,anexNative])=>({id,code,nameRu,nativeIds:accepted?[provider==='tourvisor'?tvNative:anexNative]:[]}))};
+}
+function unmappedAnexMealCatalogue(){
+ const definitions=[
+  ['no-meals','Без питания'],['breakfast','Завтраки'],['half-board','Полупансион'],['half-board-plus','Полупансион плюс'],
+  ['full-board','Полный пансион'],['full-board-plus','Полный пансион плюс'],['all-inclusive','Всё включено'],
+  ['ultra-all-inclusive','Ультра всё включено'],['soft-all-inclusive','Мягкое всё включено'],['alcohol-free-all-inclusive','Всё включено без алкоголя']
+ ];
+ // Same ten-plan shape as the read-only installed ANEX catalogue; the revision
+ // and supplier replies in this test remain explicitly fictional.
+ return {source:'anytour-search-meal-v1',provider:'anex',scopeKey:'global',available:false,revision:hash('unmapped-anex-catalogue-fixture'),
+  plans:definitions.map(([code,nameRu],index)=>({id:index+1,code,nameRu,nativeIds:[]}))};
+}
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,mealCatalogue,clock=()=>Date.now()}={}){
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
@@ -125,15 +146,8 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
    const body=JSON.parse(options.body);
    if(body.action==='meal_catalog'){
     mealCatalogCalls.push({body:structuredClone(body),headers:structuredClone(options.headers||{})});
-    return {ok:true,json:async()=>({ok:true,data:{
-     source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:hash('meal-catalog-fixture'),
-     plans:[
-      {id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']},
-      {id:3,code:'half-board',nameRu:'Полупансион',nativeIds:['4']},
-      {id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},
-      {id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено',nativeIds:['9']}
-     ]
-    }})};
+    const catalogue=mealCatalogue?await mealCatalogue(body):canonicalMealCatalogue(body.provider,body.provider==='tourvisor');
+    return {ok:true,json:async()=>({ok:true,data:catalogue})};
    }
    if(body.action==='price_calendar'){
     const childAges=[...(body.childs||[])].map(Number).sort((a,b)=>a-b);
@@ -261,8 +275,9 @@ test('init loads canonical meal authority through the exposed LOCAL reader actio
  }});
  h.data.catalog.mealPlans.splice(0);h.data.catalog.mealPlanAvailable=false;h.data.catalog.mealPlanRevision=null;
  await h.data.init('Москва');
- assert.equal(h.mealCatalogCalls.length,1);
+  assert.equal(h.mealCatalogCalls.length,2,'each provider reads its own accepted canonical mappings');
  assert.deepEqual(JSON.parse(JSON.stringify(h.mealCatalogCalls[0].body)),{action:'meal_catalog',provider:'tourvisor',scopeKey:'global'});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.mealCatalogCalls[1].body)),{action:'meal_catalog',provider:'anex',scopeKey:'global'});
  assert.equal(h.mealCatalogCalls[0].headers['X-Requested-With'],'AnyTourSearch3');
  assert.equal(h.mealCatalogCalls[0].headers['Content-Type'],'application/json');
  assert.equal(h.data.catalog.mealPlanAvailable,true);
@@ -270,6 +285,119 @@ test('init loads canonical meal authority through the exposed LOCAL reader actio
   [2,'breakfast','Завтраки',['3']],[3,'half-board','Полупансион',['4']],
   [7,'all-inclusive','Всё включено',['7']],[8,'ultra-all-inclusive','Ультра всё включено',['9']]
  ]);
+  assert.equal(h.anexCalls.length,0,'catalogue initialization starts no supplier search');
+  assert.equal(h.calls.filter(call=>call.action==='search_start').length,0);
+});
+function breakfastAnex(body){
+ const value=body.action==='expand'?expandedAnex(body):directAnex(body);
+ value.data.hotels[0].tours.forEach(t=>{t.meal='BB';});
+ return {response:{ok:true,json:async()=>value}};
+}
+for(const accepted of [true,false])test((accepted?'accepted ANEX native mapping':'explicit ANEX code policy')+' gives group and concrete breakfast the same numeric facet as Tourvisor',async()=>{
+ const anexCatalogue=accepted?canonicalMealCatalogue('anex'):unmappedAnexMealCatalogue(),beforeCatalogue=JSON.stringify(anexCatalogue);
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?anexCatalogue:canonicalMealCatalogue(body.provider),anex:breakfastAnex,api:action=>{
+  if(action==='meals')return [{id:3,name:'BB'},{id:4,name:'HB'},{id:7,name:'AI'},{id:9,name:'UAI'}];
+  if(action==='search_results'){const rows=live();rows[0].tours[0].meal={id:3,name:'BB'};return rows;}
+ }});
+ await h.data.init();await h.start();await h.poll();
+ const offers=h.latest().flatMap(row=>row.offers),group=offers.find(o=>o.provider==='anex'),tv=offers.find(o=>o.provider==='tourvisor');
+ assert.equal(group.mealPlanId,2);assert.equal(group.mealPlanCode,'breakfast');assert.equal(group.mealFacet,'Завтраки');
+ assert.equal(tv.mealPlanId,group.mealPlanId,'different supplier native values resolve the same accepted plan');
+ assert.equal(h.data.supplierScope({meals:['Завтраки']}).meal,'3','ANEX BB never replaces Tourvisor native request identity');
+ assert.equal(group.total,1490000);assert.equal(group.room,'STANDARD');assert.equal(group.raw.anexKind,'group_minimum');
+ assert.equal(group.raw.searchMealPlanSource,accepted?'anytour-search-meal-v1':'anex-explicit-meal-code-v1');
+ assert.equal(group.raw.searchMealPlanRevision,anexCatalogue.revision);
+ const concrete=await h.data.expandAnexGroup(group);
+ assert.equal(concrete.offers.length,2);
+ for(const offer of concrete.offers){
+  assert.equal(offer.mealPlanId,2);assert.equal(offer.mealPlanCode,'breakfast');assert.equal(offer.mealFacet,'Завтраки');
+  assert.equal(offer.meal,'Завтраки');assert.equal(offer.raw.anexKind,'concrete');assert.equal(offer.day,group.day);assert.equal(offer.nights,group.nights);
+  assert.equal(offer.raw.searchMealPlanSource,group.raw.searchMealPlanSource);assert.equal(offer.raw.searchMealPlanRevision,anexCatalogue.revision);
+ }
+ assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],'mapping reads do not replay supplier operations');
+ assert.equal(JSON.stringify(anexCatalogue),beforeCatalogue,'source classification never writes or synthesizes native mappings');
+});
+for(const [name,mutate] of [
+ ['unavailable with contradictory native relations',value=>{value.available=false;}],
+ ['missing native relation',value=>{value.plans.forEach(plan=>plan.nativeIds=[]);} ],
+ ['another provider',value=>{value.provider='tourvisor';}],
+ ['another scope',value=>{value.scopeKey='operator:123';}],
+ ['missing revision',value=>{value.revision=null;}],
+ ['duplicate native identity',value=>{value.plans[2].nativeIds.push('BB');}],
+ ['duplicate code',value=>{value.plans[2].code='breakfast';}],
+ ['canonical definition conflict',value=>{value.plans[0].nameRu='Different canonical definition';}]
+])test('ANEX breakfast stays unclassified through group and concrete when mapping is '+name,async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  const value=canonicalMealCatalogue(body.provider);if(body.provider==='anex')mutate(value);return value;
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlanAvailable,true,'ANEX mapping failure preserves Tourvisor authority');
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ const concrete=await h.data.expandAnexGroup(group);
+ for(const offer of [group,...concrete.offers]){
+  assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'');assert.equal(offer.meal,'Завтраки','display translation cannot invent canonical identity');
+ }
+ assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
+});
+for(const native of ['3','On Request','High Class All Inclusive','Soft AI'])test('accepted ANEX mapping never guesses plan from unmapped native '+native,async()=>{
+ const h=harness({mealCatalogue:body=>canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'','TV native IDs and supplier display aliases grant no ANEX authority');
+});
+test('accepted ANEX UAI mapping stays separate from all-inclusive',async()=>{
+ const h=harness({mealCatalogue:body=>canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal='UAI';return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,8);assert.equal(offer.mealPlanCode,'ultra-all-inclusive');assert.notEqual(offer.mealPlanId,7);
+});
+test('Tourvisor meal catalogue failure does not remove independently accepted ANEX mapping',async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider==='tourvisor')throw Error('Fictional catalogue unavailable');return canonicalMealCatalogue(body.provider);
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlanAvailable,false);
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,2);assert.equal(group.mealFacet,'Завтраки');
+});
+for(const [native,id,code] of [['RO',1,'no-meals'],['BB',2,'breakfast'],['HB',3,'half-board'],['FB',5,'full-board'],['AI',7,'all-inclusive'],['UAI',8,'ultra-all-inclusive']])test('explicit ANEX code policy classifies only the exact standard code '+native,async()=>{
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?unmappedAnexMealCatalogue():canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,id);assert.equal(offer.mealPlanCode,code);assert.equal(offer.raw.searchMealPlanSource,'anex-explicit-meal-code-v1');
+});
+for(const native of ['bb',' BB ','Breakfast','BB - Premium','Завтраки','AO','3','On Request','High Class All Inclusive','Soft AI'])test('explicit ANEX code policy rejects display aliases and unknown native '+JSON.stringify(native),async()=>{
+ const h=harness({mealCatalogue:body=>body.provider==='anex'?unmappedAnexMealCatalogue():canonicalMealCatalogue(body.provider),anex:body=>{
+  const value=directAnex(body);value.data.hotels[0].tours[0].meal=native;return {response:{ok:true,json:async()=>value}};
+ }});
+ await h.data.init();await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(offer.mealPlanId,null);assert.equal(offer.mealFacet,'');assert.equal(offer.raw.searchMealPlanSource,undefined);
+});
+for(const [name,mutate] of [
+ ['foreign provider',value=>{value.provider='tourvisor';}],
+ ['foreign scope',value=>{value.scopeKey='operator:123';}],
+ ['invalid revision',value=>{value.revision=null;}],
+ ['duplicate canonical code',value=>{value.plans[6].code='breakfast';}],
+ ['contradictory native relation',value=>{value.plans[1].nativeIds=['BB'];}],
+ ['conflicting canonical definition',value=>{value.plans[1].nameRu='Another definition';}],
+ ['conflicting canonical ID',value=>{value.plans[1].id=202;}]
+])test('explicit ANEX code policy refuses '+name,async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider!=='anex')return canonicalMealCatalogue(body.provider);const value=unmappedAnexMealCatalogue();mutate(value);return value;
+ }});
+ await h.data.init();await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,null);assert.equal(group.raw.searchMealPlanSource,undefined);
+});
+test('explicit ANEX code policy reads the canonical ID from its own catalogue independently of Tourvisor',async()=>{
+ const h=harness({anex:breakfastAnex,mealCatalogue:body=>{
+  if(body.provider==='tourvisor')throw Error('Fictional catalogue unavailable');
+  const value=unmappedAnexMealCatalogue();value.plans[1].id=202;return value;
+ }});
+ await h.data.init();assert.equal(h.data.catalog.mealPlans.length,0);
+ await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ assert.equal(group.mealPlanId,202);assert.equal(group.mealPlanCode,'breakfast');assert.equal(group.raw.searchMealPlanSource,'anex-explicit-meal-code-v1');
+ const concrete=await h.data.expandAnexGroup(group);assert.ok(concrete.offers.every(o=>o.mealPlanId===202));
 });
 test('canonical mealPlanId owns top-level taxonomy while raw meal stays detail',async()=>{
  const h=harness();canonicalMeals(h);

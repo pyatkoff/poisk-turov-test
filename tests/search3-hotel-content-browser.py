@@ -102,7 +102,10 @@ def check(browser, origin, width):
         elif u.path.endswith('/search3-local-results-read-v1.php'):
             body = req.post_data_json
             if body.get('action')=='meal_catalog':
-                reply({'ok':True,'data':{'source':'anytour-search-meal-v1','provider':'tourvisor','scopeKey':'global','available':True,'revision':'a'*64,'plans':[{'id':7,'code':'all-inclusive','nameRu':'Всё включено','nativeIds':['7']}]}})
+                provider = body.get('provider')
+                assert provider in ('tourvisor','anex'), body
+                assert body == {'action':'meal_catalog','provider':provider,'scopeKey':'global'}, body
+                reply({'ok':True,'data':{'source':'anytour-search-meal-v1','provider':provider,'scopeKey':'global','available':provider=='tourvisor','revision':'a'*64,'plans':[{'id':7,'code':'all-inclusive','nameRu':'Всё включено','nativeIds':['7'] if provider=='tourvisor' else []}]}})
             elif 'params' in body:
                 reply({'ok':True,'data':{'source':'anytour-db-first-results-v1','scopeVersion':1,'scope':{'scopeVersion':1,**body['params']},'scopeDigest':'c'*64,'selectionAuthority':False,'hotels':[],
                        'storedOfferCount':0,'withheldOfferCount':0,'categoryFilteredOfferCount':0,'eligibleHotelCount':0,'omittedHotelCount':0,'omittedOfferCount':0,'offerCount':0,'providerOfferCounts':{}}})

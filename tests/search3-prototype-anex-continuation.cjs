@@ -54,7 +54,7 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   continued:false,expired:false,sourceCounts:{},lastProgress:-10,lastRead:0,deadline:0};
  let notify=event=>events.push(event);
  root.__test.set(run,event=>notify(event));
- return {run,calls,events,apiCalls,stored,t:root.__test,root,advance(ms){clock+=ms;},
+ return {run,calls,events,apiCalls,stored,t:root.__test,root,now(){return clock;},advance(ms){clock+=ms;},
   setFetch(fn){fetchImpl=fn;},setApi(fn){apiImpl=fn;},setNotify(fn){notify=fn;},
   initial(data=page(),index=0,total=1){return root.__test.applyDirectAnex(run,data,params,index,total);},
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
@@ -128,7 +128,7 @@ test('invalid last offer cannot partially append the preceding valid offers',asy
 // verification path. A comparison read never executes this transport.
 const pairRef=n=>'anex_quote:'+String(n).repeat(64);
 async function pricedHarness({legacy=false,ids=[1]}={}){
- const h=harness(),used=new Map(),expires=Math.floor(Date.now()/1000)+600;
+ const h=harness(),used=new Map(),expires=Math.floor(h.now()/1000)+600;
  h.run.anexSessionCurrent=true;await h.initial(page(1,'available',ids));
  const offers=h.t.offers(),choices=[1,2,3,4].map(n=>({choice_ref:pairRef(n),legs:[{label:'TEST OUT '+n},{label:'TEST BACK '+n}],current:false}));
  h.setFetch(async(url,body)=>{
@@ -140,12 +140,20 @@ async function pricedHarness({legacy=false,ids=[1]}={}){
   assert.equal(body.action,'quote_calculate');pairs.add(body.choice_ref);
   const n=choices.findIndex(c=>c.choice_ref===body.choice_ref)+1;
   return{ok:true,data:{...identity,status:'quote_verified',selection_state:'preview_only',final_price_verified:true,choice:choices[n-1],choices,
-   price:{amount:String(100000+n*1000),currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:expires,...capability()}};
+   price:{amount:String(100000+n*1000),currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(h.now()/1000),expires_at:expires,...capability()}};
  });
  for(const o of offers){await h.root.AnyTourPrototypeData.verifyAnexConcrete(o);await h.root.AnyTourPrototypeData.verifyAnexPackage(o);}
  return{...h,offers,o:offers[0],choices,used,calculate(o,n){return h.root.AnyTourPrototypeData.verifyAnexPackage(o,pairRef(n));},prices(o=offers[0]){return h.root.AnyTourPrototypeData.anexPackagePrices(o);},count(){return h.calls.filter(c=>c.body.action==='quote_calculate').length;}};
 }
 const facts=rows=>JSON.parse(JSON.stringify(rows.map(row=>({choice:row.choiceRef,amount:row.finalPrice.amount,currency:row.finalPrice.currency}))));
+test('quote fixture uses the controlled clock when the outer wall clock crosses a second',async()=>{
+  const h=await pricedHarness(),wallNow=Date.now;
+  try{
+    Date.now=()=>h.now()+1000;
+    await h.calculate(h.o,1);
+    assert.deepEqual(facts(h.prices()),[{choice:pairRef(1),amount:'101000',currency:'RUB'}]);
+  }finally{Date.now=wallNow;}
+});
 test('A/B/cached A compares two exact whole-party prices with zero read effects and no fourth operation',async()=>{
  const h=await pricedHarness();assert.deepEqual(facts(h.prices()),[],'uncalculated choices stay unknown');
  await h.calculate(h.o,1);await h.calculate(h.o,2);const cachedA=await h.calculate(h.o,1);assert.equal(cachedA.choice.choiceRef,pairRef(1));assert.equal(h.count(),2);
@@ -190,14 +198,14 @@ test('expired, revoked, queued or mismatched receipt facts expose no stale amoun
 test('healthy pending B then queued cached A settles without another mutation or changing its retained queue',async()=>{
  const h=await pricedHarness();await h.calculate(h.o,1);const d=deferred(),transport=h.calls.length;
  h.setFetch(async(url,body)=>{await d.promise;return{ok:true,data:{provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'quote_verified',selection_state:'preview_only',final_price_verified:true,
-  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
+  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(h.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
  const b=h.calculate(h.o,2),a=h.calculate(h.o,1);assert.deepEqual(facts(h.prices()),[],'pending cached draft has no authority');d.resolve();await b;const settled=await a;
  assert.equal(settled.choice.choiceRef,pairRef(1));assert.equal(h.calls.length,transport+1);assert.equal(h.t.receipt(h.o).queuedChoice,pairRef(1),'reader must not clear the existing retained queue field');
  const before=h.t.snapshot();assert.deepEqual(facts(h.prices()),[{choice:pairRef(1),amount:'101000',currency:'RUB'},{choice:pairRef(2),amount:'102000',currency:'RUB'}]);assert.equal(h.t.snapshot(),before);
 });
 test('comparison rejects absent gross/RUB/final/pair provenance without changing normalized results',async()=>{
  const h=await pricedHarness();await h.calculate(h.o,1);const receipt=h.t.receipt(h.o),result=receipt.quotes.get(pairRef(1));
- for(const fault of [{priceBasis:undefined},{finalPriceVerified:false},{finalPrice:{amount:'101000',currency:'USD'}},{verifiedAt:0},
+ for(const fault of [{priceBasis:undefined},{finalPriceVerified:false},{finalPrice:{amount:'101000',currency:'USD'}},{verifiedAt:0},{verifiedAt:Math.floor(h.now()/1000)+1},
   {choice:{...result.choice,choiceRef:pairRef(2)}},{choice:{...result.choice,legs:[{label:'OTHER OUT'},result.choice.legs[1]]}},{choices:undefined}]){
   receipt.quotes.set(pairRef(1),Object.freeze({...result,...fault}));const before=h.t.snapshot();assert.deepEqual(facts(h.prices()),[]);assert.equal(h.t.snapshot(),before);
  }

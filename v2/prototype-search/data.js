@@ -4,6 +4,7 @@
   const rt = root.V2Runtime;
   const local = '/_preview/search3-local-candidate/';
   const catalog = { departures: [], countries: [], meals: [], mealPlans: [], mealPlanRevision: null, mealPlanAvailable: false, regions: {} };
+  const providerMealPlans=new Map();
   const regionRequests=new Map();
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
@@ -152,24 +153,54 @@
     return candidates.find(candidate=>!(/^[A-Z]{1,7}\+?$/).test(candidate))||candidates[0]||'';
   }
   function meal(value){return indexedMeal(value,mealIndexes());}
-  function installMealPlans(payload){
-    if(!payload||payload.ok!==true||payload.source!=='anytour-search-meal-v1'||payload.provider!=='tourvisor'||payload.scopeKey!=='global'
+  function installMealPlans(payload,provider='tourvisor'){
+    if(!['tourvisor','anex'].includes(provider)||!payload||payload.ok!==true||payload.source!=='anytour-search-meal-v1'||payload.provider!==provider||payload.scopeKey!=='global'
       ||typeof payload.available!=='boolean'||!Array.isArray(payload.plans)||payload.plans.length>1000)return false;
-    const plans=[],ids=new Set(),nativeIds=new Set();
+    const revision=typeof payload.revision==='string'&&/^[a-f0-9]{64}$/.test(payload.revision)?payload.revision:null;
+    if(provider==='anex'&&revision===null)return false;
+    const plans=[],ids=new Set(),codes=new Set(),nativeIds=new Set();
     for(const row of payload.plans){
       if(!row||!Number.isSafeInteger(row.id)||row.id<1||ids.has(row.id)||typeof row.code!=='string'||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(row.code)
         ||typeof row.nameRu!=='string'||!row.nameRu.trim()||row.nameRu.length>255||!Array.isArray(row.nativeIds))return false;
+      if(provider==='anex'&&(codes.has(row.code)||/[\u0000-\u001f\u007f]/.test(row.nameRu)))return false;
       const native=[];
       for(const raw of row.nativeIds){
         if(typeof raw!=='string'||!raw.trim()||raw.length>128||/[\u0000-\u001f\u007f]/.test(raw)||nativeIds.has(raw))return false;
         nativeIds.add(raw);native.push(raw);
       }
-      ids.add(row.id);plans.push(Object.freeze({id:row.id,code:row.code,nameRu:row.nameRu.trim(),nativeIds:Object.freeze(native)}));
+      ids.add(row.id);codes.add(row.code);plans.push(Object.freeze({id:row.id,code:row.code,nameRu:row.nameRu.trim(),nativeIds:Object.freeze(native)}));
+    }
+    if(provider==='anex'){
+      providerMealPlans.set(provider,Object.freeze({available:payload.available,revision,plans:Object.freeze(plans)}));
+      return true;
     }
     catalog.mealPlans=plans;
     catalog.mealPlanAvailable=payload.available;
-    catalog.mealPlanRevision=typeof payload.revision==='string'&&/^[a-f0-9]{64}$/.test(payload.revision)?payload.revision:null;
+    catalog.mealPlanRevision=revision;
     return true;
+  }
+  const anexSearchMealCodePolicy=Object.freeze({RO:'no-meals',BB:'breakfast',HB:'half-board',FB:'full-board',AI:'all-inclusive',UAI:'ultra-all-inclusive'});
+  function providerMealPlan(value,provider){
+    const snapshot=providerMealPlans.get(provider);
+    if(provider!=='anex'||!snapshot||typeof value!=='string'||!value||value.length>128||/[\u0000-\u001f\u007f]/.test(value))return null;
+    // Native IDs are provider-qualified facts. Russian display aliases and the
+    // Tourvisor meal catalogue cannot supply ANEX mapping authority.
+    let matches,source;
+    if(snapshot.available===true){
+      matches=snapshot.plans.filter(plan=>plan.nativeIds.includes(value));source='anytour-search-meal-v1';
+    }else{
+      // Reviewed source policy for six exact ANEX codes, only while its native
+      // mapping schema is unavailable. IDs come from this ANEX catalogue; this
+      // is search classification, not an accepted DB/provider or package match.
+      // A partial available mapping stays authoritative and never uses this policy.
+      if(!snapshot.plans.every(plan=>plan.nativeIds.length===0)||!Object.hasOwn(anexSearchMealCodePolicy,value))return null;
+      matches=snapshot.plans.filter(plan=>plan.code===anexSearchMealCodePolicy[value]);source='anex-explicit-meal-code-v1';
+    }
+    if(matches.length!==1)return null;
+    const plan=matches[0],known=catalog.mealPlans.find(row=>row?.id===plan.id);
+    if(known&&(known.code!==plan.code||known.nameRu!==plan.nameRu)
+      ||catalog.mealPlans.some(row=>row?.code===plan.code&&row.id!==plan.id))return null;
+    return Object.freeze({id:plan.id,code:plan.code,nameRu:plan.nameRu,source,revision:snapshot.revision});
   }
   function supplierMealNativeId(value,indexes=mealIndexes()){
     const direct=value&&typeof value==='object'?String(value.id??''):'';
@@ -467,13 +498,14 @@
       ||!(/^[a-f0-9]{32}$/).test(searchRef)||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)
       ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw new Error('Invalid ANEX offer');
     seen.add(offerRef);
-    const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется';
+    const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется',plan=providerMealPlan(tour.meal,'anex');
     if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
     if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
     const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
     return {id:offerRef,offerRef,offerIdentityDigest,searchRef,provider:'anex',price:total,date:day,nights,
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
+      ...(plan?{searchMealPlan:Object.freeze({id:plan.id,code:plan.code,nameRu:plan.nameRu}),searchMealPlanSource:plan.source,searchMealPlanRevision:plan.revision}:{}),
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
       anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
@@ -1183,15 +1215,20 @@
     if(!catalog.departures.length)catalog.departures=await rt.api('departures',{departureCountryId:1});
     if(!Array.isArray(catalog.departures)||!catalog.departures.length)throw new Error('Не удалось загрузить города вылета.');
     try{const rows=await rt.api('meals',{});if(Array.isArray(rows))catalog.meals=rows;}catch{}
-    try{
+    const readMealPlans=async provider=>{
       const response=await fetch(local+'data/search3-local-results-read-v1.php',{
         method:'POST',credentials:'same-origin',cache:'no-store',
         headers:{Accept:'application/json','Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},
-        body:JSON.stringify({action:'meal_catalog',provider:'tourvisor',scopeKey:'global'})
+        body:JSON.stringify({action:'meal_catalog',provider,scopeKey:'global'})
       });
       const payload=await response.json();
-      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data}))throw new Error('Invalid canonical meal catalogue');
-    }catch{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}
+      if(!response.ok||payload?.ok!==true||!payload.data||!installMealPlans({ok:true,...payload.data},provider))throw new Error('Invalid canonical meal catalogue');
+    };
+    providerMealPlans.delete('anex');
+    await Promise.all([
+      readMealPlans('tourvisor').catch(()=>{catalog.mealPlans=[];catalog.mealPlanAvailable=false;catalog.mealPlanRevision=null;}),
+      readMealPlans('anex').catch(()=>{providerMealPlans.delete('anex');})
+    ]);
     return countries(origin);
   }
   let catalogGeneration=0;

@@ -184,14 +184,16 @@ def check_width(browser, origin, width):
         elif url.path.endswith("/search3-local-results-read-v1.php"):
             body = request.post_data_json
             if body.get("action") == "meal_catalog":
-                assert body == {"action": "meal_catalog", "provider": "tourvisor", "scopeKey": "global"}, body
+                provider = body.get("provider")
+                assert provider in ("tourvisor", "anex"), body
+                assert body == {"action": "meal_catalog", "provider": provider, "scopeKey": "global"}, body
                 assert request.headers.get("x-requested-with") == "AnyTourSearch3"
-                reply({"ok": True, "data": {"source": "anytour-search-meal-v1", "provider": "tourvisor", "scopeKey": "global",
-                       "available": True, "revision": "a" * 64, "plans": [
-                           {"id": 2, "code": "breakfast", "nameRu": "Завтраки", "nativeIds": ["3"]},
-                           {"id": 3, "code": "half-board", "nameRu": "Полупансион", "nativeIds": ["4"]},
-                           {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"]},
-                           {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"]},
+                reply({"ok": True, "data": {"source": "anytour-search-meal-v1", "provider": provider, "scopeKey": "global",
+                       "available": provider == "tourvisor", "revision": "a" * 64, "plans": [
+                           {"id": 2, "code": "breakfast", "nameRu": "Завтраки", "nativeIds": ["3"] if provider == "tourvisor" else []},
+                           {"id": 3, "code": "half-board", "nameRu": "Полупансион", "nativeIds": ["4"] if provider == "tourvisor" else []},
+                           {"id": 7, "code": "all-inclusive", "nameRu": "Всё включено", "nativeIds": ["7"] if provider == "tourvisor" else []},
+                           {"id": 8, "code": "ultra-all-inclusive", "nameRu": "Ультра всё включено", "nativeIds": ["9"] if provider == "tourvisor" else []},
                        ]}})
                 return
             if body.get("action") == "price_calendar":

@@ -69,7 +69,11 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    const ids=q.getAll('legacyHotelIds[]'),rows=state.hotelCatalogue.filter(h=>ids.includes(String(h.legacyId)));return {ok:true,source:'anytour-canonical-catalog',catalog:'anytour',requestedLegacyIds:ids,missingLegacyIds:[],items:rows.length?rows.map(h=>({...profile,id:h.id,name:h.name,country:{id:Number(h.country),name:h.countryName},images:h.images})):[profile],links:rows.length?rows.map(h=>({legacyHotelId:String(h.legacyId),anytourHotelId:h.id})):ids.map(id=>({legacyHotelId:id,anytourHotelId:501}))};
   }
   if(u.pathname.endsWith('/search3-local-results-read-v1.php')){
-   if(action==='meal_catalog')return {ok:true,data:{source:'anytour-search-meal-v1',provider:'tourvisor',scopeKey:'global',available:true,revision:'a'.repeat(64),plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:['7']},{id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:['3']}]}};
+   if(action==='meal_catalog'){
+    if(!['tourvisor','anex'].includes(body.provider)||body.scopeKey!=='global')throw Error('Unexpected meal catalogue scope');
+    const native=body.provider==='anex'?['AI','BB']:['7','3'];
+    return {ok:true,data:{source:'anytour-search-meal-v1',provider:body.provider,scopeKey:'global',available:true,revision:'a'.repeat(64),plans:[{id:7,code:'all-inclusive',nameRu:'Всё включено',nativeIds:[native[0]]},{id:2,code:'breakfast',nameRu:'Завтраки',nativeIds:[native[1]]}]}};
+   }
    if(action==='price_calendar'){
     const priceFrom=body.priceFrom??null,priceTo=body.priceTo??null;
     const minPrice=[97500,167500.5,220000].find(price=>(priceFrom===null||price>=priceFrom)&&(priceTo===null||price<=priceTo))??null;
