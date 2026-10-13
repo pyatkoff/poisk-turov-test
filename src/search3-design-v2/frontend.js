@@ -279,7 +279,7 @@
       for(const key of ['stars','meals'])if(!coverage[key]&&state.filters[key].length){state.filters[key]=[];reset=true;}
       if(reset)updateURL();
       const found=rows(), visible=found.slice(0,state.resultLimit), s=state.search,loadingEmpty=state.status==='loading'&&!state.hotels.length,errorEmpty=state.status==='error'&&!state.hotels.length,partialEmpty=state.status==='partial'&&!state.hotels.length;
-      root.classList.toggle('st-result-unavailable',errorEmpty||partialEmpty);
+      root.classList.toggle('st-result-unavailable',!state.hasSearched||errorEmpty||partialEmpty);
       const country=countryName(s.country),title={'Турция':'Туры в Турцию','Египет':'Туры в Египет','ОАЭ':'Туры в ОАЭ'}[country]||'Туры: '+country;
       text('[data-country-title]',title);text('[data-origin]',s.origin);text('[data-country]',country);
       text('[data-departure-range]',dateRange(s.from,s.to));text('[data-nights]',s.minNights===s.maxNights?s.minNights:s.minNights+'–'+s.maxNights);
