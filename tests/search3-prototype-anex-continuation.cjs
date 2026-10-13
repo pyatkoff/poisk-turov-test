@@ -198,7 +198,7 @@ test('expired, revoked, queued or mismatched receipt facts expose no stale amoun
 test('healthy pending B then queued cached A settles without another mutation or changing its retained queue',async()=>{
  const h=await pricedHarness();await h.calculate(h.o,1);const d=deferred(),transport=h.calls.length;
  h.setFetch(async(url,body)=>{await d.promise;return{ok:true,data:{provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:'quote_verified',selection_state:'preview_only',final_price_verified:true,
-  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(Date.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
+  choice:h.choices[1],choices:h.choices,price:{amount:'102000',currency:'RUB',basis:'supplier_gross_package'},verified_at:Math.floor(h.now()/1000),expires_at:h.t.receipt(h.o).expiresAt,repricing:{enabled:true,max_pairs:3,used_pairs:2,remaining_pairs:1}}};});
  const b=h.calculate(h.o,2),a=h.calculate(h.o,1);assert.deepEqual(facts(h.prices()),[],'pending cached draft has no authority');d.resolve();await b;const settled=await a;
  assert.equal(settled.choice.choiceRef,pairRef(1));assert.equal(h.calls.length,transport+1);assert.equal(h.t.receipt(h.o).queuedChoice,pairRef(1),'reader must not clear the existing retained queue field');
  const before=h.t.snapshot();assert.deepEqual(facts(h.prices()),[{choice:pairRef(1),amount:'101000',currency:'RUB'},{choice:pairRef(2),amount:'102000',currency:'RUB'}]);assert.equal(h.t.snapshot(),before);
