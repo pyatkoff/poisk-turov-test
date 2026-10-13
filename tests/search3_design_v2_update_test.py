@@ -73,8 +73,8 @@ class UpdateContracts(unittest.TestCase):
             'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
         # The predecessor is already a native 855-file publication, not a legacy
         # 845-file fixture with a patched owner. Its canonical and brand bytes
-        # stay identical while only the tour runtime, local disclosure styles and
-        # generated manifest change for this package.
+        # stay identical while only the frontend runtime and generated manifest
+        # change for this package.
         pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
         for name in remote.NATIVE_SUCCESSOR_CHANGES:
             if name == remote.NATIVE_MANIFEST: continue
@@ -149,6 +149,9 @@ class UpdateContracts(unittest.TestCase):
             'loadingInitialCountNeutral': True, 'loadingEmptyActionHidden': True, 'loadingExtraSearches': 0,
             'failedInitialCountNeutral': True, 'failedInitialFriendlyCopy': True, 'failedInitialExtraSearches': 0,
             'filteredCalendarTruthful': True,
+            'partialEmptyNeutralCount': True, 'partialSavedSearchRetained': True,
+            'partialLoadedHotels': 4, 'partialExtraSearches': 0,
+            'partialFilteredRecoveryLoadedHotels': 2,
             'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
             'flightAlternativesClosedHeight': 500, 'flightAlternativesExpandedHeight': 800,
             'flightAlternativesSavedHeight': 300}
@@ -170,7 +173,8 @@ class UpdateContracts(unittest.TestCase):
                               else 'results' if name.startswith(('native-budget-results-', 'native-error-',
                                                                  'native-calendar-later-', 'native-results-bounded-',
                                                                  'native-filters-active-', 'native-filter-empty-',
-                                                                 'native-results-loading-', 'native-results-error-'))
+                                                                 'native-results-loading-', 'native-results-error-',
+                                                                 'native-results-partial-', 'native-filter-empty-partial-'))
                               else 'hotel' if name.startswith('native-hotel-return-') else name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     contents['evidence/' + name] = png
@@ -186,7 +190,7 @@ class UpdateContracts(unittest.TestCase):
                             'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
                                          for text in ('0', '150000')] if has_budget else [],
                         'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
-                        'prices': [] if screen == 'startup' or name.startswith(('native-filter-empty-', 'native-results-loading-', 'native-results-error-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
+                        'prices': [] if screen == 'startup' or name.startswith(('native-filter-empty-', 'native-results-loading-', 'native-results-error-', 'native-results-partial-empty-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
         contents['evidence/acceptance.json'] = remote.json_bytes(report)
@@ -207,8 +211,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '20c6488c01d764ce9bdc19c7eb71f01108efbda5')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38312997899)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '9de4cdb3d044b060b039abc096f9351466147d86')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38320934646)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -276,12 +280,12 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_233_frames_and_bounded_flight_calendar_budget_header_sort(self):
+    def test_visual_successor_requires_exact_263_frames_and_partial_bounded_flight_calendar_budget_header_sort(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 233)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 233)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 263)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 263)
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
         changes = [lambda r: r['cases'][0]['proof'].update(flightAlternativesExtraQuotes=1),
@@ -315,12 +319,22 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['proof'].update(failedInitialFriendlyCopy=False),
             lambda r: r['cases'][0]['proof'].update(failedInitialExtraSearches=1),
             lambda r: r['cases'][0]['proof'].update(filteredCalendarTruthful=False),
+            lambda r: r['cases'][0]['proof'].update(partialEmptyNeutralCount=False),
+            lambda r: r['cases'][0]['proof'].update(partialSavedSearchRetained=False),
+            lambda r: r['cases'][0]['proof'].update(partialLoadedHotels=0),
+            lambda r: r['cases'][0]['proof'].update(partialExtraSearches=1),
+            lambda r: r['cases'][0]['proof'].update(partialFilteredRecoveryLoadedHotels=0),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filters-active-')),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filter-empty-')),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-loading-')),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-error-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-partial-empty-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-partial-')),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filter-empty-partial-')),
             lambda r: frame(r, 'native-results-loading-')['buttons'].append({'text':'Change search','clipped':False}),
             lambda r: frame(r, 'native-results-error-')['buttons'].clear(),
+            lambda r: frame(r, 'native-results-partial-empty-')['buttons'].clear(),
+            lambda r: frame(r, 'native-results-partial-empty-')['prices'].append({'text':'invented'}),
             lambda r: frame(r, 'native-filter-empty-')['prices'].append({'text':'invented'}),
             lambda r: frame(r, 'native-filters-active-')['prices'].clear(),
             lambda r: r['cases'][2]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
@@ -432,7 +446,8 @@ class UpdateContracts(unittest.TestCase):
             '0674fa6cc7744ee21cb073b284f089c20171f38e',
             '8c2d0308eb29e26d2819342d10501db1ed82e3db',
             '9fec34cfeb5a7c97659b16188404ae02c166c770',
-            '20c6488c01d764ce9bdc19c7eb71f01108efbda5'))
+            '20c6488c01d764ce9bdc19c7eb71f01108efbda5',
+            '9de4cdb3d044b060b039abc096f9351466147d86'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -545,7 +560,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
-             38255222254, 38269206819, 38276638172, 38290989467, 38312997899))
+             38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
+             38320934646))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -600,17 +616,16 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/tour.js',
-            'visual-search/native-v2/viewport.css'))
+            'visual-search/native-v2/frontend.js',
+            'visual-search/native-v2/source-manifest.json'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/frontend.js', 'visual-search/native-v2/bridge.js',
-                     'visual-search/native-v2/donor.css', 'prototype-search/data.js'):
+        for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js', 'visual-search/native-v2/viewport.css',
+                     'visual-search/native-v2/bridge.js', 'visual-search/native-v2/donor.css', 'prototype-search/data.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, bad)
