@@ -6,49 +6,49 @@ based on the final Sites v2 source `00fe6734c08acf234756bb59e5b61dbfecf41941`.
 It does not authorize changes to NEXT, the Sites reference, sibling previews,
 production, providers, auth, mappings, lead/CRM or analytics.
 
-## Current state: truthful partial predecessor published, calendar text-200 successor selected
+## Current state: calendar text-200 predecessor published, selected-hotel summary successor selected
 
 The exact public predecessor is source
-`5a84a0d66394116f9845de3565563ce1d025b6bc`, receiving release
-`059349ad4a10902e102b5b21e34f3cdc6c3fc9b5`, and terminal publication
-run `38331033682` / command `6135911127`. Its 855-file public digest is
-`ea5101d72a190e546f68802af52e64549dad9720a6ae6bd7abf4b5b5a6bfa0d0`.
-Actual READY artifact `11783605115` (ZIP
-`12e7af33aac7ded473be6546b861ed940738c47671d6bc15d798b342539e2af8`)
-and deployment artifact `11782747764` (ZIP
-`920c3f1d7a5990f3d3a39edf822d1b3477e9f7dc2bad8bf62a22024585d73854`)
+`75e52f2597172469fbcb6f742dc8c7b5934cd173`, receiving release
+`c407a6e4c74d4eb3e176766c97524342573a195b`, and terminal publication
+run `38336349915` / command `6136781039`. Its 855-file public digest is
+`d2726a3357fe33e27b7004443a65f22eebc5aec3dee434b8a0f5d5368b3abafa`.
+Actual READY artifact `11784427884` (ZIP
+`bf99ec84da8c55c0d7b560c8a4146178991ad7091fa18b721f1ffc3b51d118b3`)
+and deployment artifact `11785127642` (ZIP
+`d3936f99b98c3d366a90c07150b61161cd5fb53202aa346c07bbb3f1e6d52dd1`)
 establish the installed predecessor. That command and run are consumed and
 cannot be replayed.
 
-PR #4556 final source `75e52f2597172469fbcb6f742dc8c7b5934cd173`
-and tree `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` passed exact-head
-native CI `38333713473` and Security `38333713528`, both attempt 1. The accepted
-artifact is `11783439190`, ZIP SHA256
-`788434b4ac533697d1efa7026f4baa3f95071358911fa65532966a2abe8b6290`.
-Independent source/runtime/visual review is recorded in PR comment
-`6136384503` and #4217 comment `6136405131`. It approved the 855-file,
-263-frame packet and checked every calendar-later frame across the complete
-360/390/430/768/1280 × text100/200 matrix.
+PR #4558 final source `660a760d9d0a0c0121d05d53bdc0895689600bc8`
+and tree `fcf1fc34586bcdf4af158fb2d6718c9612fa7c86` passed exact-head
+native CI `38337878268` and Security `38337878296`, both attempt 1. The accepted
+artifact is `11784779566`, ZIP SHA256
+`1c9333f9c716f32ca7854346c50f289581049d5eb297c6388c398e0ec0a9cfa4`.
+Independent source/runtime/visual review is recorded in #4217 comment
+`6139096198`. It approved the 855-file, 263-frame packet and checked the donor
+side-by-side selected-hotel composition at ordinary text plus the full-width
+reflow at 200% across the complete 360/390/430/768/1280 matrix.
 
 The receiving squash is release
-`c407a6e4c74d4eb3e176766c97524342573a195b`, with the identical tree and
-single parent `059349ad4a10902e102b5b21e34f3cdc6c3fc9b5`. Its exact source/release
-relation is `diverged`, behind 3, ahead 1, merge base equal to that parent.
+`a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d`, with the identical tree and
+single parent `c407a6e4c74d4eb3e176766c97524342573a195b`. Its exact source/release
+relation is `diverged`, behind 1, ahead 1, merge base equal to that parent.
 Source integration is not publication.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `75e52f2597172469fbcb6f742dc8c7b5934cd173` |
-| source_tree | `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` |
-| release_sha | `c407a6e4c74d4eb3e176766c97524342573a195b` |
-| release_tree | `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` |
-| release_parent | `059349ad4a10902e102b5b21e34f3cdc6c3fc9b5` |
-| build_run | `38333713473` |
-| artifact_id | `11783439190` |
-| source_ZIP_sha256 | `788434b4ac533697d1efa7026f4baa3f95071358911fa65532966a2abe8b6290` |
+| source_sha | `660a760d9d0a0c0121d05d53bdc0895689600bc8` |
+| source_tree | `fcf1fc34586bcdf4af158fb2d6718c9612fa7c86` |
+| release_sha | `a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d` |
+| release_tree | `fcf1fc34586bcdf4af158fb2d6718c9612fa7c86` |
+| release_parent | `c407a6e4c74d4eb3e176766c97524342573a195b` |
+| build_run | `38337878268` |
+| artifact_id | `11784779566` |
+| source_ZIP_sha256 | `1c9333f9c716f32ca7854346c50f289581049d5eb297c6388c398e0ec0a9cfa4` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `8dac49d8eaf42875229a0fcda300548793a035325142f9c37dbc2077ccdceac5` |
+| source_manifest_sha256 | `5d836e6a9ab98ffeee2cbbde8d6a22054a637a63b7ec347b2b7ec297e6389e6b` |
 
 An absent, foreign, modified, activated or unknown owner/target aborts. Previous
 completed or failed commands and runs remain terminal/no-replay. A new publisher
@@ -85,6 +85,10 @@ Every case must prove:
 - every `native-calendar-later` frame has a non-clipped footer, no horizontal
   scroll, a pager inside the calendar and two in-bounds controls at least
   44×44 px;
+- every tour and lead frame has exactly one measured selected-hotel summary;
+  ordinary-width summaries retain the donor side-by-side composition, while a
+  summary at or below 18 text-relative units stacks its real image and copy at
+  full width without clipping;
 - retained exact hotel/offer identities and full factual prices;
 - original flight selection, expiry and query identity;
 - passive hydration, local filtering and Back/Forward cause no supplier search;

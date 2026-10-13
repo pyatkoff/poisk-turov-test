@@ -191,9 +191,20 @@ class UpdateContracts(unittest.TestCase):
                                 {'disabled': True, 'left': width - 61, 'right': width - 17,
                                  'top': 300, 'bottom': 344, 'width': 44, 'height': 44}],
                             'clipped': False}
+                    summary_fit = []
+                    if side == 'native' and screen in ('tour', 'lead'):
+                        summary_width = (300 if width <= 430 else 434 if screen == 'lead' else 670)
+                        summary_font = 14 * percent / 100
+                        narrow = summary_width <= summary_font * 18 + 1
+                        summary_fit = [{'className': 'st-quick-context' if width <= 430 and screen == 'tour' else 'st-tour-hotel',
+                            'width': summary_width, 'fontSize': summary_font,
+                            'imageWidth': summary_width if narrow else 82,
+                            'copyWidth': summary_width if narrow else summary_width * .7,
+                            'copyWidthRatio': 1 if narrow else .7,
+                            'stacked': narrow, 'queryNarrow': narrow}]
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'calendarFit': calendar_fit,
+                        'calendarFit': calendar_fit, 'summaryFit': summary_fit,
                         'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
                         'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False, 'overlappingLines': False}],
                         'headerFit': {'outside': False, 'overlap': False},
@@ -223,8 +234,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '5a84a0d66394116f9845de3565563ce1d025b6bc')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38331033682)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '75e52f2597172469fbcb6f742dc8c7b5934cd173')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38336349915)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -362,6 +373,15 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'].pop(),
             lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'][0].update(width=43),
             lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'][1].update(right=999),
+            lambda r: frame(r, 'native-tour-').update(summaryFit=None),
+            lambda r: frame(r, 'native-lead-')['summaryFit'].clear(),
+            lambda r: frame(r, 'native-tour-', 1)['summaryFit'][0].update(queryNarrow=False),
+            lambda r: frame(r, 'native-tour-', 1)['summaryFit'][0].update(stacked=False),
+            lambda r: frame(r, 'native-tour-', 1)['summaryFit'][0].update(copyWidthRatio=.5),
+            lambda r: frame(r, 'native-lead-', 1)['summaryFit'][0].update(imageWidth=100),
+            lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(stacked=True),
+            lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(queryNarrow=True),
+            lambda r: frame(r, 'native-results-').update(summaryFit=[{'className':'st-tour-hotel'}]),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-bounded-')),
             lambda r: frame(r, 'native-results-bounded-').update(screen='hotel'),
             lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
@@ -467,7 +487,8 @@ class UpdateContracts(unittest.TestCase):
             '9fec34cfeb5a7c97659b16188404ae02c166c770',
             '20c6488c01d764ce9bdc19c7eb71f01108efbda5',
             '9de4cdb3d044b060b039abc096f9351466147d86',
-            '5a84a0d66394116f9845de3565563ce1d025b6bc'))
+            '5a84a0d66394116f9845de3565563ce1d025b6bc',
+            '75e52f2597172469fbcb6f742dc8c7b5934cd173'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -503,7 +524,7 @@ class UpdateContracts(unittest.TestCase):
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
             '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}},
             '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': 'b' * 40}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 3, 'ahead_by': 1,
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': 1, 'ahead_by': 1,
                 'merge_base_commit': {'sha': 'b' * 40}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
@@ -521,7 +542,7 @@ class UpdateContracts(unittest.TestCase):
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=4)),
+             lambda row: row.update(behind_by=2)),
             ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row['merge_base_commit'].update(sha='0' * 40)),
         )
@@ -581,7 +602,7 @@ class UpdateContracts(unittest.TestCase):
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-             38320934646, 38331033682))
+             38320934646, 38331033682, 38336349915))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)

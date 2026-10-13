@@ -92,7 +92,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 3
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 1
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -287,6 +287,34 @@ def native_evidence(archive, request, native):
                              and left - 1 <= button['left'] < button['right'] <= right + 1
                              and button['width'] >= 44 and button['height'] >= 44,
                              'native_calendar_page_control_geometry_required')
+                summaries = frame.get('summaryFit')
+                if screen in ('tour', 'lead'):
+                    need(isinstance(summaries, list) and len(summaries) == 1,
+                         'native_selected_hotel_summary_required')
+                    summary = summaries[0]
+                    numeric = ('width', 'fontSize', 'imageWidth', 'copyWidth', 'copyWidthRatio')
+                    need(isinstance(summary, dict)
+                         and summary.get('className') in ('st-tour-hotel', 'st-quick-context')
+                         and all(type(summary.get(field)) in (int, float) and summary[field] > 0
+                                 for field in numeric)
+                         and type(summary.get('stacked')) is bool
+                         and type(summary.get('queryNarrow')) is bool,
+                         'native_selected_hotel_summary_geometry_required')
+                    width, font = summary['width'], summary['fontSize']
+                    narrow = width <= font * 18 + 1
+                    need(summary['queryNarrow'] is narrow,
+                         'native_selected_hotel_summary_query_required')
+                    if narrow:
+                        need(summary['stacked'] is True and summary['copyWidthRatio'] >= .94
+                             and abs(summary['imageWidth'] - width) <= 1
+                             and abs(summary['copyWidth'] - width) <= 1,
+                             'native_selected_hotel_summary_reflow_required')
+                    else:
+                        need(summary['stacked'] is False and summary['imageWidth'] < width
+                             and .25 <= summary['copyWidthRatio'] < .9,
+                             'native_selected_hotel_summary_donor_composition_required')
+                else:
+                    need(summaries == [], 'native_selected_hotel_summary_scope')
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
