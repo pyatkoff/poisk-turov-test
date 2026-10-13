@@ -306,7 +306,9 @@
       text('[data-destination-country]',countryName(draft.country));text('[data-destination-summary]',destinationSummary());
       text('[data-search-date-value]',dateRange(draft.from,draft.to));text('[data-search-night-value]',draft.minNights===draft.maxNights?nights(draft.minNights):draft.minNights+'–'+draft.maxNights+' ночей');
       text('[data-search-travelers-value]',party(draft));text('[data-search-adult-value]',draft.adults);
-      $('[data-search-children]').innerHTML=draft.ages.map((age,i)=>`<div class="st-search-child"><label class="q8c4"><span>Ребёнок ${i+1}</span><select data-native-age="${i}" aria-label="Возраст ребёнка ${i+1} на дату возвращения" required><option value="" ${age===null?'selected':''}>Укажите возраст</option>${Array.from({length:18},(_,n)=>`<option value="${n}" ${age===n?'selected':''}>${n}${n===0?' · до 1 года':''}</option>`).join('')}</select></label><button class="st-search-remove-child" type="button" data-native-remove-child="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('');
+      const children=$('[data-search-children]');
+      if(children.querySelectorAll('[data-native-age]').length!==draft.ages.length)children.innerHTML=draft.ages.map((age,i)=>`<div class="st-search-child"><label class="q8c4"><span>Ребёнок ${i+1}</span><select data-native-age="${i}" aria-label="Возраст ребёнка ${i+1} на дату возвращения" required><option value="" ${age===null?'selected':''}>Укажите возраст</option>${Array.from({length:18},(_,n)=>`<option value="${n}" ${age===n?'selected':''}>${n}${n===0?' · до 1 года':''}</option>`).join('')}</select></label><button class="st-search-remove-child" type="button" data-native-remove-child="${i}" aria-label="Убрать ребёнка ${i+1}">${icon('x')}</button></div>`).join('');
+      else children.querySelectorAll('[data-native-age]').forEach((node,i)=>{node.value=draft.ages[i]??'';});
       $$('[data-search-adult]').forEach(n=>n.disabled=Number(n.dataset.searchAdult)<0?draft.adults<=1:draft.adults>=6);
       $('[data-search-add-child]').disabled=draft.ages.length>=3;
       text('[data-search-child-hint]',agesReviewNeeded?'Даты или длительность изменились. Проверьте возраста детей на дату возвращения и нажмите «Выбрать туристов». Сохранённые значения оставлены.':'Укажите возраст каждого ребёнка на дату возвращения.');
@@ -331,7 +333,8 @@
     }
     function renderNights(){
       const grid=$('.st-night-grid');if(!grid||!draft)return;
-      grid.innerHTML=Array.from({length:28},(_,i)=>{const n=i+1,selected=n>=draft.minNights&&n<=draft.maxNights;return `<button type="button" class="q8c3${selected&&(n===draft.minNights||n===draft.maxNights)?' st-night-endpoint':''}${selected&&n>draft.minNights&&n<draft.maxNights?' st-night-in-range':''}" data-native-night="${n}" aria-label="${nights(n)}" aria-pressed="${selected}">${n}</button>`;}).join('');
+      if(grid.querySelectorAll('[data-native-night]').length!==28)grid.innerHTML=Array.from({length:28},(_,i)=>`<button type="button" data-native-night="${i+1}" aria-label="${nights(i+1)}">${i+1}</button>`).join('');
+      grid.querySelectorAll('[data-native-night]').forEach(node=>{const n=Number(node.dataset.nativeNight),selected=n>=draft.minNights&&n<=draft.maxNights;node.className='q8c3'+(selected&&(n===draft.minNights||n===draft.maxNights)?' st-night-endpoint':'')+(selected&&n>draft.minNights&&n<draft.maxNights?' st-night-in-range':'');node.setAttribute('aria-pressed',String(selected));});
       const value=draft.minNights===draft.maxNights?nights(draft.minNights):draft.minNights+'–'+draft.maxNights+' ночей';
       const form=$('[data-search-form]');form.elements.minNights.value=draft.minNights;form.elements.maxNights.value=draft.maxNights;
       text('[data-search-night-selection]',value);text('[data-search-night-instruction]',nightAnchor!==null?'Выберите вторую границу или оставьте ровно '+nights(nightAnchor)+'.':'Первый тап — точная длительность, второй — диапазон. Между границами — до 10 ночей.');
@@ -466,11 +469,11 @@
       if(d.searchEditorCancel||d.conditionsCancel||button.hasAttribute('data-destination-cancel')||button.hasAttribute('data-search-calendar-close')){closeEditor(true);return;}
       if(d.searchEditorDone||d.conditionsApply||button.hasAttribute('data-calendar-done')||button.hasAttribute('data-destination-apply')){closeEditor(false);return;}
       if(d.searchAdult){draft.adults=Math.max(1,Math.min(6,draft.adults+Number(d.searchAdult)));renderSearch();return;}
-      if(button.hasAttribute('data-search-add-child')){if(draft.ages.length<3)draft.ages.push(null);renderSearch();return;}
-      if(d.nativeRemoveChild!==undefined){draft.ages.splice(Number(d.nativeRemoveChild),1);renderSearch();return;}
+      if(button.hasAttribute('data-search-add-child')){if(draft.ages.length<3){draft.ages.push(null);renderSearch();$('[data-native-age="'+(draft.ages.length-1)+'"]').focus({preventScroll:true});}return;}
+      if(d.nativeRemoveChild!==undefined){const index=Number(d.nativeRemoveChild);draft.ages.splice(index,1);renderSearch();($('[data-native-age="'+Math.min(index,draft.ages.length-1)+'"]')||$('[data-search-add-child]')).focus({preventScroll:true});return;}
       if(d.nativeNight){chooseNight(Number(d.nativeNight));return;}
       if(d.searchNight){chooseNight(Number(d.searchNight),true);return;}
-      if(d.calendarMonth){const shifted=shiftMonth(calendarMonth,Number(d.calendarMonth));if(shifted>=firstMonth(today()))calendarMonth=shifted;renderDates();return;}
+      if(d.calendarMonth){const shifted=shiftMonth(calendarMonth,Number(d.calendarMonth));if(shifted>=firstMonth(today()))calendarMonth=shifted;renderDates();const controls=$$('[data-calendar-month]').filter(node=>!node.disabled&&(!node.classList.contains('st-calendar-mobile-next')||root.classList.contains('st-mobile')));(controls.find(node=>node.dataset.calendarMonth===d.calendarMonth)||controls[0])?.focus({preventScroll:true});return;}
       if(d.calendarBoundary){calendarBoundary=d.calendarBoundary;calendarError='';renderDates();return;}
       if(d.nativeDate){if(calendarBoundary==='from'){draft.from=draft.to=d.nativeDate;calendarBoundary='to';calendarError='';}else{const invalid=dateError(draft.from,d.nativeDate);if(invalid)calendarError=invalid;else{draft.to=d.nativeDate;calendarError='';}}renderDates();$('[data-native-date="'+d.nativeDate+'"]').focus();return;}
       if(d.nativeDestination){const kind=d.nativeDestination,id=d.nativeDestinationId;const row=kind==='country'?dictionaries.countries.find(c=>String(c.id)===id):kind==='resort'?(regionCache.get(String(draft.country))||[]).find(r=>String(r.id)===id):destinationRows.find(h=>String(h.id)===id);if(row)selectDestination({kind,id:kind==='hotel'?Number(id):id,name:row.name});return;}

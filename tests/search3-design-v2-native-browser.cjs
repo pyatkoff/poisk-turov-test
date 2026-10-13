@@ -406,14 +406,38 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.deepEqual(overlapProof,{repaired:false,regression:true,recovered:false},'Painted-line guard detects the original fixed-height caption and accepts its repaired reflow');
           row.proof.enlargedCaptionPaintOverlapRegressionChecked=true;
         }
+        await product.locator('[data-search-nights-toggle]').click();
+        await product.locator('[data-native-night="10"]').press('Enter');
+        assert.equal(await product.locator('[data-native-night="10"]').evaluate(node=>node===document.activeElement),true,'Keyboard night choice retains focus');
+        await page.keyboard.press('Tab');
+        assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Tab continues to the next night after choosing');
+        await page.keyboard.press('Enter');
+        assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Keyboard range endpoint retains focus');
+        await page.keyboard.press('Escape');
+        assert.equal(await product.locator('[data-search-nights-toggle]').evaluate(node=>node===document.activeElement),true,'Escape restores focus to the night opener');
+        assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей','Keyboard Cancel retains the original duration');
+        row.proof.nightKeyboardFocusRetained=true;
+        await product.locator('[data-search-date-toggle]').click();
+        await product.locator('[data-calendar-month="1"]:visible').click();
+        assert.equal(await product.locator('[data-calendar-month="1"]:visible').evaluate(node=>node===document.activeElement),true,'Month paging retains its visible action');
+        await product.locator('[data-calendar-month="-1"]').click();
+        assert.equal(await product.locator('[data-calendar-month="-1"]').isEnabled(),false);
+        assert.equal(await product.locator('[data-calendar-month="1"]:visible').evaluate(node=>node===document.activeElement),true,'Earliest month focuses the enabled next-month action');
+        await page.keyboard.press('Escape');
+        row.proof.formCalendarPagingFocusRetained=true;
         await product.locator('[data-search-travelers-toggle]').click();
         await product.locator('[data-search-adult="-1"]').click();
         assert.equal(await product.locator('[data-search-travelers-value]').innerText(),'1 взрослый');
         await capture(page,'native',width,percent,'family-0',row);
         for(let index=0;index<3;index++){
           await product.locator('[data-search-add-child]').click();
+          const age=product.locator('[data-native-age="'+index+'"]'),ageHandle=await age.elementHandle();
+          assert.equal(await age.evaluate(node=>node===document.activeElement),true,'New child focuses its required age');
           assert.equal(await product.locator('[data-search-editor-done="travelers"]').isEnabled(),false,'Each child requires an explicit age');
-          await product.locator('[data-native-age="'+index+'"]').selectOption(String([0,7,17][index]));
+          if(index===0)await age.press('ArrowDown');else await age.selectOption(String([0,7,17][index]));
+          assert.equal(await age.inputValue(),String([0,7,17][index]));
+          assert.equal(await ageHandle.evaluate(node=>node.isConnected&&node===document.activeElement),true,'Choosing age retains the same native select and focus');
+          await ageHandle.dispose();
           assert.equal(await product.locator('[data-search-editor-done="travelers"]').isEnabled(),true);
           assert.equal(await product.locator('[data-search-travelers-value]').innerText(),['','1 взрослый + 1 ребёнок','1 взрослый + 2 ребёнка','1 взрослый + 3 ребёнка'][index+1]);
           await capture(page,'native',width,percent,'family-'+(index+1),row);
@@ -435,11 +459,16 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-native-date="2026-10-25"]').click();
         await product.locator('[data-calendar-done]').click();
         await product.locator('[data-search-travelers-toggle]').click();
-        for(let index=2;index>=0;index--)await product.locator('[data-native-remove-child="'+index+'"]').click();
+        for(let index=2;index>=0;index--){
+          await product.locator('[data-native-remove-child="'+index+'"]').click();
+          const target=product.locator(index?'[data-native-age="'+(index-1)+'"]':'[data-search-add-child]');
+          assert.equal(await target.evaluate(node=>node===document.activeElement),true,'Removing a child retains a usable adjacent input');
+        }
         await product.locator('[data-search-adult="1"]').click();
         await product.locator('[data-search-editor-done="travelers"]').click();
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Family edits and age review start no search');
         row.proof.familyAges=[0,7,17];row.proof.familyExtraSearches=0;row.proof.familyAgeReviewRetained=true;
+        row.proof.familyInputFocusRetained=true;
 
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
