@@ -87,6 +87,149 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-desktop .st-hotel-card--wide-price .st-card-info {
   grid-template-columns: minmax(0, 1fr) minmax(204px, max-content);
 }
+/* Keep the approved photo / hotel / total composition, with readable factual
+   rows and a consistent title, category and location rhythm on real hotels. */
+#design-v2-native-root #b4 .st-hotel-card .st-card-name {
+  margin-bottom: 5px;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-name-button {
+  display: block;
+  width: 100%;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-location {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 3px 0 6px;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-card-conditions {
+  font-size: 14px;
+  line-height: 1.5;
+  gap: 7px 12px;
+  padding: 7px 0 10px;
+  color: var(--ink);
+}
+#design-v2-native-root #b4 .st-hotel-card .st-card-conditions > span {
+  align-items: start;
+  gap: 7px;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-card-conditions svg {
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+#design-v2-native-root #b4 .st-hotel-card .st-conditions-room {
+  font-weight: 500;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-conditions-operator {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+#design-v2-native-root #b4 .st-hotel-card .st-price-caption {
+  font-size: 13px;
+  line-height: 1.4;
+}
+#design-v2-native-root #b4 .st-results-note {
+  margin: 2px 0 20px;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+#design-v2-native-root #b4 .st-results-note[hidden] { display: none; }
+#design-v2-native-root #b4 .st-results-note > span {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-results-note svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-card-actions {
+  margin-top: 8px;
+  padding-top: 5px;
+}
+#design-v2-native-root #b4 .st-desktop .st-card-info {
+  padding-block: 6px;
+  row-gap: 6px;
+  align-content: center;
+}
+#design-v2-native-root #b4 .st-mobile .st-card-info {
+  padding-top: 15px;
+  padding-bottom: 2px;
+}
+#design-v2-native-root #b4 .st-mobile .st-card-name {
+  display: block;
+}
+#design-v2-native-root #b4 .st-mobile .st-card-name > .st-stars {
+  display: block;
+  margin: 5px 0 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 1px;
+}
+#design-v2-native-root #b4 .st-mobile .st-hotel-card {
+  padding-bottom: 19px;
+}
+#design-v2-native-root #b4 .st-mobile .st-hotel-card:last-child {
+  padding-bottom: 0;
+}
+/* The final literal word travels with its arrow. An unusually long word may
+   still wrap inside the available width instead of overflowing the card. */
+#design-v2-native-root #b4 .st-hotel-card .st-hotel-title-end {
+  display: inline-flex;
+  align-items: baseline;
+  vertical-align: baseline;
+  gap: 5px;
+  max-width: 100%;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-hotel-title-end > span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-hotel-card .st-hotel-title-end > svg {
+  flex-shrink: 0;
+  margin-left: 0;
+}
+/* Room, meal and departure details remain in the same offer / price / action
+   rows, with sufficient weight and space to compare the actual packages. */
+#design-v2-native-root #b4 .st-offer-name {
+  font-size: 16px;
+  line-height: 1.4;
+}
+#design-v2-native-root #b4 .st-offer-meal {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+#design-v2-native-root #b4 .st-offer-meta {
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+#design-v2-native-root #b4 .st-offer-delta {
+  font-size: 13px;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+#design-v2-native-root #b4 .st-offer-comparison {
+  font-size: 13px;
+  line-height: 1.5;
+}
+#design-v2-native-root #b4 .st-offer-choice .st-offer {
+  padding-block: 20px;
+}
+#design-v2-native-root #b4 .st-mobile .st-offer {
+  padding-block: 18px;
+}
 #design-v2-native-root #b4 .st-desktop :is([data-screen="hotel"], [data-screen="tour"]) {
   container: native-selected / inline-size;
 }
@@ -223,6 +366,22 @@ body { margin: 0; padding: 0; }
     word-break: normal;
   }
 }
+/* When enlarged copy makes a tablet card narrow, its real photo becomes a
+   shallow full-width row rather than stretching into a tall image strip. */
+@container native-card (max-width: 28em) {
+  #design-v2-native-root #b4 .st-desktop .st-card-content > .q8cb {
+    grid-column: 1 / -1;
+    height: 200px;
+    min-height: 0;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-card-content > .q8cb.q8c5 {
+    height: 96px;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-card-info {
+    grid-column: 1 / -1;
+    padding: 15px 0 4px;
+  }
+}
 /* Keep alternative flight pairs in the existing tour section, with one action row. */
 #design-v2-native-root #b4 .st-native-flight-options { margin-top: 12px; }
 #design-v2-native-root #b4 .st-native-flight-alternatives > summary { min-height: 44px; padding: 12px 0; color: var(--blue); font-weight: 600; line-height: 1.4; cursor: pointer; overflow-wrap: normal; }
@@ -266,6 +425,11 @@ body { margin: 0; padding: 0; }
   }
 }
 @container st-product (max-width: 18em) {
+  #design-v2-native-root #b4 .st-mobile :is(.st-conditions-meal, .st-conditions-operator) {
+    grid-column: 1 / -1;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
   #design-v2-native-root #b4 .st-mobile .st-cost-list > div { display: grid; grid-template-columns: 1fr; }
   #design-v2-native-root #b4 .st-mobile .st-cost-list b { text-align: left; overflow-wrap: normal; word-break: normal; }
   #design-v2-native-root #b4 .st-mobile .st-footer { flex-wrap: wrap; }
