@@ -420,7 +420,8 @@ dialog.tour-comparison-dialog{width:min(1100px,calc(100% - 40px))}
 
 .tour-dialog:not(.tour-flight-editing) .tour-price-details{position:static}
 
-.tour-dialog:not(.tour-flight-editing) .tour-hero>img,.tour-dialog:not(.tour-flight-editing) .tour-photo-missing{width:96px;height:72px}
+.tour-dialog:not(.tour-flight-editing) .tour-hero>img{width:96px;height:72px}
+.tour-dialog:not(.tour-flight-editing) .tour-photo-missing{width:96px;height:auto}
 
 .tour-flight-editing .tour-main-details{grid-template-columns:minmax(0,1fr) minmax(240px,.72fr)}
 
@@ -1900,8 +1901,9 @@ body.search-editing .results-section{padding-top:0;padding-bottom:0}
  dialog.form-picker.destination-keyboard .destination-current-country{min-height:40px;margin-top:0;padding:0 8px;background:transparent;border:0}
  dialog.form-picker.destination-keyboard .destination-current-country .text-button{min-height:40px}
  dialog.form-picker.destination-keyboard .destination-section{margin-top:8px}
- dialog.form-picker.destination-keyboard .destination-hotel-thumb{width:50px;height:42px}
- dialog.form-picker.destination-keyboard .destination-hotel-thumb>img{width:100%;height:100%}
+ dialog.form-picker.destination-keyboard .destination-hotel-photo{width:50px;height:42px}
+ dialog.form-picker.destination-keyboard .destination-hotel-photo>img{width:100%;height:100%}
+ dialog.form-picker.destination-keyboard .destination-hotel-copy>.hotel-stars{font-size:11px;line-height:1.2;margin:0}
  dialog.form-picker.destination-keyboard #modal-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:8px 16px}
  dialog.form-picker.destination-keyboard #modal-footer .picker-summary{min-width:0}
  dialog.form-picker.destination-keyboard #modal-footer .picker-summary strong{font-size:12px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -2195,7 +2197,7 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .tour-dialog .selection-steps li,.application-dialog .selection-steps li{font-size:.875rem;line-height:1.4;padding-bottom:8px;align-items:flex-start;overflow-wrap:anywhere}
 .tour-hero{display:flex;align-items:center;gap:16px;min-width:0;margin:0;padding-bottom:16px;border-bottom:1px solid var(--line)}
 .tour-hero>img,.tour-photo-missing{width:144px;height:108px;object-fit:cover;border-radius:10px;flex:none}
-.tour-hero>.tour-photo-missing{display:grid;height:auto;min-height:88px;overflow-wrap:anywhere;place-content:center;gap:4px;background:#f3f6fa;color:var(--muted);font-size:.875rem;text-align:center}
+.tour-hero>.tour-photo-missing{display:grid;height:auto;min-height:88px;align-self:center;grid-template-columns:minmax(0,1fr);justify-items:center;overflow-wrap:anywhere;place-content:center;gap:4px;background:#f3f6fa;color:var(--muted);font-size:.875rem;text-align:center}
 .tour-hero>div:last-child{min-width:0}
 .tour-hero h3{font-size:1.25rem;line-height:1.35;margin:4px 0;overflow-wrap:anywhere}
 .tour-hero p{font-size:.875rem;line-height:1.5;color:var(--muted);margin:0}

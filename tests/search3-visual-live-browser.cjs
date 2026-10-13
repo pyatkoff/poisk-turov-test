@@ -25,7 +25,7 @@ const mobileCardPriceLayout=async(page,width,evidence)=>{
    assert(boxes.action.x>=boxes.total.right-1||boxes.action.y>=boxes.total.bottom-1,'price and action never overlap at '+mobileWidth);
    assert(boxes.action.x>=boxes.panel.x&&boxes.action.right<=boxes.panel.right&&boxes.action.height>=48,'price action stays inside the card with a 48px target at '+mobileWidth);
    assert(boxes.photo.width>boxes.card.width*.9&&boxes.photo.height>=150,'hotel photo spans the mobile card at '+mobileWidth);
-   assert(boxes.photo.y>=boxes.identity.bottom-1,'hotel identity precedes its large photo at '+mobileWidth);
+   assert(boxes.identity.y>=boxes.photo.bottom-1,'approved Site185 places the large photo before hotel identity at '+mobileWidth);
    assert(boxes.arrows.every(b=>b.width>=44&&b.height>=44),'gallery arrows remain touch targets at '+mobileWidth);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
    await card.screenshot({path:path.join(evidence,'card-price-'+mobileWidth+'.png')});
@@ -647,6 +647,7 @@ const hotelPickerBlock=async(page,width,transport,origin,base,evidence)=>{
  await page.screenshot({path:path.join(evidence,`hotel-picker-country-disclosure-focus-${width}.png`)});
  await countryDisclosure.press('Space');
  assert.equal(await countryDisclosure.getAttribute('aria-expanded'),'false');assert.equal(await countryDisclosure.evaluate(el=>document.activeElement===el),true,'closing country disclosure retains keyboard focus');
+ if(await page.locator('#destination-selection:not([open])>summary').count())await page.locator('#destination-selection>summary').click();
  const chip=id=>page.locator('[data-action="destination-remove"][data-id="'+id+'"]');
  let releaseHotelLookup;transport.state.hotelLookupGates['4']=new Promise(resolve=>{releaseHotelLookup=resolve;});
  try{
@@ -901,6 +902,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
    // original viewport or inventing a physical keyboard/Safari claim.
    await page.evaluate(()=>document.documentElement.style.fontSize='200%');await openDestination();transport.state.hotelLookupError=true;const enlarged=await heldLookup();await page.locator('[data-action="destination-countries"]').press('Enter');await page.locator('[data-action="destination-country"][data-value="4"]').press('Enter');await completeHeld(enlarged,false);await page.locator('[data-action="keep-destination"]').press('Enter');await hideCountries();await page.locator('[data-action="retry-destination"]').waitFor();const enlargedGeometry=await geometry('root200 destination error');await target(page.locator('[data-action="retry-destination"]'),'root200 catalogue retry');await page.screenshot({path:path.join(evidence,'picker-destination-error-'+width+'-200.png')});transport.state.hotelLookupError=false;await page.locator('[data-action="retry-destination"]').press('Enter');await page.waitForFunction(()=>document.querySelector('#destination-query').getAttribute('aria-busy')==='false'&&document.querySelectorAll('.destination-hotel').length===2);
    // Explicit OR Apply commits only the two canonical own IDs to the form draft.
+   if(await page.locator('#destination-selection:not([open])>summary').count())await page.locator('#destination-selection>summary').click();
    for(const id of [2001,2002])await page.locator('[data-action="destination-remove"][data-id="'+id+'"]').press('Enter');
    for(const id of [2004,2005])await page.locator('[data-action="destination-hotel"][data-id="'+id+'"]').press('Enter');
    assert.deepEqual(await selectedIDs(),[2004,2005]);assert.match(await page.locator('[data-action="apply-destination"]').textContent(),/Выбрать отели \(2\)/);await page.locator('[data-action="apply-destination"]').press('Enter');await closed();assert.match(await page.locator('#destination-detail').textContent(),/Fictional Belek 04.*Fictional Belek 05/);assert.equal(page.url(),baseline.url);await page.locator('#search-form [data-action="destination"]').click();assert.deepEqual(await selectedIDs(),[2004,2005]);await page.keyboard.press('Escape');await closed();
