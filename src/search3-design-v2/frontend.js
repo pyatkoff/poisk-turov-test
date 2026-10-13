@@ -467,7 +467,7 @@
       return !error;
     }
     function closeEditor(cancel){
-      if(!cancel&&editor==='budget'&&!validateBudget()){$('[data-search-budget][aria-invalid="true"]')?.focus();return false;}
+      if(!cancel&&editor==='budget'&&!validateBudget()){($('[data-search-budget][aria-invalid="true"]')||$('[data-search-budget="max"]')).focus();return false;}
       if(!cancel&&editor==='dates'&&dateError(draft.from,draft.to)){$('[data-calendar-boundary="from"]').focus();return false;}
       if(!cancel&&editor==='travelers'&&draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)){$('[data-native-age="'+draft.ages.findIndex(age=>!Number.isInteger(age)||age<0||age>17)+'"]').focus();return false;}
       if(!cancel&&editor==='destination'&&destinationPending){$('[data-destination-keep]').focus();return false;}

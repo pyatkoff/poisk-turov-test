@@ -230,7 +230,15 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
           if(rect.left<box.left-1||rect.right>box.right+1)clipped=true;
           // Glyph ink may extend vertically beyond its line box without clipping.
           // Vertical bounds matter only at an ancestor that actually clips paint.
-          for(let ancestor=node;ancestor&&root.contains(ancestor);ancestor=ancestor.parentElement){const style=getComputedStyle(ancestor),bounds=ancestor.getBoundingClientRect();if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)&&(rect.top<bounds.top-1||rect.bottom>bounds.bottom+1))clipped=true;}
+          const modal=node.closest('dialog:modal');
+          for(let ancestor=node;ancestor&&root.contains(ancestor);ancestor=ancestor.parentElement){
+            const style=getComputedStyle(ancestor),bounds=ancestor.getBoundingClientRect();
+            // Modal content can be reached by its own vertical scroll. The
+            // browser's top layer is not clipped by the underlying form/stage.
+            if(modal&&ancestor.matches('[data-native-popup-panel]')&&/^(auto|scroll)$/.test(style.overflowY)&&ancestor.scrollHeight>ancestor.clientHeight+1)break;
+            if(/^(hidden|clip|scroll|auto)$/.test(style.overflowY)&&(rect.top<bounds.top-1||rect.bottom>bounds.bottom+1))clipped=true;
+            if(ancestor===modal)break;
+          }
         }
         for(const match of text.textContent.matchAll(/[\p{L}\p{N}:★]+/gu)){range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)brokenWords=true;}
       }
