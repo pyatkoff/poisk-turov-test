@@ -92,7 +92,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 4
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 3
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -262,6 +262,31 @@ def native_evidence(archive, request, native):
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
+                if name.startswith('native-calendar-later-'):
+                    fit = frame.get('calendarFit')
+                    need(isinstance(fit, dict) and fit.get('clipped') is False,
+                         'native_calendar_fit_required')
+                    left, right = fit.get('left'), fit.get('right')
+                    client, scroll = fit.get('footClientWidth'), fit.get('footScrollWidth')
+                    pager, page_buttons = fit.get('pager'), fit.get('buttons')
+                    need(all(type(value) in (int, float) for value in (left, right, client, scroll))
+                         and left < right and client > 0 and scroll <= client + 1,
+                         'native_calendar_footer_geometry_required')
+                    need(isinstance(pager, dict)
+                         and all(type(pager.get(field)) in (int, float)
+                                 for field in ('left', 'right', 'top', 'bottom'))
+                         and left - 1 <= pager['left'] < pager['right'] <= right + 1,
+                         'native_calendar_pager_geometry_required')
+                    need(isinstance(page_buttons, list) and len(page_buttons) == 2,
+                         'native_calendar_page_controls_required')
+                    for button in page_buttons:
+                        need(isinstance(button, dict)
+                             and all(type(button.get(field)) in (int, float)
+                                     for field in ('left', 'right', 'top', 'bottom', 'width', 'height'))
+                             and type(button.get('disabled')) is bool
+                             and left - 1 <= button['left'] < button['right'] <= right + 1
+                             and button['width'] >= 44 and button['height'] >= 44,
+                             'native_calendar_page_control_geometry_required')
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
