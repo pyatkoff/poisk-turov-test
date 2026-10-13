@@ -1,3 +1,7 @@
+# Reviewed successor67468aa3: destination keyboard/confirmation packet.
+# Requires353 retained frames including20 destination states,53 typed journey
+# values, exact3-commit source ancestry and terminalf4b/run384204 predecessor.
+# Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 
 on:

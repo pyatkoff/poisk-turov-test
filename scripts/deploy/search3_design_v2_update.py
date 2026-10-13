@@ -35,9 +35,11 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('8edd9617c41b0a81c86b10cdeed7a52a086e3e2e', '93bea85061224370e20b813521b3ac8db3d003d0'),)
+    ('1e7cea0b9a098efe8359464ac66309d03ea30fd1', '56b799e8fb8fcfdbe1b43b4a08ceca6345bb3957'),
+    ('f1b6d1ff59b7f31a9636cf0c06e73b06b1b3b0fc', 'c494ffd0d5cb2e403ecac1d19cf8fc63ba92c74a'),
+    ('160d957dd0aecef1ac6e3eb8f7df881d527b0e7f', '844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065'))
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '4523fa0e227d41ed69e47671ac753301419ecde9'
+NATIVE_SOURCE_BASE_PARENT = '8edd9617c41b0a81c86b10cdeed7a52a086e3e2e'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -106,7 +108,7 @@ def native_provenance(api, q, control_sha):
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
     need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT]
-         and NATIVE_SOURCE_PARENT == pin['release_parent'],
+         and NATIVE_SOURCE_ANCESTORS[-1][0] == pin['release_parent'],
          'native_source_parent_pin')
     for index, (parent_sha, parent_tree) in enumerate(NATIVE_SOURCE_ANCESTORS):
         parent = api.get('/git/commits/' + parent_sha)
@@ -119,7 +121,7 @@ def native_provenance(api, q, control_sha):
     need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
          'native_release_parent_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == 1
+    need(relation.get('status') == 'diverged' and relation.get('behind_by') == len(NATIVE_SOURCE_ANCESTORS)
          and relation.get('ahead_by') == 1
          and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
          'native_exact_squash_relation')
@@ -200,7 +202,8 @@ def native_frame_inventory(width, percent):
     frames = {f'{side}-{screen}-{width}-text{percent}.png'
               for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
     frames.update(f'native-{screen}-{width}-text{percent}.png'
-                  for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error'))
+                  for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error',
+                                 'destination-choice', 'destination-confirm'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
@@ -255,7 +258,7 @@ def native_evidence(archive, request, native):
         'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
         'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
-        'familyInputFocusRetained': True}
+        'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
@@ -297,7 +300,7 @@ def native_evidence(archive, request, native):
                      'native_short_desktop_png_dimensions_required')
             if frame['side'] == 'native':
                 screen = ('startup' if logical_name.startswith('native-startup-')
-                          else 'search' if logical_name.startswith('native-family-')
+                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-'))
                           else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
@@ -309,6 +312,42 @@ def native_evidence(archive, request, native):
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
+                if name.startswith(('native-destination-choice-', 'native-destination-confirm-')):
+                    readable = frame.get('readableText')
+                    need(isinstance(readable, list) and sum(row.get('text', '').strip() == 'Отмена'
+                         for row in readable if isinstance(row, dict)) == 1,
+                         'native_destination_cancel_label_required')
+                if name.startswith('native-destination-confirm-'):
+                    fit = frame.get('destinationFit')
+                    need(isinstance(fit, dict) and fit.get('outside') is False and fit.get('overlap') is False,
+                         'native_destination_fit_required')
+                    available, font = fit.get('available'), fit.get('fontSize')
+                    need(all(type(value) in (int, float) and 0 < value < 10000 for value in (available, font)),
+                         'native_destination_geometry_required')
+                    narrow = available <= font * 18 + 1
+                    need(type(fit.get('queryNarrow')) is bool and fit['queryNarrow'] == narrow
+                         and type(fit.get('stacked')) is bool and (not narrow or fit['stacked'])
+                         and (key[1] != 100 or not fit['stacked']), 'native_destination_reflow_required')
+                    actions = fit.get('actions')
+                    need(isinstance(actions, list) and len(actions) == 2,
+                         'native_destination_decisions_required')
+                    for index, action in enumerate(actions):
+                        need(isinstance(action, dict) and action.get('text') == ('Оставить', 'Заменить')[index]
+                             and action.get('disabled') is False, 'native_destination_action_identity_required')
+                        need(all(type(action.get(field)) in (int, float) for field in
+                                 ('left', 'right', 'top', 'bottom', 'width', 'height'))
+                             and action['width'] > 0 and action['height'] >= 44
+                             and abs(action['right'] - action['left'] - action['width']) < 1
+                             and abs(action['bottom'] - action['top'] - action['height']) < 1,
+                             'native_destination_action_geometry_required')
+                        need(sum(row.get('text', '').strip() == action['text']
+                             for row in readable if isinstance(row, dict)) == 1,
+                             'native_destination_action_label_required')
+                    first, second = actions
+                    need(fit['stacked'] == (second['top'] >= first['bottom'] - 1)
+                         and not (min(first['right'], second['right']) > max(first['left'], second['left']) + 1
+                                  and min(first['bottom'], second['bottom']) > max(first['top'], second['top']) + 1),
+                         'native_destination_action_overlap_required')
                 if name.startswith('native-calendar-later-'):
                     fit = frame.get('calendarFit')
                     need(isinstance(fit, dict) and fit.get('clipped') is False,
@@ -521,7 +560,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 333, 'native_rendered_frame_count')
+    need(len(frames) == 353, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
