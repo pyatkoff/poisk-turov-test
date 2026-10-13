@@ -6,50 +6,49 @@ based on the final Sites v2 source `00fe6734c08acf234756bb59e5b61dbfecf41941`.
 It does not authorize changes to NEXT, the Sites reference, sibling previews,
 production, providers, auth, mappings, lead/CRM or analytics.
 
-## Current state: compact-flight predecessor published, truthful partial-result successor selected
+## Current state: truthful partial predecessor published, calendar text-200 successor selected
 
 The exact public predecessor is source
-`9de4cdb3d044b060b039abc096f9351466147d86`, receiving release
-`54daa24bc815ea1da80a9fb7da6a681276efadc8`, and terminal publication
-run `38320934646` / command `6134401708`. Its 855-file public digest is
-`1d0839ccd874c407c93e1c56e8f91140b4d892b6fbf9e18d4c2a016976b749de`.
-Actual READY artifact `11779162675` (ZIP
-`b6d732c2b390b721ee814139c3fd027c71df7785ff48f9dc496f0e0896f1a40c`)
-and deployment artifact `11778933686` (ZIP
-`0f37fdb7673ac65aca493be600d3cb316b8771b574e6308ff9f2ea70ec4d6407`)
+`5a84a0d66394116f9845de3565563ce1d025b6bc`, receiving release
+`059349ad4a10902e102b5b21e34f3cdc6c3fc9b5`, and terminal publication
+run `38331033682` / command `6135911127`. Its 855-file public digest is
+`ea5101d72a190e546f68802af52e64549dad9720a6ae6bd7abf4b5b5a6bfa0d0`.
+Actual READY artifact `11783605115` (ZIP
+`12e7af33aac7ded473be6546b861ed940738c47671d6bc15d798b342539e2af8`)
+and deployment artifact `11782747764` (ZIP
+`920c3f1d7a5990f3d3a39edf822d1b3477e9f7dc2bad8bf62a22024585d73854`)
 establish the installed predecessor. That command and run are consumed and
 cannot be replayed.
 
-PR #4554 final source `5a84a0d66394116f9845de3565563ce1d025b6bc`
-and tree `f8c889e007bdd2b95c7c0b654d4d6de2d742bc9d` passed exact-head
-native CI `38328089239` and Security `38328089238`, both attempt 1. The accepted
-artifact is `11781426609`, ZIP SHA256
-`1ff20b842f7528724543ead87a915cdf925c7eae1970fccc5413269aa8b43cad`.
+PR #4556 final source `75e52f2597172469fbcb6f742dc8c7b5934cd173`
+and tree `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` passed exact-head
+native CI `38333713473` and Security `38333713528`, both attempt 1. The accepted
+artifact is `11783439190`, ZIP SHA256
+`788434b4ac533697d1efa7026f4baa3f95071358911fa65532966a2abe8b6290`.
 Independent source/runtime/visual review is recorded in PR comment
-`6135636873` and #4217 comment `6135639385`. It approved the 855-file,
-263-frame packet and confirmed that the earlier failed run `38325169014` was
-only the controlled fixture crossing UTC midnight; the product still rejects
-real past dates.
+`6136384503` and #4217 comment `6136405131`. It approved the 855-file,
+263-frame packet and checked every calendar-later frame across the complete
+360/390/430/768/1280 × text100/200 matrix.
 
 The receiving squash is release
-`059349ad4a10902e102b5b21e34f3cdc6c3fc9b5`, with the identical tree and
-single parent `54daa24bc815ea1da80a9fb7da6a681276efadc8`. Its exact source/release
-relation is `diverged`, behind 4, ahead 1, merge base equal to that parent.
+`c407a6e4c74d4eb3e176766c97524342573a195b`, with the identical tree and
+single parent `059349ad4a10902e102b5b21e34f3cdc6c3fc9b5`. Its exact source/release
+relation is `diverged`, behind 3, ahead 1, merge base equal to that parent.
 Source integration is not publication.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `5a84a0d66394116f9845de3565563ce1d025b6bc` |
-| source_tree | `f8c889e007bdd2b95c7c0b654d4d6de2d742bc9d` |
-| release_sha | `059349ad4a10902e102b5b21e34f3cdc6c3fc9b5` |
-| release_tree | `f8c889e007bdd2b95c7c0b654d4d6de2d742bc9d` |
-| release_parent | `54daa24bc815ea1da80a9fb7da6a681276efadc8` |
-| build_run | `38328089239` |
-| artifact_id | `11781426609` |
-| source_ZIP_sha256 | `1ff20b842f7528724543ead87a915cdf925c7eae1970fccc5413269aa8b43cad` |
+| source_sha | `75e52f2597172469fbcb6f742dc8c7b5934cd173` |
+| source_tree | `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` |
+| release_sha | `c407a6e4c74d4eb3e176766c97524342573a195b` |
+| release_tree | `5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c` |
+| release_parent | `059349ad4a10902e102b5b21e34f3cdc6c3fc9b5` |
+| build_run | `38333713473` |
+| artifact_id | `11783439190` |
+| source_ZIP_sha256 | `788434b4ac533697d1efa7026f4baa3f95071358911fa65532966a2abe8b6290` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `c8033201b19e0686f301b2210d2c1320aa90872cea42d76ab1947fe7e62e9d64` |
+| source_manifest_sha256 | `8dac49d8eaf42875229a0fcda300548793a035325142f9c37dbc2077ccdceac5` |
 
 An absent, foreign, modified, activated or unknown owner/target aborts. Previous
 completed or failed commands and runs remain terminal/no-replay. A new publisher
@@ -69,13 +68,11 @@ Review metadata retains `publication_authority:false` and route rewrites
 unapplied.
 
 The controller requires exactly 855 payload files and 263 rendered frames. The
-original acceptance matrix is 360/390/430/768/1280 at text 100% and 200%, with
-search, results, hotel, tour and lead journeys plus error, filtering, calendar,
-budget, bounded-result, loading and flight-alternative states. This successor
-adds exactly 30 frames: `native-results-partial-empty`,
-`native-results-partial` and `native-filter-empty-partial` at every matrix
-position. Names, bytes and PNG hashes must match the bounded inventory; missing
-or arbitrary extra evidence is rejected.
+acceptance matrix is 360/390/430/768/1280 at text 100% and 200%, with search,
+results, hotel, tour and lead journeys plus error, filtering, calendar, budget,
+bounded-result, loading, partial-result and flight-alternative states. Names,
+bytes and PNG hashes must match the bounded inventory; missing or arbitrary
+extra evidence is rejected.
 
 Every case must prove:
 
@@ -85,6 +82,9 @@ Every case must prove:
 - `partialExtraSearches:0` during local rendering/filtering;
 - `partialFilteredRecoveryLoadedHotels:2` after removing the proven local
   constraint;
+- every `native-calendar-later` frame has a non-clipped footer, no horizontal
+  scroll, a pager inside the calendar and two in-bounds controls at least
+  44×44 px;
 - retained exact hotel/offer identities and full factual prices;
 - original flight selection, expiry and query identity;
 - passive hydration, local filtering and Back/Forward cause no supplier search;
@@ -120,7 +120,7 @@ published predecessor under the existing lock. Path sets must be identical, the
 predecessor digest must match the pinned receipt, and exactly these existing
 files may differ:
 
-- `visual-search/native-v2/frontend.js`
+- `visual-search/native-v2/viewport.css`
 - `visual-search/native-v2/source-manifest.json`
 
 Historical baseline allowances do not permit new legacy presentation, bridge,
