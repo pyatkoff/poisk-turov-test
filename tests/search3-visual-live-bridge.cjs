@@ -603,7 +603,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
  assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
- assert.match(q('.application-review').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');
+ assert.match(q('.application-review').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('.tour-fuel-disclosure').textContent,/включён в цену/,'known Tourvisor fuel belongs to the unchanged supplier total');
  assert.match(q('#modal-footer').textContent,/Цена предложения/,'tour details do not claim cart actualization');
  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/120000/,'tour fuel is not added a second time');
@@ -624,7 +624,7 @@ async function pickerRetainedDraftRegressions(){
  assert(q('#prototype-lead-form'),'explicit continue opens application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();
  assert(q('#prototype-lead-form'),'canonical TV lead form connected');
- assert(q('.application-review .summary-flight-details'),'the compact review retains exact selected flight details');
+ assert(q('.application-review .summary-flight-details'),'the compact review retains exact selected flight details');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт');assert(q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent.replace(/\s/g,''),/20686₽/,'application retains the selected-flight fuel amount');
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent,/включён в цену/);
  assert.match(q('#modal-footer').textContent,/Цена с выбранными рейсами · сбор включён/);
@@ -911,12 +911,12 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
  const priorRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');priorRoom.open=true;
- const priorOffer=priorRoom.querySelector('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();await continueToFlights();
+ const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();click('[data-action="continue-hotel-offer"]');await continueToFlights();
  await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  releaseHotelBackSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  click('#modal-back');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3','Back renders current progressive rooms, not the stored snapshot');
- assert.match(q('#hotel-detail-min').textContent,/119\s*000/);assert(q('#hotel-room-meal'));
+ assert.match(q('#hotel-detail-min').textContent,/120\s*000/,'approved footer retains the explicitly selected exact TV whole-tour total');assert.equal(q('#hotel-detail-offers').dataset.key,'tourvisor%3Avisual-tv-101');assert.match(q('.hotel-room-cards').textContent,/119\s*000/,'new independent minimum remains present in the current room inventory');assert(q('#hotel-room-meal'));
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
  assert.equal(q('#modal-body').scrollTop,64);assert.equal(starts(),beforeHotelBackSearch+1);
  click('[data-action="close-modal"]');await settle();
@@ -926,7 +926,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="hotel-details"][data-id="501"]');
  const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
  const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
- const nestedOffer=moreTours.querySelector('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="start-tour-flights"]');
+ const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
  await wait(()=>q('#modal-body').textContent.includes('Не удалось подтвердить цену'));click('#modal-back');
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);

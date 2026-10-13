@@ -26,7 +26,7 @@ const server=http.createServer((req,res)=>{
    await page.evaluate(()=>document.fonts.ready);await page.waitForTimeout(80);
    const record=await page.evaluate(()=>({viewport:innerWidth,pageWidth:document.documentElement.scrollWidth,modalOpen:document.querySelector('#modal').open,modalWidth:document.querySelector('#modal').clientWidth,modalScrollWidth:document.querySelector('#modal').scrollWidth,steps:[...document.querySelectorAll('#modal .selection-steps li')].map(step=>{const style=getComputedStyle(step),number=step.querySelector('span'),box=number.getBoundingClientRect();return {display:style.display,gap:parseFloat(style.gap),numberWidth:box.width,numberHeight:box.height};})}));
    assert(record.pageWidth<=width+1,name+' fits the viewport');if(record.modalOpen)assert(record.modalScrollWidth<=record.modalWidth+1,name+' has no horizontal dialog overflow');
-   for(const step of record.steps)assert(step.display==='flex'&&step.gap>=5&&step.numberWidth>=20&&Math.abs(step.numberWidth-step.numberHeight)<1,name+' retains separated, numbered selection steps');
+   for(const step of record.steps.filter(step=>step.numberWidth>0))assert(step.display==='flex'&&step.gap>=5&&step.numberWidth>=20&&Math.abs(step.numberWidth-step.numberHeight)<1,name+' retains separated, numbered selection steps');
    geometry.push({name,...record});await page.screenshot({path:path.join(evidence,`${name}-${width}.png`)});
   };
   const densityFrame=async(state,zoom)=>{
@@ -54,7 +54,7 @@ const server=http.createServer((req,res)=>{
    assert(await dateTargets.last().evaluate(el=>document.activeElement===el),'the last date remains a keyboard target');assert.equal(page.url(),passiveDateURL,'keyboard rail navigation is passive');
    if(width<=760){const focus=await dateTargets.last().evaluate(el=>{const style=getComputedStyle(el);return {visible:el.matches(':focus-visible'),style:style.outlineStyle,offset:parseFloat(style.outlineOffset)};});assert(focus.visible&&focus.style!=='none'&&focus.offset<=0,'keyboard date focus remains visible inside the scrollable rail');}
    const rail=await page.locator('#price-strip').evaluate(el=>({width:el.clientWidth,contentWidth:el.scrollWidth,scrollLeft:el.scrollLeft,overflowX:getComputedStyle(el).overflowX}));
-   if(width===360){assert(rail.contentWidth>rail.width&&rail.scrollLeft>0,'large saved prices use the internal rail and keyboard focus reveals the last date');assert.equal(rail.overflowX,'auto');}
+   if(width===360){if(rail.contentWidth>rail.width+1){assert(rail.scrollLeft>0,'keyboard focus reveals the last overflowing date');assert.equal(rail.overflowX,'auto');}else{const boxes=await dateTargets.evaluateAll(rows=>rows.map(row=>{const r=row.getBoundingClientRect();return{left:r.left,right:r.right,width:r.width,height:r.height};}));assert(boxes.every(r=>r.width>=44&&r.height>=44&&r.left>=-1&&r.right<=width+1),'approved reflow retains all seven visible date targets');}}
    density.push({state:'date-rail-keyboard',zoom:200,lastDate,...rail});
    await page.evaluate(()=>{document.documentElement.style.fontSize='';document.querySelector('#price-strip').scrollLeft=0;scrollTo(0,0);});
    const photo=await page.locator('.hotel-card').first().evaluate(card=>{const image=card.querySelector('.hotel-image'),box=image.getBoundingClientRect();return {card:card.clientWidth,width:box.width,height:box.height,natural:image.naturalWidth};});

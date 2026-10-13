@@ -1283,7 +1283,7 @@ const server=http.createServer((req,res)=>{
   await tvOffer.waitFor({state:'visible'});
   await tvOffer.click();await mobileFooterLayout(page,width);await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();
   assert.match(await page.locator('#modal-body').textContent(),/Рейс уточнит менеджер/);
-  assert.match(await page.locator('.application-review').textContent(),/Рейс уточнит менеджер|Перелёт уточнит менеджер/);
+  assert.match(await page.locator('.application-review').textContent(),/Рейс уточнит менеджер|Перелёт уточнит менеджер/);assert.equal((await page.locator('.selection-steps li').nth(1).textContent()).trim(),'2Перелёт позже');assert.equal(await page.locator('.selection-steps li').nth(1).evaluate(el=>el.classList.contains('previous')),false);
   assert.match(await page.locator('.tour-fuel-disclosure').textContent(),/включён в цену/);
   assert.match(await page.locator('#modal-footer').textContent(),/Цена предложения/);
   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/120000/,'fuel is already part of the supplier total');
@@ -1302,7 +1302,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/133500/);await page.locator('#modal-back').click();assert.equal(flightDownloads.length,1,'warm picker has no second download');
   assert((await page.locator('#detail-total').textContent()).replace(/\s/g,'').includes('133500'));
   await page.locator('[data-action="confirm-tour"]').click();
-  assert.equal(await page.locator('.application-review .summary-flight-details').count(),1);
+  assert.equal(await page.locator('.application-review .summary-flight-details').count(),1);assert.equal((await page.locator('.selection-steps li').nth(1).textContent()).trim(),'2Перелёт');assert.equal(await page.locator('.selection-steps li').nth(1).evaluate(el=>el.classList.contains('previous')),true);
   assert.match((await page.locator('#modal-body .tour-fuel-disclosure').textContent()).replace(/\s/g,''),/20686₽/);
   assert.match(await page.locator('#modal-footer').textContent(),/Цена с выбранными рейсами · сбор включён/);
   await page.screenshot({path:path.join(evidence,`application-fuel-${width}.png`)});
