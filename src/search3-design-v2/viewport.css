@@ -8,6 +8,63 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] { width: 100%; max-width: 100%; }
 #design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] > .st-mobile { width: 100%; max-width: 100%; }
 @media (max-width: 760px) { #design-v2-native-root { margin: 0; } }
+/* Existing field content opens above the form, in the browser's modal layer.
+   A compact bottom sheet keeps the same choice and one Find button on phones. */
+#design-v2-native-root #b4 [data-native-form-popup] {
+  box-sizing: border-box;
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  margin: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  box-shadow: 0 20px 70px #18284426;
+  overflow: hidden;
+  container: st-search / inline-size;
+}
+#design-v2-native-root #b4 [data-native-form-popup][open] { display: flex; flex-direction: column; }
+#design-v2-native-root #b4 [data-native-form-popup]::backdrop { background: #18284459; }
+#design-v2-native-root #b4 [data-native-form-popup][data-editor="dates"] { width: min(880px, calc(100vw - 32px)); }
+#design-v2-native-root #b4 [data-native-form-popup][data-editor="destination"] { width: min(640px, calc(100vw - 32px)); }
+#design-v2-native-root #b4 [data-native-popup-panel] {
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#design-v2-native-root #b4 .st-popup-submit {
+  flex: none;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+#design-v2-native-root #b4 .st-popup-submit > [type="submit"] { width: 100%; margin: 0; }
+#design-v2-native-root #b4 [data-native-popup-panel] :is(.st-form-cancel, .st-condition-cancel) {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+@media (max-width: 760px) {
+  #design-v2-native-root #b4 [data-native-form-popup][data-editor] {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    margin: auto 0 0;
+    border-radius: 20px 20px 0 0;
+  }
+  #design-v2-native-root #b4 .st-popup-submit { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+}
 /* Keep full totals legible when text grows; wrapping uses numeric groups. */
 #design-v2-native-root #b4 .st-mobile .st-price-area > div {
   flex: 1 1 max-content;

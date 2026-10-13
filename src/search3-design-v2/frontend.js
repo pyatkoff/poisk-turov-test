@@ -20,6 +20,40 @@
   function mount({root, bridge, initialState, onReady}) {
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const listeners = new AbortController(); let alive = true, editor = null, editorSnapshot = null, searchEpoch = 0, originEpoch = 0;
+    const editorFields = {
+      dates:{panel:'[data-search-calendar]',opener:'[data-search-date-toggle]',focus:'[data-calendar-boundary="from"]'},
+      nights:{panel:'[data-search-nights-editor]',opener:'[data-search-nights-toggle]',focus:'[data-native-night][aria-pressed="true"]'},
+      travelers:{panel:'[data-search-travelers-editor]',opener:'[data-search-travelers-toggle]',focus:'[data-search-adult="1"]'},
+      destination:{panel:'[data-destination-editor]',opener:'[data-search-destination-toggle]',focus:'[data-destination-query]'},
+      food:{panel:'[data-search-food-editor]',opener:'[data-conditions-open="food"]',focus:'[data-native-form-meal]'},
+      budget:{panel:'[data-search-budget-editor]',opener:'[data-conditions-open="budget"]',focus:'[data-search-budget="min"]'}
+    };
+    // Reuse the canonical editors and the one Find button inside a native modal.
+    // They remain in the same form: no duplicate fields, drafts or submit owner.
+    const popup = window.document.createElement('dialog');
+    popup.dataset.nativeFormPopup='';
+    const popupSubmit = window.document.createElement('div');popupSubmit.className='st-popup-submit';
+    const submitWrap=$('[data-search-form] .st-search-submit-wrap'),submitButton=submitWrap.querySelector('[type="submit"]');
+    const editorHomes=Object.values(editorFields).map(field=>{
+      const panel=$(field.panel),marker=window.document.createComment('canonical field editor');
+      panel.before(marker);panel.dataset.nativePopupPanel='';popup.append(panel);return{panel,marker};
+    });
+    popup.append(popupSubmit);$('[data-search-form]').append(popup);
+    function syncPopup(){
+      if(!editor){
+        if(popup.open){if(typeof popup.close==='function')popup.close();else popup.removeAttribute('open');}
+        if(submitButton.parentElement!==submitWrap)submitWrap.append(submitButton);
+        submitWrap.style.removeProperty('min-height');return;
+      }
+      popup.dataset.editor=editor;
+      popup.setAttribute('aria-label',$(editorFields[editor].panel).querySelector('h2').textContent);
+      if(root.hidden)return;
+      if(!popup.open){
+        submitWrap.style.minHeight=submitWrap.getBoundingClientRect().height+'px';popupSubmit.append(submitButton);
+        if(typeof popup.showModal==='function')popup.showModal();else popup.setAttribute('open','');
+        $(editorFields[editor].focus)?.focus({preventScroll:true});
+      }
+    }
     const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,hasSearched:false};
     let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
@@ -338,6 +372,7 @@
       renderNights();
       if(editor==='nights')renderNights();if(editor==='dates')renderDates();if(editor==='destination')renderDestination();
       redrawIcons();
+      syncPopup();
     }
     function renderNights(){
       const grid=$('.st-night-grid');if(!grid||!draft)return;
@@ -422,7 +457,7 @@
       renderSearch();
       if(confirmed)focusDestinationChoice(choice);
     }
-    function openEditor(name,opener){if(editor)closeEditor(true);editorSnapshot={draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),agesReviewNeeded};editor=name;editorOpener=opener||null;nightAnchor=null;nightError='';calendarMonth=firstMonth(draft.from);calendarBoundary='from';calendarError='';destinationPending=null;renderSearch();if(name==='destination'){loadDestination();$('[data-destination-query]').focus();}}
+    function openEditor(name,opener){if(editor)closeEditor(true);editorSnapshot={draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),agesReviewNeeded};editor=name;editorOpener=opener||$(editorFields[name].opener);nightAnchor=null;nightError='';calendarMonth=firstMonth(draft.from);calendarBoundary='from';calendarError='';destinationPending=null;$('[data-search-error]').hidden=true;renderSearch();if(name==='destination'){loadDestination();$('[data-destination-query]').focus();}}
     function validateBudget(){
       let error='';const values={min:0,max:null};
       for(const node of $$('[data-search-budget]')){const raw=node.value.trim().replace(/[ \u00a0\u202f]/g,'');const valid=raw===''||/^\d+$/.test(raw)&&Number.isSafeInteger(Number(raw));node.setAttribute('aria-invalid',String(!valid));if(!valid)error='Укажите целую сумму в рублях.';else values[node.dataset.searchBudget]=raw===''?(node.dataset.searchBudget==='max'?null:0):Number(raw);}
@@ -432,10 +467,10 @@
       return !error;
     }
     function closeEditor(cancel){
-      if(!cancel&&editor==='budget'&&!validateBudget())return false;
-      if(!cancel&&editor==='dates'&&dateError(draft.from,draft.to))return false;
-      if(!cancel&&editor==='travelers'&&draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17))return false;
-      if(!cancel&&editor==='destination'&&destinationPending)return false;
+      if(!cancel&&editor==='budget'&&!validateBudget()){$('[data-search-budget][aria-invalid="true"]')?.focus();return false;}
+      if(!cancel&&editor==='dates'&&dateError(draft.from,draft.to)){$('[data-calendar-boundary="from"]').focus();return false;}
+      if(!cancel&&editor==='travelers'&&draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)){$('[data-native-age="'+draft.ages.findIndex(age=>!Number.isInteger(age)||age<0||age>17)+'"]').focus();return false;}
+      if(!cancel&&editor==='destination'&&destinationPending){$('[data-destination-keep]').focus();return false;}
       if(cancel&&editorSnapshot){draft=editorSnapshot.draft;draftFilters=editorSnapshot.filters;agesReviewNeeded=editorSnapshot.agesReviewNeeded;}
       else if(editorSnapshot&&draft.ages.length&&(editor==='dates'||editor==='nights')&&(draft.from!==editorSnapshot.draft.from||draft.to!==editorSnapshot.draft.to||draft.minNights!==editorSnapshot.draft.minNights||draft.maxNights!==editorSnapshot.draft.maxNights))agesReviewNeeded=true;
       if(!cancel&&editor==='travelers')agesReviewNeeded=false;
@@ -452,8 +487,9 @@
       if(draft){renderSearch();if(editor==='destination'&&!originPending)loadDestination();}
     }
     async function runSearch(preserveDate=false){
-      const invalid=originPending?'Подождите загрузки стран для выбранного города.':editor?'Примените изменения в открытом поле или отмените выбор.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
-      if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;return;}
+      if(editor&&!originPending&&!closeEditor(false))return;
+      const invalid=originPending?'Подождите загрузки стран для выбранного города.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
+      if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;if(!originPending){if(dateError(draft.from,draft.to))openEditor('dates');else if(agesReviewNeeded||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17))openEditor('travelers');}return;}
       rememberRoute(false);
       state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
@@ -529,6 +565,8 @@
     },{signal:listeners.signal});
     root.addEventListener('input',event=>{const d=event.target.dataset;if(event.target.hasAttribute('data-destination-query'))loadDestination();if(d.searchBudget)validateBudget();if(d.nativeBudget)changeResultBudget(event.target,false);}, {signal:listeners.signal});
     root.addEventListener('keydown',event=>{if(event.key==='Escape'&&editor){event.preventDefault();closeEditor(true);}}, {signal:listeners.signal});
+    popup.addEventListener('cancel',event=>{event.preventDefault();closeEditor(true);},{signal:listeners.signal});
+    popup.addEventListener('click',event=>{if(event.target!==popup)return;const box=popup.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeEditor(true);},{signal:listeners.signal});
     $('[data-search-form]').addEventListener('submit',event=>{event.preventDefault();runSearch();},{signal:listeners.signal});
     $('[data-lead-form]').addEventListener('submit',event=>event.preventDefault(),{signal:listeners.signal});
     window.addEventListener('popstate',event=>{const saved=historyRoutes.get(event.state?.anytourNative?.id);if(saved){++searchEpoch;closeEditor(true);Object.assign(state,saved,{search:{...saved.search,ages:[...saved.search.ages]},filters:cloneFilters(saved.filters),restoredHistory:true});if(state.status==='loading'){state.status='partial';state.message='Сохранённые предложения. Для нового поиска измените условия и нажмите «Найти туры».';}show(saved.screen,false);}else show(state.hasSearched?'results':'search',false);},{signal:listeners.signal});
@@ -537,12 +575,12 @@
       dictionaries=state.dictionaries||initial.dictionaries;state.dictionaries=dictionaries;if(!state.search){state.search=initial.search;state.filters={...defaultFilters(),...initial.filters};const p=new URLSearchParams(window.location.search);state.sort=['price','name'].includes(p.get('sort'))?p.get('sort'):'recommended';state.onlyFavorites=p.get('favoritesOnly')==='1';const chosen=p.get('selectedDate');state.selectedDate=chosen&&/^\d{4}-\d{2}-\d{2}$/.test(chosen)&&chosen>=state.search.from&&chosen<=state.search.to?chosen:null;try{const stored=JSON.parse(window.localStorage.getItem(favoriteKey)||'[]');state.favorites=Array.isArray(stored)?stored.filter(Number.isSafeInteger):[];}catch{}}
       root.style.setProperty('--photo','none');root.style.setProperty('--marina-photo','none');
       $$('[data-screen="states"],[data-screen="success"]').forEach(node=>node.remove());
-      const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());onReady?.();root.hidden=false;
+      const input=state.nativeInput,s=state.screen;show(s,false);if(input&&s==='search'){draft={...input.draft,ages:[...input.draft.ages]};draftFilters=cloneFilters(input.filters);editor=input.editor;editorSnapshot=input.editorSnapshot;editorOpener=editor?$(editorFields[editor].opener):null;agesReviewNeeded=input.agesReviewNeeded;nightAnchor=input.nightAnchor;nightError=input.nightError;calendarMonth=input.calendarMonth;calendarBoundary=input.calendarBoundary;calendarError=input.calendarError;for(const [id,hotel]of input.destinationHotels||[])destinationHotels.set(id,hotel);for(const [id,rows]of input.regionCache||[])regionCache.set(id,rows);renderSearch();if(editor==='destination')loadDestination();}applyDictionarySnapshot(bridge.getDictionarySnapshot?.());onReady?.();root.hidden=false;syncPopup();
       // This intent belongs to the page lifetime, not a historical screen.
       // Route snapshots omit it so Back cannot authorize another supplier start.
       if(initial.requestedSearch&&!state.urlSearchConsumed&&!state.hasSearched){state.urlSearchConsumed=true;openSearch();await runSearch(true);}
     })();
-    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();if(state.hasSearched)updateURL();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();}};
+    return {ready,applyDictionarySnapshot,getState(){if(tourOwner)state.tourState=tourOwner.getState();state.nativeInput=draft?{draft:{...draft,ages:[...draft.ages]},filters:cloneFilters(draftFilters),editor,editorSnapshot,agesReviewNeeded,nightAnchor,nightError,calendarMonth,calendarBoundary,calendarError,destinationHotels:[...destinationHotels],regionCache:[...regionCache]}:null;return state;},render(){if(state.screen==='filters')refreshFilterEditor();else renderResults();if(state.hasSearched)updateURL();},destroy(){alive=false;++searchEpoch;++originEpoch;++destinationEpoch;tourOwner?.destroy();listeners.abort();destinationController?.abort();if(popup.open&&typeof popup.close==='function')popup.close();submitWrap.append(submitButton);submitWrap.style.removeProperty('min-height');for(const {panel,marker}of editorHomes){marker.replaceWith(panel);delete panel.dataset.nativePopupPanel;}popup.remove();}};
   }
   window.AnyTourDesignV2Native=Object.freeze({mount});
 })(window);

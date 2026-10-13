@@ -279,13 +279,16 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         queryNarrow:containerBounds.width<=fontSize*22+1,actionOnOwnRow:action.top>=price.bottom-1,
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
+    const popup=root.querySelector('[data-native-form-popup][open]');let popupFit=null;
+    if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),find=popup.querySelector('[type="submit"]'),action=find.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,findVisible:action.top>=0&&action.bottom<=innerHeight,findEnabled:!find.disabled,findHeight:action.height,submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,sortFit,
-      calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
+      popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':logicalScreen==='tour-alternatives'?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
+    if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
     assert.ok(cardIds.every(id=>Number.isInteger(id)&&id>0),'Every measured result card retains its exact hotel ID');
     assert.equal(new Set(cardIds).size,cardIds.length,'Measured result card identities are unique');
@@ -456,6 +459,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Tab continues to the next night after choosing');
         await page.keyboard.press('Enter');
         assert.equal(await product.locator('[data-native-night="11"]').evaluate(node=>node===document.activeElement),true,'Keyboard range endpoint retains focus');
+        await capture(page,'native',width,percent,'popup-nights',row,false);
         await page.keyboard.press('Escape');
         assert.equal(await product.locator('[data-search-nights-toggle]').evaluate(node=>node===document.activeElement),true,'Escape restores focus to the night opener');
         assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей','Keyboard Cancel retains the original duration');
@@ -513,8 +517,15 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.familyAges=[0,7,17];row.proof.familyExtraSearches=0;row.proof.familyAgeReviewRetained=true;
         row.proof.familyInputFocusRetained=true;
 
+        const formBefore=await product.locator('[data-search-form]').boundingBox();
+        await product.locator('[data-search-date-toggle]').click();
+        const formAfter=await product.locator('[data-search-form]').boundingBox();
+        assert(Math.abs(formAfter.height-formBefore.height)<1.1,'Opening a popup does not expand the form');
+        await capture(page,'native',width,percent,'popup-calendar',row,false);
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-native-form-popup]').isVisible(),false,'Find applies the valid popup selection and closes it');
+        row.proof.formPopupSingleSubmitRetained=true;
         await product.locator('.st-hotel-card').nth(3).waitFor();
         assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
