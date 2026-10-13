@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('4076e6eeea96105362411f4c09a9b9dabc12d554', 'f0b116b7d1d8e82f1864d5fe5f11a5ab1b82fe68'),
-    ('da2eb82a88c784a762dc843833b73bd71d207970', 'f6741e339ca76a21549758eb1cd7c5011006c57a'),)
+    ('d2581bf6742e5c9ecf0d9a5007aba8725f22cc29', 'd50f1f9207a2b0792642643039c61c5ac97a12d8'),
+    ('0dd523c048392aed45b65c77b94b5458a88384e0', 'c6a75581a2ec373b69a4f3a5978bd4a006793919'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '0ba4d1195e3423cae2537d09d40a55d725589d6b'
+NATIVE_SOURCE_BASE_PARENT = 'da2eb82a88c784a762dc843833b73bd71d207970'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -207,6 +207,8 @@ def native_frame_inventory(width, percent):
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
+    frames.update(f'native-terminal-{state}-{width}-text{percent}.png'
+                  for state in ('complete', 'partial', 'error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
@@ -259,7 +261,8 @@ def native_evidence(archive, request, native):
         'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
         'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-        'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True}
+        'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
+        'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
@@ -300,6 +303,21 @@ def native_evidence(archive, request, native):
                      and struct.unpack('>II', value[16:24]) == (1280, 720),
                      'native_short_desktop_png_dimensions_required')
             if frame['side'] == 'native':
+                terminal_state = frame.get('terminalState')
+                if name.startswith('native-terminal-'):
+                    status = name.split('-')[2]
+                    message = ('' if status == 'complete' else 'Поиск завершён не полностью.'
+                               if status == 'partial' else
+                               'Не удалось завершить поиск. Полученные предложения сохранены.')
+                    expected = {'status': status, 'message': message, 'searchGeneration': 1,
+                        'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
+                        'alertText': message or 'Поиск завершён не полностью.',
+                        'ownerSHA256': native['files']['bridge.js']}
+                    need(isinstance(terminal_state, dict) and set(terminal_state) == set(expected)
+                         and all(type(terminal_state.get(k)) is type(v)
+                                 and terminal_state.get(k) == v for k, v in expected.items()),
+                         'native_terminal_status_and_owner_required')
+                else: need(terminal_state is None, 'native_terminal_measurement_scope')
                 popup_editor = ('dates' if logical_name.startswith('native-popup-calendar-')
                     else 'nights' if logical_name.startswith('native-popup-nights-')
                     else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
@@ -323,7 +341,7 @@ def native_evidence(archive, request, native):
                                                             'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
-                                                            'native-results-partial-', 'native-filter-empty-partial-'))
+                                                            'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
                           else 'hotel' if logical_name.startswith('native-hotel-return-') else logical_name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
@@ -622,7 +640,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 393, 'native_rendered_frame_count')
+    need(len(frames) == 423, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')

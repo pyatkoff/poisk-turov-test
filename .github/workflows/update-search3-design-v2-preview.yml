@@ -1,6 +1,6 @@
 # Reviewed successor: distinguish unstarted search from real empty availability.
-# Requires393 retained frames including20 presearch states,55 typed journey
-# values, recomputed count geometry, exact ancestry and terminale42/run384371 predecessor.
+# Requires423 retained frames including30 native terminal states,57 typed journey
+# values, recomputed count geometry, exact ancestry and terminal2da/run384445 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 
