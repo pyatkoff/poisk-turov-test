@@ -1754,3 +1754,15 @@ Design-lab mockup, design-lab clickable path and installed NEXT remain independe
 Installed NEXT stays unchanged until publication; no donor score inheritance, no
 new quality increase for approval, source adaptation, CI or branch integration.
 New NEXT visual/UX criteria remain not_measured until exact installed acceptance.
+
+
+
+## Original Site191 approved transfer — 2026-10-14
+
+Owner answered «да» to whole Site191 visual+behavior approval, recorded in #4217/6157263706. Exact donor54f7154ad595544da3dc10ef116cda02483f14ef / PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a; nativeversionappgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_be83bbb7ca8c8191ae26384b09f8c1eb, terminal6157154465. Receiver only existing NEXT release/search3-production-ready-v1 at2012c7df85a7806c976d4d9a8882b0a0d47a91a1, installed712ac9923b93916f375d14a635bd4635e4f52332. Claims6157276748/6157292784; foreignv2 and draft4502 remain separate.
+
+Existing generic TV/demo picker now offers explicit manager handoff for a pair without a whole-tour amount: commits no pair, retains checked offer amount, clears old leg/fuel/baggage metadata; contact/Back/reopen has no implicit pair0; explicit known0 remains valid. New chosen pair clears stale manager metadata. Existing local picker refinements/history and quote/identity gates remain. Falsy malformed flight projection takes existing recoverable error instead of erasing selected offer. Provider-specific ANEX/SAMO flight/application paths and money contracts stay unchanged.
+
+Existing price explanation separates listing, checked offer, and committed pair totals. Provider renderer passes its canonical receipt amount explicitly; generic tour.price is not adopted as provider authority. Pending/error/loading amount cannot become final or zero; draft footer does not rewrite committed facts. No formula, price arithmetic, provider call, lead transport, new renderer/CSS layer, catalogue/mapping/DB, main/workflow or schedule change. 200% remains deferred; no new scenarios.
+
+Focused full-source JSDOM price-origin/provider authority, manager/contact/Back/null/known0, lazy cold loading/history, live bridge/recovery and passive295 exact digest pass. Source compiler preserves AST/protected lead runtime and emits exact derived graph. This is preparation, not CI/merge/publication/runtime acceptance. Existing full CI and compiled ordinary360/390/430/768/1280 journeys must pass on the final head before release and separately claimed stock NEXT publication. Physical Safari not_measured; whole SEARCH-QUALITY-1 score not_measured, no donor score inheritance or points for approval.
