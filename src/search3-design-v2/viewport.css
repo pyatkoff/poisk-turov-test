@@ -167,6 +167,8 @@ body { margin: 0; padding: 0; }
 }
 #design-v2-native-root #b4 .st-desktop .st-card-content {
   container: native-card / inline-size;
+  grid-template-columns: minmax(200px, 26%) minmax(0, 1fr);
+  gap: 16px;
 }
 #design-v2-native-root #b4 .st-desktop .st-card-info {
   grid-template-columns: minmax(0, 1fr) minmax(172px, max-content);
@@ -176,6 +178,20 @@ body { margin: 0; padding: 0; }
 }
 /* Keep the approved photo / hotel / total composition, with readable factual
    rows and a consistent title, category and location rhythm on real hotels. */
+#design-v2-native-root #b4 .st-card-list {
+  gap: 14px;
+}
+#design-v2-native-root #b4 .st-hotel-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--paper);
+  box-shadow: none;
+}
+#design-v2-native-root #b4 .st-hotel-card:last-child {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
 #design-v2-native-root #b4 .st-hotel-card .st-card-name {
   margin-bottom: 5px;
 }
@@ -258,13 +274,17 @@ body { margin: 0; padding: 0; }
   padding-top: 5px;
 }
 #design-v2-native-root #b4 .st-desktop .st-card-info {
-  padding-block: 6px;
-  row-gap: 6px;
-  align-content: center;
+  padding: 2px 0;
+  row-gap: 5px;
+  align-content: start;
 }
 #design-v2-native-root #b4 .st-mobile .st-card-info {
   padding-top: 15px;
   padding-bottom: 2px;
+}
+#design-v2-native-root #b4 .st-mobile .st-card-content > .q8cb:not(.q8c5) {
+  height: auto;
+  aspect-ratio: 1.8;
 }
 #design-v2-native-root #b4 .st-mobile .st-card-name {
   display: block;
@@ -278,10 +298,10 @@ body { margin: 0; padding: 0; }
   letter-spacing: 1px;
 }
 #design-v2-native-root #b4 .st-mobile .st-hotel-card {
-  padding-bottom: 19px;
+  padding: 12px;
 }
 #design-v2-native-root #b4 .st-mobile .st-hotel-card:last-child {
-  padding-bottom: 0;
+  padding-bottom: 12px;
 }
 /* The final literal word travels with its arrow. An unusually long word may
    still wrap inside the available width instead of overflowing the card. */
@@ -455,7 +475,8 @@ body { margin: 0; padding: 0; }
   line-height: 1.35;
 }
 #design-v2-native-root #b4 .st-desktop .q8c9 {
-  padding: 15px;
+  padding: 12px;
+  margin-bottom: 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--paper);
@@ -463,16 +484,16 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-desktop .q8c9 .st-pc-head {
   font-size: 15px;
   line-height: 1.45;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 #design-v2-native-root #b4 .st-desktop .st-pc-head > span:last-child {
   font-size: 12px;
 }
 #design-v2-native-root #b4 .st-desktop .st-pc-date {
-  min-height: 76px;
-  padding: 10px 5px;
-  gap: 7px;
+  min-height: 60px;
+  padding: 7px 5px;
+  gap: 4px;
 }
 #design-v2-native-root #b4 .st-desktop .st-pc-day {
   font-size: 14px;
@@ -488,7 +509,7 @@ body { margin: 0; padding: 0; }
 }
 #design-v2-native-root #b4 .st-desktop .st-pc-foot {
   font-size: 12px;
-  margin-top: 9px;
+  margin-top: 4px;
 }
 @container at-price-calendar (min-width: 40em) {
   #design-v2-native-root #b4 .st-desktop .st-pc-full {
