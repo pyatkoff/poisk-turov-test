@@ -42,6 +42,7 @@ const fixture = {
     {id:4,donorId:'villas',name:'FIXTURE Laguna Collection Premium Resort & Private Villas',stars:5,room:'Вилла с двумя спальнями · свой бассейн',meal:'Ультра всё включено',food:'uai',total:1059000}
   ]
 };
+const fixtureNow = new Date('2026-10-12T08:00:00Z');
 fs.writeFileSync(path.join(evidence,'fixture.json'),JSON.stringify(fixture,null,2)+'\n');
 
 function fixtureBridge(fixture) {
@@ -263,6 +264,10 @@ async function referenceFrame(page,width,percent,screen,row) {
       const row={width,textPercent:percent,frames:[],checks:[],errors:[],unexpectedRequests:[],proof:{}};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce'});
       const page=await context.newPage(),reference=await context.newPage();
+      // Keep the controlled departure range current independently of the CI
+      // runner's wall clock. The product must continue rejecting past dates;
+      // only this fictional evidence clock is pinned to the fixture date.
+      await Promise.all([page.clock.setFixedTime(fixtureNow),reference.clock.setFixedTime(fixtureNow)]);
       page.setDefaultTimeout(6000);reference.setDefaultTimeout(6000);
       page.setDefaultNavigationTimeout(10000);reference.setDefaultNavigationTimeout(10000);
       page.on('pageerror',error=>row.errors.push(error.message));reference.on('pageerror',error=>row.errors.push('donor: '+error.message));
