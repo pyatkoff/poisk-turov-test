@@ -145,6 +145,10 @@ const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixtur
   knownSemanticDifferences:['Native package inclusions remain unknown until verified; donor demo inclusion copy is reference only.','Native quote/flight/contact authority comes from controlled bridge fixtures; donor demo authority is not transferred.'],
   cases:[],failures:[]};
 
+// Bound fixture-state polling independently of animation frames, so a stalled
+// background-tab RAF cannot consume the CI job without exposing the state.
+const waitForFixture=(page,predicate,arg)=>page.waitForFunction(predicate,arg,{timeout:6000,polling:50});
+
 async function setTextSize(page,percent) {
   await page.evaluate(percent=>{
     document.getElementById('native-text-scale-evidence')?.remove();
@@ -161,9 +165,13 @@ async function setTextSize(page,percent) {
 }
 
 async function capture(page,side,width,percent,screen,row,fullPage=true) {
-  if(side==='native')await page.waitForFunction(pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
+  console.log('NATIVE_FRAME',side,width,percent,screen);
+  if(side==='native')await waitForFixture(page,pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
   await page.evaluate(()=>document.fonts.ready);
-  await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  await page.evaluate(()=>new Promise((resolve,reject)=>{
+    const deadline=setTimeout(()=>reject(new Error('Two paint frames did not complete within 6 seconds')),6000);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(deadline);resolve();}));
+  }));
   await setTextSize(page,percent);
   await page.evaluate(()=>window.scrollTo(0,0));
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
@@ -623,7 +631,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         if(width<=760)assert.equal(await product.locator('.st-stay-details').isVisible(),false,'Original mobile quick summary replaces duplicate stay details');
         await product.locator('[data-native-tour-flight="0"]').waitFor({state:'visible'});
         await product.locator('[data-native-tour-flight="0"]').click();
-        await page.waitForFunction(()=>document.activeElement?.matches('[data-native-flight-alternatives] summary'));
+        await waitForFixture(page,()=>document.activeElement?.matches('[data-native-flight-alternatives] summary'));
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await product.locator('[data-action="lead"]:visible').first().waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().offer===window.__nativeFixture.hotels[0].offers[0]),true,'Exact loaded offer reference retained');
@@ -648,7 +656,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),1,'Opening loaded flight choices starts no quote');
         assert.deepEqual(await page.evaluate(()=>window.__nativeFixture.calls.flight),[0]);
         await product.locator('[data-native-tour-flight="1"]').click();
-        await page.waitForFunction(()=>window.__nativeFixture.getSelection().flightChoiceId===1);
+        await waitForFixture(page,()=>window.__nativeFixture.getSelection().flightChoiceId===1);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),123000,'Alternative preserves its full canonical total');
         assert.equal(await alternatives.getAttribute('open'),null,'New selected pair collapses alternatives');
         await product.locator('[data-action="accept-price"]:visible').first().click();
@@ -665,7 +673,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         const form=product.locator('[data-lead-form]');
         await form.locator('[name="name"]').fill('FICTIONAL QA');await form.locator('[name="phone"]').fill('+7 999 000 00 00');await form.locator('[name="consent"]').check();
         await form.locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-lead-form]')].some(form=>form.dataset.checked==='1'));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-lead-form]')].some(form=>form.dataset.checked==='1'));
         assert.deepEqual(await page.evaluate(()=>({price:window.__nativeFixture.payload.price,flightChoiceId:window.__nativeFixture.payload.flightChoiceId,preview:window.__nativeFixture.calls.preview,submit:window.__nativeFixture.calls.submit})),{price:112000,flightChoiceId:0,preview:1,submit:0});
         row.proof.contactPayloadFullTotal=112000;row.proof.contactPayloadFlightChoiceIndex=0;row.proof.contactPreviewCount=1;row.proof.realLeadSubmissions=0;
         await page.goBack();await screen('tour').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
@@ -680,13 +688,13 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});
         await page.evaluate(()=>{window.__nativeFixture.failNextSearch=true;});
         await screen('search').locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('FICTIONAL controlled search failure')));
         await capture(page,'native',width,percent,'error',row);
         assert.equal(await product.locator('.st-hotel-card').count(),4,'Search failure retains received rows');
         row.proof.errorRetainedRows=4;
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});await screen('search').locator('button[type="submit"]').click();
-        await page.waitForFunction(()=>window.__nativeFixture.calls.search===3);
-        await page.waitForFunction(()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden||!node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>window.__nativeFixture.calls.search===3);
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden||!node.textContent.includes('FICTIONAL controlled search failure')));
         assert.equal(await product.locator('.st-hotel-card').count(),4);
         row.proof.explicitSearchRetryCount=1;row.proof.retryRows=4;
         await product.locator('[data-favorite="1"]').click();
