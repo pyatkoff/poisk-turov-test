@@ -833,9 +833,12 @@ async function formPickerActionJourney(browser,origin,base,evidence){
      // the day into view. Existing enlarged-text coverage is unchanged.
      const geometry=()=>page.locator('#date-calendar [data-date="'+trip.from+'"]:not(:disabled)').evaluate(el=>{
       const day=el.getBoundingClientRect(),body=document.querySelector('#modal-body'),view=body.getBoundingClientRect();
-      return{date:el.dataset.date,selected:el.getAttribute('aria-pressed')==='true',top:day.top,bottom:day.bottom,bodyTop:view.top,bodyBottom:view.bottom,scroll:body.scrollTop,viewportWidth:innerWidth,viewportHeight:innerHeight};
+      const months=[...document.querySelectorAll('#date-calendar .calendar-month')].map(month=>{const title=month.querySelector('h3'),head=title.getBoundingClientRect(),week=month.querySelector('.weekday').getBoundingClientRect(),hit=document.elementFromPoint((head.left+head.right)/2,(head.top+head.bottom)/2);return{month:month.dataset.month,label:title.textContent,top:head.top,bottom:head.bottom,weekdayTop:week.top,weekdayBottom:week.bottom,hit:hit===title||title.contains(hit)};});
+      const navigation=document.querySelector('.calendar-navigation').getBoundingClientRect(),arrows=[...document.querySelectorAll('.calendar-navigation button')].map(button=>{const r=button.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return{action:button.dataset.action,top:r.top,bottom:r.bottom,hit:hit===button||button.contains(hit)};});
+      return{date:el.dataset.date,selected:el.getAttribute('aria-pressed')==='true',top:day.top,bottom:day.bottom,bodyTop:view.top,bodyBottom:view.bottom,scroll:body.scrollTop,viewportWidth:innerWidth,viewportHeight:innerHeight,months,navigation:{top:navigation.top,bottom:navigation.bottom,arrows}};
      });
-     const visible=(box,label)=>{assert.equal(box.date,trip.from);assert.equal(box.selected,true);assert(box.top>=box.bodyTop-1&&box.bottom<=box.bodyBottom+1,label);};
+     const monthContext=(box,label)=>{assert.equal(box.months.length,2);assert(box.navigation.top>=box.bodyTop-1&&box.navigation.bottom<=box.bodyBottom+1,label+' retains visible month navigation');assert(box.navigation.arrows.every(button=>button.hit&&button.top>=box.bodyTop-1&&button.bottom<=box.bodyBottom+1),label+' retains reachable month arrows');for(const month of box.months){assert(month.label.includes(month.month.slice(0,4)),label+' shows the exact month year');assert(month.top>=box.navigation.bottom-1&&month.bottom<=box.bodyBottom+1&&month.hit,label+' keeps the month heading visible below navigation');assert(month.weekdayTop>=month.bottom-1&&month.weekdayBottom<=box.bodyBottom+1,label+' keeps weekday labels below their month');}};
+     const visible=(box,label)=>{assert.equal(box.date,trip.from);assert.equal(box.selected,true);monthContext(box,label);assert(box.top>=Math.max(...box.months.map(month=>month.weekdayBottom))-1&&box.bottom<=box.bodyBottom+1,label);};
      const initialOpen=await geometry();visible(initialOpen,'the initial departure is visible on an ordinary short screen');
      await page.screenshot({path:path.join(evidence,`calendar-selected-pending-${width}.png`)});
      releaseInitialCalendar();
@@ -849,7 +852,7 @@ async function formPickerActionJourney(browser,origin,base,evidence){
      assert(manualScroll<beforeManual.scroll-1,'manual scrolling moves away from the initial anchor');
      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));releaseManualCalendar();
      await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);
-     const manualSettled=await geometry();assert.equal(manualSettled.scroll,manualScroll,'late prices preserve the user scroll');
+     const manualSettled=await geometry();assert.equal(manualSettled.scroll,manualScroll,'late prices preserve the user scroll');monthContext(manualSettled,'manual scroll');
      await page.screenshot({path:path.join(evidence,`calendar-selected-manual-${width}.png`)});await close('dates');calendarReadMode=null;
      await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();
      await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false');
