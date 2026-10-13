@@ -951,9 +951,6 @@ dialog.dates-dialog .month-day.is-cheap.active>small{background:#fff;color:#276B
  .tour-dialog .saved-tour-notice{padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.5}
 
  dialog.tour-dialog #modal-footer{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch}
- dialog.tour-dialog #modal-footer .footer-total{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:3px 10px}
- dialog.tour-dialog #modal-footer .footer-total small{grid-column:1/-1}
- dialog.tour-dialog #modal-footer .footer-total strong{font-size:24px;white-space:nowrap;line-height:1.25}
  dialog.tour-dialog #modal-footer .primary{width:100%;max-width:none;padding:10px;}
 }
 

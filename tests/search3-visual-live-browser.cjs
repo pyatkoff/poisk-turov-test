@@ -223,12 +223,15 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
   };
   const geometry=async()=>{
    const boxes=await page.locator('#modal').evaluate(modal=>{
-    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};},footer=document.querySelector('#modal-footer'),total=footer.querySelector('.footer-total'),amount=total.querySelector('strong'),button=footer.querySelector('.primary')||footer.querySelector('.secondary'),body=document.querySelector('#modal-body');
+    const rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};},textRects=el=>{const range=document.createRange();range.selectNodeContents(el);return[...range.getClientRects()].map(rect=>({x:rect.x,y:rect.y,right:rect.right,bottom:rect.bottom}));},footer=document.querySelector('#modal-footer'),total=footer.querySelector('.footer-total'),amount=total.querySelector('strong'),caption=total.querySelector('small'),button=footer.querySelector('.primary')||footer.querySelector('.secondary'),body=document.querySelector('#modal-body');
      const radios=[...body.querySelectorAll('[name="anex-package-choice"],[name="andromeda-outbound"],[name="andromeda-return"]')],focused=radios.find(input=>input===document.activeElement),choice=input=>({name:input.name,value:input.value,checked:input.checked,disabled:input.disabled,input:rect(input),row:rect(input.closest('.flight-option'))});
-    return{modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth,body:rect(body),footer:rect(footer),total:rect(total),amount:rect(amount),button:rect(button),choices:[...document.querySelectorAll('.flight-option')].map(rect),selectedChoices:radios.filter(input=>input.checked).map(choice),focusedChoice:focused?choice(focused):null};
+    return{modalOverflow:modal.scrollWidth>modal.clientWidth+1,bodyOverflow:body.scrollWidth>body.clientWidth+1,documentOverflow:document.documentElement.scrollWidth>innerWidth,body:rect(body),footer:rect(footer),total:rect(total),amount:rect(amount),amountRects:textRects(amount),caption:rect(caption),captionRects:textRects(caption),button:rect(button),choices:[...document.querySelectorAll('.flight-option')].map(rect),selectedChoices:radios.filter(input=>input.checked).map(choice),focusedChoice:focused?choice(focused):null};
    });
    assert.equal(boxes.modalOverflow,false);assert.equal(boxes.bodyOverflow,false);assert.equal(boxes.documentOverflow,false);
    assert(boxes.amount.x>=boxes.total.x-1&&boxes.amount.right<=boxes.total.right+1,'whole pending/verified total fits at '+width);
+   const contains=(parent,r)=>r.x>=parent.x-1&&r.right<=parent.right+1&&r.y>=parent.y-1&&r.bottom<=parent.bottom+1,intersects=(a,b)=>a.x<b.right-1&&a.right>b.x+1&&a.y<b.bottom-1&&a.bottom>b.y+1;
+   assert(boxes.amountRects.length&&boxes.amountRects.every(r=>contains(boxes.amount,r)&&contains(boxes.total,r)&&!intersects(r,boxes.caption)),'complete pending/verified amount stays clear of its status at '+width);
+   assert(contains(boxes.total,boxes.caption)&&boxes.captionRects.every(r=>contains(boxes.caption,r)),'complete pending/verified status wraps within its own cell at '+width);
    assert(boxes.button.x>=boxes.footer.x-1&&boxes.button.right<=boxes.footer.right+1&&boxes.button.height>=44,'current action stays in footer with touch target at '+width);
    assert(boxes.button.x>=boxes.total.right-1||boxes.button.y>=boxes.total.bottom-1,'price and action never overlap at '+width);
    assert(boxes.choices.every(choice=>choice.height>=44),'flight choices keep touch targets at '+width);
@@ -266,7 +269,12 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
    await page.locator(radio(1)).waitFor();await page.locator('[data-action="'+apply+'"]').click();await page.locator('[data-action="'+app+'"]').waitFor();await price(1);
     await page.locator('[data-action="'+edit+'"]').click();
     await page.locator(radio(2)).scrollIntoViewIfNeeded();await page.locator(radio(2)).focus();
+    const edgeChoiceBoxes=await geometry();
+    // The existing provider owner anchors fully visible rows. Keep the edge
+    // state as evidence, then place this exact row within both receipt viewports.
+    await page.locator(radio(2)).evaluate(input=>input.closest('.flight-option').scrollIntoView({block:'center',inline:'nearest'}));await page.locator(radio(2)).focus();
     const beforePendingBoxes=await geometry();
+    assert(beforePendingBoxes.focusedChoice.row.y>=beforePendingBoxes.body.y-1&&beforePendingBoxes.focusedChoice.row.bottom<=Math.min(beforePendingBoxes.body.bottom,beforePendingBoxes.footer.y)+1,'anchor scenario starts with the entire exact B row visible at '+width);
     const initialPairClarity=await pairClarity(1,true);
     await page.locator(radio(2)).check();await pendingB;
    assert.equal(await page.locator('[data-action="'+app+'"]').count(),0,'changed pending pair removes application immediately');assert.match(await page.locator('#modal-footer').textContent(),/Цена уточняется/);assert.equal(await page.locator(radio(2)).isDisabled(),false);
@@ -333,7 +341,7 @@ const boundedRepriceJourney=async(browser,origin,base,evidence)=>{
     assert.equal(transport.calls.length,beforeHistory,'UNKNOWN Forward does not replay');assert.equal(await page.locator('[data-action="'+app+'"]').count(),0);assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/101000|103000/);
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert.deepEqual(aborts,[]);
-   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,comparison_requests:comparisonRequests,beforePendingBoxes,pendingBoxes,verifiedBoxes,cachedPendingBoxes,comparisonBoxes,initialPairClarity,pendingPairClarity,verifiedPairClarity,comparisonPairClarity,applicationSummary,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+   fs.writeFileSync(path.join(evidence,provider+'-reprice-'+width+'.json'),JSON.stringify({width,provider,A_B_A_mutations:2,total_mutations:count(),cached_while_mutating_application:false,global_UNKNOWN_sealed:true,passive_history_requests:0,comparison_requests:comparisonRequests,edgeChoiceBoxes,beforePendingBoxes,pendingBoxes,verifiedBoxes,cachedPendingBoxes,comparisonBoxes,initialPairClarity,pendingPairClarity,verifiedPairClarity,comparisonPairClarity,applicationSummary,...(unknownRecovery?{unknownRecovery}:{}),supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
   }finally{releaseB?.();releaseUnknown?.();await context.close();}
  }
  console.log('PASS compiled bounded flight repricing: ANEX/SAMO at five widths, cached return, pending and UNKNOWN application guards');
@@ -354,6 +362,7 @@ const applicationViewportLayout=async(page,width,transport,evidence,label,stress
   assert.equal(b.priceOwners,1,label+' retains exactly one whole-party price owner');
   assert(b.amountRects.length&&b.amountRects.every(r=>contains(b.amount,r)&&contains(b.price,r)),label+' complete whole-party amount fits its own retained price at '+width+' '+state+': '+JSON.stringify(b));
   assert(contains(b.price,b.caption),label+' complete price status fits its price owner');
+  assert(!b.amountRects.some(r=>r.x<b.caption.right-1&&r.right>b.caption.x+1&&r.y<b.caption.bottom-1&&r.bottom>b.caption.y+1),label+' price status never overlaps the complete amount at '+width+' '+state);
   assert(contains(b.footer,b.action)&&b.actionRects.every(r=>contains(b.action,r)),label+' complete action stays inside the footer at '+width+' '+state);assert(b.action.height>=48);
   if(b.priceOwner==='footer')assert(b.amountRects.every(r=>contains(b.footer,r))&&contains(b.footer,b.caption),label+' fixed amount and status remain fully visible');
   else assert(b.price.x>=b.body.x-1&&b.price.right<=b.body.right+1,label+' scrolling price stays within the existing body width');
@@ -459,7 +468,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
    assert(boxes.facts.every(box=>box.height>0&&box.x>=boxes.context.x-1&&box.right<=boxes.context.right+1),label+' wraps complete stay facts inside their context at '+width);assert.equal(boxes.bodyOverflow,false);assert.equal(boxes.modalOverflow,false);assert.equal(boxes.documentOverflow,false);
    const contains=(parent,child)=>child.x>=parent.x-1&&child.right<=parent.right+1&&child.y>=parent.y-1&&child.bottom<=parent.bottom+1,intersects=(a,b)=>a.x<b.right-1&&a.right>b.x+1&&a.y<b.bottom-1&&a.bottom>b.y+1;
    for(const price of boxes.prices)assert(price.textRects.length&&price.textRects.every(text=>contains(price.price,text)&&contains(price.row,text)),label+' shows the complete row amount or unknown status at '+width+': '+JSON.stringify(price));
-   const footer=boxes.footer;assert(footer.textRects.length&&footer.textRects.every(text=>contains(footer.total,text)&&!intersects(text,footer.action)),label+' keeps the full footer amount/status beside its action at '+width+': '+JSON.stringify(footer));assert(contains(footer.box,footer.action)&&contains(footer.total,footer.caption),label+' keeps confirmation in footer and status within the existing price block');assert(!intersects(footer.total,footer.action)&&!intersects(footer.caption,footer.action),label+' footer siblings never overlap at '+width+': '+JSON.stringify(footer));
+   const footer=boxes.footer;assert(footer.textRects.length&&footer.textRects.every(text=>contains(footer.total,text)&&!intersects(text,footer.action)&&!intersects(text,footer.caption)),label+' keeps the full footer amount clear of status and action at '+width+': '+JSON.stringify(footer));assert(contains(footer.box,footer.action)&&contains(footer.total,footer.caption),label+' keeps confirmation in footer and status within the existing price block');assert(!intersects(footer.total,footer.action)&&!intersects(footer.caption,footer.action),label+' footer siblings never overlap at '+width+': '+JSON.stringify(footer));
    assert.match(await page.locator('.flight-picker-note').textContent(),/Время местное/);assert.deepEqual(await page.locator('.flight-price>small').allTextContents(),['весь тур за всех','весь тур за всех','весь тур за всех']);return boxes;
   };
   try{
@@ -614,13 +623,16 @@ const mobileFooterLayout=async(page,width)=>{
  if(width!==390)return;
  const verify=async()=>{
   const boxes=await page.locator('#modal-footer').evaluate(footer=>{
-   const total=footer.querySelector('.footer-total'),price=total.querySelector('strong'),button=footer.querySelector('.primary'),rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,width:b.width,height:b.height,bottom:b.bottom};};
-   return{hidden:footer.hidden,display:getComputedStyle(footer).display,total:rect(total),price:rect(price),button:rect(button),nowrap:getComputedStyle(price).whiteSpace};
+   const total=footer.querySelector('.footer-total'),price=total.querySelector('strong'),caption=total.querySelector('small'),button=footer.querySelector('.primary'),rect=el=>{const b=el.getBoundingClientRect();return{x:b.x,y:b.y,right:b.right,width:b.width,height:b.height,bottom:b.bottom};},textRects=el=>{const range=document.createRange();range.selectNodeContents(el);return[...range.getClientRects()].map(b=>({x:b.x,y:b.y,right:b.right,bottom:b.bottom}));};
+   return{hidden:footer.hidden,display:getComputedStyle(footer).display,total:rect(total),price:rect(price),amountRects:textRects(price),caption:rect(caption),captionRects:textRects(caption),button:rect(button),nowrap:getComputedStyle(price).whiteSpace};
   });
   assert.equal(boxes.hidden,false,'visible tour footer remains visible');
   assert(boxes.button.y>=boxes.total.bottom,'mobile action is below price and status');
   assert(Math.abs(boxes.button.x-boxes.total.x)<1&&Math.abs(boxes.button.width-boxes.total.width)<1,'mobile action uses the full available row');
-  assert.equal(boxes.nowrap,'nowrap','tour price does not break inside the amount');
+  assert.equal(boxes.nowrap,'normal','the approved amount owner permits complete wrapping when needed');
+  const contains=(parent,r)=>r.x>=parent.x-1&&r.right<=parent.right+1&&r.y>=parent.y-1&&r.bottom<=parent.bottom+1,intersects=(a,b)=>a.x<b.right-1&&a.right>b.x+1&&a.y<b.bottom-1&&a.bottom>b.y+1;
+  assert(boxes.amountRects.length&&boxes.amountRects.every(r=>contains(boxes.price,r)&&contains(boxes.total,r)&&!intersects(r,boxes.caption)),'complete amount stays clear of its price status');
+  assert(boxes.captionRects.every(r=>contains(boxes.caption,r)),'complete price status wraps inside its own cell');
   assert(boxes.price.x+boxes.price.width<=boxes.total.x+boxes.total.width+1,'whole price fits in the footer');
  };
  await verify();await page.setViewportSize({width:360,height:900});

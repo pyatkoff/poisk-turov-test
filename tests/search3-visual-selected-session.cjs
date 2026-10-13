@@ -5,8 +5,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const historyKey='anytour.prototype.v18.ui.v1';
-// Read-only failure evidence: keep the original expiry/history predicates and
-// clock sequence, including the scroll captured before any diagnostic frame.
+// Read-only layout evidence. Settle the existing viewport reveal before taking
+// a position baseline; expiry must preserve it whenever the input still fits.
+const settleSessionViewport=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 const sessionGeometry=page=>page.evaluate(key=>{
  const box=el=>{if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right,fontSize:s.fontSize,lineHeight:s.lineHeight,fontFamily:s.fontFamily,whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap};};
  const modal=document.querySelector('#modal'),body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),phone=document.querySelector('[name="phone"]'),active=document.activeElement,v=window.visualViewport;
@@ -112,8 +113,10 @@ module.exports=async function({browser,origin,base,evidence}){
      }
      await page.locator('[name="phone"]').focus();
      await page.evaluate(()=>{window.__selectedSessionForm=document.querySelector('#prototype-lead-form');window.__selectedSessionPhone=document.activeElement;});
+     await settleSessionViewport(page);
     }
     const before=calls(),scroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);
+    const expiryViewportBefore=contacts?await sessionGeometry(page):null;
     if(width===390&&mode==='application'){
      const beforeScreenshot=await sessionGeometry(page);
      await page.screenshot({path:path.join(evidence,`selected-session-preexpiry-${provider}-${mode}-${width}.png`)});
@@ -122,6 +125,7 @@ module.exports=async function({browser,origin,base,evidence}){
     await page.clock.fastForward(901000);
     await page.waitForFunction(()=>document.querySelector('#modal').dataset.quoteExpired==='1');
     await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+    if(contacts)await settleSessionViewport(page);
     assert.equal(await page.locator('#provider-price-expiry').count(),1,'expiry is reflected once after deadline and resume');
     assert.match(await page.locator('#provider-price-expiry').textContent(),/Срок подтверждения цены истёк/);
     assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice),'expired footer removes current final-price claim');
@@ -137,7 +141,17 @@ module.exports=async function({browser,origin,base,evidence}){
     if(contacts){
      assert.equal(await page.evaluate(()=>document.querySelector('#prototype-lead-form')===window.__selectedSessionForm),true,'expiry keeps the same contact form');
      assert.equal(await page.evaluate(()=>document.activeElement===window.__selectedSessionPhone),true,'expiry preserves keyboard focus');
-     assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),scroll,'expiry preserves internal scroll');
+     const expiryViewportAfter=await sessionGeometry(page),body=expiryViewportAfter.body.box,phone=expiryViewportBefore.phone;
+     // A taller truthful expiry footer can cover the focused phone. Preserve
+     // scroll whenever it fits; otherwise allow only the necessary inner reveal.
+     assert(Math.abs(body.top-expiryViewportBefore.body.box.top)<=1,'expiry keeps the contact header/body origin stable');
+     let reveal=0;
+     if(phone.top<body.top+8||phone.height>body.height-16)reveal=phone.top-body.top-8;
+     else if(phone.bottom>body.bottom-8)reveal=phone.bottom-body.bottom+8;
+     const expectedScroll=Math.max(0,Math.min(scroll+reveal,expiryViewportAfter.body.scrollHeight-expiryViewportAfter.body.clientHeight));
+     fs.writeFileSync(path.join(evidence,`selected-session-expiry-viewport-${provider}-${mode}-${width}.json`),JSON.stringify({baselineScroll:scroll,before:expiryViewportBefore,after:expiryViewportAfter,necessaryReveal:reveal,expectedScroll},null,2));
+     if(!reveal)assert.equal(expiryViewportAfter.body.scrollTop,scroll,'expiry preserves internal scroll');
+     else{assert(Math.abs(expiryViewportAfter.body.scrollTop-expectedScroll)<=1,'expiry permits only the necessary focused-phone reveal');assert(expiryViewportAfter.phone.top>=body.top+7&&expiryViewportAfter.phone.bottom<=body.bottom-7,'expired footer never covers the focused phone');}
      for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))assert.equal(await page.locator('[name="'+name+'"]').inputValue(),value);
      assert.equal(await page.locator('[name="consent"]').isChecked(),false,'expired price clears consent');
      assert.equal(await page.locator('#prototype-lead-form').getAttribute('data-checked'),null,'expired receipt clears successful rehearsal status');
