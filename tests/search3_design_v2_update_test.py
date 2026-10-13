@@ -202,9 +202,22 @@ class UpdateContracts(unittest.TestCase):
                             'copyWidth': summary_width if narrow else summary_width * .7,
                             'copyWidthRatio': 1 if narrow else .7,
                             'stacked': narrow, 'queryNarrow': narrow}]
+                    offer_action_fit = []
+                    if side == 'native' and screen == 'hotel':
+                        offer_width = width - 36 if width <= 430 else 650
+                        offer_font = 14 * percent / 100
+                        offer_narrow = offer_width <= offer_font * 22 + 1
+                        offer_action_fit = [{'text': text, 'width': offer_width,
+                            'availableWidth': offer_width, 'containerWidth': offer_width,
+                            'fontSize': offer_font,
+                            'actionWidth': offer_width if offer_narrow else 110,
+                            'actionWidthRatio': 1 if offer_narrow else 110 / offer_width,
+                            'queryNarrow': offer_narrow, 'actionOnOwnRow': offer_narrow,
+                            'outside': False} for text in ('Выбрать тур', 'Выбран тур')]
                     case['frames'].append({'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
                         'calendarFit': calendar_fit, 'summaryFit': summary_fit,
+                        'offerActionFit': offer_action_fit,
                         'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
                         'readableText': [{'text': 'Fixture condition', 'clipped': False, 'brokenWords': False, 'overlappingLines': False}],
                         'headerFit': {'outside': False, 'overlap': False},
@@ -234,8 +247,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '75e52f2597172469fbcb6f742dc8c7b5934cd173')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38336349915)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '660a760d9d0a0c0121d05d53bdc0895689600bc8')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38354248961)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
         with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
@@ -382,6 +395,15 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(stacked=True),
             lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(queryNarrow=True),
             lambda r: frame(r, 'native-results-').update(summaryFit=[{'className':'st-tour-hotel'}]),
+            lambda r: frame(r, 'native-hotel-').update(offerActionFit=None),
+            lambda r: frame(r, 'native-hotel-')['offerActionFit'].pop(),
+            lambda r: frame(r, 'native-hotel-', 1)['offerActionFit'][0].update(queryNarrow=False),
+            lambda r: frame(r, 'native-hotel-', 1)['offerActionFit'][0].update(actionOnOwnRow=False),
+            lambda r: frame(r, 'native-hotel-', 1)['offerActionFit'][0].update(actionWidthRatio=.5),
+            lambda r: frame(r, 'native-hotel-', 1)['offerActionFit'][0].update(outside=True),
+            lambda r: frame(r, 'native-hotel-')['offerActionFit'][0].update(actionOnOwnRow=True),
+            lambda r: frame(r, 'native-hotel-')['offerActionFit'][0].update(queryNarrow=True),
+            lambda r: frame(r, 'native-results-').update(offerActionFit=[{'text':'Выбрать тур'}]),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-bounded-')),
             lambda r: frame(r, 'native-results-bounded-').update(screen='hotel'),
             lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
@@ -488,7 +510,8 @@ class UpdateContracts(unittest.TestCase):
             '20c6488c01d764ce9bdc19c7eb71f01108efbda5',
             '9de4cdb3d044b060b039abc096f9351466147d86',
             '5a84a0d66394116f9845de3565563ce1d025b6bc',
-            '75e52f2597172469fbcb6f742dc8c7b5934cd173'))
+            '75e52f2597172469fbcb6f742dc8c7b5934cd173',
+            '660a760d9d0a0c0121d05d53bdc0895689600bc8'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -602,7 +625,7 @@ class UpdateContracts(unittest.TestCase):
             (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-             38320934646, 38331033682, 38336349915))
+             38320934646, 38331033682, 38336349915, 38354248961))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)

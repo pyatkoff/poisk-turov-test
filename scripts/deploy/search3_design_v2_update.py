@@ -315,6 +315,36 @@ def native_evidence(archive, request, native):
                              'native_selected_hotel_summary_donor_composition_required')
                 else:
                     need(summaries == [], 'native_selected_hotel_summary_scope')
+                offers = frame.get('offerActionFit')
+                if screen == 'hotel':
+                    need(isinstance(offers, list) and len(offers) == 2,
+                         'native_hotel_offer_actions_required')
+                    for offer in offers:
+                        numeric = ('width', 'availableWidth', 'containerWidth', 'fontSize',
+                                   'actionWidth', 'actionWidthRatio')
+                        need(isinstance(offer, dict)
+                             and isinstance(offer.get('text'), str) and bool(offer['text'].strip())
+                             and all(type(offer.get(field)) in (int, float) and offer[field] > 0
+                                     for field in numeric)
+                             and type(offer.get('queryNarrow')) is bool
+                             and type(offer.get('actionOnOwnRow')) is bool
+                             and offer.get('outside') is False,
+                             'native_hotel_offer_action_geometry_required')
+                        narrow = offer['containerWidth'] <= offer['fontSize'] * 22 + 1
+                        need(offer['queryNarrow'] is narrow,
+                             'native_hotel_offer_action_query_required')
+                        if narrow:
+                            need(offer['actionOnOwnRow'] is True
+                                 and offer['actionWidthRatio'] >= .94
+                                 and abs(offer['actionWidth'] - offer['availableWidth']) <= 1,
+                                 'native_hotel_offer_action_reflow_required')
+                        else:
+                            need(offer['actionOnOwnRow'] is False
+                                 and offer['actionWidthRatio'] <= .6
+                                 and offer['actionWidth'] < offer['availableWidth'],
+                                 'native_hotel_offer_action_donor_composition_required')
+                else:
+                    need(offers == [], 'native_hotel_offer_action_scope')
                 prices = frame.get('prices')
                 need(isinstance(prices, list), 'native_price_measurements_required')
                 if screen == 'startup': need(prices == [], 'native_startup_no_factual_prices')
