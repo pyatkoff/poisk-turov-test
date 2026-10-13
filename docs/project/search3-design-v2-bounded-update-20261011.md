@@ -6,50 +6,67 @@ based on the final Sites v2 source `00fe6734c08acf234756bb59e5b61dbfecf41941`.
 It does not authorize changes to NEXT, the Sites reference, sibling previews,
 production, providers, auth, mappings, lead/CRM or analytics.
 
-## Current state: selected-hotel summary predecessor published, hotel-offer action successor selected
+## Current state: hotel-offer predecessor published, family and cost-label successor reviewed
 
 The exact public predecessor is source
-`660a760d9d0a0c0121d05d53bdc0895689600bc8`, receiving release
-`a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d`, and terminal publication
-run `38354248961` / command `6139303622`. Its 855-file public digest is
-`f7e485d5a3148f9ec51214b23d573b47d2337802d8a2266d2d7b7fa521c913d4`.
-Actual READY artifact `11792775223` (ZIP
-`0986bfc475f1280fe576be85d059cc9ccad6edcd8cf1c8c8cfc0957b69541947`)
-and deployment artifact `11792062330` (ZIP
-`a1daafd6451ca1c9f21c0408ae335ee6791ad3e1353574f6b1c8e937e70ac3da`)
-establish the installed predecessor. That command and run are consumed and
-cannot be replayed.
+`08a99f2dfe2f420c9c03a6eb451d00e9a04e5026`, receiving release
+`dd43712a55b5ad1d22429938ce1b9fbe1e860693`, and terminal publication
+run `38363323689` / command `6140628891`. Its 855-file public digest is
+`073f569d9a13ceef6a14d5d92d8d6050d586b569ff1d0372c0963d6c4e21cc7e`.
+Actual READY artifact `11795343702` (ZIP
+`0f007f2b858c2f5609c8d067d5b20e0805679e62f1705c28370336b9181b4975`)
+and deployment artifact `11795574678` (ZIP
+`0ded514b6ac80dbdb0c0b6f11ece09417f68427ffe29d27b46bc464ae35a8d2e`)
+establish the installed predecessor; terminal receipt is #4217 comment
+`6140772005`. The READY request, manifest and all 855 payload hashes were
+independently verified. That command and run are consumed and cannot be replayed.
 
-PR #4560 final source `08a99f2dfe2f420c9c03a6eb451d00e9a04e5026`
-and tree `644a504eb14e84457f6454f489e33dab133bf381` passed exact-head
-native CI `38359574384` and Security `38359574307`, both attempt 1. The accepted
-artifact is `11794199301`, ZIP SHA256
-`9e0c45cf4f1ac1b282d93bbb07b874a8bc79f5913ff072f5e557947e32487551`.
-Independent source/runtime/visual review is recorded in #4217 comment
-`6140234672`. It approved the 855-file, 263-frame packet and checked that all
-hotel-offer actions preserve the donor price/action row at ordinary text, then
-reflow to full-width in genuinely narrow 200% text containers across the
-complete 360/390/430/768/1280 matrix.
+Merged integration PR #4565 retains exact source
+`a3b0fa5125adb1a90b32a49d5f27a6b8852f5510` and tree
+`37f0810d5fd09a3d18f1004b39a290ef97fe5910`, based on release
+`c816c1f8602a4c5d5fa39c9699741bdf4f47a74b`. The reviewed source passed
+native CI `38386255266` and Security `38386255236`, both attempt 1. The accepted
+artifact is `11807030769`, ZIP SHA256
+`401a357e5ade6ee2d4ad57dc6737f4a105027e4320266d7b2b379f7bcf403330`.
+That retained exact-head build was generated for source-identical PR #4564;
+provenance pins source, tree, workflow, run, repository and artifact rather than
+the PR number or open state. All fresh exact-head checks remain mandatory.
+The ready PR's fresh native CI `38387141489` and Security `38387141490` also
+passed before its receiving squash was merged.
+
+The source includes the reviewed Russian party wording for 1–6 adults and
+0–3 children in the search summary, hotel offers, selected tour and contact
+context, including the grammatical forms after «за». It also fixes enlarged
+cost-label wrapping: the labels retain whole words while the corresponding
+value moves to another row when needed. It changes no party values,
+offer identity, provider, price, flight selection or lead contract. Existing
+native input/tour tests cover all 24 adult/child combinations. The retained
+855-file packet has 333 rendered frames: all prior 263 states, 60 family frames
+and 10 short-desktop frames. Independent artifact review confirmed ordinary
+100% composition is retained and the intended enlarged cost screens improve.
+Controller claim is #4217 comment `6141529055`.
 
 The receiving squash is release
-`dd43712a55b5ad1d22429938ce1b9fbe1e860693`, with the identical tree and
-single parent `a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d`. Its exact source/release
-relation is `diverged`, behind 1, ahead 1, merge base equal to that parent.
+`0c3a6494c8d8e716a946395141b1e544589785e9`, with identical tree
+`37f0810d5fd09a3d18f1004b39a290ef97fe5910` and single parent
+`c816c1f8602a4c5d5fa39c9699741bdf4f47a74b`. Its independently verified exact
+source/release relation is `diverged`, behind 1, ahead 1, with merge base equal
+to that parent.
 Source integration is not publication.
 
 | Pin | Accepted value |
 | --- | --- |
-| source_sha | `08a99f2dfe2f420c9c03a6eb451d00e9a04e5026` |
-| source_tree | `644a504eb14e84457f6454f489e33dab133bf381` |
-| release_sha | `dd43712a55b5ad1d22429938ce1b9fbe1e860693` |
-| release_tree | `644a504eb14e84457f6454f489e33dab133bf381` |
-| release_parent | `a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d` |
-| build_run | `38359574384` |
-| artifact_id | `11794199301` |
-| source_ZIP_sha256 | `9e0c45cf4f1ac1b282d93bbb07b874a8bc79f5913ff072f5e557947e32487551` |
+| source_sha | `a3b0fa5125adb1a90b32a49d5f27a6b8852f5510` |
+| source_tree | `37f0810d5fd09a3d18f1004b39a290ef97fe5910` |
+| release_sha | `0c3a6494c8d8e716a946395141b1e544589785e9` |
+| release_tree | `37f0810d5fd09a3d18f1004b39a290ef97fe5910` |
+| release_parent | `c816c1f8602a4c5d5fa39c9699741bdf4f47a74b` |
+| build_run | `38386255266` |
+| artifact_id | `11807030769` |
+| source_ZIP_sha256 | `401a357e5ade6ee2d4ad57dc6737f4a105027e4320266d7b2b379f7bcf403330` |
 | entry_html_sha256 | `1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7` |
 | entry_php_sha256 | `c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843` |
-| source_manifest_sha256 | `2079b939f929a85f020f569e594d353ed9e00b3babed8ca25611d939960b80fc` |
+| source_manifest_sha256 | `71d231e67de03ce4f3ebe39961fa6192ee38e08544ff0fe3fd27a15720ae999e` |
 
 An absent, foreign, modified, activated or unknown owner/target aborts. Previous
 completed or failed commands and runs remain terminal/no-replay. A new publisher
@@ -68,15 +85,23 @@ same-repository PR run, attempt 1. The retained artifact contains `payload/**`,
 Review metadata retains `publication_authority:false` and route rewrites
 unapplied.
 
-The controller requires exactly 855 payload files and 263 rendered frames. The
+The controller requires exactly 855 payload files and 333 rendered frames. The
 acceptance matrix is 360/390/430/768/1280 at text 100% and 200%, with search,
 results, hotel, tour and lead journeys plus error, filtering, calendar, budget,
-bounded-result, loading, partial-result and flight-alternative states. Names,
+bounded-result, loading, partial-result and flight-alternative states. All prior
+263 frames remain mandatory. Each case adds six family states: 0/1/2/3 children,
+applied selection and age review after changing dates, retaining ages 0/7/17.
+Both 1280 cases also require search/results/hotel/tour/lead screenshots at a
+720 px viewport height; their actual PNG dimensions must be 1280×720. Names,
 bytes and PNG hashes must match the bounded inventory; missing or arbitrary
 extra evidence is rejected.
 
 Every case must prove:
 
+- `familyAges:[0,7,17]` with exact integer identity,
+  `familyExtraSearches:0` and `familyAgeReviewRetained:true`;
+- family frames contain the readable correct party summary, no factual prices,
+  and both age-review messages in the review state;
 - `partialEmptyNeutralCount:true` and no invented zero-completion claim;
 - `partialSavedSearchRetained:true`;
 - `partialLoadedHotels:4` for positive partial completion;
@@ -93,6 +118,9 @@ Every case must prove:
 - every visible hotel-offer action remains inside its offer row; ordinary
   360/390/430 layouts retain the donor price/action row, while a container at
   or below 22 text-relative units promotes the action to its own full-width row;
+- every tour frame, including flight alternatives and short desktop, contains
+  measured labels «Туристы», «Туроператор» and «Обязательные доплаты» with no
+  clipping, broken words or overlapping lines; missing label evidence aborts;
 - retained exact hotel/offer identities and full factual prices;
 - original flight selection, expiry and query identity;
 - passive hydration, local filtering and Back/Forward cause no supplier search;
@@ -128,10 +156,15 @@ published predecessor under the existing lock. Path sets must be identical, the
 predecessor digest must match the pinned receipt, and exactly these existing
 files may differ:
 
+- `visual-search/native-v2/frontend.js`
+- `visual-search/native-v2/tour.js`
 - `visual-search/native-v2/viewport.css`
 - `visual-search/native-v2/source-manifest.json`
 
-Historical baseline allowances do not permit new legacy presentation, bridge,
+The predecessor's viewport fixes remain intact; the reviewed cost-list
+container rule lets values take the next row at or below 16 text-relative units
+while labels retain whole words. Historical
+baseline allowances do not permit new legacy presentation, bridge,
 canonical dependency, provider, lead, brand or font changes. A different delta,
 missing/additional file or changed predecessor stops before activation.
 
