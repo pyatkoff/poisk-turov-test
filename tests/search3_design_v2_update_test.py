@@ -1105,16 +1105,17 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json'))
+            'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js',
-                     'visual-search/native-v2/viewport.css', 'visual-search/native-v2/donor.css',
+                     'visual-search/native-v2/donor.css',
                      'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
@@ -1132,7 +1133,7 @@ class UpdateContracts(unittest.TestCase):
     def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/viewport.css')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/tour.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')
