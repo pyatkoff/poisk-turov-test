@@ -547,8 +547,9 @@ def native_evidence(archive, request, native):
                     for card_id in card_ids:
                         template = RESULT_FIXTURE_FACTS[(card_id - 1000) % 4 if bounded else card_id - 1]
                         title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else template[0]
+                        operator = 'FIXTURE ANEX' if logical_name.startswith('native-terminal-') else 'FIXTURE TV'
                         expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
-                            '12 окт · 7 ночей', template[1], template[2], 'FIXTURE TV', 'за 2 взрослых')))
+                            '12 окт · 7 ночей', template[1], template[2], operator, 'за 2 взрослых')))
                         for kind, value in expected.items():
                             rows = [row for row in result_rows if row['cardId'] == card_id and row['kind'] == kind]
                             need(len(rows) == 1 and rows[0]['text'].strip() == value,
