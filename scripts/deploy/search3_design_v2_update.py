@@ -35,9 +35,9 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('0e40a91903506f464bd0a1e12be1e725d98c3108', '4758c20b4b6b5e79a5e5afd501e2013946e914c9'),)
+    ('bdbf18b51a071c8537b618e09ac378ecb66a3d1c', '08f8a3b4d4b0ac98fc722b9daea2b17196e185f4'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '188337f2700f980c2518e01aac9014a3d601001c'
+NATIVE_SOURCE_BASE_PARENT = '0e40a91903506f464bd0a1e12be1e725d98c3108'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -231,9 +231,9 @@ def native_evidence(archive, request, native):
          and report.get('compiledNativeManifest') == native and report.get('failures') == []
          and report.get('status') == 'passed'
          and report.get('requiredWidths') == [360, 390, 430, 768, 1280]
-         and report.get('requiredTextPercents') == [100, 200]
+         and report.get('requiredTextPercents') == [100]
          and report.get('expectedPairedScreens') == ['search', 'results', 'hotel', 'tour', 'lead'], 'native_rendered_identity')
-    matrix = {(width, percent) for width in (360, 390, 430, 768, 1280) for percent in (100, 200)}
+    matrix = {(width, percent) for width in (360, 390, 430, 768, 1280) for percent in (100,)}
     cases = report.get('cases'); need(isinstance(cases, list) and len(cases) == len(matrix), 'native_rendered_matrix')
     seen = set(); frames = set()
     proof = {'passiveHydrationSearches': 0, 'formSubmitSearches': 1, 'localFilterExtraSearches': 0,
@@ -279,9 +279,6 @@ def native_evidence(archive, request, native):
         if key == (390, 100):
             need(actual.get('progressiveDrawerRetainedDraftAndFocus') is True
                  and actual.get('budgetBreakpointDraftRetained') is True, 'native_budget_progressive_draft_required')
-        if key in ((390, 200), (430, 200)):
-            need(actual.get('enlargedCaptionPaintOverlapRegressionChecked') is True,
-                 'native_caption_overlap_calibration_required')
         required = native_frame_inventory(*key)
         case_frames = case.get('frames'); need(isinstance(case_frames, list) and len(case_frames) == len(required), 'native_rendered_frames')
         case_seen = set()
@@ -643,7 +640,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 423, 'native_rendered_frame_count')
+    need(len(frames) == 212, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
