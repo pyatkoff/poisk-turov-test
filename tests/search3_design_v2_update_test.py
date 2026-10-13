@@ -159,7 +159,7 @@ class UpdateContracts(unittest.TestCase):
             'familyAges': [0, 7, 17], 'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
             'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
             'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-            'formPopupSingleSubmitRetained': True}
+            'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100,200], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -176,10 +176,10 @@ class UpdateContracts(unittest.TestCase):
                     short_desktop = name.startswith('native-short-desktop-')
                     logical_name = name.replace('native-short-desktop-', 'native-', 1) if short_desktop else name
                     screen = ('startup' if logical_name.startswith('native-startup-')
-                              else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-'))
+                              else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
                               else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
-                                                                 'native-calendar-later-', 'native-results-bounded-',
+                                                                 'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
                                                                  'native-results-partial-', 'native-filter-empty-partial-'))
@@ -233,7 +233,7 @@ class UpdateContracts(unittest.TestCase):
                     result_notice = {'visibleCount': 0, 'beforeList': False, 'cardNoticeCount': 0, 'text': ''}
                     if side == 'native' and screen == 'results' and not name.startswith((
                             'native-filter-empty-', 'native-results-loading-', 'native-results-error-',
-                            'native-results-partial-empty-')):
+                            'native-results-partial-empty-', 'native-initial-favorites-')):
                         result_card_ids = (list(range(1000, 1024)) if logical_name.startswith('native-results-bounded-')
                             else [2, 3] if logical_name.startswith('native-budget-results-')
                             else [1, 4] if logical_name.startswith('native-filters-active-') else [1, 2, 3, 4])
@@ -268,6 +268,16 @@ class UpdateContracts(unittest.TestCase):
                             readable_text.extend({**readable_text[0], 'text': text} for text in (
                                 'Проверьте возраста детей на дату возвращения',
                                 'Подтвердите возраста детей на дату возвращения.'))
+                    if name.startswith('native-initial-favorites-'):
+                        readable_text = [{**readable_text[0], 'text': text} for text in (
+                            'Поиск ещё не запускали', 'Начните с поиска',
+                            'Выберите условия поездки и нажмите «Найти туры».')]
+                    count_fit = {'text': 'Поиск ещё не запускали' if name.startswith('native-initial-favorites-') else '4 отеля',
+                        'toolbar': {'left': 10, 'right': width - 10},
+                        'textRects': [{'left': 10, 'right': 100, 'top': 10, 'bottom': 40}],
+                        'controls': [{'text': 'Фильтры', 'left': width - 100, 'right': width - 10,
+                                      'top': 10, 'bottom': 54}],
+                        'outside': False, 'overlap': False} if side == 'native' and screen == 'results' else None
                     destination_fit = None
                     if name.startswith(('native-destination-choice-', 'native-destination-confirm-')):
                         readable_text.append({**readable_text[0], 'text': 'Отмена'})
@@ -296,15 +306,15 @@ class UpdateContracts(unittest.TestCase):
                         'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit, 'summaryFit': summary_fit,
                         'offerActionFit': offer_action_fit,
                         'resultCardIds': result_card_ids, 'resultNotice': result_notice,
-                        'buttons': [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
+                        'buttons': [{'text': 'К параметрам поиска', 'clipped': False}] if name.startswith('native-initial-favorites-') else [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
                         'readableText': readable_text,
-                        'headerFit': {'outside': False, 'overlap': False},
+                        'headerFit': {'outside': False, 'overlap': False}, 'countFit': count_fit,
                         'sortFit': {'text': 'Fixture sort', 'available': 200, 'textWidth': 80} if screen == 'results' else None,
                         'budgetInputs': [{'text': text, 'available': 200, 'textWidth': 80, 'clipped': False,
                             'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
                                          for text in ('0', '150000')] if has_budget else [],
                         'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
-                        'prices': [] if screen == 'startup' or name.startswith(('native-family-', 'native-filter-empty-', 'native-results-loading-', 'native-results-error-', 'native-results-partial-empty-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
+                        'prices': [] if screen == 'startup' or name.startswith(('native-family-', 'native-filter-empty-', 'native-results-loading-', 'native-results-error-', 'native-results-partial-empty-', 'native-initial-favorites-', 'native-initial-search-return-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
                                     'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
                 report['cases'].append(case)
         contents['evidence/acceptance.json'] = remote.json_bytes(report)
@@ -340,8 +350,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38429562174)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'e42e2a19c134a79127cb22a6dd26fc1abcd19e41')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38437139126)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -410,16 +420,17 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_373_frames_and_preserves_353_baseline_frames(self):
+    def test_visual_successor_requires_exact_393_frames_and_preserves_373_baseline_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 373)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 373)
-            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 393)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 393)
+            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-'))
                 for case in report['cases'] for frame in case['frames']), 263)
-            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-')) for case in report['cases'] for frame in case['frames']), 333)
-            self.assertEqual(sum(not frame['file'].startswith('native-popup-') for case in report['cases'] for frame in case['frames']), 353)
+            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-')) for case in report['cases'] for frame in case['frames']), 333)
+            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-')) for case in report['cases'] for frame in case['frames']), 353)
+            self.assertEqual(sum(not frame['file'].startswith('native-initial-') for case in report['cases'] for frame in case['frames']), 373)
             self.assertEqual(sum(frame['file'].startswith('native-family-')
                 for case in report['cases'] for frame in case['frames']), 60)
             self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
@@ -666,6 +677,29 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r)['readableText'][-3].update(text='Отмен')]
         self.assert_evidence_rejected(changes)
 
+    def test_unstarted_proof_copy_and_recomputed_toolbar_geometry_are_required(self):
+        def frame(report):
+            return next(row for row in report['cases'][1]['frames']
+                        if row['file'].startswith('native-initial-favorites-'))
+        changes = [lambda r: r['cases'][0]['proof'].pop('presearchNavigationTruthful'),
+            lambda r: r['cases'][0]['proof'].update(presearchNavigationTruthful=1),
+            lambda r: r['cases'][1]['frames'].remove(frame(r)),
+            lambda r: frame(r).update(screen='search'),
+            lambda r: frame(r)['prices'].append({'text': 'invented availability'}),
+            lambda r: frame(r)['readableText'][1].update(text='Нет подходящих туров'),
+            lambda r: frame(r)['buttons'][0].update(text='Изменить даты'),
+            lambda r: frame(r).pop('countFit'),
+            lambda r: frame(r)['countFit'].update(text='0 отелей'),
+            lambda r: frame(r)['countFit'].update(textRects=[]),
+            lambda r: frame(r)['countFit'].update(controls=[]),
+            lambda r: frame(r)['countFit']['toolbar'].update(right=True),
+            lambda r: frame(r)['countFit']['textRects'][0].update(right=500),
+            lambda r: frame(r)['countFit']['textRects'][0].update(left=True),
+            # False summary flags cannot hide actual overlapping rectangles.
+            lambda r: frame(r)['countFit']['controls'][0].update(left=20, right=90),
+            lambda r: frame(r)['countFit'].update(overlap=True)]
+        self.assert_evidence_rejected(changes)
+
     def test_family_and_short_desktop_proof_cannot_be_missing_or_mislabelled(self):
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
@@ -802,7 +836,8 @@ class UpdateContracts(unittest.TestCase):
             'd341f7648749f2f8a3272a1e51e2d923c1db80a6',
             '002dc0d636c5ad6e5597d37259baba574fe9ed88',
             'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5',
-            '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190'))
+            '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190',
+            'e42e2a19c134a79127cb22a6dd26fc1abcd19e41'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -959,7 +994,7 @@ class UpdateContracts(unittest.TestCase):
                 38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
-             38413259110, 38420411530, 38429562174))
+             38413259110, 38420411530, 38429562174, 38437139126))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1021,18 +1056,17 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/viewport.css'))
+            'visual-search/native-v2/source-manifest.json'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js', 'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/bridge.js', 'visual-search/native-v2/donor.css',
-                     'prototype-search/data.js'):
+                     'prototype-search/data.js', 'visual-search/native-v2/viewport.css'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, bad)
