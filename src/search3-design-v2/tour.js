@@ -7,7 +7,12 @@
   const money = value => Number.isFinite(Number(value)) && Number(value) > 0 ? new Intl.NumberFormat('ru-RU').format(Number(value)).replace(/[\u00a0\u202f]/g,' ') + ' ₽' : 'Цена требует проверки';
   const dateText = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? new Date(value + 'T12:00:00Z').toLocaleDateString('ru-RU',{day:'numeric',month:'short',timeZone:'UTC'}).replace('.', '') : value || 'Дата уточняется';
   const nights = value => value+' '+(value%10===1 && value%100!==11 ? 'ночь' : value%10>=2 && value%10<=4 && (value%100<12 || value%100>14) ? 'ночи' : 'ночей');
-  const party = offer => offer.adults + (offer.adults===1 ? ' взрослого' : ' взрослых') + (offer.ages?.length ? ' + ' + offer.ages.length + (offer.ages.length===1 ? ' ребёнка' : ' детей') : '');
+  const party = (offer, afterFor = false) => {
+    const children = offer.ages?.length || 0;
+    const adultWord = offer.adults === 1 ? afterFor ? 'взрослого' : 'взрослый' : 'взрослых';
+    const childWord = afterFor ? children === 1 ? 'ребёнка' : 'детей' : children === 1 ? 'ребёнок' : children <= 4 ? 'ребёнка' : 'детей';
+    return offer.adults + ' ' + adultWord + (children ? ' + ' + children + ' ' + childWord : '');
+  };
   const icon = name => '<i data-lucide="' + name + '" aria-hidden="true"></i>';
   function mount({root, bridge, onChanged = () => {}, initialState = null}) {
     if (!root || !bridge) throw new Error('Не удалось подключить условия тура.');
@@ -137,7 +142,7 @@
       text('[data-tour-location]',hotel?.location || 'Расположение уточняется');
       text('[data-tour-room],[data-quick-room]',room);text('[data-tour-meal],[data-quick-meal]',meal);
       const stay=dateText(offer.day)+(offer.returnDay ? ' — '+dateText(offer.returnDay) : '')+' · '+nights(offer.nights);
-      text('[data-tour-stay],[data-quick-dates]',stay);text('[data-tour-party],[data-cost-party]',party(offer));text('[data-quick-party]','За '+party(offer));
+      text('[data-tour-stay],[data-quick-dates]',stay);text('[data-tour-party],[data-cost-party]',party(offer));text('[data-quick-party]','За '+party(offer,true));
       text('[data-tour-price]',money(total));text('[data-tour-operator]',offer.operator || 'Туроператор уточняется');
       text('[data-lead-choice]',room+' · '+meal);text('[data-lead-context]',dateText(offer.day)+' · '+nights(offer.nights)+' · '+party(offer));
       photo('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]');
