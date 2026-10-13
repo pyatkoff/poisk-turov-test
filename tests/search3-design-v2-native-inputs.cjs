@@ -75,6 +75,10 @@ async function formFocusChecks(){
    assert.strictEqual(win.document.activeElement,el('[data-native-night="1"]'),'An invalid range leaves focus on its rejected endpoint');
    tap('[data-search-editor-cancel="nights"]');assert.strictEqual(win.document.activeElement,el('[data-search-nights-toggle]'));
    assert.equal(el('[data-search-night-value]').textContent,'7 ночей','Cancel restores the untouched duration');
+   tap('[data-search-nights-toggle]');tap('[data-native-night="10"]');
+   win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   assert.strictEqual(win.document.activeElement,el('[data-search-nights-toggle]'),'Escape restores the duration opener after a keyboard edit');
+   assert(el('[data-search-nights-editor]').hidden);assert.equal(el('[data-search-night-value]').textContent,'7 ночей','Escape discards the duration draft');
    tap('[data-search-travelers-toggle]');tap('[data-search-add-child]');
    assert.strictEqual(win.document.activeElement,el('[data-native-age="0"]'),'Adding a child focuses the required age');
    const age=el('[data-native-age="0"]');age.value='0';age.dispatchEvent(new win.Event('change',{bubbles:true}));
@@ -90,7 +94,8 @@ async function formFocusChecks(){
    next().focus();next().click();assert.strictEqual(win.document.activeElement,next(),'Paging retains focus on the visible next-month action');
    tap('[data-calendar-month="-1"]');assert(el('[data-calendar-month="-1"]').disabled);
    assert.strictEqual(win.document.activeElement,next(),'At the earliest month the enabled next action receives focus');
-   tap('[data-search-calendar-close]');assert.strictEqual(win.document.activeElement,el('[data-search-date-toggle]'));
+   win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   assert.strictEqual(win.document.activeElement,el('[data-search-date-toggle]'),'Escape restores the date opener after paging');assert(el('[data-search-calendar]').hidden);
    assert.equal(el('[data-search-date-value]').textContent,'25–31 окт');assert.equal(searches,0);
   }finally{owner.destroy();win.close();}
  }
