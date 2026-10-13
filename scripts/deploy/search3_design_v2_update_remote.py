@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '5a84a0d66394116f9845de3565563ce1d025b6bc'
-PREDECESSOR_RUN = 38331033682
-PREDECESSOR_DIGEST = 'ea5101d72a190e546f68802af52e64549dad9720a6ae6bd7abf4b5b5a6bfa0d0'
+PREDECESSOR_SOURCE = '75e52f2597172469fbcb6f742dc8c7b5934cd173'
+PREDECESSOR_RUN = 38336349915
+PREDECESSOR_DIGEST = 'd2726a3357fe33e27b7004443a65f22eebc5aec3dee434b8a0f5d5368b3abafa'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -34,11 +34,12 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     '9fec34cfeb5a7c97659b16188404ae02c166c770',
     '20c6488c01d764ce9bdc19c7eb71f01108efbda5',
     '9de4cdb3d044b060b039abc096f9351466147d86',
-    '5a84a0d66394116f9845de3565563ce1d025b6bc')
+    '5a84a0d66394116f9845de3565563ce1d025b6bc',
+    '75e52f2597172469fbcb6f742dc8c7b5934cd173')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-    38320934646, 38331033682)
+    38320934646, 38331033682, 38336349915)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -52,17 +53,17 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact retained native source artifact; activation still requires all fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '75e52f2597172469fbcb6f742dc8c7b5934cd173',
-    'source_tree': '5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c',
-    'release_sha': 'c407a6e4c74d4eb3e176766c97524342573a195b',
-    'release_tree': '5e3612b44f2f0bd331cfd08c9903a5f95a83cd1c',
-    'release_parent': '059349ad4a10902e102b5b21e34f3cdc6c3fc9b5',
-    'build_run': 38333713473,
-    'artifact_id': 11783439190,
-    'source_ZIP_sha256': '788434b4ac533697d1efa7026f4baa3f95071358911fa65532966a2abe8b6290',
+    'source_sha': '660a760d9d0a0c0121d05d53bdc0895689600bc8',
+    'source_tree': 'fcf1fc34586bcdf4af158fb2d6718c9612fa7c86',
+    'release_sha': 'a9255f8cf6c64d1786f4d7f5c1d34cfaa78e293d',
+    'release_tree': 'fcf1fc34586bcdf4af158fb2d6718c9612fa7c86',
+    'release_parent': 'c407a6e4c74d4eb3e176766c97524342573a195b',
+    'build_run': 38337878268,
+    'artifact_id': 11784779566,
+    'source_ZIP_sha256': '1c9333f9c716f32ca7854346c50f289581049d5eb297c6388c398e0ec0a9cfa4',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '8dac49d8eaf42875229a0fcda300548793a035325142f9c37dbc2077ccdceac5',
+    'source_manifest_sha256': '5d836e6a9ab98ffeee2cbbde8d6a22054a637a63b7ec347b2b7ec297e6389e6b',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
