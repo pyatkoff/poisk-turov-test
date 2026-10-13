@@ -304,12 +304,15 @@ class UpdateContracts(unittest.TestCase):
                     terminal_state = None
                     if name.startswith('native-terminal-'):
                         status = name.split('-')[2]
-                        message = ('' if status == 'complete' else 'Поиск завершён не полностью.'
+                        message = ('' if status == 'complete' else 'API HTTP 403'
                                    if status == 'partial' else
                                    'Не удалось завершить поиск. Полученные предложения сохранены.')
+                        alert = ('Показаны предложения: ANEX. Не все источники завершили поиск: '
+                                 'Tourvisor и Andromeda.' if status == 'partial' else
+                                 message or 'Поиск завершён не полностью.')
                         terminal_state = {'status': status, 'message': message, 'searchGeneration': 1,
                             'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
-                            'alertText': message or 'Поиск завершён не полностью.',
+                            'alertText': alert,
                             'ownerSHA256': self.native['files']['bridge.js']}
                     case['frames'].append({'terminalState': terminal_state, 'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
