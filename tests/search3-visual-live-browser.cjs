@@ -1232,7 +1232,7 @@ const server=http.createServer((req,res)=>{
   await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('2 варианта'));
   await openResultFilters(page,width);
   const filterEditor=page.locator(width<=1100?'#max-price':'#hotel-query'),filterText=width<=1100?'180000':'Вымышленный',filterSuffix=width<=1100?'0':' отель',selectionEnd=width<=1100?5:8;
-  if(width<=1100){assert.equal(await page.locator('#hotel-query').isVisible(),false,'approved mobile destination stays in the unified Куда picker');assert.match(await page.locator('.filter-destination-note').textContent(),/Курорты и отели/);}
+  if(width<=1100){assert.equal(await page.locator('#hotel-query').isVisible(),true,'approved Site185 retains the existing local-result hotel filter in the drawer');assert.equal(await page.locator('#hotel-query').getAttribute('aria-label'),'Название отеля или курорт');assert.match(await page.locator('.filter-destination-note').textContent(),/Курорты и отели/);}
   await filterEditor.fill(filterText);await filterEditor.evaluate((el,end)=>{el.setSelectionRange(3,end);window.activeFilterEditor=el;},selectionEnd);
   releaseSamoSearch();transport.state.samoSearchGate=null;
   await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('3 варианта'));
