@@ -1,14 +1,14 @@
 'use strict';
 (() => {
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const prototypeVersion=225;
-const designRevision=88;
+const prototypeVersion=227;
+const designRevision=91;
 // Optional shortlisting is paused by the owner. Keep stored choices intact, but
 // keep every visible route focused on search → hotel → exact tour.
 const optionalShortlistEnabled=false;
 $('.prototype-lab strong').textContent='Дизайн · пакет '+designRevision;
  $('#prototype-version').textContent='Дизайн · пакет '+designRevision;
-$('.footer-inner>span').textContent='Дизайн · пакет '+designRevision+' · 13.10.2026 · исходник v'+prototypeVersion;
+$('.footer-inner>span').textContent='Дизайн · пакет '+designRevision+' · 14.10.2026 · исходник v'+prototypeVersion;
 const paths = {
  sort:'<path d="M8 4v16m-4-4 4 4 4-4M14 5h6M14 10h4M14 15h2"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>',
