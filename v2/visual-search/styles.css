@@ -2338,7 +2338,8 @@ dialog.tour-dialog,dialog.application-dialog{width:min(1000px,calc(100% - 40px))
 .application-dialog .tour-handoff{padding:0;margin:0;border:0;border-radius:0;background:none}
 .application-dialog .tour-handoff>h3{font-size:1.125rem;line-height:1.4;margin:0 0 8px}
 .application-dialog .tour-handoff>p{font-size:.875rem;line-height:1.5;margin:0;color:var(--muted)}
-.application-dialog .rehearsal-field,.application-dialog #prototype-lead-form>.form-row>label{margin:14px 0 8px;gap:6px;font-size:.875rem;line-height:1.5;min-width:0}
+.application-dialog #prototype-lead-form>.form-row{flex-wrap:wrap}
+.application-dialog .rehearsal-field,.application-dialog #prototype-lead-form>.form-row>label{margin:14px 0 8px;gap:6px;font-size:.875rem;line-height:1.5;min-width:min(100%,9rem)}
 .application-dialog .rehearsal-field .input,.application-dialog #prototype-lead-form .input{font-size:1rem;line-height:1.5;min-height:48px;box-sizing:border-box;padding:10px 12px}
 .application-dialog .rehearsal-field textarea.input,.application-dialog #prototype-lead-form textarea.input{height:auto;min-height:96px;resize:vertical}
 .application-dialog #rehearsal-phone-hint{font-size:.875rem;line-height:1.5}

@@ -7,7 +7,24 @@ const {fixture,trip}=require('./search3-visual-live-fixture.cjs');
 const historyKey='anytour.prototype.v18.ui.v1';
 // Read-only layout evidence. Settle the existing viewport reveal before taking
 // a position baseline; expiry must preserve it whenever the input still fits.
-const settleSessionViewport=page=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+const settleSessionViewport=page=>page.evaluate(async()=>{
+ let previous='',stable=0;const samples=[];
+ for(let frame=0;frame<120;frame++){
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  const body=document.querySelector('#modal-body'),view=body.getBoundingClientRect(),field=document.activeElement;
+  const editable=body.contains(field)&&field.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]),textarea,[contenteditable="true"]');
+  const rect=editable?field.getBoundingClientRect():null;
+  let reveal=0;
+  if(rect&&view.height>0){if(rect.top<view.top+8||rect.height>view.height-16)reveal=rect.top-view.top-8;else if(rect.bottom>view.bottom-8)reveal=rect.bottom-view.bottom+8;}
+  const target=Math.max(0,Math.min(body.scrollTop+reveal,body.scrollHeight-body.clientHeight));
+  const sample={scroll:body.scrollTop,clientHeight:body.clientHeight,scrollHeight:body.scrollHeight,top:view.top,bottom:view.bottom,field:rect?{top:rect.top,bottom:rect.bottom}:null,pendingReveal:target-body.scrollTop};
+  const key=JSON.stringify(sample);samples.push(sample);stable=key===previous?stable+1:0;previous=key;
+  // ResizeObserver runs after rendering and queues the existing owner reveal.
+  // Observe its result; never scroll or refocus from the acceptance helper.
+  if(stable>=4&&Math.abs(sample.pendingReveal)<=1)return{scroll:body.scrollTop,samples};
+ }
+ throw new Error('Selected session viewport did not settle: '+JSON.stringify(samples.slice(-10)));
+});
 const sessionGeometry=page=>page.evaluate(key=>{
  const box=el=>{if(!el)return null;const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right,fontSize:s.fontSize,lineHeight:s.lineHeight,fontFamily:s.fontFamily,whiteSpace:s.whiteSpace,overflowWrap:s.overflowWrap};};
  const modal=document.querySelector('#modal'),body=document.querySelector('#modal-body'),footer=document.querySelector('#modal-footer'),phone=document.querySelector('[name="phone"]'),active=document.activeElement,v=window.visualViewport;
@@ -72,7 +89,7 @@ module.exports=async function({browser,origin,base,evidence}){
      await offer.evaluate(el=>el.closest('.offer').scrollIntoView({block:'center',behavior:'instant'}));await offer.focus();await settleSessionViewport(page);
      const preClick=await offer.evaluate(el=>{const b=document.querySelector('#modal-body'),r=el.closest('.offer').getBoundingClientRect(),v=b.getBoundingClientRect();return{scroll:b.scrollTop,key:el.dataset.key,rowTop:r.top,rowBottom:r.bottom,bodyTop:v.top,bodyBottom:v.bottom};});
      assert(preClick.rowTop>=preClick.bodyTop-1&&preClick.rowBottom<=preClick.bodyBottom+1,'the exact return offer is fully visible before choosing it');
-     await offer.evaluate((el,key)=>{window.__selectedSessionReturn=null;el.addEventListener('click',()=>{const b=document.querySelector('#modal-body');window.__selectedSessionReturn={route:structuredClone(history.state[key]),focus:el.dataset.key,scroll:b.scrollTop,top:el.getBoundingClientRect().top-b.getBoundingClientRect().top};},{capture:true,once:true});},historyKey);
+     await offer.evaluate((el,key)=>{window.__selectedSessionReturn=null;el.addEventListener('click',()=>{const b=document.querySelector('#modal-body');const body=b.getBoundingClientRect(),action=el.getBoundingClientRect(),origin=b.querySelector('.offer-list-context').getBoundingClientRect(),row=el.closest('.grouped-offer'),box=row.getBoundingClientRect();window.__selectedSessionReturn={route:structuredClone(history.state[key]),focus:el.dataset.key,scroll:b.scrollTop,top:action.top-body.top,bodyTop:body.top,originFlow:origin.top-body.top+b.scrollTop,flowTop:action.top-origin.top,row:{origin:box.top-origin.top,height:box.height,departureHeight:row.querySelector('.offer-departure').getBoundingClientRect().height,tracks:getComputedStyle(row).gridTemplateRows.split(' ').map(parseFloat),departureTrack:parseInt(getComputedStyle(row.querySelector('.offer-departure')).gridRowStart,10)-1,chosen:!!row.querySelector('.offer-selected')},offerKeys:[...b.querySelectorAll('.grouped-offer')].map(r=>r.dataset.offerKey)};},{capture:true,once:true});},historyKey);
      await offer.click();returnState=await page.evaluate(()=>window.__selectedSessionReturn);
      assert(returnState&&returnState.focus===preClick.key,'baseline is the exact user choice before source navigation');returnState.preClick=preClick;
     }else await page.locator('[data-action="select-anex-tour"]').waitFor();
@@ -104,11 +121,17 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.locator('[name="consent"]').check();
      if(mode==='return'){
       const before=calls();await page.locator('#modal-body [data-action="all-offers"]').click();await page.locator('#offer-room').waitFor();await settleSessionViewport(page);
-      const restored=await page.evaluate(key=>{const b=document.querySelector('#modal-body');return{route:structuredClone(history.state[key]),focus:document.activeElement.dataset.key,scroll:b.scrollTop,top:document.activeElement.getBoundingClientRect().top-b.getBoundingClientRect().top};},historyKey);
+      const restored=await page.evaluate(key=>{const b=document.querySelector('#modal-body'),body=b.getBoundingClientRect(),el=document.activeElement,action=el.getBoundingClientRect(),origin=b.querySelector('.offer-list-context').getBoundingClientRect(),row=el.closest('.grouped-offer'),box=row.getBoundingClientRect(),badge=row.querySelector('.offer-selected');return{route:structuredClone(history.state[key]),focus:el.dataset.key,scroll:b.scrollTop,top:action.top-body.top,bodyTop:body.top,originFlow:origin.top-body.top+b.scrollTop,flowTop:action.top-origin.top,row:{origin:box.top-origin.top,height:box.height,departureHeight:row.querySelector('.offer-departure').getBoundingClientRect().height,tracks:getComputedStyle(row).gridTemplateRows.split(' ').map(parseFloat),departureTrack:parseInt(getComputedStyle(row.querySelector('.offer-departure')).gridRowStart,10)-1,chosen:!!badge,badgeHeight:badge?.getBoundingClientRect().height||0,badgeGap:parseFloat(getComputedStyle(row.querySelector('.offer-departure')).rowGap)||0},offerKeys:[...b.querySelectorAll('.grouped-offer')].map(r=>r.dataset.offerKey)};},historyKey);
+      // The canonical owner preserves the exact clicked action's position.
+      // A newly wrapped selected badge may grow its own row; no other shift is allowed.
+      const flowDelta=restored.flowTop-returnState.flowTop,rowDelta=restored.row.height-returnState.row.height,expectedScroll=returnState.scroll+flowDelta;
+      fs.writeFileSync(path.join(evidence,'selected-session-return-anchor-'+width+'.json'),JSON.stringify({beforeClick:returnState.preClick,actualChoice:returnState,returned:restored,flowDelta,rowDelta,expectedScroll,compiled:true,physical_device:false},null,2)+'\n');
       for(const field of ['id','departure','flight','room','meal','sort','open','limits','filtersOpen'])assert.deepEqual(restored.route[field],returnState.route[field],'same-hotel application return preserves '+field);
-      assert.equal(restored.scroll,returnState.scroll,'same-hotel return preserves scroll');assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');
+      assert.equal(restored.focus,returnState.focus,'same-hotel return focuses the exact offer');assert.deepEqual(restored.offerKeys,returnState.offerKeys,'same-hotel return preserves every exact visible offer');
+      assert(Math.abs(restored.bodyTop-returnState.bodyTop)<=1&&Math.abs(restored.originFlow-returnState.originFlow)<=1&&Math.abs(restored.row.origin-returnState.row.origin)<=1,'same-hotel return keeps the header, context and chosen-row flow origins');
       assert(Math.abs(restored.top-returnState.top)<=1,'same-hotel return preserves the exact chosen action position');
-      fs.writeFileSync(path.join(evidence,'selected-session-return-anchor-'+width+'.json'),JSON.stringify({beforeClick:returnState.preClick,actualChoice:returnState,returned:restored,compiled:true,physical_device:false},null,2)+'\n');
+      if(Math.abs(flowDelta)<=.5)assert.equal(restored.scroll,returnState.scroll,'same-hotel return preserves scroll when row layout is unchanged');
+      else{assert(flowDelta>0&&!returnState.row.chosen&&restored.row.chosen,'only the newly chosen row badge may require a scroll correction');assert(Math.abs(rowDelta-flowDelta)<=1&&returnState.row.departureTrack===restored.row.departureTrack&&restored.row.tracks.length===returnState.row.tracks.length&&restored.row.tracks.every((height,index)=>index===restored.row.departureTrack||Math.abs(height-returnState.row.tracks[index])<=1)&&Math.abs(flowDelta-restored.row.tracks[restored.row.departureTrack]+returnState.row.tracks[returnState.row.departureTrack])<=1,'scroll correction equals exactly the selected badge line footprint');assert(Math.abs(restored.scroll-expectedScroll)<=1,'same-hotel return permits only the measured selected-badge layout correction');}
       assert.equal(calls(),before,'application return uses retained offers');
       await page.screenshot({path:path.join(evidence,'selected-session-return-'+width+'.png')});
       await page.locator('#modal-back').click();await page.locator('#prototype-lead-form').waitFor();
@@ -132,7 +155,7 @@ module.exports=async function({browser,origin,base,evidence}){
     await page.clock.fastForward(901000);
     await page.waitForFunction(()=>document.querySelector('#modal').dataset.quoteExpired==='1');
     await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
-    if(contacts)await settleSessionViewport(page);
+    const expiryViewportSettlement=contacts?await settleSessionViewport(page):null;
     assert.equal(await page.locator('#provider-price-expiry').count(),1,'expiry is reflected once after deadline and resume');
     assert.match(await page.locator('#provider-price-expiry').textContent(),/Срок подтверждения цены истёк/);
     assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice),'expired footer removes current final-price claim');
@@ -156,7 +179,7 @@ module.exports=async function({browser,origin,base,evidence}){
      if(phone.top<body.top+8||phone.height>body.height-16)reveal=phone.top-body.top-8;
      else if(phone.bottom>body.bottom-8)reveal=phone.bottom-body.bottom+8;
      const expectedScroll=Math.max(0,Math.min(scroll+reveal,expiryViewportAfter.body.scrollHeight-expiryViewportAfter.body.clientHeight));
-     fs.writeFileSync(path.join(evidence,`selected-session-expiry-viewport-${provider}-${mode}-${width}.json`),JSON.stringify({baselineScroll:scroll,before:expiryViewportBefore,after:expiryViewportAfter,necessaryReveal:reveal,expectedScroll},null,2));
+     fs.writeFileSync(path.join(evidence,`selected-session-expiry-viewport-${provider}-${mode}-${width}.json`),JSON.stringify({baselineScroll:scroll,before:expiryViewportBefore,after:expiryViewportAfter,settlement:expiryViewportSettlement,necessaryReveal:reveal,expectedScroll},null,2));
      if(!reveal)assert.equal(expiryViewportAfter.body.scrollTop,scroll,'expiry preserves internal scroll');
      else{assert(Math.abs(expiryViewportAfter.body.scrollTop-expectedScroll)<=1,'expiry permits only the necessary focused-phone reveal');assert(expiryViewportAfter.phone.top>=body.top+7&&expiryViewportAfter.phone.bottom<=body.bottom-7,'expired footer never covers the focused phone');}
      for(const [name,value] of Object.entries({name:'Тестовый турист',phone:'+7 999 123-45-67',comment:'Тестовый комментарий'}))assert.equal(await page.locator('[name="'+name+'"]').inputValue(),value);
