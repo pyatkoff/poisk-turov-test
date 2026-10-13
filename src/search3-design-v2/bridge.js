@@ -152,7 +152,7 @@
       // A new intent starts with an empty presentation. Retained profiles can
       // prove hotel identity, but their previous offers are never new results.
       hotels = [];
-      publish({hotels, status: 'loading', message: '', search: intent, filters: constraints});
+      publish({hotels, status: 'loading', message: '', sources: null, search: intent, filters: constraints});
       const ownIds = constraints.hotelIds?.length ? constraints.hotelIds : constraints.hotelId ? [constraints.hotelId] : [];
       const supplierIds = [];
       try {
@@ -177,10 +177,10 @@
         // that generation's terminal status; metadata is not another search.
         if (event.type === 'error' || event.type === 'complete') {
           terminal = {status: event.type === 'error' ? 'error' : event.partial ? 'partial' : 'complete',
-            message: event.message || ''};
+            message: event.message || '', sources: event.sources && typeof event.sources === 'object' ? event.sources : null};
         }
         const status = terminal?.status || 'loading', message = terminal ? terminal.message : event.message || '';
-        publish({hotels, status, message, event, search: intent, filters: constraints,
+        publish({hotels, status, message, sources: terminal?.sources || null, event, search: intent, filters: constraints,
           error: status === 'error' ? message || 'Не удалось завершить поиск.' : null});
         if (typeof onEvent === 'function') onEvent(latest);
       };

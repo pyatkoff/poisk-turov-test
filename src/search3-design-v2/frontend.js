@@ -16,6 +16,16 @@
     return search.adults + ' ' + adultWord + (children ? ' + ' + children + ' ' + childWord : '');
   };
   const mealText = offer => /^(?:on request|питание уточняется)$/i.test(offer.meal || '') ? 'Питание уточняется' : offer.meal || 'Питание уточняется';
+  const sourceNames = Object.freeze({tourvisor:'Tourvisor',anex:'ANEX',andromeda:'Andromeda'});
+  const sourceList = names => names.length < 2 ? names[0] || '' : names.slice(0,-1).join(', ') + ' и ' + names[names.length-1];
+  function partialSourceMessage(state) {
+    if (state.status !== 'partial' || !state.hotels.length || !state.sources || typeof state.sources !== 'object') return '';
+    const entries = Object.keys(sourceNames).map(key => [key,state.sources[key]]).filter(([,value]) => value && typeof value === 'object');
+    const received = entries.filter(([,value]) => Number(value.offers) > 0).map(([key]) => sourceNames[key]);
+    const incomplete = entries.filter(([,value]) => value.status === 'error' || value.status === 'partial').map(([key]) => sourceNames[key]);
+    if (!received.length) return '';
+    return 'Показаны предложения: ' + sourceList(received) + '. ' + (incomplete.length ? 'Не все источники завершили поиск: ' + sourceList(incomplete) + '.' : 'Поиск завершён не полностью.');
+  }
   const favoriteKey = 'anytour.prototype.v18.favorites.v1';
   function mount({root, bridge, initialState, onReady}) {
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
@@ -54,7 +64,7 @@
         $(editorFields[editor].focus)?.focus({preventScroll:true});
       }
     }
-    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,hasSearched:false};
+    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sources:null,sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,hasSearched:false};
     let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
@@ -166,7 +176,7 @@
     function rememberRoute(push) {
       const previous = window.history.state?.anytourNative?.id;
       const id = push || !historyRoutes.has(previous) ? ++historySequence : previous;
-      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,resultLimit:state.resultLimit,searchGeneration:state.searchGeneration});
+      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,sources:state.sources?Object.fromEntries(Object.entries(state.sources).map(([key,value])=>[key,value&&typeof value==='object'?{...value}:value])):null,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,resultLimit:state.resultLimit,searchGeneration:state.searchGeneration});
       state.historyRoutes=historyRoutes;state.historySequence=historySequence;
       window.history[push?'pushState':'replaceState']({anytourNative:{id,screen:state.screen}},'',routeURL());
     }
@@ -289,7 +299,7 @@
       $('.st-sort').value=state.sort;
       $('.st-search-done').hidden=state.status!=='complete';
       $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status)||loadingEmpty&&!state.message||(errorEmpty||partialEmpty)&&(!state.message||/^API HTTP \d{3}$/.test(state.message));
-      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':'Поиск завершён не полностью.');
+      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':partialSourceMessage(state)||'Поиск завершён не полностью.');
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
       const notice=$('.st-results-note');
@@ -492,10 +502,10 @@
       const invalid=originPending?'Подождите загрузки стран для выбранного города.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
       if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;if(!originPending){if(dateError(draft.from,draft.to))openEditor('dates');else if(agesReviewNeeded||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17))openEditor('travelers');}return;}
       rememberRoute(false);
-      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';
+      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';state.sources=null;
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
-      try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
-      catch(error){if(alive&&epoch===searchEpoch){state.status='error';state.message=error.message;renderResults();}}
+      try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.sources=event.sources||null;state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;state.message=snapshot.message||'';state.sources=snapshot.sources||null;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
+      catch(error){if(alive&&epoch===searchEpoch){state.status='error';state.message=error.message;state.sources=null;renderResults();}}
     }
     function handleClick(event){
       const button=event.target.closest('button');if(!button||!root.contains(button))return;

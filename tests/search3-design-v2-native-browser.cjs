@@ -119,11 +119,11 @@ function terminalDataFixture(fixture) {
         stars:row.stars,photos:[],amenities:[],raw:{description:'FICTIONAL before local enrichment'},
         offers:[{key:'fixture:terminal:'+row.id,hotelId:row.id,day:search.from,returnDay:'2026-10-19',nights:7,
           adults:search.adults,ages:[...search.ages],room:row.room,meal:row.meal,mealFacet:row.meal,
-          operator:'FIXTURE TV',provider:'tourvisor',total:row.total,search,raw:{fixture:true}}]}));
+          operator:'FIXTURE ANEX',provider:'anex',total:row.total,search,raw:{fixture:true}}]}));
       callback({type:'results',hotels});callback({type:'complete'});
     },quote:forbidden,flights:forbidden,leadSession:forbidden,regions:forbidden,lookupHotels:forbidden,calendarPrices:forbidden};
   control.terminal=(kind)=>emit(kind==='complete'?{type:'complete'}:kind==='partial'
-    ?{type:'complete',partial:true,message:'Поиск завершён не полностью.'}
+    ?{type:'complete',partial:true,message:'API HTTP 403',sources:{tourvisor:{status:'error',hotels:0,offers:0},anex:{status:'complete',hotels:4,offers:4},andromeda:{status:'error',hotels:0,offers:0},database:{status:'skipped',hotels:0,offers:0}}}
     :{type:'error',message:'Не удалось завершить поиск. Полученные предложения сохранены.'});
   control.refresh=()=>{
     const before=control.bridge.getSnapshot(),references=before.hotels.map(hotel=>hotel.offers[0]);
@@ -894,7 +894,8 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.equal(retained.searches,1);assert.equal(retained.other,0);
           const alert=actualProduct.locator('[data-source-alert]');
           assert.equal(await alert.isVisible(),kind!=='complete');
-          if(kind!=='complete')assert.equal(await alert.innerText(),retained.messageBefore);
+          if(kind==='partial')assert.equal(await alert.innerText(),'Показаны предложения: ANEX. Не все источники завершили поиск: Tourvisor и Andromeda.');
+          if(kind==='error')assert.equal(await alert.innerText(),retained.messageBefore);
           assert.equal(await actualProduct.locator('[data-result-count]').innerText(),'4 отеля');
           await capture(page,'native',width,percent,'terminal-'+kind,row);
         }
