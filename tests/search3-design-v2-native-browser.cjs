@@ -418,11 +418,11 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей','Keyboard Cancel retains the original duration');
         row.proof.nightKeyboardFocusRetained=true;
         await product.locator('[data-search-date-toggle]').click();
-        await product.locator('[data-calendar-month="1"]:visible').click();
-        assert.equal(await product.locator('[data-calendar-month="1"]:visible').evaluate(node=>node===document.activeElement),true,'Month paging retains its visible action');
+        await product.locator('[data-calendar-month="1"]:not(.st-calendar-mobile-next)').click();
+        assert.equal(await product.locator('[data-calendar-month="1"]:not(.st-calendar-mobile-next)').evaluate(node=>node===document.activeElement),true,'Month paging retains its visible action');
         await product.locator('[data-calendar-month="-1"]').click();
         assert.equal(await product.locator('[data-calendar-month="-1"]').isEnabled(),false);
-        assert.equal(await product.locator('[data-calendar-month="1"]:visible').evaluate(node=>node===document.activeElement),true,'Earliest month focuses the enabled next-month action');
+        assert.equal(await product.locator('[data-calendar-month="1"]:not(.st-calendar-mobile-next)').evaluate(node=>node===document.activeElement),true,'Earliest month focuses the enabled next-month action');
         await page.keyboard.press('Escape');
         row.proof.formCalendarPagingFocusRetained=true;
         await product.locator('[data-search-travelers-toggle]').click();
