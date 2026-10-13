@@ -35,11 +35,11 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('1e7cea0b9a098efe8359464ac66309d03ea30fd1', '56b799e8fb8fcfdbe1b43b4a08ceca6345bb3957'),
-    ('f1b6d1ff59b7f31a9636cf0c06e73b06b1b3b0fc', 'c494ffd0d5cb2e403ecac1d19cf8fc63ba92c74a'),
-    ('160d957dd0aecef1ac6e3eb8f7df881d527b0e7f', '844b3ed5b0c6dfa691a85d98e3ffc91a4eda1065'))
+    ('99efd35919f00311093da657b560385b4a6bf572', '88303b7369c5472af9f4e0b0c60befe3b56fa67e'),
+    ('b34c329974278933b31f44789ca773aa8f8af33d', 'd3194507fab76f8cdca2c2d39a776971c2c2459c'),
+    ('0ba4d1195e3423cae2537d09d40a55d725589d6b', '19c141c0faad33cad9b97c338d3395b6bd484b6c'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '8edd9617c41b0a81c86b10cdeed7a52a086e3e2e'
+NATIVE_SOURCE_BASE_PARENT = '160d957dd0aecef1ac6e3eb8f7df881d527b0e7f'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -203,7 +203,7 @@ def native_frame_inventory(width, percent):
               for side in ('native', 'donor') for screen in ('search', 'results', 'hotel', 'tour', 'lead')}
     frames.update(f'native-{screen}-{width}-text{percent}.png'
                   for screen in ('error', 'budget-results', 'hotel-return', 'startup-pending', 'startup-error',
-                                 'destination-choice', 'destination-confirm'))
+                                 'destination-choice', 'destination-confirm', 'popup-calendar', 'popup-nights'))
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
@@ -258,7 +258,8 @@ def native_evidence(archive, request, native):
         'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
         'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
-        'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True}
+        'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
+        'formPopupSingleSubmitRetained': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
@@ -299,8 +300,23 @@ def native_evidence(archive, request, native):
                      and struct.unpack('>II', value[16:24]) == (1280, 720),
                      'native_short_desktop_png_dimensions_required')
             if frame['side'] == 'native':
+                popup_editor = ('dates' if logical_name.startswith('native-popup-calendar-')
+                    else 'nights' if logical_name.startswith('native-popup-nights-')
+                    else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
+                    else 'destination' if logical_name.startswith('native-destination-') else None)
+                popup = frame.get('popupFit')
+                if popup_editor:
+                    need(isinstance(popup, dict) and set(popup) == {'editor', 'modal', 'outside',
+                         'panelOverflow', 'findVisible', 'findEnabled', 'findHeight', 'submitCount'}
+                         and popup.get('editor') == popup_editor and popup.get('modal') is True
+                         and popup.get('outside') is False and popup.get('panelOverflow') is False
+                         and popup.get('findVisible') is True and popup.get('findEnabled') is True
+                         and type(popup.get('findHeight')) in (int, float) and 44 <= popup['findHeight'] < 1000
+                         and type(popup.get('submitCount')) is int and popup['submitCount'] == 1,
+                         'native_popup_choice_and_single_submit_required')
+                else: need(popup is None, 'native_popup_measurement_scope')
                 screen = ('startup' if logical_name.startswith('native-startup-')
-                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-'))
+                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-'))
                           else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
@@ -479,7 +495,11 @@ def native_evidence(archive, request, native):
                      and type(notice['cardNoticeCount']) is int and notice['cardNoticeCount'] == 0
                      and type(notice['beforeList']) is bool and isinstance(notice['text'], str),
                      'native_result_notice_measurement_required')
-                need(all(row.get('kind') in (*RESULT_FACT_KINDS, 'result-notice', 'other')
+                presets = [row['text'] for row in text if row.get('kind') == 'night-preset']
+                need(presets == (['7 ночей', '10 ночей', '14 ночей', '21 ночь']
+                     if logical_name.startswith('native-popup-nights-') else []),
+                     'native_popup_night_presets_readability_required')
+                need(all(row.get('kind') in (*RESULT_FACT_KINDS, 'result-notice', 'night-preset', 'other')
                          and (row.get('cardId') is None
                               or type(row['cardId']) is int and row['cardId'] in card_ids)
                          and ('cardId' in row)
@@ -560,7 +580,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 353, 'native_rendered_frame_count')
+    need(len(frames) == 373, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
