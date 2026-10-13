@@ -84,7 +84,7 @@ const assertRetiredSelectionAbsent=()=>{
 const continueToFlights=async()=>{
  if(!d.querySelector('[data-action="start-tour-flights"]'))return;
  click('[data-action="start-tour-flights"]');await settle(140);
- if(d.querySelector('[data-action="apply-flight"]')){click('[data-action="apply-flight"]');await settle();assert(d.querySelector('#prototype-lead-form'),'selected flights continue directly to application');click('#modal-back');await settle();}
+ if(d.querySelector('[data-action="apply-flight"]')){click('[data-action="apply-flight"]');await settle();assert(!d.querySelector('#prototype-lead-form'),'selected flights return to exact tour');click('[data-action="confirm-tour"]');await settle();assert(d.querySelector('#prototype-lead-form'),'explicit continue opens application');click('#modal-back');await settle();}
 };
 (async()=>{
  await settle(200);

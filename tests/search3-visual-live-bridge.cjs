@@ -149,8 +149,8 @@ const wait=async(fn)=>{for(let i=0;i<160;i++){if(fn())return;await new Promise(r
 const continueToFlights=async()=>{
  const start=q('[data-action="start-tour-flights"]'),retry=q('[data-action="retry-flights"]');if(!start&&!retry)return;
  const before=transport.calls.filter(c=>['tour','flights'].includes(c.action)).length;
- if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
- else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();assert(q('#prototype-lead-form'),'one flight confirmation opens application directly');click('#modal-back');await settle();}
+ if(start){assert(q('.chosen-stay'),'exact room/meal visible before any quote');click('[data-action="start-tour-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+2,'one quote and one flight request after explicit action');click('[data-action="apply-flight"]');await settle();assert(!q('#prototype-lead-form'),'flight confirmation returns to selected tour');click('[data-action="confirm-tour"]');await settle();assert(q('#prototype-lead-form'),'explicit continue opens application');click('#modal-back');await settle();}
+ else{click('[data-action="retry-flights"]');await wait(()=>q('[data-action="apply-flight"]'));assert.equal(transport.calls.filter(c=>['tour','flights'].includes(c.action)).length,before+1,'an already actualized tour needs only one explicit flight request');click('[data-action="apply-flight"]');await settle();assert(!q('#prototype-lead-form'),'flight confirmation returns to selected tour');click('[data-action="confirm-tour"]');await settle();assert(q('#prototype-lead-form'),'explicit continue opens application');click('#modal-back');await settle();}
 };
 const starts=()=>transport.calls.filter(c=>c.action==='search_start').length;
 // Fresh receiving contexts keep retry/position regressions independent of the
@@ -187,10 +187,10 @@ async function quoteReturnRegressions(){
    assert.equal(win.__retention().type,'offer');assert.equal(get('#modal-body').scrollTop,183);assert.equal(doc.activeElement.dataset.action,'change-room');releaseFlights();await until(()=>get('[data-action="apply-flight"]'));flights=null;
    assert.equal(win.__retention().type,'flights','intentional next step is distinct from same-offer updates');assert.equal(get('#modal-body').scrollTop,0);tap('[data-action="close-modal"]');await until(()=>!get('#modal').open);
    // Fresh hotel-rooms history captures the earlier listing. It is a passive view.
-   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact);tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
+   tap('[data-action="hotel-details"][data-id="501"]');await until(()=>get('#hotel-room-count'));tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');tap('[data-action="choose-flight"]');await until(()=>get('[data-action="apply-flight"]'));tap('[name="flight-pair"][value="1"]');tap('[data-action="apply-flight"]');assert.equal(win.__retention().type,'offer');tap('[data-action="confirm-tour"]');await until(()=>get('#prototype-lead-form'));tap('#modal-back');
    const chosen=win.__retention().offer,before=t.calls.length;assert.equal(chosen.total,133500.5);assert.equal(String(chosen.flightChoiceId),'1');tap('[data-action="change-room"]');await until(()=>win.__retention().type==='hotel-details');
    assert.strictEqual(win.__retention().offer,chosen,'room return retains the applied exact selection');assert.equal(win.__retention().offer.key,'tourvisor%3Avisual-tv-101');assert.equal(t.calls.length,before,'passive room return spends no operation');
-   tap('#modal-body '+exact);assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
+   tap('#modal-body '+exact.replace('data-action="offer"','data-action="select-hotel-offer"'));tap('[data-action="continue-hotel-offer"]');assert.equal(win.__retention().offer.total,133500.5);assert.equal(String(win.__retention().offer.flightChoiceId),'1');assert.equal(t.calls.length,before,'passive exact reopen does not recalculate');
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
@@ -286,7 +286,7 @@ async function pickerRetainedDraftRegressions(){
     if(fail){assert(c.get('[data-action="retry-destination"]'));assert.deepEqual(c.ids(),[]);assert(c.completed[0].error);c.t.state.hotelLookupError=false;delete c.t.state.hotelLookupGates['4'];c.tap('[data-action="retry-destination"]');await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false'&&c.ids().length===2);assert.equal(c.reads(),baseline+2,'one existing explicit Retry performs one catalogue read');}
     assert.deepEqual(c.ids(),[2004,2005],'actual canonical alias rows retain exact IDs independent of names');assert.equal(c.get('[data-action="retry-destination"]'),null);
     if(beforeReturn&&!fail&&action==='keep-destination'){
-     c.tap('[data-action="destination-remove"][data-id="2001"]');c.tap('[data-action="destination-hotel"][data-id="2004"]');c.tap('[data-action="destination-hotel"][data-id="2005"]');assert.deepEqual(c.selected(),[2004,2005]);assert.match(c.get('.destination-apply-context').textContent,/Только выбранные отели/);
+     c.tap('[data-action="destination-remove"][data-id="2001"]');c.tap('[data-action="destination-hotel"][data-id="2004"]');c.tap('[data-action="destination-hotel"][data-id="2005"]');assert.deepEqual(c.selected(),[2004,2005]);assert.match(c.get('.destination-apply-context').textContent,/Любой из выбранных отелей/);
      c.input('Rix');await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false');assert.deepEqual(c.selected(),[2004,2005],'typing never mutates OR selection');c.tap('[data-action="apply-destination"]');await c.until(()=>!c.get('#modal').open&&!c.ui());assert.equal(c.get('#destination-detail').textContent,c.t.state.hotelCatalogue.filter(h=>[2004,2005].includes(h.id)).map(h=>h.name).join(' · '));
      c.tap('#search-form [data-action="destination"]');assert.deepEqual(c.selected(),[2004,2005],'Apply retains exact IDs in the form draft');c.tap('[data-action="destination-remove"][data-id="2004"]');c.input(alias);await c.until(()=>c.get('#destination-query').getAttribute('aria-busy')==='false');c.tap('[data-action="close-modal"]');await c.until(()=>!c.get('#modal').open&&!c.ui());
      c.tap('#search-form [data-action="destination"]');assert.deepEqual(c.selected(),[2004,2005],'Cancel restores applied exact IDs');assert.equal(c.get('#destination-query').value,'','Cancel drops only the abandoned query');
@@ -603,8 +603,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="start-lead"]');await wait(()=>q('#prototype-lead-form'));
  assert.deepEqual(tvActions().slice(tvCallsBeforeSelection).map(c=>c.action),['tour'],'application retrieves tour details once without requesting flights');
  assert.match(q('#modal-body').textContent,/Рейс уточнит менеджер/);assert.match(q('#modal-footer').textContent,/перелёт уточняется/);
- assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже','skipped optional flight is explicit in the application steps');
- assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'),'a skipped flight is not presented as completed');
+ assert.match(q('.application-review').textContent,/Рейс уточнит менеджер|Перелёт уточнит менеджер/,'deferred flight stays explicitly unconfirmed');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт позже');assert(!q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('.tour-fuel-disclosure').textContent,/включён в цену/,'known Tourvisor fuel belongs to the unchanged supplier total');
  assert.match(q('#modal-footer').textContent,/Цена предложения/,'tour details do not claim cart actualization');
  assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/120000/,'tour fuel is not added a second time');
@@ -621,12 +620,11 @@ async function pickerRetainedDraftRegressions(){
  click('#modal-back');await settle();
  await continueToFlights();await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  assert.match(q('#modal-body').textContent,/STANDARD SEA VIEW/);
- click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();
- assert(q('#prototype-lead-form'),'chosen flight proceeds directly to application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
+ click('[data-action="choose-flight"]');click('[name="flight-pair"][value="1"]');click('[data-action="apply-flight"]');await settle();assert(!q('#prototype-lead-form'),'chosen flight returns to tour');click('[data-action="confirm-tour"]');await settle();
+ assert(q('#prototype-lead-form'),'explicit continue opens application');assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/133500/);click('#modal-back');await settle();
  assert.match(q('#detail-total').textContent.replace(/\s/g,''),/133500/);click('[data-action="confirm-tour"]');await settle();
  assert(q('#prototype-lead-form'),'canonical TV lead form connected');
- assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт','a selected flight keeps the normal step label');
- assert(q('.selection-steps li:nth-child(2)').classList.contains('previous'),'a selected flight remains a completed step');
+ assert(q('.application-review .summary-flight-details'),'the compact review retains exact selected flight details');assert.equal(q('.selection-steps li:nth-child(2)').textContent.trim(),'2Перелёт');assert(q('.selection-steps li:nth-child(2)').classList.contains('previous'));
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent.replace(/\s/g,''),/20686₽/,'application retains the selected-flight fuel amount');
  assert.match(q('#modal-body .tour-fuel-disclosure').textContent,/включён в цену/);
  assert.match(q('#modal-footer').textContent,/Цена с выбранными рейсами · сбор включён/);
@@ -913,12 +911,12 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('2 варианта'));
  click('[data-action="hotel-details"][data-id="501"]');
  const priorRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');priorRoom.open=true;
- const priorOffer=priorRoom.querySelector('[data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();await continueToFlights();
+ const priorOffer=priorRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Avisual-tv-101"]');priorOffer.focus();q('#modal-body').scrollTop=64;priorOffer.click();click('[data-action="continue-hotel-offer"]');await continueToFlights();
  await wait(()=>q('[data-action="confirm-tour"]')&&!q('[data-action="confirm-tour"]').disabled);
  releaseHotelBackSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('3 варианта'));
  click('#modal-back');
  assert.equal(q('#hotel-room-count').textContent,'Номера: 3 · Туры: 3','Back renders current progressive rooms, not the stored snapshot');
- assert.match(q('#hotel-detail-min').textContent,/119\s*000/);assert(q('#hotel-room-meal'));
+ assert.match(q('#hotel-detail-min').textContent,/120\s*000/,'approved footer retains the explicitly selected exact TV whole-tour total');assert.equal(q('#hotel-detail-offers').dataset.key,'tourvisor%3Avisual-tv-101');assert.match(q('.hotel-room-cards').textContent,/119\s*000/,'new independent minimum remains present in the current room inventory');assert(q('#hotel-room-meal'));
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);
  assert.equal(q('#modal-body').scrollTop,64);assert.equal(starts(),beforeHotelBackSearch+1);
  click('[data-action="close-modal"]');await settle();
@@ -928,7 +926,7 @@ async function pickerRetainedDraftRegressions(){
  click('[data-action="hotel-details"][data-id="501"]');
  const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
  const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
- const nestedOffer=moreTours.querySelector('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="start-tour-flights"]');
+ const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
  await wait(()=>q('#modal-body').textContent.includes('Не удалось подтвердить цену'));click('#modal-back');
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);
@@ -968,12 +966,12 @@ async function pickerRetainedDraftRegressions(){
  await wait(()=>q('#results-summary').textContent.includes('10 вариантов'));
  click('[data-action="hotel-details"][data-id="501"]');
  const movingRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');movingRoom.open=true;
- const movingOffer=movingRoom.querySelector('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');
- assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="start-tour-flights"]');
+ const movingOffer=movingRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
+ assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
  await wait(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(q('#modal-body').textContent));
  releaseMovedOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
  click('#modal-back');
- const movedOffer=q('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');
+ const movedOffer=q('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');
  assert(movedMore,'late cheaper offer moves the exact returning choice below the first two');
  assert(movedMore.open,'Back reveals the exact returning offer after its position changes');
  assert.equal(starts(),beforeMovedOfferSearch+1);

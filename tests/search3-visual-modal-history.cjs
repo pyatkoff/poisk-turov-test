@@ -16,16 +16,16 @@ function observe(source,s){
  const checkpoint=()=>({type:ctx.modalType,restoring:ctx.restoringModal,history:ctx.modalHistory.map(x=>x.type),selected:ctx.selectedOffer?.key,open:node('#modal').open,footer:node('#modal-footer').innerHTML});
  const record=(name,...args)=>trace.push([name,...args,checkpoint()]);
  function node(key){if(nodes.has(key))return nodes.get(key);const n={key,id:key,value:'AI',dataset:{hotelId:'7',room:'standard'},textContent:'old '+key,innerHTML:'<old>'+key+'</old>',hidden:false,scrollTop:37,className:'wide-dialog',open:key==='#modal'?!!s.open:false,top:key==='#modal-body'?100:150,
-  getBoundingClientRect:()=>({top:n.top}),contains:x=>x?.key==='focus-target',matches:selector=>selector==='[data-action="offer"]'&&!!s.returningOffer,
+  getBoundingClientRect:()=>({top:n.top}),contains:x=>x?.key==='focus-target',matches:selector=>selector.split(',').includes('[data-action="offer"]')&&!!s.returningOffer,
   focus:options=>{ctx.document.activeElement=n;record('focus',key,options);},
   setAttribute:(k,v)=>{n[k]=v;record('attribute',key,k,v);},
   closest:selector=>node(selector),querySelector:selector=>node(selector),
   showModal:()=>{n.open=true;record('showModal');},close:()=>{n.open=false;record('close');},
   classList:{contains:()=>!!s.filterOpen,toggle:()=>{}},style:{overflow:'initial'}
  };nodes.set(key,n);return n;}
- const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
+ const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
-  modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
+  renderedResultItems:[],hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
   hotels:[{id:7}],hotelOffers:()=>[{meal:'AI'}],
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},
@@ -85,13 +85,15 @@ for(const [current,retained] of [
  ['restoreModalStepFocus(previous);syncDestinationViewport();','restoreModalStepFocus(previous);'],
  ['updateModalBack();syncDestinationViewport();\n}','updateModalBack();\n}']
 ]){assert.equal(retainedSource.split(current).length,2,'one intentional viewport-sync call site');retainedSource=retainedSource.replace(current,retained);}
-const actual=records(source),projected=clone(actual),retained=records(retainedSource);let viewportSyncObservations=0;
+retainedSource=retainedSource.replace('renderResultCards(renderedResultItems,{selectionOnly:true});','');
+const actual=records(source),projected=clone(actual),retained=records(retainedSource);
+for(const row of projected)row.result.trace=row.result.trace.filter(c=>c[0]!=='renderResultCards');let viewportSyncObservations=0;
 for(let index=0;index<actual.length;index++){
  const scenario=scenarios[index],trace=actual[index].result.trace,extra=scenario.kind==='close'&&scenario.open||scenario.kind==='back'&&trace.some(record=>record[0]==='restoreFocus');
  const syncs=trace.flatMap((record,index)=>record[0]==='syncDestinationViewport'?[index]:[]),originalCount=retained[index].result.trace.filter(record=>record[0]==='syncDestinationViewport').length;
  const snapshotSync=extra&&scenario.kind==='back';
  assert.equal(syncs.length,originalCount+(extra?1:0)+(snapshotSync?1:0),scenario.name+' exact viewport synchronization count');
- if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'restorePageReturn':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
+ if(extra){const at=syncs.at(-1);assert.equal(trace[at-1][0],scenario.kind==='close'?'close':'restoreFocus',scenario.name+' syncs after close or restored focus');assert.equal(trace[at+1][0],scenario.kind==='close'?'renderResultCards':'syncHotelSectionNavigation',scenario.name+' syncs before passive return bookkeeping');projected[index].result.trace.splice(at,1);viewportSyncObservations++;}
  if(snapshotSync){
   const at=syncs[1],preceding=trace[at-1];
   assert.deepEqual(preceding.slice(0,3),['attribute','#modal-back','aria-label'],scenario.name+' snapshot sync follows restored Back state');
@@ -130,6 +132,17 @@ const roomSnapshotMutation=source.replace("!['all-offers','hotel-details'].inclu
 assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot guard is exercised');
 assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
 console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards retained digest ${digest} plus ${viewportSyncObservations} exact viewport sync observations; supplier and lead HTTP 0`);
+
+// The approved room draft continues through the footer. Its passive return
+// target is the exact selected row, including when a late cheaper row moves it.
+const continuedRoom={kind:'show',open:true,current:'hotel-details',next:'offer',setup:(c,n)=>{
+ c.actionTrigger.dataset={action:'continue-hotel-offer',key:'exact-room'};
+ n('#modal-body [data-action="select-hotel-offer"][0]').dataset.key='exact-room';
+}};
+const continued=observe(source,continuedRoom),continuedFocus=continued.trace.find(row=>row[0]==='focusReference');
+assert.equal(continuedFocus[1],'#modal-body [data-action="select-hotel-offer"][0]','footer continuation captures the exact selected room row');
+const oldCapture=source.replace(/modalType==='hotel-details'&&actionTrigger\?\.dataset.action==='continue-hotel-offer'\?\$\$\('#modal-body \[data-action="select-hotel-offer"\]'\)\.find\(row=>row.dataset.key===actionTrigger.dataset.key\)\|\|actionTrigger:actionTrigger\|\|document.activeElement/,'actionTrigger||document.activeElement');
+assert.notDeepEqual(observe(oldCapture,continuedRoom),continued,'footer-only return target regression detected');
 
 // Execute the actual passive route owner: browser history is a locator, never
 // enough to rebuild absent/expired/foreign inventory or authorize a request.
