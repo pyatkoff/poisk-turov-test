@@ -363,8 +363,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'b8b14e89931fbaab363895065d53ed7063339eb3')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38477454593)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38484937090)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -874,7 +874,8 @@ class UpdateContracts(unittest.TestCase):
             '2da88e41fb436acefd293066bcc98db013e07ee0',
             'fbbd23e39c4fa71f8ba9500048ef4f2a3c2f1735',
             '740ed0b20596f901a1d6c15d238cec527633ce80',
-            'b8b14e89931fbaab363895065d53ed7063339eb3'))
+            'b8b14e89931fbaab363895065d53ed7063339eb3',
+            'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1032,7 +1033,7 @@ class UpdateContracts(unittest.TestCase):
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
-             38464277088, 38477454593))
+             38464277088, 38477454593, 38484937090))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1094,11 +1095,12 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
+            'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
             'visual-search/native-v2/viewport.css'))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
