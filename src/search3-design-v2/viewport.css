@@ -475,7 +475,7 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-mobile .st-quick-dates { margin-top: 10px; padding-top: 10px; }
 #design-v2-native-root #b4 .st-mobile .st-quick-price { margin-top: 10px; }
 #design-v2-native-root #b4 .st-mobile .st-quick-price-note { margin-top: 8px !important; }
-#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-cost-list > div:first-child,
+#design-v2-native-root #b4 .st-mobile .st-quick-tour [data-quick-party],
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > .st-small,
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-tour-price] { display: none; }
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total {
@@ -483,6 +483,7 @@ body { margin: 0; padding: 0; }
   padding-top: 0;
 }
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-action="lead"] { margin-top: 0; }
+#design-v2-native-root #b4 .st-mobile .st-quick-tour .st-native-quick-party { margin: 8px 0 0; }
 /* Keep the exact tour visible while the traveller enters contact details.
    Desktop uses the available width for a review/form split; mobile keeps the
    donor's linear reading order. */
