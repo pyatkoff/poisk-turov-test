@@ -1742,7 +1742,7 @@ const server=http.createServer((req,res)=>{
   const nestedOffer=moreTours.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');await nestedOffer.scrollIntoViewIfNeeded();await nestedOffer.focus();
   await nestedOffer.click();await settledHotelScroll(page);
   const moreBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
-  await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('Не удалось подтвердить цену'));await page.locator('#modal-back').click();
+  await page.waitForFunction(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена/.test(document.querySelector('#modal-body').textContent));await page.locator('#modal-back').click();
   assert(await manyRoom.evaluate(el=>el.open));assert(await moreTours.evaluate(el=>el.open),'Back retains the expanded nested tour list');
   assert(await nestedOffer.evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),moreBackScroll);
   await page.screenshot({path:path.join(evidence,`hotel-more-back-${width}.png`)});
@@ -1770,7 +1770,7 @@ const server=http.createServer((req,res)=>{
   assert.equal(await movingOffer.evaluate(el=>Boolean(el.closest('.hotel-room-more'))),false,'chosen offer starts in the visible first two');
   await movingOffer.scrollIntoViewIfNeeded();await movingOffer.focus();await movingOffer.click();await settledHotelScroll(page);
   const movedOfferPosition=await movingOffer.evaluate(el=>({scroll:el.closest('#modal-body').scrollTop,top:el.getBoundingClientRect().top-el.closest('#modal-body').getBoundingClientRect().top}));await page.locator('[data-action="continue-hotel-offer"]').click();await page.locator('[data-action="start-tour-flights"]').click();
-  await page.waitForFunction(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(document.querySelector('#modal-body').textContent));
+  await page.waitForFunction(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена|Условия поиска изменились/.test(document.querySelector('#modal-body').textContent));
   releaseMovedOfferSource();transport.state.samoSearchGate=null;await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов'));
   await page.locator('#modal-back').click();
   const movedOffer=page.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.locator('xpath=ancestor::details[contains(@class,"hotel-room-more")]');

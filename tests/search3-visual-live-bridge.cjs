@@ -941,7 +941,7 @@ async function pickerRetainedDraftRegressions(){
  const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
  const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
  const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
- await wait(()=>q('#modal-body').textContent.includes('Не удалось подтвердить цену'));click('#modal-back');
+ await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена/.test(q('#modal-body').textContent));click('#modal-back');
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);
  click('[data-action="close-modal"]');await settle();
@@ -982,7 +982,7 @@ async function pickerRetainedDraftRegressions(){
  const movingRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');movingRoom.open=true;
  const movingOffer=movingRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
  assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
- await wait(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(q('#modal-body').textContent));
+ await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена|Условия поиска изменились/.test(q('#modal-body').textContent));
  releaseMovedOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
  click('#modal-back');
  const movedOffer=q('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');
