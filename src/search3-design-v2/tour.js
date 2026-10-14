@@ -176,7 +176,7 @@
       }
       text('[data-native-flight-status]',value?.quoteResult?.state==='quote_verified' || value?.flightChoiceId!==null && value?.flightChoiceId!==undefined ? 'Выбранный перелёт' : 'Требует уточнения');
       text('[data-native-inclusion-room]',room);text('[data-native-inclusion-meal]',meal);
-      const supplements=tourScreen.querySelector('.st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
+      const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(busy ? 'Проверяем точное предложение…' : failure, Boolean(failure));
       renderContact();scheduleExpiry();window.lucide?.createIcons({attrs:{width:18,height:18}});
