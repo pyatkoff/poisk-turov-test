@@ -67,7 +67,16 @@
       const costDetails = tourScreen.querySelector('.st-tour-layout > aside');
       if (costDetails) {
         costDetails.dataset.nativeCostDetails='';
-        if (root.classList.contains('st-mobile')) costDetails.querySelector('h3').textContent='Условия тура';
+        if (root.classList.contains('st-mobile')) {
+          costDetails.querySelector('h3').textContent='Условия тура';
+          const partyDetails=window.document.createElement('div');
+          partyDetails.className='st-cost-list st-native-quick-party';
+          partyDetails.append(costDetails.querySelector('.st-cost-list > div:first-child'));
+          tourScreen.querySelector('[data-quick-dates]').insertAdjacentElement('afterend',partyDetails);
+          const priceCaption=window.document.createElement('div');
+          priceCaption.className='st-small st-muted';priceCaption.textContent='За всю группу';
+          tourScreen.querySelector('[data-quick-party]').insertAdjacentElement('afterend',priceCaption);
+        }
       }
       let status = $('[data-native-tour-status]');
       if (!status) {status = window.document.createElement('p');status.className = 'st-small st-muted';status.dataset.nativeTourStatus='';status.setAttribute('aria-live','polite');tourScreen.querySelector('.st-screen-title').insertAdjacentElement('afterend',status);}
@@ -167,7 +176,7 @@
       }
       text('[data-native-flight-status]',value?.quoteResult?.state==='quote_verified' || value?.flightChoiceId!==null && value?.flightChoiceId!==undefined ? 'Выбранный перелёт' : 'Требует уточнения');
       text('[data-native-inclusion-room]',room);text('[data-native-inclusion-meal]',meal);
-      const supplements=tourScreen.querySelector('.st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
+      const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(busy ? 'Проверяем точное предложение…' : failure, Boolean(failure));
       renderContact();scheduleExpiry();window.lucide?.createIcons({attrs:{width:18,height:18}});
