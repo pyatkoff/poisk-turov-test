@@ -47,10 +47,15 @@ const server=http.createServer((req,res)=>{
   try{
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=mixed`);
    const trigger=page.locator('.hotel-card [data-action="all-offers"]').first();await trigger.waitFor();assert.equal(requests,0,'form/results leave the offer-list renderer cold');
-   assert(await page.locator('#calendar-preview').isVisible(),'price calendar is open');assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot('results');await densityFrame('results',100);
+   const disclosure=page.locator('[data-action="toggle-result-calendar"]'),passiveURL=page.url(),passiveCards=await page.locator('#cards').innerHTML();
+   if(width<=760){
+    assert(await disclosure.isVisible(),'mobile dates remain visible while prices are collapsed');assert.equal(await disclosure.getAttribute('aria-expanded'),'false');assert.equal(await page.locator('#calendar-preview').isVisible(),false);assert.match(await page.locator('#result-calendar-range').textContent(),/2026/);await reachable(disclosure,'mobile calendar disclosure');await shot('results-calendar-collapsed');
+    await disclosure.click();assert.equal(await disclosure.getAttribute('aria-expanded'),'true');assert.equal(page.url(),passiveURL);assert.equal(await page.locator('#cards').innerHTML(),passiveCards,'disclosure keeps exact loaded rows');
+   }else assert.equal(await disclosure.isVisible(),false,'desktop retains the open date rail');
+   assert(await page.locator('#calendar-preview').isVisible(),'retained price calendar is open after explicit mobile disclosure');assert.equal(await page.locator('#price-strip .date-price').count(),7);await page.evaluate(()=>scrollTo(0,0));await shot('results');await densityFrame('results',100);
    await page.evaluate(()=>document.documentElement.style.fontSize='200%');await page.evaluate(()=>scrollTo(0,0));await densityFrame('results',200);await shot('results-text200');
    const dateTargets=page.locator('#price-strip .date-price');assert.equal(await dateTargets.count(),7,'large text retains all seven dates');
-   const passiveDateURL=page.url();await dateTargets.last().focus();const lastDate=await reachable(dateTargets.last(),'last saved date text200');
+   const passiveDateURL=page.url();await page.keyboard.press('Tab');await dateTargets.last().focus();const lastDate=await reachable(dateTargets.last(),'last saved date text200');
    assert(await dateTargets.last().evaluate(el=>document.activeElement===el),'the last date remains a keyboard target');assert.equal(page.url(),passiveDateURL,'keyboard rail navigation is passive');
    if(width<=760){const focus=await dateTargets.last().evaluate(el=>{const style=getComputedStyle(el);return {visible:el.matches(':focus-visible'),style:style.outlineStyle,offset:parseFloat(style.outlineOffset)};});assert(focus.visible&&focus.style!=='none'&&focus.offset<=0,'keyboard date focus remains visible inside the scrollable rail');}
    const rail=await page.locator('#price-strip').evaluate(el=>({width:el.clientWidth,contentWidth:el.scrollWidth,scrollLeft:el.scrollLeft,overflowX:getComputedStyle(el).overflowX}));

@@ -91,7 +91,7 @@ function observe(source,s){
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
- vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
+ vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
@@ -181,6 +181,11 @@ function stableObservations(rows){return rows.map((row,index)=>{
  if(scenario.kind==='calendar'){
   for(const c of r.trace)if(c[0]==='write'&&c[1]==='#calendar-units'&&c[2]==='textContent')c[3]='approved whole-tour unit label';
   for(const [key,n]of r.dom)if(key==='#calendar-units')n.textContent='approved whole-tour unit label';
+  // The new mobile disclosure is separately exercised by the actual calendar
+  // runner. Preserve this historical price/data oracle and remove only its
+  // explicitly new display nodes; every price/date/state observation remains.
+  const disclosureNodes=new Set(['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range']);
+  r.trace=r.trace.filter(c=>!disclosureNodes.has(c[1]));r.dom=r.dom.filter(([key])=>!disclosureNodes.has(key));
  }
  return {...row,result:r};
 });}
@@ -383,17 +388,17 @@ const historicalSummarySource=source.replace(section(source,'function renderSumm
 // date roots must survive provider/status refreshes. Live-only edits still
 // invalidate the generated-markup binding and are repaired on the next pass.
 function calendarDOM(code=source){
- const dom=new JSDOM('<p id="calendar-units"></p><p id="calendar-month-label"></p><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button>'),document=dom.window.document,strip=document.querySelector('#price-strip');
+ const dom=new JSDOM('<section id="price-calendar"><button class="result-calendar-disclosure"></button><span id="result-calendar-range"></span><div class="result-date-heading"><p id="calendar-units"></p><p id="calendar-month-label"></p></div><div id="calendar-preview"><p id="calendar-minimum-legend"></p><div><span id="calendar-selected-date"></span></div><p id="calendar-caption"></p><div id="price-strip"></div><button id="clear-date"></button></div></section>'),document=dom.window.document,strip=document.querySelector('#price-strip');
  let prices=Array.from({length:21},(_,i)=>100000+i*1000),parsed=0;
  const createElement=document.createElement.bind(document);document.createElement=tag=>{if(String(tag).toLowerCase()==='template')parsed++;return createElement(tag);};
  const addDays=(day,n)=>{const date=new Date(day+'T00:00:00Z');date.setUTCDate(date.getUTCDate()+n);return date.toISOString().slice(0,10);};
- const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,
+ const ctx={document,Map,WeakMap,WeakSet,Array,JSON,Number,Math,MutationObserver:dom.window.MutationObserver,innerWidth:1280,
   state:{search:{from:'2026-10-01',to:'2026-10-21'},filters:{meals:['AI']},selectedDate:null},hotels:[],resultCalendar:{hotels:[],observations:[],phase:'complete'},
   $:selector=>document.querySelector(selector),addDays,calendarMinimums:days=>days.map((_,i)=>prices[i]??null),calendarSourceLabel:()=> 'Найденные цены',
   calendarScope:()=>({destination:'Турция <&',filters:['meal']}),guestsText:()=> '2 взрослых',durationText:()=> '7–10 ночей',dateLong:day=>'long:'+day,dateText:day=>'date:'+day,money:value=>value+' ₽',
-  dateObj:day=>new Date(day+'T12:00:00Z'),loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
+  dateObj:day=>new Date(day+'T12:00:00Z'),rangeText:(from,to)=>from+' — '+to,loadResultCalendar:()=>{},refreshEmptyCalendarContext:()=>{}};
  ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
- vm.createContext(ctx);vm.runInContext(owner(code,'calendar'),ctx);
+ vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(owner(code,'calendar'),ctx);
  const observer=new dom.window.MutationObserver(()=>{});observer.observe(strip,{childList:true});
  return {dom,ctx,strip,render:()=>{ctx.renderCalendarStrip();return observer.takeRecords();},parsed:()=>parsed,
   setPrice:(index,value)=>{prices[index]=value;},setPrices:value=>{prices=value.slice();},markup:()=>vm.runInContext('calendarStripHTML(resultCalendarModel())',ctx),
