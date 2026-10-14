@@ -51,7 +51,7 @@ async function expansionEntryScenario(count,late=false){
    assert.match(q('#modal-body').textContent,/ANEX STANDARD/,'late expansion does not replace the original group inventory');
    assert.doesNotMatch(q('#modal-body').textContent,/ANEX CONCRETE/);
   }else if(count===0){
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('не вернул конкретные'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.trim()==='Не удалось проверить цену и наличие тура. Повторите проверку.');
    assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty supplier expansion keeps existing recovery');
    assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
    click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/ANEX STANDARD/);
@@ -187,7 +187,7 @@ async function soleSamoPriceScenario(mode){
    click('[data-action="close-modal"]');await settle();await reopen();
   }else releaseCalc();
   if(mode==='failed'){
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
    assert.equal(q('[data-action="andromeda-application-preview"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
    click('[data-action="close-modal"]');await settle();await reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
   }else{

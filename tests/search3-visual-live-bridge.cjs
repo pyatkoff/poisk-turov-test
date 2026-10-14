@@ -598,7 +598,7 @@ async function pickerRetainedDraftRegressions(){
   }
   for(const code of ['', 'offer_expired']){
    quoteControl={error:Object.assign(new Error('Тестовый отказ актуализации'),{code})};
-   openTv();click(`[data-action="${action}"]`);await wait(()=>q('#modal-body .error-text')?.textContent==='Тестовый отказ актуализации');
+   openTv();click(`[data-action="${action}"]`);await wait(()=>q('#modal-body .error-text')?.textContent===(code?'Срок предложения истёк. Выберите другой тур.':'Не удалось проверить цену и наличие тура. Повторите проверку.'));
    assert.match(q('.footer-price-status').textContent,/не подтверждена/);
    assert.equal(q('#modal-footer .primary').dataset.action,code?'close-modal':'start-lead','terminal errors exit; temporary errors allow explicit retry');
    assert(!q('#prototype-lead-form'));quoteControl=null;
@@ -722,7 +722,7 @@ async function pickerRetainedDraftRegressions(){
  assert.match(q('.lead-message').textContent,/Срок подтверждения тура истёк/);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
  assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open&&q('#modal-title').textContent==='Ваш тур в деталях');
- assert.match(q('#modal-body').textContent,/Срок подтверждения тура истёк/);
+ assert.match(q('#modal-body').textContent,/Срок предложения истёк\. Выберите другой тур\./);
  assert(!q('#prototype-lead-form')&&!q('[data-action="andromeda-application-preview"]')&&!q('[data-action="refresh-hotel"]'));
  assert.equal(transport.calls.length,beforeSamoApplicationForward,'expired reuse, submit and Forward spend zero requests');w.Date.now=realNow;
 
@@ -807,13 +807,13 @@ async function pickerRetainedDraftRegressions(){
   const chooseSamo=()=>[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A')).click();
   chooseSamo();await settle();const before=quoteCount();click('[data-action="refresh-hotel"]');
   if(flightChoice){await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');}
-  await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+  await wait(()=>q('#modal-body .error-text')?.textContent.includes('Не удалось подтвердить этот тур. Выберите другой вариант.'));
   assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
   assert.match(q('#modal-footer').textContent,/Выбрать другой тур/);assert(!q('[data-action="refresh-hotel"]'));
   assert.equal(quoteCount(),before+(flightChoice?2:1));
   assert.equal(quoteFailures.at(-1).failureCategory,'supplier_auth');assert.equal(quoteFailures.at(-1).httpStatus,502);
   click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
-  assert.match(q('#modal-body .error-text').textContent,/Подтверждение тура не получено/);
+  assert.match(q('#modal-body .error-text').textContent,/Не удалось подтвердить этот тур\. Выберите другой вариант\./);
   assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening must never resubmit a sealed attempt');
   click('[data-action="close-modal"]');await settle();
  }
@@ -831,10 +831,10 @@ async function pickerRetainedDraftRegressions(){
    assert(legacy.flights.every(f=>!Object.hasOwn(f,'flightRef')));assert.equal(transport.calls.length,prior);
    click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');choose();await wait(()=>q('[data-action="andromeda-application-preview"]'));
   }else{
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Не удалось подтвердить этот тур. Выберите другой вариант.'));
    assert(!q('[data-action="andromeda-application-preview"]'));assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
    assert.equal(quoteFailures.at(-1).failureCategory,'invalid_response');
-   click('#modal-footer [data-action="all-offers"]');choose();await settle();assert.match(q('#modal-body .error-text').textContent,/некорректное подтверждение/);
+   click('#modal-footer [data-action="all-offers"]');choose();await settle();assert.match(q('#modal-body .error-text').textContent,/Не удалось подтвердить этот тур\. Выберите другой вариант\./);
   }
   assert.equal(quoteCount(),before+2,'passive return retains exact/legacy or failed pair outcome without retry');
   click('[data-action="close-modal"]');await settle();
@@ -941,7 +941,7 @@ async function pickerRetainedDraftRegressions(){
  const manyRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');manyRoom.open=true;
  const moreTours=manyRoom.querySelector('.hotel-room-more');assert(moreTours);moreTours.open=true;
  const nestedOffer=moreTours.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');nestedOffer.focus();q('#modal-body').scrollTop=96;nestedOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
- await wait(()=>q('#modal-body').textContent.includes('Не удалось подтвердить цену'));click('#modal-back');
+ await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена/.test(q('#modal-body').textContent));click('#modal-back');
  assert(q('.room-overview[data-room="STANDARD SEA VIEW"]').open);assert(q('.room-overview[data-room="STANDARD SEA VIEW"] .hotel-room-more').open,'Back retains the expanded nested tour list');
  assert.equal(q('#modal-body').scrollTop,96);assert.equal(starts(),beforeMoreBackSearch+1);
  click('[data-action="close-modal"]');await settle();
@@ -982,7 +982,7 @@ async function pickerRetainedDraftRegressions(){
  const movingRoom=q('.room-overview[data-room="STANDARD SEA VIEW"]');movingRoom.open=true;
  const movingOffer=movingRoom.querySelector('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]');
  assert(movingOffer);assert(!movingOffer.closest('.hotel-room-more'),'chosen offer starts in the visible first two');movingOffer.focus();movingOffer.click();click('[data-action="continue-hotel-offer"]');click('[data-action="start-tour-flights"]');
- await wait(()=>/Не удалось подтвердить цену|Условия поиска изменились/.test(q('#modal-body').textContent));
+ await wait(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена|Условия поиска изменились/.test(q('#modal-body').textContent));
  releaseMovedOfferSource();transport.state.samoSearchGate=null;await wait(()=>q('#results-summary').textContent.includes('11 вариантов'));
  click('#modal-back');
  const movedOffer=q('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-0"]'),movedMore=movedOffer.closest('.hotel-room-more');

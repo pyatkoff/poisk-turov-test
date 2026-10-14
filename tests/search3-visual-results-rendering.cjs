@@ -10,13 +10,26 @@ const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
 const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String});
+// Site197 alert presentation must leave the canonical failure and retry policy intact.
+{
+ const context={data:{live:true}};vm.createContext(context);
+ vm.runInContext(section(app,'function offerQuoteErrorText(','function offerDetailBodyHTML('),context);
+ const cases=[['offer_expired',false,false,'Срок предложения истёк. Выберите другой тур.'],['offer_unavailable',false,false,'Этот тур больше недоступен. Выберите другой вариант.'],['',true,false,'Не удалось подтвердить этот тур. Выберите другой вариант.'],['price_unknown',false,false,'Итоговая цена выбранного тура не подтверждена. Повторите проверку.'],['network_error',false,false,'Не удалось проверить цену и наличие тура. Повторите проверку.']];
+ for(const [code,terminal,unavailable,expected]of cases){const offer=Object.freeze({quoteErrorCode:code,quoteError:'HTTP500 internal<&>',key:'exact-offer',total:199900}),before=JSON.stringify(offer);assert.equal(context.offerQuoteErrorText(offer,terminal,unavailable),expected);assert.equal(JSON.stringify(offer),before);}
+ context.data.live=false;assert.equal(context.offerQuoteErrorText({quoteError:'raw'},false,true),'Не удалось подтвердить актуальность тура. Вернитесь к результатам.');
+ console.log('PASS quote alert projection: customer recovery text, raw exact failure/amount untouched; no transport');
+}
+{
+ const context={};vm.createContext(context);vm.runInContext(app.match(/^const operatorAssets=[^\n]+/m)[0]+'\n'+section(app,'function cardOperatorLayoutClass(','function minimumOfferSummary('),context);
+ for(const [name,expected]of [['ANEX',' logo-operator compact-operator'],['TUI',' compact-operator short-operator'],['Длинный туроператор без логотипа',''],['',''],[null,'']])assert.equal(context.cardOperatorLayoutClass(name),expected);
+}
 for(const value of ['On Request','on request','  ON REQUEST  ']){
  assert.equal(requestLabels.displayMealLabel({meal:value}),'Питание уточняется');assert.equal(requestLabels.roomLabel({room:value}),'Номер уточняется');
 }
 assert.equal(requestLabels.mealLabel({meal:'On Request'}),'On Request','raw meal identity remains unchanged');
 assert.equal(requestLabels.displayMealLabel({meal:'Upon Request'}),'Upon Request');assert.equal(requestLabels.roomLabel({room:'Request'}),'Request','unconfirmed near matches are not rewritten');
-const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function minimumOfferSummary(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
- flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>''
+const requestSummary=vm.runInNewContext(`(()=>{${section(app,'function cardOperatorLayoutClass(','function selectionStepsHTML(')}return minimumOfferSummary({key:'request',day:'2026-10-01',returnDay:'2026-10-08',nights:7,flight:'regular',meal:'On Request',room:'On Request',operator:'Operator'});})()`,{
+ flightLabel:()=> 'Регулярный',esc:String,dateText:String,nightsText:n=>n+' ночей',displayMealLabel:()=> 'Питание уточняется',icon:()=>'',roomLabel:()=> 'Номер уточняется',operatorBadge:()=>'',operatorAssets:{}
 });
 const requestSummaryText=requestSummary.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
 assert.match(requestSummaryText,/Номер уточняется/);assert.doesNotMatch(requestSummaryText,/Номер Номер уточняется/,'result card does not duplicate the room label');

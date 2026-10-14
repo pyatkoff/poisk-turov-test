@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "stage": "approved-sites195-presentation-candidate",
+  "stage": "approved-sites197-presentation-candidate",
   "visualVersion": 227,
-  "siteCommit": "b7475a99bf0e695d7714a316e124e6030fc95a86",
+  "siteCommit": "c2a1939f342bb6ef8cea281414918c155a6277b6",
   "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
   "liveConnected": true,
@@ -38,7 +38,8 @@
     "assets/operators/biblio-globus.svg": "d3cba7262d28d4e2b2090d423805acdf7a800e992dbe98cdfee2e3cad7979d6c",
     "assets/operators/anex.svg": "313d8f3f12ee7ebbb3e004d7599484d4e9f70be484e8b1e932e7a17f44bbb5dd",
     "assets/operators/coral-travel.png": "123db203f9a342717bf9bee209254f01fce1f55a0464899618c04837dcfe1955",
-    "fixtures/live-search-2026-09-23.json": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3"
+    "fixtures/live-search-2026-09-23.json": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3",
+    "assets/operators/loti.png": "aaa7e1acde410ae291105755d4590d997a6c39435a0a9d44cefa0dfac4e37ee6"
   },
   "liveSources": [
     "tourvisor",
@@ -54,14 +55,14 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "bff0fedb46cb61872905713939496950e9649480b298d939dffe8e6e589841d9",
+    "app.js": "786c7530fdd6c9aee544fd1f9b92e9e87cd668e831f741b5ace1a18ab1139a12",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
-    "index.html": "3d31470e1b590b0bbc3171365c3751e773e2fadd9e550d986a83b2c9272e4c1e",
-    "styles.css": "fa079ad6b01ef5d1151140223fd6d6f4c7e10566d49de5a4353e5f99f80a6f34",
+    "index.html": "ec1fae2495784d93ce9ce1e52bb793f5eeae831ed238fa5c7c75a57df39cbf21",
+    "styles.css": "2ba21136a5d17e58d7924de4a28dcc32afeddcc286953c1cbe382c65a448c96f",
     "preview-lead.js": "96640435fc0cd6af5556e1bdd37f78620de439dddefef96bbb4e1ec3de765529",
     "live-bridge.js": "123e884bef11f1354cb566269e8b2f6435b710c205d6fb8f8b1f228e76210422",
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
-    "offer-list-v1.js": "5aacc75585b5ae98043aba5b3e3c3856ca4f52147d785407127ca200b49d103a",
+    "offer-list-v1.js": "8b54bbcb4565282d2dd29db467e5c66c2b6bd77608254331ab6faacaa8a8d269",
     "mobile-controls-v1.css": "20c8fbfcd8322876f323fadefc06c0d5568e76162476f31239c17427266cafe1",
     "hotel-details-v1.js": "5eaca2bd43c964abefd978f0f41af8753e3449234207b1f39e063da8a52d80bb",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
@@ -77,20 +78,22 @@
     "realSupplierAcceptance": false
   },
   "approvedPresentation": {
-    "site": 195,
-    "package": 95,
-    "visualVersion": 231,
+    "site": 197,
+    "package": 97,
+    "visualVersion": 233,
     "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "sourceSha": "b7475a99bf0e695d7714a316e124e6030fc95a86",
-    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_046a61b8ca24819181e898ac6b47cfcc",
-    "archiveSha256": "dbc6ff889d41f21855a2a8a6239dbb42fc3488e320353b351e41e0bd55d8bc49",
+    "sourceSha": "c2a1939f342bb6ef8cea281414918c155a6277b6",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_9a642caad5cc8191b501a0ec4ccf9dfb",
+    "archiveSha256": "be5c10b326935d7363f066c8a08df80854050aef977911bff641a45222d91c2d",
     "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261014",
-    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6165931031",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6173070018",
     "mobilePhotoRatio": 1.8,
     "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
     "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
     "physicalSafariAcceptance": false,
-    "keyboardSafeAreaText200Acceptance": false
+    "keyboardSafeAreaText200Acceptance": false,
+    "acceptanceReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6170970686",
+    "nativeArchiveSha256": "30f92d349f0b21528c6178e5e1b8e5ff6dee71ff3c9edbeddba133513d8ab0f2"
   },
   "publicationHistory": {
     "sourceSha": "99baad24030cfbcae9c7c934e36d45dd95a11a80",
@@ -178,29 +181,46 @@
       "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
       "physicalSafariAcceptance": false,
       "keyboardSafeAreaText200Acceptance": false
+    },
+    {
+      "site": 195,
+      "package": 95,
+      "visualVersion": 231,
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "sourceSha": "b7475a99bf0e695d7714a316e124e6030fc95a86",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_046a61b8ca24819181e898ac6b47cfcc",
+      "archiveSha256": "dbc6ff889d41f21855a2a8a6239dbb42fc3488e320353b351e41e0bd55d8bc49",
+      "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261014",
+      "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6165931031",
+      "mobilePhotoRatio": 1.8,
+      "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
+      "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
+      "physicalSafariAcceptance": false,
+      "keyboardSafeAreaText200Acceptance": false
     }
   ],
   "approvedDesignLab": {
     "project": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "site": 195,
-    "package": 95,
-    "prototype": 231,
-    "source": "b7475a99bf0e695d7714a316e124e6030fc95a86",
-    "approvalIssueComment": 6165931031,
-    "evidenceSource": "2de0334a055b7eae8da490d2ba692e20306a0b0d"
+    "site": 197,
+    "package": 97,
+    "prototype": 233,
+    "source": "c2a1939f342bb6ef8cea281414918c155a6277b6",
+    "approvalIssueComment": 6173070018,
+    "evidenceSource": "9b42af916ec4e560c312d93757d435e78259cc99"
   },
   "preparedPresentation": {
     "site194Approval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261014",
     "site194SourceSha": "d55d1604457ecb12597d1faf3cfaf74543c23ad9",
     "site194FixtureTransfer": "not-applicable: design-lab multi-date acceptance generator; live NEXT unchanged",
-    "candidateSite": 195,
-    "candidatePackage": 95,
-    "candidateVisualVersion": 231,
+    "candidateSite": 197,
+    "candidatePackage": 97,
+    "candidateVisualVersion": 233,
     "stage": "APPROVED_FOR_EXISTING_NEXT_TRANSFER_PENDING_EXACT_HEAD_ACCEPTANCE",
     "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
-    "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6165931031",
+    "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6173070018",
     "publicationStatus": "not-published",
-    "approvedSourceSha": "b7475a99bf0e695d7714a316e124e6030fc95a86",
-    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6165931031"
+    "approvedSourceSha": "c2a1939f342bb6ef8cea281414918c155a6277b6",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6173070018",
+    "scope": "ordinary mobile card scan, tablet operator row, refinement/sort44, collapsed initial refinements, form label, customer quote error projection; data/price/lead owners retained"
   }
 }
