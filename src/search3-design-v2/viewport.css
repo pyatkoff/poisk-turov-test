@@ -430,6 +430,27 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-flight-label { margin-bottom: 8px; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-cost-list { gap: 8px; margin: 12px 0; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-total { padding-top: 12px; }
+#design-v2-native-root #b4 .st-native-package-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#design-v2-native-root #b4 .st-native-package-facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  line-height: 1.5;
+}
+#design-v2-native-root #b4 .st-native-package-facts li > svg {
+  flex: 0 0 18px;
+  color: var(--blue);
+  margin-top: 2px;
+}
+#design-v2-native-root #b4 .st-native-package-facts li > span { min-width: 0; overflow-wrap: anywhere; }
+#design-v2-native-root #b4 .st-native-package-note { margin: 12px 0 0; }
 #design-v2-native-root #b4 [data-native-flight-section] { container: native-itinerary / inline-size; }
 @container native-itinerary (min-width: 52em) {
   #design-v2-native-root #b4 .st-desktop [data-native-flight-content] {
@@ -454,6 +475,20 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-mobile .st-quick-dates { margin-top: 10px; padding-top: 10px; }
 #design-v2-native-root #b4 .st-mobile .st-quick-price { margin-top: 10px; }
 #design-v2-native-root #b4 .st-mobile .st-quick-price-note { margin-top: 8px !important; }
+#design-v2-native-root #b4 .st-mobile .st-quick-tour [data-quick-party],
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > .st-small,
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-tour-price] { display: none; }
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total {
+  border-top: 0;
+  padding-top: 0;
+}
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-action="lead"] { margin-top: 0; }
+#design-v2-native-root #b4 .st-mobile .st-quick-tour .st-native-quick-party { margin: 8px 0 0; }
+#design-v2-native-root #b4 .st-mobile .st-quick-tour .st-native-quick-party b {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
 /* Keep the exact tour visible while the traveller enters contact details.
    Desktop uses the available width for a review/form split; mobile keeps the
    donor's linear reading order. */
