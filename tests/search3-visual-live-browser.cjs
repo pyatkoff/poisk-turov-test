@@ -82,6 +82,7 @@ const chosenDepartureContext=async(page,width,transport,evidence)=>{
  const allDates=await scope();assert.match(allDates,/ — /);
  for(const viewport of [360,390,430,768,1280]){
   await page.setViewportSize({width:viewport,height:900});
+  if(viewport<=760&&!(await page.locator('#calendar-preview').isVisible()))await page.locator('[data-action="toggle-result-calendar"]').click();
   await page.locator(`#price-strip [data-date="${day}"]`).click();
   assert.equal(await scope(),(await page.locator('#route-label').textContent()).split(' · ')[1]);
   assert.doesNotMatch(await scope(),/ — /);assert.equal(new URL(page.url()).searchParams.get('date'),day);
@@ -1843,3 +1844,4 @@ const server=http.createServer((req,res)=>{
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
+

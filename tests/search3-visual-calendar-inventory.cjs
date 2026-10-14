@@ -6,6 +6,40 @@ const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators
 const day=i=>new Date(Date.UTC(2026,9,28+i)).toISOString().slice(0,10);
 function fixture(){return Array.from({length:12},(_,i)=>({id:i+1,country:i===11?'9':'4',name:'Hotel '+i,subRegion:i%2?'Кемер':'Анталья',region:'Анталья',resort:'Кемер',stars:i%4+2,rating:i%3?4.8:3.2,beach:i%2?100:null,family:!!(i%2),spa:!!(i%3),amenities:i%2?[{key:'pool'}]:[],offers:Array.from({length:18},(_,j)=>({key:i+':'+j,search:{origin:j===17?'Казань':'Москва',country:j===16?'9':'4'},adults:j===15?3:2,ages:j===14?[0]:j===13?['17',0]:j===12?[17,0]:[0,17],day:day(j%7),nights:j===11?10:7,meal:j%2?'AI':'BB',mealPlanId:j%2?7:3,total:j===0?0:j===1?Infinity:100000+i*100+j*10,operator:j%2?'A':'B',flight:j%2?'charter':'regular'}))}));}
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first);return source.slice(a,b);}
+// Exercise the actual mobile disclosure without bootstrap/network suppliers.
+// The UI preference is independent of the applied dates, prices and URL.
+{
+ const nodes=new Map(),node=()=>({hidden:false,textContent:'',attrs:{},classList:{values:new Set(),toggle(k,v){v?this.values.add(k):this.values.delete(k);}},setAttribute(k,v){this.attrs[k]=v;}});
+ for(const key of ['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range'])nodes.set(key,node());
+ const state={search:{from:'2026-10-27',to:'2026-11-02',adults:2,ages:[0,8]},selectedDate:null,filters:{meals:['AI']},offers:[{key:'exact-a',total:198600}]},before=JSON.stringify(state);
+ const context={innerWidth:390,state,$:key=>{assert(nodes.has(key),key);return nodes.get(key);},departureRangeText:(from,to)=>from+' — '+to,location:{href:'unchanged'},updateURL:()=>assert.fail('disclosure must not write URL'),startSearch:()=>assert.fail('disclosure must not start a supplier search')};
+ vm.createContext(context);vm.runInContext(section(source,'let resultCalendarExpanded=false;','function renderCalendarStrip(){'),context);
+ const button=nodes.get('.result-calendar-disclosure'),preview=nodes.get('#calendar-preview'),heading=nodes.get('#price-calendar .result-date-heading');
+ const toggle=source.match(/case 'toggle-result-calendar':([^]*?)break;/);assert(toggle,'existing action dispatcher owns the disclosure');
+ const act=()=>vm.runInContext(toggle[1],context);
+ for(const width of [360,390,430]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,false);assert.equal(button.attrs['aria-expanded'],'false');assert.equal(preview.hidden,true);assert.equal(heading.hidden,true);assert.match(nodes.get('#result-calendar-range').textContent,/2026/);}
+ act();assert.equal(button.attrs['aria-expanded'],'true');assert.equal(preview.hidden,false);assert.equal(heading.hidden,false);
+ context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false,'late data/rerender keeps explicit expansion');
+ for(const width of [768,1280]){context.innerWidth=width;context.syncResultCalendarDisclosure();assert.equal(button.hidden,true);assert.equal(preview.hidden,false,'desktop rail stays open');}
+ context.innerWidth=390;context.syncResultCalendarDisclosure();assert.equal(button.attrs['aria-expanded'],'true','return to mobile retains the explicit preference');
+ act();assert.equal(preview.hidden,true);context.innerWidth=1280;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,false);context.innerWidth=360;context.syncResultCalendarDisclosure();assert.equal(preview.hidden,true,'desktop does not rewrite collapsed mobile preference');
+ assert.equal(JSON.stringify(state),before);assert.equal(context.location.href,'unchanged');
+ state.selectedDate='2026-10-29';context.syncResultCalendarDisclosure();assert.match(nodes.get('#result-calendar-range').textContent,/2026-10-29 — 2026-10-29/,'collapsed context follows the actual applied single date');assert.equal(preview.hidden,true);
+ console.log('PASS result calendar disclosure: five ordinary widths, default collapsed/current range, explicit toggle, late rerender, responsive preference, selected-day context; source data/URL/supplier operations unchanged');
+}
+// Keep a flight card visible on a short viewport by moving the existing price
+// into the same inner scroll flow. Other tour modes retain the 200px policy.
+{
+ const block=section(source," if(m.open&&m.classList.contains('tour-dialog')){"," if(m.open&&(v?.scale||1)<=1.01){");
+ const run=(editing,height)=>{
+  const values=new Set(['tour-dialog',...(editing?['tour-flight-editing']:[])]),body={clientHeight:height,append(el){el.parentElement=this;}},footer={prepend(el){el.parentElement=this;}},price={parentElement:footer,getBoundingClientRect:()=>({height:87})};
+  const m={open:true,classList:{contains:k=>values.has(k),toggle(k,v){v?values.add(k):values.delete(k);},remove:k=>values.delete(k)},querySelector:()=>price};
+  const context={innerWidth:360,body,footer,m};vm.createContext(context);const update=()=>vm.runInContext(block,context);update();return {body,footer,price,values,update};
+ };
+ const short=run(true,231);assert.strictEqual(short.price.parentElement,short.body,'short flight choice moves price to preserve list space');short.body.clientHeight=338;short.update();assert.strictEqual(short.price.parentElement,short.body,'height subtraction and hysteresis avoid observer oscillation');short.body.clientHeight=700;short.update();assert.strictEqual(short.price.parentElement,short.footer,'a tall flight viewport restores the fixed price');
+ const ordinary=run(false,231);assert.strictEqual(ordinary.price.parentElement,ordinary.footer,'ordinary selected tour retains its existing 200px decision');
+ console.log('PASS flight viewport allowance: short list retains scroll-flow price, existing subtraction/hysteresis, tall recovery and other-tour200 policy');
+}
 // Execute the connected reveal owner: initial selection stays visible
 // through late ordinary price notices, until the user takes over the view.
 {
@@ -482,3 +516,4 @@ function facetCountRecords(candidate,checkReference=true){
  console.log(`WORK multi-facet source visits ${standaloneReads}->${combinedReads}; five group counts and selected-model parity retained; no cross-refresh cache`);
  console.log(`WORK shared presentation/count source visits ${separateDiscoveryReads}->${dynamicReads}; dynamic star/resort/amenity options and exact counts retained`);
 }
+

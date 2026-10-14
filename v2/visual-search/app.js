@@ -380,7 +380,7 @@ function syncDestinationViewport(){
   if(price&&body.clientHeight>0&&price.getBoundingClientRect().height>0){
    const inBody=price.parentElement===body;
    const fixedSpace=body.clientHeight-(inBody?price.getBoundingClientRect().height+20:0);
-   const scrollingPrice=(innerWidth<=760||m.classList.contains('tour-flight-editing'))&&fixedSpace<200+(inBody?24:0);
+   const scrollingPrice=(innerWidth<=760||m.classList.contains('tour-flight-editing'))&&fixedSpace<(m.classList.contains('tour-flight-editing')?280:200)+(inBody?24:0);
    m.classList.toggle('tour-scrolling-price',scrollingPrice);
    if(scrollingPrice&&!inBody)body.append(price);
    else if(!scrollingPrice&&inBody)footer.prepend(price);
@@ -787,6 +787,15 @@ function resultCalendarPrices(days){
 function calendarStripEntries({days,prices,min,max}){return days.map((day,i)=>{const price=prices[i];return {day,markup:`<button class="date-price ${price!==null&&price===min?'best':''} ${state.selectedDate===day?'selected':''}" data-action="select-date" data-date="${day}" aria-pressed="${state.selectedDate===day}" aria-label="Вылет ${dateLong(day)}${price!==null?', от '+money(price):', цена не сохранена; дату можно выбрать'}${state.selectedDate===day?', выбрано; нажмите ещё раз, чтобы вернуть все даты':''}"><span class="date">${Number(day.slice(-2))}</span><strong>${price===null?'—':shortAmount(price,true)}</strong></button>`};});}
 function calendarStripHTML(model){return calendarStripEntries(model).map(entry=>entry.markup).join('');}
 function paintCalendarStrip(strip,entries){paintGeneratedRoots(strip,entries,true,'day');}
+let resultCalendarExpanded=false;
+function syncResultCalendarDisclosure(){
+ const mobile=innerWidth<=760,expanded=!mobile||resultCalendarExpanded,button=$('.result-calendar-disclosure');
+ button.hidden=!mobile;button.setAttribute('aria-expanded',String(expanded));button.setAttribute('aria-label',(expanded?'Свернуть':'Развернуть')+' даты и цены');
+ $('#calendar-preview').hidden=!expanded;$('#price-calendar .result-date-heading').hidden=!expanded;
+ $('#price-calendar').classList.toggle('calendar-expanded',expanded);
+ const s=state.search,from=state.selectedDate||s.from,to=state.selectedDate||s.to;
+ $('#result-calendar-range').textContent=departureRangeText(from,to)+(from.slice(0,4)===to.slice(0,4)?' · '+from.slice(0,4):'');
+}
 function renderCalendarStrip(){
  const refreshBase=resultCalendar.refreshBase===true;resultCalendar.refreshBase=false;
  loadResultCalendar();
@@ -805,6 +814,7 @@ function renderCalendarStrip(){
  $('#calendar-selected-date').textContent=state.selectedDate?`Вылет ${dateLong(state.selectedDate)}`:'';
  $('#calendar-selected-date').parentElement.hidden=!state.selectedDate;
  $('#clear-date').hidden=!state.selectedDate;
+ syncResultCalendarDisclosure();
  refreshEmptyCalendarContext();
 }
 const mobileDetailFilterKeys=new Set(['amenities','favorites','hotelId','hotelIds','q','resorts','operators','flight','spa']);
@@ -1886,7 +1896,7 @@ function updateFlightPreview(){
  }
  const current=data.amount(flightDraft.base.total),before=current||data.amount(flightDraft.base.quoteListingTotal),delta=before?o.total-before:null;
  $('#flight-total').textContent=o.pricePending?'Цена уточняется':money(o.total);
- $('#flight-price-change').textContent=o.pricePending?'Итог этой пары не подтверждён · рейс можно оставить менеджеру':!delta?'Предварительный выбор · подтвердите':`${delta>0?'Дороже':'Дешевле'} на ${money(Math.abs(delta))} · ${current?'было':'в выдаче'} ${money(before)}`;
+ $('#flight-price-change').textContent=o.pricePending?'Цена пары не подтверждена':!delta?'Предварительный выбор · подтвердите':`${delta>0?'Дороже':'Дешевле'} на ${money(Math.abs(delta))} · ${current?'было':'в выдаче'} ${money(before)}`;
  const fuel=$('.tour-fuel-disclosure'),fuelOpen=fuel?.open;
  if(fuel){fuel.outerHTML=fuelDisclosureHTML(o);$('.tour-fuel-disclosure').open=fuelOpen;}
  action.disabled=false;
@@ -2632,6 +2642,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  if(handleSearchParameterAction(action,b,id))return;
  if(handleResultFilterAction(action,b,id))return;
  switch(action){
+ case 'toggle-result-calendar':resultCalendarExpanded=!resultCalendarExpanded;syncResultCalendarDisclosure();break;
  case 'choose-flight':openFlightPicker();break;case 'apply-flight':applyFlightPair();break;
  case 'select-anex-tour':if(selectedOffer)refreshLiveHotel(selectedOffer.hotelId,{selectFlights:true});break;
  case 'retry-flight-picker':if(modalType==='flights')renderFlightPicker();break;
@@ -2697,6 +2708,7 @@ $('#modal-body').addEventListener('touchstart',e=>{touchStart=null;if(modalType=
 $('#modal-body').addEventListener('touchcancel',()=>{touchStart=null;},{passive:true});
 $('#modal-body').addEventListener('touchend',e=>{const start=touchStart;touchStart=null;if(modalType!=='gallery'||!start||start.id!==gallery.id||!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-start.x,dy=e.changedTouches[0].clientY-start.y;if(Math.abs(dx)>45&&Math.abs(dx)>Math.abs(dy)*1.5){const count=hotels.find(h=>h.id===gallery.id).photos.length;gallery.index=(gallery.index+(dx<0?1:-1)+count)%count;renderGallery();}},{passive:true});
 window.addEventListener('resize',()=>{
+ syncResultCalendarDisclosure();
  if(innerWidth>1100&&$('#filter-panel').classList.contains('open'))closeFilters({apply:true,adapt:true});
  syncDestinationViewport();
  if(modalType!=='dates')return;
@@ -2807,3 +2819,4 @@ addEventListener('resize',scheduleCompactSearch);
 new IntersectionObserver(scheduleCompactSearch,{threshold:0}).observe($('#search'));
 updateCompactSearch();
 })();
+
