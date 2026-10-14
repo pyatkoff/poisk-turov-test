@@ -3,6 +3,48 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http'),{execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const {fixture,trip,hotelCatalogue,day,back}=require('./search3-visual-live-fixture.cjs');
+async function offlineClonedChoiceJourney(browser,origin,base,evidence){
+ const receipts=[];
+ for(const width of [360,390,430,768,1280]){
+  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),forbidden=[],errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());
+   if(request.method()==='GET'&&url.origin===origin&&url.pathname.startsWith(base+'visual-search/')&&!url.pathname.includes('/data/')){await route.continue();return;}
+   forbidden.push(request.method()+' '+url.pathname);await route.abort();
+  });
+  try{
+   await page.goto(origin+base+'visual-search/index.html?scenario=flights');
+   const card=page.locator('#hotel-900001');await card.locator('[data-card-entry]').waitFor();
+   await card.locator('[data-card-entry]').click();await page.locator('[data-action="retry-flights"]').click();
+   await page.locator('[name="flight-pair"][value="1"]').check();await page.locator('[data-action="apply-flight"]').click();
+   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/187700/);
+   await page.locator('[data-action="confirm-tour"]').click();
+   await page.locator('#prototype-lead-form [name="phone"]').fill('+7 000 000-00-00');await page.locator('#prototype-lead-form [name="consent"]').check();
+   await page.getByRole('button',{name:'Проверить заявку',exact:true}).click();assert.match(await page.locator('.handoff-status').textContent(),/Заявка не отправлена/);
+   await page.screenshot({path:path.join(evidence,'offline-contact-'+width+'.png')});
+   await page.locator('#modal-back').click();await page.locator('[data-action="close-modal"]').click();
+   const retained=card.locator('.current-card-selection');await retained.waitFor();assert.match((await retained.textContent()).replace(/\s/g,''),/187700/);assert.match(await retained.textContent(),/06:05/);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   await page.screenshot({path:path.join(evidence,'offline-choice-return-'+width+'.png')});
+   await retained.locator('[data-card-selection]').click();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/187700/);assert.match(await page.locator('.flight-summary').textContent(),/06:05/);
+   await page.locator('[data-action="confirm-tour"]').click();assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 000 000-00-00');assert.equal(await page.locator('[name="consent"]').isChecked(),true);
+   await page.locator('#modal-back').click();await page.locator('[data-action="choose-flight"]').click();
+   await page.locator('[name="flight-pair"][value="2"]').check();await page.locator('[data-action="modal-back"]').click();
+   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/187700/);
+   await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="2"]').check();await page.locator('[data-action="apply-flight"]').click();await page.locator('[data-action="confirm-tour"]').click();
+   assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/189000/);assert.equal(await page.locator('[name="consent"]').isChecked(),false);assert.equal(await page.locator('[name="phone"]').inputValue(),'+7 000 000-00-00');
+   await page.locator('[data-action="close-modal"]').click();
+   await page.locator('#applied-search [data-action="edit-search"]').click();await page.locator('.search-submit').click();
+   await card.locator('[data-card-entry]').waitFor();assert.equal(await card.locator('.current-card-selection').count(),0,'new same-query search invalidates the fictional selection');
+   assert.deepEqual(forbidden,[],'offline journey has no data/provider/lead HTTP');assert.deepEqual(errors,[]);
+   receipts.push({width,scenario:'flights',fixture_only:true,local_validation:true,chosen_pair_retained:true,draft_retained:true,Cancel_retains_pair:true,changed_pair_resets_consent:true,new_same_query_invalidates:true,supplier_HTTP:0,real_leads:0,physicalSafari:false});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'offline-choice-return.json'),JSON.stringify(receipts,null,2));
+ console.log('PASS offline cloned-choice compiled journey: five widths, local validation, Close/Continue/pair/draft/Cancel/consent and new-search invalidation; supplier HTTP0');
+}
+
 const mobileCardPriceLayout=async(page,width,evidence)=>{
  if(width!==390){
   const boxes=await page.locator('.hotel-card').first().evaluate(el=>({photo:el.querySelector('.hotel-image-wrap').getBoundingClientRect().width,thumbs:[...el.querySelectorAll('.card-thumb')].map(t=>t.getBoundingClientRect().width)}));
@@ -1833,6 +1875,7 @@ const server=http.createServer((req,res)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
+ await offlineClonedChoiceJourney(browser,origin,base,evidence);
  await chosenDepartureJourney(browser,origin,base,evidence);
  // Each journey owns its context, fictional transport and evidence names. Keep
  // both complete matrices; settle both before closing the shared browser.

@@ -843,9 +843,16 @@ function hotelHighlightsHTML(h){
  if(capturedFacts.length>1&&capturedFacts.every(label=>label.length<=56))return `<ul class="hotel-highlight-list" aria-label="Особенности отеля">${[...new Set(capturedFacts)].slice(0,3).map(label=>`<li>${esc(label)}</li>`).join('')}</ul>`;
  return text?`<span>${esc(text)}</span>`:'';
 }
+function sameSelectedOfferSource(listing){
+ if(!listing||!selectedOffer||listing.provider!==selectedOffer.provider)return false;
+ if(listing.provider!=='fixture')return listing.raw===selectedOffer.raw;
+ // Offline rows are cloned by the existing adapter and calendar merge. Bind
+ // only fictional choices to the current response generation, never live data.
+ return selectedOffer.fixtureSelectionScope===searchResponse&&selectedOffer.fixtureSelectionScenario===data.scenario;
+}
 function cardHTML({hotel:h,offers,rating=ratingValue(h)}){
  const o=offers[0],ratingLabel=rating===null?'—':ratingFormatter.format(rating),listing=h.offers.find(row=>row.key===selectedOffer?.key);
- const current=listing&&listing.raw===selectedOffer?.raw&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||listing.total)===listing.total?selectedOffer:null;
+ const current=listing&&sameSelectedOfferSource(listing)&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||listing.total)===listing.total?selectedOffer:null;
  const currentVisible=current&&offers.some(row=>row.key===current.key),currentNeedsCheck=current&&(['anex','andromeda'].includes(current.provider)||current.loading||current.flightsLoading||current.pricePending||current.quoteError||needsRefresh(current));
  const currentLegs=current?savedFlightLegs(current):[],currentFlight=currentLegs.length?currentLegs.map((leg,i)=>(i?'Обратно':'Туда')+' '+flightDateText(leg.departureDate)+' '+leg.times).join(' · '):current?savedFlightTextPlain(current):'';
  const currentHTML=current?`<section class="current-card-selection" aria-label="Ваш выбранный тур" data-selected-key="${esc(current.key)}"><div class="card-selection-copy"><strong>${icon('check')} Ваш выбор${currentVisible?'':' <small>Не входит в текущие фильтры</small>'}</strong><p>${dateText(current.day)} → ${dateText(current.returnDay)} · ${nightsText(current.nights)} · ${esc(guestsText(current))}</p><p>${esc(current.room)} · ${esc(mealLabel(current))}</p><small>${esc(current.operator)}</small><small>${esc(currentFlight)}</small></div><div class="card-selection-price"><span>${currentNeedsCheck?'Цена и условия требуют проверки':'За всех туристов'}</span><strong>${current.loading||current.pricePending?'Уточняется':money(current.total)}</strong><small>${esc(selectedPriceStatus(current))}</small></div><button class="secondary" data-action="offer" data-card-selection="true" data-key="${esc(current.key)}" aria-label="Продолжить выбранный тур: ${esc(h.name)}, ${esc(current.room)}, ${esc(mealLabel(current))}, ${dateText(current.day)}">Продолжить выбор ${icon('arrow')}</button></section>`:'';
@@ -872,7 +879,7 @@ function refreshOpenHotelRooms(){
 }
 function syncHotelOfferSelection(id,offers=hotelOffers(hotels.find(h=>h.id===id))){
  let selected=offers.find(o=>hotelOfferDraft?.hotelId===id&&hotelOfferDraft.key===o.key)||null;
- if(selected&&selected.raw===selectedOffer?.raw&&searchKey(selectedOffer?.search||{})===searchKey(state.search)&&!selectedOffer?.pricePending&&!['anex','andromeda'].includes(selectedOffer?.provider)&&selectedOffer?.key===selected.key&&sameSelectedTourConditions(selected,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===selected.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError)selected=selectedOffer;
+ if(selected&&sameSelectedOfferSource(selected)&&searchKey(selectedOffer?.search||{})===searchKey(state.search)&&!selectedOffer?.pricePending&&!['anex','andromeda'].includes(selectedOffer?.provider)&&selectedOffer?.key===selected.key&&sameSelectedTourConditions(selected,selectedOffer)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===selected.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError)selected=selectedOffer;
  $$('.room-offer-choice').forEach(row=>{
   const active=row.dataset.offerKey===selected?.key;row.classList.toggle('selected',active);
   if(active)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
@@ -1177,7 +1184,7 @@ function reopenUIRoute(route){
  }
  case 'flights':{
   const o=offerFromKey(route.key),retained=selectedOffer?.key===route.key?selectedOffer:retainedProviderView(o)?.offer;
-  if(!o||!retained||retained.raw!==o.raw||retained.loading||retained.flightsLoading||needsRefresh(retained)||!retained.variants?.length)return false;
+  if(!o||!retained||!(o.provider==='fixture'?retained===selectedOffer&&sameSelectedOfferSource(o):retained.raw===o.raw)||retained.loading||retained.flightsLoading||needsRefresh(retained)||!retained.variants?.length)return false;
   selectedOffer=retained;openFlightPicker(route);break;
  }
  case 'favorites':openFavorites();break;
@@ -1722,7 +1729,8 @@ async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
  }
 }
 async function openOffer(key,restored=null,chooseFlight=false){
- const initial=restored||offerFromKey(key);if(!initial)return;
+ const listing=restored||offerFromKey(key);if(!listing)return;
+ const initial=listing.provider==='fixture'&&!restored?{...listing,fixtureSelectionScope:searchResponse,fixtureSelectionScenario:data.scenario}:listing;
  andromedaApplicationDraft=null;const run=++selectionGeneration;selectedOffer={...initial};if(restoreProviderView(initial)){if(chooseFlight){if(selectedOffer?.variants?.length)openFlightPicker();else if(modalType==='offer'&&selectedOffer?.tour)await loadRealFlights(run,{chooseFlight:true});}return;}renderRealOffer();
  if(needsRefresh(initial)){
   if(initial.provider==='andromeda'&&data.hasAndromedaQuoteAttempt?.(initial))await refreshHotel(initial.hotelId);
@@ -2697,8 +2705,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'remove-offer-filter':if(offerRefinementFields.includes(b.dataset.field)&&offerView){offerView[b.dataset.field]='';renderOfferList(true);$('#offer-count').focus();}break;
  case 'reset-offer-filters':offerView.departure='';offerView.flight='';offerView.room='';offerView.meal='';renderOfferList(true);break;
  case 'select-hotel-offer':{const o=offerFromKey(b.dataset.key),id=Number($('.hotel-section-nav')?.dataset.hotelId);if(!o||o.hotelId!==id)break;hotelOfferDraft={hotelId:id,key:o.key};syncHotelOfferSelection(id);rememberUIRoute();break;}
- case 'continue-hotel-offer':{const key=hotelOfferDraft?.key||b.dataset.key,o=offerFromKey(key);if(!o||o.hotelId!==hotelOfferDraft?.hotelId)break;const retained=['fixture','recorded'].includes(o.provider)&&o.raw===selectedOffer?.raw&&selectedOffer?.key===key&&sameSelectedTourConditions(o,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||o.total)===o.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError?selectedOffer:null;openOffer(key,retained);break;}
- case 'offer':{const key=b.dataset.key,o=offerFromKey(key),retained=!b.dataset.cardEntry&&o&&['fixture','recorded'].includes(o.provider)&&o.raw===selectedOffer?.raw&&selectedOffer?.key===key&&sameSelectedTourConditions(o,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||o.total)===o.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError?selectedOffer:null;openOffer(key,retained);break;}case 'start-lead':openLeadWithQuote(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'andromeda-application-preview':openAndromedaApplicationPreview();break;case 'anex-application-preview':openAnexApplicationPreview();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'anex-flights':loadAnexFlightInventory();break;case 'anex-package-quote':loadAnexPackageQuote();break;case 'anex-package-calculate':loadAnexPackageQuote(true);break;
+ case 'continue-hotel-offer':{const key=hotelOfferDraft?.key||b.dataset.key,o=offerFromKey(key);if(!o||o.hotelId!==hotelOfferDraft?.hotelId)break;const retained=['fixture','recorded'].includes(o.provider)&&sameSelectedOfferSource(o)&&selectedOffer?.key===key&&sameSelectedTourConditions(o,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||o.total)===o.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError?selectedOffer:null;openOffer(key,retained);break;}
+ case 'offer':{const key=b.dataset.key,o=offerFromKey(key),retained=!b.dataset.cardEntry&&o&&['fixture','recorded'].includes(o.provider)&&sameSelectedOfferSource(o)&&selectedOffer?.key===key&&sameSelectedTourConditions(o,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||o.total)===o.total&&!selectedOffer.loading&&!selectedOffer.flightsLoading&&!selectedOffer.quoteError?selectedOffer:null;openOffer(key,retained);break;}case 'start-lead':openLeadWithQuote(b.dataset.key);break;case 'confirm-tour':confirmTour();break;case 'andromeda-application-preview':openAndromedaApplicationPreview();break;case 'anex-application-preview':openAnexApplicationPreview();break;case 'apply-andromeda-flights':applyAndromedaFlightChoice();break;case 'anex-additional-prices':applyAnexAdditionalPrices();break;case 'anex-flights':loadAnexFlightInventory();break;case 'anex-package-quote':loadAnexPackageQuote();break;case 'anex-package-calculate':loadAnexPackageQuote(true);break;
  case 'edit-andromeda-flights':{const view=retainedProviderView(selectedOffer);if(view?.result?.repricing?.enabled===true&&!view.pending&&!view.sealed){view.editing=true;openAndromedaFlightChoice(selectedOffer,view.result);}break;}
  case 'edit-anex-flights':{const view=retainedProviderView(selectedOffer);if(view?.result?.repricing?.enabled===true&&!view.pending&&!view.sealed){view.editing=true;openAnexPackageQuote(selectedOffer,view.result);}break;}
  case 'gallery':openGallery(id,state.photoIndexes[id]||0);break;case 'gallery-next':case 'gallery-prev':{const count=hotels.find(h=>h.id===gallery.id).photos.length;gallery.index=(gallery.index+(action==='gallery-next'?1:-1)+count)%count;renderGallery();break}

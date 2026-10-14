@@ -749,5 +749,37 @@ for(const mutation of [
 console.log('PASS final merge inventory: normalized duplicate/saved/sparse/inherited/getter-mutation parity; 1000 offers read 2000→1000, flatMap intermediate 1000→0 in preview/live; no supplier/lead HTTP');
 require('./search3-visual-rating-render-inventory.cjs');
 
+// OFFLINE_CLONED_CHOICE_REGRESSION_BEGIN
+// Reproduce the installed native Close/card failure with the actual card and
+// offer owners. Transport/DOM are collaborators; no supplier or lead executes.
+{
+ const search={origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-07',minNights:7,maxNights:7,adults:2,ages:[]};
+ const listing={key:'demo-flight-24',hotelId:900001,provider:'fixture',raw:{selectionEnabled:true},search:copy(search),origin:'Москва',day:'2026-10-01',returnDay:'2026-10-08',nights:7,adults:2,ages:[],room:'Standard',meal:'AI',operator:'Demo',flight:'regular',total:186400};
+ const ctx={selectedOffer:null,selectionGeneration:0,andromedaApplicationDraft:null,searchResponse:{key:JSON.stringify(search),phase:'complete'},data:{scenario:'flights',variantPrice:(_,v)=>v.price},state:{search,photoIndexes:{},favorites:[]},optionalShortlistEnabled:false,popularity:null,countryNames:{'4':'Турция'},ratingValue:()=>null,ratingFormatter:new Intl.NumberFormat('ru-RU'),esc,icon:()=>'',searchKey:s=>JSON.stringify(s),needsRefresh:()=>false,restoreProviderView:()=>false,renderRealOffer:()=>{},offerFromKey:()=>ctx.listing,
+   savedFlightLegs:o=>o.flightChoiceId==='1'?[{departureDate:'2026-10-01',times:'06:05 → 10:40'},{departureDate:'2026-10-08',times:'08:05 → 12:40'}]:[],savedFlightTextPlain:()=>'',selectedPriceStatus:()=> 'Демонстрационная цена',flightDateText:x=>x,dateText:x=>x,nightsText:n=>String(n),guestsText:()=> '2 взр.',mealLabel:o=>o.meal,money:n=>n+' ₽',cardPriceNote:()=> 'Демо',photoUrl:()=>'',hotelStarsHTML:()=>'',hotelHighlightsHTML:()=>'',minimumOfferSummary:()=>''};
+ ctx.listing=copy(listing);vm.createContext(ctx);
+ vm.runInContext(section(app,'function sameSelectedTourConditions(','function savedHotelPhoto('),ctx);
+ if(app.includes('function sameSelectedOfferSource('))vm.runInContext(section(app,'function sameSelectedOfferSource(','function cardHTML('),ctx);
+ vm.runInContext(section(app,'async function openOffer(','async function loadRealFlights('),ctx);
+ vm.runInContext(section(app,'function cardHTML(','function refreshOpenHotelRooms('),ctx);
+ ctx.openOffer(listing.key);ctx.selectedOffer={...ctx.selectedOffer,quoteListingTotal:186400,total:187700,flightChoiceId:'1',tour:{price:186400},variants:[{},{}]};
+ const hotel={id:900001,name:'Azure Bay Resort · демо',resort:'Белек',country:'4',photos:[],offers:[copy(listing)]};
+ const render=()=>ctx.cardHTML({hotel,offers:hotel.offers});
+ assert.match(render(),/current-card-selection/,'Close returns the same fictional pair despite cloned raw rows');
+ assert.match(render(),/187700 ₽/);assert.match(render(),/06:05 → 10:40/);assert.match(render(),/Продолжить выбор/);
+ const response=ctx.searchResponse;ctx.searchResponse={...response};assert.doesNotMatch(render(),/current-card-selection/,'new same-query response cannot reuse a fictional choice');ctx.searchResponse=response;
+ ctx.data.scenario='flight-error';assert.doesNotMatch(render(),/current-card-selection/,'another scenario cannot reuse the fictional pair');ctx.data.scenario='flights';
+ for(const [field,value]of [['room','Another room'],['meal','BB'],['adults',3],['day','2026-10-02'],['total',999999]]){
+  const before=hotel.offers[0][field];hotel.offers[0][field]=value;assert.doesNotMatch(render(),/current-card-selection/,'changed '+field+' invalidates exact choice');hotel.offers[0][field]=before;
+ }
+ for(const provider of ['recorded','tourvisor','anex','andromeda']){
+  ctx.listing={...copy(listing),provider};ctx.openOffer(listing.key);ctx.selectedOffer={...ctx.selectedOffer,quoteListingTotal:186400,total:187700,flightChoiceId:'1'};
+  hotel.offers=[copy(ctx.listing)];assert.doesNotMatch(render(),/current-card-selection/,provider+' keeps raw-object identity guard');
+  hotel.offers[0].raw=ctx.selectedOffer.raw;assert.match(render(),/current-card-selection/,provider+' keeps the canonical retained object');
+ }
+ console.log('PASS offline cloned-card return: actual owner retains same187700 pair; new response/scenario/conditions/amount rejected; real and recorded raw identity unchanged');
+}
+// OFFLINE_CLONED_CHOICE_REGRESSION_END
+
 // Run the approved whole form and exact-offer return against actual runtime scripts.
 require('./search3-visual-approved-interface.cjs');

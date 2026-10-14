@@ -143,3 +143,31 @@ SEARCH-QUALITY-1 uses the existing12/11/5 rubric. Donor mockup and clickable sco
 retain their exact evidence; receiving source/CI/approval earns no points. The
 installed NEXT score remains separate and requires matched rendered/behavior
 acceptance after the exact publication; no invented row total or donor inheritance.
+
+## Original Site197 receiving offline selection regression — 2026-10-14
+
+Native installed NEXT source298/releasea087/artifact11917935223 desktop1363x936
+exposed flights demo validates DEMO102/pair2 at187700, exact contact review,
+internal Back, Cancel and changed-pair consent reset without supplier/lead HTTP.
+After Close the receiving card loses the existing selected-choice continuation.
+Original approved Site197/c2a/public projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a
+at390 retains187700, exact pair times and Continue choice in the same demo.
+This is a receiving regression against the approved whole version, not a new
+design or a live price/availability/delivery claim. Claim6178967024 / extension6178998003.
+
+The adapter clones fictional raw rows. The existing UI raw-identity guard rejects
+those copies. Bind only fixture-provider choices to the existing search-response
+object and scenario at initial selection. Keep exact key, conditions, applied
+search and listing-price checks; new same-query response/scenario invalidates.
+Real/recorded providers keep raw-object identity. Current minimum card entry still
+chooses its displayed offer; the existing Continue choice restores the committed
+pair. Same selection reaches the existing contact owner; no second renderer/CSS.
+
+Data, quoteSelectedOffer, withFlightPair, provider/price/fuel/lead owner bodies
+stay unchanged. Restore only approved existing card/room/history continuation.
+Focused actual-owner regression must fail the installed source and pass the fix;
+stock five-width compiled offline/contact/Close/Continue/new-search regression
+and all existing provider matrices/CI must pass on the exact final head. A fresh
+exclusive publisher claim and installed readback remain mandatory. No repeated
+publication of6175113010/38613102629 or new Site/native version. PhysicalSafari and
+installed phone-native paths remain unmeasured;200% deferred.
