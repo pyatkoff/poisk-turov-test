@@ -137,4 +137,3 @@ const server=http.createServer((req,res)=>{
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled approved interface and cold offer-list browser',JSON.stringify(receipts));
 })().catch(error=>{console.error(error);process.exitCode=1;});
-

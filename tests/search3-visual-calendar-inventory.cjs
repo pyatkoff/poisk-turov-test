@@ -516,4 +516,3 @@ function facetCountRecords(candidate,checkReference=true){
  console.log(`WORK multi-facet source visits ${standaloneReads}->${combinedReads}; five group counts and selected-model parity retained; no cross-refresh cache`);
  console.log(`WORK shared presentation/count source visits ${separateDiscoveryReads}->${dynamicReads}; dynamic star/resort/amenity options and exact counts retained`);
 }
-

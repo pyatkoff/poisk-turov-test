@@ -91,7 +91,7 @@ function observe(source,s){
  if(observedOwner.includes('offerView.mode'))ctx.offerView.mode='list';
   ctx.partyLabel=()=> '2 взрослых';ctx.shortAmount=n=>String(n);
   node('#calendar-selected-date').parentElement=node('#calendar-selection');
- vm.createContext(ctx);vm.runInContext(observedOwner,ctx);
+ vm.createContext(ctx);vm.runInContext(app.match(/^const departureRangeText=[^\n]+/m)[0],ctx);vm.runInContext(observedOwner,ctx);
  if(observedOwner.includes('appendGeneratedRoots(cards,entries,more)'))ctx.appendGeneratedRoots=(container,entries)=>record('appendGeneratedRoots',entries.length);
  if(s.kind==='results'){
   if(s.sameScope)vm.runInContext("renderedCardScope=JSON.stringify([state.search,state.filters,state.selectedDate,state.sort,state.onlyFavorites,data.scenario]);renderedCardLimit=48;",ctx);
@@ -181,6 +181,11 @@ function stableObservations(rows){return rows.map((row,index)=>{
  if(scenario.kind==='calendar'){
   for(const c of r.trace)if(c[0]==='write'&&c[1]==='#calendar-units'&&c[2]==='textContent')c[3]='approved whole-tour unit label';
   for(const [key,n]of r.dom)if(key==='#calendar-units')n.textContent='approved whole-tour unit label';
+  // The new mobile disclosure is separately exercised by the actual calendar
+  // runner. Preserve this historical price/data oracle and remove only its
+  // explicitly new display nodes; every price/date/state observation remains.
+  const disclosureNodes=new Set(['.result-calendar-disclosure','#calendar-preview','#price-calendar .result-date-heading','#price-calendar','#result-calendar-range']);
+  r.trace=r.trace.filter(c=>!disclosureNodes.has(c[1]));r.dom=r.dom.filter(([key])=>!disclosureNodes.has(key));
  }
  return {...row,result:r};
 });}
@@ -733,3 +738,4 @@ require('./search3-visual-rating-render-inventory.cjs');
 
 // Run the approved whole form and exact-offer return against actual runtime scripts.
 require('./search3-visual-approved-interface.cjs');
+
