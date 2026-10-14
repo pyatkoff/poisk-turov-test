@@ -877,13 +877,20 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});
         await page.evaluate(()=>{window.__nativeFixture.failNextSearch=true;});
         await screen('search').locator('button[type="submit"]').click();
-        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].some(node=>!node.hidden&&node.textContent.includes('Не удалось завершить поиск')));
+        const failedAlert=product.locator('[data-source-alert]');
+        assert.equal((await failedAlert.innerText()).includes('FICTIONAL'),false,'Raw bridge failures never become presentation copy');
+        assert.equal(await failedAlert.locator('strong').innerText(),'Не удалось завершить поиск');
+        assert.match(await failedAlert.innerText(),/Полученные предложения сохранены/);
+        assert.equal(await failedAlert.locator('[data-action="search"]').innerText(),'Изменить и повторить');
         await capture(page,'native',width,percent,'error',row);
         assert.equal(await product.locator('.st-hotel-card').count(),4,'Search failure retains received rows');
-        row.proof.errorRetainedRows=4;
-        await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});await screen('search').locator('button[type="submit"]').click();
+        await failedAlert.locator('[data-action="search"]').click();await screen('search').waitFor({state:'visible'});
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts+1,'Opening retry parameters starts no supplier search');
+        row.proof.errorRetainedRows=4;row.proof.errorRawMessageHidden=true;row.proof.errorRetryPreparationExtraSearches=0;
+        await screen('search').locator('button[type="submit"]').click();
         await waitForFixture(page,()=>window.__nativeFixture.calls.search===3);
-        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden||!node.textContent.includes('FICTIONAL controlled search failure')));
+        await waitForFixture(page,()=>[...document.querySelectorAll('[data-source-alert]')].every(node=>node.hidden));
         assert.equal(await product.locator('.st-hotel-card').count(),4);
         row.proof.explicitSearchRetryCount=1;row.proof.retryRows=4;
         await product.locator('[data-favorite="1"]').click();
@@ -908,8 +915,11 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.equal(retained.searches,1);assert.equal(retained.other,0);
           const alert=actualProduct.locator('[data-source-alert]');
           assert.equal(await alert.isVisible(),kind!=='complete');
-          if(kind==='partial')assert.equal(await alert.innerText(),'Показаны предложения: ANEX. Не все источники завершили поиск: Tourvisor и Andromeda.');
-          if(kind==='error')assert.equal(await alert.innerText(),retained.messageBefore);
+          if(kind==='partial')assert.equal(await alert.innerText(),'Поиск завершён не полностью\nПоказаны предложения: ANEX. Не все источники завершили поиск: Tourvisor и Andromeda.');
+          if(kind==='error'){
+            assert.match(await alert.innerText(),/^Не удалось завершить поиск\nПолученные предложения сохранены/);
+            assert.equal((await alert.innerText()).includes(retained.messageBefore),false,'Terminal bridge detail is not copied into UI');
+          }
           assert.equal(await actualProduct.locator('[data-result-count]').innerText(),'4 отеля');
           await capture(page,'native',width,percent,'terminal-'+kind,row);
         }

@@ -26,6 +26,22 @@
     if (!received.length) return '';
     return 'Показаны предложения: ' + sourceList(received) + '. ' + (incomplete.length ? 'Не все источники завершили поиск: ' + sourceList(incomplete) + '.' : 'Поиск завершён не полностью.');
   }
+  function resultStatusMessage(state) {
+    if (state.status === 'loading') return {
+      title:'Идёт поиск',
+      detail:'Найденные туры уже доступны для просмотра.'
+    };
+    if (state.status === 'error') return {
+      title:'Не удалось завершить поиск',
+      detail:'Полученные предложения сохранены. Измените условия или повторите поиск.',
+      action:'Изменить и повторить'
+    };
+    if (state.status === 'partial') return {
+      title:'Поиск завершён не полностью',
+      detail:partialSourceMessage(state) || 'Полученные предложения сохранены.'
+    };
+    return null;
+  }
   const favoriteKey = 'anytour.prototype.v18.favorites.v1';
   function mount({root, bridge, initialState, onReady}) {
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
@@ -298,8 +314,9 @@
       text('[data-result-count]',!state.hasSearched?'Поиск ещё не запускали':loadingEmpty?'Ищем…':partialEmpty?'Неполные данные':errorEmpty?'Поиск прерван':countText(found.length));
       $('.st-sort').value=state.sort;
       $('.st-search-done').hidden=state.status!=='complete';
-      $('[data-source-alert]').hidden=!['loading','partial','error'].includes(state.status)||loadingEmpty&&!state.message||(errorEmpty||partialEmpty)&&(!state.message||/^API HTTP \d{3}$/.test(state.message));
-      $('[data-source-alert]').textContent=state.message&&!/^API HTTP \d{3}$/.test(state.message)?state.message:(state.status==='loading'?'Предложения загружаются. Найденные туры доступны для просмотра.':state.status==='error'?'Не удалось завершить поиск. Полученные предложения сохранены.':partialSourceMessage(state)||'Поиск завершён не полностью.');
+      const sourceAlert=$('[data-source-alert]'),statusMessage=resultStatusMessage(state);
+      sourceAlert.hidden=!statusMessage||!state.hotels.length;
+      sourceAlert.innerHTML=sourceAlert.hidden?'':`<strong>${esc(statusMessage.title)}</strong><span>${esc(statusMessage.detail)}</span>${statusMessage.action?`<div class="st-alert-actions"><button type="button" class="st-link cursor-interaction" data-action="search">${esc(statusMessage.action)}</button></div>`:''}`;
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
       let more=$('[data-result-more]');
