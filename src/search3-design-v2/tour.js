@@ -63,7 +63,12 @@
         sections[1].dataset.nativeFlightSection = '';
         sections[1].innerHTML = '<div class="st-step-label">ПЕРЕЛЁТ</div><div class="st-section-top"><h3>Туда и обратно</h3><span class="st-status-pill" data-native-flight-status>Требует проверки</span></div><div data-native-flight-content></div>';
       }
-      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">СОСТАВ ТУРА</div><div class="st-included-list" data-native-inclusions></div>';
+      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">СОСТАВ ТУРА</div><ul class="st-native-package-facts" data-native-inclusions><li>'+icon('bed-double')+'<span><b>Проживание:</b> <span data-native-inclusion-room></span></span></li><li>'+icon('utensils')+'<span><b>Питание:</b> <span data-native-inclusion-meal></span></span></li></ul><p class="st-small st-muted st-native-package-note">Перелёт, трансфер, страховка и обязательные доплаты требуют подтверждения по условиям пакета.</p>';
+      const costDetails = tourScreen.querySelector('.st-tour-layout > aside');
+      if (costDetails) {
+        costDetails.dataset.nativeCostDetails='';
+        if (root.classList.contains('st-mobile')) costDetails.querySelector('h3').textContent='Условия тура';
+      }
       let status = $('[data-native-tour-status]');
       if (!status) {status = window.document.createElement('p');status.className = 'st-small st-muted';status.dataset.nativeTourStatus='';status.setAttribute('aria-live','polite');tourScreen.querySelector('.st-screen-title').insertAdjacentElement('afterend',status);}
       const consent = form.querySelector('input[type="checkbox"]');
@@ -161,7 +166,7 @@
         else flightContent.innerHTML='<p class="st-small st-muted">'+esc(error || 'Рейсы не подтверждены.')+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Проверить тур</button>' : '');
       }
       text('[data-native-flight-status]',value?.quoteResult?.state==='quote_verified' || value?.flightChoiceId!==null && value?.flightChoiceId!==undefined ? 'Выбранный перелёт' : 'Требует уточнения');
-      text('[data-native-inclusions]','Проживание: '+room+' · Питание: '+meal+'. Перелёт, трансфер, страховку и обязательные доплаты следует сверить по условиям выбранного пакета.');
+      text('[data-native-inclusion-room]',room);text('[data-native-inclusion-meal]',meal);
       const supplements=tourScreen.querySelector('.st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(busy ? 'Проверяем точное предложение…' : failure, Boolean(failure));
