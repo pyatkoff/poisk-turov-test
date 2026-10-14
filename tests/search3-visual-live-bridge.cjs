@@ -722,7 +722,7 @@ async function pickerRetainedDraftRegressions(){
  assert.match(q('.lead-message').textContent,/Срок подтверждения тура истёк/);assert.equal(q('#prototype-lead-form').dataset.checked,undefined);
  assert.equal(q('[name="phone"]').value,'+7 999 123-45-67');
  click('[data-action="close-modal"]');await settle();w.history.forward();await settle();await wait(()=>q('#modal').open&&q('#modal-title').textContent==='Ваш тур в деталях');
- assert.match(q('#modal-body').textContent,/Срок подтверждения тура истёк/);
+ assert.match(q('#modal-body').textContent,/Срок предложения истёк\. Выберите другой тур\./);
  assert(!q('#prototype-lead-form')&&!q('[data-action="andromeda-application-preview"]')&&!q('[data-action="refresh-hotel"]'));
  assert.equal(transport.calls.length,beforeSamoApplicationForward,'expired reuse, submit and Forward spend zero requests');w.Date.now=realNow;
 
@@ -807,13 +807,13 @@ async function pickerRetainedDraftRegressions(){
   const chooseSamo=()=>[...q('#modal-body').querySelectorAll('[data-action="offer"]')].find(b=>b.dataset.key.startsWith('andromeda%3A')).click();
   chooseSamo();await settle();const before=quoteCount();click('[data-action="refresh-hotel"]');
   if(flightChoice){await wait(()=>q('[data-action="apply-andromeda-flights"]'));click('[data-action="apply-andromeda-flights"]');}
-  await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+  await wait(()=>q('#modal-body .error-text')?.textContent.includes('Не удалось подтвердить этот тур. Выберите другой вариант.'));
   assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
   assert.match(q('#modal-footer').textContent,/Выбрать другой тур/);assert(!q('[data-action="refresh-hotel"]'));
   assert.equal(quoteCount(),before+(flightChoice?2:1));
   assert.equal(quoteFailures.at(-1).failureCategory,'supplier_auth');assert.equal(quoteFailures.at(-1).httpStatus,502);
   click(q('#prototype-lead-form')?'#modal-body [data-action="all-offers"]':'#modal-footer [data-action="all-offers"]');chooseSamo();await settle();
-  assert.match(q('#modal-body .error-text').textContent,/Подтверждение тура не получено/);
+  assert.match(q('#modal-body .error-text').textContent,/Не удалось подтвердить этот тур\. Выберите другой вариант\./);
   assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening must never resubmit a sealed attempt');
   click('[data-action="close-modal"]');await settle();
  }
@@ -831,10 +831,10 @@ async function pickerRetainedDraftRegressions(){
    assert(legacy.flights.every(f=>!Object.hasOwn(f,'flightRef')));assert.equal(transport.calls.length,prior);
    click('[data-action="close-modal"]');await settle();click('[data-action="all-offers"][data-id="501"]');choose();await wait(()=>q('[data-action="andromeda-application-preview"]'));
   }else{
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Не удалось подтвердить этот тур. Выберите другой вариант.'));
    assert(!q('[data-action="andromeda-application-preview"]'));assert.match(q('#modal-footer').textContent,/Цена из выдачи · не подтверждена/);
    assert.equal(quoteFailures.at(-1).failureCategory,'invalid_response');
-   click('#modal-footer [data-action="all-offers"]');choose();await settle();assert.match(q('#modal-body .error-text').textContent,/некорректное подтверждение/);
+   click('#modal-footer [data-action="all-offers"]');choose();await settle();assert.match(q('#modal-body .error-text').textContent,/Не удалось подтвердить этот тур\. Выберите другой вариант\./);
   }
   assert.equal(quoteCount(),before+2,'passive return retains exact/legacy or failed pair outcome without retry');
   click('[data-action="close-modal"]');await settle();

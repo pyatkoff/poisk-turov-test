@@ -1490,7 +1490,7 @@ const server=http.createServer((req,res)=>{
   await page.screenshot({path:path.join(evidence,`samo-expired-application-${width}.png`)});
   await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!history.state?.['anytour.prototype.v18.ui.v1']);
   await page.evaluate(()=>history.forward());
-  await page.getByText('Срок подтверждения тура истёк. Выполните новый поиск.',{exact:true}).waitFor();
+  await page.getByText('Срок предложения истёк. Выберите другой тур.',{exact:true}).waitFor();
   assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0,'Forward cannot reopen an expired verified application');
   assert.equal(await page.locator('[data-action="refresh-hotel"]').count(),0,'expiry cannot replay the same supplier quote');
   assert.equal(transport.calls.length,beforeSamoExpiry,'expiry and history navigation are passive');
