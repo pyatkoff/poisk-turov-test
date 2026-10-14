@@ -553,10 +553,10 @@
       if(d.hotelSection){$('[data-about-hotel]').hidden=d.hotelSection!=='about';$('[data-hotel-offers-panel]').hidden=d.hotelSection==='about';$$('[data-hotel-section]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));return;}
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
-      if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();return;}
+      if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();$('[data-native-calendar]')?.focus({preventScroll:true});return;}
       if(d.nativeCalendarPage){state.calendarPage+=d.nativeCalendarPage==='prev'?-1:1;renderCalendar();redrawIcons();const same=$(`[data-native-calendar-page="${d.nativeCalendarPage}"]:not(:disabled)`),fallback=$(`[data-native-calendar-page="${d.nativeCalendarPage==='prev'?'next':'prev'}"]:not(:disabled)`);(same||fallback)?.focus({preventScroll:true});updateURL();return;}
       if(button.hasAttribute('data-native-result-more')){const firstNew=rows()[state.resultLimit];state.resultLimit+=resultBatch;renderResults();const next=$('[data-native-result-more]'),first=firstNew?$(`[data-hotel-card="${firstNew.id}"] [data-hotel-open]`):null;(next||first)?.focus({preventScroll:true});rememberRoute(false);return;}
-      if(d.nativeDay){state.selectedDate=state.selectedDate===d.nativeDay?null:d.nativeDay;resetResultLimit();renderResults();updateURL();return;}
+      if(d.nativeDay){const day=d.nativeDay;state.selectedDate=state.selectedDate===day?null:day;resetResultLimit();renderResults();updateURL();$(`[data-native-day="${day}"]`)?.focus({preventScroll:true});return;}
       const toggles={'searchDestinationToggle':'destination','searchDateToggle':'dates','searchNightsToggle':'nights','searchTravelersToggle':'travelers'};
       for(const [key,name]of Object.entries(toggles))if(button.hasAttribute('data-'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()))){openEditor(name,button);return;}
       if(d.conditionsOpen){openEditor(d.conditionsOpen,button);return;}
@@ -592,8 +592,8 @@
     }
     root.addEventListener('click',handleClick,{signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
-      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();}}
-      if(d.nativeBudget)changeResultBudget(node,true);
+      if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();[...$('[data-filter-sidebar]').querySelectorAll('[data-native-filter]')].find(control=>control.dataset.nativeFilter===key&&control.value===node.value)?.focus({preventScroll:true});}}
+      if(d.nativeBudget){const inline=!filterDraft,kind=d.nativeBudget,type=node.type;changeResultBudget(node,true);if(inline)[...$('[data-filter-sidebar]').querySelectorAll('[data-native-budget]')].find(control=>control.dataset.nativeBudget===kind&&control.type===type)?.focus({preventScroll:true});}
       if(d.nativeFormMeal){draftFilters.meals=node.checked?[...draftFilters.meals,d.nativeFormMeal]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);}
       if(d.nativeAge!==undefined){draft.ages[Number(d.nativeAge)]=node.value===''?null:Number(node.value);renderSearch();}
       if(node.classList.contains('st-sort')){state.sort=node.value;resetResultLimit();renderResults();updateURL();}
