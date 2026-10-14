@@ -113,7 +113,7 @@ async function run(width,monthRange=null){
  action('meals','#search-form');for(const meal of ['Всё включено','Ультра всё включено']){const box=$('[data-meal-choice][value="'+meal+'"]');box.checked=true;box.dispatchEvent(new w.Event('change',{bubbles:true}));}
  action('apply-meals');await pause();assert.equal($('#meal-label').textContent,'Всё включено · Ультра всё включено');
  // Filter summary and main form share one committed value; nested cancel/reset is local.
- action('form-filters','#search-form');action('stars');click('[data-action="picker-star"][data-value="4"]');click('[data-action="picker-star"][data-value="5"]');action('apply-stars');assert.equal($('#modal-title').textContent,'Все фильтры');assert.match($('#modal-body').textContent,/4★ и 5★/);assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');await close();assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');
+ action('form-filters','#search-form');action('stars');click('[data-action="picker-star"][data-value="4"]');click('[data-action="picker-star"][data-value="5"]');action('apply-stars');assert.equal($('#modal-title').textContent,'Уточнить параметры');assert.match($('#modal-body').textContent,/4★ и 5★/);assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');await close();assert.equal($('#quick-stars [data-action="any-stars"]').getAttribute('aria-pressed'),'true');
  action('form-filters','#search-form');action('stars');click('[data-action="picker-star"][data-value="4"]');click('[data-action="picker-star"][data-value="5"]');action('apply-stars');action('apply-form-filters');await pause();assert.equal($('#quick-stars [data-value="4"]').getAttribute('aria-pressed'),'true');assert.equal($('#quick-stars [data-value="5"]').getAttribute('aria-pressed'),'true');
  // Resorts OR; selecting an exact hotel visibly replaces resorts only after confirmation.
  action('destination','#search-form');input('#destination-query','Стамбул');await lookup();const resort=d.querySelector('[data-action="destination-resort"][data-value="Стамбул"]');assert.ok(resort);resort.click();action('apply-destination');await pause();assert.match($('#destination-detail').textContent,/Стамбул/);
@@ -142,3 +142,4 @@ async function verify(){
 verify().catch(error=>{console.error(error.stack);process.exit(1);});
 // Keep the gallery regression in the current owner gate, without a new workflow.
 require('./search3-visual-gallery.cjs');
+

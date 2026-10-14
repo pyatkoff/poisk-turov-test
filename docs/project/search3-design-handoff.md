@@ -88,3 +88,58 @@ At <=760px, the existing results calendar begins as a compact dates-and-prices d
 Site194's fixed multi-date synthetic corpus is a design-lab fixture change, not a live NEXT defect; it is not copied. Supplier/lead/receipt contracts and actual source data remain unchanged. Exact receiver base b394e2397f9d5e80e4ebbf11d692901a5803cadb and published predecessor8ae7d9aab3feb6a33559e1bef491b319936a5104/terminal6157886829 remain until publication. Runtime files app.js/index.html/mobile-controls-v1.css are byte-identical to reviewed draft6371de0754bc01e3fe7e44a6bcbd79267a34324f; this acceptance preparation changes metadata and existing test expectations only.
 
 Actual disclosure/viewport VM and all182 previous price sequences/digests plus adjacent month/minimum/facet/raw-data guards pass. Rendering harness retains historical oraclec0e286...; new disclosure nodes are checked separately. Browser runner now expects the approved concise unknown caption without changing amount/action/null/request protections and captures the same unknown-pair journey at ordinary360x480 to prove list/action geometry. Final exact-head source/build/focused/full compiled gates and independent matched ordinary360/390/430/768/1280 plus short360x480 frame review remain required. Inherited existing200% checks may execute in the unchanged stock gate; no new stress scenario or physical claim. Root owns ready transition, permitted release merge and separate exclusive stock original NEXT publication/readback; agent performs no merge/deploy. Supplier searches0, real leads0, production/sibling/foreignv2/workflows/schedules unchanged; physical Safari and overall SEARCH-QUALITY-1 remain unmeasured.
+
+
+## Original Site197 approved transfer — 2026-10-14
+
+Owner continuation «Давай дальше» immediately follows the complete published
+Site197 and its stated whole-version visual+behavior approval condition. This
+affirmative instruction is recorded as approval/source claim #4217/6173070018;
+consumer correction6173171355 and test alignment6173520386 stay bounded to the
+original target. Donor remains PUBLIC original project
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a, c2a1939f342bb6ef8cea281414918c155a6277b6,
+package97/v233/native197, version
+appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_9a642caad5cc8191b501a0ec4ccf9dfb.
+Published archive be5c10b326935d7363f066c8a08df80854050aef977911bff641a45222d91c2d;
+registered native archive30f92d349f0b21528c6178e5e1b8e5ff6dee71ff3c9edbeddba133513d8ab0f2.
+Evidence-only9b42af916ec4e560c312d93757d435e78259cc99 is runtime-identical;
+donor terminal6170970686. Approval history100/185/191/195 is retained.
+
+Receiver only /_preview/search3-next-candidate/visual-search/ on
+release/search3-production-ready-v1@72a7307975348e58d7a7c696bac968bc8ce876b2;
+installed predecessor695b6503be6b304cb3df6dd566c00111bb8f9b90/terminal6166709267.
+The predecessor publisher command6166465326 is consumed and never replayed.
+No foreign design-v2 artifact, rating, writer or publication is part of this work.
+
+The existing app/card CSS owner receives mobile full-width minimum-offer summary,
+compact known/short operator columns, long-operator full rows, fewer unused tracks,
+metadata stars/geography on one flex row and explicit title/profile44px access.
+Single-offer mobile cards omit the duplicate About footer; multi-offer cards keep
+one full-width variants action. Photos retain1.8 and the complete representative
+exact offer, facts, price/CTA and saved-selection owners. Tablet variants separate
+operator/flight from the total; desktop refinements/sort receive44px targets.
+The existing lazy offer-list starts refinements collapsed at every first entry,
+while retained history/drafts still restore its explicit state. The form action
+reads «Уточнить параметры». The existing quote alert uses a Russian recovery
+message; raw error/code, terminal policy, price, retry and application gates stay
+untouched. There is no new renderer, stylesheet, overlay or transport owner.
+
+Runtime visualVersion227 remains separate from approved donor233. The receiving
+room/meal helpers and all data/parser/selection/lifecycle/quote/flight/money/fuel/
+FX/provider/lead/CRM/Metrika/DB/catalogue/auth/URL/payload bodies remain authoritative.
+No donor fixture or supplier path is copied. Broad200% remains deferred, with no
+new stress test or defect repair. PhysicalSafari/OS keyboard/safe-area are
+not_measured, not inferred from Chromium or historical owner screenshots.
+
+Before publication require focused source/identity/oracle checks, every applicable
+final-head CI, compiled360/390/430/768/1280 plus existing short-screen journeys,
+original-frame inspection, permitted release merge, a separate exclusive stock
+NEXT publisher claim for the exact artifact, and exact installed readback/path
+acceptance. This section describes implementation, not a publication receipt.
+Supplier requests0 and real leads0 during acceptance. Main/production, workflows,
+allowlists, secrets, sibling previews and other schedules remain untouched.
+
+SEARCH-QUALITY-1 uses the existing12/11/5 rubric. Donor mockup and clickable scores
+retain their exact evidence; receiving source/CI/approval earns no points. The
+installed NEXT score remains separate and requires matched rendered/behavior
+acceptance after the exact publication; no invented row total or donor inheritance.
