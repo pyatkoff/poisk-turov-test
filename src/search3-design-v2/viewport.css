@@ -378,6 +378,42 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-desktop .st-tour-layout {
   grid-template-columns: minmax(0, 1fr) max(274px, 14em);
 }
+/* Keep the selected tour's facts together, with less space between sections. */
+#design-v2-native-root #b4 [data-screen="tour"] .st-tour-section {
+  padding: 18px;
+  margin-bottom: 12px;
+}
+#design-v2-native-root #b4 [data-screen="tour"] .st-step-label { margin-bottom: 10px; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-section-top { margin-bottom: 8px; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-detail-grid { gap: 12px 20px; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-flight { padding-block: 10px; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-flight-label { margin-bottom: 8px; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-cost-list { gap: 8px; margin: 12px 0; }
+#design-v2-native-root #b4 [data-screen="tour"] .st-total { padding-top: 12px; }
+#design-v2-native-root #b4 [data-native-flight-section] { container: native-itinerary / inline-size; }
+@container native-itinerary (min-width: 52em) {
+  #design-v2-native-root #b4 .st-desktop [data-native-flight-content] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+  }
+  #design-v2-native-root #b4 .st-desktop [data-native-flight-content] > * { grid-column: 1 / -1; }
+  #design-v2-native-root #b4 .st-desktop [data-native-flight-content] > .st-flight {
+    grid-column: auto;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 10px;
+  }
+}
+#design-v2-native-root #b4 .st-mobile [data-screen="tour"] .st-tour-section {
+  padding: 12px 1px;
+  margin-bottom: 0;
+}
+#design-v2-native-root #b4 .st-mobile .st-quick-tour { margin-bottom: 12px; }
+#design-v2-native-root #b4 .st-mobile .st-quick-dates { margin-top: 10px; padding-top: 10px; }
+#design-v2-native-root #b4 .st-mobile .st-quick-price { margin-top: 10px; }
+#design-v2-native-root #b4 .st-mobile .st-quick-price-note { margin-top: 8px !important; }
 #design-v2-native-root #b4 .q8c2 {
   white-space: normal;
   overflow-wrap: normal;
