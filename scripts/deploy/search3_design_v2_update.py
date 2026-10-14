@@ -35,9 +35,9 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('97c527abe0cf9998271743c56b676a53882efa75', '417665fb622a980239640a62768bb729f5b3d265'),)
+    ('5a0a20807728801c22ed47707a0ab0f86b8eb393', 'da0ccbd1a9967910b153de60d61d153d4078034f'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = 'bdbf18b51a071c8537b618e09ac378ecb66a3d1c'
+NATIVE_SOURCE_BASE_PARENT = '97c527abe0cf9998271743c56b676a53882efa75'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
