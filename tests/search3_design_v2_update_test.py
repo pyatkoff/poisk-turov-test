@@ -306,9 +306,12 @@ class UpdateContracts(unittest.TestCase):
                         message = ('' if status == 'complete' else 'API HTTP 403'
                                    if status == 'partial' else
                                    'Не удалось завершить поиск. Полученные предложения сохранены.')
-                        alert = ('Показаны предложения: ANEX. Не все источники завершили поиск: '
+                        alert = ('Поиск завершён не полностью'
+                                 'Показаны предложения: ANEX. Не все источники завершили поиск: '
                                  'Tourvisor и Andromeda.' if status == 'partial' else
-                                 message or 'Поиск завершён не полностью.')
+                                 'Не удалось завершить поиск'
+                                 'Полученные предложения сохранены. Измените условия или повторите поиск.'
+                                 'Изменить и повторить' if status == 'error' else '')
                         terminal_state = {'status': status, 'message': message, 'searchGeneration': 1,
                             'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
                             'alertText': alert,
@@ -363,8 +366,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'ecdb5a7768366a80732f5788ea2446ebd3bcc51e')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38505456663)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38514276332)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -721,7 +724,8 @@ class UpdateContracts(unittest.TestCase):
                     lambda r, c=case, s=status: frame(r, c, s).pop('terminalState')))
                 for key, wrong in (('status', 'loading'), ('message', 'changed'),
                     ('searchGeneration', True), ('searchStarts', 2), ('otherCalls', 1),
-                    ('alertVisible', status == 'complete'), ('alertText', ''),
+                    ('alertVisible', status == 'complete'),
+                    ('alertText', 'unexpected' if status == 'complete' else ''),
                     ('ownerSHA256', 'f' * 64)):
                     changes.append(lambda r, c=case, s=status, k=key, v=wrong:
                                    frame(r, c, s)['terminalState'].update({k: v}))
@@ -878,7 +882,8 @@ class UpdateContracts(unittest.TestCase):
             'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba',
             '41dd5a9c013b9431f68e38b85de5b7a72ae6848d',
             'b7cbb1e372cd083d8402a970ec7d16bf720c2a34',
-            'ecdb5a7768366a80732f5788ea2446ebd3bcc51e'))
+            'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
+            '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1036,7 +1041,8 @@ class UpdateContracts(unittest.TestCase):
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
-             38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663))
+             38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
+             38514276332))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1103,10 +1109,12 @@ class UpdateContracts(unittest.TestCase):
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
+            'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/viewport.css'))
+        ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js',
+                     'visual-search/native-v2/viewport.css',
                      'visual-search/native-v2/donor.css',
                      'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
             bad = {**after, name: 'f' * 64}

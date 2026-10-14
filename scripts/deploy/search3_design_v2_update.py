@@ -35,10 +35,9 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact reviewed source ancestry, newest parent first. These static pins are never
 # supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
 NATIVE_SOURCE_ANCESTORS = (
-    ('241c87d3f6e41fd50e24a619da30ab6afbcecf59', '619ddae38b72fa23dc2f6a428de292af2904b16f'),
-    ('ef4816d5c01b67b1deaa03731085e2a455e77165', 'ecfc555098bb71dcaa4bf74fa04643e750f85ac8'))
+    ('b8f5dfc63dce11e2f2502d9819b44e74ff842e6f', '58c56a8f9767cfd3216f79be7338e681043135f0'),)
 NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '792f9323c09861a41dfa999b2f59eacb62c9e487'
+NATIVE_SOURCE_BASE_PARENT = 'ef4816d5c01b67b1deaa03731085e2a455e77165'
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -306,9 +305,12 @@ def native_evidence(archive, request, native):
                     message = ('' if status == 'complete' else 'API HTTP 403'
                                if status == 'partial' else
                                'Не удалось завершить поиск. Полученные предложения сохранены.')
-                    alert = ('Показаны предложения: ANEX. Не все источники завершили поиск: '
+                    alert = ('Поиск завершён не полностью'
+                             'Показаны предложения: ANEX. Не все источники завершили поиск: '
                              'Tourvisor и Andromeda.' if status == 'partial' else
-                             message or 'Поиск завершён не полностью.')
+                             'Не удалось завершить поиск'
+                             'Полученные предложения сохранены. Измените условия или повторите поиск.'
+                             'Изменить и повторить' if status == 'error' else '')
                     expected = {'status': status, 'message': message, 'searchGeneration': 1,
                         'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
                         'alertText': alert,
