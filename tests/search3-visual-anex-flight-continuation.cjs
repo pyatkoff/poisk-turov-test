@@ -187,7 +187,7 @@ async function soleSamoPriceScenario(mode){
    click('[data-action="close-modal"]');await settle();await reopen();
   }else releaseCalc();
   if(mode==='failed'){
-   await wait(()=>q('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   await wait(()=>q('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
    assert.equal(q('[data-action="andromeda-application-preview"]'),null);assert.equal(q('[data-action="apply-andromeda-flights"]'),null);
    click('[data-action="close-modal"]');await settle();await reopen();await settle();assert.equal(count('quote_select_flights'),1,'failed sole continuation cannot replay');
   }else{
