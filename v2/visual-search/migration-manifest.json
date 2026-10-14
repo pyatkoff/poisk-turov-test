@@ -38,7 +38,8 @@
     "assets/operators/biblio-globus.svg": "d3cba7262d28d4e2b2090d423805acdf7a800e992dbe98cdfee2e3cad7979d6c",
     "assets/operators/anex.svg": "313d8f3f12ee7ebbb3e004d7599484d4e9f70be484e8b1e932e7a17f44bbb5dd",
     "assets/operators/coral-travel.png": "123db203f9a342717bf9bee209254f01fce1f55a0464899618c04837dcfe1955",
-    "fixtures/live-search-2026-09-23.json": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3"
+    "fixtures/live-search-2026-09-23.json": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3",
+    "assets/operators/loti.png": "aaa7e1acde410ae291105755d4590d997a6c39435a0a9d44cefa0dfac4e37ee6"
   },
   "liveSources": [
     "tourvisor",
