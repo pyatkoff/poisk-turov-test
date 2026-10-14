@@ -366,8 +366,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38514276332)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '8d3d66eeb95ac69534ec7557c7c0926cf201543c')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38522678669)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -883,7 +883,8 @@ class UpdateContracts(unittest.TestCase):
             '41dd5a9c013b9431f68e38b85de5b7a72ae6848d',
             'b7cbb1e372cd083d8402a970ec7d16bf720c2a34',
             'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
-            '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241'))
+            '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241',
+            '8d3d66eeb95ac69534ec7557c7c0926cf201543c'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1042,7 +1043,7 @@ class UpdateContracts(unittest.TestCase):
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332))
+             38514276332, 38522678669))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
