@@ -363,6 +363,46 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-mobile .st-offer {
   padding-block: 18px;
 }
+/* The hotel page is the comparison step between a hotel and an exact package.
+   Keep its offers in one quiet list, so room, meal, total and action read as a
+   single choice without changing which canonical offer the button selects. */
+#design-v2-native-root #b4 [data-hotel-offers-panel] > [data-hotel-offers] {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+#design-v2-native-root #b4 [data-hotel-offers] .st-offer-choice {
+  margin-top: 0;
+}
+#design-v2-native-root #b4 [data-hotel-offers] .st-offer {
+  padding: 16px;
+}
+#design-v2-native-root #b4 [data-hotel-offers] .st-offer-choice:last-child .st-offer {
+  border-bottom: 0;
+}
+#design-v2-native-root #b4 .st-desktop [data-screen="hotel"] .st-aside-summary {
+  position: sticky;
+  top: 16px;
+}
+/* A missing photo is an honest state, not a large empty gallery. Real hotel
+   photography keeps the approved hero proportions. */
+#design-v2-native-root #b4 [data-hotel-hero].st-no-photo {
+  height: 104px;
+}
+#design-v2-native-root #b4 [data-hotel-hero].st-no-photo .st-hero-controls {
+  display: none;
+}
+#design-v2-native-root #b4 .st-mobile [data-hotel-hero].st-no-photo {
+  height: 96px;
+}
+@media (max-width: 820px) {
+  #design-v2-native-root #b4 .st-desktop [data-hotel-offers] .st-offer {
+    gap: 10px;
+    padding-inline: 8px;
+  }
+}
 #design-v2-native-root #b4 .st-desktop :is([data-screen="hotel"], [data-screen="tour"]) {
   container: native-selected / inline-size;
 }
