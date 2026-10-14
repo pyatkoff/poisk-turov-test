@@ -363,8 +363,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '41dd5a9c013b9431f68e38b85de5b7a72ae6848d')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38493989503)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'b7cbb1e372cd083d8402a970ec7d16bf720c2a34')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38499121754)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -876,7 +876,8 @@ class UpdateContracts(unittest.TestCase):
             '740ed0b20596f901a1d6c15d238cec527633ce80',
             'b8b14e89931fbaab363895065d53ed7063339eb3',
             'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba',
-            '41dd5a9c013b9431f68e38b85de5b7a72ae6848d'))
+            '41dd5a9c013b9431f68e38b85de5b7a72ae6848d',
+            'b7cbb1e372cd083d8402a970ec7d16bf720c2a34'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1034,7 +1035,7 @@ class UpdateContracts(unittest.TestCase):
              38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
-             38464277088, 38477454593, 38484937090, 38493989503))
+             38464277088, 38477454593, 38484937090, 38493989503, 38499121754))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
