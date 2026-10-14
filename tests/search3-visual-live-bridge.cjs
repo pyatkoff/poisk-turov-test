@@ -598,7 +598,7 @@ async function pickerRetainedDraftRegressions(){
   }
   for(const code of ['', 'offer_expired']){
    quoteControl={error:Object.assign(new Error('Тестовый отказ актуализации'),{code})};
-   openTv();click(`[data-action="${action}"]`);await wait(()=>q('#modal-body .error-text')?.textContent==='Тестовый отказ актуализации');
+   openTv();click(`[data-action="${action}"]`);await wait(()=>q('#modal-body .error-text')?.textContent===(code?'Срок предложения истёк. Выберите другой тур.':'Не удалось проверить цену и наличие тура. Повторите проверку.'));
    assert.match(q('.footer-price-status').textContent,/не подтверждена/);
    assert.equal(q('#modal-footer .primary').dataset.action,code?'close-modal':'start-lead','terminal errors exit; temporary errors allow explicit retry');
    assert(!q('#prototype-lead-form'));quoteControl=null;
