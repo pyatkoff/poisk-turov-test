@@ -148,7 +148,6 @@
       const items=resultConstraints(),chips=$('[data-active-chips]');chips.hidden=!items.length;
       chips.setAttribute('aria-label','Выбранные условия');
       chips.innerHTML=items.map(item=>`<button type="button" class="st-chip cursor-interaction" data-native-remove-constraint="${item.group}" data-native-constraint-value="${esc(item.value)}" aria-label="Снять условие: ${esc(item.label)}"><span>${esc(item.label)}</span>${icon('x')}</button>`).join('');
-      $$('[data-action="favorites"]').forEach(node=>node.setAttribute('aria-pressed',String(state.onlyFavorites)));
       const action=$('[data-empty-action]'),description=$('[data-empty-text]');
       action.dataset.action='search';delete action.dataset.nativeRemoveConstraint;delete action.dataset.nativeConstraintValue;
       action.hidden=loadingEmpty;
@@ -160,6 +159,12 @@
         description.textContent='Без этого условия: '+countText(recovery.count)+' из загруженных. Остальные условия сохранятся.';
       }
       $$('[data-empty-edit]').forEach(node=>node.hidden=!recovery);
+    }
+    function syncFavoriteControls() {
+      $$('[data-action="favorites"]').forEach(node=>node.setAttribute('aria-pressed',String(state.onlyFavorites)));
+      text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
+      const selected=state.hotelId!==null&&state.hotelId!==undefined&&state.favorites.includes(Number(state.hotelId));
+      $$('[data-favorite-current]').forEach(node=>{node.setAttribute('aria-pressed',String(selected));node.setAttribute('aria-label',selected?'Удалить из избранного':'Сохранить отель');});
     }
     function photo(node, hotel, index = 0) {
       if (!node) return;
@@ -334,7 +339,7 @@
       $('[data-empty]').hidden=found.length>0;text('[data-empty-title]',!state.hasSearched?'Начните с поиска':loadingEmpty?'Ищем туры…':partialEmpty?'Поиск завершён не полностью':errorEmpty?'Не удалось загрузить туры':state.status==='partial'?'Нет подходящих туров среди полученных':'Нет подходящих туров');
       $('[data-empty]').setAttribute('aria-busy',String(loadingEmpty));
       renderResultConstraints(found,loadingEmpty,errorEmpty,partialEmpty);
-      text('[data-fav-count]',state.favorites.length);$('[data-fav-count]').hidden=!state.favorites.length;
+      syncFavoriteControls();
       renderCalendar();redrawIcons();
     }
     function renderHotel() {
@@ -348,7 +353,7 @@
       text('.st-hotel-description',description.textContent||'Описание отеля пока не получено.');
       const about=$('[data-about-hotel]');about.querySelector('h2').textContent='Об отеле';about.querySelector('.st-amenities').innerHTML=(h.amenities||[]).map(a=>`<span class="st-amenity">${esc(a.label)}</span>`).join('');
       $('.st-aside-summary .st-included-list').innerHTML='<span>Состав пакета и обязательные доплаты требуют подтверждения.</span>';
-      const heroText=$('.st-hero-controls span');if(heroText)heroText.textContent=h.photos?.length?'Фотографии отеля':'Фото пока нет';redrawIcons();
+      const heroText=$('.st-hero-controls span');if(heroText)heroText.textContent=h.photos?.length?'Фотографии отеля':'Фото пока нет';syncFavoriteControls();redrawIcons();
     }
     function renderTour() {
       const o=state.selected,h=currentHotel();if(!o||!h){show('results',false);return;}
@@ -534,7 +539,15 @@
         const chips=$$('[data-native-remove-constraint].st-chip');
         (chips[Math.min(index,chips.length-1)]||$('[data-card-list] .st-name-button')||$('[data-empty-action]'))?.focus({preventScroll:true});return;
       }
-      if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){const id=Number(d.favorite||state.hotelId);state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}renderResults();return;}
+      if(d.favorite!==undefined||button.hasAttribute('data-favorite-current')){
+        const fromCard=d.favorite!==undefined,id=Number(fromCard?d.favorite:state.hotelId),cardIndex=fromCard?$$('[data-favorite]').indexOf(button):-1;
+        state.favorites=state.favorites.includes(id)?state.favorites.filter(x=>x!==id):[...state.favorites,id];try{window.localStorage.setItem(favoriteKey,JSON.stringify(state.favorites));}catch{}
+        if(state.screen==='results'){
+          renderResults();const same=$(`[data-favorite="${id}"]`),remaining=$$('[data-favorite]');
+          (same||remaining[Math.min(cardIndex,remaining.length-1)]||$('[data-empty-action]')||$('[data-action="favorites"]'))?.focus({preventScroll:true});
+        }else{syncFavoriteControls();button.focus({preventScroll:true});}
+        return;
+      }
       if(d.hotelOpen||d.hotelAbout){state.hotelId=Number(d.hotelOpen||d.hotelAbout);show('hotel');$('[data-about-hotel]').hidden=!d.hotelAbout;$('[data-hotel-offers-panel]').hidden=!!d.hotelAbout;return;}
       if(d.offer){state.selected=findOffer(d.offer);if(state.selected){state.hotelId=state.selected.hotelId;rememberRoute(false);show('tour');}return;}
       if(d.hotelSection){$('[data-about-hotel]').hidden=d.hotelSection!=='about';$('[data-hotel-offers-panel]').hidden=d.hotelSection==='about';$$('[data-hotel-section]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));return;}

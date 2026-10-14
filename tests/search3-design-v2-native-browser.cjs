@@ -644,6 +644,22 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await notice.evaluate(node=>Boolean(node.parentElement.querySelector('[data-result-more]').compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)),true,'Price explanation follows the current result batch and its progressive control');
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        const firstFavorite=product.locator('[data-favorite="1"]');await firstFavorite.focus();await firstFavorite.press('Enter');
+        assert.equal(await product.locator('[data-favorite="1"]').getAttribute('aria-pressed'),'true');
+        assert.equal(await product.locator('[data-favorite="1"]').evaluate(node=>node===document.activeElement),true,'Favorite rerender restores the same card control');
+        const secondFavorite=product.locator('[data-favorite="2"]');await secondFavorite.focus();await secondFavorite.press('Enter');
+        assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1,2]);
+        const favoritesToggle=product.locator('[data-action="favorites"]:visible').first();await favoritesToggle.click();
+        assert.equal(await favoritesToggle.getAttribute('aria-pressed'),'true');
+        await product.locator('[data-favorite="1"]').focus();await product.locator('[data-favorite="1"]').press('Enter');
+        assert.equal(await product.locator('[data-favorite="2"]').evaluate(node=>node===document.activeElement),true,'Removing a saved card focuses the adjacent saved card');
+        await product.locator('[data-favorite="2"]').press('Enter');
+        assert.equal(await product.locator('[data-empty-action]').evaluate(node=>node===document.activeElement),true,'Removing the final saved card focuses the recovery action');
+        assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[]);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Favorite-only local interactions start zero supplier requests');
+        await product.locator('[data-action="favorites"]:visible').first().click();
+        assert.equal(await product.locator('[data-action="favorites"]:visible').first().getAttribute('aria-pressed'),'false');
+        row.proof.favoriteCardFocusRetained=true;row.proof.favoriteRemovalFocusRecovered=true;row.proof.favoriteLocalExtraSearches=0;
         await page.evaluate(()=>window.__nativeFixture.deliverHotels([],{status:'loading',message:''}));
         assert.equal(await product.locator('[data-result-count]').innerText(),'Ищем…');
         assert.equal(await product.locator('[data-empty-action]').isVisible(),false);
@@ -721,10 +737,16 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-pressed'),'true','The selected later date remains visible on its page');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Paging and later-date selection start no supplier search');
         await calendar.locator('[data-native-day="2026-10-25"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
-        await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});await page.goBack();await screen('results').waitFor({state:'visible'});
+        await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
+        const currentFavorite=product.locator('[data-favorite-current]');await currentFavorite.focus();await currentFavorite.press('Enter');
+        assert.equal(await currentFavorite.getAttribute('aria-pressed'),'true');assert.equal(await currentFavorite.getAttribute('aria-label'),'Удалить из избранного');
+        assert.equal(await currentFavorite.evaluate(node=>node===document.activeElement),true,'Hotel favorite keeps focus with truthful selected state');
+        await currentFavorite.press('Enter');assert.equal(await currentFavorite.getAttribute('aria-pressed'),'false');assert.equal(await currentFavorite.getAttribute('aria-label'),'Сохранить отель');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Hotel favorite starts zero supplier requests');
+        await page.goBack();await screen('results').waitFor({state:'visible'});
         assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Back restores the same calendar page');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Calendar history return starts no supplier search');
-        row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;
+        row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;row.proof.hotelFavoriteStateTruthful=true;
         if(width===390&&percent===100){
           await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
           assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Progressive results retain the visible calendar page');
@@ -924,7 +946,7 @@ async function referenceFrame(page,width,percent,screen,row) {
           await capture(page,'native',width,percent,'terminal-'+kind,row);
         }
         row.proof.latePresentationTerminalStatesRetained=true;row.proof.latePresentationExtraSearches=0;
-        row.checks.push('passive init 0 searches','form submit exactly one search','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
+        row.checks.push('passive init 0 searches','form submit exactly one search','favorite state and keyboard focus retained locally with 0 searches','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}
