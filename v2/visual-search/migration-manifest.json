@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "stage": "approved-sites185-presentation-candidate",
-  "visualVersion": 225,
+  "visualVersion": 227,
   "siteCommit": "3aa4d9001f51dfd732b01194b695deabcf8e033f",
   "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
@@ -54,7 +54,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "21acca0f4e84dbfedbeb3276bde1d9a3626de9f419f1ff961ea47c2c7cc8acb6",
+    "app.js": "fca3de87dee31d7edc27aeb9051d3844042960d94b4afd3471c6e9b4ac51de1c",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "9ad086582469a9dd07f2ccd6c7573eec92e19f3f76d79c9a4d51476e725bcc35",
     "styles.css": "fa079ad6b01ef5d1151140223fd6d6f4c7e10566d49de5a4353e5f99f80a6f34",
@@ -77,15 +77,15 @@
     "realSupplierAcceptance": false
   },
   "approvedPresentation": {
-    "site": 185,
-    "package": 88,
-    "visualVersion": 224,
+    "site": 191,
+    "package": 91,
+    "visualVersion": 227,
     "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "sourceSha": "dee9043bfce695de275223c417902f393f6c9114",
-    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_71bf1c751c348191b6790481583f2eaf",
-    "archiveSha256": "e7b6c44438eb98e0cebaf774d56c45bd21c9c6a23879edf1d8f5e5a16914f115",
-    "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261013",
-    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6140805640",
+    "sourceSha": "54f7154ad595544da3dc10ef116cda02483f14ef",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_be83bbb7ca8c8191ae26384b09f8c1eb",
+    "archiveSha256": "1890eba74b1bc3af3f794d999e2ea66f13b798c615c9073819023a3f488a1508",
+    "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261014",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6157263706",
     "mobilePhotoRatio": 1.8,
     "resultsPriceTape": "always-open",
     "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
@@ -146,6 +146,30 @@
       "transportOwners": "retained from current NEXT; no donor transport copied",
       "physicalSafariAcceptance": false,
       "keyboardSafeAreaText200Acceptance": false
+    },
+    {
+      "site": 185,
+      "package": 88,
+      "visualVersion": 224,
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "sourceSha": "dee9043bfce695de275223c417902f393f6c9114",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_71bf1c751c348191b6790481583f2eaf",
+      "archiveSha256": "e7b6c44438eb98e0cebaf774d56c45bd21c9c6a23879edf1d8f5e5a16914f115",
+      "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261013",
+      "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6140805640",
+      "mobilePhotoRatio": 1.8,
+      "resultsPriceTape": "always-open",
+      "transportOwners": "retained from source7691cc4/current NEXT; no donor transport copied",
+      "physicalSafariAcceptance": false,
+      "keyboardSafeAreaText200Acceptance": false
     }
-  ]
+  ],
+  "approvedDesignLab": {
+    "project": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+    "site": 191,
+    "package": 91,
+    "prototype": 227,
+    "source": "54f7154ad595544da3dc10ef116cda02483f14ef",
+    "approvalIssueComment": 6157263706
+  }
 }

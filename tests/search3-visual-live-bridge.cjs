@@ -36,6 +36,20 @@ function modalViewportRegressions(){
  }
  console.log('PASS actual modal viewport: '+cases+' retained-tour/contact cases across five widths, inner-only focus/caret reveal, pinch, short/panned viewport, dismissal and late events; explicit rectangle fixtures, no native Safari claim');
 }
+function approvedPriceOriginRegressions(){
+ const app=source('visual-search/app.js'),a=app.indexOf('function quotePriceChangeHTML('),b=app.indexOf('function chosenStayHTML(',a);
+ assert(a>0&&b>a);const code=app.slice(a,b),box=new JSDOM('',{runScripts:'outside-only'}),win=box.window;
+ win.eval(`const data={amount:v=>typeof v==='number'&&Number.isFinite(v)&&v>0?v:null};const money=v=>String(v);const flightPairFor=o=>o.flightChoiceId===0?o.variants?.[0]:null;${code}\nwindow.priceOrigin=quotePriceChangeHTML;`);
+ const offer={quoteListingTotal:186400,tour:{price:195400},total:196700,flightChoiceId:0,variants:[{}]},render=(extra={},checked)=>checked===undefined?win.priceOrigin({...offer,...extra}):win.priceOrigin({...offer,...extra},false,checked);
+ const both=render();for(const n of [186400,195400,196700])assert(both.includes(n));assert.match(both,/Цена с выбранным перелётом/);
+ const offset=render({total:186400});assert(offset.includes('195400'),'cheap pair does not hide a genuine checked quote change');
+ const pairOnly=render({tour:{price:186400},total:187700});assert.match(pairOnly,/Цена с выбранным перелётом/);assert.doesNotMatch(pairOnly,/после проверки/);
+ const quoteOnly=render({flightChoiceId:null,total:195400});assert.match(quoteOnly,/Цена изменилась после проверки/);assert.doesNotMatch(quoteOnly,/196700/);
+ assert.equal(render({loading:true}),'');assert.equal(render({quoteError:'unavailable'}),'');assert.equal(render({pricePending:true}),'');
+ const provider=render({tour:{price:999999},total:106059,flightChoiceId:null,quoteListingTotal:95643},106059);assert(provider.includes('106059'));assert(provider.includes('95643'));assert.doesNotMatch(provider,/999999|выбранной парой/,'provider receipt is authoritative, not generic tour.price');
+ box.window.close();console.log('PASS approved191 price origins: quote/pair/both/offset/unknown/provider authority; actual source owner, no HTTP');
+}
+approvedPriceOriginRegressions();
 modalViewportRegressions();
 function searchDeliveryPresentationRegressions(){
  const app=source('visual-search/app.js'),start=app.indexOf('function renderSearchStatus(items,total){'),end=app.indexOf('\nfunction prepareSearchRun(',start);
