@@ -1,6 +1,6 @@
-# Reviewed final consent touch-target successor in the approved design.
+# Reviewed partial-search status successor in the approved design.
 # Requires 212 ordinary100 frames, exact source/release ancestry, and the published
-# hotel-offer ecdb/run385054 predecessor.
+# final-consent 54b/run385142 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 

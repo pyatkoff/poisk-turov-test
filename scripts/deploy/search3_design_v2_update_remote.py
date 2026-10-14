@@ -1,6 +1,6 @@
 """One reviewed update of the existing separate design preview; no other target.
 
-The predecessor is the published hotel-offer native update, not a caller-selected path.
+The predecessor is the published final-consent native update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = 'ecdb5a7768366a80732f5788ea2446ebd3bcc51e'
-PREDECESSOR_RUN = 38505456663
-PREDECESSOR_DIGEST = 'ae6ed0554925023a16c6c9364848eb309cc0570d1ea3f7c6152f56a6f23de40d'
+PREDECESSOR_SOURCE = '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241'
+PREDECESSOR_RUN = 38514276332
+PREDECESSOR_DIGEST = 'e0013e253b40914385440d902f3d2293db756755869d05a51e2b5300536df4df'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -51,13 +51,15 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba',
     '41dd5a9c013b9431f68e38b85de5b7a72ae6848d',
     'b7cbb1e372cd083d8402a970ec7d16bf720c2a34',
-    'ecdb5a7768366a80732f5788ea2446ebd3bcc51e')
+    'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
+    '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
     38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
     38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
-    38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663)
+    38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
+    38514276332)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -71,17 +73,17 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact reviewed source and receiving release; activation requires fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241',
-    'source_tree': '58c56a8f9767cfd3216f79be7338e681043135f0',
-    'release_sha': 'b8f5dfc63dce11e2f2502d9819b44e74ff842e6f',
-    'release_tree': '58c56a8f9767cfd3216f79be7338e681043135f0',
-    'release_parent': 'ef4816d5c01b67b1deaa03731085e2a455e77165',
-    'build_run': 38512598648,
-    'artifact_id': 11870652209,
-    'source_ZIP_sha256': '1d15df2323d11e2927e1b33c44a20e44a862133413ec400e2f431cc39ba676c4',
+    'source_sha': '8d3d66eeb95ac69534ec7557c7c0926cf201543c',
+    'source_tree': 'ab35e4be12df50efb870cbff8229b54d186141d6',
+    'release_sha': 'e44c4c43b8af075e44eb537e9bf432edbaddcc73',
+    'release_tree': 'ab35e4be12df50efb870cbff8229b54d186141d6',
+    'release_parent': 'b8f5dfc63dce11e2f2502d9819b44e74ff842e6f',
+    'build_run': 38518471010,
+    'artifact_id': 11873360254,
+    'source_ZIP_sha256': '228278a28e2a4a649380ad793a9be5cec5e69478b5c01fbe2462cd538f30fc0a',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '6b8019bdd32f5b13c104457325bcbd58ded014599277d7ceca49a714665b0185',
+    'source_manifest_sha256': '6da812bac6eec44fafb97662f4ece7a4669f34a0af0af89a93a49f6b763fb6a5',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -92,11 +94,11 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# Only the reviewed consent CSS and generated manifest differ from
+# Only the reviewed status renderer and generated manifest differ from
 # the exact 855-file published predecessor.
 # Historical baseline allowances do not authorize fresh legacy/provider/brand changes.
 NATIVE_SUCCESSOR_CHANGES = tuple(sorted('visual-search/native-v2/' + name for name in (
-    'source-manifest.json', 'viewport.css')))
+    'frontend.js', 'source-manifest.json')))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
