@@ -336,10 +336,20 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         queryNarrow:containerBounds.width<=fontSize*22+1,actionOnOwnRow:action.top>=price.bottom-1,
         outside:action.left<bounds.left-1||action.right>bounds.right+1||textRects.some(rect=>rect.left<action.left-1||rect.right>action.right+1||rect.top<action.top-1||rect.bottom>action.bottom+1)};
     });
+    const consentLabel=root.querySelector('[data-lead-form] > .st-check');let consentFit=null;
+    if(consentLabel&&visible(consentLabel)){
+      const bounds=consentLabel.getBoundingClientRect(),checkbox=consentLabel.querySelector('input[type="checkbox"]'),control=checkbox.getBoundingClientRect();
+      checkbox.focus();const style=getComputedStyle(consentLabel);
+      consentFit={label:{left:bounds.left,right:bounds.right,top:bounds.top,bottom:bounds.bottom,width:bounds.width,height:bounds.height},
+        checkbox:{left:control.left,right:control.right,top:control.top,bottom:control.bottom,width:control.width,height:control.height},
+        ownsCheckbox:checkbox.closest('label')===consentLabel,required:checkbox.required,
+        contained:control.left>=bounds.left-1&&control.right<=bounds.right+1&&control.top>=bounds.top-1&&control.bottom<=bounds.bottom+1,
+        focusOutline:style.outlineStyle!=='none'&&parseFloat(style.outlineWidth)>=2};
+    }
     const popup=root.querySelector('[data-native-form-popup][open]');let popupFit=null;
     if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),find=popup.querySelector('[type="submit"]'),action=find.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,findVisible:action.top>=0&&action.bottom<=innerHeight,findEnabled:!find.disabled,findHeight:action.height,submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,countFit,sortFit,
-      popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
+      popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,consentFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
   if(side==='native'&&screen.startsWith('terminal-')){
     measurements.terminalState=await page.evaluate(()=>{
@@ -411,6 +421,10 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   if(side==='native'&&percent===200&&measurements.summaryFit.some(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94)))report.failures.push({width,percent,screen,error:'Enlarged selected-hotel summary did not promote its factual copy to the full row',details:measurements.summaryFit.filter(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94))});
   if(side==='native'&&percent===100&&width===390&&measurements.summaryFit.some(item=>item.queryNarrow||item.stacked))report.failures.push({width,percent,screen,error:'Ordinary mobile selected-hotel summary lost the donor side-by-side composition',details:measurements.summaryFit});
   if(side==='native'&&measurements.offerActionFit.some(item=>item.outside))report.failures.push({width,percent,screen,error:'Hotel offer action or its label escapes the offer row',details:measurements.offerActionFit.filter(item=>item.outside)});
+  if(side==='native'&&logicalScreen==='lead'){
+    const fit=measurements.consentFit;
+    if(!fit||fit.label.height<44||fit.checkbox.width<20||fit.checkbox.height<20||!fit.ownsCheckbox||!fit.required||!fit.contained||!fit.focusOutline)report.failures.push({width,percent,screen,error:'Required consent is not a complete 44px touch target with visible keyboard focus',details:fit});
+  }
   if(side==='native'&&percent===200&&measurements.offerActionFit.some(item=>item.queryNarrow&&(!item.actionOnOwnRow||item.actionWidthRatio<0.94)))report.failures.push({width,percent,screen,error:'Enlarged narrow hotel offer did not promote its action to a usable full row',details:measurements.offerActionFit.filter(item=>item.queryNarrow&&(!item.actionOnOwnRow||item.actionWidthRatio<0.94))});
   if(side==='native'&&percent===100&&width<=430&&measurements.offerActionFit.some(item=>item.queryNarrow||item.actionOnOwnRow||item.actionWidthRatio>0.6))report.failures.push({width,percent,screen,error:'Ordinary mobile hotel offer lost the donor price/action row',details:measurements.offerActionFit});
   if(side==='native'&&(measurements.headerFit.outside||measurements.headerFit.overlap))report.failures.push({width,percent,screen,error:'Header content overlaps or escapes the header',details:measurements.headerFit});
