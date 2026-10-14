@@ -1,6 +1,6 @@
-# Reviewed favorite-state continuity successor in the approved design.
+# Reviewed selected-tour reading successor in the approved design.
 # Requires 212 ordinary100 frames, exact source/release ancestry, and the published
-# partial-status 8d3/run385226 predecessor.
+# favorite-continuity 046/run385347 predecessor.
 # Historical commands/controllers remain consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 
