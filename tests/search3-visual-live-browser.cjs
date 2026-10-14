@@ -155,7 +155,7 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
     if(mode==='exact'||mode==='legacy'){
      await page.locator('[data-action="andromeda-application-preview"]').waitFor();assert.match((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),/125500/);
     }else{
-     await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+     await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
      assert.equal(await page.locator('[data-action="andromeda-application-preview"]').count(),0);
      assert.match(await page.locator('#modal-footer').textContent(),/Цена из выдачи · не подтверждена/);
      assert.equal((await page.evaluate(()=>window.quoteFailures)).at(-1).failureCategory,'invalid_response');
@@ -165,7 +165,7 @@ const verifiedPairJourney=async(browser,origin,base,evidence)=>{
     assert.equal(quoteCount(),before+2);
     await page.locator('[data-action="close-modal"]').click();await openList();await choose();
     if(mode==='exact'||mode==='legacy')await page.locator('[data-action="andromeda-application-preview"]').waitFor();
-    else await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('некорректное подтверждение'));
+    else await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
     assert.equal(quoteCount(),before+2,'reopen retains confirmed or rejected pair without replay');
     await page.locator('[data-action="close-modal"]').click();await openList();
     await page.screenshot({path:path.join(evidence,`samo-pair-other-${mode}-${width}.png`)});
@@ -502,7 +502,7 @@ const quoteRetryAndRoomReturnJourney=async(browser,origin,base,evidence)=>{
    const pendingFooter=await position();assert.equal(pendingFooter.focus,'modal-title');assert(await page.locator('#modal-footer .primary').isDisabled());
    await page.screenshot({path:path.join(evidence,`quote-pending-action-${width}.png`)});
    firstFailure.release();await page.locator('#modal-body .error-text').waitFor();await page.waitForFunction(()=>document.activeElement?.dataset.action==='start-lead');
-   assert.match(await page.locator('#modal-body .error-text').textContent(),/Fictional temporary quote failure/);assert.equal(await page.locator('#prototype-lead-form').count(),0);
+   assert.equal((await page.locator('#modal-body .error-text').textContent()).trim(),'Не удалось проверить цену и наличие тура. Повторите проверку.');assert.equal(await page.locator('#prototype-lead-form').count(),0);
    const resumedFooter=await position();assert.equal(resumedFooter.focus,'start-lead');assert.equal(await page.locator('[data-action="start-lead"]').isDisabled(),false);
    const movedFailure=hold('tour',true);await page.locator('[data-action="start-lead"]').click();await movedFailure.pending;
    await page.waitForFunction(()=>document.activeElement===document.querySelector('#modal-title'));
@@ -1612,7 +1612,7 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('[name="andromeda-return"]:checked').inputValue(),'flight_'+'2'.repeat(32));
     await page.locator('[data-action="apply-andromeda-flights"]').click();
    }
-   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
    assert.match(await page.locator('#modal-footer').textContent(),/Цена из выдачи · не подтверждена/);
    assert.equal(await page.locator('[data-action="refresh-hotel"]').count(),0);
    assert.equal(quoteCount(),before+(flightChoice?2:1));
@@ -1620,7 +1620,7 @@ const server=http.createServer((req,res)=>{
    await page.screenshot({path:path.join(evidence,`samo-${flightChoice?'flight':'quote'}-recovery-${width}.png`)});
    assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth),false);
    await page.locator('#modal-footer [data-action="all-offers"]').click();await chooseSamo();
-   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.includes('Подтверждение тура не получено'));
+   await page.waitForFunction(()=>document.querySelector('#modal-body .error-text')?.textContent.trim()==='Не удалось подтвердить этот тур. Выберите другой вариант.');
    assert.equal(quoteCount(),before+(flightChoice?2:1),'reopening does not call the supplier');
   }
   const failures=await page.evaluate(()=>window.quoteFailures);
