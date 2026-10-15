@@ -1,5 +1,13 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Approved original Site198 variant discovery — 15 October 2026
+
+Owner approved the complete Site198/package98/v234 in https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6187906754. Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8eff868acadbc81044595c044faf605b2881c1da`, audit `611502562a25c12149a96da9c10d28f1e07da9f5`. This bounded adaptation starts from release `a087f151c8380793bd84bb941f208defcdff754e` and installed source `298c9964f3be63e10c64f176cfdb1898050561cb`.
+
+The existing All variants control now follows the exact minimum price/CTA before supplementary room/operator/highlight text on ordinary mobile. It retains the existing handler, exact offers, photo1.8, current choice and contact/flight/price owners. Desktop/tablet grid positions stay unchanged; the approved disclosed DOM/Tab caveat visits About/AllVariants before operator-info. Runtime227 stays a separate receiver identifier from donor234. No donor fixtures, demos, data/parser/lifecycle/transport or money authority are copied.
+
+Candidate source requires applicable final-head focused/full compiled CI and visual inspection, a permitted release merge, separately claimed stock NEXT-only publication and installed readback. Preparation is not runtime acceptance. Original design-lab MobileC5=2 and clickable A11yC3=2 carry their exact receipt6180893455 without new growth; installed mobile remains not_measured until separately evidenced.200%deferred. No physical Safari, real supplier availability or lead delivery claim.
+
 ## Confirmed live meal and contact repair — 2026-10-13
 
 Direct ANEX listing groups and their concrete offers now carry the same canonical
