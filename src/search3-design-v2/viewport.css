@@ -872,6 +872,20 @@ body { margin: 0; padding: 0; }
    selected hotel identity only a few characters wide. Preserve its ordinary
    side-by-side composition, but promote the same real photo to a shallow
    full-width image when the summary itself becomes narrower than 18em. */
+#design-v2-native-root #b4 .st-tour-hotel {
+  flex-wrap: wrap;
+}
+#design-v2-native-root #b4 .st-tour-hotel > .st-mini-photo {
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+#design-v2-native-root #b4 .st-tour-hotel > :last-child {
+  min-width: 0;
+  flex: 999 1 10em;
+}
+#design-v2-native-root #b4 .st-mobile .st-tour-hotel > :last-child {
+  flex-basis: calc(10em + 4%);
+}
 @container native-summary (max-width: 18em) {
   #design-v2-native-root #b4 :is(.st-tour-hotel, .st-quick-context) {
     display: grid;

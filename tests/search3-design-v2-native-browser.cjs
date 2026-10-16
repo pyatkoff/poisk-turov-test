@@ -326,8 +326,8 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         overlap:actions.length===2&&Math.min(actions[0].right,actions[1].right)>Math.max(actions[0].left,actions[1].left)+1&&Math.min(actions[0].bottom,actions[1].bottom)>Math.max(actions[0].top,actions[1].top)+1};
     }
     const summaryFit=[...root.querySelectorAll('.st-tour-hotel,.st-quick-context')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const bounds=node.getBoundingClientRect(),image=node.firstElementChild?.getBoundingClientRect(),copy=node.lastElementChild?.getBoundingClientRect(),fontSize=parseFloat(getComputedStyle(node).fontSize);
-      return{className:node.className,width:bounds.width,fontSize,imageWidth:image?.width||0,copyWidth:copy?.width||0,copyWidthRatio:copy?.width/bounds.width||0,
+      const bounds=node.getBoundingClientRect(),image=node.firstElementChild?.getBoundingClientRect(),copy=node.lastElementChild?.getBoundingClientRect(),style=getComputedStyle(node),fontSize=parseFloat(style.fontSize),contentWidth=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+      return{className:node.className,width:bounds.width,contentWidth,fontSize,imageWidth:image?.width||0,copyWidth:copy?.width||0,copyWidthRatio:copy?.width/contentWidth||0,
         stacked:Boolean(image&&copy&&copy.top>=image.bottom-1),queryNarrow:bounds.width<=fontSize*18+1};
     });
     const offerActionFit=[...root.querySelectorAll('.st-offer > .st-offer-select')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
