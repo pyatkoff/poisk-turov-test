@@ -724,7 +724,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.boundedInitialCards=24;row.proof.boundedLoadedHotels=55;row.proof.boundedBackCards=48;row.proof.boundedExtraSearches=0;
         await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
         const calendar=product.locator('.q8c9');
-        if(width<=760)await calendar.locator('[data-native-calendar]').click();
+        if(width<=760){
+          await calendar.locator('[data-native-calendar]').click();
+          assert.equal(await calendar.locator('[data-native-calendar]').evaluate(node=>node===document.activeElement),true,'The mobile calendar toggle keeps keyboard focus after its panel rerenders');
+        }
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16','2026-10-17','2026-10-18']);
         const nextDates=calendar.locator('[data-native-calendar-page="next"]');await nextDates.focus();await nextDates.press('Enter');
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25']);
@@ -735,8 +738,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         await calendar.locator('[data-native-day="2026-10-25"]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),1,'A later loaded date filters existing cards locally');
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-pressed'),'true','The selected later date remains visible on its page');
+        assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').evaluate(node=>node===document.activeElement),true,'The selected date keeps keyboard focus after local result rerender');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Paging and later-date selection start no supplier search');
         await calendar.locator('[data-native-day="2026-10-25"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
+        assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').evaluate(node=>node===document.activeElement),true,'The cleared date keeps keyboard focus after local result rerender');
         await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
         const currentFavorite=product.locator('[data-favorite-current]');await currentFavorite.focus();await currentFavorite.press('Enter');
         assert.equal(await currentFavorite.getAttribute('aria-pressed'),'true');assert.equal(await currentFavorite.getAttribute('aria-label'),'Удалить из избранного');
@@ -746,7 +751,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await page.goBack();await screen('results').waitFor({state:'visible'});
         assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Back restores the same calendar page');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Calendar history return starts no supplier search');
-        row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;row.proof.hotelFavoriteStateTruthful=true;
+        row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarControlFocusRetained=true;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;row.proof.hotelFavoriteStateTruthful=true;
         if(width===390&&percent===100){
           await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
           assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Progressive results retain the visible calendar page');
@@ -769,9 +774,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         const meal=product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first();
         await meal.check();
         if(width<=760)await product.locator('[data-action="apply-filters"]').click();
+        else assert.equal(await product.locator('[data-filter-sidebar] [data-native-filter="meals"][value="Ультра всё включено"]').evaluate(node=>node===document.activeElement),true,'The desktop inline facet keeps keyboard focus after local result rerender');
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Loaded meal filter matches factual fixtures');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Local filter starts zero supplier requests');
-        row.proof.localFilterExtraSearches=0;
+        row.proof.localFilterExtraSearches=0;if(width>760)row.proof.desktopFacetFocusRetained=true;
         const activeMeal=product.locator('[data-active-chips] [data-native-remove-constraint="meals"]');
         assert.equal(await activeMeal.innerText(),'Ультра всё включено');
         assert((await activeMeal.boundingBox()).height>=44,'Condition removal has a usable touch target');
@@ -822,11 +828,14 @@ async function referenceFrame(page,width,percent,screen,row) {
           }
           await capture(page,'native',width,percent,'budget-draft',row);
           await product.locator('[data-action="apply-filters"]').click();
-        }else await cap.press('Tab');
+        }else{
+          await cap.press('Tab');
+          assert.equal(await budgetPanel.locator('input[type="number"][data-native-budget="max"]').evaluate(node=>node===document.activeElement),true,'The desktop inline budget keeps keyboard focus after local result rerender');
+        }
         assert.equal(await product.locator('.st-hotel-card').count(),2,'Budget cap uses the full loaded price');
         await capture(page,'native',width,percent,'budget-results',row);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Budget edits and viewport remount start no supplier search');
-        row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;
+        row.proof.budgetLoadedCount=2;row.proof.budgetExtraSearches=0;if(width>760)row.proof.desktopBudgetFocusRetained=true;
         if(width<=760){
           await product.locator('[data-action="filters"]').first().click();
           await screen('filters').locator('[data-action="reset-draft"]').click();
