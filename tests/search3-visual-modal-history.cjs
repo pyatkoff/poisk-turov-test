@@ -133,6 +133,23 @@ assert.notEqual(roomSnapshotMutation,source,'one existing passive-room snapshot 
 assert.notDeepEqual(records(roomSnapshotMutation),actual,'restoring stale hotel-room selection/pair/total is detected');
 console.log(`PASS modal history: ${actual.length} cases; snapshot identity, restore/render/focus/scroll/guards retained digest ${digest} plus ${viewportSyncObservations} exact viewport sync observations; supplier and lead HTTP 0`);
 
+// Execute the connected viewport owner with explicit rectangles: pinch changes
+// must not impersonate a keyboard or scroll the focused filter input.
+const viewportStart=source.indexOf('function syncDestinationViewport(){'),viewportEnd=source.indexOf('window.visualViewport?.addEventListener',viewportStart);
+assert(viewportStart>0&&viewportEnd>viewportStart);
+for(const width of [390,768,1280])for(const modalOpen of [false,true]){
+ const input={value:'12345',selectionStart:1,selectionEnd:3,matches:selector=>selector==='input,textarea'},viewport={height:420,offsetTop:25,scale:1};
+ const node=classes=>{const names=new Set(classes),values=new Map();return{open:false,scrollTop:0,classList:{contains:name=>names.has(name),toggle:(name,on)=>on?names.add(name):names.delete(name),remove:name=>names.delete(name)},style:{setProperty:(name,value)=>values.set(name,value),removeProperty:name=>values.delete(name),getPropertyValue:name=>values.get(name)||''},querySelector:()=>null,contains:()=>false};};
+ const panel=node(modalOpen?[]:['open']),modal=node([]),body=node([]),footer=node([]),header={getBoundingClientRect:()=>({bottom:100})},drawerFooter={getBoundingClientRect:()=>({top:330})};modal.open=modalOpen;
+ panel.querySelector=selector=>selector==='.filter-top'?header:drawerFooter;panel.contains=field=>field===input;panel.getBoundingClientRect=()=>({top:33,bottom:437});input.getBoundingClientRect=()=>({top:392-panel.scrollTop,bottom:440-panel.scrollTop});
+ const nodes={'#modal':modal,'#modal-body':body,'#modal-footer':footer,'#filter-panel':panel},context={$:selector=>nodes[selector],window:{visualViewport:viewport},document:{activeElement:input},innerWidth:width,innerHeight:900,modalType:'offer',requestAnimationFrame:callback=>callback()};
+ vm.createContext(context);vm.runInContext(source.slice(viewportStart,viewportEnd),context);const sync=()=>context.syncDestinationViewport(),bounded=()=>modalOpen?modal.classList.contains('viewport-keyboard'):panel.classList.contains('viewport-keyboard'),responsive=width<=(modalOpen?760:1100),properties=modalOpen?['--modal-viewport-top','--modal-viewport-height']:['--filter-viewport-top','--filter-viewport-bottom','--filter-viewport-height'],owner=modalOpen?modal:panel;
+ sync();assert.equal(bounded(),responsive,'scale1 keeps the existing modal/drawer keyboard boundary');assert.equal(panel.scrollTop,!modalOpen&&responsive?110:0);const scroll=panel.scrollTop;
+ for(const scale of [1.25,2]){viewport.scale=scale;sync();assert.equal(bounded(),false,'pinch is not a keyboard at '+width);for(const property of properties)assert.equal(owner.style.getPropertyValue(property),'','pinch clears keyboard positioning, including the fixed drawer footer');assert.equal(panel.scrollTop,scroll,'pinch never scrolls the active filter field');assert.strictEqual(context.document.activeElement,input);assert.deepEqual([input.value,input.selectionStart,input.selectionEnd],['12345',1,3]);}
+ viewport.scale=1;sync();assert.equal(bounded(),responsive,'scale1 keyboard behavior resumes after pinch');assert.equal(panel.scrollTop,scroll);viewport.height=900;sync();assert.equal(bounded(),false,'keyboard dismissal clears the retained bound');
+}
+console.log('PASS actual viewport owner: scale1 keyboard, pinch1.25/2, restored scale1 and dismissal; unchanged modal boundary; drawer focus/caret/draft/scroll retained; no browser or physical pinch claim');
+
 // The approved room draft continues through the footer. Its passive return
 // target is the exact selected row, including when a late cheaper row moves it.
 const continuedRoom={kind:'show',open:true,current:'hotel-details',next:'offer',setup:(c,n)=>{
