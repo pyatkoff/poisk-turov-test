@@ -347,7 +347,7 @@ let destinationLookup={status:'idle',rows:[]},destinationRequest=null,destinatio
 function cancelDestinationLookup(){clearTimeout(destinationTimer);destinationRequest?.abort();destinationRequest=null;destinationLookup={status:'idle',rows:[]};}
 function syncDestinationViewport(){
  const m=$('#modal'),v=window.visualViewport,application=['selected-tour','provider-application','anex-application'].includes(modalType)&&!!m.querySelector('#prototype-lead-form'),keyboard=m.open&&innerWidth<=760&&v&&(v.scale||1)<=1.01&&Number.isFinite(v.height)&&v.height<innerHeight-120;
- const panel=$('#filter-panel'),drawerKeyboard=panel.classList.contains('open')&&innerWidth<=1100&&v&&v.height<innerHeight-120;
+ const panel=$('#filter-panel'),drawerKeyboard=panel.classList.contains('open')&&innerWidth<=1100&&v&&(v.scale||1)<=1.01&&v.height<innerHeight-120;
  panel.classList.toggle('viewport-keyboard',!!drawerKeyboard);
  if(drawerKeyboard){panel.style.setProperty('--filter-viewport-top',(v.offsetTop+8)+'px');panel.style.setProperty('--filter-viewport-bottom',Math.max(0,innerHeight-v.offsetTop-v.height+8)+'px');panel.style.setProperty('--filter-viewport-height',Math.max(0,v.height-16)+'px');}
  else{panel.style.removeProperty('--filter-viewport-top');panel.style.removeProperty('--filter-viewport-bottom');panel.style.removeProperty('--filter-viewport-height');}
