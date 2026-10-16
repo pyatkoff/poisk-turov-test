@@ -60,7 +60,7 @@ class UpdateContracts(unittest.TestCase):
         (self.source / 'payload' / remote.NATIVE_MANIFEST).write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
         self.native = native
         self.native_pin = {'source_sha': 'a' * 40, 'source_tree': 'd' * 40,
-            'release_sha': 'c' * 40, 'release_tree': 'd' * 40, 'release_parent': 'b' * 40,
+            'release_sha': 'c' * 40, 'release_tree': 'd' * 40,
             'build_run': 123, 'artifact_id': 456,
             'source_ZIP_sha256': 'e' * 64, 'entry_html_sha256': native['entry']['html'], 'entry_php_sha256': native['entry']['php'],
             'source_manifest_sha256': remote.digest((self.source / 'payload' / remote.NATIVE_MANIFEST).read_bytes())}
@@ -366,8 +366,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38534763188)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '0fc16325635d113fafa96081f295a1a5696359c3')
+        self.assertEqual(remote.PREDECESSOR_RUN, 38558081728)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -885,7 +885,8 @@ class UpdateContracts(unittest.TestCase):
             'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
             '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241',
             '8d3d66eeb95ac69534ec7557c7c0926cf201543c',
-            '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b'))
+            '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b',
+            '0fc16325635d113fafa96081f295a1a5696359c3'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -912,21 +913,27 @@ class UpdateContracts(unittest.TestCase):
         checks.pop()
         with self.assertRaisesRegex(ValueError, 'required_visual_checks_missing'): pub.strict_checks(API(), self.q['source_sha'])
 
-    def test_native_provenance_requires_exact_reviewed_squash_commit_and_relation(self):
-        base_pin = patch.dict(self.native_pin, release_parent=pub.NATIVE_SOURCE_ANCESTORS[-1][0])
-        base_pin.start(); self.addCleanup(base_pin.stop)
+    def test_native_provenance_requires_exact_reviewed_merge_commits_and_relation(self):
+        source_parents = (('1' * 40, '3' * 40), ('2' * 40, '4' * 40))
+        release_parents = (('2' * 40, '4' * 40), ('a' * 40, 'd' * 40))
+        source_pin = patch.object(pub, 'NATIVE_SOURCE_PARENTS', source_parents)
+        release_pin = patch.object(pub, 'NATIVE_RELEASE_PARENTS', release_parents)
+        source_pin.start(); release_pin.start()
+        self.addCleanup(source_pin.stop); self.addCleanup(release_pin.stop)
         checks = [{'name': n, 'head_sha': 'a' * 40, 'status': 'completed', 'conclusion': 'success',
             'app': {'slug': 'github-actions'}, 'started_at': '2026-10-12T15:00:00Z'}
             for n in pub.REQUIRED_CHECKS]
         values = {
             '/git/ref/heads/main': {'object': {'sha': 'f' * 40}},
             '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
-            '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': pub.NATIVE_SOURCE_PARENT}]},
-            '/git/commits/' + pub.NATIVE_SOURCE_PARENT: {'tree': {'sha': pub.NATIVE_SOURCE_PARENT_TREE},
-                'parents': [{'sha': pub.NATIVE_SOURCE_BASE_PARENT}]},
-            '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40}, 'parents': [{'sha': pub.NATIVE_SOURCE_ANCESTORS[-1][0]}]},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'diverged', 'behind_by': len(pub.NATIVE_SOURCE_ANCESTORS), 'ahead_by': 1,
-                'merge_base_commit': {'sha': pub.NATIVE_SOURCE_ANCESTORS[-1][0]}},
+            '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40},
+                'parents': [{'sha': sha} for sha, _ in source_parents]},
+            '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40},
+                'parents': [{'sha': sha} for sha, _ in release_parents]},
+            '/git/commits/' + '1' * 40: {'tree': {'sha': '3' * 40}},
+            '/git/commits/' + '2' * 40: {'tree': {'sha': '4' * 40}},
+            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'ahead', 'behind_by': 0, 'ahead_by': 1,
+                'merge_base_commit': {'sha': 'a' * 40}},
             '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
                 'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
                 'repository': {'full_name': pub.REPO}, 'head_repository': {'full_name': pub.REPO}},
@@ -934,11 +941,6 @@ class UpdateContracts(unittest.TestCase):
             '/actions/artifacts/456': {'expired': False, 'workflow_run': {'id': 123, 'head_sha': 'a' * 40},
                 'name': 'search3-design-v2-native-' + 'a' * 40 + '-123', 'digest': 'sha256:' + 'e' * 64},
         }
-        for index, (parent_sha, parent_tree) in enumerate(pub.NATIVE_SOURCE_ANCESTORS):
-            next_sha = (pub.NATIVE_SOURCE_ANCESTORS[index + 1][0]
-                        if index + 1 < len(pub.NATIVE_SOURCE_ANCESTORS) else pub.NATIVE_SOURCE_BASE_PARENT)
-            values['/git/commits/' + parent_sha] = {
-                'tree': {'sha': parent_tree}, 'parents': [{'sha': next_sha}]}
         class API:
             def __init__(self, rows): self.rows = rows
             def get(self, path): return self.rows[path]
@@ -949,41 +951,28 @@ class UpdateContracts(unittest.TestCase):
             ('native_source_parent_pin', '/git/commits/' + 'a' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
             ('native_source_parent_pin', '/git/commits/' + 'a' * 40,
              lambda row: row['parents'].append({'sha': '0' * 40})),
-            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
+            ('native_source_parent_pin', '/git/commits/' + 'a' * 40,
+             lambda row: row.update(parents=list(reversed(row['parents'])))),
+            ('native_source_parent_tree_pin', '/git/commits/' + '1' * 40,
              lambda row: row['tree'].update(sha='0' * 40)),
-            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
-             lambda row: row.update(parents=[{'sha': '0' * 40}])),
-            ('native_source_parent_lineage_pin', '/git/commits/' + pub.NATIVE_SOURCE_PARENT,
-             lambda row: row['parents'].append({'sha': '0' * 40})),
             ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
             ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
-            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=len(pub.NATIVE_SOURCE_ANCESTORS)+1)),
-            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=len(pub.NATIVE_SOURCE_ANCESTORS)-1)),
-            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+            ('native_release_parent_pin', '/git/commits/' + 'c' * 40,
+             lambda row: row.update(parents=list(reversed(row['parents'])))),
+            ('native_source_parent_tree_pin', '/git/commits/' + '2' * 40,
+             lambda row: row['tree'].update(sha='0' * 40)),
+            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+             lambda row: row.update(status='diverged')),
+            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+             lambda row: row.update(behind_by=1)),
+            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row.update(ahead_by=2)),
-            ('native_exact_squash_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
+            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
              lambda row: row['merge_base_commit'].update(sha='0' * 40)),
         )
         for i, (message, path, mutate) in enumerate(mutations):
             rows = copy.deepcopy(values); mutate(rows[path])
             with self.subTest(index=i), self.assertRaisesRegex(ValueError, message):
-                pub.native_provenance(API(rows), q, 'f' * 40)
-        for parent_sha, _ in pub.NATIVE_SOURCE_ANCESTORS:
-            for defect in ('tree', 'missing', 'substituted', 'extra', 'skipped'):
-                rows = copy.deepcopy(values); row = rows['/git/commits/' + parent_sha]
-                if defect == 'tree': row['tree']['sha'] = '0' * 40
-                elif defect == 'missing': row['parents'] = []
-                elif defect == 'substituted': row['parents'] = [{'sha': '0' * 40}]
-                elif defect == 'extra': row['parents'].append({'sha': '0' * 40})
-                else: row['parents'] = [{'sha': 'b' * 40}] if parent_sha != pub.NATIVE_SOURCE_ANCESTORS[-1][0] else [{'sha': pub.NATIVE_SOURCE_PARENT}]
-                with self.subTest(parent=parent_sha, defect=defect), self.assertRaisesRegex(ValueError, 'native_source_parent_lineage_pin'):
-                    pub.native_provenance(API(rows), q, 'f' * 40)
-        for count in sorted(set(range(6)) - {len(pub.NATIVE_SOURCE_ANCESTORS)}):
-            rows = copy.deepcopy(values)
-            rows['/compare/' + 'a' * 40 + '...' + 'c' * 40]['behind_by'] = count
-            with self.subTest(commit_count=count), self.assertRaisesRegex(ValueError, 'native_exact_squash_relation'):
                 pub.native_provenance(API(rows), q, 'f' * 40)
         rows = copy.deepcopy(values)
         rows['/git/commits/' + 'a' * 40]['parents'] = [{'sha': '0' * 40}]
@@ -1044,7 +1033,7 @@ class UpdateContracts(unittest.TestCase):
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332, 38522678669, 38534763188))
+             38514276332, 38522678669, 38534763188, 38558081728))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1111,12 +1100,12 @@ class UpdateContracts(unittest.TestCase):
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
+            'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/tour.js',
-            'visual-search/native-v2/viewport.css',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/frontend.js',
+        for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js',
+                     'visual-search/native-v2/viewport.css',
                      'visual-search/native-v2/bridge.js',
                      'visual-search/native-v2/donor.css',
                      'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
@@ -1136,7 +1125,7 @@ class UpdateContracts(unittest.TestCase):
     def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/frontend.js')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/tour.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')

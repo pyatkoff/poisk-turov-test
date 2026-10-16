@@ -1,6 +1,6 @@
-"""One reviewed update of the existing separate design preview; no other target.
+"""One reviewed focus-retention update of the separate design preview; no other target.
 
-The predecessor is the published favorite-continuity update, not a caller-selected path.
+The predecessor is the published tour-reading update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b'
-PREDECESSOR_RUN = 38534763188
-PREDECESSOR_DIGEST = '442b7e2d33ca360e5657c3f4f8633d3a007026e5df8cefb32468c6f7e2b8e4b0'
+PREDECESSOR_SOURCE = '0fc16325635d113fafa96081f295a1a5696359c3'
+PREDECESSOR_RUN = 38558081728
+PREDECESSOR_DIGEST = '9dbe76857eef48a0b90d5e1b1f0a422073868707d1b863c7db759dbb3f1ce6f1'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -54,14 +54,15 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
     '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241',
     '8d3d66eeb95ac69534ec7557c7c0926cf201543c',
-    '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b')
+    '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b',
+    '0fc16325635d113fafa96081f295a1a5696359c3')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
     38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
     38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
     38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-    38514276332, 38522678669, 38534763188)
+    38514276332, 38522678669, 38534763188, 38558081728)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -75,17 +76,16 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 
 # Exact reviewed source and receiving release; activation requires fresh workflow gates.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '0fc16325635d113fafa96081f295a1a5696359c3',
-    'source_tree': '96e7db70e9a2e09d8956f84505bc0e0c0867d3ed',
-    'release_sha': 'caa6941a8b42c07856740aeb587fea4525b8b3ea',
-    'release_tree': '96e7db70e9a2e09d8956f84505bc0e0c0867d3ed',
-    'release_parent': '963fc26640363dab987ffd5ea3dbd196d0ac8e63',
-    'build_run': 38556694532,
-    'artifact_id': 11889813536,
-    'source_ZIP_sha256': '69ee2df86a12461bb803c73d21611d22a744a262141ffa34bcc8c1cdcbac58be',
+    'source_sha': 'f99306ffe3725f2badc70096d801608fc5393009',
+    'source_tree': '4482715a5c642b4718cf1efc7510a65edb0bab08',
+    'release_sha': 'c43328df83ca89c8f881dfc33cd4601eb1eb025c',
+    'release_tree': '4482715a5c642b4718cf1efc7510a65edb0bab08',
+    'build_run': 38564443027,
+    'artifact_id': 11894950086,
+    'source_ZIP_sha256': 'fa0a0af627e356d002f4ebd2954846ccaa2626ad1dab5bd2a673542cebae12af',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': 'c0785243e77f6f572a740696b39ebc5f386dd2de51d759a58945b124ac15ca98',
+    'source_manifest_sha256': '1d6c3a8469a42264b19aacd402cb38a627d3d5604759a749e2621edbc6b35edf',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -96,11 +96,11 @@ NATIVE_ASSETS = tuple('visual-search/native-v2/' + name for name in (
 NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# Only the reviewed tour presentation, viewport and generated manifest differ from
+# Only the reviewed focus-retention controller and generated manifest differ from
 # the exact 855-file published predecessor.
 # Historical baseline allowances do not authorize fresh legacy/provider/brand changes.
 NATIVE_SUCCESSOR_CHANGES = tuple(sorted('visual-search/native-v2/' + name for name in (
-    'source-manifest.json', 'tour.js', 'viewport.css')))
+    'frontend.js', 'source-manifest.json')))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',
     './lead-runtime-v1.js', '../search3-canonical-profiles-v1.js', '../search3-local-db-provider-v1.js',
@@ -128,17 +128,17 @@ NATIVE_SCRIPT_REWRITES = (
 
 def native_acceptance():
     pin = NATIVE_ACCEPTANCE
-    keys = {'source_sha', 'source_tree', 'release_sha', 'release_tree', 'release_parent',
+    keys = {'source_sha', 'source_tree', 'release_sha', 'release_tree',
             'build_run', 'artifact_id', 'source_ZIP_sha256',
             'entry_html_sha256', 'entry_php_sha256', 'source_manifest_sha256'}
     need(isinstance(pin, dict) and set(pin) == keys, 'native_acceptance_not_pinned')
     need(all(isinstance(pin[k], str) and re.fullmatch('[0-9a-f]{40}', pin[k])
-             for k in ('source_sha', 'source_tree', 'release_sha', 'release_tree', 'release_parent')),
+             for k in ('source_sha', 'source_tree', 'release_sha', 'release_tree')),
          'native_source_pin')
     need(pin['source_sha'] not in COMPLETED_SOURCES, 'native_completed_source_pin')
     need(all(type(pin[k]) is int and 0 < pin[k] < 10**15 for k in ('build_run', 'artifact_id')), 'native_build_pin')
     need(all(isinstance(pin[k], str) and re.fullmatch('[0-9a-f]{64}', pin[k])
-             for k in keys - {'source_sha', 'source_tree', 'release_sha', 'release_tree', 'release_parent',
+             for k in keys - {'source_sha', 'source_tree', 'release_sha', 'release_tree',
                               'build_run', 'artifact_id'}), 'native_hash_pin')
     return pin
 
