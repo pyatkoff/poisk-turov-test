@@ -1286,19 +1286,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3: целостные desktop/mobile макеты и кликабельный прототип visual/UX9,5–10",
-    "status": "READY_FOR_FULL_PATH_DESIGN_PACKAGE",
+    "title": "Search3: приёмка перенесённого Site198 в existing NEXT и устранение подтверждённого Tourvisor root gateway500",
+    "status": "SITE198_TRANSFERRED_DESKTOP_OFFLINE_ACCEPTED_REMAINING_GATES_OPEN",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-10",
+    "updated_at": "2026-10-16",
     "owner_request": "10.10.2026: сделать план для автопилотов, чтобы получить поисковик9,5–10 визуально и по юзабилити, хотя бы макеты по этому плану.",
-    "acceptance_status": "PLAN_PREPARED_NEW_FULL_PATH_MOCKUPS_AND_PROTOTYPE_NOT_YET_CREATED_OR_APPROVED",
+    "acceptance_status": "SITE198_OWNER_APPROVED_TRANSFERRED_DESKTOP_OFFLINE_ACCEPTED_PHONE_REAL_SUPPLIER_AND_LEAD_DELIVERY_PENDING",
     "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
-    "published_source_sha": "9b74bdfae2fa9244be52e822d64db1e7282e6901",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6091085104",
+    "published_source_sha": "aed671fc08eb38d9a25f68c308a2c7c2f649283b",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6188634678",
     "planning_base_release_sha": "2816925ef50b56ed97a760cf2dd28ef318f3e7d4",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
@@ -1316,13 +1316,13 @@
       ],
       "score_status": "No new assessment; not_measured stays not_measured. A mockup does not close functional, authority, identity or architecture criteria."
     },
-    "next_action": "SITE/design #1719: fresh scoped claim in #4217, then prepare one complete draft in existing public AnyTour Search3 design project appgprj_6abcd9299ef88191bbce1fc1bf8c767a. Cover full form/results/filters/calendar/hotel variants/selected tour/price-flights/contact/Back on390+1280, responsive360/430/768, short desktop and200% text. Use same retained corpus and marked controlled states. Deliver exact working version, at least8 main screenshots plus dialogs/states, clickable transitions, independent review and measured applicable visual criteria. Short baseline and full existing-rubric evaluation run in parallel; do not wait for all55/live/physical gates before making mockups. Do not replace this deliverable with another status report or isolated card patch.",
+    "next_action": "Продолжать с перенесённого Site198 в existing NEXT, не создавать заново полный design draft и не повторять уже принятый desktop offline путь. Сначала по свежим #4217/#1646 и ownership довести текущий подтверждённый Tourvisor root gateway500 до проверяемого исправления в разрешённом scope; активный writer/publisher не перехватывать. Phone acceptance и разрешённые real supplier/lead-delivery gates остаются отдельными незавершёнными проверками. Независимую phone-приёмку выполнять на том же установленном artifact без новых supplier запросов/реальных заявок; не ждать её для доступного исправления gateway. 200% текста отложено владельцем и не является текущим блокером.",
     "next_task": {
-      "scope": "Three connected design blocks: parameters/results/hotel; hotel variant/selected tour; contact/return. One coherent design package before bounded implementation packets.",
-      "design_owner": "SITE #1719 owns existing public Sites draft/history, not NEXT source. SEARCH #1646 supplies exact constraints/corpus and implements approved handoff. Independent QA read-only, coordinator#4217.",
-      "acceptance": "Same SEARCH-QUALITY-1 before/after, same data/tasks/widths. At least9.5 only when all5 criteria of that row measured. Visual and behavior approval of one complete exact clickable version required before new layout in NEXT. Physical Safari and real supplier/delivery evidence separate. Full source/compiled/exact-head gates and publisher readback required later.",
-      "execution": "Continue the same artifact and unfinished block across runs. While approval/CI/ownership is blocked, take independent approved work; no roadmap restart, no completed/UNKNOWN replay, no duplicate state/tracker or schedule.",
-      "protected": "Tourvisor+direct ANEX remain current live sources, SAMO paused. Keep mobile photo1.8,7-date strip/month/year, primary fields, logo, exact offer/search/party context, URL/payload/auth, price/fuel/authority, provider/lead/CRM/Metrika/goals, DB/LOCAL/MATCH. No new supplier requests, real lead send, main/production/sibling/SEO change or schedule/enabled/paused changes."
+      "scope": "Existing NEXT после Site198: приоритет подтверждённому TV root gateway500; затем оставшаяся phone/mobile и функциональная приёмка того же artifact. Весь design deliverable остаётся открытым.",
+      "design_owner": "SITE #1719 сохраняет existing public Sites project/history; SEARCH #1646 владеет existing NEXT owners. Один writer на shared paths и отдельный publisher; design-v2 — другой target.",
+      "acceptance": "SEARCH-QUALITY-1/evidence scopes неизменны. Site198 approval/transfer и desktop offline acceptance имеют exact receipts. Новые UI концепции требуют approval. Desktop local variant/pair/price/draft/consent/Back не доказывает phone/physical Safari, live supplier/price authority, lead delivery, production или полный9.5.",
+      "execution": "Свежие claims/heads/CI/receipts; продолжать тот же artifact. Не повторять принятые design/transfer/desktop и completed/UNKNOWN операции. При занятом TV lane брать независимую разрешённую phone-приёмку; не создавать duplicate tracker/schedule.",
+      "protected": "Tourvisor+direct ANEX remain current live sources; SAMO paused. Preserve mobile photo1.8,7-date strip/month/year, primary fields, logo, exact offer/search/party context, URL/payload/auth, price/fuel/authority, provider/lead/CRM/Metrika/goals, DB/LOCAL/MATCH. No new supplier requests, real lead send, main/production/sibling/SEO or schedule/enabled/paused changes. 200% text work remains deferred by owner; new UI concepts still require exact approval."
     },
     "existing_unapproved_drafts": [
       {
@@ -1347,6 +1347,17 @@
       "first_background_run_after_resume_verified": false,
       "prompt_unchanged": true,
       "schedule_unchanged": true
+    },
+    "resume_evidence": {
+      "approved_site198": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6187906754",
+      "target": "https://anytoour.ru/_preview/search3-next-candidate/visual-search/",
+      "source_sha": "aed671fc08eb38d9a25f68c308a2c7c2f649283b",
+      "release_sha": "0cfc76059cc09925dbc2a5a50b3b8d1f08674ee9",
+      "artifact_id": 11958778448,
+      "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
+      "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
+      "remaining": "Phone/mobile, physical Safari, separately authorized real supplier/authoritative pricing/lead delivery, full comparable quality evaluation and separate production approval remain open. No score inheritance or full9.5.",
+      "historical_pins": "last_fully_checked_release_sha/planning_base_release_sha, existing_unapproved_drafts and scheduler_observation are retained dated provenance, not current execution pins or new authorization."
     }
   },
   "local_filter_zero_match_recovery_20260910": {
