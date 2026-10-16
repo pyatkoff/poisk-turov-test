@@ -550,7 +550,7 @@ body { margin: 0; padding: 0; }
 /* Match the donor's enlarged-text lead composition: when the card becomes
    text-narrow, place the selected tour above the form so its full total stays
    together instead of isolating the currency on a second line. */
-@container native-summary (max-width: 23em) {
+@container native-summary (max-width: 46em) {
   #design-v2-native-root #b4 .st-desktop .st-lead > .st-tour-hotel,
   #design-v2-native-root #b4 .st-desktop .st-lead > .st-price {
     float: none;

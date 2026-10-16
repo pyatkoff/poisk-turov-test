@@ -223,9 +223,12 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     const box=selector=>{const element=root?.querySelector(selector);if(!element||element.closest('[hidden]'))return null;const r=element.getBoundingClientRect(),style=getComputedStyle(element);return{x:r.x,y:r.y,width:r.width,height:r.height,fontSize:style.fontSize,visible:r.width>0&&r.height>0};};
     const doc=document.documentElement;
     const prices=[...root.querySelectorAll('.st-price,[data-tour-price],.st-offer-price')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const priceLineTops=[];const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
-      while((text=walker.nextNode()))for(let index=0;index<text.textContent.length;index++)if(/[\d₽$€]/.test(text.textContent[index])){const range=document.createRange();range.setStart(text,index);range.setEnd(text,index+1);for(const rect of range.getClientRects())if(rect.width>0&&rect.height>0&&!priceLineTops.some(top=>Math.abs(top-rect.top)<1))priceLineTops.push(rect.top);}
-      const fragmented=priceLineTops.length>1;
+      let fragmented=false,lastDigitTop=null;const currencyTops=[];const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
+      while((text=walker.nextNode())){
+        for(const match of text.textContent.matchAll(/\d+/g)){const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)fragmented=true;}
+        for(let index=0;index<text.textContent.length;index++)if(/[\d₽$€]/.test(text.textContent[index])){const range=document.createRange();range.setStart(text,index);range.setEnd(text,index+1);const rect=[...range.getClientRects()].find(item=>item.width>0&&item.height>0);if(rect)if(/\d/.test(text.textContent[index]))lastDigitTop=rect.top;else currencyTops.push(rect.top);}
+      }
+      if(lastDigitTop!==null&&currencyTops.some(top=>Math.abs(top-lastDigitTop)>=1))fragmented=true;
       const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
       return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
