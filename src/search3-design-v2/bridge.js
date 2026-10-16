@@ -100,7 +100,9 @@
       initialization = (async () => {
         const catalog = await data.init(initialParams.get('origin') || 'Москва');
         if (initialParams.has('origin') && (!(data.catalog?.departures || []).some(row => data.text(row) === initialParams.get('origin')) || catalog.origin !== initialParams.get('origin'))) throw new Error('Город вылета из ссылки не подтверждён каталогом.');
-        const today = new Date(), fromDefault = new Date(today.getTime() + 14 * 86400000).toISOString().slice(0, 10);
+        const today = new Date(), pad = part => String(part).padStart(2, '0');
+        const localToday = today.getFullYear() + '-' + pad(today.getMonth() + 1) + '-' + pad(today.getDate());
+        const fromDefault = new Date(Date.parse(localToday + 'T12:00:00Z') + 14 * 86400000).toISOString().slice(0, 10);
         const toDefault = new Date(Date.parse(fromDefault + 'T12:00:00Z') + 6 * 86400000).toISOString().slice(0, 10);
         const requestedCountry = initialParams.get('country'), available = countries();
         if (requestedCountry && !available.some(row => row.id === requestedCountry)) throw new Error('Страна из ссылки не подтверждена каталогом.');
