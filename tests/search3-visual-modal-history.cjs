@@ -171,3 +171,32 @@ for(const mode of ['current','retained','missing','foreign','loading','flights-l
  vm.createContext(ctx);vm.runInContext(source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
 }
 console.log('PASS passive flight history: exact retained offer/raw inventory only; missing/foreign/loading/expired/empty/other rejected; supplier and lead HTTP0');
+
+// Run the actual lazy renderer, selection dispatch and in-place sync together.
+// Toggle names identify the exact offer; aria-pressed alone carries selection.
+const hotelSource=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/hotel-details-v1.js'),'utf8');
+const choiceStart=hotelSource.indexOf('function roomOfferChoiceHTML('),choiceEnd=hotelSource.indexOf('function renderHotelRooms(',choiceStart);
+const selectionStart=source.indexOf('function syncHotelOfferSelection('),selectionEnd=source.indexOf('function observeHotelRoomChoices(',selectionStart);
+const dispatchStart=source.indexOf("case 'select-hotel-offer':"),dispatchEnd=source.indexOf("case 'continue-hotel-offer':",dispatchStart);
+assert(choiceStart>=0&&choiceEnd>choiceStart&&selectionStart>=0&&selectionEnd>selectionStart&&dispatchStart>=0&&dispatchEnd>dispatchStart);
+const exactRows=[0,1].map(i=>({key:'exact-room-'+i,hotelId:7,raw:{id:i},room:'Family '+i,meal:i?'BB':'AI',day:'2026-10-01',returnDay:'2026-10-08',nights:7,operator:'Operator '+i,total:125000+i*1500}));
+for(const initial of [null,exactRows[0],exactRows[1]]){
+ const makeNode=()=>{const attributes=new Map(),classes=new Set();return{dataset:{},textContent:'',classList:{toggle:(key,on)=>on?classes.add(key):classes.delete(key),contains:key=>classes.has(key)},setAttribute:(key,value)=>attributes.set(key,String(value)),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key)};};
+ const footer=Object.fromEntries(['#hotel-detail-min','#hotel-detail-price-status','#hotel-detail-offers'].map(key=>[key,makeNode()]));let rows=[],remembered=0;
+ const ctx={context:{selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null},selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null,hotels:[{id:7}],state:{search:{}},
+  esc:String,displayMealLabel:o=>o.meal,mealLabel:o=>o.meal,dateText:String,nightsText:String,flightLabel:()=>'',guestsText:()=> '2 взрослых',money:value=>value+' ₽',operatorBadge:String,sameSelectedTourConditions:()=>false,needsRefresh:()=>false,selectedPriceStatus:()=>'',
+  hotelOffers:()=>exactRows,offerFromKey:key=>exactRows.find(o=>o.key===key),rememberUIRoute:()=>remembered++,$:key=>key==='.hotel-section-nav'?{dataset:{hotelId:'7'}}:footer[key],$$:()=>rows,document:{activeElement:null}};
+ vm.createContext(ctx);vm.runInContext(hotelSource.slice(choiceStart,choiceEnd)+source.slice(selectionStart,selectionEnd)+"function dispatchChoice(b){const action='select-hotel-offer';switch(action){"+source.slice(dispatchStart,dispatchEnd)+'}}',ctx);
+ rows=exactRows.map(offer=>{const html=ctx.roomOfferChoiceHTML(offer),row=makeNode(),button=makeNode(),tag=html.match(/<button\b[^>]*>/)[0];row.dataset.offerKey=offer.key;row.querySelector=()=>button;button.dataset.key=offer.key;for(const name of ['aria-label','aria-pressed'])button.setAttribute(name,tag.match(new RegExp(name+'="([^"]*)"'))[1]);button.textContent=initial?.key===offer.key?'Выбрано':'Выбрать';return row;});
+ const names=rows.map(row=>row.querySelector().getAttribute('aria-label'));
+ names.forEach((name,i)=>{const o=exactRows[i];assert.equal(name,`Выбрать: ${o.room}, ${o.meal}, ${o.day}, ${o.operator}, ${o.total} ₽`,'stable accessible name includes exact conditions even when initially selected');});
+ assert.notEqual(names[0],names[1],'different exact offers remain distinguishable');
+ for(const offer of [exactRows[0],exactRows[1],exactRows[0]]){
+  const button=rows.find(row=>row.dataset.offerKey===offer.key).querySelector();ctx.document.activeElement=button;ctx.dispatchChoice(button);
+  assert.strictEqual(ctx.document.activeElement,button,'in-place selection preserves focused button');assert.equal(ctx.hotelOfferDraft.key,offer.key);assert.equal(ctx.hotelOfferDraft.hotelId,7);
+  rows.forEach((row,i)=>{const active=row.dataset.offerKey===offer.key,b=row.querySelector();assert.equal(b.getAttribute('aria-label'),names[i],'toggle name never changes on selection');assert.equal(b.getAttribute('aria-pressed'),String(active));assert.equal(b.textContent,active?'Выбрано':'Выбрать');assert.equal(row.classList.contains('selected'),active);assert.equal(row.getAttribute('aria-current'),active?'true':undefined);});
+  assert.equal(footer['#hotel-detail-min'].textContent,offer.total+' ₽');assert.equal(footer['#hotel-detail-offers'].dataset.key,offer.key);
+ }
+ assert.equal(remembered,3,'each explicit choice records history once');
+}
+console.log('PASS exact offer toggle: actual renderer/dispatch/sync, unselected/A/B initial states, A→B→A stable names/pressed state/focus/exact footer; supplier and lead HTTP0');
