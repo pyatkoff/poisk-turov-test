@@ -91,6 +91,10 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
 }
+#design-v2-native-root #b4 .st-hotel-card--wide-price .st-price {
+  font-size: 24px;
+  white-space: nowrap;
+}
 #design-v2-native-root #b4 .st-mobile .st-quick-price > div {
   flex: 1 1 max-content;
   min-width: min-content;
