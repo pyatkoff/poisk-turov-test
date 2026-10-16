@@ -177,8 +177,9 @@ const server=http.createServer((req,res)=>{
   res.writeHead(200,{'Content-Type':mime[ext]});fs.createReadStream(target).pipe(res);
 });
 
+const requiredWidths=[360,390,430,768,1280],requiredTextPercents=[100,200];
 const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixture.label,
-  requiredWidths:[360,390,430,768,1280],requiredTextPercents:[100],expectedPairedScreens:['search','results','hotel','tour','lead'],
+  requiredWidths,requiredTextPercents,expectedPairedScreens:['search','results','hotel','tour','lead'],
   compiledNativeManifest:manifest,scope:'controlled compiled UI, not live supplier/physical/publication acceptance',
   donorAdapter:'exact original renderer and CSS; test-only controlled hotels, loaded-date-price and selected-price/flight-fact adapters',
   textMethod:'ordinary computed text size; layout dimensions and browser zoom stay unchanged',
@@ -453,7 +454,7 @@ async function referenceFrame(page,width,percent,screen,row) {
   const origin='http://127.0.0.1:'+server.address().port;
   const browser=await chromium.launch({headless:true});
   try {
-    for(const width of [360,390,430,768,1280])for(const percent of [100]){
+    for(const width of requiredWidths)for(const percent of requiredTextPercents){
       const row={width,textPercent:percent,frames:[],checks:[],errors:[],unexpectedRequests:[],proof:{}};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce'});
       const page=await context.newPage(),reference=await context.newPage();
@@ -968,7 +969,7 @@ async function referenceFrame(page,width,percent,screen,row) {
     report.status=report.failures.length?'failed':'passed';
     fs.writeFileSync(path.join(evidence,'acceptance.json'),JSON.stringify(report,null,2)+'\n');
     assert.equal(report.failures.length,0,'Native rendered acceptance failures: '+JSON.stringify(report.failures));
-    console.log('PASS exact-head native controlled journey and donor/native rendered pairs: 360/390/430/768/1280, ordinary text100%; suppliers real0, leads real0. Visual owner review and public readback remain separate.');
+    console.log('PASS exact-head native controlled journey and donor/native rendered pairs: 360/390/430/768/1280, ordinary text100%/200%; suppliers real0, leads real0. Visual owner review and public readback remain separate.');
   } finally {
     await browser.close();await new Promise(resolve=>server.close(resolve));
   }
