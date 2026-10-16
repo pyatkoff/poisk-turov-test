@@ -19,10 +19,12 @@ jobs:
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
       github.event_name == 'issue_comment' && github.event.issue.number == 4217 &&
       !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
       github.event.comment.author_association == 'OWNER' &&
-      github.event.comment.body == '/diagnose-tourvisor-results-500 13905446138 2026-10-14T15:00:58Z'
+      startsWith(github.event.comment.body, '/diagnose-tourvisor-results-500 13905446138 2026-10-14T15:00:58Z ') &&
+      endsWith(github.event.comment.body, ' diag-20261016-7f2c9a4e1b63')
     runs-on: ubuntu-24.04
     permissions: {contents: read, issues: read}
     steps:
@@ -31,6 +33,7 @@ jobs:
       - run: python3 -m py_compile scripts/deploy/search3_root_gateway_incident.py
       - run: python3 tests/search3_root_gateway_install_test.py
       - env:
+          GH_TOKEN: "${{ github.token }}"
           PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
           PREVIEW_USER: "${{ secrets.ANYTOOUR_DEPLOY_USER }}"
           PREVIEW_KEY: "${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}"
