@@ -32,14 +32,14 @@ from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
 
 PREFIX = '/update-search3-design-v2-preview '
 REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
-# Exact reviewed source ancestry, newest parent first. These static pins are never
-# supplied by commands or artifacts; no skipped, substituted or extra parent is valid.
-NATIVE_SOURCE_ANCESTORS = (
-    ('440286bb4cd5cb10007bc36599bb5e16b8974d2a', '32b16675a6806b042b74db6e41d567d6480878ef'),
-    ('204329f49d9ff8afae6b091104359e116af29666', 'd98f4e45846e764ac1469082b1b1e6cd1aa48cda'),
-    ('963fc26640363dab987ffd5ea3dbd196d0ac8e63', '8a9c7611d9e12d0c6bf8104c6d6397e49b785fee'),)
-NATIVE_SOURCE_PARENT, NATIVE_SOURCE_PARENT_TREE = NATIVE_SOURCE_ANCESTORS[0]
-NATIVE_SOURCE_BASE_PARENT = '02eda97e91ab14692c9fcdce56bddfc2531248c7'
+# Exact ordered merge parents and trees. These static pins are never supplied by
+# commands or artifacts; reordering, substitution, omission or an extra parent fails.
+NATIVE_SOURCE_PARENTS = (
+    ('6813c1bd785ea857b66fd689f7b94b1da875ccbd', 'ccad2145141427302d309858d772a2e3eaf2b3ac'),
+    ('caa6941a8b42c07856740aeb587fea4525b8b3ea', '96e7db70e9a2e09d8956f84505bc0e0c0867d3ed'),)
+NATIVE_RELEASE_PARENTS = (
+    ('caa6941a8b42c07856740aeb587fea4525b8b3ea', '96e7db70e9a2e09d8956f84505bc0e0c0867d3ed'),
+    ('f99306ffe3725f2badc70096d801608fc5393009', '4482715a5c642b4718cf1efc7510a65edb0bab08'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -107,24 +107,22 @@ def native_provenance(api, q, control_sha):
     need(api.get('/git/ref/heads/' + RELEASE)['object']['sha'] == q['release_sha'], 'release_changed')
     source = api.get('/git/commits/' + q['source_sha']); release = api.get('/git/commits/' + q['release_sha'])
     need(source['tree']['sha'] == pin['source_tree'], 'native_source_tree_pin')
-    need([row.get('sha') for row in source.get('parents', [])] == [NATIVE_SOURCE_PARENT]
-         and NATIVE_SOURCE_ANCESTORS[-1][0] == pin['release_parent'],
-         'native_source_parent_pin')
-    for index, (parent_sha, parent_tree) in enumerate(NATIVE_SOURCE_ANCESTORS):
+    need([row.get('sha') for row in source.get('parents', [])]
+         == [sha for sha, _ in NATIVE_SOURCE_PARENTS], 'native_source_parent_pin')
+    for parent_sha, parent_tree in NATIVE_SOURCE_PARENTS:
         parent = api.get('/git/commits/' + parent_sha)
-        next_sha = (NATIVE_SOURCE_ANCESTORS[index + 1][0]
-                    if index + 1 < len(NATIVE_SOURCE_ANCESTORS) else NATIVE_SOURCE_BASE_PARENT)
-        need(parent['tree']['sha'] == parent_tree
-             and [row.get('sha') for row in parent.get('parents', [])] == [next_sha],
-             'native_source_parent_lineage_pin')
+        need(parent.get('tree', {}).get('sha') == parent_tree, 'native_source_parent_tree_pin')
     need(release['tree']['sha'] == pin['release_tree'] == pin['source_tree'], 'native_release_tree_pin')
-    need([row.get('sha') for row in release.get('parents', [])] == [pin['release_parent']],
-         'native_release_parent_pin')
+    need([row.get('sha') for row in release.get('parents', [])]
+         == [sha for sha, _ in NATIVE_RELEASE_PARENTS], 'native_release_parent_pin')
+    for parent_sha, parent_tree in NATIVE_RELEASE_PARENTS:
+        parent = source if parent_sha == q['source_sha'] else api.get('/git/commits/' + parent_sha)
+        need(parent.get('tree', {}).get('sha') == parent_tree, 'native_release_parent_tree_pin')
     relation = api.get('/compare/' + q['source_sha'] + '...' + q['release_sha'])
-    need(relation.get('status') == 'diverged' and relation.get('behind_by') == len(NATIVE_SOURCE_ANCESTORS)
+    need(relation.get('status') == 'ahead' and relation.get('behind_by') == 0
          and relation.get('ahead_by') == 1
-         and relation.get('merge_base_commit', {}).get('sha') == pin['release_parent'],
-         'native_exact_squash_relation')
+         and relation.get('merge_base_commit', {}).get('sha') == q['source_sha'],
+         'native_exact_merge_relation')
     run = api.get('/actions/runs/' + str(q['build_run']))
     need(run.get('head_sha') == q['source_sha'] and run.get('path') == NATIVE_BUILD_WORKFLOW
          and run.get('event') == 'pull_request' and run.get('status') == 'completed'
