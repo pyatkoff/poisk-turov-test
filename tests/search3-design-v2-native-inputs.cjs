@@ -229,8 +229,33 @@ async function familyCopyChecks(){
   assert.equal(checked,24,'all adult 1–6 × child 0–3 compositions reach form/results/hotel owners');
  }finally{owner.destroy();win.close();}
 }
+async function localCalendarDayChecks(){
+ const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
+ const win=doc.window,NativeDate=win.Date,fixed=NativeDate.parse('2026-10-15T22:30:00Z');
+ class LocalRolloverDate extends NativeDate{
+  constructor(...args){super(...(args.length?args:[fixed]));}
+  getFullYear(){return this.getTime()===fixed?2026:super.getFullYear();}
+  getMonth(){return this.getTime()===fixed?9:super.getMonth();}
+  getDate(){return this.getTime()===fixed?16:super.getDate();}
+  static now(){return fixed;}
+ }
+ win.Date=LocalRolloverDate;
+ const product=win.document.querySelector('[data-product]'),expired={...trip,from:'2026-10-15',to:'2026-10-21'};let searches=0;
+ const api={async init(){return{search:expired,filters:{...filters},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw new Error('A locally expired period must not start suppliers');}};
+ win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+ try{
+  await owner.ready;product.querySelector('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
+  const yesterday=product.querySelector('[data-native-date="2026-10-15"]');assert(yesterday?.disabled,'The calendar disables yesterday after the local midnight/UTC rollover');
+  assert.match(product.querySelector('[data-calendar-error]').textContent,/истёк/);assert.equal(searches,0,'Local calendar validation blocks a past-date supplier start');
+  win.eval(fs.readFileSync(path.join(source,'bridge.js'),'utf8'));
+  const data={catalog:{departures:[{name:'Москва'}],countries,mealPlans:dictionaries.meals},text:row=>row.name,async init(){return{origin:'Москва'};},params(){}};
+  const initial=await win.AnyTourDesignV2Bridge.create({data,location:{search:''}}).init();
+  assert.equal(initial.search.from,'2026-10-30','Default departure starts 14 days after the browser local date');
+  assert.equal(initial.search.to,'2026-11-05','Default period retains the exact seven-day range');
+ }finally{owner.destroy();win.close();}
+}
 (async()=>{
- await mounted.ready;await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
+ await mounted.ready;await localCalendarDayChecks();await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');
  click('[data-native-night="14"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'14','second tap creates range from first tap');

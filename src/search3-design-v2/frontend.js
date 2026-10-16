@@ -427,7 +427,7 @@
     }
     const firstMonth=value=>value.slice(0,7)+'-01';
     const shiftMonth=(value,delta)=>{const d=new Date(value+'T12:00:00Z');return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+delta,1,12)).toISOString().slice(0,10);};
-    const today=()=>new Date().toISOString().slice(0,10);
+    const today=()=>{const value=new Date(),pad=part=>String(part).padStart(2,'0');return value.getFullYear()+'-'+pad(value.getMonth()+1)+'-'+pad(value.getDate());};
     function dateError(from,to){return !from||!to?'Выберите начало и конец периода вылета.':from<today()?'Сохранённый период истёк. Выберите даты заново.':to<from?'Конец периода не может быть раньше начала. Начало сохранено.':Date.parse(to)-Date.parse(from)>21*86400000?'Период может включать не больше 22 дат. Начало сохранено.':'';}
     function renderDates(){
       calendarMonth=calendarMonth||firstMonth(draft.from);const now=today();

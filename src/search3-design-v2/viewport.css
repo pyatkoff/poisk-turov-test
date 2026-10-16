@@ -91,6 +91,10 @@ body { margin: 0; padding: 0; }
   overflow-wrap: normal;
   word-break: normal;
 }
+#design-v2-native-root #b4 .st-hotel-card--wide-price .st-price {
+  font-size: 24px;
+  white-space: nowrap;
+}
 #design-v2-native-root #b4 .st-mobile .st-quick-price > div {
   flex: 1 1 max-content;
   min-width: min-content;
@@ -547,6 +551,24 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-mobile .st-lead-label:first-child {
   margin-top: 20px;
 }
+/* Match the donor's enlarged-text lead composition: when the card becomes
+   text-narrow, place the selected tour above the form so its full total stays
+   together instead of isolating the currency on a second line. */
+@container native-summary (max-width: 46em) {
+  #design-v2-native-root #b4 .st-desktop .st-lead > .st-tour-hotel,
+  #design-v2-native-root #b4 .st-desktop .st-lead > .st-price {
+    float: none;
+    clear: none;
+    width: auto;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-lead > .st-price {
+    white-space: nowrap;
+  }
+  #design-v2-native-root #b4 .st-desktop .st-lead > [data-lead-form] {
+    width: 100%;
+    margin: 20px 0 0;
+  }
+}
 /* The required consent is one full-row control, not a tiny checkbox beside
    legal copy. Keep the donor wording and native validation while giving touch
    and keyboard users an explicit final-step target. */
@@ -872,6 +894,20 @@ body { margin: 0; padding: 0; }
    selected hotel identity only a few characters wide. Preserve its ordinary
    side-by-side composition, but promote the same real photo to a shallow
    full-width image when the summary itself becomes narrower than 18em. */
+#design-v2-native-root #b4 .st-tour-hotel {
+  flex-wrap: wrap;
+}
+#design-v2-native-root #b4 .st-tour-hotel > .st-mini-photo {
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+#design-v2-native-root #b4 .st-tour-hotel > :last-child {
+  min-width: 0;
+  flex: 999 1 10em;
+}
+#design-v2-native-root #b4 .st-mobile .st-tour-hotel > :last-child {
+  flex-basis: calc(10em + 4%);
+}
 @container native-summary (max-width: 18em) {
   #design-v2-native-root #b4 :is(.st-tour-hotel, .st-quick-context) {
     display: grid;

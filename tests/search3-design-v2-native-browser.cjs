@@ -177,8 +177,9 @@ const server=http.createServer((req,res)=>{
   res.writeHead(200,{'Content-Type':mime[ext]});fs.createReadStream(target).pipe(res);
 });
 
+const requiredWidths=[360,390,430,768,1280],requiredTextPercents=[100,200];
 const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixture.label,
-  requiredWidths:[360,390,430,768,1280],requiredTextPercents:[100],expectedPairedScreens:['search','results','hotel','tour','lead'],
+  requiredWidths,requiredTextPercents,expectedPairedScreens:['search','results','hotel','tour','lead'],
   compiledNativeManifest:manifest,scope:'controlled compiled UI, not live supplier/physical/publication acceptance',
   donorAdapter:'exact original renderer and CSS; test-only controlled hotels, loaded-date-price and selected-price/flight-fact adapters',
   textMethod:'ordinary computed text size; layout dimensions and browser zoom stay unchanged',
@@ -222,8 +223,12 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     const box=selector=>{const element=root?.querySelector(selector);if(!element||element.closest('[hidden]'))return null;const r=element.getBoundingClientRect(),style=getComputedStyle(element);return{x:r.x,y:r.y,width:r.width,height:r.height,fontSize:style.fontSize,visible:r.width>0&&r.height>0};};
     const doc=document.documentElement;
     const prices=[...root.querySelectorAll('.st-price,[data-tour-price],.st-offer-price')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      let fragmented=false;const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
-      while((text=walker.nextNode()))for(const match of text.textContent.matchAll(/\d+/g)){const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)fragmented=true;}
+      let fragmented=false,lastDigitTop=null;const currencyTops=[];const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text;
+      while((text=walker.nextNode())){
+        for(const match of text.textContent.matchAll(/\d+/g)){const range=document.createRange();range.setStart(text,match.index);range.setEnd(text,match.index+match[0].length);if([...range.getClientRects()].filter(rect=>rect.width>0&&rect.height>0).length>1)fragmented=true;}
+        for(let index=0;index<text.textContent.length;index++)if(/[\d₽$€]/.test(text.textContent[index])){const range=document.createRange();range.setStart(text,index);range.setEnd(text,index+1);const rect=[...range.getClientRects()].find(item=>item.width>0&&item.height>0);if(rect)if(/\d/.test(text.textContent[index]))lastDigitTop=rect.top;else currencyTops.push(rect.top);}
+      }
+      if(lastDigitTop!==null&&currencyTops.some(top=>Math.abs(top-lastDigitTop)>=1))fragmented=true;
       const fontSize=parseFloat(getComputedStyle(node).fontSize),baseline=window.__nativeTextScaleBaseline?.get(window.__nativeTextScaleKey(node));
       return{text:node.textContent,width:node.getBoundingClientRect().width,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,overflow:node.scrollWidth>node.clientWidth+1,fragmented,fontSize,baselineFontSize:percent===200?baseline:fontSize,textScaleVerified:percent!==200||Number.isFinite(baseline)&&Math.abs(fontSize-baseline*2)<0.5};
     });
@@ -325,8 +330,8 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         overlap:actions.length===2&&Math.min(actions[0].right,actions[1].right)>Math.max(actions[0].left,actions[1].left)+1&&Math.min(actions[0].bottom,actions[1].bottom)>Math.max(actions[0].top,actions[1].top)+1};
     }
     const summaryFit=[...root.querySelectorAll('.st-tour-hotel,.st-quick-context')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
-      const bounds=node.getBoundingClientRect(),image=node.firstElementChild?.getBoundingClientRect(),copy=node.lastElementChild?.getBoundingClientRect(),fontSize=parseFloat(getComputedStyle(node).fontSize);
-      return{className:node.className,width:bounds.width,fontSize,imageWidth:image?.width||0,copyWidth:copy?.width||0,copyWidthRatio:copy?.width/bounds.width||0,
+      const bounds=node.getBoundingClientRect(),image=node.firstElementChild?.getBoundingClientRect(),copy=node.lastElementChild?.getBoundingClientRect(),style=getComputedStyle(node),fontSize=parseFloat(style.fontSize),contentWidth=node.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+      return{className:node.className,width:bounds.width,contentWidth,fontSize,imageWidth:image?.width||0,copyWidth:copy?.width||0,copyWidthRatio:copy?.width/contentWidth||0,
         stacked:Boolean(image&&copy&&copy.top>=image.bottom-1),queryNarrow:bounds.width<=fontSize*18+1};
     });
     const offerActionFit=[...root.querySelectorAll('.st-offer > .st-offer-select')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
@@ -453,7 +458,7 @@ async function referenceFrame(page,width,percent,screen,row) {
   const origin='http://127.0.0.1:'+server.address().port;
   const browser=await chromium.launch({headless:true});
   try {
-    for(const width of [360,390,430,768,1280])for(const percent of [100]){
+    for(const width of requiredWidths)for(const percent of requiredTextPercents){
       const row={width,textPercent:percent,frames:[],checks:[],errors:[],unexpectedRequests:[],proof:{}};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce'});
       const page=await context.newPage(),reference=await context.newPage();
@@ -968,7 +973,7 @@ async function referenceFrame(page,width,percent,screen,row) {
     report.status=report.failures.length?'failed':'passed';
     fs.writeFileSync(path.join(evidence,'acceptance.json'),JSON.stringify(report,null,2)+'\n');
     assert.equal(report.failures.length,0,'Native rendered acceptance failures: '+JSON.stringify(report.failures));
-    console.log('PASS exact-head native controlled journey and donor/native rendered pairs: 360/390/430/768/1280, ordinary text100%; suppliers real0, leads real0. Visual owner review and public readback remain separate.');
+    console.log('PASS exact-head native controlled journey and donor/native rendered pairs: 360/390/430/768/1280, ordinary text100%/200%; suppliers real0, leads real0. Visual owner review and public readback remain separate.');
   } finally {
     await browser.close();await new Promise(resolve=>server.close(resolve));
   }
