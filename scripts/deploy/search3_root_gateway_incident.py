@@ -25,55 +25,75 @@ def need(value, message):
 
 
 def sanitize_line(line):
+    line = line.replace('\x00', '')
+    # A remote tail may end inside a quoted value. Once a secret key appears,
+    # retain no following text, including commas, semicolons or partial JSON.
     line = re.sub(
-        r'(?i)\b(proxy-authorization|authorization|cookie|set-cookie)\s*[:=]\s*[^\r\n]+',
-        r'\1: [REDACTED]',
-        line,
-    )
-    line = re.sub(r'(?i)(bearer\s+)[A-Za-z0-9._~+/-]{12,}', r'\1[REDACTED]', line)
-    line = re.sub(
-        r'(?i)([?&](?:access_token|refresh_token|id_token|token|jwt|password|passwd|secret|cookie|key|api_key|apikey|session|sessionid)=)[^&\s]+',
+        r'''(?ix)(["']?[\w.-]*(?:authorization|cookie|token|password|passwd|secret|key|session(?:id)?|jwt)["']?\s*[:=]\s*)[^\r\n]*''',
         r'\1[REDACTED]',
         line,
     )
-    line = re.sub(
-        r'''(?ix)(["']?(?:access_token|refresh_token|id_token|token|jwt|password|passwd|secret|cookie|api_key|apikey|session|sessionid|db_password)["']?\s*[:=]\s*["']?)[^"'\s,;&]+''',
-        r'\1[REDACTED]',
-        line,
-    )
-    line = re.sub(r'(?i)([a-z][a-z0-9+.-]*://[^\s:/@]+:)[^\s/@]+(@)', r'\1[REDACTED]\2', line)
-    return line.replace('\x00', '')[:MAX_LINE]
+    line = re.sub(r'(?i)\b((?:bearer|basic)\s+)[^\r\n]*', r'\1[REDACTED]', line)
+    line = re.sub(r'(?i)([a-z][a-z0-9+.-]*://[^\s:/@]+:)[^\r\n]*', r'\1[REDACTED]', line)
+    return line[:MAX_LINE]
 
 
-REMOTE_READER = r'''import collections,glob,json,pathlib,subprocess
+REMOTE_READER = r'''import collections,glob,itertools,json,os,pathlib,selectors,subprocess,time
 search_id='13905446138'
 times=('2026/10/14 15:00','2026/10/14 15:01','2026-10-14 15:00','2026-10-14 15:01','14-Oct-2026 15:00','14-Oct-2026 15:01','Oct 14 15:00','Oct 14 15:01','14/Oct/2026:17:00','14/Oct/2026:17:01','2026/10/14 17:00','2026/10/14 17:01')
 errors=('api-v2.php','search_results','PHP Fatal','Allowed memory size','upstream prematurely closed','upstream sent too big','Maximum execution time')
 def relevant(line): return search_id in line or (any(t in line for t in times) and any(n in line for n in errors))
 paths=['/var/log/nginx/error.log','/var/log/php8.3-fpm.log','/var/log/php8.3-fpm/error.log','/var/log/php8.3-fpm/www-error.log']
 home=str(pathlib.Path.home())
-paths += glob.glob(home+'/logs/*.log') + glob.glob(home+'/www/anytoour.ru/*error*.log') + glob.glob(home+'/www/anytoour.ru/.logs/*.log')
-paths=sorted(set(paths))[:20]
-seen=[];matches=collections.deque(maxlen=120)
+discovered=itertools.chain(paths,glob.iglob(home+'/logs/*.log'),glob.iglob(home+'/www/anytoour.ru/*error*.log'),glob.iglob(home+'/www/anytoour.ru/.logs/*.log'))
+paths=[]
+for raw in discovered:
+ if raw not in paths: paths.append(raw)
+ if len(paths)==20: break
+seen=[];matches=collections.deque(maxlen=120);collection_errors=[];journal_truncated=False
 for raw in paths:
  p=pathlib.Path(raw)
  try:
   if not p.is_file() or p.is_symlink(): continue
   with p.open('rb') as f:
-   f.seek(0,2); size=f.tell(); f.seek(max(0,size-2*1024*1024))
-   text=f.read(2*1024*1024).decode('utf-8','replace')
+   f.seek(0,2); size=f.tell(); offset=max(0,size-2*1024*1024); f.seek(offset)
+   data=f.read(2*1024*1024)
+   # A tail can start inside a secret whose key lies before the read window.
+   if offset: data=data.partition(b'\n')[2]
+   text=data.decode('utf-8','replace')
   seen.append(raw)
   for line in text.splitlines():
    if relevant(line): matches.append({'source':raw,'line':line[:2400]})
- except (OSError,ValueError): pass
+ except (OSError,ValueError) as exc: collection_errors.append({'source':raw,'error_type':type(exc).__name__})
+def journal_bytes():
+ limit=2*1024*1024; data=bytearray(); truncated=False; deadline=time.monotonic()+20
+ q=subprocess.Popen(['journalctl','--no-pager','--lines=2000','--since','2026-10-14 15:00:30 UTC','--until','2026-10-14 15:01:30 UTC','-u','nginx','-u','php8.3-fpm'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+ try:
+  with selectors.DefaultSelector() as ready:
+   ready.register(q.stdout,selectors.EVENT_READ)
+   while True:
+    remaining=deadline-time.monotonic()
+    if remaining<=0: raise TimeoutError('journal_timeout')
+    if not ready.select(remaining): raise TimeoutError('journal_timeout')
+    chunk=os.read(q.stdout.fileno(),min(65536,limit-len(data)))
+    if not chunk: break
+    data.extend(chunk)
+    if len(data)==limit: truncated=True; break
+  if truncated: q.kill()
+  code=q.wait(timeout=5)
+  if code and not truncated: raise RuntimeError('journal_exit')
+  return bytes(data),truncated
+ finally:
+  if q.poll() is None: q.kill(); q.wait(timeout=5)
+  q.stdout.close()
 try:
- q=subprocess.run(['journalctl','--no-pager','--lines=2000','--since','2026-10-14 15:00:30 UTC','--until','2026-10-14 15:01:30 UTC','-u','nginx','-u','php8.3-fpm'],capture_output=True,text=True,timeout=20,check=False)
- if q.stdout:
-  seen.append('journalctl:nginx,php8.3-fpm')
-  for line in q.stdout[:2*1024*1024].splitlines():
-   if relevant(line): matches.append({'source':'journalctl:nginx,php8.3-fpm','line':line[:2400]})
-except (OSError,subprocess.SubprocessError): pass
-print(json.dumps({'sources_read':sorted(set(seen)),'matches':list(matches)},ensure_ascii=False))
+ raw_journal,journal_truncated=journal_bytes()
+ seen.append('journalctl:nginx,php8.3-fpm')
+ for line in raw_journal.decode('utf-8','replace').splitlines():
+  if relevant(line): matches.append({'source':'journalctl:nginx,php8.3-fpm','line':line[:2400]})
+except (OSError,RuntimeError,subprocess.SubprocessError) as exc: collection_errors.append({'source':'journalctl:nginx,php8.3-fpm','error_type':type(exc).__name__})
+if not seen and not collection_errors: collection_errors.append({'source':'fixed_log_sources','error_type':'NoReadableSources'})
+print(json.dumps({'sources_read':sorted(set(seen)),'matches':list(matches),'collection_errors':collection_errors,'journal_truncated':journal_truncated},ensure_ascii=False))
 '''
 
 
@@ -105,7 +125,8 @@ def unique_command_comment(command, comment_id, token):
         with urllib.request.urlopen(request, timeout=20) as response:
             values = json.load(response)
         need(isinstance(values, list), 'comments_shape')
-        matched.extend(item.get('id') for item in values if str(item.get('body', '')).strip() == command)
+        # Incident identity excludes source SHA/nonce, which may change on main.
+        matched.extend(item.get('id') for item in values if str(item.get('body', '')).strip().startswith(COMMAND_PREFIX + ' '))
         if len(values) < 100:
             complete = True
             break
@@ -163,6 +184,8 @@ def main():
         'real_leads': 0,
         'sources_read': [],
         'matches': [],
+        'collection_errors': [],
+        'journal_truncated': False,
     }
     failed = False
     try:
@@ -175,6 +198,8 @@ def main():
         sources = payload.get('sources_read', [])
         matches = payload.get('matches', [])
         need(isinstance(sources, list) and isinstance(matches, list), 'remote_shape')
+        collection_errors = payload.get('collection_errors', [])
+        need(isinstance(collection_errors, list), 'remote_errors_shape')
         evidence['sources_read'] = [sanitize_line(str(value)) for value in sources[:40]]
         evidence['matches'] = [
             {
@@ -185,6 +210,15 @@ def main():
         ]
         if evidence['matches']:
             evidence['status'] = 'matching_logs_retained_read_only'
+        evidence['journal_truncated'] = payload.get('journal_truncated') is True
+        evidence['collection_errors'] = [
+            {'source': sanitize_line(str(item.get('source', ''))),
+             'error_type': str(item.get('error_type', 'UnknownError')) if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,79}', str(item.get('error_type', ''))) else 'UnknownError'}
+            for item in collection_errors[:MAX_SOURCES + 1] if isinstance(item, dict)
+        ]
+        if evidence['collection_errors']:
+            evidence['status'] = 'diagnostic_error'
+            failed = True
     except Exception as exc:
         evidence['status'] = 'diagnostic_error'
         evidence['error_type'] = type(exc).__name__
@@ -202,3 +236,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

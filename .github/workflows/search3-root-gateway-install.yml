@@ -16,6 +16,7 @@ jobs:
       - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py scripts/deploy/search3_root_gateway_inspect.py scripts/deploy/search3_root_gateway_incident.py
       - run: python3 tests/search3_root_gateway_install_test.py
   incident:
+    concurrency: {group: tourvisor-results-500-13905446138-20261014, cancel-in-progress: false}
     if: >-
       github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
       github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
@@ -112,3 +113,4 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: "search3-root-gateway-deployment-${{ github.run_id }}", path: "${{ runner.temp }}/search3-root-gateway-install/evidence.json", if-no-files-found: warn, retention-days: 30}
+
