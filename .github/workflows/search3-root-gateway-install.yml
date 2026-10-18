@@ -15,6 +15,33 @@ jobs:
         with: {ref: "${{ github.event.pull_request.head.sha }}", persist-credentials: false}
       - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py scripts/deploy/search3_root_gateway_inspect.py scripts/deploy/search3_root_gateway_incident.py
       - run: python3 tests/search3_root_gateway_install_test.py
+  preflight:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.issue.number == 4217 &&
+      !github.event.issue.pull_request && github.event.comment.user.id == 226193297 &&
+      github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == format('/preflight-search3-root-gateway {0} preflight-20261018-fcfe503e-v1', github.sha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {contents: read, issues: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: "${{ github.sha }}", persist-credentials: false}
+      - run: python3 -m py_compile scripts/deploy/search3_root_gateway_inspect.py
+      - run: python3 tests/search3_root_gateway_install_test.py
+      - env:
+          GH_TOKEN: "${{ github.token }}"
+          PREVIEW_HOST: "${{ secrets.ANYTOOUR_DEPLOY_HOST }}"
+          PREVIEW_USER: "${{ secrets.ANYTOOUR_DEPLOY_USER }}"
+          PREVIEW_KEY: "${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}"
+        run: python3 scripts/deploy/search3_root_gateway_inspect.py preflight
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: "search3-root-gateway-preflight-${{ github.run_id }}", path: "${{ runner.temp }}/search3-root-gateway-preflight/evidence.json", if-no-files-found: warn, retention-days: 30}
   incident:
     concurrency: {group: tourvisor-results-500-13905446138-20261014, cancel-in-progress: false}
     if: >-
@@ -113,4 +140,5 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with: {name: "search3-root-gateway-deployment-${{ github.run_id }}", path: "${{ runner.temp }}/search3-root-gateway-install/evidence.json", if-no-files-found: warn, retention-days: 30}
+
 

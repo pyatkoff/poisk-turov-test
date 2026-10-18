@@ -77,5 +77,179 @@ class T(unittest.TestCase):
   with mock.patch('pathlib.Path.is_file',lambda p:str(p)=='/var/log/nginx/error.log'),mock.patch('pathlib.Path.is_symlink',return_value=False),mock.patch('pathlib.Path.open',return_value=tail),mock.patch('glob.iglob',side_effect=candidates),mock.patch('subprocess.Popen',side_effect=FileNotFoundError('not retained')),contextlib.redirect_stdout(io.StringIO()) as output:
    scope={};exec(m.REMOTE_READER,scope)
   payload=json.loads(output.getvalue());self.assertEqual(len(scope['paths']),20);self.assertEqual(len(discovered),16);self.assertEqual(tail.size_requested,2*1024*1024);self.assertEqual(payload['sources_read'],['/var/log/nginx/error.log']);self.assertNotIn('not retained',output.getvalue());self.assertNotIn('SECRET_PARTIAL',output.getvalue());self.assertEqual(payload['matches'][0]['line'],complete.decode().strip())
+
+class Preflight(unittest.TestCase):
+ def module(self):
+  path=R/'scripts/deploy/search3_root_gateway_inspect.py'
+  spec=importlib.util.spec_from_file_location('preflight',path)
+  m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+ def event(self,m):
+  sha='a'*40
+  event={'repository':{'full_name':m.REPO},'action':'created','issue':{'number':4217},
+         'comment':{'id':987,'body':f'{m.COMMAND_PREFIX} {sha} {m.OPERATION}',
+                    'user':{'id':226193297},'author_association':'OWNER'}}
+  env={'GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main','GITHUB_SHA':sha,
+       'GITHUB_WORKFLOW_REF':f'{m.REPO}/{m.WORKFLOW}@refs/heads/main',
+       'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff',
+       'GITHUB_EVENT_NAME':'issue_comment','GITHUB_RUN_ATTEMPT':'1'}
+  return event,env
+ def result(self,m):
+  files=[{'path':p,'sha256':h,'size':123,'mode':'0644'} for p,h in m.EXPECTED.items()]
+  return {'status':'preflight_verified_read_only','syntax':'ok','before':files,'after':files}
+ def test_event_requires_exact_owner_main_workflow_operation_and_first_attempt(self):
+  m=self.module();event,env=self.event(m)
+  self.assertEqual(m.validate_event(event,env),('a'*40,987))
+  for key,value in {'GITHUB_REPOSITORY':'other/repo','GITHUB_REF':'refs/heads/other',
+                    'GITHUB_SHA':'b'*40,'GITHUB_WORKFLOW_REF':m.WORKFLOW,
+                    'GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other',
+                    'GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_RUN_ATTEMPT':'2'}.items():
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.validate_event(event,{**env,key:value})
+  import copy
+  variants=[]
+  for key,value in [('action','edited'),('repository',{'full_name':'other/repo'}),
+                    ('issue',{'number':3419}),('issue',{'number':4217,'pull_request':{'url':'x'}})]:
+   v=copy.deepcopy(event);v[key]=value;variants.append(v)
+  for key,value in [('id',True),('user',{'id':1}),('author_association','MEMBER'),
+                    ('body',event['comment']['body']+' '),('body',event['comment']['body'].replace(m.OPERATION,'another-operation'))]:
+   v=copy.deepcopy(event);v['comment'][key]=value;variants.append(v)
+  for v in variants:
+   with self.subTest(event=v),self.assertRaises(RuntimeError):m.validate_event(v,env)
+ def test_admission_checks_current_refs_blob_and_reservation_without_remote(self):
+  m=self.module();event,env=self.event(m);command=event['comment']['body']
+  def api(path):
+   if path=='/git/ref/heads/main':return {'object':{'sha':env['GITHUB_SHA']}}
+   if path=='/git/ref/heads/release/search3-production-ready-v1':return {'object':{'sha':m.RELEASE}}
+   if path.startswith('/contents/'):return {'sha':m.BLOB}
+   return [{'id':987,'body':command}]
+  with mock.patch.object(m,'api',side_effect=api) as calls:m.admission(env['GITHUB_SHA'],987)
+  self.assertEqual(calls.call_count,5)
+  for wrong in ('main','release','blob','duplicate','changed_operation','incomplete'):
+   def bad(path):
+    if wrong=='main' and path=='/git/ref/heads/main':return {'object':{'sha':'b'*40}}
+    if wrong=='release' and 'heads/release/' in path:return {'object':{'sha':'b'*40}}
+    if wrong=='blob' and path.startswith('/contents/'):return {'sha':'b'*40}
+    if path.startswith('/issues/'):
+     if wrong=='duplicate':return [{'id':986,'body':command},{'id':987,'body':command}]
+     if wrong=='changed_operation':return [{'id':986,'body':f'{m.COMMAND_PREFIX} '+('b'*40)+' other'},{'id':987,'body':command}]
+     if wrong=='incomplete':return [{'id':i,'body':'ordinary comment'} for i in range(100)]
+    return api(path)
+   with self.subTest(wrong=wrong),mock.patch.object(m,'api',side_effect=bad) as calls,self.assertRaises(RuntimeError):
+    m.admission(env['GITHUB_SHA'],987)
+   self.assertLessEqual(calls.call_count,4+m.MAX_COMMENT_PAGES)
+  with mock.patch.object(m,'api',side_effect=[{'object':{'sha':'a'*40}},
+       {'object':{'sha':m.RELEASE}},{'sha':m.BLOB},{'sha':m.BLOB},
+       [{'id':i,'body':'ordinary'} for i in range(100)],[{'id':987,'body':command}]]):
+   m.admission('a'*40,987)
+ def test_github_response_read_is_bounded(self):
+  m=self.module();response=mock.MagicMock()
+  response.__enter__.return_value.read.return_value=b'x'*(m.MAX_API_BYTES+1)
+  with mock.patch.dict(os.environ,{'GH_TOKEN':'synthetic-token'}),mock.patch.object(m.urllib.request,'urlopen',return_value=response),self.assertRaisesRegex(RuntimeError,'github_response_limit'):
+   m.api('/git/ref/heads/main')
+  response.__enter__.return_value.read.assert_called_once_with(m.MAX_API_BYTES+1)
+ def remote(self,m,home,expected,run=None):
+  scope={'EXPECTED':expected,'MAX_FILE_BYTES':m.MAX_FILE_BYTES}
+  with mock.patch.object(pathlib.Path,'home',return_value=home),mock.patch.object(m.subprocess,'run',side_effect=run or (lambda *a,**k:mock.Mock(returncode=0))) as process,contextlib.redirect_stdout(io.StringIO()) as out:
+   exec(m.REMOTE_BODY,scope)
+  value=json.loads(out.getvalue());self.assertLess(len(out.getvalue()),m.MAX_EVIDENCE_BYTES)
+  return value,process
+ def files(self,m,home):
+  import hashlib
+  root=home/'www/anytoour.ru';expected={}
+  for path in m.EXPECTED:
+   f=root/path;f.parent.mkdir(parents=True,exist_ok=True)
+   # A PHP body with a side effect must only be linted, never executed.
+   f.write_bytes(b'<?php file_put_contents("MUST_NOT_EXIST", "private"); ?>' if path=='api-v2.php' else b'private fixture '+path.encode())
+   expected[path]=hashlib.sha256(f.read_bytes()).hexdigest()
+  return root,expected
+ def test_remote_hashes_fixed_files_before_and_after_without_execution_or_writes(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);root,expected=self.files(m,home)
+   before={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   value,process=self.remote(m,home,expected)
+   after={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   self.assertEqual(before,after);self.assertEqual(value['status'],'preflight_verified_read_only')
+   self.assertEqual(value['before'],value['after']);self.assertEqual(len(value['before']),8)
+   self.assertNotIn('private',json.dumps(value));self.assertEqual(process.call_count,1)
+   self.assertEqual(process.call_args.args[0],['php','-n','-l',str(root/'api-v2.php')])
+   self.assertEqual(process.call_args.kwargs['env'],{'PATH':'/usr/bin:/bin','HOME':str(home)})
+   self.assertIs(process.call_args.kwargs['stdout'],m.subprocess.DEVNULL)
+   self.assertIs(process.call_args.kwargs['stderr'],m.subprocess.DEVNULL)
+ def test_remote_drift_and_unsafe_files_stop_before_php(self):
+  m=self.module()
+  for variant in ('api_drift','dependency_drift','missing','symlink','parent_symlink','hardlink','fifo','oversized'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);root,expected=self.files(m,home);api=root/'api-v2.php'
+    if variant=='api_drift':api.write_text('changed private body')
+    if variant=='dependency_drift':(root/'data/db-v1.php').write_text('changed private body')
+    if variant=='missing':api.unlink()
+    if variant=='symlink':api.unlink();api.symlink_to(root/'data/db-v1.php')
+    if variant=='parent_symlink':(root/'data').rename(home/'real-data');(root/'data').symlink_to(home/'real-data',target_is_directory=True)
+    if variant=='hardlink':os.link(api,home/'another-link')
+    if variant=='fifo':api.unlink();os.mkfifo(api)
+    if variant=='oversized':
+     with api.open('wb') as f:f.truncate(m.MAX_FILE_BYTES+1)
+    value,process=self.remote(m,home,expected)
+    self.assertEqual(value['status'],'preflight_error');self.assertEqual(value['syntax'],'not_run')
+    self.assertEqual(value['after'],[]);process.assert_not_called();self.assertNotIn('private',json.dumps(value))
+ def test_syntax_failure_timeout_and_during_lint_change_cannot_pass(self):
+  m=self.module()
+  for variant in ('invalid','timeout','change'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);root,expected=self.files(m,home)
+    def run(*args,**kwargs):
+     if variant=='timeout':raise m.subprocess.TimeoutExpired('private command',15)
+     if variant=='change':(root/'api-v2.php').write_text('changed private body')
+     return mock.Mock(returncode=1 if variant=='invalid' else 0)
+    value,process=self.remote(m,home,expected,run)
+    self.assertEqual(value['status'],'preflight_error');self.assertNotIn('private',json.dumps(value))
+ def test_parent_rejects_unknown_fields_paths_hashes_and_forged_success(self):
+  import copy
+  m=self.module();good=self.result(m);self.assertEqual(m.validate_result(good),good)
+  variants=[{**good,'private_config':'SECRET'},{**good,'syntax':'not_run'},
+            {**good,'error_type':'RuntimeError'},{**good,'before':[]}]
+  for field,value in [('path','/private/config.php'),('sha256','0'*64),('size',m.MAX_FILE_BYTES+1),('size',True),('mode','07777')]:
+   v=copy.deepcopy(good);v['before'][0][field]=value;variants.append(v)
+  for v in variants:
+   with self.subTest(value=v),self.assertRaises((RuntimeError,TypeError)):m.validate_result(v)
+ def test_admission_failure_retains_only_safe_error_and_never_connects(self):
+  m=self.module();event,env=self.event(m)
+  with tempfile.TemporaryDirectory() as td:
+   path=pathlib.Path(td)/'event.json';path.write_text(json.dumps(event))
+   with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path)}),mock.patch.object(m,'admission',side_effect=RuntimeError('PRIVATE_DETAIL')),mock.patch.object(m,'read_remote') as remote,contextlib.redirect_stdout(io.StringIO()) as output,self.assertRaisesRegex(RuntimeError,'preflight_failed'):
+    m.preflight()
+   value=json.loads((pathlib.Path(td)/'search3-root-gateway-preflight/evidence.json').read_text())
+   self.assertEqual(value['status'],'preflight_error');self.assertNotIn('PRIVATE_DETAIL',output.getvalue())
+   self.assertEqual([value[k] for k in ('server_writes','supplier_calls','db_writes','real_leads')],[0,0,0,0]);remote.assert_not_called()
+ def test_remote_connection_keys_are_cleaned_on_success_and_failure(self):
+  m=self.module()
+  for failed in (False,True):
+   with self.subTest(failed=failed),tempfile.TemporaryDirectory() as td:
+    work=pathlib.Path(td)
+    def process(args,**kwargs):
+     if args[0]=='ssh-keyscan':return mock.Mock(stdout=b'synthetic known host')
+     self.assertEqual(args[-1],'python3 -');self.assertEqual(kwargs['input'],m.REMOTE_PREFLIGHT.encode())
+     self.assertIn('StrictHostKeyChecking=yes',args)
+     if failed:raise m.subprocess.CalledProcessError(255,args,stderr=b'PRIVATE_DETAIL')
+     return mock.Mock(stdout=json.dumps(self.result(m)).encode())
+    with mock.patch.dict(os.environ,{'PREVIEW_KEY':'c3ludGhldGlj','PREVIEW_HOST':'synthetic.example','PREVIEW_USER':'synthetic'}),mock.patch.object(m.subprocess,'run',side_effect=process):
+     if failed:
+      with self.assertRaises(m.subprocess.CalledProcessError):m.read_remote(work)
+     else:self.assertEqual(m.read_remote(work),self.result(m))
+    self.assertFalse((work/'key').exists());self.assertFalse((work/'known').exists())
+ def test_only_new_job_invokes_preflight_with_existing_production_lock(self):
+  m=self.module();workflow=(R/m.WORKFLOW).read_text()
+  job=workflow.split('  preflight:\n',1)[1].split('  incident:\n',1)[0]
+  for guard in ("group: deploy-anytoour-production","cancel-in-progress: false","github.run_attempt == 1",
+                "github.event.issue.number == 4217","github.actor == 'pyatkoff'","github.triggering_actor == 'pyatkoff'",
+                "github.event.comment.user.id == 226193297","github.sha","permissions: {contents: read, issues: read}",
+                "scripts/deploy/search3_root_gateway_inspect.py preflight"):
+   self.assertIn(guard,job)
+  self.assertNotIn('workflow_dispatch',workflow)
+  self.assertNotIn('install.py',job);self.assertNotIn('incident.py',job)
+  self.assertEqual(workflow.count('scripts/deploy/search3_root_gateway_inspect.py preflight'),1)
+
+
 if __name__=='__main__':unittest.main()
+
 
