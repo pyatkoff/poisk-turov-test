@@ -134,12 +134,14 @@ function tv_get(string $path, array $params = [])
 
     if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error'], 502);
 
-    $decoded = json_decode((string)$body, true);
+    // Error bodies are not part of the public response; do not decode them.
+    // Large error JSON must not exhaust memory before the existing error output.
     if ($code < 200 || $code >= 300) {
         $status = ($code >= 400 && $code < 600) ? $code : 502;
         out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code], $status);
     }
 
+    $decoded = json_decode((string)$body, true);
     return is_array($decoded) ? $decoded : ['raw' => short_text((string)$body, 1000)];
 }
 
