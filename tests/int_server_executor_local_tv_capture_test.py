@@ -477,6 +477,162 @@ class RepairFiles(unittest.TestCase):
         self.assertEqual((op/'installed-source.json').read_bytes(),installed)
         self.assertEqual((op/'result.json').read_bytes(),successful_receipt)
 
+class InventoryControl(unittest.TestCase):
+    def test_exact_read_only_command_manifest_and_old_operations(self):
+        c=CaptureControl().wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'1'}):
+            body=f'{c.PREFIX}{m.INVENTORY_SOURCE} {m.MODE} {m.INVENTORY_OPERATION}'
+            cmd=c.parse_command(body);self.assertEqual(cmd['action'],'inventory')
+            for bad in (body+' extra',body.replace(m.INVENTORY_SOURCE,'a'*40),
+                        body.replace(m.INVENTORY_OPERATION,m.INVENTORY_OPERATION+'-retry')):
+                with self.assertRaises(ValueError):c.parse_command(bad)
+            m.activate(c,cmd);ast.parse(c.REMOTE)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}):
+            with self.assertRaises(ValueError):c.parse_command(body)
+        archive,files=c.bundle_source('/does/not/exist')
+        self.assertEqual(files,{})
+        with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tar:
+            self.assertEqual(tar.getnames(),['manifest.json'])
+            self.assertEqual(json.load(tar.extractfile('manifest.json')),{'schema_version':1,'files':{}})
+        self.assertEqual(len(m.OPERATIONS),4)
+        self.assertNotIn(m.INVENTORY_OPERATION,m.OPERATIONS)
+        # The new path shares only the race-safe file reader with the repair.
+        generated=m.inventory_remote()
+        self.assertNotIn('repair_replace',generated)
+        self.assertNotIn('subprocess',generated)
+        self.assertNotIn('capture_write',generated)
+
+
+class InventoryFiles(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+        self.project=self.root/'project';(self.project/'data').mkdir(parents=True)
+        self.stage=self.root/'stage';self.stage.mkdir()
+        self.original={}
+        for p in m.REPAIR_GOOD_HASHES:
+            path=self.project/p;path.write_bytes(('arbitrary observed version '+p).encode());path.chmod(0o640)
+            self.original[p]=path.read_bytes()
+        self.control='b'*40
+        def fail(reason):raise RuntimeError(reason)
+        self.ns={'os':os,'pathlib':__import__('pathlib'),'hashlib':hashlib,'json':json,'subprocess':subprocess,
+                 're':re,'time':__import__('time'),'project':self.project,'operation':m.INVENTORY_OPERATION,
+                 'source':m.INVENTORY_SOURCE,'fail':fail,'result':{},
+                 'payload':{'action':'inventory','provider_http_calls':0,'old_profile_writes':0,
+                            'mapping_writes':0,'schema_writes':0,'local_tv_capture_control_sha':self.control}}
+        exec(m.inventory_remote()+m.REMOTE_HANDLER,self.ns)
+        self.command={'mode':m.MODE,'source_sha':m.INVENTORY_SOURCE,'operation_id':m.INVENTORY_OPERATION,
+                      'action':'inventory','provider_http_calls':0,'old_profile_writes':0,'mapping_writes':0,'schema_writes':0}
+        self.proc=mock.patch.object(subprocess,'run',side_effect=AssertionError('no PHP/SQL/HTTP/subprocess'))
+        self.proc.start()
+    def tearDown(self):self.proc.stop();self.temp.cleanup()
+    def observe(self):return self.ns['run_local_tv_inventory'](self.stage)
+    def receipt(self,data):
+        protected={p:'a'*64 for p in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        return dict(self.command,schema_version=1,status='complete',supplier_calls=0,database_writes=0,
+                    booking_calls=0,lead_calls=0,profile_writes=0,mapping_writes=0,schema_writes=0,
+                    production_before=protected,production_after=dict(protected),production_unchanged=True,
+                    local_tv_capture=data)
+    def test_unknown_versions_and_modes_reported_without_application_writes_or_execution(self):
+        data=self.observe()
+        self.assertTrue(data['observation_only']);self.assertTrue(data['files_stable'])
+        self.assertEqual(data['before_files'],data['after_files'])
+        self.assertEqual(set(data['after_files']),set(self.original))
+        for p,b in self.original.items():
+            self.assertEqual((self.project/p).read_bytes(),b)
+            self.assertEqual(data['after_files'][p],{'sha256':hashlib.sha256(b).hexdigest(),
+                             'bytes':len(b),'mode':0o640,'type':'regular','nlink':1})
+        self.assertTrue(m.inventory_completed_result(self.command,self.receipt(data),self.control))
+        self.assertEqual(data['file_writes'],0);self.assertEqual(data['root_write_attempts'],0)
+        self.assertEqual(data['changed_files'],[])
+        self.assertEqual(list(self.stage.iterdir()),[])
+    def test_symlink_hardlink_directory_and_fifo_are_rejected_without_following_target(self):
+        p=self.project/'data/db-v1.php';outside=self.root/'outside';outside.write_bytes(b'private outside')
+        for kind in ('symlink','hardlink','directory','fifo'):
+            with self.subTest(kind=kind):
+                if p.is_dir():p.rmdir()
+                else:p.unlink()
+                if kind=='symlink':p.symlink_to(outside)
+                elif kind=='hardlink':os.link(outside,p)
+                elif kind=='directory':p.mkdir()
+                else:os.mkfifo(p)
+                with self.assertRaises(RuntimeError):self.observe()
+                self.assertEqual(outside.read_bytes(),b'private outside')
+    def test_file_replacement_during_a_single_read_is_rejected(self):
+        p=self.project/next(iter(m.REPAIR_GOOD_HASHES));original=os.read;changed=False
+        def read(fd,size):
+            nonlocal changed
+            result=original(fd,size)
+            if not changed:
+                changed=True;p.write_bytes(b'concurrent writer replaced contents')
+            return result
+        with mock.patch.object(os,'read',side_effect=read),self.assertRaises(RuntimeError):self.observe()
+    def test_change_between_snapshots_is_reported_without_claiming_stability(self):
+        def change():
+            (self.project/'api-v2.php').write_bytes(b'foreign concurrent version')
+            return {'inspected':1,'active':1,'unreadable':0,'disposition':'active_observed'}
+        self.ns['inventory_processes']=change;data=self.observe()
+        self.assertFalse(data['files_stable'])
+        self.assertNotEqual(data['before_files'],data['after_files'])
+        self.assertTrue(m.inventory_completed_result(self.command,self.receipt(data),self.control))
+        self.assertEqual(data['root_write_attempts'],0)
+    def test_partial_process_visibility_is_never_reported_as_idle(self):
+        class Unreadable:
+            def open(self,mode):raise PermissionError('synthetic foreign process')
+        p=self.root/'cmdline';p.write_bytes(b'php\0'+str(self.project/'data/collector.php').encode()+b'\0')
+        with mock.patch.object(Path,'glob',return_value=iter([Unreadable(),p])):
+            data=self.observe()
+        self.assertEqual(data['processes'],{'inspected':2,'active':1,'unreadable':1,'disposition':'active_observed'})
+        with mock.patch.object(Path,'glob',return_value=iter([Unreadable()])):
+            data=self.observe()
+        self.assertEqual(data['processes']['disposition'],'visibility_partial')
+        self.assertTrue(m.inventory_completed_result(self.command,self.receipt(data),self.control))
+    def test_incomplete_or_mutating_receipts_cannot_pass(self):
+        import copy
+        result=self.receipt(self.observe())
+        for mutate in (
+            lambda r:r['local_tv_capture']['after_files'].pop('api-v2.php'),
+            lambda r:r['local_tv_capture'].__setitem__('root_write_attempts',1),
+            lambda r:r['local_tv_capture'].__setitem__('file_writes',True),
+            lambda r:r.__setitem__('database_writes',1),
+            lambda r:r['local_tv_capture'].__setitem__('files_stable',False),
+            lambda r:r['local_tv_capture'].__setitem__('control_source_sha','c'*40),
+            lambda r:r['local_tv_capture']['processes'].__setitem__('disposition','invented'),
+            lambda r:r['local_tv_capture'].__setitem__('observation_only',False),
+            lambda r:r['production_after'].__setitem__('index.php','c'*64),
+        ):
+            altered=copy.deepcopy(result);mutate(altered)
+            self.assertFalse(m.inventory_completed_result(self.command,altered,self.control))
+    def test_actual_stock_remote_private_receipt_and_replay_preserve_application_bytes(self):
+        self.proc.stop()
+        c=CaptureControl().wrapper().core
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'1','GITHUB_SHA':self.control}):
+            cmd=c.parse_command(f'{c.PREFIX}{m.INVENTORY_SOURCE} {m.MODE} {m.INVENTORY_OPERATION}');m.activate(c,cmd)
+        home=self.root/'stock-home';project=home/'www/anytoour.ru'
+        (project/'data').mkdir(parents=True);(project/'_preview/search3-anex-candidate').mkdir(parents=True)
+        for p,b in self.original.items():(project/p).write_bytes(b)
+        protected=('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')
+        for p in protected:
+            target=project/p;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(b'public fingerprint')
+        archive,files=m.bundle_inventory_source(None);bundle=self.root/'inventory.tar.gz';bundle.write_bytes(archive)
+        payload=dict(cmd,archive=str(bundle),local_tv_capture_control_sha=self.control,
+                     manifest_sha256=hashlib.sha256(b'{}').hexdigest())
+        def execute():
+            output=io.StringIO()
+            with mock.patch.object(Path,'home',return_value=home),mock.patch.object(sys,'stdin',io.StringIO(json.dumps(payload))),contextlib.redirect_stdout(output),mock.patch.object(subprocess,'run',side_effect=AssertionError('no subprocess')):
+                exec(c.REMOTE,{})
+            return json.loads(output.getvalue())
+        before={p:(project/p).read_bytes() for p in [*self.original,*protected]}
+        result=execute();self.assertTrue(m.inventory_completed_result(cmd,result,self.control),result)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':self.control}):self.assertTrue(c.completed_result(cmd,result))
+        op=home/'.anytoour-int-executor'/m.INVENTORY_OPERATION
+        retained=(op/'result.json').read_bytes();reservation=(op/'reservation.json').read_bytes()
+        replay=execute();self.assertEqual(replay['status'],'blocked')
+        self.assertEqual(replay['reason'],'operation_exists_no_replay')
+        self.assertEqual((op/'result.json').read_bytes(),retained)
+        self.assertEqual((op/'reservation.json').read_bytes(),reservation)
+        self.assertEqual({p:(project/p).read_bytes() for p in before},before)
+
+
 @unittest.skipUnless(os.environ.get('LOCAL_TV_SCHEMA_NATIVE_CI')=='1','isolated native MySQL CI required')
 class CaptureNative(unittest.TestCase):
     def test_actual_snapshot_read_only_manual_and_full_gallery(self):
