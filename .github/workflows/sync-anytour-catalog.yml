@@ -1,10 +1,16 @@
 name: Sync AnyTour catalog
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-anytour-catalog.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
   push:
     branches: [main]
     paths:
       - '.github/workflows/sync-anytour-catalog.yml'
+      - 'tests/local_tv_capture_workflow_test.py'
       - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/departures-v1.php'
       - 'v2/data/sync-departures-v1.php'
@@ -32,12 +38,33 @@ on:
         default: '2'
         type: string
 
-concurrency:
-  group: anytour-catalog-sync
-  cancel-in-progress: false
-
 jobs:
+  validate:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Exact reviewed permanent LOCAL dependencies for offline workflow tests
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: pyatkoff/poisk-turov-test
+          ref: 8af3e190588bf61b067f81838aec3f0201205ec9
+          path: local-tv-source
+          persist-credentials: false
+      - name: Execute copy and collector contracts without network or database
+        env:
+          LOCAL_TV_CAPTURE_SOURCE_ROOT: ${{ github.workspace }}/local-tv-source
+        run: python3 tests/local_tv_capture_workflow_test.py
+
   sync-catalog:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: anytour-catalog-sync
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -99,8 +126,31 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           root='~/www/anytoour.ru'
 
-          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
-          scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
+          # Shared runtime belongs to its installed owner; fail before copying if absent.
+          ssh "${opts[@]}" "$remote" '
+            set -e
+            root="$HOME/www/anytoour.ru"
+            test -s "$root/config.php"
+            for dependency in db-v1.php tourvisor-client-v1.php; do
+              if ! test -f "$root/data/$dependency" || test -L "$root/data/$dependency"; then
+                exit 1
+              fi
+            done
+          '
+          # Copy only the CLI entrypoints below; preserve every installed shared backend file.
+          scp "${opts[@]}" \
+            v2/data/catalog-hotel-sync-plan-v1.php \
+            v2/data/migrate-departures-v1.php \
+            v2/data/migrate-departure-countries-v1.php \
+            v2/data/migrate-departure-flight-matrices-v1.php \
+            v2/data/migrate-hotel-media-v1.php \
+            v2/data/sync-departures-v1.php \
+            v2/data/sync-departure-flight-matrices-v1.php \
+            v2/data/validate-departure-flight-matrices-v1.php \
+            v2/data/validate-departures-v1.php \
+            v2/data/sync-catalog-v1.php \
+            v2/data/db-doctor-v1.php \
+            "$remote:$root/data/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru\"
