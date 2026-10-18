@@ -295,6 +295,7 @@ class CheckedInstall(unittest.TestCase):
   m=self.module();event,env=self.event(m);identity=m.checked_event(event,env)
   self.assertEqual(identity,{'control_source_sha':'b'*40,'run_id':'777','command_comment_id':987})
   self.assertEqual(m.CHECKED_HASH,'ef60da2d948c42b7741771ef1e1a091280c14cd79eafea10d737cb7067e55463')
+  self.assertEqual(m.CHECKED_BLOB,'6fb963e68a99945118d04f8e46845ecd6bcb6bc9')
   self.assertEqual(m.CHECKED_BYTES,14557);self.assertEqual(m.ISSUE,3419)
   for key,value in {'GITHUB_REF':'refs/heads/other','GITHUB_SHA':'c'*40,'GITHUB_RUN_ATTEMPT':'2','GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_RUN_ID':'0','GITHUB_WORKFLOW_REF':'other'}.items():
    with self.subTest(key=key),self.assertRaises(RuntimeError):m.checked_event(event,{**env,key:value})
@@ -310,7 +311,10 @@ class CheckedInstall(unittest.TestCase):
   self.assertEqual(old.OPERATION,'preflight-20261018-fcfe503e-v1');self.assertEqual(old.EXPECTED,m.CHECKED_EXPECTED)
  def test_admission_checks_exact_candidate_ci_and_complete_single_reservation(self):
   import base64
-  m=self.module();event,env=self.event(m);identity=m.checked_event(event,env);body=(R/'v2/api-v2.php').read_bytes()
+  m=self.module();event,env=self.event(m);identity=m.checked_event(event,env)
+  # Candidate bytes come from the mocked source/release API, not this main checkout.
+  body=b'<?php /* reviewed synthetic candidate */ ?>'
+  m.CHECKED_BLOB=m.blob(body);m.CHECKED_HASH=m.sha(body);m.CHECKED_BYTES=len(body)
   def api(path):
    if path=='/git/ref/heads/main':return {'object':{'sha':'b'*40}}
    if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.CHECKED_RELEASE}}
