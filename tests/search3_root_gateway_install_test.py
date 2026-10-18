@@ -250,6 +250,218 @@ class Preflight(unittest.TestCase):
   self.assertEqual(workflow.count('scripts/deploy/search3_root_gateway_inspect.py preflight'),1)
 
 
+class CheckedInstall(unittest.TestCase):
+ def module(self):
+  path=R/'scripts/deploy/search3_root_gateway_install.py'
+  spec=importlib.util.spec_from_file_location('checked_install',path);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+ def event(self,m):
+  env={'GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main','GITHUB_SHA':'b'*40,
+       'GITHUB_WORKFLOW_REF':f'{m.REPO}/{m.CHECKED_WORKFLOW}@refs/heads/main',
+       'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff',
+       'GITHUB_EVENT_NAME':'issue_comment','GITHUB_RUN_ATTEMPT':'1','GITHUB_RUN_ID':'777'}
+  event={'repository':{'full_name':m.REPO},'action':'created','issue':{'number':4217},
+         'comment':{'id':987,'body':f'{m.CHECKED_PREFIX} '+('b'*40)+' '+m.CHECKED_OPERATION,
+                    'user':{'id':226193297},'author_association':'OWNER'}}
+  return event,env
+ def fixture(self,m,home):
+  import base64
+  project=home/'www/anytoour.ru';expected={}
+  for path in m.CHECKED_EXPECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True)
+   p.write_bytes(b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","old"); ?>' if path=='api-v2.php' else b'fixture '+path.encode());p.chmod(0o644)
+   expected[path]=m.sha(p.read_bytes())
+  (project/'index.php').write_bytes(b'public home');(project/'index.php').chmod(0o644)
+  candidate=b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","new"); ?>'
+  m.CHECKED_EXPECTED=expected;m.CHECKED_HASH=m.sha(candidate);m.CHECKED_BLOB=m.blob(candidate);m.CHECKED_BYTES=len(candidate)
+  event,env=self.event(m);identity=m.checked_event(event,env)
+  payload={**identity,'candidate_b64':base64.b64encode(candidate).decode()}
+  return project,candidate,identity,payload,m.checked_remote()
+ def execute(self,m,home,payload,program,callback=None,native=False):
+  import types
+  actual=m.subprocess.run;calls=[]
+  def lint(args,**kw):
+   calls.append(args)
+   self.assertEqual(args[:3],['php','-n','-l']);self.assertEqual(len(args),4)
+   self.assertIs(kw['stdout'],m.subprocess.DEVNULL);self.assertIs(kw['stderr'],m.subprocess.DEVNULL)
+   if callback:
+    value=callback(args,len(calls))
+    if value is not None:return value
+   return actual(args,**kw) if native else mock.Mock(returncode=0)
+  stdin=types.SimpleNamespace(buffer=io.BytesIO(json.dumps(payload).encode()))
+  with mock.patch.object(pathlib.Path,'home',return_value=home),mock.patch('sys.stdin',stdin),mock.patch.object(m.subprocess,'run',side_effect=lint),contextlib.redirect_stdout(io.StringIO()) as out:
+   exec(program,{})
+  return json.loads(out.getvalue()),calls
+ def test_current_event_is_exact_and_legacy_operations_stay_frozen(self):
+  m=self.module();event,env=self.event(m);identity=m.checked_event(event,env)
+  self.assertEqual(identity,{'control_source_sha':'b'*40,'run_id':'777','command_comment_id':987})
+  self.assertEqual(m.CHECKED_HASH,'ef60da2d948c42b7741771ef1e1a091280c14cd79eafea10d737cb7067e55463')
+  self.assertEqual(m.CHECKED_BLOB,'6fb963e68a99945118d04f8e46845ecd6bcb6bc9')
+  self.assertEqual(m.CHECKED_BYTES,14557);self.assertEqual(m.ISSUE,3419)
+  for key,value in {'GITHUB_REF':'refs/heads/other','GITHUB_SHA':'c'*40,'GITHUB_RUN_ATTEMPT':'2','GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_RUN_ID':'0','GITHUB_WORKFLOW_REF':'other'}.items():
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.checked_event(event,{**env,key:value})
+  import copy
+  for key,value in [('body',event['comment']['body']+' '),('body',event['comment']['body'].replace(m.CHECKED_OPERATION,'retry-v2')),('id',True),('user',{'id':1})]:
+   bad=copy.deepcopy(event);bad['comment'][key]=value
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.checked_event(bad,env)
+  for issue in ({'number':3419},{'number':4217,'pull_request':{}}):
+   bad=copy.deepcopy(event);bad['issue']=issue
+   if 'pull_request' in issue:bad['issue']['pull_request']={'url':'synthetic'}
+   with self.assertRaises(RuntimeError):m.checked_event(bad,env)
+  p=R/'scripts/deploy/search3_root_gateway_inspect.py';spec=importlib.util.spec_from_file_location('frozen_preflight',p);old=importlib.util.module_from_spec(spec);spec.loader.exec_module(old)
+  self.assertEqual(old.OPERATION,'preflight-20261018-fcfe503e-v1');self.assertEqual(old.EXPECTED,m.CHECKED_EXPECTED)
+ def test_admission_checks_exact_candidate_ci_and_complete_single_reservation(self):
+  import base64
+  m=self.module();event,env=self.event(m);identity=m.checked_event(event,env)
+  # Candidate bytes come from the mocked source/release API, not this main checkout.
+  body=b'<?php /* reviewed synthetic candidate */ ?>'
+  m.CHECKED_BLOB=m.blob(body);m.CHECKED_HASH=m.sha(body);m.CHECKED_BYTES=len(body)
+  def api(path):
+   if path=='/git/ref/heads/main':return {'object':{'sha':'b'*40}}
+   if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.CHECKED_RELEASE}}
+   if path.startswith('/contents/'):return {'sha':m.CHECKED_BLOB,'content':base64.b64encode(body).decode()}
+   if '/check-runs?' in path:return {'total_count':5,'check_runs':[{'id':i,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in m.CHECKED_CHECK_IDS]}
+   return [{'id':987,'body':event['comment']['body']}]
+  with mock.patch.object(m,'checked_api',side_effect=api):self.assertEqual(m.checked_admission(identity),body)
+  for variant in ('main','release','blob','source_bytes','ci','duplicate','changed_control','incomplete'):
+   def wrong(path):
+    value=api(path)
+    if variant=='main' and path=='/git/ref/heads/main':value['object']['sha']='c'*40
+    if variant=='release' and '/heads/release/' in path:value['object']['sha']='c'*40
+    if variant=='blob' and path.startswith('/contents/'):value['sha']='c'*40
+    if variant=='source_bytes' and path.startswith('/contents/'):value['content']=base64.b64encode(b'wrong').decode()
+    if variant=='ci' and '/check-runs?' in path:value['check_runs'][0]['conclusion']='failure'
+    if path.startswith('/issues/'):
+     if variant=='duplicate':value.append({'id':988,'body':event['comment']['body']})
+     if variant=='changed_control':value.append({'id':988,'body':event['comment']['body'].replace('b'*40,'c'*40)})
+     if variant=='incomplete':value=[{'id':i,'body':'ordinary'} for i in range(100)]
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=wrong),self.assertRaises(RuntimeError):m.checked_admission(identity)
+ def test_actual_remote_replaces_one_api_retains_backup_and_never_executes_php(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   before={p:(project/p).read_bytes() for p in m.CHECKED_EXPECTED};old=before['api-v2.php']
+   old_umask=os.umask(0o077)
+   try:result,calls=self.execute(m,home,payload,program)
+   finally:os.umask(old_umask)
+   self.assertTrue(m.checked_completed(identity,result),result);self.assertEqual(len(calls),3)
+   self.assertEqual((project/'api-v2.php').read_bytes(),candidate)
+   for p in before:
+    if p!='api-v2.php':self.assertEqual((project/p).read_bytes(),before[p])
+   op=home/'.anytoour-search3-root-gateway'/m.CHECKED_OPERATION
+   self.assertEqual((op/'previous.php').read_bytes(),old);self.assertEqual((op/'previous.php').stat().st_mode&0o777,0o600)
+   self.assertEqual((project/'api-v2.php').stat().st_mode&0o777,0o644)
+   self.assertEqual(json.loads((op/'result.json').read_text()),result)
+   self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
+   self.assertNotIn('api-v2.php?action=health',program);self.assertNotIn('urllib',program);self.assertNotIn('repair_replace',program)
+ def test_actual_remote_replay_preserves_first_private_reservation_and_receipt(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   first,_=self.execute(m,home,payload,program);self.assertTrue(m.checked_completed(identity,first))
+   before={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   second,calls=self.execute(m,home,payload,program)
+   after={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   self.assertEqual(second['reason'],'operation_exists_no_replay');self.assertEqual(calls,[]);self.assertEqual(before,after)
+ def test_drift_unsafe_files_and_bad_payload_stop_before_lint_or_root_write(self):
+  import base64
+  m=self.module()
+  for variant in ('api','helper','missing','symlink','hardlink','fifo','parent_symlink','candidate'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);p=project/'api-v2.php'
+    if variant=='api':p.write_bytes(b'foreign version')
+    if variant=='helper':(project/'data/db-v1.php').write_bytes(b'foreign helper')
+    if variant=='missing':p.unlink()
+    if variant=='symlink':p.unlink();p.symlink_to(project/'data/db-v1.php')
+    if variant=='hardlink':os.link(p,home/'another-link')
+    if variant=='fifo':p.unlink();os.mkfifo(p)
+    if variant=='parent_symlink':(project/'data').rename(home/'real-data');(project/'data').symlink_to(home/'real-data',target_is_directory=True)
+    if variant=='candidate':payload['candidate_b64']=base64.b64encode(b'wrong candidate').decode()
+    result,calls=self.execute(m,home,payload,program)
+    self.assertEqual(result['status'],'blocked_no_replay');self.assertEqual(result['root_write_attempts'],0);self.assertEqual(calls,[])
+ def test_lint_failure_and_changes_during_lint_abort_before_replacement(self):
+  for variant in ('lint_fail','api_change','helper_change','candidate_change','public_change'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);old=(project/'api-v2.php').read_bytes()
+    def callback(args,count):
+     if count==2:
+      if variant=='lint_fail':return mock.Mock(returncode=1)
+      if variant=='api_change':(project/'api-v2.php').write_bytes(b'foreign api during lint')
+      if variant=='helper_change':(project/'data/db-v1.php').write_bytes(b'foreign helper during lint')
+      if variant=='candidate_change':pathlib.Path(args[-1]).write_bytes(b'foreign staged candidate')
+      if variant=='public_change':(project/'index.php').write_bytes(b'foreign public home')
+    result,calls=self.execute(m,home,payload,program,callback)
+    self.assertEqual(result['status'],'blocked_no_replay');self.assertEqual(result['root_write_attempts'],0)
+    if variant!='api_change':self.assertEqual((project/'api-v2.php').read_bytes(),old)
+ def test_post_install_failure_rolls_back_own_bytes_but_preserves_foreign_api(self):
+  for foreign in (False,True):
+   with self.subTest(foreign=foreign),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);old=(project/'api-v2.php').read_bytes()
+    def callback(args,count):
+     if count==3:
+      if foreign:(project/'api-v2.php').write_bytes(b'foreign owner after replacement')
+      return mock.Mock(returncode=1)
+    result,calls=self.execute(m,home,payload,program,callback)
+    self.assertFalse(m.checked_completed(identity,result))
+    self.assertEqual(result['status'],'unknown_no_replay' if foreign else 'rolled_back_no_replay')
+    self.assertEqual(result['rollback_attempts'],0 if foreign else 1)
+    self.assertEqual((project/'api-v2.php').read_bytes(),b'foreign owner after replacement' if foreign else old)
+ def test_receipt_cannot_launder_wrong_identity_partial_inventory_or_mutation(self):
+  import copy
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);good,_=self.execute(m,home,payload,program)
+  mutations=[lambda r:r.__setitem__('source_sha','a'*40),lambda r:r.__setitem__('file_writes',True),lambda r:r.__setitem__('database_writes',1),lambda r:r.__setitem__('supplier_calls',1),lambda r:r.__setitem__('backup_retained',False),lambda r:r['after_files'].pop('data/db-v1.php'),lambda r:r['after_files']['api-v2.php'].__setitem__('sha256','a'*64),lambda r:r['production_after'].__setitem__('index.php','c'*64),lambda r:r.__setitem__('syntax_candidate','not_run')]
+  for mutation in mutations:
+   changed=copy.deepcopy(good);mutation(changed);self.assertFalse(m.checked_completed(identity,changed))
+ def test_runner_keeps_only_sanitized_failure_and_cleans_keys(self):
+  m=self.module();event,env=self.event(m)
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);path=home/'event.json';path.write_text(json.dumps(event))
+   with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path)}),mock.patch.object(m,'checked_admission',side_effect=RuntimeError('PRIVATE_DETAIL')),mock.patch.object(m,'run') as network,contextlib.redirect_stdout(io.StringIO()) as out,self.assertRaisesRegex(RuntimeError,'install_not_verified'):
+    m.checked_install()
+   evidence=json.loads((home/'search3-root-gateway-checked/evidence.json').read_text());self.assertNotIn('PRIVATE_DETAIL',out.getvalue());self.assertEqual(evidence['status'],'blocked_no_replay');network.assert_not_called()
+   self.assertFalse((home/'search3-root-gateway-checked/key').exists());self.assertFalse((home/'search3-root-gateway-checked/known').exists())
+ def test_workflow_uses_same_carrier_lock_exact_owner_and_explicit_safe_artifact(self):
+  m=self.module();workflow=(R/m.CHECKED_WORKFLOW).read_text();job=workflow.split('  checked-install:\n',1)[1].split('  preflight:\n',1)[0]
+  for guard in ('group: deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1',"github.event.issue.number == 4217","github.event.action == 'created'","github.actor == 'pyatkoff'","github.triggering_actor == 'pyatkoff'","github.event.comment.user.id == 226193297",m.CHECKED_OPERATION,'scripts/deploy/search3_root_gateway_install.py checked_install','checks: read',"SEARCH3_CHECKED_INSTALL_NATIVE_CI: '1'"):
+   self.assertIn(guard,job)
+  artifact=job.split('          path: |\n',1)[1].split('          if-no-files-found:',1)[0]
+  self.assertEqual(len(artifact.strip().splitlines()),3);self.assertIn('/evidence.json',artifact);self.assertIn('/request.json',artifact);self.assertIn('/api-v2.php',artifact);self.assertNotIn('/key',artifact);self.assertNotIn('/known',artifact)
+  self.assertNotIn('workflow_dispatch',workflow);self.assertNotIn('action=health',job);self.assertNotIn('/run-int-server-v1',job)
+ def test_runner_rejects_private_extra_reply_and_cleans_keys_after_ssh(self):
+  import copy
+  for variant in ('success','private_reply','transport_error'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+    result,_=self.execute(m,home,payload,program);reply=copy.deepcopy(result)
+    if variant=='private_reply':reply['private_config']='PRIVATE_DETAIL'
+    event,env=self.event(m);path=home/'event.json';path.write_text(json.dumps(event))
+    def run(args,**kwargs):
+     if args[0]=='ssh-keyscan':return b'synthetic known host'
+     self.assertEqual(args[0],'ssh');self.assertIn('StrictHostKeyChecking=yes',args)
+     self.assertTrue(args[-1].startswith('python3 -c '));self.assertEqual(json.loads(kwargs['input'])['candidate_b64'],payload['candidate_b64'])
+     if variant=='transport_error':raise m.subprocess.CalledProcessError(255,args,stderr=b'PRIVATE_DETAIL')
+     return json.dumps(reply).encode()
+    with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path),'PREVIEW_HOST':'synthetic.example','PREVIEW_USER':'synthetic','PREVIEW_KEY':'c3ludGhldGlj'}),mock.patch.object(m,'checked_admission',return_value=candidate),mock.patch.object(m,'run',side_effect=run),contextlib.redirect_stdout(io.StringIO()) as out:
+     if variant=='success':m.checked_install()
+     else:
+      with self.assertRaisesRegex(RuntimeError,'install_not_verified'):m.checked_install()
+    work=home/'search3-root-gateway-checked';evidence=json.loads((work/'evidence.json').read_text())
+    self.assertFalse((work/'key').exists());self.assertFalse((work/'known').exists())
+    self.assertNotIn('PRIVATE_DETAIL',json.dumps(evidence));self.assertNotIn('PRIVATE_DETAIL',out.getvalue())
+    self.assertEqual(evidence['status'],'installed_verified' if variant=='success' else 'unknown_no_replay')
+ @unittest.skipUnless(os.environ.get('SEARCH3_CHECKED_INSTALL_NATIVE_CI')=='1','native PHP CI required')
+ def test_native_php_lint_transaction_never_executes_side_effect_body(self):
+  import shutil
+  self.assertIsNotNone(shutil.which('php'),'native PHP is required in exact-head CI')
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   result,calls=self.execute(m,home,payload,program,native=True)
+   self.assertTrue(m.checked_completed(identity,result),result);self.assertEqual(len(calls),3)
+   self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
+
 if __name__=='__main__':unittest.main()
 
 
