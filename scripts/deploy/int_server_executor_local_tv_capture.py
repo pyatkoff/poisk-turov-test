@@ -5,6 +5,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import tarfile
 
@@ -26,6 +27,8 @@ SOURCE_HASHES={
 }
 REPAIR_OPERATION='int-andromeda-local-tv-repair-20261018-v1'
 REPAIR_SOURCE='6bb834a586c231c3f06a6d6e918f8280d2b3f587'
+INVENTORY_OPERATION='int-andromeda-local-tv-inventory-20261018-v1'
+INVENTORY_SOURCE='6bb834a586c231c3f06a6d6e918f8280d2b3f587'
 REPAIR_TARGETS={
     'data/db-v1.php':'v2/data/db-v1.php',
     'data/price-observer-v1.php':'v2/data/price-observer-v1.php',
@@ -49,12 +52,16 @@ def register_parser(core):
         if not body.startswith(core.PREFIX):return original(body)
         p=body[len(core.PREFIX):].split()
         if len(p)<2 or p[1]!=MODE:return original(body)
-        need(len(p)==3 and (p[2] in OPERATIONS or p[2]==REPAIR_OPERATION),'capture_exact_operation')
+        need(len(p)==3 and (p[2] in OPERATIONS or p[2] in (REPAIR_OPERATION,INVENTORY_OPERATION)),'capture_exact_operation')
         need(core.SHA_RE.fullmatch(p[0]) is not None,'source_sha')
         if p[2]==REPAIR_OPERATION:
             need(p[0]==REPAIR_SOURCE,'repair_exact_source')
             need(os.environ.get('GITHUB_RUN_ATTEMPT')=='1','repair_first_attempt_only')
-        return {'source_sha':p[0],'mode':MODE,'operation_id':p[2],'action':OPERATIONS.get(p[2],'repair'),
+        if p[2]==INVENTORY_OPERATION:
+            need(p[0]==INVENTORY_SOURCE,'inventory_exact_source')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT')=='1','inventory_first_attempt_only')
+        action='inventory' if p[2]==INVENTORY_OPERATION else OPERATIONS.get(p[2],'repair')
+        return {'source_sha':p[0],'mode':MODE,'operation_id':p[2],'action':action,
                 'provider_http_calls':0,'old_profile_writes':0,'mapping_writes':0,'schema_writes':0}
     core.parse_command=parse
 
@@ -123,6 +130,8 @@ def capture_install_files(stage,targets,expected,flag):
         fail('capture_install_rolled_back_no_replay')
 
 def run_local_tv_capture(stage):
+    if operation=='int-andromeda-local-tv-inventory-20261018-v1':
+        return run_local_tv_inventory(stage)
     if operation=='int-andromeda-local-tv-repair-20261018-v1':
         return run_local_tv_repair(stage)
     actions={'int-andromeda-local-tv-capture-inspect-20261010-v1':'inspect','int-andromeda-local-tv-capture-install-20261010-v1':'install',
@@ -243,27 +252,154 @@ def activate(core,command):
     remote=core.REMOTE;definition='def run_match942(stage, mode, offset, limit):\n';dispatch="    if mode=='match-tv942-write':\n";collector="    if mode not in ('reconcile',";manifest="    if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(definition)==1 and remote.count(dispatch)==1 and remote.count(collector)==2 and remote.count(manifest)==1,'capture_registration_drift')
     repair=command['operation_id']==REPAIR_OPERATION
-    handler=(repair_remote() if repair else '')+REMOTE_HANDLER
+    inventory=command['operation_id']==INVENTORY_OPERATION
+    handler=(inventory_remote() if inventory else repair_remote() if repair else '')+REMOTE_HANDLER
     remote=remote.replace(definition,handler+definition,1).replace(dispatch,REMOTE_DISPATCH+dispatch,1).replace(collector,"    if mode not in ('"+MODE+"','reconcile',")
-    bundle_files=tuple(REPAIR_TARGETS.values()) if repair else BUNDLE_FILES
-    literal='{'+', '.join(repr(v) for v in sorted(bundle_files))+'}'
+    bundle_files=() if inventory else tuple(REPAIR_TARGETS.values()) if repair else BUNDLE_FILES
+    literal='set()' if inventory else '{'+', '.join(repr(v) for v in sorted(bundle_files))+'}'
     remote=remote.replace(manifest,"    if not isinstance(files,dict) or set(files)!="+literal+": fail('capture_manifest')",1)
-    if repair:
+    if repair or inventory:
         reservation='    op.mkdir(mode=0o700)\n'
         receipt="if 'op' in globals() and op.exists():"
         need(remote.count(reservation)==1 and remote.count(receipt)==1,'repair_ledger_registration_drift')
         # A rejected replay must preserve the original private receipt. This
-        # guard exists only in the new repair's remote program.
+        # guard exists only in the one-use file-only controls.
         remote=remote.replace(reservation,reservation+'    repair_operation_reserved=True\n',1)
         remote=remote.replace(receipt,"if globals().get('repair_operation_reserved') is True and op.exists():",1)
-    ast.parse(remote);core.REMOTE=remote;core.bundle_source=bundle_repair_source if repair else bundle_source
-    if repair:
+    ast.parse(remote);core.REMOTE=remote
+    core.bundle_source=bundle_inventory_source if inventory else bundle_repair_source if repair else bundle_source
+    if repair or inventory:
         original=core.completed_result
         def completed(cmd,result):
             if cmd.get('operation_id')==REPAIR_OPERATION:
                 return repair_completed_result(cmd,result,os.environ.get('GITHUB_SHA',''))
+            if cmd.get('operation_id')==INVENTORY_OPERATION:
+                return inventory_completed_result(cmd,result,os.environ.get('GITHUB_SHA',''))
             return original(cmd,result)
         core.completed_result=completed
+
+
+def bundle_inventory_source(source_root):
+    """No application source or PHP is uploaded for the read-only observation."""
+    out=io.BytesIO()
+    with tarfile.open(fileobj=out,mode='w:gz',format=tarfile.PAX_FORMAT) as archive:
+        data=b'{"files":{},"schema_version":1}'
+        item=tarfile.TarInfo('manifest.json');item.size=len(data);item.mode=0o600;item.mtime=0
+        archive.addfile(item,io.BytesIO(data))
+    return out.getvalue(),{}
+
+
+def inventory_remote():
+    # Share the already reviewed race-safe file reader. Do not include the
+    # repair handler, its atomic writer, PHP snapshots or any repair policy.
+    nodes=ast.parse(REMOTE_REPAIR).body
+    reader=next(n for n in nodes if isinstance(n,ast.FunctionDef) and n.name=='repair_read')
+    code=ast.get_source_segment(REMOTE_REPAIR,reader)
+    need(code is not None,'inventory_reader_missing')
+    policy={'operation':INVENTORY_OPERATION,'source':INVENTORY_SOURCE,
+            'good':dict.fromkeys(REPAIR_GOOD_HASHES)}
+    return 'REPAIR_POLICY='+repr(policy)+'\n'+code+'\n'+REMOTE_INVENTORY
+
+
+REMOTE_INVENTORY=r'''
+def inventory_processes():
+    count=active=unreadable=0
+    prefix=str(project/'data')+'/'
+    for path in pathlib.Path('/proc').glob('[0-9]*/cmdline'):
+        if count==2048:
+            unreadable+=1;break
+        count+=1
+        try:
+            with path.open('rb') as handle:raw=handle.read(32769)
+        except FileNotFoundError:continue
+        except (PermissionError,OSError):
+            unreadable+=1;continue
+        if len(raw)>32768:
+            unreadable+=1;continue
+        args=[os.fsdecode(p) for p in raw.split(b'\0') if p]
+        if not args:continue
+        name=os.path.basename(args[0])
+        if ((name.startswith('php') and any(a.startswith(prefix) for a in args[1:]))
+                or (name in ('scp','sftp-server','rsync') and any(prefix.rstrip('/') in a for a in args[1:]))):
+            active+=1
+    disposition='active_observed' if active else 'visibility_partial' if unreadable else 'idle_observed'
+    return {'inspected':count,'active':active,'unreadable':unreadable,'disposition':disposition}
+
+def run_local_tv_inventory(stage):
+    if (operation!=REPAIR_POLICY['operation'] or source!=REPAIR_POLICY['source']
+            or payload.get('action')!='inventory'
+            or any(type(payload.get(k)) is not int or payload[k]!=0
+                   for k in ('provider_http_calls','old_profile_writes','mapping_writes','schema_writes'))
+            or not re.fullmatch(r'[a-f0-9]{40}',str(payload.get('local_tv_capture_control_sha','')))):
+        fail('inventory_scope')
+    data={'schema_version':1,'action':'inventory','operation_id':operation,'source_sha':source,
+          'control_source_sha':payload['local_tv_capture_control_sha'],'observed_at':int(time.time()),
+          'state':'observing','observation_only':True,'supplier_calls':0,'database_writes':0,
+          'old_profile_writes':0,'mapping_writes':0,'schema_writes':0,'file_writes':0,
+          'root_write_attempts':0,'rollback_attempts':0,'changed_files':[],
+          'before_files':{},'after_files':{}}
+    result['local_tv_capture']=data
+    def snapshot():
+        return {p:dict(repair_read(p)[1],type='regular',nlink=1) for p in REPAIR_POLICY['good']}
+    data['before_files']=snapshot()
+    data['processes']=inventory_processes()
+    data['after_files']=snapshot()
+    data['files_stable']=data['before_files']==data['after_files']
+    data['state']='observed_read_only'
+    return data
+'''
+
+
+def inventory_completed_result(command,result,control_sha):
+    """A completed observation grants no repair or application authority."""
+    try:
+        if (command.get('mode')!=MODE or command.get('operation_id')!=INVENTORY_OPERATION
+                or command.get('source_sha')!=INVENTORY_SOURCE or command.get('action')!='inventory'
+                or any(type(command.get(k)) is not int or command[k]!=0
+                       for k in ('provider_http_calls','old_profile_writes','mapping_writes','schema_writes'))
+                or result.get('status')!='complete' or type(result.get('schema_version')) is not int
+                or result['schema_version']!=1
+                or any(result.get(k)!=command.get(k) for k in ('mode','operation_id','source_sha'))):
+            return False
+        for key in ('supplier_calls','database_writes','booking_calls','lead_calls',
+                    'profile_writes','mapping_writes','schema_writes'):
+            if type(result.get(key)) is not int or result[key]!=0:return False
+        protected={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        if (set(result.get('production_before',{}))!=protected
+                or result['production_before']!=result.get('production_after')
+                or result.get('production_unchanged') is not True):return False
+        data=result.get('local_tv_capture',{})
+        if (type(data.get('schema_version')) is not int or data['schema_version']!=1
+                or type(data.get('observed_at')) is not int or data['observed_at']<=0
+                or data.get('state')!='observed_read_only'
+                or data.get('observation_only') is not True or data.get('action')!='inventory'
+                or data.get('operation_id')!=INVENTORY_OPERATION or data.get('source_sha')!=INVENTORY_SOURCE
+                or data.get('control_source_sha')!=control_sha
+                or not isinstance(control_sha,str) or re.fullmatch(r'[a-f0-9]{40}',control_sha) is None):
+            return False
+        for key in ('supplier_calls','database_writes','old_profile_writes','mapping_writes',
+                    'schema_writes','file_writes','root_write_attempts','rollback_attempts'):
+            if type(data.get(key)) is not int or data[key]!=0:return False
+        if data.get('changed_files')!=[]:return False
+        before=data.get('before_files');after=data.get('after_files')
+        for inventory in (before,after):
+            if not isinstance(inventory,dict) or set(inventory)!=set(REPAIR_GOOD_HASHES):return False
+            for record in inventory.values():
+                if (set(record)!={'sha256','bytes','mode','type','nlink'}
+                        or not isinstance(record['sha256'],str)
+                        or re.fullmatch(r'[a-f0-9]{64}',record['sha256']) is None
+                        or type(record['bytes']) is not int or not 0<record['bytes']<=2*1024*1024
+                        or type(record['mode']) is not int or not 0<=record['mode']<=0o7777
+                        or record['type']!='regular' or type(record['nlink']) is not int or record['nlink']!=1):
+                    return False
+        if type(data.get('files_stable')) is not bool or data['files_stable']!=(before==after):return False
+        p=data.get('processes',{})
+        if set(p)!={'inspected','active','unreadable','disposition'}:return False
+        if any(type(p[k]) is not int or not 0<=p[k]<=2049 for k in ('inspected','active','unreadable')):return False
+        expected='active_observed' if p['active'] else 'visibility_partial' if p['unreadable'] else 'idle_observed'
+        return p['disposition']==expected and p['active']<=p['inspected']
+    except (AttributeError,KeyError,TypeError,ValueError):
+        return False
 
 
 def bundle_repair_source(source_root):
