@@ -21,6 +21,7 @@ on:
       - 'v2/data/report-seo-seasonal-preview-launch-dossier-v1.php'
       - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
       - 'tests/seo-seasonal-*.php'
+      - 'tests/local_tv_capture_workflow_test.py'
       - '.github/workflows/collect-seo-seasonal-live-evidence.yml'
   push:
     branches: [main]
@@ -39,14 +40,11 @@ on:
       - 'v2/data/report-seo-seasonal-preview-launch-dossier-v1.php'
       - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
       - 'tests/seo-seasonal-*.php'
+      - 'tests/local_tv_capture_workflow_test.py'
       - '.github/workflows/collect-seo-seasonal-live-evidence.yml'
 
 permissions:
   contents: read
-
-concurrency:
-  group: seo-seasonal-live-evidence
-  cancel-in-progress: true
 
 jobs:
   contract:
@@ -71,6 +69,7 @@ jobs:
           php -l v2/data/report-seo-seasonal-preview-launch-dossier-v1.php >/dev/null
           grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-seo-seasonal-live-evidence.yml
           grep -Fq 'v2/data/price-segment-v1.php' .github/workflows/collect-seo-seasonal-live-evidence.yml
+          python3 tests/local_tv_capture_workflow_test.py SeasonalSharedHelperBoundary
           php tests/seo-seasonal-targeted-inventory-smoke.php
           php tests/seo-seasonal-review-content-smoke.php
           php tests/seo-seasonal-review-page-smoke.php
@@ -82,10 +81,13 @@ jobs:
           php tests/seo-seasonal-preview-launch-dossier-cli-smoke.php
 
   live-seasonal-evidence:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: contract
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    concurrency:
+      group: seo-seasonal-live-evidence
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 
@@ -116,17 +118,25 @@ jobs:
           test -n "$HOST_VALUE" && test -n "$USER_VALUE" || exit 2
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
-          scp "${opts[@]}" \
-            v2/data/db-v1.php \
-            v2/data/tourvisor-client-v1.php \
-            v2/data/price-observer-v1.php \
-            v2/data/price-segment-v1.php \
-            v2/data/collect-seo-seasonal-preview-inventory-v1.php \
-            v2/data/build-seo-offer-snapshots-v1.php \
-            v2/data/inspect-seo-seasonal-identities-v1.php \
-            "$remote:~/www/anytoour.ru/data/" \
-            > seo-seasonal-targeted-collection.log 2>&1
+          # Shared helpers belong to the installed INT/LOCAL release, not this SEO copy set.
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru/data"
+            for name in db-v1.php tourvisor-client-v1.php price-observer-v1.php; do
+              test -f "$root/$name" && test -s "$root/$name" && test ! -L "$root/$name" || exit 2
+            done
+          ' > seo-seasonal-targeted-collection.log 2>&1
           code=$?
+          if [ "$code" = "0" ]; then
+            scp "${opts[@]}" \
+              v2/data/price-segment-v1.php \
+              v2/data/collect-seo-seasonal-preview-inventory-v1.php \
+              v2/data/build-seo-offer-snapshots-v1.php \
+              v2/data/inspect-seo-seasonal-identities-v1.php \
+              "$remote:~/www/anytoour.ru/data/" \
+              >> seo-seasonal-targeted-collection.log 2>&1
+            code=$?
+          fi
           if [ "$code" = "0" ]; then
             ssh "${opts[@]}" "$remote" '
               set -euo pipefail
