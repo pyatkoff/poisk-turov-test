@@ -15,7 +15,7 @@ MODES = {'match-retained-intake': 'common4-retained',
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
                 'scripts/diagnostics/hotel_match_retained_projection_v1.py',
                 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '4891d3f87fae1a49a6a3ed98bc7fbadce49584d48042dc5021fd6ebf6b794b04', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '643c52afa46c0926193a4447eee42bee641881fd7bf187526f28c49c2e8cbfc5', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5'}
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '4891d3f87fae1a49a6a3ed98bc7fbadce49584d48042dc5021fd6ebf6b794b04', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '7d76acee710e33cc5c649d909b59304f7937ca868519a1287c87b75d235df9c6', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5'}
 
 
 def need(value, reason):
