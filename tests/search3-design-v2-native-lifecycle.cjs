@@ -37,7 +37,7 @@ test('loaded calendar pages 8, 14 and 22 days without requests and restores the 
   for(const length of [8,14,22]){
     const from='2026-10-01',to=add(from,length-1),selectedDate=to;
     const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
-    w.lucide={createIcons(){}};w.eval(frontend);
+    w.lucide={createIcons(){}};w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/tour.js'),'utf8'));w.eval(frontend);
     const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
     const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
     const search={origin:'Москва',country:'4',from,to,minNights:7,maxNights:7,adults:2,ages:[]};
@@ -63,7 +63,7 @@ test('loaded calendar pages 8, 14 and 22 days without requests and restores the 
 test('large loaded result sets render in bounded local batches', async () => {
   const frontend=fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8');
   const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
-  w.lucide={createIcons(){}};w.eval(frontend);
+  w.lucide={createIcons(){}};w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/tour.js'),'utf8'));w.eval(frontend);
   const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
   const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
   const hotels=Array.from({length:55},(_,index)=>{const id=index+1,offer={key:'fixture:batch:'+id,hotelId:id,day:trip.from,returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:'Fixture room',meal:'Fixture meal',mealFacet:'Fixture meal',operator:'Fixture',provider:'tourvisor',total:100000+index,search:trip,raw:{fixture:true}};return{id,name:'FICTIONAL loaded hotel '+String(id).padStart(2,'0'),country:'4',location:'Fixture',stars:4,photos:[],amenities:[],offers:[offer]};});
@@ -82,7 +82,7 @@ test('large loaded result sets render in bounded local batches', async () => {
 test('Back and Forward restore each result generation with its exact source receipt', async () => {
   const frontend=fs.readFileSync(require.resolve('../src/search3-design-v2/frontend.js'),'utf8');
   const parts=builder.extract(),dom=new JSDOM(builder.documentHTML(parts.markup),{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'}),w=dom.window;
-  w.lucide={createIcons(){}};w.eval(frontend);
+  w.lucide={createIcons(){}};w.eval(fs.readFileSync(require.resolve('../src/search3-design-v2/tour.js'),'utf8'));w.eval(frontend);
   const root=w.document.querySelector('[data-variant="Мобильная версия"] [data-product]');root.hidden=false;
   const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
   const offer=(key,hotelId,provider,total,search)=>({key,hotelId,day:search.from,returnDay:search.to,nights:7,adults:2,ages:[],room:'Fixture room',meal:'Fixture meal',mealFacet:'Fixture meal',operator:'Fixture',provider,total,search,raw:{fixture:true}});

@@ -116,6 +116,8 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
  const current=mounted.getState();current.hotels=[{...hotels[0],stars:0,offers:[{...one,meal:'',mealFacet:''}]},hotels[1]];current.filters.stars=[5];current.filters.meals=['Всё включено'];mounted.render();
  assert(!root.querySelector('[data-filter-sidebar] [data-native-filter="stars"]'),'incomplete loaded categories cannot act as a local facet');
  assert(!root.querySelector('[data-filter-sidebar] [data-native-filter="meals"]'),'incomplete loaded meal facts cannot act as a local facet');
+ assert.match(root.querySelector('[data-filter-sidebar] [data-native-facet-unavailable="stars"]').textContent,/Категория указана не у всех/,'The unavailable category facet keeps a visible reason instead of disappearing');
+ assert.match(root.querySelector('[data-filter-sidebar] [data-native-facet-unavailable="meals"]').textContent,/Питание указано не во всех/);
  assert.equal(current.filters.stars.length,0);assert.equal(current.filters.meals.length,0);assert.equal(root.querySelectorAll('.st-hotel-card').length,2,'unknown facts do not silently remove loaded rows');
  const legacy=new URL(w.location.href);legacy.searchParams.set('hotelId','1');w.history.replaceState(w.history.state,'',legacy.href);current.filters.hotelId=1;current.filters.hotelIds=[1];
  click('[data-action="reset-filters"]');const resetURL=new URL(w.location.href);assert(!resetURL.searchParams.has('hotelId')&&!resetURL.searchParams.has('hotelIds'),'reset cannot restore a stale legacy hotel filter on reload');

@@ -25,8 +25,8 @@ async function selectedJourneyChecks(){
   const loaded={...hotel,offers:[offer,dearer]},state={screen:'results',search:trip,filters:{...filters},hotels:[loaded],status:'complete',searchGeneration:1,hasSearched:true,favorites:[]};
   let calls=0,top=0;Object.defineProperty(win,'scrollY',{get:()=>top});Object.defineProperty(win.document,'scrollingElement',{value:win.document.documentElement});
   win.document.documentElement.scrollTo=options=>{top=options.top;};win.HTMLElement.prototype.scrollIntoView=function(){top=0;};
-  win.AnyTourDesignV2Tour={mount(){return{render({offer:chosen}){calls++;assert.strictEqual(chosen,dearer);},getState(){return{};},destroy(){}};}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+  win.AnyTourDesignV2Tour={...w.AnyTourDesignV2Tour,mount(){return{render({offer:chosen}){calls++;assert.strictEqual(chosen,dearer);},getState(){return{};},destroy(){}};}};
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
   const api={async init(){return{dictionaries,requestedSearch:false};}};let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
   try{
@@ -42,13 +42,40 @@ async function selectedJourneyChecks(){
   }finally{owner.destroy();win.close();}
  }
 }
+async function returnedPriceStateChecks(){
+ for(const variant of ['st-mobile','st-desktop']){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window,product=win.document.querySelector('[data-product]');
+  product.classList.remove('st-mobile');product.classList.add(variant);
+  win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+  let receipt=null,resolveQuote,expiry,quotes=0,clock=Date.now(),top=840;
+  win.Date.now=()=>clock;const nativeTimeout=win.setTimeout.bind(win);
+  win.setTimeout=(fn,ms,...args)=>ms>1000?(expiry=fn,41):nativeTimeout(fn,ms,...args);
+  Object.defineProperty(win,'scrollY',{get:()=>top});Object.defineProperty(win.document,'scrollingElement',{value:win.document.documentElement});
+  win.document.documentElement.scrollTo=options=>{top=options.top;};win.HTMLElement.prototype.scrollIntoView=function(){top=0;};
+  const api={async init(){return{dictionaries,requestedSearch:false};},getSelection:()=>receipt,quoteOffer(key,{expectedOffer}){quotes++;assert.strictEqual(expectedOffer,offer);return new Promise(resolve=>{resolveQuote=()=>{receipt={offer,tour:{roomType:offer.room,meal:{},price:179000},variants:[{forward:[],backward:[]}],flightChoiceId:0,total:179000,pricePending:false,priceAccepted:true,expiresAt:clock/1000+10};resolve(receipt);};});}};
+  const state={screen:'hotel',search:trip,filters:{...filters},hotels:[hotel],hotelId:hotel.id,status:'complete',searchGeneration:1,hasSearched:true,favorites:[]};
+  const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state}),el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
+  try{
+   await owner.ready;tap('[data-hotel-offers] [data-offer="tourvisor:exact"]');tap('[data-action="hotel"]');tap('[data-hotel-section="about"]');top=840;
+   resolveQuote();await new Promise(resolve=>nativeTimeout(resolve,0));
+   assert.equal(state.screen,'hotel');assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);
+   assert.equal(el('[data-hotel-min-price]').textContent,'179 000 ₽','A quote settling after Back refreshes the selected total');
+   assert.match(el('[data-hotel-price-caption]').textContent,/Проверенная цена/);assert.match(el('.st-offer--selected .st-offer-price-caption').textContent,/С выбранным перелётом/);
+   assert.match(el('.st-offer--selected .st-offer-delta').textContent,/112\s000\s₽/,'The selected row retains its original search baseline');
+   assert.match(el('[data-lead-choice]').textContent,/Всё включено/,'An empty checked meal object retains the factual offer meal');
+   clock+=11000;assert(expiry);expiry();
+   assert.match(el('[data-hotel-price-caption]').textContent,/Последняя цена.*нужна проверка/,'Expiry updates the visible hotel, not only hidden tour/contact screens');
+   assert.match(el('.st-offer--selected .st-offer-price-caption').textContent,/нужна проверка/);assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);assert.equal(quotes,1);
+  }finally{owner.destroy();win.close();}
+ }
+}
 async function responsiveTourFocusChecks(){
  const parts=builder.extract(),doc=new JSDOM('<!doctype html><head><style>'+parts.css+'\n'+parts.desktopCSS+'</style></head><body>'+parts.markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
  let product=win.document.querySelector('[data-product]'),owner;
  const state={screen:'tour',search:trip,filters:{...filters},hotels:[hotel],selected:offer,hotelId:hotel.id,status:'complete',hasSearched:true,favorites:[]};
  const api={async init(){return{dictionaries,requestedSearch:false};}};
- win.AnyTourDesignV2Tour={mount(){return{render({offer:chosen}){assert.strictEqual(chosen,offer);},getState(){return{};},destroy(){}};}};
- win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+ win.AnyTourDesignV2Tour={...w.AnyTourDesignV2Tour,mount(){return{render({offer:chosen}){assert.strictEqual(chosen,offer);},getState(){return{};},destroy(){}};}};
+ if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
  try{
   owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});await owner.ready;
   const quick=product.querySelector('.st-quick-tour [data-action="lead"]');quick.focus();assert.strictEqual(win.document.activeElement,quick);
@@ -65,8 +92,8 @@ async function groupMinimumChecks(){
   const group={...offer,key:'anex:group:'+outcome,provider:'anex',raw:{anexKind:'group_minimum'}},concrete={...offer,key:'anex:concrete:'+outcome,provider:'anex',total:114000,raw:{anexKind:'concrete'}},loaded={...hotel,offers:[group]};
   let product=win.document.querySelector('[data-product]'),owner,searches=0,expansions=0,quotes=0,resolve,reject;
   const api={async init(){return{search:trip,filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){searches++;const result={hotels:[loaded],status:'complete',searchGeneration:searches};cb(result);return result;},expandOfferGroup(key,{expectedOffer}){expansions++;assert.equal(key,group.key);assert.strictEqual(expectedOffer,group,'expansion binds the exact loaded minimum');return new Promise((yes,no)=>{resolve=()=>{loaded.offers.push(concrete);yes([concrete]);};reject=no;});}};
-  win.AnyTourDesignV2Tour={mount(){return{render(context){quotes++;assert.strictEqual(context.offer,concrete,'only a returned exact concrete offer reaches the tour owner');},getState(){return{};},destroy(){}};}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+  win.AnyTourDesignV2Tour={...w.AnyTourDesignV2Tour,mount(){return{render(context){quotes++;assert.strictEqual(context.offer,concrete,'only a returned exact concrete offer reaches the tour owner');},getState(){return{};},destroy(){}};}};
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click(),settle=async()=>{await new Promise(r=>win.setTimeout(r,0));await new Promise(r=>win.setTimeout(r,0));};
   const remount=async()=>{const retained=owner.getState();owner.destroy();const wrap=win.document.createElement('div');wrap.innerHTML=builder.extract().markup;win.document.body.replaceChildren(wrap);product=wrap.querySelector('[data-product]');owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;};
   owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
@@ -104,7 +131,7 @@ async function loadedBudgetChecks(){
  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.add('st-mobile');
  const cheap={...offer,key:'tourvisor:cheap',hotelId:8,total:99000},loaded=[hotel,{...hotel,id:8,name:'Cheaper fixture hotel',offers:[cheap]}];let searches=0;
  const api={async init(){return{search:trip,filters:{...filters,min:0,max:null,hotelIds:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){searches++;const result={hotels:loaded,status:'complete'};cb(result);return result;}};
- win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});await owner.ready;
+ if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});await owner.ready;
  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click();
  const edit=(s,value,type='input')=>{const n=el(s);n.value=value;n.dispatchEvent(new win.Event(type,{bubbles:true}));};
  el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>win.setTimeout(r,0));
@@ -130,7 +157,7 @@ async function progressiveBudgetChecks(){
  const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.add('st-mobile');
  const cheap={...offer,key:'tourvisor:progress-cheap',hotelId:8,total:99000},expensive={...offer,key:'tourvisor:progress-expensive',hotelId:9,total:250000};let starts=0,receive;
  const api={async init(){return{search:trip,filters:{...filters,min:0,max:null,hotelId:0,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle'};},search(s,f,cb){starts++;receive=cb;cb({hotels:[hotel],status:'loading',searchGeneration:1});return new Promise(()=>{});}};
- win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});await owner.ready;
+ if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});await owner.ready;
  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;};el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));await new Promise(r=>win.setTimeout(r,0));el('[data-action="filters"]').click();
  const cap=el('[data-filter-form] input[type="number"][data-native-budget="max"]'),min=el('[data-filter-form] input[type="number"][data-native-budget="min"]');
  cap.value='100000';cap.dispatchEvent(new win.Event('input',{bubbles:true}));cap.focus();assert.equal(el('[data-filter-apply]').textContent,'Показать 0 отелей');
@@ -147,7 +174,7 @@ async function unstartedNavigationChecks(){
   const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;
   win.localStorage.setItem('anytour.prototype.v18.favorites.v1','[7]');
   const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){searches++;const result={hotels:[],status:'complete',searchGeneration:searches};cb(result);return result;}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;};
   try{
    await owner.ready;const back=el('[data-screen="search"] [data-action="results"]');
@@ -174,7 +201,7 @@ async function destinationFocusChecks(){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.href,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
   const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;const pending=[];
   const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw Error('Destination edits must not search');},async regions(country){return country==='4'?[{id:'41',name:'Кемер',country:'4'},{id:'42',name:'Сиде',country:'4'}]:[];},lookupHotels(query,country,signal){return new Promise(resolve=>pending.push({resolve,query,country,signal}));}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();},settle=()=>new Promise(r=>win.setTimeout(r,0));
   const country=id=>'[data-native-destination="country"][data-native-destination-id="'+id+'"]',resort=id=>'[data-native-destination="resort"][data-native-destination-id="'+id+'"]';
   const escape=()=>win.document.activeElement.dispatchEvent(new win.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
@@ -201,7 +228,7 @@ async function formFocusChecks(){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
   const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);let searches=0;
   const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw new Error('Input edits must not search');}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
   try{
    await owner.ready;
@@ -242,7 +269,7 @@ async function popupSubmitChecks(){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()});
   const win=doc.window,product=win.document.querySelector('[data-product]');product.classList.toggle('st-mobile',mobile);const intents=[];
   const api={async init(){return{search:{...trip,ages:[]},filters:{...filters,hotelIds:[],stars:[],meals:[],resorts:[]},dictionaries,status:'idle'};},async search(s,f,cb){intents.push(s);const result={hotels:[],status:'complete',searchGeneration:intents.length};cb(result);return result;},async regions(){return[];}};
-  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+  if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click(),send=()=>el('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true})),settle=()=>new Promise(r=>win.setTimeout(r,0));
   try{
    await owner.ready;const submit=el('[type="submit"]'),home=submit.parentElement,popup=el('[data-native-form-popup]');
@@ -273,7 +300,7 @@ async function familyCopyChecks(){
   searches++;loadedOffer={...offer,adults:s.adults,ages:s.ages,search:s};
   const result={search:s,filters:f,hotels:[{...hotel,offers:[loadedOffer]}],status:'complete',searchGeneration:searches};cb(result);return result;
  }};
- win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+ if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;};
  const tap=s=>{const n=el(s);assert(!n.disabled,s+' must be available');n.click();};
  try{
@@ -304,7 +331,7 @@ async function familyCopyChecks(){
    assert.equal(el('[data-party-copy]').textContent,summary,'mobile results summary');
    assert.equal(el('.st-hotel-card .st-price-caption').textContent,'за '+price,'result price caption uses accusative');
    tap('[data-hotel-open="'+hotel.id+'"]');
-   assert.equal(el('[data-hotel-price-caption]').textContent,'За '+price+' · 7 ночей','hotel summary price caption');
+   assert.equal(el('[data-hotel-price-caption]').textContent,'Цена из поиска за '+price+' · 7 ночей','hotel summary price caption');
    assert.equal(el('[data-offer-context]').textContent,'Все цены за '+price,'hotel offer price context');
    tap('[data-action="search"]');
   }
@@ -324,7 +351,7 @@ async function localCalendarDayChecks(){
  win.Date=LocalRolloverDate;
  const product=win.document.querySelector('[data-product]'),expired={...trip,from:'2026-10-15',to:'2026-10-21'};let searches=0;
  const api={async init(){return{search:expired,filters:{...filters},dictionaries,status:'idle',requestedSearch:false};},async search(){searches++;throw new Error('A locally expired period must not start suppliers');}};
- win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
+ if(!win.AnyTourDesignV2Tour)win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));const owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api});
  try{
   await owner.ready;product.querySelector('[data-search-form]').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
   const yesterday=product.querySelector('[data-native-date="2026-10-15"]');assert(yesterday?.disabled,'The calendar disables yesterday after the local midnight/UTC rollover');
@@ -338,6 +365,7 @@ async function localCalendarDayChecks(){
 }
 (async()=>{
  await selectedJourneyChecks();
+ await returnedPriceStateChecks();
  await responsiveTourFocusChecks();
  await mounted.ready;await localCalendarDayChecks();await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');

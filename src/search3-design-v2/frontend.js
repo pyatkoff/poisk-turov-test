@@ -300,7 +300,8 @@
       const options = [...new Set(state.hotels.flatMap(h => (h.offers || []).map(mealKey)))].filter(label => label !== 'Питание уточняется');
       const count = (group,value) => rows({...filters,[group]:[value]}).length;
       const checkbox = (group,value,label) => `<label class="st-check"><input type="checkbox" data-native-filter="${group}" value="${esc(value)}" ${filters[group].includes(value) ? 'checked' : ''}><span>${esc(label)}</span><span class="st-filter-count" aria-label="${countText(count(group,value))}">${count(group,value)}</span></label>`;
-      return `${coverage.stars?`<div class="st-group" data-native-facet-group="stars"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:''}${coverage.meals?`<div class="st-group" data-native-facet-group="meals"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:''}`;
+      const unavailable = (group,title,fact) => `<div class="st-group" data-native-facet-group="${group}"><strong class="st-group-title">${title}</strong><p class="st-small st-muted st-native-facet-note" data-native-facet-unavailable="${group}">${fact} Фильтр будет доступен, когда данные будут полными.</p></div>`;
+      return `${coverage.stars?`<div class="st-group" data-native-facet-group="stars"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:unavailable('stars','Категория отеля','Категория указана не у всех найденных отелей.')}${coverage.meals?`<div class="st-group" data-native-facet-group="meals"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:unavailable('meals','Питание','Питание указано не во всех найденных турах.')}`;
     }
     function filterHTML(filters) {
       const max=budgetMaximum(filters);
@@ -446,15 +447,23 @@
     function renderHotel() {
       const h=currentHotel(), loaded=h?eligible(h):[];if(!h||!loaded.length){show('results',false);return;}
       const list=hotelOfferRows(h),min=list[0]||loaded[0],continuing=hotelContinueOffer(h)||min,chosen=continuing===state.selected;
-      const receipt=chosen?bridge.getSelection?.():null,amount=receipt?.offer===continuing&&!receipt.pricePending&&Number(receipt.total)>0?Number(receipt.total):continuing.total;
+      const receipt=chosen?bridge.getSelection?.():null;
+      const ownerStatus=tourOwner?.getState();
+      const price=window.AnyTourDesignV2Tour.describePrice(continuing,receipt?.offer===continuing?receipt:null,{busy:ownerStatus?.pending,error:ownerStatus?.error});
       $('[data-hotel-name]').innerHTML=hotelNameHTML(h.name);text('[data-hotel-stars]','★'.repeat(Math.min(5,h.stars||0)));text('[data-hotel-location]',h.location);
-      text('[data-hotel-min-price]',(groupMinimum(continuing)?'от ':'')+money(amount));text('[data-hotel-price-caption]',(chosen?'Последняя цена · за ':'За ')+party(continuing,true)+' · '+nights(continuing.nights));
+      text('[data-hotel-min-price]',(groupMinimum(continuing)?'от ':'')+money(price.total));text('[data-hotel-price-caption]',price.caption.replace('за всех','за '+party(continuing,true))+' · '+nights(continuing.nights));
       const fromLabel=$('.st-aside-summary .st-price > small');if(fromLabel)fromLabel.hidden=chosen||groupMinimum(continuing);
       text('[data-action="best-tour"]',chosen?'К выбранному туру':groupMinimum(min)?'Выбрать вариант':'Посмотреть тур');
       $$('[data-action="best-tour"]').forEach(button=>button.disabled=!list.length);
-      text('[data-offer-context]','Все цены за '+party(min,true));text('[data-offer-comparison]','«+» — разница с минимальной ценой в этом списке.');
+      text('[data-offer-context]','Все цены за '+party(min,true));text('[data-offer-comparison]','«+» — разница между ценами из поиска.');
       $('[data-offer-comparison]').hidden=!list.some(o=>o.total>min.total);photo($('[data-hotel-hero]'),h);
-      $('[data-hotel-offers]').innerHTML=list.map(o=>{const group=groupMinimum(o),entry=groupExpansions.get(o);return `<div class="st-offer-choice"><div class="st-offer ${state.selected===o?'st-offer--selected':''}"><div><div class="st-offer-name">${group?'Минимальная цена группы':esc(o.room)}</div><div class="st-offer-meal">${esc(mealText(o))}</div><div class="st-offer-meta"><span>${dateText(o.day)} · ${nights(o.nights)} · ${esc(o.operator)}</span></div>${group&&entry?`<p class="st-small st-muted" data-native-group-status="${esc(o.key)}" tabindex="-1" role="${entry.error?'alert':'status'}">${entry.status==='pending'?'Получаем точные варианты…':esc(entry.error||'Условия поиска изменились.')}</p>`:''}</div><div><div class="st-offer-price">${group?'от ':''}${money(o.total)}</div><div class="st-offer-delta">${o.total>min.total?'+'+money(o.total-min.total):'Минимальная цена'}</div></div><button class="${o===min?'q8c2':'st-secondary'} st-offer-select" ${group?`data-native-expand-group="${esc(o.key)}" aria-label="Показать точные варианты этого предложения" ${entry?'disabled':''}`:`data-offer="${esc(o.key)}" aria-pressed="${state.selected===o}"`}>${group?(entry?.status==='pending'?'Загрузка…':entry?'Недоступно':'Варианты'):state.selected===o?'Выбран тур':'Выбрать тур'}</button></div></div>`;}).join('')||'<p class="st-small st-muted">Точных вариантов по выбранным условиям нет.</p>';
+      $('[data-hotel-offers]').innerHTML=list.map(o=>{
+        const group=groupMinimum(o),entry=groupExpansions.get(o),selected=state.selected===o;
+        const currentPrice=selected&&receipt?.offer===o?price:null;
+        const caption=currentPrice?.quotedTotal?(currentPrice.checkedPrice?currentPrice.basis:'Последняя цена · нужна проверка'):'В поиске';
+        const comparison=currentPrice?.origin || (o.total>min.total?'+'+money(o.total-min.total):'Минимальная цена');
+        return `<div class="st-offer-choice"><div class="st-offer ${selected?'st-offer--selected':''}"><div><div class="st-offer-name">${group?'Минимальная цена группы':esc(o.room)}</div><div class="st-offer-meal">${esc(mealText(o))}</div><div class="st-offer-meta"><span>${dateText(o.day)} · ${nights(o.nights)} · ${esc(o.operator)}</span></div>${group&&entry?`<p class="st-small st-muted" data-native-group-status="${esc(o.key)}" tabindex="-1" role="${entry.error?'alert':'status'}">${entry.status==='pending'?'Получаем точные варианты…':esc(entry.error||'Условия поиска изменились.')}</p>`:''}</div><div class="st-native-offer-cost"><div class="st-offer-price-caption">${esc(caption)}</div><div class="st-offer-price">${group?'от ':''}${money(currentPrice?.total??o.total)}</div><div class="st-offer-delta">${esc(comparison)}</div></div><button class="${o===min?'q8c2':'st-secondary'} st-offer-select" ${group?`data-native-expand-group="${esc(o.key)}" aria-label="Показать точные варианты этого предложения" ${entry?'disabled':''}`:`data-offer="${esc(o.key)}" aria-pressed="${selected}"`}>${group?(entry?.status==='pending'?'Загрузка…':entry?'Недоступно':'Варианты'):selected?'Выбран тур':'Выбрать тур'}</button></div></div>`;
+      }).join('')||'<p class="st-small st-muted">Точных вариантов по выбранным условиям нет.</p>';
       for(const offer of loaded){const entry=groupExpansions.get(offer);if(entry)watchGroupExpansion(offer,entry);}
       const description=document.createElement('div');description.innerHTML=h.raw?.description||h.note||'';description.querySelectorAll('script,style,iframe,svg,object').forEach(n=>n.remove());
       text('.st-hotel-description',description.textContent||'Описание отеля пока не получено.');
@@ -469,6 +478,9 @@
         if(!alive)return;
         state.tourSelection=change.selection;
         if(change.navigate==='hotel'){show('hotel');return;}
+        // A retained quote may settle or expire after Back. Update its visible
+        // price labels too, preserving the active hotel section and anchor.
+        if(state.screen==='hotel'){saveView();renderHotel();restoreView();}
         redrawIcons();
       }});
       tourOwner.render({offer:o,hotel:h,screen:state.screen});
