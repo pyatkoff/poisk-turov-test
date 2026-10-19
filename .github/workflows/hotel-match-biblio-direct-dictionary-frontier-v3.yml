@@ -1,0 +1,222 @@
+name: MATCH Biblio direct dictionary frontier v3
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-biblio-direct-dictionary-frontier-v3.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v3, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v3
+  BASE: 3fe25fe95621f56354ee6ffdd4d0f448d614b06e
+  CLAIM: '5772751226'
+  V9_ARTIFACT: '10634643226'
+  DOSSIER_ARTIFACT: '10680794954'
+  URL: https://export.bgoperator.ru/yandex?action=hotelsJson
+jobs:
+  probe:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-biblio-direct-dictionary-frontier-1971-20260922-v3' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Validate immutable inputs and reserve
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        test "$(git rev-parse HEAD)" = "$HEAD"
+        test "$(git merge-base HEAD "$BASE")" = "$BASE"
+        test "$(git diff --name-only "$BASE"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-direct-dictionary-frontier-v3.yml "
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$DOSSIER_ARTIFACT/zip" > input/dossier.zip
+        python3 - <<'PY'
+        import collections,datetime,hashlib,json,os,pathlib,re,urllib.parse,zipfile
+        def sha(b): return hashlib.sha256(b).hexdigest()
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+        assert c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+        for token in (os.environ['OP'],os.environ['BASE'],'816 TV links / 838 distinct F4','794 singleton-F4 and 22 dual-F4',os.environ['URL'],'Supplier HTTP1 max','DB/mapping writes0','safe_to_write_now=false'):
+            assert token in c['body'],token
+        vb=pathlib.Path('input/v9.zip').read_bytes(); assert sha(vb)=='0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0'
+        with zipfile.ZipFile('input/v9.zip') as z: raw=z.read('reconciliation.json')
+        assert sha(raw)=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+        v=json.loads(raw); edges=[e for e in v['source_result']['edges'] if int(e.get('operator_id') or 0)==18]
+        bytv={}; byf4={}; shape=collections.Counter()
+        for e in edges:
+            link=e['operator_link']; assert sha(link.encode())==e['operator_link_sha256']
+            u=urllib.parse.urlsplit(link); assert u.scheme=='https' and u.hostname in ('bgoperator.ru','www.bgoperator.ru') and not u.username and not u.password and u.port in (None,443)
+            q=urllib.parse.parse_qsl(u.query,keep_blank_values=True)
+            ids=list(dict.fromkeys(x for k,x in q if k.upper()=='F4'))
+            assert ids and all(re.fullmatch(r'[1-9][0-9]{0,19}',x) for x in ids)
+            shape[len(ids)]+=1; tv=int(e['tv_hotel_id']); assert tv not in bytv
+            qm={k.lower():val for k,val in q}
+            p={'tv_hotel_id':tv,'f4_candidates':ids,'country_key_from_link':qm.get('flt'),'city_key_from_link':qm.get('flt2'),'operator_link_sha256':e['operator_link_sha256'],'search_id':e.get('search_id'),'tour_id':e.get('tour_id'),'batch':e.get('batch')}
+            bytv[tv]=p
+            for x in ids: byf4.setdefault(x,[]).append(tv)
+        assert len(edges)==816 and len(bytv)==816 and len(byf4)==838 and shape=={1:794,2:22}
+        db=pathlib.Path('input/dossier.zip').read_bytes(); assert sha(db)=='2d7efa9e652a561928f72cb940e3c0d70c6eac6b18b132d93b90cf22e61d2c42'
+        with zipfile.ZipFile('input/dossier.zip') as z:
+            dr=z.read('result.json'); rr=json.loads(z.read('receipt.json'))
+        assert sha(dr)=='84cc7d2097c191a2bfc64983a57ccfb63fe38775e6ecd0c8c9db1255f1efb6ce'
+        d=json.loads(dr); assert d['state']=='completed_read_only' and d['source_sha']=='8b15323f18189db09c1c3591182c167ba8c5243a'
+        assert rr['result_sha256']==sha(dr) and d['counts']['tv_hotels']==816 and d['counts']['distinct_f4']==838
+        dm={int(x['tv_hotel_id']):x for x in d['rows']}; assert len(dm)==816 and set(dm)==set(bytv)
+        front={'operation':os.environ['OP'],'edges':list(bytv.values()),'by_f4':byf4,'dossier_rows':d['rows'],'dossier_counts':d['counts']}
+        fb=(json.dumps(front,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode(); pathlib.Path('input/frontier.json').write_bytes(fb)
+        r={'operation':os.environ['OP'],'state':'reserved_before_supplier_http','source_sha':os.environ['HEAD'],'provider':'biblio_direct_dictionary','url':os.environ['URL'],'frontier_tv_count':816,'frontier_f4_count':838,'frontier_sha256':sha(fb),'max_supplier_http_requests':1,'database_writes':0,'mapping_writes':0,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'no_replay':True}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        pathlib.Path('terminal/progress.json').write_text(json.dumps(r|{'state':'preflight_completed'},sort_keys=True)+'\n')
+        print(json.dumps({'tv':816,'f4':838,'singleton':794,'dual':22,'dossier_counts':d['counts']},sort_keys=True))
+        PY
+        rm input/claim.json input/v9.zip input/dossier.zip
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-biblio-direct-dictionary-frontier-v3-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+            r=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if r and max(r,key=lambda x:x['id'])['status']=='completed':
+                assert max(r,key=lambda x:x['id'])['conclusion']=='success'; break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Fail closed on concurrent supplier acquisition
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,urllib.request
+        bad=[]
+        for status in ('in_progress','queued'):
+            u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?status='+status+'&per_page=100'
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: data=json.load(f)
+            assert data['total_count']<=100,'active_runs_not_fully_enumerated'
+            for r in data['workflow_runs']:
+                if str(r['id'])==os.environ['GITHUB_RUN_ID'] or r['name']=='Security guard': continue
+                t=(r.get('name','')+' '+r.get('path','')+' '+str(r.get('head_branch') or '')).lower()
+                if any(x in t for x in ('andromeda','anex','tourvisor','hotel-match','match-biblio','supplier')): bad.append((r['id'],r['name']))
+        assert not bad,bad
+        PY
+    - name: Fetch dictionary once and classify evidence
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; cp reservation/reservation.json terminal/reservation.json
+        python3 - <<'PY'
+        import collections,datetime,gzip,hashlib,http.client,io,json,os,pathlib,re,socket,ssl,time,unicodedata
+        CAP=4*1024*1024
+        def sha(b): return hashlib.sha256(b).hexdigest()
+        def norm(s):
+            s=unicodedata.normalize('NFKD',str(s or '')).casefold(); s=''.join(c for c in s if not unicodedata.combining(c)); s=re.sub(r'[^a-zа-я0-9]+',' ',s)
+            toks=[x for x in s.split() if x not in {'hotel','resort','spa','the','отель'}]; return ' '.join(toks)
+        def star(v):
+            m=re.search(r'([1-5])',str(v or '')); return int(m.group(1)) if m else None
+        front=json.load(open('input/frontier.json')); dm={int(x['tv_hotel_id']):x for x in front['dossier_rows']}
+        r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'supplier_request_reserved','supplier_http_requests':0,'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'safe_to_write_now':False,'no_replay':True}
+        pathlib.Path('terminal/progress.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        conn=http.client.HTTPSConnection('export.bgoperator.ru',timeout=10,context=ssl.create_default_context())
+        try:
+            deadline=time.monotonic()+30; conn.connect(); conn.sock.settimeout(max(.1,deadline-time.monotonic()))
+            r['supplier_http_requests']=1; r['state']='supplier_http_attempted'; pathlib.Path('terminal/progress.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+            conn.request('GET','/yandex?action=hotelsJson',headers={'Accept':'application/json','Accept-Encoding':'gzip','User-Agent':'AnyTour-MATCH/1.0'})
+            resp=conn.getresponse(); r['http_status']=resp.status; wire=bytearray()
+            while len(wire)<=CAP:
+                if time.monotonic()>=deadline: raise TimeoutError('deadline')
+                block=resp.read1(min(65536,CAP+1-len(wire)))
+                if not block: break
+                wire.extend(block)
+            r['wire_bytes_read']=len(wire)
+            if len(wire)>CAP: r['state']='response_too_large'
+            elif resp.status!=200: r['state']='http_non_200'
+            else:
+                enc=(resp.getheader('Content-Encoding') or '').lower().strip(); body=gzip.GzipFile(fileobj=io.BytesIO(wire)).read(CAP+1) if enc=='gzip' else bytes(wire)
+                r['response_bytes']=len(body); r['response_sha256']=sha(body)
+                if len(body)>CAP: r['state']='response_too_large'
+                else:
+                    data=json.loads(body)
+                    if isinstance(data,dict):
+                        opts=[v for v in data.values() if isinstance(v,list)]; data=max(opts,key=len) if opts else None
+                    if not isinstance(data,list): raise ValueError('unexpected_dictionary_schema')
+                    wanted=set(front['by_f4']); keep=[]
+                    for x in data:
+                        if isinstance(x,dict) and str(x.get('key','')) in wanted:
+                            keep.append({k:x.get(k) for k in ('key','name','stars','countryKey','cityKey','inPr')})
+                    by=collections.defaultdict(list)
+                    for x in keep: by[str(x['key'])].append(x)
+                    out=[]; cls=collections.Counter()
+                    for e in front['edges']:
+                        tv=e['tv_hotel_id']; d=dm[tv]; reasons=[]; bg=[]
+                        for f4 in e['f4_candidates']: bg.extend(by.get(f4,[]))
+                        if len(e['f4_candidates'])!=1: reasons.append('dual_f4')
+                        if len(bg)!=1: reasons.append('bg_row_missing_or_duplicate')
+                        if d['anchor_class']!='single_accepted_catalog': reasons.append('canonical_anchor_not_single')
+                        if d.get('manual'): reasons.append('manual_present')
+                        if tv in (803,54633): reasons.append('mandatory_risk_hold')
+                        if any(x.get('supplier_namespace')=='operator_115' and x.get('decision_status')=='accepted' for x in d.get('identities',[])): reasons.append('operator_115_already_accepted')
+                        names={norm((d.get('catalog_hotel') or {}).get('name'))}
+                        anchor_stars=set()
+                        for ident in d.get('identities',[]):
+                            if ident.get('supplier_namespace')=='andromeda_catalog' and ident.get('decision_status')=='accepted':
+                                for sr in ident.get('source_records') or []:
+                                    names.add(norm(sr.get('name'))); names.add(norm(sr.get('lName')))
+                                    sv=star(sr.get('starKey') or sr.get('star')); anchor_stars.add(sv) if sv else None
+                        names.discard('')
+                        if len(bg)==1:
+                            bn=norm(bg[0].get('name'))
+                            if not bn or bn not in names: reasons.append('name_not_exact_after_generic_normalization')
+                            bs=star(bg[0].get('stars'))
+                            localstar=star((d.get('catalog_hotel') or {}).get('category'))
+                            allowed={x for x in anchor_stars|({localstar} if localstar else set()) if x}
+                            if bs and allowed and bs not in allowed: reasons.append('stars_mismatch')
+                            ck=str(bg[0].get('countryKey') or ''); city=str(bg[0].get('cityKey') or '')
+                            if e.get('country_key_from_link') and ck and ck!=str(e['country_key_from_link']): reasons.append('country_key_mismatch')
+                            if e.get('city_key_from_link') and city and city!=str(e['city_key_from_link']): reasons.append('city_key_mismatch')
+                        label='strong_singleton_candidate' if not reasons else 'hold'
+                        cls[label]+=1
+                        out.append({'tv_hotel_id':tv,'f4_candidates':e['f4_candidates'],'bg_rows':bg,'anchor_class':d['anchor_class'],'accepted_catalog_ids':d.get('accepted_catalog_ids',[]),'classification':label,'reasons':reasons,'safe_to_write_now':False})
+                    r.update(state='matched_frontier',dictionary_row_count=len(data),matched_rows=len(keep),matched_distinct_f4=len(by),not_in_active_dictionary_f4=sorted(wanted-set(by)),classifications=dict(cls),rows=out)
+        except (TimeoutError,socket.timeout): r['state']='transport_timeout'
+        except Exception as e: r['state']='transport_or_parse_error'; r['error_class']=type(e).__name__; r['error_code']=str(e)[:120]
+        finally: conn.close()
+        r['at_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat(); rb=(json.dumps(r,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); pathlib.Path('terminal/result.json').write_bytes(rb)
+        receipt={'operation':r['operation'],'source_sha':r['source_sha'],'state':'completed_read_only','result_state':r['state'],'result_sha256':sha(rb),'supplier_http_requests':r['supplier_http_requests'],'database_writes':0,'mapping_writes':0,'no_replay':True}
+        pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+        print(json.dumps({k:r.get(k) for k in ('state','http_status','response_bytes','dictionary_row_count','matched_rows','matched_distinct_f4','classifications')},ensure_ascii=False,sort_keys=True))
+        PY
+    - name: Verify terminal readback
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import hashlib,json,os,pathlib
+        b=pathlib.Path('terminal/result.json').read_bytes(); r=json.loads(b); q=json.load(open('terminal/receipt.json'))
+        assert r['operation']==q['operation']==os.environ['OP'] and r['source_sha']==q['source_sha']==os.environ['HEAD']
+        assert q['result_sha256']==hashlib.sha256(b).hexdigest() and r['supplier_http_requests']<=1
+        assert r['database_writes']==r['mapping_writes']==0 and r['safe_to_write_now'] is False and r['no_replay'] is True
+        if r['state']=='matched_frontier':
+            assert len(r['rows'])==816 and sum(r['classifications'].values())==816
+            assert all(x['safe_to_write_now'] is False for x in r['rows'])
+        PY
+    - name: Always finalize bounded terminal record
+      if: always()
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import hashlib,json,os,pathlib
+        p=pathlib.Path('terminal'); p.mkdir(exist_ok=True)
+        if not (p/'receipt.json').exists():
+            r=json.load(open(p/'progress.json')) if (p/'progress.json').exists() else {}
+            r.update(operation=os.environ['OP'],source_sha=os.environ['HEAD'],state='preflight_or_execution_incomplete',supplier_http_requests=int(r.get('supplier_http_requests',0)),database_writes=0,mapping_writes=0,no_replay=True)
+            b=(json.dumps(r,sort_keys=True,indent=2)+'\n').encode(); (p/'result-local.json').write_bytes(b)
+            (p/'receipt-local.json').write_text(json.dumps({'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':r['state'],'result_sha256':hashlib.sha256(b).hexdigest(),'supplier_http_requests':r['supplier_http_requests'],'database_writes':0,'mapping_writes':0,'no_replay':True},sort_keys=True)+'\n')
+        PY
+        rm -f input/frontier.json
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-biblio-direct-dictionary-frontier-v3-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
