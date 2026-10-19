@@ -41,49 +41,43 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-Owner20.10.2026 correction: follow the current top product plan and
-`AUTOPILOT_STATE.json.current_task`; completed packets are not future commands.
-Site203 is approved/transferred; installed originalNEXT product3bdd/app7ae9ba
-has terminal6273604203. Family4647 is accepted in its exact scope. Calendar4649
-sourcee8ba1e0e is checked and integrated9130a6aa, terminal6278527732;
-18frames/6receipts/15clock receipts reviewed, all4applicable CI successful.
-All843product payload hashes unchanged; no new publication/runtime replay.
-Site199/d827, old transfer and old permission-wait pointers are dated history.
+Owner20.10.2026 correction: finish the ordinary user journey in original NEXT
+at430/mobile and1280/desktop, including retained short1280x720. Use the current
+top product plan and AUTOPILOT_STATE.json.current_task. Main result is coherent
+product quality≥9.5 in the fully measured applicable scope, not separate test
+scores. Other widths/200%/Compare are deferred until the agreed UI milestone.
 
-Owner20.10.2026 00:52 narrows current UI work to430/mobile and1280/desktop
-until the coherent applicable UI reaches9.5; other widths are deferred until
-after that milestone. Existing heights/short1280x720 evidence are reused.
-Current stage: TWO_WIDTH_UI_FINAL_REVIEW_WITH_EXTERNAL_SCOPES_OPEN.
-One next result: bounded whole-path review of retained exact430/1280 family4647
-andCalendar4649 frames/actions in the existing audit, then only a confirmed
-material defect or exact missing action. Do not rerun accepted byte-identical
-coverage or require native390 as the sole next step. Native430/physicalSafari/
-OSkeyboard/panels/safearea remain separateN where unmeasured; compiled is not
-installed acceptance and does not establish globalDONE. No unchanged capability
-probing/new cosmetic queue or paid retry of consumedTinyFish6279010055.
-Required final-source CI/workflows remain intact even if stockCI covers more
-widths; avoid extra manual/paid passes. This scope change gives UI delta0.
+Site203 is approved/transferred; installed originalNEXT3bdd/app7ae9ba has
+publication/readback6273604203. Family4647/Calendar4649 and retained closeout
+6279680382/audit6279688566 are completed; no replay. Broad Calendar-inclusive
+compiled Desktop2/1.5/2/2/2=9.5 is a FIRST bounded baseline/UI delta0.
+Donor/compiled/native/physical/real-supplier evidence is never inherited.
 
-The active plan names the existing boundary owners and conditions for Rix
-canonicalalias/submittedIDs, INT repeated/all-pair authority, real lead delivery
-(disabled in this preview) and separate production approval. No new assignment
-or permission to INT/LOCAL/MATCH/foreignv2 is issued. GlobalDONE requires the
-existing mandatory gates and measured key criteria; partial9.5 is not inherited.
+Next: one ordinary mouse/tap whole-path assessment using retained exact3bdd
+evidence first → finite confirmed substantial product gaps → one connected
+repair packet if warranted → whole-path final acceptance/stop. Empty material
+gap list does not justify cosmetic code. Do not create a QA-only task for eachN,
+error state or criterion. Preserve manager-flight and optional exact-pair paths.
 
-One writer/integrator, independent read-only review, separate publisher only for
-a ready changed product artifact. Fresh heads/claims/state; reuse unchanged
-instructions/consumer maps by SHA. Focused checks during repair, applicable
-final-source CI once ready; no draft/ready/guard changes. Control-only repair:
-diff/JSON/current_task-only/historical/protected equality + owner-policy/security;
-no browser/build/publish solely for docs. Close a packet by updating active
-entry points with its terminal so the next run receives one current action.
+Owner explicitly prohibits keyboard site walkthroughs/Tab cycles and separate
+A11y-only/keyboard/focus tasks. Do not start a focus-ring microtask from a keyboard
+test screenshot. Only a confirmed substantial ordinary-click/tap defect belongs
+in the coherent repair. Historical keyboard evidence stays history/no-replay;
+unmeasured/deferred keyboard scope is not an ordinary-UI blocker or fake score.
 
-Owner19.10 23:32 already authorized the completed4649 scope; allowances4647/4649
-are consumed and are not a stale wait for the same work. A genuinely new standalone
-QA-only scope needs a direct concrete instruction; necessary regression for an
-authorized confirmed defect uses normal gates. No supplier/paid/reallead or
-production operation is authorized by this control repair.200%/Compare deferred;
-no UX points for plan/CI/version. Schedules/enabled/paused/settings unchanged.
+One writer/integrator, independent read-only review; separate stock NEXT-only
+publisher for ready changed artifacts. Focused checks during repair, all applicable
+final-source CI once ready; no workflow/allowlist/draft/ready weakening.
+Physical/native430, Rix aliases/submittedIDs, INT authority, real lead delivery and
+production keep existing exact owners/gates and honestN. They do not create a
+circular technical-test queue or stop independent allowed ordinary UI work.
+No server/browserinstall/carrier workaround or consumed paid/live/deploy retry.
+
+Control-only correction: diff/JSON/current_task-only/protected/history equality,
+one independent review and applicable owner-policy/security CI; no UI/browser/build/
+deploy for docs. Runtime/protected contracts and all tasks/settings/schedules remain
+unchanged. Close this correction, then produce the ordinary product result; do
+not start another planning-only iteration without a new owner/material finding.
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 
