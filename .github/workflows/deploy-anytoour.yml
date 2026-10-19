@@ -188,28 +188,53 @@ jobs:
           grep -q 'Validation failed' /tmp/anytoour-lead-probe.json
           echo "LEAD_BRIDGE_REACHED_PRODUCTION_VALIDATION"
 
+      - name: Read public seasonal card evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 'https://anytoour.ru/country/turkey/kemer/november/' -o /tmp/anytour-seasonal-page.html
+          python3 - <<'PYCODE'
+          import datetime, html, json, re
+          from pathlib import Path
+          source=Path('/tmp/anytour-seasonal-page.html').read_text(encoding='utf-8')
+          cards=re.findall(r'<article\b[^>]*class="[^"]*\bsp-offer-item\b[^"]*"[^>]*>(.*?)</article>',source,re.S)
+          texts=[' '.join(html.unescape(re.sub(r'<[^>]*>',' ',card)).split())[:500] for card in cards[:12]]
+          print('ANYTOUR_SEASONAL_PUBLIC_READBACK '+json.dumps({'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'path':'/country/turkey/kemer/november/','card_count':len(cards),'cards':texts},ensure_ascii=False))
+          PYCODE
+
       - name: Live search smoke
         shell: bash
         run: |
           set -euo pipefail
+          phase=setup; search_id=0; attempt=0
+          trap 'rc=$?; printf "ANYTOOUR_SEARCH_SMOKE_FAILED phase=%s search_id=%s attempt=%s exit=%s\n" "$phase" "${search_id:-0}" "${attempt:-0}" "$rc" >&2; exit "$rc"' ERR
+          smoke_phase(){ phase="$1"; printf 'ANYTOOUR_SEARCH_SMOKE_PHASE %s\n' "$phase"; }
           base='https://anytoour.ru/api-v2.php'
           from="$(date -d '+2 day' +%Y-%m-%d)"
           till="$(date -d '+9 day' +%Y-%m-%d)"
+          smoke_phase departures
           curl -fsSL --max-time 45 "$base?action=departures" -o /tmp/departures.json
           grep -q '"id"' /tmp/departures.json
+          smoke_phase countries
           curl -fsSL --max-time 45 "$base?action=countries&departureId=1" -o /tmp/countries.json
           grep -q '"id"' /tmp/countries.json
+          smoke_phase search_start
           curl -fsSL --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" -o /tmp/search-start.json
           search_id="$(grep -oE '"searchId"[[:space:]]*:[[:space:]]*[0-9]+' /tmp/search-start.json | head -1 | grep -oE '[0-9]+$')"
           test -n "$search_id"
+          printf 'ANYTOOUR_SEARCH_SMOKE_STARTED search_id=%s\n' "$search_id"
+          smoke_phase search_status
           complete=0
           for attempt in $(seq 1 36); do
             sleep 2
             curl -fsSL --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/search-status.json
             if grep -Eq '"progress"[[:space:]]*:[[:space:]]*100|"status"[[:space:]]*:[[:space:]]*"complete"' /tmp/search-status.json; then complete=1; break; fi
           done
+          smoke_phase completion_assertion
           test "$complete" = "1"
+          smoke_phase search_results
           curl -fsSL --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/search-results.json
+          smoke_phase results_assertion
           python3 - <<'PY'
           import json
           data=json.load(open('/tmp/search-results.json'))
