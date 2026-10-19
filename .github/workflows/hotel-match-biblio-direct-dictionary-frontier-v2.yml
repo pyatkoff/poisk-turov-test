@@ -1,0 +1,231 @@
+name: MATCH Biblio direct dictionary frontier v2
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-biblio-direct-dictionary-frontier-v2.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v2, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v2
+  BASE: 75b925bd952471c2ceae464600427439fd9cab4a
+  CLAIM: '5772466726'
+  V9_ARTIFACT: '10634643226'
+  URL: https://export.bgoperator.ru/yandex?action=hotelsJson
+jobs:
+  probe:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-biblio-direct-dictionary-frontier-1971-20260922-v2' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+    - name: Initialize receipt and bounded parser
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail; umask 077; mkdir -p input reservation terminal
+        cat > input/frontier_module.py <<'PY'
+        import collections, hashlib, json, re, urllib.parse
+        ZIP_SHA = '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0'
+        JSON_SHA = '0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+        def digest(b):
+            return hashlib.sha256(b).hexdigest()
+        def f4_values(edge):
+            link=edge['operator_link']
+            if digest(link.encode()) != edge['operator_link_sha256']:
+                raise ValueError('operator_link_hash_mismatch')
+            u=urllib.parse.urlsplit(link)
+            if u.scheme != 'https' or u.hostname not in ('bgoperator.ru','www.bgoperator.ru') or u.username or u.password or u.port not in (None,443):
+                raise ValueError('unexpected_operator_link_origin')
+            q=urllib.parse.parse_qsl(u.query,keep_blank_values=True)
+            ids=[value for key,value in q if key.upper()=='F4']
+            if not ids or any(not re.fullmatch(r'[1-9][0-9]{0,19}',v) for v in ids):
+                raise ValueError('missing_or_invalid_f4')
+            return list(dict.fromkeys(ids))
+        def frontier(data):
+            edges=[e for e in data['source_result']['edges'] if int(e.get('operator_id') or 0)==18]
+            by={}; count=collections.Counter()
+            for e in edges:
+                ids=f4_values(e); count[len(ids)]+=1
+                p={k:e.get(k) for k in ('tv_hotel_id','tour_id','search_id','batch','operator_link','operator_link_sha256')}
+                p['f4_candidates']=ids
+                for key in ids:
+                    by.setdefault(key,[]).append(p)
+            if len(edges)!=816 or len(by)!=838 or count!={1:794,2:22}:
+                raise ValueError('immutable_frontier_shape_mismatch')
+            return {'edge_count':len(edges),'f4_count':len(by),'singleton_edges':count[1],'multiple_f4_edges':count[2],'by_f4':by}
+        def intersect(data,front):
+            if not isinstance(data,list) or not data or any(not isinstance(r,dict) or 'key' not in r for r in data):
+                raise ValueError('unexpected_dictionary_schema')
+            fields=('key','name','stars','countryKey','cityKey','inPr')
+            rows=[{k:r[k] for k in fields if k in r} for r in data if str(r['key']) in front['by_f4']]
+            counts=collections.Counter(str(r['key']) for r in rows)
+            return {'dictionary_row_count':len(data),'matched_distinct_f4':len(counts),'matched_rows':len(rows),
+                    'duplicate_matched_keys':sorted(k for k,n in counts.items() if n>1),
+                    'not_in_active_dictionary_f4':sorted(set(front['by_f4'])-set(counts)),
+                    'rows':rows,'matched_provenance':{k:front['by_f4'][k] for k in sorted(counts)},
+                    'not_found_semantics':'not_in_active_dictionary_not_proof_of_absence_or_invalid_identity'}
+        PY
+        python3 - <<'PY'
+        import json,os,pathlib
+        r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'preflight_not_completed','supplier_http_requests':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+        pathlib.Path('terminal/progress.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        PY
+    - name: Validate claim, predecessor and raw F4 frontier
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail
+        test "$(git rev-parse HEAD)" = "$HEAD"
+        test "$(git merge-base HEAD "$BASE")" = "$BASE"
+        test "$(git diff --name-only "$BASE"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-direct-dictionary-frontier-v2.yml "
+        gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/runs/35695641121/jobs" > input/predecessor.json
+        gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+        PYTHONPATH=input python3 - <<'PY'
+        import datetime,json,os,pathlib,zipfile
+        from frontier_module import ZIP_SHA,JSON_SHA,digest,f4_values,frontier,intersect
+        c=json.load(open('input/claim.json'))
+        assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+        assert c['created_at']==c['updated_at']
+        for token in (os.environ['OP'],os.environ['BASE'],'Exactly one unauthenticated HTTPS GET',os.environ['URL'],'max4 MiB','DB/mapping writes0'):
+            assert token in c['body'], 'claim_scope_mismatch'
+        jobs=json.load(open('input/predecessor.json'))['jobs']; assert len(jobs)==1
+        j=jobs[0]; assert j['conclusion']=='failure' and j['run_attempt']==1
+        st=[s for s in j['steps'] if s['name']=='Fetch once and retain only saved F4 matches']; assert len(st)==1 and st[0]['conclusion']=='skipped'
+        b=pathlib.Path('input/v9.zip').read_bytes(); assert digest(b)==ZIP_SHA
+        with zipfile.ZipFile('input/v9.zip') as z: raw=z.read('reconciliation.json')
+        assert digest(raw)==JSON_SHA
+        v=json.loads(raw); f=frontier(v)
+        e=next(e for e in v['source_result']['edges'] if e['operator_id']==18)
+        assert e['positive_native_candidates']==[] and f4_values(e)
+        for url in ('https://evil.invalid/?F4=1','https://www.bgoperator.ru/?F4=-1','https://www.bgoperator.ru/?F4=0','https://www.bgoperator.ru/?F4=1,2'):
+            x={'operator_link':url,'operator_link_sha256':digest(url.encode())}
+            try: f4_values(x)
+            except ValueError: pass
+            else: raise AssertionError('invalid_f4_or_origin_accepted')
+        x=dict(e,operator_link_sha256='0'*64)
+        try: f4_values(x)
+        except ValueError: pass
+        else: raise AssertionError('tampered_link_accepted')
+        k=next(iter(f['by_f4']))
+        t=intersect([{'key':k,'name':'Fixture','other':'not_retained'},{'key':'not-wanted'}],f)
+        assert t['matched_distinct_f4']==1 and 'other' not in t['rows'][0]
+        try: intersect({'hotels':[]},f)
+        except ValueError: pass
+        else: raise AssertionError('unknown_schema_accepted')
+        pathlib.Path('input/frontier.json').write_text(json.dumps(f,sort_keys=True)+'\n')
+        r={'operation':os.environ['OP'],'state':'reserved_before_supplier_http','source_sha':os.environ['HEAD'],'provider':'biblio_direct_dictionary','url':os.environ['URL'],'frontier_f4_count':f['f4_count'],'frontier_edge_count':f['edge_count'],'frontier_sha256':digest(pathlib.Path('input/frontier.json').read_bytes()),'max_supplier_http_requests':1,'database_writes':0,'mapping_writes':0,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'no_replay':True}
+        pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        print(json.dumps({k:f[k] for k in ('edge_count','f4_count','singleton_edges','multiple_f4_edges')},sort_keys=True))
+        PY
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with: {name: 'match-biblio-direct-dictionary-frontier-v2-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+    - name: Require exact-head Security
+      env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,time,urllib.request
+        u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+        for _ in range(60):
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: runs=json.load(f)['workflow_runs']
+            r=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+            if r and max(r,key=lambda x:x['id'])['status']=='completed':
+                assert max(r,key=lambda x:x['id'])['conclusion']=='success'; break
+            time.sleep(5)
+        else: raise SystemExit('security_not_green')
+        PY
+    - name: Fail closed on concurrent supplier acquisition
+      env: {GH_TOKEN: '${{ github.token }}'}
+      run: |
+        python3 - <<'PY'
+        import json,os,urllib.request
+        bad=[]
+        for status in ('in_progress','queued'):
+            u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?status='+status+'&per_page=100'
+            req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(req,timeout=30) as f: data=json.load(f)
+            assert data['total_count']<=100, 'active_runs_not_fully_enumerated'
+            for r in data['workflow_runs']:
+                if str(r['id'])==os.environ['GITHUB_RUN_ID'] or r['name']=='Security guard': continue
+                t=(r.get('name','')+' '+r.get('path','')+' '+str(r.get('head_branch') or '')).lower()
+                if any(x in t for x in ('andromeda','anex','tourvisor','hotel-match','match-biblio','supplier')): bad.append((r['id'],r['name']))
+        assert not bad,bad
+        PY
+    - name: Fetch once and retain only saved F4 matches
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        set -euo pipefail
+        cp reservation/reservation.json terminal/reservation.json
+        PYTHONPATH=input python3 - <<'PY'
+        import datetime,gzip,http.client,json,os,pathlib,socket,ssl,time
+        from frontier_module import digest,intersect
+        CAP=4*1024*1024
+        r={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'supplier_http_requests':0,'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True,'state':'supplier_request_reserved','dictionary_scope':'active_price_hotels_only'}
+        def progress(): pathlib.Path('terminal/progress.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+        progress()
+        front=json.load(open('input/frontier.json'))
+        r.update(frontier_f4_count=front['f4_count'],frontier_edge_count=front['edge_count'])
+        conn=http.client.HTTPSConnection('export.bgoperator.ru',timeout=10,context=ssl.create_default_context())
+        try:
+            deadline=time.monotonic()+30
+            conn.connect(); conn.sock.settimeout(max(.1,deadline-time.monotonic()))
+            r['supplier_http_requests']=1; r['state']='supplier_http_attempted'; progress()
+            conn.request('GET','/yandex?action=hotelsJson',headers={'Accept':'application/json','Accept-Encoding':'gzip','User-Agent':'AnyTour-MATCH/1.0'})
+            response=conn.getresponse(); r['http_status']=response.status
+            wire=bytearray()
+            while len(wire)<=CAP:
+                if time.monotonic()>=deadline: raise TimeoutError('deadline')
+                if conn.sock: conn.sock.settimeout(max(.1,deadline-time.monotonic()))
+                block=response.read1(min(65536,CAP+1-len(wire)))
+                if not block: break
+                wire.extend(block)
+            r['wire_bytes_read']=len(wire)
+            if len(wire)>CAP: r['state']='response_too_large'
+            elif response.status!=200: r['state']='http_non_200'
+            else:
+                encoding=(response.getheader('Content-Encoding') or '').lower().strip()
+                if encoding not in ('','identity','gzip'): raise ValueError('unsupported_content_encoding')
+                if encoding=='gzip':
+                    import io
+                    with gzip.GzipFile(fileobj=io.BytesIO(wire)) as gz: body=gz.read(CAP+1)
+                else: body=bytes(wire)
+                r['response_bytes']=len(body)
+                if len(body)>CAP: r['state']='response_too_large'
+                else:
+                    r['response_sha256']=digest(body)
+                    try: data=json.loads(body)
+                    except (ValueError,UnicodeError): r['state']='invalid_json'
+                    else:
+                        try: out=intersect(data,front)
+                        except ValueError: r['state']='unexpected_dictionary_schema'
+                        else: r.update(out); r['state']='matched_frontier'
+        except (TimeoutError,socket.timeout): r['state']='transport_timeout'
+        except Exception as e: r['state']='transport_or_parse_error'; r['error_class']=type(e).__name__
+        finally:
+            conn.close(); r['at_utc']=datetime.datetime.now(datetime.timezone.utc).isoformat(); progress()
+        rb=(json.dumps(r,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode()
+        pathlib.Path('terminal/result.json').write_bytes(rb)
+        receipt={k:r[k] for k in ('operation','source_sha','supplier_http_requests','database_writes','mapping_writes','no_replay')}
+        receipt.update(state='completed_read_only',result_state=r['state'],result_sha256=digest(rb))
+        pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+        print(json.dumps({k:r.get(k) for k in ('operation','state','supplier_http_requests','http_status','response_bytes','response_sha256','dictionary_row_count','frontier_f4_count','frontier_edge_count','matched_distinct_f4','matched_rows')},sort_keys=True,indent=2))
+        PY
+    - name: Always finalize bounded terminal receipt
+      if: always()
+      env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+      run: |
+        python3 - <<'PY'
+        import hashlib,json,os,pathlib
+        p=pathlib.Path('terminal'); p.mkdir(exist_ok=True)
+        if not (p/'receipt.json').exists():
+            r=json.load(open(p/'progress.json')) if (p/'progress.json').exists() else {'supplier_http_requests':0}
+            r.update(operation=os.environ['OP'],source_sha=os.environ['HEAD'],state='preflight_or_execution_incomplete',database_writes=0,mapping_writes=0,no_replay=True)
+            rb=(json.dumps(r,sort_keys=True,indent=2)+'\n').encode(); (p/'result.json').write_bytes(rb)
+            receipt={k:r[k] for k in ('operation','source_sha','state','supplier_http_requests','database_writes','mapping_writes','no_replay')}
+            receipt['result_sha256']=hashlib.sha256(rb).hexdigest(); (p/'receipt.json').write_text(json.dumps(receipt,sort_keys=True)+'\n')
+        PY
+        rm -f input/claim.json input/v9.zip input/predecessor.json input/frontier.json
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with: {name: 'match-biblio-direct-dictionary-frontier-v2-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
