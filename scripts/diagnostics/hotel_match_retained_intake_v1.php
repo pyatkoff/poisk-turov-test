@@ -18,7 +18,7 @@ final class MatchRetainedIntakeV1
         if($db->inTransaction())throw new RuntimeException('nested_transaction');
         $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         $db->exec('SET TRANSACTION READ ONLY');$db->beginTransaction();
-        $counts=['observation'=>0,'legacy_source'=>0,'identity'=>0,'target'=>0];$schemas=[];
+        $counts=['observation'=>0,'legacy_source'=>0,'identity'=>0,'target'=>0];$schemas=[];$targetIds=[];
         try {
             foreach(['tour_operator_identity_observations','local_tv_legacy_links','andromeda_hotel_identities','catalog_hotels'] as $table){
                 $schemas[$table]=self::columns($db,$table);
@@ -30,7 +30,7 @@ final class MatchRetainedIntakeV1
             foreach($required as $table=>$fields)if(array_diff($fields,$schemas[$table]))throw new RuntimeException('required_schema_missing');
             $emit(['kind'=>'scope','cohort'=>'common4-retained','captured_at_utc'=>gmdate('Y-m-d\TH:i:s\Z'),
                 'database_snapshot'=>'repeatable-read-read-only','catalog_id_namespace'=>'tourvisor_hotel',
-                'schema_columns'=>$schemas]);
+                'target_scope'=>'observed_and_legacy_ids','schema_columns'=>$schemas]);
             $allowed=['id','hotel_id','hotel_name','operator_id','operator_name','operator_link','country_id','region_id','subregion_id',
                 'region_name','subregion_name','latitude','longitude','tour_id','search_id','source','first_seen_at','last_seen_at',
                 'native_id_type','native_id_value','native_id_conflict'];
@@ -38,11 +38,13 @@ final class MatchRetainedIntakeV1
             $sql='SELECT '.implode(',',$fields).' FROM tour_operator_identity_observations ORDER BY id LIMIT '.(self::MAX_ROWS+1);
             foreach($db->query($sql)as $r){
                 if(++$counts['observation']>self::MAX_ROWS)throw new RuntimeException('observation_bound_exceeded');
+                $targetIds[(int)$r['hotel_id']]=true;
                 $emit(['kind'=>'observation','row'=>$r]);
             }
             $links=0;
             foreach($db->query('SELECT old_local_id,tv_id,snapshot_json,snapshot_sha256 FROM local_tv_legacy_links ORDER BY old_local_id LIMIT '.(self::MAX_ROWS+1))as $r){
                 if(++$links>self::MAX_ROWS)throw new RuntimeException('legacy_bound_exceeded');
+                $targetIds[(int)$r['tv_id']]=true;
                 if(!hash_equals((string)$r['snapshot_sha256'],hash('sha256',(string)$r['snapshot_json'])))throw new RuntimeException('legacy_snapshot_integrity');
                 $snapshot=json_decode($r['snapshot_json'],true,128,JSON_THROW_ON_ERROR);
                 if(!is_array($snapshot['sources']??null))throw new RuntimeException('legacy_sources_shape');
@@ -61,11 +63,17 @@ final class MatchRetainedIntakeV1
             }
             $targetFields=['id','name','country_id','country_name','region_name','subregion_name','latitude','longitude','is_active'];
             if(!array_diff($targetFields,$schemas['catalog_hotels'])){
-                $q=$db->query('SELECT '.implode(',',$targetFields).' FROM catalog_hotels ORDER BY id LIMIT '.(self::MAX_ROWS+1));
-                foreach($q as $r){if(++$counts['target']>self::MAX_ROWS)throw new RuntimeException('target_bound_exceeded');$emit(['kind'=>'target','row'=>$r]);}
+                if(count($targetIds)>self::MAX_ROWS)throw new RuntimeException('target_cohort_bound_exceeded');
+                $ids=array_keys($targetIds);sort($ids,SORT_NUMERIC);
+                foreach(array_chunk($ids,500)as $chunk){
+                    $q=$db->prepare('SELECT '.implode(',',$targetFields).' FROM catalog_hotels WHERE id IN ('
+                        .implode(',',array_fill(0,count($chunk),'?')).') ORDER BY id');$q->execute($chunk);
+                    foreach($q as $r){++$counts['target'];$emit(['kind'=>'target','row'=>$r]);}
+                }
             }
             $db->commit();
             return ['state'=>'captured_read_only','cohort'=>'common4-retained','rows'=>$counts,'legacy_links'=>$links,
+                'target_scope'=>'observed_and_legacy_ids','queried_target_ids'=>count($targetIds),
                 'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
         }finally{if($db->inTransaction())$db->rollBack();}
     }
@@ -91,5 +99,6 @@ if(!defined('MATCH_RETAINED_LIBRARY_ONLY')){
         $result['raw_sha256']=hash_final($ctx);$result['raw_bytes']=$bytes;
         $result['config_sha256']=hash_file('sha256',$root.'/config.php');
         echo json_encode($result,JSON_THROW_ON_ERROR)."\n";
-    }catch(Throwable $e){echo json_encode(['state'=>'blocked_no_replay','error_class'=>get_class($e),'error_sha256'=>hash('sha256',$e->getMessage())])."\n";exit(1);}
+    }catch(Throwable $e){$code=get_class($e)===RuntimeException::class&&preg_match('/\A[a-z_]{1,80}\z/D',$e->getMessage())?$e->getMessage():'child_error';
+        echo json_encode(['state'=>'blocked_no_replay','error_code'=>$code,'error_class'=>get_class($e),'error_sha256'=>hash('sha256',$e->getMessage())])."\n";exit(1);}
 }

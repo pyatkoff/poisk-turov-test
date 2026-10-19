@@ -178,13 +178,19 @@ def project(path: Path):
             'unique_registry_local_hotels': len(local) if registry_available else None,
             'accepted_on_retained_cohort': len(local & cohort) if registry_available else None,
             'without_accepted_on_retained_cohort': len(cohort-local) if registry_available else None,
-            'pending_conflict_rows': len(rows)-len(accepted) if registry_available else None})
+            'nonaccepted_rows': len(rows)-len(accepted) if registry_available else None,
+            'decision_status_counts': dict(collections.Counter(str(r['decision_status']) for r in rows)) if registry_available else None})
+    bg_local = {str(r['local_hotel_id']) for (ns,_),rr in registry.items()
+                if ns in ('bgoperator','operator_115') for r in rr if r['decision_status']=='accepted'}
     return {'schema_version': 1, 'state': 'projected_read_only', 'cohort': 'common4-retained',
         'captured_at_utc': scope['captured_at_utc'], 'database_snapshot': scope['database_snapshot'],
+        'target_scope': scope.get('target_scope','not_declared'),
         'cohort_tv_hotel_ids': sorted(map(int, cohort)), 'cohort_hotels': len(cohort),
         'raw_sha256': raw_hash.hexdigest(), 'raw_bytes': raw_bytes, 'capture_rows': dict(counts),
         'observed_operators': list(by_operator.values()), 'legacy_source_namespaces': dict(source_namespaces),
         'registry_coverage': coverage, 'candidate_states': dict(states),
+        'biblio_union_unique_registry_local_hotels': len(bg_local) if registry_available else None,
+        'biblio_union_on_retained_cohort': len(bg_local & cohort) if registry_available else None,
         'candidate_edges': list(edges.values()), 'new_accepted_mappings': 0,
         'supplier_calls': 0, 'database_writes': 0, 'mapping_writes': 0, 'safe_to_write_now': False,
         'limitations': ['retained cohort; not full registry or live30 coverage',
