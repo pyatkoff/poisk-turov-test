@@ -1,0 +1,88 @@
+name: MATCH Antalya SAMO-first v4
+on:
+  push:
+    branches: [ops/match-antalya-samo-first-1971-20260919-v4]
+    paths: [scripts/diagnostics/hotel_match_antalya_samo_first_v4.php, .github/workflows/hotel-match-antalya-samo-first-v4.yml]
+permissions: {contents: read, actions: read, issues: read}
+env: {OPERATION_ID: hotel-match-antalya-samo-first-1971-20260919-v4, CLAIM: '5742408519'}
+jobs:
+  cohort:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - name: Validate and download retained SAMO raw
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; mkdir -p input/raw "$OPERATION_ID" export
+          echo CLAIM_AND_SELFTEST; php -l scripts/diagnostics/hotel_match_antalya_samo_first_v4.php
+          php scripts/diagnostics/hotel_match_antalya_samo_first_v4.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); assert c['user']['id']==226193297 and c['author_association']=='OWNER' and os.environ['OPERATION_ID'] in c['body']
+          PY
+          echo CLAIM_OK; gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10582147904/zip >input/a.zip; sha256sum input/a.zip; unzip -l input/a.zip | tail -n 20
+          python3 - <<'PY'
+          import hashlib,pathlib,zipfile,tarfile,io,json
+          p=pathlib.Path('input/a.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='323b7f97c4786475892ad3bceecae052279520011fbd7745cf3fee4f67a4a6a1'
+          with zipfile.ZipFile(p) as z: tb=z.read('server-operation.tgz'); print('OUTER_OK',len(z.infolist()),len(tb))
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:
+           members=t.getmembers(); print('INNER_TYPES',[(m.name,m.type.decode(errors='ignore') if isinstance(m.type,bytes) else str(m.type),m.linkname) for m in members]); regs=[m for m in members if m.isreg()]; hard=[m for m in members if m.islnk()]; assert len(hard)==1 and hard[0].name=='raw-manifest.json' and hard[0].linkname=='raw-manifest.json'; man=[m for m in regs if m.name=='raw-manifest.json']; assert len(man)==1
+           ledger={x['file']:x for x in json.loads(t.extractfile(man[0]).read())['files']}; raws={}
+           for m in regs:
+            n=pathlib.PurePosixPath(m.name).name
+            if n.startswith('raw-') and n.endswith('.json') and n!='raw-manifest.json': raws[n]=t.extractfile(m).read()
+           print('RAW_COUNTS',len(raws),len(ledger),sorted(raws)); assert set(raws)==set(ledger) and len(raws)==23
+           for n,b in raws.items():
+            assert len(b)==ledger[n]['bytes'] and hashlib.sha256(b).hexdigest()==ledger[n]['sha256']; pathlib.Path('input/raw',n).write_bytes(b)
+          PY
+      - name: Require Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(60):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           x=[z for z in r if z['name']=='Security guard' and z['head_sha']==os.environ['GITHUB_SHA']]
+           if x and max(x,key=lambda z:z['id'])['status']=='completed': assert max(x,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else: raise SystemExit(2)
+          PY
+      - name: Read CURRENT Antalya cohort on server
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/k"; known="$RUNNER_TEMP/h"; if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/raw\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_antalya_samo_first_v4.php input/raw/*.json "$remote:$op/raw/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/raw/hotel_match_antalya_samo_first_v4.php\" \"\$HOME/$op/reader.php\";ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_RAW_DIR=\"\$HOME/$op/raw\" php \"\$HOME/$op/reader.php\""
+          ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' >export/server.tgz
+      - name: Verify result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,json,hashlib,pathlib
+          with tarfile.open('export/server.tgz','r:gz') as t:
+           for n in ['result.json','receipt.json']: pathlib.Path('export',n).write_bytes(t.extractfile(n).read())
+          r=json.load(open('export/result.json'));q=json.load(open('export/receipt.json'))
+          assert r['state']=='completed_read_only' and r['provider_calls']==r['tourvisor_calls']==r['database_writes']==0
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('export/result.json').read_bytes()).hexdigest()
+          print(json.dumps({k:r[k] for k in ['antalya_catalog_hotels','retained_price_observations','accepted_closed','conflicts','missing_or_pending','frontier_with_native']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-antalya-samo-first-${{ github.run_id }}', path: export/, retention-days: 90}
