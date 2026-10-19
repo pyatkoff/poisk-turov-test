@@ -1,0 +1,142 @@
+name: MATCH ILKAY operator5 ANEX current review v1
+on:
+  push:
+    branches: [ops/match-ilkay-operator5-anex-current-review-1971-20260920-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_ilkay_operator5_anex_current_review_v1.php
+      - .github/workflows/hotel-match-ilkay-operator5-anex-current-review-v1.yml
+permissions:
+  contents: read
+  actions: read
+  issues: write
+concurrency:
+  group: hotel-match-ilkay-operator5-anex-current-review-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-ilkay-operator5-anex-current-review-1971-20260920-v1
+  BASE_SHA: 04679a5f1136ac06c8cd790c2c90315a09322335
+  CLAIM_COMMENT_ID: '5749186206'
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact package and owner claim
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p result payload
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx scripts/diagnostics/hotel_match_ilkay_operator5_anex_current_review_v1.php
+          git diff --name-only "$BASE_SHA..HEAD" | grep -Fx .github/workflows/hotel-match-ilkay-operator5-anex-current-review-v1.yml
+          cp scripts/diagnostics/hotel_match_ilkay_operator5_anex_current_review_v1.php payload/review.php
+          php -l payload/review.php
+          php payload/review.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" > payload/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('payload/claim.json'));b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530')
+          for s in [os.environ['OPERATION_ID'],'ILKAY HOTEL','local17483','andromeda_catalog:4176','operator_5:32572','8b50ba11fd1907d0b43f2152e4fc10d8eb0e555d556e74a97f8065c1501f10dd']:assert s in b
+          assert 'writes nothing' in b
+          PY
+      - name: Reserve before DB access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib
+          p=pathlib.Path('payload/review.php')
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'state':'reserved_before_db_access','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'script_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'local_hotel_id':17483,'samo_hotel_id':'4176','native_anex_id':32572,'operator5_evidence_sha256':'8b50ba11fd1907d0b43f2152e4fc10d8eb0e555d556e74a97f8065c1501f10dd','supplier_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with pathlib.Path('result/reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed':assert r['conclusion']=='success';print('SECURITY_OK',r['id']);break
+            time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'ilkay-operator5-current-reservation-${{ github.run_id }}'
+          path: result/reservation.json
+          retention-days: 90
+          if-no-files-found: error
+      - name: Execute CURRENT read-only review
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key";else printf '%s' "$KEY_VALUE"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op\""
+          scp "${opts[@]}" result/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" payload/review.php "$remote:$op/review.php"
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && MATCH_OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=256M \"\$HOME/$op/review.php\"" >result/remote.stdout 2>result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['receipt.json','reservation.json','result.json']
+            for m in t.getmembers():assert m.isfile() and m.size<5_000_000;(s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((s/'result.json').read_text());q=json.loads((s/'receipt.json').read_text());d=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==d and q['readback_verified'] is True
+          assert r['state']=='completed_read_only' and r['supplier_calls']==r['tourvisor_calls']==r['samo_calls']==r['andromeda_calls']==r['direct_anex_calls']==r['database_writes']==r['mapping_writes']==0
+          summary={k:r.get(k) for k in ['read_at_utc','classification','safe_to_write_now','candidate','catalog','canonical_samo_match_count','operator5_exact_match_count','operator5_competitor_count','pair_excluded','accepted_anex_same_pair','accepted_anex_source_conflict','accepted_anex_target_occupants']};summary['result_sha256']=d
+          (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - name: Post sanitized review receipt
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        shell: bash
+        run: |
+          python3 - <<'PY' > result/comment.md
+          import json
+          s=json.load(open('result/verified-summary.json'))
+          print('MATCH ILKAY operator_5→ANEX CURRENT review COMPLETE / READ ONLY / NO-REPLAY.')
+          print()
+          print(f"Classification `{s['classification']}`, safe_to_write_now={str(s['safe_to_write_now']).lower()}. Candidate local17483 / SAMO4176 / native ANEX32572. canonical SAMO matches={s['canonical_samo_match_count']}, exact accepted operator_5 matches={s['operator5_exact_match_count']}, operator_5 competitors={s['operator5_competitor_count']}, pair_excluded={s['pair_excluded']}, source_conflict={s['accepted_anex_source_conflict']}, target_occupants={s['accepted_anex_target_occupants']}.")
+          print(f"Result {s['result_sha256']}. Provider calls0; DB/mapping writes0. Any write is a separate NEW guarded operation.")
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/issues/1971/comments -f body="$(cat result/comment.md)"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: 'ilkay-operator5-current-result-${{ github.run_id }}'
+          path: result/
+          retention-days: 90
+          if-no-files-found: error
