@@ -1,0 +1,40 @@
+name: Validate AnyTour agent orchestration
+
+on:
+  pull_request:
+    paths:
+      - '.codex/**'
+      - 'docs/project/PARALLEL_DELIVERY.md'
+      - 'scripts/ci/validate_anytour_agent_orchestration.py'
+      - 'tests/anytour_agent_orchestration_test.py'
+      - '.github/workflows/validate-anytour-agent-orchestration.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.codex/**'
+      - 'docs/project/PARALLEL_DELIVERY.md'
+      - 'scripts/ci/validate_anytour_agent_orchestration.py'
+      - 'tests/anytour_agent_orchestration_test.py'
+      - '.github/workflows/validate-anytour-agent-orchestration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-anytour-agent-orchestration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Validate project-scoped agent topology
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/validate_anytour_agent_orchestration.py
+          python3 tests/anytour_agent_orchestration_test.py
