@@ -2434,7 +2434,13 @@ function openFilters(restore=null){if(innerWidth>1100){$('#results').classList.a
 function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasOpen=$('#filter-panel').classList.contains('open');if(!wasOpen)return;let budget=null;if(apply){budget=editFilterBudget();if(!budget.valid&&!adapt){$(budget.invalidMin?'#min-price':'#max-price').focus();return;}}leaveUIHistory(fromHistory);const next=apply?filterDraft:null;filterDraft=null;drawerSuggestions=[];facetQueries.clear();$('#filter-panel').classList.remove('open');$('#filter-panel').removeAttribute('role');$('#filter-panel').removeAttribute('aria-modal');$('#filter-backdrop').hidden=true;document.body.style.overflow='';$$('[inert]').forEach(e=>e.inert=false);if(next){pageReturn=null;state.filters=next.filters;state.onlyFavorites=next.onlyFavorites;state.selectedDate=next.selectedDate;syncFilters();if(budget&&!budget.valid){$(budget.invalidMin?'#min-price':'#max-price').focus({preventScroll:true})}else{const pristine=!!searchEditSession||!state.hasSearched&&!state.onlyFavorites;$(pristine?'#search':'#results').scrollIntoView({behavior:scrollBehavior(),block:'start'});$(pristine?'.search-submit':'#results').focus({preventScroll:true})}}else{renderFilters();restorePageReturn();}syncDestinationViewport();}
 $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=!fromMonth&&state.selectedDate===day?null:day;updateSearchUI();renderResults({keepFilters:true});updateURL();if(fromMonth)closeModal();else $(`#price-strip [data-date="${day}"]`)?.focus({preventScroll:true});}
-function resetFilters(){state.filters=defaultFilters();state.onlyFavorites=false;state.selectedDate=null;syncFilters();updateURL();}
+function resetFilters(){
+ const restoreResults=document.activeElement?.matches('#cards [data-action="reset"]');
+ state.filters=defaultFilters();state.onlyFavorites=false;state.selectedDate=null;syncFilters();updateURL();
+ // The empty-state action is removed by the reset. Keep a stable keyboard
+ // destination without moving the page or stealing focus from another control.
+ if(restoreResults&&document.activeElement===document.body)$('#results').focus({preventScroll:true});
+}
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
 function terminalizeSearchForVerification(reason='verification'){
  if(searchResponse.providers)for(const key of Object.keys(searchResponse.providers))if(searchResponse.providers[key]==='loading')searchResponse.providers[key]='cancelled';
