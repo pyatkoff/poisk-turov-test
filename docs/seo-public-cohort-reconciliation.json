@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "artifact": "anytour_public_seo_cohort_reconciliation",
+  "status": "review_only_measurement_pending",
+  "scope": {
+    "domain": "anytoour.ru",
+    "base_commit": "7feb3c6a965ddeee4f77893536ea31965821a5c4",
+    "base_tree": "8a17fbfb1762f3ffa3dc7341be3539161e5eab86",
+    "publication_side_effects": false,
+    "runtime_changes": false,
+    "indexation_changes": false,
+    "canonical_changes": false,
+    "sitemap_changes": false,
+    "route_changes": false,
+    "schema_changes": false,
+    "metrika_changes": false,
+    "tourvisor_changes": false,
+    "lead_changes": false,
+    "price_or_offer_changes": false
+  },
+  "source_evidence": {
+    "owner_sha256": {
+      "docs/seo-foundation-baseline.json": "4b3a1f01b934056d91abb8ff301feb8ca0d365ebcb6704997c6e117e5cd8d379",
+      "v2/seo-launch-slice-v1.php": "03238f3e98a10092384416e6585b088362c36efab1f99b4f0c259dce1f8ee071",
+      "v2/seo-publication-manifest-v1.php": "d18280435b6766474bd29d887c45909541067e14b25d41541bc4789016260b37",
+      "v2/seo-sitemap-candidates-v1.php": "f27ca5deb6cdb2ab7d1774ebf1e59b1f90b65f1423ec9b3a9e7e714ae3ead99d",
+      "v2/seo-production-identity-collector-v1.php": "a3f7f7f6bc15fb4e1dd58fe9d7b29b3f33028acef73c71b3d9a6ef5fe0d4757a",
+      "v2/seo-production-identity-registry-v1.php": "fbdd2d8b8310a791c18fd5c6b4fea33442dd0874dd5828478a01e0aa8ac8ced2",
+      "v2/seo-core-resort-launch-state-v1.php": "b636eb8d76072c6afe710e93228f78f82a0cb6fbac8ef125365a42ddadb94960",
+      "v2/seo-postlaunch-feedback-v1.php": "ed30779f41c7ba7ea06ab045d548669b7c22eb1cf8c04cd510f15f2150215b2b"
+    },
+    "static_sitemap": {
+      "path": "v2/sitemap.xml",
+      "file_sha256": "cf61ea3d1d86e6d727c4a0eecc23dd24517950d19a2ac9fde359eea011365b87",
+      "canonical_url_list_sha256": "9e480e824bf465b9a6a6f1db5499b1114956effd35ae5786256907d6a18c96aa",
+      "url_count": 104,
+      "type_counts": {
+        "country": 3,
+        "resort": 5,
+        "seasonal": 96,
+        "hotel_tours": 0,
+        "search": 0
+      },
+      "duplicates": 0
+    },
+    "dynamic_materializer": {
+      "source_owner": "v2/seo-core-resort-launch-state-v1.php",
+      "source_owner_sha256": "b636eb8d76072c6afe710e93228f78f82a0cb6fbac8ef125365a42ddadb94960",
+      "runtime_artifact": "v2/data/generated/seo-core-resort-review-routes-v1.json",
+      "status": "requires_fresh_artifact_for_live_reconciliation",
+      "included_in_static_sitemap_count": false
+    },
+    "fresh_production_identity": {
+      "status": "not_available_in_checkout",
+      "required_workflow": ".github/workflows/collect-seo-production-evidence.yml",
+      "required_artifact": "seo-production-identity.json",
+      "required_fields": [
+        "successful_run_url",
+        "run_id",
+        "head_sha",
+        "observed_at_utc",
+        "artifact_sha256",
+        "identity_registry_sha256"
+      ],
+      "maximum_age_seconds": 86400
+    },
+    "historical_reference": {
+      "source_owner": "v2/seo-postlaunch-feedback-v1.php",
+      "source_owner_sha256": "ed30779f41c7ba7ea06ab045d548669b7c22eb1cf8c04cd510f15f2150215b2b",
+      "available_in_checkout": true,
+      "eligible_for_current_reconciliation": false,
+      "reason": "The pinned ten-path cohort is an older launch baseline and its source code reports current_launch_scope_matches_baseline=false after controlled-cohort expansion. It must not be represented as current production evidence.",
+      "identity_registry_sha256": "df2679a82e43043b46daadffa6d3a216bc8fc09b82a4e43152ea7203b882a024"
+    }
+  },
+  "reconciliation": {
+    "source_candidate_set": "static_sitemap_only",
+    "live_identity_set": "pending_fresh_production_identity",
+    "sitemap_set": "static_sitemap_only",
+    "excluded_set": [
+      "/poisk-turov/",
+      "hotel_tours",
+      "query_parameters",
+      "fragments",
+      "external_urls"
+    ],
+    "difference_set": "not_computed_without_fresh_production_identity_and_dynamic_materializer_artifact",
+    "unexplained_differences": "not_computed",
+    "next_action": "review_only_collect_fresh_evidence"
+  },
+  "measurement": {
+    "status": "measurement_pending",
+    "aggregate_exports_present": false,
+    "direct_metrika_access": false,
+    "user_level_data_present": false,
+    "allowed_future_aggregate_fields": [
+      "impressions",
+      "clicks",
+      "average_position",
+      "organic_sessions",
+      "search_starts",
+      "completed_leads"
+    ],
+    "prohibited_interpretation": "Missing exports are unknown, not zero demand, zero traffic, zero leads, or a ranking conclusion."
+  },
+  "commercial_hypotheses": [
+    {
+      "page_type": "country",
+      "intent": "broad destination discovery",
+      "conversion_hypothesis": "A clear transition from destination information to an already-existing tour search should increase search starts for qualified organic visits.",
+      "measurement_status": "pending"
+    },
+    {
+      "page_type": "resort",
+      "intent": "resort selection",
+      "conversion_hypothesis": "A resort-specific transition to the existing search can reduce the distance between comparison intent and a tour search.",
+      "measurement_status": "pending"
+    },
+    {
+      "page_type": "seasonal",
+      "intent": "destination plus travel-month planning",
+      "conversion_hypothesis": "A season-matched transition to the existing search can make time-sensitive organic visits easier to continue.",
+      "measurement_status": "pending"
+    }
+  ],
+  "guardrails": {
+    "automatic_execution_allowed": false,
+    "publication_allowed": false,
+    "indexation_allowed": false,
+    "sitemap_allowed": false,
+    "canonical_allowed": false,
+    "route_allowed": false,
+    "hotel_tours_eligible": false,
+    "search_route_eligible": false,
+    "recommendations_only": true
+  }
+}
