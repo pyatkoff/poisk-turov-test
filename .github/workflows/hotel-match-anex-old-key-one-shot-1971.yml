@@ -1,0 +1,180 @@
+name: MATCH ANEX old key one-shot #1971
+
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths:
+      - '.github/workflows/hotel-match-anex-old-key-one-shot-1971.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: match-anex-old-key-one-shot-1971-v1
+  cancel-in-progress: false
+
+env:
+  OPERATION_ID: hotel-match-anex-old-key-one-shot-1971-20260911-v1
+
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_match_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: SSH preflight without supplier access
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_match_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          out="$(ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'root="$HOME/www/anytoour.ru"; test -s "$root/config.php"; test -s "$root/_preview/search3-anex-candidate/api-anex-search3-preview.php"; printf MATCH_OLD_KEY_PREFLIGHT_OK')"
+          test "$out" = MATCH_OLD_KEY_PREFLIGHT_OK
+
+      - name: Reserve immutable one-shot operation
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          mkdir -m 700 "$state"
+          python3 - <<'PY'
+          import json,os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/os.environ['OPERATION_ID']/'reservation.json'
+          p.write_text(json.dumps({
+            'operation_id':os.environ['OPERATION_ID'],
+            'state':'reserved_before_supplier_access',
+            'run_id':int(os.environ['GITHUB_RUN_ID']),
+            'run_attempt':int(os.environ['GITHUB_RUN_ATTEMPT']),
+            'source_sha':os.environ['GITHUB_SHA'],
+            'criteria':{'departure':'Moscow','country':'Egypt','local_country_id':1,'date':'2026-10-16','nights':7,'adults':2,'children':0,'currency':'RUB'},
+            'credential':'old_runtime_anex_credential_redacted',
+            'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,
+            'tourvisor_calls':0,'andromeda_calls':0,'no_replay':True
+          },sort_keys=True,indent=2)+'\n')
+          PY
+
+      - name: Preserve reservation before supplier access
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-old-key-one-shot-1971-v1-reservation
+          path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Execute one old-key ANEX search
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          cat > "$state/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          ini_set('display_errors','0'); ini_set('log_errors','0');
+          $operation='hotel-match-anex-old-key-one-shot-1971-20260911-v1';
+          $client=null;
+          $emit=static function(array $x) use ($operation): void {
+              $base=['operation_id'=>$operation,'database_writes'=>0,'mapping_writes'=>0,'booking_calls'=>0,'lead_calls'=>0,'tourvisor_calls'=>0,'andromeda_calls'=>0,'token_values_recorded'=>false,'raw_supplier_body_recorded'=>false,'no_replay'=>true];
+              echo 'MATCH_OLD_ANEX_JSON:'.json_encode(array_merge($base,$x),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+          };
+          try {
+              $root=realpath(getcwd()); if(!$root||basename($root)!=='anytoour.ru') throw new RuntimeException('server_root_invalid');
+              $preview=$root.'/_preview/search3-anex-candidate';
+              $config=$root.'/config.php'; if(!is_file($config)) throw new RuntimeException('runtime_config_missing');
+              require_once $config;
+              $private=$preview.'/.anex-private.php'; if(is_file($private)) require_once $private;
+              $pool=[];
+              foreach((get_defined_constants(true)['user']??[]) as $name=>$value) $pool[(string)$name]=$value;
+              foreach(get_defined_vars() as $name=>$value) if(is_string($name)) $pool[$name]=$value;
+              $old=[];
+              foreach($pool as $name=>$value){
+                  if(!is_string($value)||trim($value)===''||strlen(trim($value))>4096) continue;
+                  $u=strtoupper((string)$name);
+                  if(strpos($u,'ANEX')===false||(!str_contains($u,'TOKEN')&&!str_contains($u,'KEY'))) continue;
+                  if(str_contains($u,'REFERENCE')) continue;
+                  if(!preg_match('/(?:OLD|LEGACY|PREV|PREVIOUS|BACKUP)/',$u)) continue;
+                  $h=hash('sha256',trim($value));
+                  $old[$h]=['value'=>trim($value),'names'=>array_merge($old[$h]['names']??[],[$name])];
+              }
+              if(count($old)!==1){
+                  $names=[]; foreach($old as $row) foreach($row['names'] as $n) $names[]=(string)$n;
+                  $emit(['status'=>'blocked','stage'=>'credential_selection','reason'=>'old_anex_credential_not_unique','candidate_names'=>array_values(array_unique($names)),'supplier_requests'=>0]); exit(3);
+              }
+              $row=array_values($old)[0]; $token=$row['value']; $credentialNames=array_values(array_unique(array_map('strval',$row['names']))); unset($row,$old,$pool);
+              require_once $preview.'/api-anex-search3-preview.php';
+              $app=is_file($preview.'/app/integrations/anex-search.php')?$preview.'/app/integrations':$root.'/app/integrations';
+              require_once $app.'/anex-search.php'; require_once $app.'/anex-search-mapping-registry.php';
+              $dbHelper=is_file($root.'/data/db-v1.php')?$root.'/data/db-v1.php':$root.'/v2/data/db-v1.php'; require_once $dbHelper;
+              $pdo=v2_data_db();
+              $criteria=['departureId'=>1,'countryId'=>1,'dateFrom'=>'2026-10-16','dateTo'=>'2026-10-16','nightsFrom'=>7,'nightsTo'=>7,'adults'=>2,'childs'=>[],'currency'=>'RUB','meal'=>'','hotelIds'=>[],'regionIds'=>[],'subregionIds'=>[],'arrivalId'=>'','operatorIds'=>[],'hotelServices'=>[],'hotelTypes'=>[],'onlyDirect'=>false,'onlyCharter'=>false,'hotelCategory'=>'','hotelRating'=>'','priceFrom'=>'','priceTo'=>''];
+              $client=new AnyTourAnexClient($token); unset($token);
+              $cache=[]; $core=anytour_anex_search3_core($criteria);
+              $lookup=$pdo->prepare('SELECT d.name AS departure_name,c.name AS country_name FROM catalog_departures d CROSS JOIN catalog_countries c WHERE d.id=? AND c.id=? AND d.is_active=1 AND c.is_active=1 LIMIT 1');
+              $lookup->execute([1,1]); $names=$lookup->fetch(PDO::FETCH_ASSOC); if(!$names) throw new RuntimeException('local_dictionary_names_missing');
+              $core['supplier_namespace']='anex_online';
+              $core['departure_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_TOWNFROMS',[],$cache),[$names['departure_name']]);
+              $core['destination_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_STATES',['TOWNFROMINC'=>$core['departure_id']],$cache),[$names['country_name']]);
+              $dated=['TOWNFROMINC'=>$core['departure_id'],'STATEINC'=>$core['destination_id'],'CHECKIN_BEG'=>'20261016','CHECKIN_END'=>'20261016','ADULT'=>2,'CHILD'=>0];
+              $core['currency_id']=anytour_anex_search3_dictionary_id(anytour_anex_search3_dictionary($client,'SearchTour_CURRENCIES',$dated,$cache),['RUB','RUR','Рубль','Рубли','Руб']);
+              $resolver=AnyTourAnexSearchMappingRegistry::fromPdo($pdo)->previewResolver();
+              $result=anytour_anex_search3_prices($client,$resolver,$core);
+              $ids=[]; foreach(($result['offers']??[]) as $offer){$id=(string)($offer['hotel']['external_id']??''); if($id!=='')$ids[$id]=true;}
+              $diag=$client->lastRequestDiagnostics();
+              $emit(['status'=>'completed','stage'=>'direct_anex_exact_day','credential_names'=>$credentialNames,'criteria'=>['departure'=>'Moscow','country'=>'Egypt','date'=>'2026-10-16','nights'=>7,'adults'=>2,'children'=>0,'currency'=>'RUB'],'http_status'=>$diag['http_status']??null,'supplier_code'=>$diag['supplier_code']??null,'supplier_requests'=>$client->requestsMade(),'offer_count'=>count($result['offers']??[]),'unique_hotel_ids'=>count($ids),'external_search_pending'=>(bool)($result['external_search_pending']??false),'rejected_count'=>(int)($result['rejected_count']??0)]);
+          } catch(Throwable $e) {
+              $diag=$client instanceof AnyTourAnexClient?$client->lastRequestDiagnostics():[];
+              $emit(['status'=>'failed','stage'=>'direct_anex_exact_day','reason'=>preg_replace('/[^A-Za-z0-9_.:-]/','_',substr($e->getMessage(),0,120)),'http_status'=>$diag['http_status']??null,'supplier_code'=>$diag['supplier_code']??null,'supplier_requests'=>$client instanceof AnyTourAnexClient?$client->requestsMade():0]); exit(2);
+          }
+          PHP
+          opts=(-i "$RUNNER_TEMP/anytoour_match_key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$USER_VALUE@$HOST_VALUE" 'cd "$HOME/www/anytoour.ru" && php -d display_errors=0 -d log_errors=0' < "$state/probe.php" > "$state/stdout" 2> "$state/stderr"
+          rc=$?
+          set -e
+          export STATE="$state" RC="$rc"
+          python3 - <<'PY'
+          import hashlib,json,os
+          from pathlib import Path
+          state=Path(os.environ['STATE']); stdout=(state/'stdout').read_text(errors='replace'); stderr=(state/'stderr').read_text(errors='replace')
+          marker='MATCH_OLD_ANEX_JSON:'
+          line=next((x[len(marker):] for x in reversed(stdout.splitlines()) if x.startswith(marker)),None)
+          if line is None:
+              result={'operation_id':os.environ['OPERATION_ID'],'status':'unknown','reason':'result_marker_missing','remote_exit':int(os.environ['RC']),'stdout_sha256':hashlib.sha256(stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(stderr.encode()).hexdigest(),'database_writes':0,'mapping_writes':0,'booking_calls':0,'lead_calls':0,'tourvisor_calls':0,'andromeda_calls':0,'no_replay':True}
+          else:
+              result=json.loads(line)
+          (state/'result.json').write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(result,sort_keys=True))
+          PY
+
+      - name: Preserve final result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: match-anex-old-key-one-shot-1971-v1-final
+          path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,4 @@
+operation_id=hotel-match-current-postdirect-review-1971-20260911-v1
+armed_once=2026-09-11
+mode=read_only_current_db
+no_replay=true

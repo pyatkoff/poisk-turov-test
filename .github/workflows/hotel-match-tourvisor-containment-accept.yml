@@ -1,0 +1,12 @@
+name: MATCH Tourvisor containment accept (disarmed)
+run-name: MATCH Tourvisor containment accept #1971 (NO-REPLAY)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no_replay:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "NO-REPLAY hotel-match-tourvisor-containment-accept-1971-20260911-v1"

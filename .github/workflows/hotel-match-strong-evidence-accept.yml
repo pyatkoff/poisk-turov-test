@@ -1,0 +1,15 @@
+name: MATCH strong evidence accept (completed)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  completed:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo 'Operation hotel-match-strong-evidence-accept-1971-20260911-v1 is completed and permanently NO-REPLAY.'
+          echo 'Live write trigger is disarmed.'

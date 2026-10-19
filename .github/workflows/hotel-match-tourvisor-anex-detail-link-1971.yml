@@ -1,0 +1,52 @@
+name: MATCH Tourvisor ANEX detail link #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths: ['.github/workflows/hotel-match-tourvisor-anex-detail-link-1971.yml']
+permissions: {contents: read}
+env:
+  OPERATION_ID: hotel-match-tourvisor-anex-detail-link-1971-20260912-v1
+  TOUR_ID: '13277916852954'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe existing tour detail
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/$OPERATION_ID"
+          state="$RUNNER_TEMP/$OPERATION_ID"
+          printf '%s\n' '{"operation_id":"hotel-match-tourvisor-anex-detail-link-1971-20260912-v1","state":"reserved","tour_id":"13277916852954","search_starts":0,"database_writes":0,"mapping_writes":0,"lead_calls":0,"booking_calls":0,"no_replay":true}' > "$state/reservation.json"
+          code=$(curl -sS -o "$state/tour.json" -w '%{http_code}' --connect-timeout 15 --max-time 70 "https://anytoour.ru/api-v2.php?action=tour&tourId=$TOUR_ID&currency=RUB")
+          export STATE="$state" HTTP_CODE="$code"
+          python3 - <<'PY'
+          import json,os,re
+          from pathlib import Path
+          s=Path(os.environ['STATE']); raw=(s/'tour.json').read_text(errors='replace')
+          try: d=json.loads(raw)
+          except Exception:
+              d=None
+          urls=[]; keys=set(); scalar=[]
+          def walk(x,path=''):
+              if isinstance(x,dict):
+                  for k,v in x.items():
+                      keys.add(k); walk(v, f'{path}.{k}' if path else k)
+              elif isinstance(x,list):
+                  for i,v in enumerate(x[:100]): walk(v,f'{path}[{i}]')
+              elif isinstance(x,(str,int,float,bool)) or x is None:
+                  if isinstance(x,str) and ('http://' in x or 'https://' in x or 'anex' in x.lower()): urls.append({'path':path,'value':x[:500]})
+                  if len(scalar)<80 and path: scalar.append({'path':path,'value':x if not isinstance(x,str) else x[:200]})
+          if d is not None: walk(d)
+          out={'operation_id':os.environ['OPERATION_ID'],'status':'completed' if os.environ['HTTP_CODE']=='200' else 'http_error','http_status':int(os.environ['HTTP_CODE']),'tour_id':os.environ['TOUR_ID'],'top_type':type(d).__name__ if d is not None else None,'top_keys':sorted(d.keys()) if isinstance(d,dict) else None,'all_keys':sorted(keys),'url_like_fields':urls[:50],'sample_scalars':scalar,'raw_saved':False,'search_starts':0,'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0,'no_replay':True}
+          (s/'result.json').write_text(json.dumps(out,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps({k:out[k] for k in ['operation_id','status','http_status','tour_id','top_type','top_keys','url_like_fields','search_starts','database_writes','mapping_writes']},ensure_ascii=False,sort_keys=True))
+          PY
+          rm -f "$state/tour.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-tourvisor-anex-detail-link-v1
+          path: ${{ runner.temp }}/${{ env.OPERATION_ID }}/
+          if-no-files-found: error
+          retention-days: 90

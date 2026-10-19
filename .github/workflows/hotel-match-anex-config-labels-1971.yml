@@ -1,0 +1,22 @@
+name: MATCH ANEX config labels #1971
+on:
+  push:
+    branches: ['feat/match-current-bulk-review-20260911']
+    paths: ['.github/workflows/hotel-match-anex-config-labels-1971.yml']
+permissions: {contents: read}
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: List ANEX labels without values
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail; k="$RUNNER_TEMP/key"; if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$k"; else printf '%s' "$KEY"|base64 -d>"$k"; fi; chmod 600 "$k"
+          o=(-i "$k" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${o[@]}" "$USER@$HOST" 'cd "$HOME/www/anytoour.ru" && awk '\''BEGIN{IGNORECASE=1} /anex/ {x=$0; sub(/=.*/,"= [REDACTED]",x); sub(/,.*/,", [REDACTED]",x); if(length(x)<180) print x}'\'' config.php'
