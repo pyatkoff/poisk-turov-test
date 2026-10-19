@@ -1,7 +1,20 @@
 <?php
 /** Permanent observed-TV catalogue. No automatic schema installation or HTTP. */
 declare(strict_types=1);
-require_once __DIR__ . '/hotel-details-v1.php';
+// The gateway can already have loaded the canonical helpers through autosave.
+// A flattened deployment may hold a second physical copy beside this catalogue.
+(static function (): void {
+    $helpers = ['v2_hotel_detail_object', 'v2_hotel_detail_text', 'v2_hotel_detail_candidate_scope',
+        'v2_hotel_detail_is_generic_product_name', 'v2_hotel_detail_int', 'v2_hotel_detail_float',
+        'v2_hotel_detail_https_url', 'v2_hotel_detail_is_regional_placeholder_url',
+        'v2_hotel_detail_images', 'v2_hotel_detail_json', 'v2_hotel_detail_normalized'];
+    $loaded = count(array_filter($helpers, 'function_exists'));
+    if ($loaded === 0) {
+        require_once __DIR__ . '/hotel-details-v1.php';
+    } elseif ($loaded !== count($helpers)) {
+        throw new RuntimeException('Incomplete hotel detail helpers');
+    }
+})();
 
 final class LocalTvCatalogV1
 {
