@@ -2440,10 +2440,10 @@ function stopSearch(){clearSearchTimers();searchLifecycle.invalidate?.();termina
 function renderSearchStatus(items,total){
  const r=searchResponse,node=$('#search-status'),more=$('#search-more'),exactMatch=r.exactRefreshTarget&&items.some(item=>item.offers.some(o=>!needsRefresh(o)&&sameSelectedTourConditions(o,r.exactRefreshTarget))),noCurrent=r.phase==='complete'&&r.exactRefresh&&!exactMatch;
  const opened=node.querySelector('details')?.open===true,summaryFocused=node.querySelector('summary')===document.activeElement,focusedAction=node.contains(document.activeElement)?document.activeElement?.dataset.action:null,continueFocused=more.contains(document.activeElement)&&document.activeElement?.dataset.action==='continue-search';
- const providerCounts=data.live?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):null;
+ const providerCounts=data.live?(r.currentInventory?hotels.reduce((counts,hotel)=>{for(const offer of hotel.offers)counts[offer.provider]=(counts[offer.provider]||0)+1;return counts;},{}):{}):null;
  const sourceRows=[['tourvisor','Tourvisor'],['anex','ANEX'],['andromeda','SAMO']].flatMap(([key,name])=>{
   const source=r.sources?.[key],status=r.providers?.[key]||source?.status;if(!status||status==='skipped')return [];
-  const failed=status==='error'||status==='partial'&&(source?.continuationFailed===true||source?.destinationBranchFailed===true),count=providerCounts?(status==='loading'&&!Object.hasOwn(providerCounts,key)?null:providerCounts[key]||0):r.union?.offersByProvider?.[key]??source?.offers;
+  const failed=status==='error'||status==='partial'&&(source?.continuationFailed===true||source?.destinationBranchFailed===true),count=providerCounts?(Object.hasOwn(providerCounts,key)?providerCounts[key]:status==='complete'||status==='ready'?0:null):r.union?.offersByProvider?.[key]??source?.offers;
   const label=status==='loading'?'Получаем предложения':status==='error'?'Предложения не загрузились':status==='partial'?(failed?'Часть предложений не загрузилась':'Получена часть предложений'):status==='complete'||status==='ready'?'Порция получена':status==='cancelled'?'Запрос остановлен':'Статус не подтверждён';
   return [{key,name,status,failed,label,count:Number.isSafeInteger(count)&&count>=0?count:null}];
  });
@@ -2518,7 +2518,7 @@ const searchLifecycle=window.AnyTourPrototypeSearchLifecycleV1.create({
  prepare:prepareSearchRun,
  currentKey:()=>searchKey(state.search),
  onResults:mergeSearchResults,
- afterEvent:()=>{renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();},
+ afterEvent:event=>{if(event?.type==='results')searchResponse.currentInventory=true;renderResults();updateSearchUI();if(modalType==='dates')refreshCalendarPrices();},
  afterStart:()=>renderResults(),
  afterFailure:()=>renderResults(),
  commit:commitSearchDraft,
