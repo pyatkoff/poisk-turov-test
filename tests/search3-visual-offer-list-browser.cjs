@@ -150,12 +150,16 @@ const server=http.createServer((req,res)=>{
     const reset=page.locator('#cards [data-action="reset"]');await reset.waitFor();
     assert.equal(await page.locator('.hotel-card').count(),0,'incompatible offer conditions cannot manufacture a matching hotel');
     const tripBefore=await page.locator('#applied-search').textContent();await shot('recovery-empty');
-    await reset.focus();const scrollBefore=await page.evaluate(()=>scrollY);await page.keyboard.press('Enter');
+    // Reach the action before measuring; focus() alone starts the page's smooth scroll.
+    await reset.scrollIntoViewIfNeeded();await reset.focus();
+    const before=await reset.evaluate(el=>({scrollY,top:el.getBoundingClientRect().top,resultsTop:document.querySelector('#results').getBoundingClientRect().top,pageHeight:document.documentElement.scrollHeight}));
+    const scrollBefore=before.scrollY;await page.keyboard.press('Enter');
     assert.equal(await page.locator('.hotel-card').count(),5);assert.match(await page.locator('#results-summary').textContent(),/15 вариантов/);
     assert.equal(await page.locator('#applied-search').textContent(),tripBefore,'Reset retains the applied dates and party');
-    const focus=await page.locator('#results').evaluate(el=>({active:document.activeElement===el,visible:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,scrollY}));
-    assert.equal(focus.active,true,'empty-result Reset focuses the restored results');assert.equal(focus.visible,true);assert.notEqual(focus.outline,'none');assert(Math.abs(focus.scrollY-scrollBefore)<=1,'focus restoration does not jump the page');
-    await shot('recovery-reset-focus');await page.keyboard.press('Tab');
+    const focus=await page.locator('#results').evaluate(el=>({active:document.activeElement===el,visible:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,scrollY,resultsTop:el.getBoundingClientRect().top,pageHeight:document.documentElement.scrollHeight}));
+    fs.writeFileSync(path.join(evidence,`result-reset-scroll-${width}.json`),JSON.stringify({before,after:focus},null,2));await shot('recovery-reset-focus');
+    assert.equal(focus.active,true,'empty-result Reset focuses the restored results');assert.equal(focus.visible,true);assert.notEqual(focus.outline,'none');assert(Math.abs(focus.scrollY-scrollBefore)<=1,`focus restoration does not jump the page: ${JSON.stringify({before,after:focus})}`);
+    await page.keyboard.press('Tab');
     const next=await page.evaluate(()=>({inside:document.querySelector('#results').contains(document.activeElement),tag:document.activeElement.tagName,id:document.activeElement.id,action:document.activeElement.dataset.action||''}));
     assert.equal(next.inside,true);assert.notEqual(next.tag,'BODY','Tab continues from a defined results destination');
     fs.writeFileSync(path.join(evidence,`result-reset-${width}.json`),JSON.stringify({width,zoom:100,compiled:true,fixture:'mixed5hotels15offers',cross_offer_false_match:false,empty:0,restored_hotels:5,restored_offers:15,trip_preserved:true,focus,scrollBefore,next,supplier_requests:0,real_leads:0,physicalSafari:false},null,2));
