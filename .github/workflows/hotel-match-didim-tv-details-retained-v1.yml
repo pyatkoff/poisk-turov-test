@@ -1,0 +1,133 @@
+name: MATCH Didim retained TV details v1
+on:
+  push:
+    branches: [ops/match-didim-tv-details-retained-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_didim_tv_details_retained_v1.php
+      - .github/workflows/hotel-match-didim-tv-details-retained-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-didim-tv-details-retained-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-didim-tv-details-retained-1971-20260919-v1
+  BASE_SHA: e9d7bf349bfb601dff04b7fc47088c1eff38b369
+  CLAIM: '5743139341'
+jobs:
+  details:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate scope, claim and retained v6 inputs
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          php -l scripts/diagnostics/hotel_match_didim_tv_details_retained_v1.php
+          php scripts/diagnostics/hotel_match_didim_tv_details_retained_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in b and '10586732816' in b and '46653546e4ae294e7e4c9e5c5c685dd21294a5fa4f867d43a261f4acab42d87b' in b
+          assert 'TV search calls0' in b and 'SAMO calls0' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10586732816/zip >input/v6.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,tarfile,io,pathlib
+          p=pathlib.Path('input/v6.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='3e4e2ece779f32ff32162831cae16fae110789103ab45fe19795ecaaba63c3b1'
+          with zipfile.ZipFile(p) as z: tb=z.read('server-operation.tgz')
+          want={'result.json':'46653546e4ae294e7e4c9e5c5c685dd21294a5fa4f867d43a261f4acab42d87b','raw-tv-results-1.json':'316b777b31511c0c4c74109b7da7379a361c0d105945aa12ce94e01641302e13','raw-tv-operators.json':'bc1342448a088efe716961275c9ea983025403a7b7410e8aeb44344e33450e25'}
+          with tarfile.open(fileobj=io.BytesIO(tb),mode='r:gz') as t:
+           for n,h in want.items():
+            b=t.extractfile(t.getmember(n)).read();assert hashlib.sha256(b).hexdigest()==h;pathlib.Path('input',n).write_bytes(b)
+          PY
+      - name: Reserve before Tourvisor detail access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'source_v6_artifact':10586732816,'tourvisor_search_calls':0,'tourvisor_detail_cap':20,'samo_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+           with urllib.request.urlopen(q,timeout=30) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs:
+            x=max(xs,key=lambda z:z['id'])
+            if x['status']=='completed':assert x['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit('security_not_available')
+          PY
+      - name: Stage exclusive detail operation
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;test -n "$KEY";test -n "$HOST";test -n "$USER"
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/result.json input/raw-tv-results-1.json input/raw-tv-operators.json "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "set -eu;mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_didim_tv_details_retained_v1.php scripts/diagnostics/hotel_match_tv_samo_common4_full_drain_v1.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php v2/data/tourvisor-client-v1.php "$remote:$op/payload/"
+      - name: Fetch one detail per retained live hotel-operator pair
+        env:
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known_hosts";remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_V6_RESULT=\"\$HOME/$op/payload/result.json\" MATCH_TV_RESULTS=\"\$HOME/$op/payload/raw-tv-results-1.json\" MATCH_TV_OPERATORS=\"\$HOME/$op/payload/raw-tv-operators.json\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" \"\$HOME/$op/payload/hotel_match_didim_tv_details_retained_v1.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?;printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json result.json receipt.json raw-manifest.json;for f in raw-tv-detail-*.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?;printf '%s\n' "$trc">terminal/tar-exit.txt;set -e;test "$rc" -eq 0;test "$trc" -eq 0
+      - name: Verify retained-detail result
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('terminal');s=p/'server';s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+           seen=set()
+           for m in t.getmembers():
+            assert m.isfile() and m.name not in seen and m.size<64000000;seen.add(m.name);(s/m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open(s/'result.json'));q=json.load(open(s/'receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['state']==q['state']=='completed_read_only'
+          assert q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert r['tourvisor_search_calls']==q['tourvisor_search_calls']==0 and 0<r['tourvisor_detail_calls']==q['tourvisor_detail_calls']<=20
+          assert r['database_writes']==q['database_writes']==0 and r['mapping_writes']==q['mapping_writes']==0
+          assert all(x['safe_to_write_now'] is False for x in r['join'])
+          m=json.load(open(s/'raw-manifest.json'));assert q['raw_manifest_sha256']==hashlib.sha256((s/'raw-manifest.json').read_bytes()).hexdigest()
+          for x in m['files']:
+           b=(s/x['file']).read_bytes();assert len(b)==x['bytes'] and hashlib.sha256(b).hexdigest()==x['sha256']
+          summary={k:r[k] for k in ['pair_count','tourvisor_detail_calls','join_state_counts']};summary['result_sha256']=q['result_sha256'];(p/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0;test "$(cat terminal/tar-exit.txt)" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-didim-tv-details-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove runner credential files
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
