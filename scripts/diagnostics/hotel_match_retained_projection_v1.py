@@ -9,6 +9,7 @@ import sys
 from urllib.parse import parse_qsl, urlsplit
 
 NAMESPACES = ('operator_5', 'operator_315', 'bgoperator', 'operator_115', 'operator_342')
+RETAINED_OPERATOR_HINTS = {13:'ANEX',18:'Библио-Глобус',25:'FUN&SUN',43:'Интурист'}
 
 
 def positive(value):
@@ -94,29 +95,40 @@ def project(path: Path):
                     'region_name', 'subregion_name', 'latitude', 'longitude', 'is_active')}
             elif kind == 'observation':
                 r = row['row']
-                family = operator_family(r.get('operator_name'))
-                if family is None:
-                    continue
+                named_family = operator_family(r.get('operator_name'))
+                hinted_family = RETAINED_OPERATOR_HINTS.get(int(r['operator_id']))
+                family = named_family or hinted_family
                 tv = positive(r['hotel_id'])
                 if tv is None:
                     raise ValueError('observation_target_id')
-                cohort.add(tv)
                 key = str(r['operator_id'])
-                bucket = by_operator.setdefault(key, {'operator_id': int(key), 'operator_name': str(r['operator_name']),
-                    'family': family, 'observations': 0, 'with_native_url': 0, 'without_native_url': 0})
+                bucket = by_operator.setdefault(key, {'operator_id': int(key), 'operator_name': r.get('operator_name'),
+                    'family': family, 'family_binding': 'observation_name' if named_family else 'retained_code_hint_not_account_access_proof' if hinted_family else 'unknown',
+                    'observations': 0, 'with_native_url': 0, 'without_native_url': 0,'with_stored_native_field':0,
+                    'stored_native_types':{}})
                 bucket['observations'] += 1
+                field_value = positive(r.get('native_id_value'))
+                field_type = r.get('native_id_type')
+                if field_value and field_type in ('hotelCode','HOTELLIST','hotels','f4'):
+                    bucket['with_stored_native_field'] += 1
+                    bucket['stored_native_types'][field_type] = bucket['stored_native_types'].get(field_type,0)+1
+                if family is None:
+                    continue
+                cohort.add(tv)
                 native = native_link(r.get('operator_link'))
                 bucket['with_native_url' if native else 'without_native_url'] += 1
+                if not native and field_value and field_type in ('hotelCode','HOTELLIST','hotels','f4'):
+                    native = [{'namespace':'observer_native:'+key+':'+field_type,'external_id':field_value}]
                 if int(r.get('native_id_conflict') or 0):
                     native = []
                     bucket['conflicted_observations'] = bucket.get('conflicted_observations', 0) + 1
                 for item in native:
                     ek = (item['namespace'], item['external_id'], tv)
                     edge = edges.setdefault(ek, {**item, 'tv_hotel_id': int(tv), 'family': family,
-                        'proof_kind': 'retained_operator_url', 'evidence': [],
+                        'proof_kind': 'retained_observer_native_field' if item['namespace'].startswith('observer_native:') else 'retained_operator_url', 'evidence': [],
                         'namespace_bridge': 'not_proven', 'safe_to_write_now': False})
                     edge['evidence'].append({'observation_id': int(r['id']), 'operator_id': int(key),
-                        'operator_link_sha256': hashlib.sha256(r['operator_link'].encode()).hexdigest(),
+                        'operator_link_sha256': hashlib.sha256(r['operator_link'].encode()).hexdigest() if isinstance(r.get('operator_link'),str) else None,
                         'first_seen_at': r.get('first_seen_at'), 'last_seen_at': r.get('last_seen_at')})
             elif kind == 'legacy_source':
                 s = row['source']
@@ -184,7 +196,7 @@ def project(path: Path):
             state = 'hold_accepted_ownership'
         elif edge.get('materialized_accepted_bridge'):
             state = 'hold_stale_accepted_bridge'
-        elif ns.startswith('operator_url:'):
+        elif ns.startswith(('operator_url:','observer_native:')):
             state = 'needs_independent_namespace_bridge'
         else:
             state = 'needs_independent_source_proof_and_current_guards'
@@ -219,6 +231,7 @@ def project(path: Path):
         'candidate_edges': list(edges.values()), 'new_accepted_mappings': 0,
         'supplier_calls': 0, 'database_writes': 0, 'mapping_writes': 0, 'safe_to_write_now': False,
         'limitations': ['retained cohort; not full registry or live30 coverage',
+            'operator ID fallback is a retained-code hint, not current account access proof',
             'direct ANEX decisions are not the SAMO operator_5 registry',
             'URL-native namespaces need independent bridges before SAMO/direct acceptance',
             'CURRENT manual/exclusion/occupancy/geo guards remain mandatory']}
