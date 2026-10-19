@@ -1,0 +1,130 @@
+name: MATCH saved159 CURRENT saved links v3
+on:
+  pull_request:
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_saved159_current_links_v3.php
+      - .github/workflows/hotel-match-saved159-current-links-v3.yml
+permissions: {contents: read, actions: read, issues: write}
+env:
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  OPERATION_ID: hotel-match-saved159-current-links-1971-20260920-v3
+  EXPECTED_BASE: bc7eef52fae98e909332d6854141be03445238f2
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-saved159-current-links-1971-20260920-v3' && github.run_attempt == 1 && github.run_number == 1
+    concurrency: {group: hotel-match-saved159-current-links-1971-20260920-v3, cancel-in-progress: false}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact scope, dependencies and input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p inputs payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          php -l scripts/diagnostics/hotel_match_saved159_current_links_v3.php
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          git diff --name-only "$EXPECTED_BASE..HEAD" > inputs/changed.txt
+          gh api repos/pyatkoff/poisk-turov-test/issues/comments/5749765327 > inputs/claim.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          paths=set(pathlib.Path('inputs/changed.txt').read_text().splitlines())
+          expected={'scripts/diagnostics/hotel_match_saved159_current_links_v3.php','.github/workflows/hotel-match-saved159-current-links-v3.yml'}
+          assert paths==expected,(paths,expected)
+          c=json.load(open('inputs/claim.json')); body=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+          assert os.environ['OPERATION_ID'] in body and 'bc7eef52fae98e909332d6854141be03445238f2' in body
+          assert 'cc135a95d2a6e0f73ce50be2141c9b8a26fddc58' in body and '10603089800' in body
+          for p in expected: assert p in body
+          PY
+          cp scripts/diagnostics/hotel_match_saved159_current_links_v3.php payload/source/scripts/diagnostics/
+          cp scripts/diagnostics/hotel_match_anex_effective_coverage.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+          curl -fL --silent --show-error --retry 2 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' 'https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/10603089800/zip' -o inputs/frontier.zip
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          with zipfile.ZipFile('inputs/frontier.zip') as z: raw=z.read('server/result.json')
+          assert hashlib.sha256(raw).hexdigest()=='2b09cbda05446ca5210901fcd8f5d9498bdbab2f30e0cab4c6b0192f68c6ed66'
+          d=json.loads(raw); rows=[r for r in d['remaining_retained_context_frontier'] if r.get('route')=='saved_tour_detail_ready']
+          assert len(rows)==159 and len({int(r['local_hotel_id']) for r in rows})==159
+          pathlib.Path('payload/canonical-frontier.json').write_bytes(raw)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f: runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Durable reservation before CURRENT DB read
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload'); digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in sorted(p.rglob('*')) if x.is_file()}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'state':'reserved_before_db_read','file_sha256':digests,'supplier_calls':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,'max_rows':159,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode(); f=(p/'reservation.json').open('xb'); f.write(raw); f.flush(); os.fsync(f.fileno()); f.close(); pathlib.Path('result/reservation.json').write_bytes(raw)
+          digests['reservation.json']=hashlib.sha256(raw).hexdigest(); (p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-saved159-v3-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute supplier-free CURRENT preflight
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15); remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/canonical-frontier.json payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_saved159_current_links_v3.php\"" >result/remote.stdout 2>result/remote.stderr; rc=$?
+          ssh "${opts[@]}" "$remote" "tar -C \"\$HOME/$op\" -czf - reservation.json execution-reservation.json result.json receipt.json" >result/server-operation.tgz 2>>result/remote.stderr; trc=$?
+          set -e; printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json; test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+            assert sorted(t.getnames())==['execution-reservation.json','receipt.json','reservation.json','result.json']
+            for m in t.getmembers(): assert m.isfile() and m.size<64000000; (s/m.name).write_bytes(t.extractfile(m).read())
+          assert (p/'reservation.json').read_bytes()==(s/'reservation.json').read_bytes(); raw=(s/'result.json').read_bytes(); r=json.loads(raw); q=json.loads((s/'receipt.json').read_bytes()); h=hashlib.sha256(raw).hexdigest()
+          assert r['state']=='completed_read_only' and q['result_sha256']==h and q['readback_verified'] is True and r['input_saved_tour_count']==159
+          assert r['supplier_calls']==r['provider_calls']==r['database_writes']==r['mapping_writes']==0 and len(r['rows'])==159 and sum(r['classification_counts'].values())==159
+          assert all(x['safe_to_query_now'] is False and x['safe_to_write_now'] is False for x in r['rows'])
+          summary={'read_at_utc':r['read_at_utc'],'classification_counts':r['classification_counts'],'saved_link_hotel_count':r['saved_link_hotel_count'],'resolved_tv_hotel_id_count':r['resolved_tv_hotel_id_count'],'result_sha256':h}; (p/'verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n'); print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-saved159-v3-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
+      - name: Publish terminal readback
+        if: success()
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > result/comment.md
+          import json
+          s=json.load(open('result/verified-summary.json')); print('MATCH saved159 CURRENT saved-link preflight v3 COMPLETE / READ ONLY / NO-REPLAY.\n'); print('Input159; saved-link hotels',s['saved_link_hotel_count'],'; resolved TV IDs',s['resolved_tv_hotel_id_count']); print('Classifications:',json.dumps(s['classification_counts'],ensure_ascii=False,sort_keys=True)); print('Result',s['result_sha256']+'. Provider/API calls0; DB/mapping writes0. Tourvisor calls remain blocked pending verified current-day ledger baseline.')
+          PY
+          gh issue comment 1971 --repo pyatkoff/poisk-turov-test --body-file result/comment.md
