@@ -10,6 +10,8 @@ const crypto = require('node:crypto');
 const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 const builder = require('../scripts/build/search3_design_v2_native.cjs');
+// Owner 2026-10-20: finish the product at these two widths before widening QA.
+const requiredWidths = Object.freeze([430,1280]);
 
 const sourceRoot = path.resolve(__dirname, '..');
 const assetRoot = path.resolve(process.env.SEARCH3_NATIVE_ASSET_ROOT || '');
@@ -216,7 +218,7 @@ const server=http.createServer((req,res)=>{
 });
 
 const report={schema:1,sourceSHA,donorSource:manifest.donorSource,fixture:fixture.label,
-  requiredWidths:[360,390,430,768,1280],requiredTextPercents:[100],expectedPairedScreens:['search','results','hotel','tour','lead'],
+  requiredWidths,requiredTextPercents:[100],expectedPairedScreens:['search','results','hotel','tour','lead'],
   compiledNativeManifest:manifest,scope:'controlled compiled UI, not live supplier/physical/publication acceptance',
   donorAdapter:'exact original renderer and CSS; test-only controlled hotels, loaded-date-price and selected-price/flight-fact adapters',
   textMethod:'ordinary computed text size; layout dimensions and browser zoom stay unchanged',
@@ -465,7 +467,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   if(side==='native'&&measurements.countFit&&(measurements.countFit.outside||measurements.countFit.overlap))report.failures.push({width,percent,screen,error:'Result count/status text escapes its toolbar or overlaps a control',details:measurements.countFit});
   if(side==='native'&&measurements.calendarFit?.clipped)report.failures.push({width,percent,screen,error:'Calendar note or paging actions escape the calendar',details:measurements.calendarFit});
   if(side==='native'&&percent===200&&measurements.summaryFit.some(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94)))report.failures.push({width,percent,screen,error:'Enlarged selected-hotel summary did not promote its factual copy to the full row',details:measurements.summaryFit.filter(item=>item.queryNarrow&&(!item.stacked||item.copyWidthRatio<0.94))});
-  if(side==='native'&&percent===100&&width===390&&measurements.summaryFit.some(item=>item.queryNarrow||item.stacked))report.failures.push({width,percent,screen,error:'Ordinary mobile selected-hotel summary lost the donor side-by-side composition',details:measurements.summaryFit});
+  if(side==='native'&&percent===100&&width===430&&measurements.summaryFit.some(item=>item.queryNarrow||item.stacked))report.failures.push({width,percent,screen,error:'Ordinary mobile selected-hotel summary lost the donor side-by-side composition',details:measurements.summaryFit});
   if(side==='native'&&measurements.offerActionFit.some(item=>item.outside))report.failures.push({width,percent,screen,error:'Hotel offer action or its label escapes the offer row',details:measurements.offerActionFit.filter(item=>item.outside)});
   if(side==='native'&&logicalScreen==='lead'){
     const fit=measurements.consentFit;
@@ -499,7 +501,7 @@ async function referenceFrame(page,width,percent,screen,row) {
   const origin='http://127.0.0.1:'+server.address().port;
   const browser=await chromium.launch({headless:true});
   try {
-    for(const width of [360,390,430,768,1280])for(const percent of [100]){
+    for(const width of requiredWidths)for(const percent of [100]){
       const row={width,textPercent:percent,frames:[],checks:[],errors:[],unexpectedRequests:[],proof:{}};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce'});
       const page=await context.newPage(),reference=await context.newPage();
@@ -593,7 +595,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('[data-destination-summary]').innerText(),'Вся страна');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),0,'Direction choices never initiate a supplier search');
         row.proof.destinationKeyboardFocusRetained=true;
-        if(percent===200&&(width===390||width===430)){
+        if(percent===200&&width===430){
           const overlapProof=await page.evaluate(()=>{
             const caption=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]')).querySelector('.st-origin-field > span');
             const repaired=window.__nativeTextLinesOverlap(caption),original=caption.style.lineHeight;
@@ -798,7 +800,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Back restores the same calendar page');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Calendar history return starts no supplier search');
         row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarControlFocusRetained=true;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;row.proof.hotelFavoriteStateTruthful=true;
-        if(width===390&&percent===100){
+        if(width===430&&percent===100){
           await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
           assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Progressive results retain the visible calendar page');
           await product.locator('[data-action="filters"]').first().click();
@@ -866,8 +868,8 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.equal(await product.locator('[data-filter-apply]').isEnabled(),false,'Invalid budget cannot apply');
           await capture(page,'native',width,percent,'budget-invalid',row);
           await budgetPanel.locator('input[type="number"][data-native-budget="min"]').fill('0');
-          if(width===390&&percent===100){
-            await page.setViewportSize({width:768,height:900});await screen('filters').waitFor({state:'visible'});
+          if(width===430&&percent===100){
+            await page.setViewportSize({width:1280,height:900});await screen('filters').waitFor({state:'visible'});
             await page.setViewportSize({width,height:900});await screen('filters').waitFor({state:'visible'});
             assert.equal(await cap.inputValue(),'150000','Open budget draft survives real breakpoint remount');
             assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля');row.proof.budgetBreakpointDraftRetained=true;
@@ -1091,7 +1093,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await groupStatus.getAttribute('tabindex'),'-1');assert.equal(await groupStatus.getAttribute('role'),'status');
         assert.equal(await groupStatus.evaluate(node=>node===document.activeElement),true,'The disabled expansion action hands keyboard focus to its pending status');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote,'Pending group expansion never quotes a minimum');
-        const oppositeWidth=width<=760?768:390;
+        const oppositeWidth=width<=760?1280:430;
         const resizeGroupHotel=async responsiveWidth=>{
           await page.setViewportSize({width:responsiveWidth,height:900});
           await waitForFixture(page,()=>{
@@ -1189,7 +1191,7 @@ async function referenceFrame(page,width,percent,screen,row) {
             return root&&root.classList.contains('st-mobile')===(innerWidth<=760)&&!root.querySelector('[data-screen="tour"]').hidden&&document.querySelector('[data-native-startup]').hidden;
           });
         };
-        await resizeTour(390);await product.locator('.st-quick-tour [data-action="lead"]').focus();
+        await resizeTour(430);await product.locator('.st-quick-tour [data-action="lead"]').focus();
         await resizeTour(1280);
         assert.equal(await product.locator('.st-quick-tour [data-action="lead"]').isVisible(),false);
         assert.equal(await screen('tour').locator('h1').evaluate(node=>node===document.activeElement&&node.getBoundingClientRect().height>0),true,'A hidden mobile initiating control falls back to the visible desktop tour heading');
@@ -1296,7 +1298,7 @@ async function referenceFrame(page,width,percent,screen,row) {
     report.status=report.failures.length?'failed':'passed';
     fs.writeFileSync(path.join(evidence,'acceptance.json'),JSON.stringify(report,null,2)+'\n');
     assert.equal(report.failures.length,0,'Native rendered acceptance failures: '+JSON.stringify(report.failures));
-    console.log('PASS exact-head native controlled journey and donor/native rendered pairs: 360/390/430/768/1280, ordinary text100%; suppliers real0, leads real0. Visual owner review and public readback remain separate.');
+    console.log(`PASS exact-head native controlled journey and donor/native rendered pairs: ${requiredWidths.join('/')}, ordinary text100%; suppliers real0, leads real0. Visual owner review and public readback remain separate.`);
   } finally {
     await browser.close();await new Promise(resolve=>server.close(resolve));
   }
