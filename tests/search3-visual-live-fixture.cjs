@@ -86,7 +86,7 @@ function fixture({tvFuel=0,anexZeroSurcharge=false,anexEmptyAdditional=false}={}
    if(state.failAnex)throw Error('Test provider unavailable');
    if(['quote_start','quote_calculate'].includes(action)){
     const common={provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref};
-    const choices=(state.repricingEnabled?[1,2,3,4]:[1,2]).slice(0,state.anexPackageChoiceCount).map(n=>({choice_ref:'anex_quote:'+String(n).repeat(64),current:n===1,
+    const choices=Array.from({length:Math.min(state.anexPackageChoiceCount,state.repricingEnabled?4:40)},(_,i)=>i+1).map(n=>({choice_ref:'anex_quote:'+(n<=4?String(n).repeat(64):n.toString(16).padStart(64,'0')),current:n===1,
      legs:[{label:`TEST ANEX PACKAGE ${n} OUT · Москва SVO → Анталья AYT · ${day} 10:00`},{label:`TEST ANEX PACKAGE ${n} BACK · Анталья AYT → Москва SVO · ${back} 14:00`}]}));
     if(action==='quote_start')return {ok:true,data:reprice({...common,status:'quote_choices',final_price_verified:false,selection_state:'disabled',choices},'anex',body)};
     if(state.anexQuoteFailure)return {ok:true,data:{...common,status:'quote_failed',final_price_verified:false,selection_state:'disabled'}};

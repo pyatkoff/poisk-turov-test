@@ -1,5 +1,13 @@
 # Search3 v155 — approved Sites100 interface in the existing NEXT preview
 
+## Approved whole Site203 journey — 19 October 2026
+
+Whole-version owner approval: [#4217/6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744). Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8c826b44bce5713adc04b5d06db19c4f6f3d67cd`, acceptance evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` / [6270378393](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393). Preserve project, history and public audience. This receiver adaptation starts from `c0be08868a9e940860bf7a5b7e5490b58f05aee9`, original NEXT installed source `55fbf6d98db877933ccf63ee2eb67dab2eb82b38`; source claim6270542519 plus controlled test-corpus extension6270605391.
+
+The existing tour body places full hotel/trip/party context in one disclosure while selecting flights. Existing ANEX rows show three pairs followed by a native disclosure for the remainder; full raw leg labels, exact selection and the selected tail pair survive pending calculation. The whole route retains a request with manager-selected flights after a current tour price, optional exact-pair selection, the existing canonical contact step, phone draft and consent reset on changed conditions, and Back/reopen state. The current receiver's canonical data, lead, quote, price, repricing, expiry, history and transport owners remain authoritative. Donor fixtures, rehearsal lead shims and provider contracts are not transferred.
+
+Source preparation is not publication or installed acceptance. Applicable focused/compiled checks and all final-head CI, independent real-frame review, permitted release merge, an exclusive stock NEXT-only publisher, exact readback and installed scenario are required. Donor contact/return quality is bounded `2/2/1.5/2/2=9.5`; it does not score the receiver or the whole product. Physical Safari/iPhone/keyboard/safe area remain not_measured;200% deferred. No supplier requests or real lead delivery are used for this transfer.
+
 ## Approved original Site198 variant discovery — 15 October 2026
 
 Owner approved the complete Site198/package98/v234 in https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6187906754. Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8eff868acadbc81044595c044faf605b2881c1da`, audit `611502562a25c12149a96da9c10d28f1e07da9f5`. This bounded adaptation starts from release `a087f151c8380793bd84bb941f208defcdff754e` and installed source `298c9964f3be63e10c64f176cfdb1898050561cb`.
