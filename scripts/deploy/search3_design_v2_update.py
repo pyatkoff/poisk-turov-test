@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('31bc08624c85caef766d443ea711bf111de18f55', 'b7a628bb3d577d0df78d6d79e39373a49c9e7213'),)
+    ('4418a317d904f81acbbf2becdf9f7f0f4ad4f223', '4cb315067c0d0d508f7f822c9178699c23f056c2'),)
 NATIVE_RELEASE_PARENTS = (
-    ('c43328df83ca89c8f881dfc33cd4601eb1eb025c', '4482715a5c642b4718cf1efc7510a65edb0bab08'),
-    ('1959dcabac17335fd09763389231e67db9afde6b', '0abc1164fdc4f8a95e64202b73a0367fbc55971a'),)
+    ('4418a317d904f81acbbf2becdf9f7f0f4ad4f223', '4cb315067c0d0d508f7f822c9178699c23f056c2'),
+    ('dc69049f126cac2ae516f5ee41e886a7cbfc8c2d', '28ff30d385e1d64f9d8f75946f4b33f1f49c89bf'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
