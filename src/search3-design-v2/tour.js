@@ -92,6 +92,11 @@
         const amount=window.document.createElement('div');amount.dataset.tourPrice='';
         leadPrice.removeAttribute('data-tour-price');leadPrice.replaceChildren(caption,amount);
       }
+      if(leadPrice&&!$('[data-native-contact-facts]')){
+        const facts=window.document.createElement('div');facts.className='st-native-contact-facts';facts.dataset.nativeContactFacts='';
+        facts.innerHTML='<dl><div><dt>Вылет из</dt><dd data-native-contact-origin></dd></div><div><dt>Туроператор</dt><dd data-native-contact-operator></dd></div><div data-native-contact-children><dt>Возраст детей</dt><dd data-native-contact-ages></dd></div></dl><div class="st-native-contact-itinerary"><b>Перелёт</b><div data-native-contact-flight></div></div><p class="st-small st-muted" data-native-contact-note></p>';
+        leadPrice.insertAdjacentElement('afterend',facts);
+      }
       let status = $('[data-native-tour-status]');
       if (!status) {status = window.document.createElement('p');status.className = 'st-small st-muted';status.dataset.nativeTourStatus='';status.setAttribute('aria-live','polite');tourScreen.querySelector('.st-screen-title').insertAdjacentElement('afterend',status);}
       const consent = form.querySelector('input[type="checkbox"]');
@@ -164,6 +169,23 @@
       if (value?.tour && bridge.retryFlights && value.flightsError) content+='<button type="button" class="st-secondary" data-native-retry-flights '+(busy ? 'disabled' : '')+'>Повторить загрузку рейсов</button>';
       return content;
     }
+    function contactFlightHTML(value) {
+      const chosen=value?.quoteResult?.state==='quote_verified'?value.quoteResult.choice:null;
+      if(context.offer.provider==='anex'&&chosen)return chosen.legs.map((leg,index)=>'<div class="st-native-contact-leg"><strong>'+(index?'Обратно':'Туда')+'</strong><span>'+esc(leg.label)+'</span></div>').join('');
+      const index=value?.flightChoiceId===null||value?.flightChoiceId===undefined?null:Number(value.flightChoiceId),pair=index===null?null:value?.variants?.[index];
+      if(pair){
+        const direction=(segments,label)=>(Array.isArray(segments)&&segments.length?segments:[null]).map((flight,connection)=>{
+          const departure=flight?.departure||{},arrival=flight?.arrival||{},placeholder=/000$/.test(String(flight?.number||'').replace(/\s/g,''))&&departure.time==='00:00'&&arrival.time==='00:00';
+          const times=placeholder?'Расписание уточняется':[departure.time||'—',arrival.time||'—'].join(' → ');
+          const dates=[departure.date?dateText(departure.date):'',arrival.date&&arrival.date!==departure.date?dateText(arrival.date):''].filter(Boolean).join(' → ');
+          const flightName=[textFact(flight?.company),placeholder?'Номер рейса уточняется':flight?.number].filter(Boolean).join(' ');
+          const route=[textFact(departure.port)||'Аэропорт уточняется',textFact(arrival.port)||'Аэропорт уточняется'].join(' → ');
+          return '<div class="st-native-contact-leg"><strong>'+esc((connection?'Пересадка · ':'')+label)+'</strong><span>'+esc([dates,times].filter(Boolean).join(' · '))+'</span><span class="st-small st-muted">'+esc([flightName,route].filter(Boolean).join(' · '))+'</span></div>';
+        }).join('');
+        return direction(pair.forward,'Туда')+direction(pair.backward,'Обратно');
+      }
+      return '<p class="st-small">'+(value&&!value.pricePending?'Рейс уточнит менеджер.':'Перелёт требует проверки.')+'</p>';
+    }
     function renderDetails() {
       if (!context?.offer) return;
       const offer=context.offer,hotel=context.hotel,value=current(),tour=value?.tour;
@@ -193,7 +215,13 @@
       text('[data-tour-price]',money(total));text('[data-tour-operator]',offer.operator || 'Туроператор уточняется');
       text('[data-native-price-caption]',priceCaption);
       text('.st-quick-price-note',priceNote);text('[data-native-cost-note]','Без оплаты сейчас. '+priceNote);
-      text('[data-lead-choice]',room+' · '+meal);text('[data-lead-context]',dateText(offer.day)+' · '+nights(offer.nights)+' · '+party(offer));
+      text('[data-lead-choice]',room+' · '+meal);text('[data-lead-context]',stay+' · '+party(offer));
+      text('[data-native-contact-origin]',offer.search?.origin||'Город уточняется');text('[data-native-contact-operator]',offer.operator||'Уточняется');
+      const ages=offer.ages||[];
+      $('[data-native-contact-children]').hidden=!ages.length;
+      text('[data-native-contact-ages]',ages.map(age=>age+' '+(age%10===1&&age%100!==11?'год':age%10>=2&&age%10<=4&&(age%100<12||age%100>14)?'года':'лет')).join(', '));
+      $('[data-native-contact-flight]').innerHTML=contactFlightHTML(value);
+      text('[data-native-contact-note]',priceNote+(checkedPrice&&!value.priceAccepted?' Подтвердите новую цену на экране тура.':''));
       photo('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]');
       const changed=value && !value.pricePending && Number(value.total)!==Number(offer.total);
       $$('[data-price-change]').forEach(node=>{node.hidden=!changed || value.priceAccepted===true;});

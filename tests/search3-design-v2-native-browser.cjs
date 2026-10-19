@@ -130,7 +130,7 @@ function fixtureBridge(fixture) {
     previewContact(fields){
       if(!selection||!selection.priceAccepted||selection.pricePending)throw new Error('Fixture selection has no authority');
       if(!fields.get('consent'))throw new Error('Fixture consent required');
-      calls.preview++;const value={fixture:true,price:selection.total,flightChoiceId:selection.flightChoiceId,tourId:selection.tour.id,name:fields.get('name'),phone:fields.get('phone')};control.payload=value;return value;
+      calls.preview++;const value={fixture:true,price:selection.total,flightChoiceId:selection.flightChoiceId,tourId:selection.tour?.id||selection.key,name:fields.get('name'),phone:fields.get('phone')};control.payload=value;return value;
     }
   };
   window.AnyTourDesignV2Bridge={create:()=>api};
@@ -403,7 +403,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   }
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':logicalScreen==='hotel-return'?'hotel':['tour-alternatives','tour-many-flights'].includes(logicalScreen)?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights'].includes(logicalScreen)?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -882,6 +882,19 @@ async function referenceFrame(page,width,percent,screen,row) {
           await product.locator('[data-action="apply-filters"]').click();
         }else await product.locator('[data-action="reset-filters"]').first().click();
         assert.equal(await product.locator('.st-hotel-card').count(),4);
+        // Full-page screenshots cannot prove where a real screen transition
+        // lands. Open a deep result and return before the paired hotel frame.
+        const deepResult=product.locator('[data-hotel-open="4"]').first();
+        await deepResult.scrollIntoViewIfNeeded();await deepResult.focus();
+        const deepPosition=await deepResult.evaluate(node=>({scroll:scrollY,top:node.getBoundingClientRect().top}));
+        await deepResult.click();await screen('hotel').waitFor({state:'visible'});
+        const hotelLanding=await product.locator('[data-hotel-name]').evaluate(node=>({focused:node===document.activeElement,top:node.getBoundingClientRect().top,bottom:node.getBoundingClientRect().bottom,height:innerHeight}));
+        assert(hotelLanding.focused&&hotelLanding.top>=0&&hotelLanding.bottom<=hotelLanding.height,'Opening a deep result lands at the visible hotel heading');
+        await screen('hotel').locator('[data-action="results"]').click();await screen('results').waitFor({state:'visible'});
+        const returnedPosition=await deepResult.evaluate(node=>({focused:node===document.activeElement,scroll:scrollY,top:node.getBoundingClientRect().top}));
+        assert(returnedPosition.focused&&Math.abs(returnedPosition.top-deepPosition.top)<=2,'The saved-results return restores the initiating card and viewport position');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
+        row.proof.screenNavigation={deepScroll:deepPosition.scroll,hotelHeadingVisible:true,resultFocusRestored:true,resultAnchorDelta:returnedPosition.top-deepPosition.top,extraSearches:0};
         await product.locator('[data-hotel-open="1"]').first().click();
         await screen('hotel').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'hotel',row);await referenceFrame(reference,width,percent,'hotel',row);
@@ -928,6 +941,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         await disclosure.click();
         await product.locator('[data-action="lead"]:visible').first().click();
         await screen('lead').waitFor({state:'visible'});
+        for(const fact of ['09:20','13:20','13:00','17:00','FX 101','FX 102','FIXTURE Moscow','FIXTURE Antalya','FIXTURE TV','Москва'])assert((await product.locator('[data-native-contact-facts]').innerText()).includes(fact),'Final contact review retains '+fact);
+        assert.match(await product.locator('[data-lead-context]').innerText(),/12 окт — 19 окт/);
+        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена проверена с выбранным перелётом/);
+        row.proof.contactExactItineraryRetained=true;
         await capture(page,'native',width,percent,'lead',row);await referenceFrame(reference,width,percent,'lead',row);
         const leadPriceFit=await screen('lead').evaluate(root=>{
           const card=root.querySelector('.st-lead'),price=card?.querySelector(':scope > .st-price'),caption=card?.querySelector('[data-native-price-caption]'),amount=card?.querySelector('[data-tour-price]');
@@ -955,6 +972,8 @@ async function referenceFrame(page,width,percent,screen,row) {
         await capture(page,'native',width,percent,'hotel-return',row);
         await page.goForward();await screen('tour').waitFor({state:'visible'});
         await page.goForward();await screen('lead').waitFor({state:'visible'});assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);
+        assert.equal(await form.locator('[name="name"]').inputValue(),'FICTIONAL QA');assert.equal(await form.locator('[name="phone"]').inputValue(),'+7 999 000 00 00');assert.equal(await form.locator('[name="consent"]').isChecked(),true,'Unchanged selection retains the contact draft and consent on Back/Forward');
+        row.proof.contactDraftAndConsentRetained=true;
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Render/Back/Forward starts no supplier requests');
         row.proof.backForwardRetainedSelection=true;row.proof.backForwardExtraSearches=0;
         await product.locator('.st-footer [data-action="search"]').click();await screen('search').waitFor({state:'visible'});
@@ -1018,6 +1037,16 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await manyDisclosure.getAttribute('open'),null);
         assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,flights:c.calls.flight.length};}),{search:manyBefore.search,quote:manyBefore.quote+1,flights:manyBefore.flights+1},'Contact and Back retain the exact last pair without a quote or flight replay');
         row.proof.manyFlightChoices={total:40,initiallyVisible:3,collapsed:37,selectedCanonicalIndex:39,selectedTotal:151000,managerBeforeList,pairLayout,passiveExtraOperations:0};
+        await product.locator('[data-native-defer-flight]').click();
+        await product.locator('[data-action="accept-price"]:visible').first().click();
+        await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().flightChoiceId),null);assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),110000);
+        assert.match(await product.locator('[data-native-contact-flight]').innerText(),/Рейс уточнит менеджер/);assert.doesNotMatch(await product.locator('[data-native-contact-flight]').innerText(),/FX /);
+        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена предложения проверена\. Рейс и доплаты уточнит менеджер/);
+        assert.equal(await form.locator('[name="consent"]').isChecked(),false,'Changing the flight decision revokes prior consent');
+        await capture(page,'native',width,percent,'lead-manager',row);
+        row.proof.managerContact={total:110000,flightChoiceId:null,oldPairRemoved:true,consentRevoked:true};
+        await page.goBack();await screen('tour').waitFor({state:'visible'});
         await page.goBack();await screen('hotel').waitFor({state:'visible'});
         await page.goBack();await screen('results').waitFor({state:'visible'});
 
@@ -1109,6 +1138,32 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.groupReopenAction=width>760?'desktop-summary':'mobile-concrete-row';if(width>760)row.proof.groupSummaryOpensConcreteDirectly=true;
         row.proof.groupActionFit=groupActionFit;
         row.checks.push('group minimum -> hotel passively -> one explicit expansion -> exact concrete offer -> one quote; pending/resolved responsive remount, focus and Back/reopen retain the same objects with zero repeated operations');
+
+        // Continue a deliberately non-minimum concrete offer through every
+        // handoff. The existing summary must not replace it with the minimum.
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        const dearerOffer=product.locator('[data-hotel-offers] [data-offer="fixture:concrete:901:1"]');
+        await dearerOffer.click();await screen('tour').waitFor({state:'visible'});
+        await waitForFixture(page,()=>window.__nativeFixture.getSelection()?.offer===window.__nativeFixture.group.offers[1]);
+        await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await dearerOffer.evaluate(node=>node===document.activeElement),true,'Return focuses the actual more expensive exact offer');
+        assert.equal(await product.locator('[data-hotel-min-price]').innerText(),'170 400 ₽');
+        assert.equal(await product.locator('[data-action="best-tour"]').innerText(),'К выбранному туру');
+        assert.match(await product.locator('.st-aside-summary .st-included-list').innerText(),/Семейный номер/);
+        await capture(page,'native',width,percent,'hotel-selected-dearer',row);
+        if(width>760)await product.locator('[data-action="best-tour"]:visible').click();else await dearerOffer.click();
+        await screen('tour').waitFor({state:'visible'});
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().offer===window.__nativeFixture.group.offers[1]),true);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote+2,'Continue reuses the selected dearer quote');
+        await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        assert.match(await product.locator('[data-lead-choice]').innerText(),/Семейный номер/);assert.match(await product.locator('[data-native-contact-flight]').innerText(),/FICTIONAL outbound/);
+        await capture(page,'native',width,percent,'lead-selected-dearer',row);
+        const selectedBefore=await page.evaluate(()=>({quote:window.__nativeFixture.calls.quote,search:window.__nativeFixture.calls.search}));
+        await screen('lead').locator('[data-action="tour"]').click();await screen('tour').waitFor({state:'visible'});
+        await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        assert.deepEqual(await page.evaluate(()=>({quote:window.__nativeFixture.calls.quote,search:window.__nativeFixture.calls.search})),selectedBefore);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),170400);
+        row.proof.nonMinimumJourney={exactOfferIndex:1,total:170400,summaryAndContinueRetained:true,contactItineraryRetained:true,backReopenExtraOperations:0};
 
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.
