@@ -8,6 +8,7 @@ import importlib.util
 import io
 import json
 import pathlib
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -63,10 +64,8 @@ def budget_fixture(**changes):
         "operation_id": "tv-20261019-anex13-v1",
         "account_env": "TOURVISOR_JWT",
         "provider_day": "2026-10-19",
-        "observed_at": "2026-10-19T06:59:00Z",
-        "source": "owner_account_readback",
-        "daily_limit": 3000,
-        "used_search_units": 12,
+        "source": "owner_explicit_operation_budget",
+        "approval_reference": 6261576536,
         "reserved_search_units": 1,
         "max_http_attempts": 3,
     }
@@ -178,36 +177,36 @@ class AdmissionTests(unittest.TestCase):
                 event["comment"]["id"] = bad
                 self.reject_event(event=event)
 
-    def test_fresh_budget_proof_is_accepted_for_bound_account(self):
+    def test_owner_operation_allocation_is_accepted_for_bound_account(self):
         value = CHECK.budget_note(budget_fixture(), NOW)
         self.assertEqual(value["account_env"], "TOURVISOR_JWT")
+        self.assertEqual(value["approval_reference"], 6261576536)
         self.assertEqual(value["reserved_search_units"], 1)
         self.assertEqual(value["max_http_attempts"], 3)
+        self.assertNotIn("used_search_units", value)
+        self.assertNotIn("daily_limit", value)
 
-    def test_each_allowed_account_daily_limit_has_room_for_one_search(self):
-        for limit in (300, 3000):
-            with self.subTest(limit=limit):
-                value = CHECK.budget_note(
-                    budget_fixture(daily_limit=limit, used_search_units=limit - 1), NOW
-                )
-                self.assertEqual(value["daily_limit"], limit)
+    def test_owner_approval_reference_must_be_exact_integer(self):
+        for reference in (6261576535, "6261576536", True, None):
+            with self.subTest(reference=reference):
+                with self.assertRaises((RuntimeError, ValueError, TypeError)):
+                    CHECK.budget_note(budget_fixture(approval_reference=reference), NOW)
 
     def test_budget_rejects_unbound_account_source_day_or_operation(self):
         for changes in (
             {"account_env": "TOURVISOR_TOKEN"},
-            {"source": "automation_estimate"},
+            {"source": "owner_account_readback"},
             {"provider_day": "2026-10-18"},
             {"operation_id": "tv-20261019-anex13-v2"},
             {"schema_version": 2},
             {"reserved_search_units": 2},
             {"max_http_attempts": 4},
-            {"daily_limit": 5000},
         ):
             with self.subTest(changes=changes):
                 with self.assertRaises((RuntimeError, ValueError, TypeError)):
                     CHECK.budget_note(budget_fixture(**changes), NOW)
 
-    def test_budget_requires_owner_readback_comment(self):
+    def test_budget_requires_owner_allocation_comment(self):
         for field, bad in (("user", {"id": 1}), ("author_association", "MEMBER")):
             with self.subTest(field=field):
                 note = budget_fixture()
@@ -215,17 +214,18 @@ class AdmissionTests(unittest.TestCase):
                 with self.assertRaises((RuntimeError, ValueError, TypeError)):
                     CHECK.budget_note(note, NOW)
 
-    def test_budget_proof_expires_and_cannot_be_future_dated(self):
-        for stamp in ("2026-10-19T06:54:59Z", "2026-10-19T07:00:01Z", "not-a-time"):
-            with self.subTest(stamp=stamp):
-                with self.assertRaises((RuntimeError, ValueError, TypeError)):
-                    CHECK.budget_note(budget_fixture(observed_at=stamp), NOW)
+    def test_allocation_cannot_be_carried_to_another_provider_day(self):
+        tomorrow = NOW + dt.timedelta(days=1)
+        with self.assertRaises((RuntimeError, ValueError, TypeError)):
+            CHECK.budget_note(budget_fixture(), tomorrow)
+        with self.assertRaises((RuntimeError, ValueError, TypeError)):
+            CHECK.budget_note(budget_fixture(provider_day="2026-10-20"), tomorrow)
 
-    def test_budget_used_units_are_integer_and_below_daily_limit(self):
-        for units in (-1, 3000, 3001, True, 1.5, "12", None):
-            with self.subTest(units=units):
+    def test_allocation_does_not_accept_fabricated_balance_or_timestamp_fields(self):
+        for extra in ({"used_search_units": 0}, {"daily_limit": 3000}, {"observed_at": "2026-10-19T06:59:00Z"}):
+            with self.subTest(extra=extra):
                 with self.assertRaises((RuntimeError, ValueError, TypeError)):
-                    CHECK.budget_note(budget_fixture(used_search_units=units), NOW)
+                    CHECK.budget_note(budget_fixture(**extra), NOW)
 
     def test_budget_cannot_add_an_extra_target_or_silently_drop_fields(self):
         value = json.loads(budget_fixture()["body"].split("\n", 1)[1])
@@ -252,7 +252,7 @@ class AdmissionTests(unittest.TestCase):
     def test_provider_day_uses_moscow_across_utc_midnight(self):
         now = dt.datetime(2026, 10, 18, 21, 1, tzinfo=dt.timezone.utc)
         value = CHECK.budget_note(
-            budget_fixture(provider_day="2026-10-19", observed_at="2026-10-18T21:00:00Z"), now
+            budget_fixture(provider_day="2026-10-19"), now
         )
         self.assertEqual(value["provider_day"], "2026-10-19")
 
@@ -268,12 +268,16 @@ class SourceAdmissionTests(unittest.TestCase):
         self.identity = CHECK.validate_event(event_fixture(), env_fixture())
         self.source = "c" * 40
         self.tree = "d" * 40
+        self.approval_body = "offline explicit owner approval"
         note = budget_fixture()
         note["issue_url"] = "https://api.github.com/repos/pyatkoff/poisk-turov-test/issues/4217"
         self.responses = {
             "/git/ref/heads/main": {"object": {"sha": CONTROL}},
             "/git/ref/heads/release/search3-production-ready-v1": {"object": {"sha": CHECK.RELEASE}},
             "/contents/v2/api-v2.php?ref=" + CHECK.RELEASE: {"sha": CHECK.API_BLOB},
+            "/issues/comments/6261576536": {
+                "user": {"id": 226193297}, "author_association": "OWNER", "body": self.approval_body,
+            },
             "/git/commits/" + CONTROL: {"parents": [{"sha": "b" * 40}, {"sha": self.source}], "tree": {"sha": self.tree}},
             "/git/commits/" + self.source: {"sha": self.source, "tree": {"sha": self.tree}},
             "/commits/" + self.source + "/check-runs?per_page=100": {
@@ -287,13 +291,14 @@ class SourceAdmissionTests(unittest.TestCase):
     def admit(self):
         with (
             mock.patch.object(CHECK, "checked_api", side_effect=lambda path: copy.deepcopy(self.responses[path])),
+            mock.patch.object(CHECK, "APPROVAL_HASH", hashlib.sha256(self.approval_body.encode()).hexdigest()),
             mock.patch("datetime.datetime", FrozenDateTime),
             mock.patch("urllib.request.urlopen", side_effect=AssertionError("real HTTP forbidden")),
         ):
             return CHECK.admission(self.identity)
 
     def test_reviewed_merge_current_heads_green_source_and_owner_budget_admit(self):
-        self.assertEqual(self.admit()["used_search_units"], 12)
+        self.assertEqual(self.admit()["approval_reference"], 6261576536)
 
     def test_source_merge_tree_and_current_release_cannot_drift(self):
         cases = (
@@ -343,6 +348,16 @@ class SourceAdmissionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "budget_issue"):
             self.admit()
 
+    def test_original_owner_approval_cannot_be_edited_or_replaced(self):
+        path = "/issues/comments/6261576536"
+        original = copy.deepcopy(self.responses[path])
+        for field, bad in (("body", "changed approval"), ("user", {"id": 1}), ("author_association", "MEMBER")):
+            with self.subTest(field=field):
+                self.responses[path] = copy.deepcopy(original)
+                self.responses[path][field] = bad
+                with self.assertRaisesRegex(RuntimeError, "approval_changed"):
+                    self.admit()
+
 
 class FakeResponse:
     def __init__(self, value, status=200):
@@ -370,6 +385,7 @@ class RemoteTests(unittest.TestCase):
         self.project.mkdir(parents=True)
         self.api = self.project / "api-v2.php"
         self.api.write_bytes(b"offline installed API fixture")
+        (self.project / "config.php").write_bytes(b"<?php /* offline config fixture: no credentials */")
         self.app = self.project / "_preview/search3-next-candidate/visual-search/app.js"
         self.app.parent.mkdir(parents=True)
         self.app.write_bytes(b"offline installed frontend fixture")
@@ -390,7 +406,7 @@ class RemoteTests(unittest.TestCase):
         }
         self.calls = []
 
-    def execute(self, responses=None, payload=None, raw=None):
+    def execute(self, responses=None, payload=None, raw=None, config=None, config_output=None):
         replies = iter(responses if responses is not None else [
             {"data": {"searchId": "2026101900001"}},
             status_fixture(),
@@ -407,6 +423,14 @@ class RemoteTests(unittest.TestCase):
         opener = mock.Mock()
         opener.open.side_effect = open_request
         data = raw if raw is not None else json.dumps(payload or self.payload).encode()
+        binding = config if config is not None else {
+            "root_configured": True, "anex_configured": True,
+            "same_token": False, "same_subject": False,
+        }
+        config_result = subprocess.CompletedProcess(
+            ["php", "offline-mocked-config-comparison"], 0,
+            stdout=config_output if config_output is not None else json.dumps(binding).encode(), stderr=b"",
+        )
         stdin = mock.Mock()
         stdin.buffer = io.BytesIO(data)
         output = io.StringIO()
@@ -416,11 +440,13 @@ class RemoteTests(unittest.TestCase):
             mock.patch("datetime.datetime", FrozenDateTime),
             mock.patch("urllib.request.build_opener", return_value=opener),
             mock.patch("urllib.request.urlopen", side_effect=AssertionError("real HTTP forbidden")),
+            mock.patch("subprocess.run", return_value=config_result) as config_run,
             mock.patch("time.sleep") as sleep,
             contextlib.redirect_stdout(output),
         ):
             exec(compile(CHECK.REMOTE, "<remote-live-check>", "exec"), {"POLICY": self.policy})
         result = json.loads(output.getvalue())
+        self.config_calls = config_run.call_args_list
         return result, sleep
 
     def action_params(self):
@@ -449,6 +475,9 @@ class RemoteTests(unittest.TestCase):
         self.assertEqual(result["application_file_writes"], 0)
         self.assertTrue(result["normal_autosave_enabled"])
         self.assertEqual(result["database_write_count"], "not_measured")
+        self.assertEqual(result["global_daily_usage"], "not_measured")
+        self.assertEqual(result["budget_basis"], "owner_operation_allocation")
+        self.assertEqual(len(self.config_calls), 1)
 
     def test_private_reservation_and_receipt_are_retained_without_response_bodies(self):
         result, _ = self.execute()
@@ -560,15 +589,59 @@ class RemoteTests(unittest.TestCase):
         self.assertEqual(result["reason"], "http_or_body_limit")
         self.assertEqual(len(self.calls), 1)
 
-    def test_budget_is_rechecked_before_any_remote_reservation_or_http(self):
+    def test_budget_day_is_rechecked_before_any_remote_reservation_or_http(self):
         payload = copy.deepcopy(self.payload)
-        payload["budget"]["observed_at"] = "2026-10-19T06:54:59Z"
+        payload["budget"]["provider_day"] = "2026-10-18"
         result, sleep = self.execute(payload=payload)
         self.assertEqual(result["status"], "blocked_no_replay")
-        self.assertEqual(result["reason"], "budget_stale")
+        self.assertEqual(result["reason"], "budget_day")
         self.assertEqual(self.calls, [])
         self.assertFalse((self.private / CHECK.OPERATION).exists())
         sleep.assert_not_called()
+
+    def test_shared_token_or_subject_blocks_search_before_reservation(self):
+        for field in ("same_token", "same_subject"):
+            with self.subTest(field=field):
+                config = {"root_configured": True, "anex_configured": True,
+                          "same_token": False, "same_subject": False}
+                config[field] = True
+                result, sleep = self.execute(config=config)
+                self.assertEqual(result["status"], "blocked_no_replay")
+                self.assertEqual(result["reason"], "shared_account_budget_unproven")
+                self.assertEqual(self.calls, [])
+                self.assertFalse((self.private / CHECK.OPERATION).exists())
+                sleep.assert_not_called()
+
+    def test_unconfigured_account_blocks_search_before_reservation(self):
+        for field in ("root_configured", "anex_configured"):
+            with self.subTest(field=field):
+                config = {"root_configured": True, "anex_configured": True,
+                          "same_token": False, "same_subject": False}
+                config[field] = False
+                result, sleep = self.execute(config=config)
+                self.assertEqual(result["status"], "blocked_no_replay")
+                self.assertEqual(result["reason"], "root_account_binding_unproven")
+                self.assertEqual(self.calls, [])
+                self.assertFalse((self.private / CHECK.OPERATION).exists())
+                sleep.assert_not_called()
+
+    def test_config_output_with_extra_secret_field_is_rejected_and_not_retained(self):
+        config = {"root_configured": True, "anex_configured": True,
+                  "same_token": False, "same_subject": False,
+                  "token": "OFFLINE_SECRET_MUST_NOT_BE_RETAINED"}
+        result, _ = self.execute(config=config)
+        self.assertEqual(result["status"], "blocked_no_replay")
+        self.assertEqual(result["reason"], "root_account_binding_unproven")
+        self.assertEqual(self.calls, [])
+        self.assertFalse((self.private / CHECK.OPERATION).exists())
+        self.assertNotIn("OFFLINE_SECRET_MUST_NOT_BE_RETAINED", json.dumps(result))
+
+    def test_raw_credential_output_is_not_a_configuration_proof(self):
+        result, _ = self.execute(config_output=b"OFFLINE_SECRET_MUST_NOT_BE_RETAINED")
+        self.assertEqual(result["status"], "blocked_no_replay")
+        self.assertEqual(self.calls, [])
+        self.assertFalse((self.private / CHECK.OPERATION).exists())
+        self.assertNotIn("OFFLINE_SECRET_MUST_NOT_BE_RETAINED", json.dumps(result))
 
     def test_api_or_frontend_drift_blocks_all_supplier_calls(self):
         for path, reason in ((self.api, "api_drift"), (self.app, "frontend_drift")):

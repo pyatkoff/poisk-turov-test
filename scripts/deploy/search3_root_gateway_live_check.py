@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""One owner-admitted root-TV search; an account readback is required first."""
+"""One owner-budgeted root-TV search through the existing configured account."""
 import datetime as dt
+import hashlib
 import json
 import os
 import pathlib
@@ -16,6 +17,7 @@ REPO = 'pyatkoff/poisk-turov-test'
 WORKFLOW = '.github/workflows/search3-root-gateway-install.yml'
 PREFIX = '/check-search3-root-tv'
 OPERATION = 'tv-20261019-anex13-v1'
+APPROVAL_HASH = 'b15e80fd871c243569840ba88f45a4a25194bd3a0b5052113fcb1fba54aefe35'
 RELEASE = '34bb747dcd1ed625590a60de17112cfd8ab0b28b'
 FRONTEND = '05c292249d6e1d027ada3a69c1bc78af9c3ae8a9'
 API_BLOB = '6fb963e68a99945118d04f8e46845ecd6bcb6bc9'
@@ -46,23 +48,19 @@ def validate_event(event, env):
 
 
 def budget_note(comment, now):
-    """Validate an actual owner account readback, never a synthetic local balance."""
+    """The owner's single-operation allocation is not a global balance assertion."""
     need(comment.get('user', {}).get('id') == 226193297 and comment.get('author_association') == 'OWNER', 'budget_owner')
     prefix = 'SEARCH3_ROOT_TV_BUDGET_V1\n'
     need(isinstance(comment.get('body'), str) and comment['body'].startswith(prefix), 'root_account_budget_unproven')
     value = json.loads(comment['body'][len(prefix):])
-    fields = {'schema_version', 'operation_id', 'account_env', 'provider_day', 'observed_at',
-              'source', 'daily_limit', 'used_search_units', 'reserved_search_units', 'max_http_attempts'}
+    fields = {'schema_version', 'operation_id', 'account_env', 'provider_day',
+              'source', 'approval_reference', 'reserved_search_units', 'max_http_attempts'}
     need(isinstance(value, dict) and set(value) == fields, 'budget_fields')
     need(type(value['schema_version']) is int and value['schema_version'] == 1, 'budget_schema')
     need(value['operation_id'] == OPERATION and value['account_env'] == 'TOURVISOR_JWT', 'budget_account')
-    need(value['source'] == 'owner_account_readback', 'budget_source')
-    need(value['provider_day'] == now.astimezone(ZoneInfo('Europe/Moscow')).date().isoformat(), 'budget_day')
-    need(isinstance(value['observed_at'], str) and value['observed_at'].endswith('Z'), 'budget_time')
-    observed = dt.datetime.fromisoformat(value['observed_at'].replace('Z', '+00:00'))
-    need(0 <= (now - observed).total_seconds() <= 300, 'budget_stale')
-    need(type(value['daily_limit']) is int and value['daily_limit'] in (300, 3000), 'budget_limit')
-    need(type(value['used_search_units']) is int and 0 <= value['used_search_units'] < value['daily_limit'], 'budget_exhausted')
+    need(value['source'] == 'owner_explicit_operation_budget', 'budget_source')
+    need(type(value['approval_reference']) is int and value['approval_reference'] == 6261576536, 'budget_approval')
+    need(value['provider_day'] == now.astimezone(ZoneInfo('Europe/Moscow')).date().isoformat() == '2026-10-19', 'budget_day')
     need(type(value['reserved_search_units']) is int and value['reserved_search_units'] == 1, 'budget_reservation')
     need(type(value['max_http_attempts']) is int and value['max_http_attempts'] == 3, 'budget_http')
     return value
@@ -72,6 +70,9 @@ def admission(identity):
     need(checked_api('/git/ref/heads/main')['object']['sha'] == identity['control_source_sha'], 'main_moved')
     need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha'] == RELEASE, 'release_moved')
     need(checked_api('/contents/v2/api-v2.php?ref=' + RELEASE)['sha'] == API_BLOB, 'api_source_changed')
+    approval = checked_api('/issues/comments/6261576536')
+    need(approval.get('user', {}).get('id') == 226193297 and approval.get('author_association') == 'OWNER'
+         and hashlib.sha256(approval.get('body', '').encode()).hexdigest() == APPROVAL_HASH, 'approval_changed')
     control = checked_api('/git/commits/' + identity['control_source_sha'])
     need(len(control['parents']) == 2, 'reviewed_merge_required')
     source = checked_api('/git/commits/' + control['parents'][1]['sha'])
@@ -100,7 +101,7 @@ def admission(identity):
 
 
 REMOTE = r'''
-import datetime as dt,hashlib,json,os,pathlib,re,stat,sys,time,urllib.error,urllib.parse,urllib.request
+import datetime as dt,hashlib,json,os,pathlib,re,stat,subprocess,sys,time,urllib.error,urllib.parse,urllib.request
 from zoneinfo import ZoneInfo
 def need(ok,why):
  if not ok:raise RuntimeError(why)
@@ -137,7 +138,8 @@ def request(action,params):
  return value
 result={'operation_id':POLICY['operation'],'status':'blocked_no_replay','live_operation_started':False,
         'requests':[],'tariff_searches_reserved':0,'real_leads':0,'application_file_writes':0,
-        'normal_autosave_enabled':True,'database_write_count':'not_measured'}
+        'normal_autosave_enabled':True,'database_write_count':'not_measured',
+        'global_daily_usage':'not_measured','budget_basis':'owner_operation_allocation'}
 op=None;reserved=False
 try:
  raw=sys.stdin.buffer.read(16385);need(len(raw)<=16384,'payload_limit');payload=json.loads(raw)
@@ -146,11 +148,10 @@ try:
  need(all(type(payload[k]) is int and payload[k]>0 for k in ('command_comment_id','budget_comment_id')),'payload_identity')
  for k in ('control_source_sha','run_id','command_comment_id','budget_comment_id'):result[k]=payload[k]
  b=payload['budget'];now=dt.datetime.now(dt.timezone.utc)
- need(isinstance(b,dict) and set(b)=={'schema_version','operation_id','account_env','provider_day','observed_at','source','daily_limit','used_search_units','reserved_search_units','max_http_attempts'} and type(b['schema_version']) is int and b['schema_version']==1,'budget_fields')
- need(b['account_env']=='TOURVISOR_JWT' and b['operation_id']==POLICY['operation'] and b['source']=='owner_account_readback','root_account_budget_unproven')
- need(b['provider_day']==now.astimezone(ZoneInfo('Europe/Moscow')).date().isoformat(),'budget_day')
- need(0<=(now-dt.datetime.fromisoformat(b['observed_at'].replace('Z','+00:00'))).total_seconds()<=300,'budget_stale')
- need(type(b['daily_limit']) is int and b['daily_limit'] in (300,3000) and type(b['used_search_units']) is int and 0<=b['used_search_units']<b['daily_limit'],'budget_exhausted')
+ need(isinstance(b,dict) and set(b)=={'schema_version','operation_id','account_env','provider_day','source','approval_reference','reserved_search_units','max_http_attempts'} and type(b['schema_version']) is int and b['schema_version']==1,'budget_fields')
+ need(b['account_env']=='TOURVISOR_JWT' and b['operation_id']==POLICY['operation'] and b['source']=='owner_explicit_operation_budget','root_account_budget_unproven')
+ need(type(b['approval_reference']) is int and b['approval_reference']==6261576536,'budget_approval')
+ need(b['provider_day']==now.astimezone(ZoneInfo('Europe/Moscow')).date().isoformat()=='2026-10-19','budget_day')
  need(type(b['reserved_search_units']) is int and b['reserved_search_units']==1 and type(b['max_http_attempts']) is int and b['max_http_attempts']==3,'budget_reservation')
  home=pathlib.Path.home();project=home/'www/anytoour.ru'
  need(home.resolve()==home and project.resolve()==project,'unsafe_parent')
@@ -159,6 +160,17 @@ try:
  app=project/'_preview/search3-next-candidate/visual-search/app.js'
  app_before=read_file(app);need(app_before==POLICY['app_hash'],'frontend_drift')
  result['before_files']={'api-v2.php':api_before,'frontend_app':app_before}
+ # Reuse the established two configured credentials internally. No token leaves PHP.
+ # Equal known subjects also stop: different JWT strings can be rotations of one account.
+ config=project/'config.php';need(config.resolve()==config and stat.S_ISREG(config.lstat().st_mode),'unsafe_parent')
+ code='require $argv[1];function keyvalue($k){$v=trim((string)getenv($k));return $v!==""?$v:(defined($k)?trim((string)constant($k)):"");}function subject($v){$p=explode(".",$v);if(count($p)!==3)return null;$b=strtr($p[1],"-_","+/");$a=json_decode(base64_decode($b),true);return is_array($a)&&isset($a["sub"])?json_encode([$a["iss"]??"",$a["sub"]]):null;}$a=keyvalue("TOURVISOR_JWT");$b=keyvalue("TOURVISOR_ANEX_JWT");$sa=subject($a);$sb=subject($b);fwrite(STDOUT,json_encode(["root_configured"=>$a!=="","anex_configured"=>$b!=="","same_token"=>$a!==""&&hash_equals($a,$b),"same_subject"=>$sa!==null&&$sb!==null&&hash_equals($sa,$sb)]));'
+ cp=subprocess.run(['php','-r',code,'--',str(config)],capture_output=True,timeout=15,check=False)
+ need(cp.returncode==0 and len(cp.stdout)<=256,'root_account_binding_unproven')
+ account=json.loads(cp.stdout)
+ need(isinstance(account,dict) and set(account)=={'root_configured','anex_configured','same_token','same_subject'} and all(type(v) is bool for v in account.values()),'root_account_binding_unproven')
+ need(account['root_configured'] and account['anex_configured'],'root_account_binding_unproven')
+ need(not account['same_token'] and not account['same_subject'],'shared_account_budget_unproven')
+ result['configured_account_guard']='distinct_configured_tokens_no_known_shared_subject'
  base=home/'.anytoour-search3-root-gateway'
  info=base.lstat();need(stat.S_ISDIR(info.st_mode) and stat.S_IMODE(info.st_mode)==0o700 and info.st_uid==os.getuid(),'unsafe_private_parent')
  op=base/POLICY['operation'];op.mkdir(mode=0o700);reserved=True
@@ -196,7 +208,7 @@ try:
  need(result['after_files']==result['before_files'],'installed_drift')
  result['status']='fresh_populated_results_verified' if count else 'fresh_empty_results_verified'
 except Exception as e:
- reasons={'unsafe_file','file_changed','request_cap','http_failed','http_or_body_limit','payload_limit','payload_fields','payload_identity','budget_fields','root_account_budget_unproven','budget_day','budget_stale','budget_exhausted','budget_reservation','unsafe_parent','api_drift','frontend_drift','unsafe_private_parent','start_shape','search_identity','historical_search_identity','status_shape','results_shape','result_scope','hotel_limit','installed_drift'}
+ reasons={'unsafe_file','file_changed','request_cap','http_failed','http_or_body_limit','payload_limit','payload_fields','payload_identity','budget_fields','root_account_budget_unproven','budget_approval','budget_day','budget_reservation','root_account_binding_unproven','shared_account_budget_unproven','unsafe_parent','api_drift','frontend_drift','unsafe_private_parent','start_shape','search_identity','historical_search_identity','status_shape','results_shape','result_scope','hotel_limit','installed_drift'}
  result['reason']=str(e) if type(e) is RuntimeError and str(e) in reasons else 'operation_failed'
  result['error_type']=type(e).__name__
 finally:
@@ -230,6 +242,7 @@ def main():
         result = json.loads(raw)
         allowed = {'operation_id', 'status', 'live_operation_started', 'requests', 'tariff_searches_reserved',
                    'real_leads', 'application_file_writes', 'normal_autosave_enabled', 'database_write_count',
+                   'global_daily_usage', 'budget_basis', 'configured_account_guard',
                    *identity, 'budget', 'search_id', 'generation_id', 'hotel_groups', 'tour_count', 'progress', 'samples', 'before_files', 'after_files', 'reason', 'error_type'}
         need(isinstance(result, dict) and set(result) <= allowed and result.get('operation_id') == OPERATION, 'receipt_shape')
         need(all(result.get(k) == v for k, v in identity.items()), 'receipt_identity')
