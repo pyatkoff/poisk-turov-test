@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '246670818bba433adc9b002e06b2d560f46eb6ac'
-PREDECESSOR_RUN = 39278795885
-PREDECESSOR_DIGEST = 'acb96b2f1bb98c17bab68bbff960e5e2db846237985f90b646d73c687377f576'
+PREDECESSOR_SOURCE = '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d'
+PREDECESSOR_RUN = 39291592436
+PREDECESSOR_DIGEST = '91e41ccf786a6ffe34fb765035f088b7abb511a6c929b1d1523e9d6a8e3b3994'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -59,7 +59,8 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     'f99306ffe3725f2badc70096d801608fc5393009',
     '1959dcabac17335fd09763389231e67db9afde6b',
     'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
-    '246670818bba433adc9b002e06b2d560f46eb6ac')
+    '246670818bba433adc9b002e06b2d560f46eb6ac',
+    '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
@@ -67,7 +68,7 @@ COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
     38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
     38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-    39278795885)
+    39278795885, 39291592436)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -83,16 +84,16 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 # Source/release trees and ordered parents are independently verified before
 # final controller review; commands/artifacts cannot select alternative pins.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
-    'source_tree': '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7',
-    'release_sha': 'ed6ba82601c6f51c4eb8b8edf11bfee08bbbaafd',
-    'release_tree': '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7',
-    'build_run': 39289736709,
-    'artifact_id': 12204203234,
-    'source_ZIP_sha256': 'dba7ff2b0f2d85f0c8400982a6d5a70067233690bbdfe55aec29b863de3e1a8b',
+    'source_sha': '185739d46757bd34a05709e3656eab76d1003fa5',
+    'source_tree': '34a4443806a2c4d3b29ea143e7577329ace2a751',
+    'release_sha': '6a62bf2917979c9b0e3a78645e943a247563b40f',
+    'release_tree': '34a4443806a2c4d3b29ea143e7577329ace2a751',
+    'build_run': 39332372651,
+    'artifact_id': 12225430970,
+    'source_ZIP_sha256': 'f8672d3dff1770777405b6e17b615dfffe1145750c85a03e878a73e8777806c5',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '28512d8d2f0ba77d5027945b4d5548d2cb57630bd91314aca855a70f9f1a2fb8',
+    'source_manifest_sha256': '6d4f0efbbe7e78f648cb0a3336a3d6c07516f08277ac8b85934e7ada44ee80a6',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
