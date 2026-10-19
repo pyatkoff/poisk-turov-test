@@ -82,11 +82,14 @@ final class MatchRetainedIntakeV1
 if(!defined('MATCH_RETAINED_LIBRARY_ONLY')){
     try{
         $home=(string)getenv('HOME');$root=$home.'/www/anytoour.ru';$dir=(string)getenv('MATCH_RETAINED_DIR');
+        $stage=(string)getenv('MATCH_RETAINED_SOURCE_ROOT');
         if(PHP_SAPI!=='cli'||count($argv)!==1||realpath($root)!==$root||realpath($dir)!==$dir
             ||!str_starts_with($dir,$home.'/.anytoour-int-executor/int-andromeda-match-retained-'))throw new RuntimeException('capture_path');
-        $dbPath=$root.'/data/db-v1.php';
-        if(is_link($dbPath)||hash_file('sha256',$dbPath)!=='ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4')throw new RuntimeException('db_helper_not_reviewed');
-        $_SERVER['DOCUMENT_ROOT']=$root;require $dbPath;
+        $dbPath=$stage.'/v2/data/db-v1.php';
+        if(realpath($stage)!==$dir.'/source'||is_link($dbPath)
+            ||hash_file('sha256',$dbPath)!=='c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'
+            ||is_link($root.'/config.php'))throw new RuntimeException('db_helper_not_reviewed');
+        $_SERVER['DOCUMENT_ROOT']=$root;require $root.'/config.php';require $dbPath;
         $path=$dir.'/retained-raw.ndjson';$handle=fopen($path,'xb');if(!$handle)throw new RuntimeException('capture_exists_no_replay');
         chmod($path,0600);$bytes=0;$ctx=hash_init('sha256');
         $emit=static function(array $row)use($handle,&$bytes,$ctx):void{
