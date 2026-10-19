@@ -271,7 +271,11 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   await page.evaluate(()=>window.scrollTo(0,0));
   await calendarPosition('page-top');
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
-  await page.screenshot({path:path.join(evidence,file),fullPage,animations:'disabled'});
+  // Capture the visible calendar without screenshot style mutations or an
+  // expanded viewport: Chromium otherwise changes its overflow scroll offset.
+  const calendarFrame=side==='native'&&['calendar-later','calendar-single-range'].includes(screen);
+  await page.screenshot({path:path.join(evidence,file),fullPage:calendarFrame?false:fullPage,
+    animations:calendarFrame?'allow':'disabled',caret:calendarFrame?'initial':'hide'});
   await calendarPosition('captured');
   const measurements=await page.evaluate(percent=>{
     const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'))||document.querySelector('[data-native-startup]:not([hidden])');
@@ -379,6 +383,10 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       calendarFit={left:bounds.left,right:bounds.right,footClientWidth:foot?.clientWidth||0,footScrollWidth:foot?.scrollWidth||0,
         pager:pagerBounds?{left:pagerBounds.left,right:pagerBounds.right,top:pagerBounds.top,bottom:pagerBounds.bottom}:null,buttons,
         clipped:Boolean(pagerBounds&&(pagerBounds.left<bounds.left-1||pagerBounds.right>bounds.right+1)||buttons.some(rect=>rect.left<bounds.left-1||rect.right>bounds.right+1)||foot&&foot.scrollWidth>foot.clientWidth+1)};
+      const strip=calendar.querySelector('[data-native-calendar-strip]'),last=strip?.querySelector('[data-native-day="2026-10-25"]');
+      if(last){const rail=strip.getBoundingClientRect(),date=last.getBoundingClientRect();
+        calendarFit.strip={left:rail.left,right:rail.right,scrollLeft:strip.scrollLeft,
+          clientWidth:strip.clientWidth,scrollWidth:strip.scrollWidth,dateLeft:date.left,dateRight:date.right};}
     }
     const decision=root.querySelector('[data-destination-confirm]');let destinationFit=null;
     if(decision&&visible(decision)){
