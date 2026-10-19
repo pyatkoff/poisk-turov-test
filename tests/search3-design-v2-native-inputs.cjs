@@ -60,12 +60,16 @@ async function returnedPriceStateChecks(){
    resolveQuote();await new Promise(resolve=>nativeTimeout(resolve,0));
    assert.equal(state.screen,'hotel');assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);
    assert.equal(el('[data-hotel-min-price]').textContent,'179 000 ₽','A quote settling after Back refreshes the selected total');
-   assert.match(el('[data-hotel-price-caption]').textContent,/Проверенная цена/);assert.match(el('.st-offer--selected .st-offer-price-caption').textContent,/С выбранным перелётом/);
-   assert.match(el('.st-offer--selected .st-offer-delta').textContent,/112\s000\s₽/,'The selected row retains its original search baseline');
+   assert.match(el('[data-hotel-price-caption]').textContent,/Проверенная цена/);assert.equal(el('.st-offer--selected .st-offer-price').textContent,'112 000 ₽','Every comparison row retains its search total after quote settlement');
+   assert.equal(el('.st-offer--selected .st-offer-price-caption').textContent,'В поиске');assert.equal(el('.st-offer--selected .st-offer-delta').textContent,'Минимальная цена');
+   assert.match(el('[data-native-hotel-search-price]').textContent,/112\s000\s₽/,'The separate checked package retains its search baseline');
+   assert.equal(el('[data-native-selected-panel]').hidden,false,'The chosen package is available on mobile and desktop');
+   assert.equal(el('[data-native-hotel-conditions]').innerHTML,el('[data-native-contact-note]').innerHTML,'Hotel and contact derive conditions from the same receipt');
    assert.match(el('[data-lead-choice]').textContent,/Всё включено/,'An empty checked meal object retains the factual offer meal');
    clock+=11000;assert(expiry);expiry();
    assert.match(el('[data-hotel-price-caption]').textContent,/Последняя цена.*нужна проверка/,'Expiry updates the visible hotel, not only hidden tour/contact screens');
-   assert.match(el('.st-offer--selected .st-offer-price-caption').textContent,/нужна проверка/);assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);assert.equal(quotes,1);
+   assert.equal(el('.st-offer--selected .st-offer-price').textContent,'112 000 ₽');assert.equal(el('[data-native-hotel-conditions]').dataset.nativeConditionsState,'expired');
+   assert.equal(el('[data-native-hotel-conditions]').innerHTML,el('[data-native-contact-note]').innerHTML);assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);assert.equal(quotes,1);
   }finally{owner.destroy();win.close();}
  }
 }
@@ -332,7 +336,7 @@ async function familyCopyChecks(){
    assert.equal(el('.st-hotel-card .st-price-caption').textContent,'за '+price,'result price caption uses accusative');
    tap('[data-hotel-open="'+hotel.id+'"]');
    assert.equal(el('[data-hotel-price-caption]').textContent,'Цена из поиска за '+price+' · 7 ночей','hotel summary price caption');
-   assert.equal(el('[data-offer-context]').textContent,'Все цены за '+price,'hotel offer price context');
+   assert.equal(el('[data-offer-context]').textContent,'Цены из поиска за '+price,'hotel offer price context');
    tap('[data-action="search"]');
   }
   assert.equal(checked,24,'all adult 1–6 × child 0–3 compositions reach form/results/hotel owners');

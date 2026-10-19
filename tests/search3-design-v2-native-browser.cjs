@@ -1052,7 +1052,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().flightChoiceId),null);assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),110000);
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         assert.match(await product.locator('[data-native-contact-flight]').innerText(),/Рейс уточнит менеджер/);assert.doesNotMatch(await product.locator('[data-native-contact-flight]').innerText(),/FX /);
-        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена предложения проверена\. Рейс и доплаты уточнит менеджер/);
+        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена предложения проверена\. Рейсы уточнит менеджер/);
         assert.equal(await form.locator('[name="consent"]').isChecked(),false,'Changing the flight decision revokes prior consent');
         await capture(page,'native',width,percent,'lead-manager',row);
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
@@ -1216,12 +1216,19 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
         const selectedAI=product.locator('.st-offer--selected');
-        assert.equal(await selectedAI.locator('.st-offer-price').innerText(),'163 056 ₽');
-        assert.equal(await selectedAI.locator('.st-offer-price-caption').innerText(),'С выбранным перелётом');
-        assert.match(await selectedAI.locator('.st-offer-delta').innerText(),/138\s989\s₽/);
+        assert.equal(await selectedAI.locator('.st-offer-price').innerText(),'138 989 ₽');
+        assert.equal(await selectedAI.locator('.st-offer-price-caption').innerText(),'В поиске');
+        assert.equal(await selectedAI.locator('.st-offer-delta').innerText(),'+1 906 ₽');
+        assert.equal(await product.locator('[data-hotel-offers] .st-offer-price-caption').evaluateAll(nodes=>nodes.every(node=>node.textContent==='В поиске')),true,'All room comparisons use the same search-price basis');
+        assert.equal(await product.locator('[data-native-selected-panel]').isVisible(),true,'The checked selected package is available at every width');
+        assert.equal(await product.locator('[data-hotel-min-price]').innerText(),'163 056 ₽');
+        assert.match(await product.locator('[data-native-hotel-search-price]').innerText(),/138\s989\s₽/);
+        const aiConditions=await product.locator('[data-native-hotel-conditions]').innerHTML();
         await capture(page,'native',width,percent,'ai-hotel-checked',row);
-        if(width>760)await product.locator('[data-action="best-tour"]:visible').click();else await selectedAI.locator('[data-offer]').click();
-        await screen('tour').waitFor({state:'visible'});await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        await product.locator('[data-action="best-tour"]:visible').click();await screen('tour').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-native-package-note]').innerHTML(),aiConditions);
+        await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-native-contact-note]').innerHTML(),aiConditions,'All three screens retain the same receipt conditions');
         assert.match(await product.locator('[data-lead-choice]').innerText(),/standard room sea view · Всё включено/);
         assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
         const contactDetails=product.locator('[data-native-contact-facts]');
@@ -1244,7 +1251,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await page.goForward();await screen('tour').waitFor({state:'visible'});await page.goForward();await screen('lead').waitFor({state:'visible'});
         assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight]};}),aiCalls);
         assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
-        row.proof.aiPriceContact={searchPrice:138989,checkedFullTotal:163056,readableMeal:true,originalIndex:0,explicitAcceptance:true,selectedRowPriceRetained:true,backForwardExtraOperations:0,contactFit:aiFit};
+        row.proof.aiPriceContact={searchPrice:138989,checkedFullTotal:163056,readableMeal:true,originalIndex:0,explicitAcceptance:true,comparableSearchPrices:true,selectedPackagePriceRetained:true,conditionsAgreement:true,backForwardExtraOperations:0,contactFit:aiFit};
 
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.

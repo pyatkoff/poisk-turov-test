@@ -43,6 +43,40 @@
         : checkedPrice ? 'Цена предложения проверена. Рейс и доплаты уточнит менеджер.'
         : 'Цена из поиска. Выберите перелёт, чтобы узнать стоимость тура с ним.'};
   }
+  const flightPlaceholder = flight => /000$/.test(String(flight?.number || '').replace(/\s/g,'')) && flight?.departure?.time==='00:00' && flight?.arrival?.time==='00:00';
+  function flightAllowance(flight, field) {
+    const raw=flight?.[field];
+    if(raw===null || raw===undefined || String(raw).trim()==='' || flightPlaceholder(flight) && Number(raw)===0)return 'Уточняется';
+    if(field==='carryOn')return String(raw)==='0' ? 'Без ручной клади' : typeof raw==='string' || typeof raw==='number' ? String(raw) : 'Уточняется';
+    const n=Number(raw);return !Number.isFinite(n) || n<0 ? 'Уточняется' : n===0 ? 'Без багажа' : n+' кг';
+  }
+  // A presentation of the existing receipt, shared by hotel, tour and contact.
+  // It neither normalizes room/meal names (LOCAL) nor grants package authority.
+  function describeConditions(offer, value, options = {}) {
+    const price=describePrice(offer,value,options);
+    const index=value?.flightChoiceId===null || value?.flightChoiceId===undefined ? null : Number(value.flightChoiceId);
+    const pair=Number.isInteger(index) && index>=0 ? value?.variants?.[index] : null;
+    const segments=pair ? [...(Array.isArray(pair.forward)?pair.forward:[]),...(Array.isArray(pair.backward)?pair.backward:[])] : [];
+    const bothDirections=Boolean(pair?.forward?.length && pair?.backward?.length);
+    const unresolved=['наличие мест','трансфер','страховку','обязательные доплаты'];
+    if(!price.selectedFlight)unresolved.unshift('рейсы','условия багажа');
+    else {
+      if(!bothDirections || segments.some(f=>flightPlaceholder(f) || !f?.departure?.time || !f?.arrival?.time))unresolved.push('расписание');
+      if(!bothDirections || segments.some(f=>flightAllowance(f,'baggage')==='Уточняется'))unresolved.push('багаж');
+      if(!bothDirections || segments.some(f=>flightAllowance(f,'carryOn')==='Уточняется'))unresolved.push('ручную кладь');
+    }
+    const state=options.busy || value?.loading || value?.flightsLoading ? 'pending' : price.expired ? 'expired' : price.failed ? 'error'
+      : price.checkedPrice ? value.priceAccepted===true ? 'checked' : 'acceptance' : 'search';
+    const title=state==='pending' ? 'Проверяем цену и перелёт.'
+      : state==='expired' ? 'Срок цены истёк. До оформления нужна новая проверка.'
+      : state==='error' ? 'Проверка не завершена. Цена требует уточнения.'
+      : state==='acceptance' ? 'Новая стоимость проверена. Подтвердите изменение цены.'
+      : price.checkedFlight ? 'Цена проверена с выбранным перелётом.'
+      : price.checkedPrice ? 'Цена предложения проверена. Рейсы уточнит менеджер.'
+      : 'Цена из поиска. Стоимость пакета ещё не проверена.';
+    return {state,title,note:'Перед оформлением менеджер уточнит: '+unresolved.join(', ')+'.'};
+  }
+  const conditionsHTML = conditions => '<strong data-native-conditions-title>'+esc(conditions.title)+'</strong><p>'+esc(conditions.note)+'</p>';
   const displayError = message => /Tourvisor request failed/i.test(message || '') ? 'Не удалось получить условия у поставщика. Выбранный номер сохранён. Повторите проверку позже.' : message;
   function mount({root, bridge, onChanged = () => {}, initialState = null}) {
     if (!root || !bridge) throw new Error('Не удалось подключить условия тура.');
@@ -93,7 +127,7 @@
         sections[1].dataset.nativeFlightSection = '';
         sections[1].innerHTML = '<div class="st-step-label">ПЕРЕЛЁТ</div><div class="st-section-top"><h3>Туда и обратно</h3><span class="st-status-pill" data-native-flight-status>Требует проверки</span></div><div data-native-flight-content></div>';
       }
-      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">СОСТАВ ТУРА</div><ul class="st-native-package-facts" data-native-inclusions><li>'+icon('bed-double')+'<span><b>Проживание:</b> <span data-native-inclusion-room></span></span></li><li>'+icon('utensils')+'<span><b>Питание:</b> <span data-native-inclusion-meal></span></span></li></ul><p class="st-small st-muted st-native-package-note" data-native-package-note></p>';
+      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">ПРОВЕРКА УСЛОВИЙ</div><div class="st-native-conditions" data-native-package-note></div>';
       const costDetails = tourScreen.querySelector('.st-tour-layout > aside');
       if (costDetails) {
         costDetails.dataset.nativeCostDetails='';
@@ -124,7 +158,7 @@
       }
       if(leadPrice&&!$('[data-native-contact-facts]')){
         const facts=window.document.createElement('details');facts.className='st-native-contact-facts';facts.dataset.nativeContactFacts='';facts.open=!root.classList.contains('st-mobile')||contactDetailsOpen;
-        facts.innerHTML='<summary>Перелёт и детали тура'+icon('chevron-down')+'</summary><dl><div><dt>Вылет из</dt><dd data-native-contact-origin></dd></div><div><dt>Туроператор</dt><dd data-native-contact-operator></dd></div><div data-native-contact-children><dt>Возраст детей</dt><dd data-native-contact-ages></dd></div></dl><div class="st-native-contact-itinerary"><b>Перелёт</b><div data-native-contact-flight></div></div><p class="st-small st-muted" data-native-contact-note></p>';
+        facts.innerHTML='<summary>Перелёт и детали тура'+icon('chevron-down')+'</summary><dl><div><dt>Вылет из</dt><dd data-native-contact-origin></dd></div><div><dt>Туроператор</dt><dd data-native-contact-operator></dd></div><div data-native-contact-children><dt>Возраст детей</dt><dd data-native-contact-ages></dd></div></dl><div class="st-native-contact-itinerary"><b>Перелёт</b><div data-native-contact-flight></div></div><div class="st-native-conditions" data-native-contact-note></div>';
         leadPrice.insertAdjacentElement('afterend',facts);
       }
       const lead = $('[data-screen="lead"] .st-lead');
@@ -155,14 +189,9 @@
       if (!Array.isArray(segments) || !segments.length) return '<div class="st-flight"><div class="st-flight-label"><span>' + esc(label) + '</span></div><p class="st-small st-muted">Расписание не предоставлено.</p></div>';
       return segments.map((flight,index) => {
         const departure=flight?.departure || {},arrival=flight?.arrival || {};
-        const placeholder=/000$/.test(String(flight?.number || '').replace(/\s/g,'')) && departure.time==='00:00' && arrival.time==='00:00';
+        const placeholder=flightPlaceholder(flight);
         const company=textFact(flight?.company),number=placeholder ? 'Номер рейса уточняется' : flight?.number || '';
-        const allowance=field => {
-          const raw=flight?.[field];
-          if(raw===null || raw===undefined || String(raw).trim()==='' || placeholder && Number(raw)===0)return 'Уточняется';
-          if(field==='carryOn')return String(raw)==='0' ? 'Без ручной клади' : typeof raw==='string' || typeof raw==='number' ? String(raw) : 'Уточняется';
-          const n=Number(raw);return !Number.isFinite(n) || n<0 ? 'Уточняется' : n===0 ? 'Без багажа' : n+' кг';
-        };
+        const allowance=field => flightAllowance(flight,field);
         return '<div class="st-flight"><div class="st-flight-label"><span>'+esc((index ? 'Пересадка · ' : '')+label)+(departure.date ? ' · '+esc(dateText(departure.date)) : '')+'</span><span>'+esc([company,number].filter(Boolean).join(' '))+'</span></div><div class="st-flight-row"><div><b>'+esc(placeholder ? '—' : departure.time || '—')+'</b><span>'+esc(textFact(departure.port) || 'Аэропорт уточняется')+'</span></div><div class="st-flight-middle">'+icon('plane')+'<hr>'+esc(flight?.plane || '')+'</div><div><b>'+esc(placeholder ? '—' : arrival.time || '—')+'</b><span>'+esc(textFact(arrival.port) || 'Аэропорт уточняется')+'</span></div></div><div class="st-baggage">'+icon('luggage')+'Багаж: '+esc(allowance('baggage'))+' · ручная кладь: '+esc(allowance('carryOn'))+'</div></div>';
       }).join('');
     }
@@ -192,8 +221,8 @@
       const directionHTML=(segments,label)=>{
         if(!Array.isArray(segments)||!segments.length)return '<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+label+'</span><div class="st-native-flight-route">Расписание уточняется</div></div>';
         return segments.map((segment,connection)=>{
-          const departure=segment?.departure||{},arrival=segment?.arrival||{},placeholder=/000$/.test(String(segment?.number||'').replace(/\s/g,''))&&departure.time==='00:00'&&arrival.time==='00:00';
-          const allowance=field=>{const raw=segment?.[field];if(raw===null||raw===undefined||String(raw).trim()===''||placeholder&&Number(raw)===0)return 'Уточняется';if(field==='carryOn')return String(raw)==='0'?'Без ручной клади':typeof raw==='string'||typeof raw==='number'?String(raw):'Уточняется';const n=Number(raw);return !Number.isFinite(n)||n<0?'Уточняется':n===0?'Без багажа':n+' кг';};
+          const departure=segment?.departure||{},arrival=segment?.arrival||{},placeholder=flightPlaceholder(segment);
+          const allowance=field=>flightAllowance(segment,field);
           const route=[textFact(departure.port)||'Аэропорт уточняется',textFact(arrival.port)||'Аэропорт уточняется'].join(' → ');
           const dates=[departure.date?dateText(departure.date):'',arrival.date&&arrival.date!==departure.date?dateText(arrival.date):''].filter(Boolean).join(' → ');
           const flight=[textFact(segment?.company),placeholder?'Номер рейса уточняется':segment?.number||'',dates,segment?.plane||''].filter(Boolean).join(' · ');
@@ -216,12 +245,12 @@
       const index=value?.flightChoiceId===null||value?.flightChoiceId===undefined?null:Number(value.flightChoiceId),pair=index===null?null:value?.variants?.[index];
       if(pair){
         const direction=(segments,label)=>(Array.isArray(segments)&&segments.length?segments:[null]).map((flight,connection)=>{
-          const departure=flight?.departure||{},arrival=flight?.arrival||{},placeholder=/000$/.test(String(flight?.number||'').replace(/\s/g,''))&&departure.time==='00:00'&&arrival.time==='00:00';
+          const departure=flight?.departure||{},arrival=flight?.arrival||{},placeholder=flightPlaceholder(flight);
           const times=placeholder?'Расписание уточняется':[departure.time||'—',arrival.time||'—'].join(' → ');
           const dates=[departure.date?dateText(departure.date):'',arrival.date&&arrival.date!==departure.date?dateText(arrival.date):''].filter(Boolean).join(' → ');
           const flightName=[textFact(flight?.company),placeholder?'Номер рейса уточняется':flight?.number].filter(Boolean).join(' ');
           const route=[textFact(departure.port)||'Аэропорт уточняется',textFact(arrival.port)||'Аэропорт уточняется'].join(' → ');
-          return '<div class="st-native-contact-leg"><strong>'+esc((connection?'Пересадка · ':'')+label)+'</strong><span>'+esc([dates,times].filter(Boolean).join(' · '))+'</span><span class="st-small st-muted">'+esc([flightName,route].filter(Boolean).join(' · '))+'</span></div>';
+          return '<div class="st-native-contact-leg"><strong>'+esc((connection?'Пересадка · ':'')+label)+'</strong><span>'+esc([dates,times].filter(Boolean).join(' · '))+'</span><span class="st-small st-muted">'+esc([flightName,route].filter(Boolean).join(' · '))+'</span><span class="st-small st-muted">Багаж: '+esc(flightAllowance(flight,'baggage'))+' · ручная кладь: '+esc(flightAllowance(flight,'carryOn'))+'</span></div>';
         }).join('');
         return direction(pair.forward,'Туда')+direction(pair.backward,'Обратно');
       }
@@ -250,7 +279,10 @@
       $('[data-native-contact-children]').hidden=!ages.length;
       text('[data-native-contact-ages]',ages.map(age=>age+' '+(age%10===1&&age%100!==11?'год':age%10>=2&&age%10<=4&&(age%100<12||age%100>14)?'года':'лет')).join(', '));
       $('[data-native-contact-flight]').innerHTML=contactFlightHTML(value);
-      text('[data-native-contact-note]',priceNote+(checkedPrice&&!value.priceAccepted?' Подтвердите новую цену на экране тура.':''));
+      const conditions=describeConditions(offer,value,{busy,error});
+      for(const node of $$('[data-native-package-note],[data-native-contact-note]')){
+        node.innerHTML=conditionsHTML(conditions);node.dataset.nativeConditionsState=conditions.state;
+      }
       photo('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]');
       const changed=value && !value.pricePending && Number(value.total)!==Number(offer.total);
       $$('[data-price-change]').forEach(node=>{node.hidden=!changed || value.priceAccepted===true;});
@@ -266,11 +298,6 @@
         else flightContent.innerHTML='<p class="st-small st-muted">'+esc(displayError(error) || 'Рейсы не подтверждены.')+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Проверить тур</button>' : '');
       }
       text('[data-native-flight-status]',busy ? 'Проверяем' : expired ? 'Нужна новая проверка' : failed ? 'Требует проверки' : checkedFlight ? 'Выбранный перелёт' : checkedPrice ? 'Уточнит менеджер' : 'Требует уточнения');
-      text('[data-native-inclusion-room]',room);text('[data-native-inclusion-meal]',meal);
-      text('[data-native-package-note]',checkedFlight
-        ? 'Выбранный перелёт учтён в проверенной цене. Трансфер, страховка и обязательные доплаты требуют уточнения.'
-        : checkedPrice ? 'Рейс уточнит менеджер. Трансфер, страховка и обязательные доплаты требуют уточнения.'
-        : 'Перелёт, трансфер, страховка и обязательные доплаты пока не подтверждены.');
       const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(busy ? 'Проверяем точное предложение…' : displayError(failure), Boolean(failure));
@@ -286,7 +313,7 @@
     }
     function scheduleExpiry() {
       if(expiryTimer!==null)window.clearTimeout(expiryTimer);expiryTimer=null;
-      const value=current(),expires=value?.expiresAt || value?.quoteResult?.expiresAt;
+      const value=current(),deadlines=[value?.expiresAt,value?.quoteResult?.expiresAt].filter(v=>v && Number.isFinite(Number(v))).map(Number),expires=deadlines.length?Math.min(...deadlines):null;
       if(expires && expires*1000>Date.now())expiryTimer=window.setTimeout(()=>{if(!alive)return;error='Срок подтверждённой цены истёк. Выполните новый поиск.';review=null;renderDetails();emit();},Math.min(2147483647,expires*1000-Date.now()+1));
     }
     function settlePrice() {
@@ -362,5 +389,5 @@
     prepare();renderContact();
     return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,contactDetailsOpen:root.classList.contains('st-mobile')?$('[data-native-contact-facts]').open:contactDetailsOpen,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
   }
-  window.AnyTourDesignV2Tour=Object.freeze({mount,mealLabel,describePrice});
+  window.AnyTourDesignV2Tour=Object.freeze({mount,mealLabel,describePrice,describeConditions,conditionsHTML});
 })(window);
