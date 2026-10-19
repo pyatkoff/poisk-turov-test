@@ -1,4 +1,4 @@
-# AnyTour design-v2 — native final Sites frontend
+# AnyTour design-v2 — native frontend and active execution plan
 
 This is a new frontend, not a stylesheet applied to Search3 NEXT.
 
@@ -18,34 +18,140 @@ inclusions and local lead success are never a live data source. Unknown facts
 stay unknown. Source preparation and local DOM checks are not publication or
 acceptance of the complete booking journey.
 
-The source is isolated until its new entry graph passes exact-source build,
-runtime and independent visual gates. The only eventual publication address is
+The source uses exact-source build, runtime and independent visual gates. Its
+only publication address is
 `https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/`.
 Sites reference, NEXT, production and sibling previews must remain unchanged.
 
-## Checkpoint — 2026-10-12
+## Активный план — 19.10.2026
 
-The source and bridge fixture checks pass, including exact donor hashes, passive
-initialization, local meal filtering without another search, exact offer/tour
-references, full flight variant prices and rejection of stale quote responses.
-These are DOM/contract checks, not browser visual acceptance or supplier evidence.
+Владелец поручил оптимизировать план и организацию всей работы этого отдельного
+design-v2. Этот раздел — единственная исполняемая очередь данного frontend;
+свежие claims, source/control/publisher receipts и результаты находятся в
+[#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
+Глобальная очередь original NEXT/Sites и её AUTOPILOT_STATE не заменяют этот план.
+Исторический [handoff донора](../../docs/project/search3-new-sites-v2-handoff-20261011.md)
+остаётся источником принятых ограничений, но его старые статусы не являются текущей
+очередью. Новая композиция не требуется: доводим уже согласованную версию 2.
 
-Implemented in the same packet: weekday-aligned two-month date editor and
-Apply/Cancel; exact/range nights; canonical country/resort/hotel selection;
-budget and child ages; URL/Back/Forward and in-memory drafts; pending search and
-quote delivery across viewport mounts. The native tour delegates Tourvisor and
-ANEX quote/flight/expiry authority, requires acceptance of a changed full total,
-and validates contact review through the existing lead payload owner. Actual
-lead delivery remains disabled under the preview boundary.
+### Подтверждённая отправная точка
 
-Publication is blocked by the consumed predecessor-specific updater and old entry
-graph inventory. The candidate builder deliberately does not rewrite protected
-canonical route dependencies and is not a publishable artifact. A reviewed native
-build/control successor, exact-head CI and independent rendered checks at
-360/390/430/768/1280 and 200% text are required. No existing gate may be weakened.
+- Установлен source `1959dcabac17335fd09763389231e67db9afde6b`, receiving release
+  `83b01df4d83c11c3e032a7c20b6d77b5f1252611`, publish run `39242956656`.
+  Terminal: [6266129536](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266129536).
+  Это снимок, перед следующим выпуском читать свежий установленный owner.
+- 855 файлов; digest `9d856ef5afda35b9310d62570b6f1ab4877557438d170820888e0183a9324ff4`.
+  Команда публикации и supplier-операции этого прохода погашены, повтор запрещён.
+- Сборка проверена на 360/390/430/768/1280 при 100%: 212 кадров, controlled evidence.
+  Отдельный реальный desktop-путь: 295 отелей → THE LOLA HOTEL → точный номер →
+  40 пар рейсов → одна проверенная пара → отображаемая цена 81 645 ₽ → пустая
+  preview-форма → Back/reopen с сохранением цены и перелёта. Это один сценарий,
+  не приёмка всех состояний или физического телефона/Safari.
+- Календарь учитывает местную гражданскую дату; popup, Escape и возврат фокуса
+  проверены. Реальная доставка заявки отключена. Андромеда отключена.
 
-The native CI workflow builds an isolated review payload, retains its entire
-dependency graph/inventory, and renders donor/native fixture pairs. Its artifact
-is review evidence and does not grant publication authority. Prepared payload
-route derivation remains with the trusted bounded updater. Source or DOM tests
-must never be described as browser or live acceptance.
+### Один конечный выпуск, три последовательных этапа
+
+Этапы 1–2 выполняются в одном цельном product packet и одной source-ветке/PR.
+Не выпускать каждую подпись, карточку или адаптивную правку отдельно. Этап 3
+доводит этот же пакет до результата. Подтверждённая серьёзная поломка может
+прервать порядок; после её устранения вернуться к этому же выпуску.
+
+| Этап | Что делаем | Проверяемый результат |
+| --- | --- | --- |
+| 1. Точный тур и понятная цена | Упростить group minimum → варианты → точный тур: убрать предварительный заход на экран тура с последующим возвратом к номерам. Согласовать текст подтверждённого перелёта, проверенной цены за всех и неизвестных доплат. Использовать существующие frontend/tour/bridge owners. | В проверяемом сценарии экран точного тура открывается после выбора конкретного предложения; нет лишнего tour → номера → tour. Сохраняется явное действие для платного раскрытия/проверки. Loading, confirmed, changed, unknown, error и expiry не противоречат фактам. |
+| 2. Мобильный путь и цельный визуал | Пройти форму с popup-редакторами, выдачу/фильтры, варианты отеля, рейсы, цену, preview-контакт и возврат. Исправить конкретные проблемы чтения, доступности действия, плотности и адаптации, сохраняя утверждённую композицию. | На обычных 360/390/430/768/1280 нет существенных наложений, обрезаний и недоступных кнопок; длинные названия и цены читаются. Точный offer, условия, сумма, рейс, drafts, focus/scroll и результаты сохраняются. Показать до/после на одном корпусе. |
+| 3. Одна поставка и приёмка | Заморозить окончательный source, завершить независимый review и применимые CI; подготовить требуемый штатный controller, опубликовать, проверить установленную версию. | Source/artifact/установленная версия совпадают; есть terminal receipt, readback и итоговые кадры. Мобильная и desktop приёмка опубликованной версии явно отделены от compiled fixtures; непройденное честно обозначено. |
+
+Конкретное замечание этапа 1 уже подтверждено реальным кадром: рядом с выбранными
+DP995/DP996 показан «Выбранный перелёт», а общий текст ниже говорит, что перелёт
+требует подтверждения. Исправлять формулировку по реальному состоянию, не объявлять
+подтверждёнными неизвестные багаж, трансфер, страховку, сборы или наличие.
+Цена 81 645 ₽ — проверенная отображаемая стоимость пакета; она не доказывает,
+что известны все возможные доплаты. Визуальная правка не меняет price authority.
+Раскрытие группы и проверка конкретного тура требуют явного действия пользователя
+в существующем owner. Пассивное открытие отеля, рендер, локальные фильтры и
+Back/reopen актуального сохранённого контекста не запускают фоновых expand/quote.
+
+### Организация исполнения
+
+1. Координатор ведёт один активный product packet до приёмки. Перед началом:
+   свежая release, установленный owner, PR/CI и claims из #4217; один короткий
+   паспорт пакета: пользовательская проблема, точные пути, 3–5 критериев выхода,
+   необходимые проверки и следующий шаг. Этот паспорт хранить в PR/claim,
+   не заводить параллельный tracker.
+2. Один writer на точные source-пути. Независимый reviewer читает source/кадры;
+   подготовка необходимого контроллера может идти параллельно в своих путях.
+   Интегратор принимает окончательную версию; publisher один на целевой preview.
+   Роли могут совмещаться координатором, независимый review остаётся отдельным.
+   Второй writer на те же файлы, чужой dirty worktree и дублирующий PR запрещены.
+3. Параллелить независимые чтения, анализ состояний и review. Не размножать
+   исполнителей для одной мелкой правки. Source freeze и окончательные pins
+   предшествуют финальной проверке контроллера; merge и публикация последовательны.
+4. Если CI, review или допуск блокируют выпуск, указать точную причину, владельца
+   зависимости, сделанный безопасный шаг и условие снятия. Продолжать независимую
+   подготовку/исправления этого выпуска. Не начинать случайную косметику, новый
+   дизайн, рефакторинг или SEO ради активности. Завершённый шаг не открывать заново
+   без изменения, ошибки либо нового подтверждённого риска.
+5. Следующий запуск продолжает этот же пакет с сохранённого checkpoint.
+   «Ждёт review/controller» требует конкретного действия и ответственного.
+   Готовый PR, зелёный CI и документация сами по себе не считаются улучшением UX.
+
+### Проверки соразмерно изменению
+
+| Когда | Что проверяем |
+| --- | --- |
+| Во время правок | Синтаксис и ближайший существующий сценарий изменённого поведения. Для docs-only — diff, ссылки и согласованность; не запускать вручную supplier, browser journey или полный UI build. Автоматические обязательные CI по действующим path filters сохраняются. |
+| На окончательном source | Один согласованный набор обязательных exact-head CI и релевантной регрессии; независимый просмотр затронутых compiled кадров на обычных пяти ширинах. Сбой исправить, затем перепроверить затронутое и требуемые gates. |
+| При подготовке публикации | Переиспользовать уже скачанные неизменные artifact/evidence по точному SHA/run/hash. Штатные controller tests, свежая проверка допуска конкретного выпуска и серверные checks обязательны; не отключать их ради скорости. |
+| После установки | Проверить actual source/assets/receipt и затронутые UI-состояния на установленном preview. Для mobile/desktop явно записать среду, сценарий и результат; отсутствие такой проверки не заменять кадрами сборки. |
+
+Не повторять вручную тот же набор проверок тех же байтов для отчётности.
+При изменении source/artifact результаты относящихся к нему проверок обновить.
+Ранее полученные разрешения сохраняются в своих границах; не переспрашивать их
+для уже разрешённого следующего шага. Проверка допуска workflow не является
+повторным запросом разрешения у владельца.
+Использовать сохранённый корпус и детерминированные fixtures; не создавать новые
+платные поиски/quotes ради подписи, отступа или очередного снимка. Сохранённое live
+evidence пригодно только для неизменённых контрактов и не является новым ответом
+поставщика. Новая supplier-проверка требует отдельного допустимого scope/budget;
+не переиспользовать погашенные или UNKNOWN операции, IDs и команды. При возможной
+мобильной перераскладке сохранённой сессии не запускать Search повторно.
+
+Владелец явно отложил **200% и все проверки по нему**. Они не входят в матрицу,
+CI, критерий готовности и следующую очередь. Обычный масштаб — 100%.
+
+### Завершение и отчёт
+
+Выпуск завершён, когда этапы 1–3 выполнены, известные существенные дефекты этих
+сценариев закрыты, согласованный визуал сохранён, версия опубликована и предъявлена
+владельцу с результатами и конкретным списком оставшихся ограничений. Для качества
+использовать существующую SEARCH-QUALITY-1: одинаковые данные/задачи/ширины,
+полный набор критериев оцениваемой строки; непроверенное — `not_measured`.
+Не присваивать 9,5 по одному удачному экрану или количеству тестов. Не расширять
+этот выпуск новыми украшениями после достижения критериев; новый этап задаётся
+подтверждённой проблемой. Недоступная обязательная часть приёмки имеет статус
+blocked/awaiting evidence с точным способом завершения, а не PASS.
+
+Отчёт владельцу: что стало лучше для пользователя; где опубликовано и какая
+версия; что фактически проверено; конкретный остаток/блокер и следующий шаг.
+Показывать актуальный экран. Не присылать пустые почасовые статусы или перечень
+коммитов/тестов вместо результата. Внутренне учитывать число выпусков на пакет,
+повторных проверок неизменных байтов, лишних переходов и открытых дефектов — без
+новой системы метрик и без обещаний сроков, не подтверждённых зависимостями.
+
+### Сохраняемые границы
+
+Только свежая `release/search3-design-v2` и свой preview. Не менять production,
+original NEXT/Sites/другие preview, глобальные AUTOPILOT_STATE/OWNER_PRIORITY,
+БД/LOCAL/MATCH, provider/auth/transport, lead/CRM/Metrika/цели, оригинальные
+логотип/шрифты или цену/топливную арифметику. Сохранять избранное и существующий
+no-extra-search контракт локальных фильтров/рендера/возврата. Андромеда остаётся
+отключённой. Preview-контакт не отправляет реальную заявку.
+
+Merge и публикация требуют действующего разрешённого workflow, независимого
+review, зелёных применимых exact-head CI, свежего source/release/build/artifact,
+exclusive publisher claim, текущего predecessor, no-replay, backup/rollback и
+readback. Отдельный trusted controller PR допустим, когда его требует штатный
+gate; готовить его для цельного выпуска, а не для каждой мелочи. Погашенный
+controller/run/command не использовать повторно. План не расширяет разрешения.
