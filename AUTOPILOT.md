@@ -39,7 +39,27 @@ Older roadmap/checkpoint sections below are historical where superseded here.
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.
 
+### Current Search3 execution — owner direction 2026-10-19
+
+For the original design-lab project and existing NEXT only, follow the current
+finite delivery sequence at the top of `docs/project/search3-product-development-plan.md`
+and the same `AUTOPILOT_STATE.json.current_task`. One main product WIP: compact
+optional flight choice, truthful whole-party total, application and retained return.
+Reuse source-only draft d827ccf7; no further visual drafts while supported Sites QA
+is unavailable. Preserve the successful-price application branch with flights left
+to the manager. NEXT55fb, root recovery and the actual original live journey have
+terminal receipts; stale recovery05c pins below are history/no-replay, not a queue.
+Focused checks during implementation, applicable exact-head gates on the complete
+candidate, one whole-version visual+behavior approval before a new concept reaches
+NEXT, separate exact-artifact publisher and installed acceptance. No guard changes.
+200% text is deferred/not_measured; do not add runs/fixes or make it a blocker.
+Do not borrow design-v2 evidence or redirect its work. Schedules/enabled/paused and
+other tasks remain unchanged; a plan update does not authorize supplier/lead/production.
+
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
+
+Historical phase record: current Search3 targets, routing and queue follow the
+2026-10-19 execution section above, not the superseded issue/preview pins below.
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
