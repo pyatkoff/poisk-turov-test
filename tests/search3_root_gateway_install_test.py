@@ -526,17 +526,23 @@ class DependencyInstall(unittest.TestCase):
    if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.DEPENDENCY_RELEASE}}
    if path=='/issues/comments/'+str(m.DEPENDENCY_APPROVAL):return {'id':m.DEPENDENCY_APPROVAL,'user':{'id':226193297},'author_association':'OWNER','body':approval}
    if path=='/issues/comments/987':return event['comment']
+   if path=='/issues/comments/'+str(m.DEPENDENCY_BLOCKED_COMMAND):return {'id':m.DEPENDENCY_BLOCKED_COMMAND,'user':{'id':226193297},'author_association':'OWNER','body':f'{m.DEPENDENCY_PREFIX} {m.DEPENDENCY_BLOCKED_CONTROL} {m.DEPENDENCY_OPERATION}'}
+   if path=='/actions/runs/'+str(m.DEPENDENCY_BLOCKED_RUN):return {'id':m.DEPENDENCY_BLOCKED_RUN,'run_attempt':1,'event':'issue_comment','path':m.CHECKED_WORKFLOW,'head_sha':m.DEPENDENCY_BLOCKED_CONTROL,'status':'completed','conclusion':'failure'}
+   if path=='/actions/jobs/'+str(m.DEPENDENCY_BLOCKED_JOB):return {'id':m.DEPENDENCY_BLOCKED_JOB,'run_id':m.DEPENDENCY_BLOCKED_RUN,'run_attempt':1,'name':'dependency-install','head_sha':m.DEPENDENCY_BLOCKED_CONTROL,'status':'completed','conclusion':'failure'}
+   if path=='/actions/artifacts/'+str(m.DEPENDENCY_BLOCKED_ARTIFACT):return {'id':m.DEPENDENCY_BLOCKED_ARTIFACT,'name':'search3-root-gateway-dependencies-39227575241-1','size_in_bytes':416,'digest':m.DEPENDENCY_BLOCKED_DIGEST,'expired':False,'workflow_run':{'id':m.DEPENDENCY_BLOCKED_RUN,'head_sha':m.DEPENDENCY_BLOCKED_CONTROL}}
    if path.startswith('/contents/'):
     for target,record in m.DEPENDENCY_CANDIDATES.items():
      if path.startswith('/contents/'+record['path']+'?'):return {'sha':record['blob'],'content':base64.b64encode(bodies[target]).decode()}
     return {'sha':m.blob(collector_body),'content':base64.b64encode(collector_body).decode()}
    if path=='/git/commits/'+identity['control_source_sha']:return {'sha':identity['control_source_sha'],'tree':{'sha':'e'*40},'parents':[{'sha':'a'*40},{'sha':'d'*40}]}
    if path=='/git/commits/'+('d'*40):return {'sha':'d'*40,'tree':{'sha':'e'*40},'parents':[{'sha':'a'*40}]}
-   if path in ('/commits/'+('d'*40)+'/check-runs?per_page=100','/commits/'+identity['control_source_sha']+'/check-runs?per_page=100'):return {'check_runs':[{'id':100+n,'name':name,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for n,name in enumerate(('guard','contracts','live-check-contracts'))]}
+   if '/check-runs?check_name=' in path:
+    name=path.split('check_name=',1)[1].split('&',1)[0];head=path.split('/')[2]
+    return {'total_count':1,'check_runs':[{'id':100,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
    if '/check-runs?' in path:return {'total_count':8,'check_runs':[{'id':i,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in m.DEPENDENCY_CHECK_IDS]+[{'id':117963841770,'status':'completed','conclusion':'skipped'}]}
    if path.startswith('/git/commits/'):return {'tree':{'sha':m.DEPENDENCY_LOCAL_TREE},'parents':[{'sha':m.DEPENDENCY_LOCAL_PARENT}]}
    if path.startswith('/compare/'):return {'status':'ahead','ahead_by':1,'behind_by':0,'total_commits':1,'files':[{'filename':'v2/data/local-tv-catalog-v1.php','status':'modified','sha':m.DEPENDENCY_CANDIDATES['data/local-tv-catalog-v1.php']['blob']}]}
-   if path.startswith('/issues/4217/comments?'):return [{'id':987,'body':event['comment']['body']}]
+   if path.startswith('/issues/4217/comments?'):return [{'id':m.DEPENDENCY_BLOCKED_COMMAND,'body':f'{m.DEPENDENCY_PREFIX} {m.DEPENDENCY_BLOCKED_CONTROL} {m.DEPENDENCY_OPERATION}'},{'id':987,'body':event['comment']['body']}]
    raise AssertionError('unrecognized GitHub path '+path)
   return api,bodies
  def test_admission_binds_two_sources_seven_ci_immutable_approval_delivery_scope_and_collectors(self):
@@ -585,6 +591,69 @@ class DependencyInstall(unittest.TestCase):
     for p in op.glob('previous-*.php'):self.assertEqual(p.stat().st_mode&0o777,0o600)
     self.assertEqual((project/'api-v2.php').stat().st_mode&0o777,0o644);self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
     for forbidden in ('urllib','action=health','repair_replace','mysql','PDO'):self.assertNotIn(forbidden,program)
+ def test_exact_name_filter_finds_guard_behind_383_unrelated_jobs_and_rejects_truncation(self):
+  import copy
+  m=self.module();head='b'*40;name='guard'
+  good={'total_count':1,'check_runs':[{'id':100,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
+  query='/commits/'+head+'/check-runs?check_name=guard&per_page=100'
+  def api(path):
+   if path==query:return copy.deepcopy(good)
+   return {'total_count':383,'check_runs':[{'id':i,'name':'unrelated'} for i in range(100)]}
+  with mock.patch.object(m,'checked_api',side_effect=api) as calls:m.dependency_green_check(head,name,'main_ci')
+  calls.assert_called_once_with(query)
+  for variant in ('truncated','wrong_count','boolean_count','duplicate','wrong_name','wrong_head','wrong_app','failed','pending'):
+   value=copy.deepcopy(good)
+   if variant=='truncated':value['total_count']=383
+   if variant=='wrong_count':value['total_count']=2
+   if variant=='boolean_count':value['total_count']=True
+   if variant=='duplicate':value['total_count']=2;value['check_runs']*=2
+   if variant=='wrong_name':value['check_runs'][0]['name']='other'
+   if variant=='wrong_head':value['check_runs'][0]['head_sha']='c'*40
+   if variant=='wrong_app':value['check_runs'][0]['app']['slug']='other'
+   if variant=='failed':value['check_runs'][0]['conclusion']='failure'
+   if variant=='pending':value['check_runs'][0]['status']='queued'
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',return_value=value),self.assertRaises(RuntimeError):m.dependency_green_check(head,name,'main_ci')
+ def test_only_exact_retained_pre_ssh_blocked_operation_can_continue(self):
+  import copy
+  m=self.module();event,env=self.event(m);identity=m.dependency_event(event,env);api,bodies=self.admission_api(m,event,identity)
+  with mock.patch.object(m,'checked_api',side_effect=api):m.dependency_pre_ssh_blocked_proof()
+  variants=[('comment_owner','comment'),('comment_body','comment'),('run_head','run'),('run_attempt','run'),('run_pending','run'),('run_workflow','run'),('job_name','job'),('job_head','job'),('job_attempt','job'),('job_success','job'),('artifact_digest','artifact'),('artifact_size','artifact'),('artifact_expired','artifact'),('artifact_head','artifact'),('artifact_run','artifact')]
+  for variant,kind in variants:
+   def bad(path):
+    value=copy.deepcopy(api(path))
+    target={'comment':'/issues/comments/'+str(m.DEPENDENCY_BLOCKED_COMMAND),'run':'/actions/runs/'+str(m.DEPENDENCY_BLOCKED_RUN),'job':'/actions/jobs/'+str(m.DEPENDENCY_BLOCKED_JOB),'artifact':'/actions/artifacts/'+str(m.DEPENDENCY_BLOCKED_ARTIFACT)}[kind]
+    if path!=target:return value
+    if variant=='comment_owner':value['user']['id']=1
+    if variant=='comment_body':value['body']+=' changed'
+    if variant in ('run_head','job_head'):value['head_sha']='c'*40
+    if variant in ('run_attempt','job_attempt'):value['run_attempt']=2
+    if variant=='run_pending':value['status']='in_progress';value['conclusion']=None
+    if variant=='run_workflow':value['path']='another/workflow.yml'
+    if variant=='job_name':value['name']='another-job'
+    if variant=='job_success':value['conclusion']='success'
+    if variant=='artifact_digest':value['digest']='sha256:'+('c'*64)
+    if variant=='artifact_size':value['size_in_bytes']=417
+    if variant=='artifact_expired':value['expired']=True
+    if variant=='artifact_head':value['workflow_run']['head_sha']='c'*40
+    if variant=='artifact_run':value['workflow_run']['id']+=1
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),self.assertRaises(RuntimeError):m.dependency_admission(identity)
+  for kind in ('missing_old','unknown_extra','duplicate_old'):
+   def history(path):
+    rows=copy.deepcopy(api(path))
+    if path.startswith('/issues/4217/comments?'):
+     if kind=='missing_old':rows=rows[1:]
+     if kind=='unknown_extra':rows.insert(1,{'id':986,'body':event['comment']['body'].replace('b'*40,'c'*40)})
+     if kind=='duplicate_old':rows.insert(0,rows[0])
+    return rows
+   with self.subTest(kind=kind),mock.patch.object(m,'checked_api',side_effect=history),self.assertRaises(RuntimeError):m.dependency_admission(identity)
+ def test_pre_ssh_admission_failure_keeps_safe_reason_and_evidence_only(self):
+  m=self.module();event,env=self.event(m)
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);path=home/'event.json';path.write_text(json.dumps(event))
+   with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path)}),mock.patch.object(m,'dependency_admission',side_effect=RuntimeError('main_ci')),mock.patch.object(m,'run') as network,contextlib.redirect_stdout(io.StringIO()),self.assertRaisesRegex(RuntimeError,'install_not_verified'):m.dependency_install()
+   work=home/'search3-root-gateway-dependencies';value=json.loads((work/'evidence.json').read_text())
+   self.assertEqual(value['status'],'blocked_no_replay');self.assertEqual(value['reason'],'main_ci');self.assertEqual({p.name for p in work.iterdir()},{'evidence.json'});network.assert_not_called()
  def test_no_replay_preserves_consumed_operation_receipt_and_all_bytes(self):
   m=self.module()
   with tempfile.TemporaryDirectory() as td:

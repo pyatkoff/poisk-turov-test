@@ -1578,11 +1578,11 @@ class RecoveryAdmissionTests(unittest.TestCase):
             '/issues/comments/6263435322': {'user': {'id': 226193297}, 'author_association': 'OWNER', 'body': self.approval_body},
             '/git/commits/' + CONTROL: {'parents': [{'sha': 'b' * 40}, {'sha': source}], 'tree': {'sha': tree}},
             '/git/commits/' + source: {'sha': source, 'tree': {'sha': tree}},
-            '/commits/' + source + '/check-runs?per_page=100': {'check_runs': [
-                {'name': name, 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}
-                for name in ('guard', 'contracts', 'live-check-contracts')]},
-            '/commits/' + CONTROL + '/check-runs?per_page=100': {'check_runs': [
-                {'name': 'guard', 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}]},
+            **{'/commits/' + source + '/check-runs?check_name=' + name + '&per_page=100': {'total_count': 1, 'check_runs': [
+                {'name': name, 'head_sha': source, 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}]}
+                for name in ('guard', 'contracts', 'live-check-contracts')},
+            '/commits/' + CONTROL + '/check-runs?check_name=guard&per_page=100': {'total_count': 1, 'check_runs': [
+                {'name': 'guard', 'head_sha': CONTROL, 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}]},
             '/issues/4217/comments?per_page=100&page=1': [event_fixture()['comment'], anex_event_fixture()['comment'], root_direct_event_fixture()['comment'], recovery_event_fixture()['comment']],
             '/issues/comments/6261700001': recovery_event_fixture()['comment'],
             '/issues/comments/6261699999': note,
@@ -1610,7 +1610,7 @@ class RecoveryAdmissionTests(unittest.TestCase):
     def test_recovery_requires_current_reviewed_merge_release_main_ci_and_source_blobs(self):
         cases = [('/git/ref/heads/release/search3-production-ready-v1', {'object': {'sha': CHECK.RELEASE}}),
                  ('/contents/v2/api-v2.php?ref=' + self.profile['release'], {'sha': CHECK.API_BLOB}),
-                 ('/commits/' + CONTROL + '/check-runs?per_page=100', {'check_runs': []})]
+                 ('/commits/' + CONTROL + '/check-runs?check_name=guard&per_page=100', {'total_count': 0, 'check_runs': []})]
         cases += [('/contents/' + path + '?ref=' + CONTROL, {'sha': 'f' * 40}) for path in self.profile.get('main_source_blobs', {})]
         for path, changed in cases:
             with self.subTest(path=path):
@@ -1618,6 +1618,26 @@ class RecoveryAdmissionTests(unittest.TestCase):
                 self.responses[path] = changed
                 with self.assertRaises(RuntimeError):self.admit()
                 self.responses[path] = original
+
+    def test_recovery_checks_use_exact_name_and_head_despite_many_unrelated_runs(self):
+        self.responses['/commits/' + CONTROL + '/check-runs?per_page=100'] = {
+            'total_count': 383, 'check_runs': [{'name': 'unrelated', 'status': 'completed', 'conclusion': 'skipped'}] * 100}
+        self.assertEqual(self.admit()['operation_id'], 'tv-gateway-recovery-20261019-v1')
+        paths = ['/commits/' + CONTROL + '/check-runs?check_name=guard&per_page=100']
+        paths += ['/commits/' + 'c' * 40 + '/check-runs?check_name=' + name + '&per_page=100'
+                  for name in ('guard', 'contracts', 'live-check-contracts')]
+        for path in paths:
+            original = copy.deepcopy(self.responses[path])
+            changes = [dict(original, total_count=101), dict(original, total_count=True),
+                       {'total_count': 2, 'check_runs': original['check_runs'] * 2}]
+            for field, value in (('name', 'wrong'), ('head_sha', 'f' * 40), ('status', 'in_progress'),
+                                 ('conclusion', 'skipped'), ('app', {'slug': 'untrusted'})):
+                changed = copy.deepcopy(original);changed['check_runs'][0][field] = value;changes.append(changed)
+            for changed in changes:
+                with self.subTest(path=path, changed=changed):
+                    self.responses[path] = changed
+                    with self.assertRaises(RuntimeError):self.admit()
+            self.responses[path] = original
 
     def test_recovery_does_not_replay_even_after_other_completed_commands(self):
         path = '/issues/4217/comments?per_page=100&page=1'

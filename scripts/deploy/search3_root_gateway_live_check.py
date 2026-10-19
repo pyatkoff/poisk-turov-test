@@ -93,6 +93,18 @@ def budget_note(comment, now, profile=None):
     return value
 
 
+def recovery_check(sha, name, reason):
+    """Select a required exact-head check without truncating unrelated runs."""
+    value = checked_api('/commits/' + sha + '/check-runs?check_name=' + name + '&per_page=100')
+    need(isinstance(value, dict) and type(value.get('total_count')) is int
+         and isinstance(value.get('check_runs'), list)
+         and 0 <= value['total_count'] == len(value['check_runs']) <= 100, reason)
+    rows = value['check_runs']
+    need(len(rows) == 1 and rows[0].get('name') == name and rows[0].get('head_sha') == sha
+         and rows[0].get('status') == 'completed' and rows[0].get('conclusion') == 'success'
+         and rows[0].get('app', {}).get('slug') == 'github-actions', reason)
+
+
 def admission(identity, profile=None):
     profile = profile or {}
     prefix, operation = profile.get('prefix', PREFIX), profile.get('operation', OPERATION)
@@ -107,20 +119,19 @@ def admission(identity, profile=None):
     need(len(control['parents']) == 2, 'reviewed_merge_required')
     source = checked_api('/git/commits/' + control['parents'][1]['sha'])
     need(source['tree']['sha'] == control['tree']['sha'], 'reviewed_tree')
-    checks = checked_api('/commits/' + source['sha'] + '/check-runs?per_page=100')
-    for name in ('guard', 'contracts', 'live-check-contracts'):
-        matches = [c for c in checks.get('check_runs', []) if c.get('name') == name]
-        need(len(matches) == 1 and matches[0].get('status') == 'completed'
-             and matches[0].get('conclusion') == 'success'
-             and matches[0].get('app', {}).get('slug') == 'github-actions', 'source_ci')
     if profile.get('gateway_recovery'):
-        main_checks = checked_api('/commits/' + identity['control_source_sha'] + '/check-runs?per_page=100')
-        matches = [c for c in main_checks.get('check_runs', []) if c.get('name') == 'guard']
-        need(len(matches) == 1 and matches[0].get('status') == 'completed'
-             and matches[0].get('conclusion') == 'success'
-             and matches[0].get('app', {}).get('slug') == 'github-actions', 'main_ci')
+        for name in ('guard', 'contracts', 'live-check-contracts'):
+            recovery_check(source['sha'], name, 'source_ci')
+        recovery_check(identity['control_source_sha'], 'guard', 'main_ci')
         for path, blob in profile.get('main_source_blobs', {}).items():
             need(checked_api('/contents/' + path + '?ref=' + identity['control_source_sha'])['sha'] == blob, 'main_source_changed')
+    else:
+        checks = checked_api('/commits/' + source['sha'] + '/check-runs?per_page=100')
+        for name in ('guard', 'contracts', 'live-check-contracts'):
+            matches = [c for c in checks.get('check_runs', []) if c.get('name') == name]
+            need(len(matches) == 1 and matches[0].get('status') == 'completed'
+                 and matches[0].get('conclusion') == 'success'
+                 and matches[0].get('app', {}).get('slug') == 'github-actions', 'source_ci')
     matched = []
     for page in range(1, 31):
         rows = checked_api(f'/issues/4217/comments?per_page=100&page={page}')
