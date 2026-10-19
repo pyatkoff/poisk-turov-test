@@ -287,12 +287,20 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
       }
       return false;
     };
-    const visible=node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0&&node.getBoundingClientRect().height>0;
+    const visible=node=>{
+      if(node.closest('[hidden]'))return false;
+      // Chromium can retain layout rectangles for content skipped by a closed
+      // details element. Its own summary remains painted and must be checked.
+      for(let details=node.closest('details:not([open])');details;details=details.parentElement?.closest('details:not([open])')){
+        if(!details.querySelector(':scope > summary')?.contains(node))return false;
+      }
+      const bounds=node.getBoundingClientRect();return bounds.width>0&&bounds.height>0;
+    };
     const resultKinds=[['.st-name-button','result-title'],['.st-location','result-location'],
       ['.st-conditions-date','result-date'],['.st-conditions-room','result-room'],
       ['.st-conditions-meal','result-meal'],['.st-conditions-operator','result-operator'],
       ['.st-price-caption','result-party']];
-    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-night],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status],[data-destination-cancel],[data-destination-confirm-title],[data-destination-confirm-copy],[data-destination-keep],[data-destination-replace]')].filter(node=>!node.closest('[hidden]')&&node.getBoundingClientRect().width>0).map(node=>{
+    const readableText=[...root.querySelectorAll('.q8c4 > span,.st-destination-caption,.st-compact-caption,.st-search-part span,.st-search-part b,.st-condition-category .st-condition-label,.st-condition-category .q8c8,.st-flight-row b,.st-header-nav span,.st-footer button,.st-filter-heading h2,.st-filter-heading button,.st-name-button,.st-location,.st-conditions-date,.st-conditions-room,.st-conditions-meal,.st-conditions-operator,.st-price-caption,.st-offer-name,.st-offer-meal,.st-offer-meta,.st-results-note > span,.st-cost-list b,.st-cost-list > div > span,.st-native-flight-time b,.st-native-flight-route,.st-native-flight-alternatives > summary,.st-native-startup-card h1,.st-native-startup-card p,.st-pc-day,.st-pc-full,.st-pc-short,.st-pc-none,.st-pc-foot > span,[data-result-count],[data-empty-title],[data-active-chips] .st-chip span,[data-empty-text],[data-search-night],[data-search-travelers-value],[data-search-child-hint],[data-search-family-status],[data-destination-cancel],[data-destination-confirm-title],[data-destination-confirm-copy],[data-destination-keep],[data-destination-replace]')].filter(visible).map(node=>{
       const box=node.getBoundingClientRect(),walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);let text,brokenWords=false,clipped=false;const overlappingLines=window.__nativeTextLinesOverlap(node);
       while((text=walker.nextNode()))if(text.textContent.trim()&&!text.parentElement.closest('svg')){
         const range=document.createRange();range.selectNodeContents(text);
