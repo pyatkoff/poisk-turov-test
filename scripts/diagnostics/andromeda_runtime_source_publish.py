@@ -32,6 +32,9 @@ SOURCE_ORIGINS = {
     'app/integrations/andromeda-selected-quote.php': 'current',
     'app/integrations/andromeda-price-observation.php': 'current',
     'app/integrations/andromeda-quote-attempt-state.php': 'current',
+    'app/integrations/stored-provider-offer-context.php': 'current',
+    'v2/api-andromeda-stored-offer-preview.php': 'current',
+    'v2/api-andromeda-stored-quote-preview.php': 'current',
     'v2/api-andromeda-quote-preview.php': 'current',
     'v2/api-andromeda-search3-preview.php': 'current',
 }
