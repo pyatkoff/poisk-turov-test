@@ -795,6 +795,7 @@ body { margin: 0; padding: 0; }
 }
 /* Keep alternative flight pairs in the existing tour section, with one action row. */
 #design-v2-native-root #b4 .st-native-flight-options { margin-top: 12px; }
+#design-v2-native-root #b4 [data-native-defer-flight] { min-height: 44px; }
 #design-v2-native-root #b4 .st-native-flight-alternatives > summary { min-height: 44px; padding: 12px 0; color: var(--blue); font-weight: 600; line-height: 1.4; cursor: pointer; overflow-wrap: normal; }
 #design-v2-native-root #b4 .st-native-flight-alternatives > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 #design-v2-native-root #b4 .st-native-flight-option { padding: 14px 0; }
