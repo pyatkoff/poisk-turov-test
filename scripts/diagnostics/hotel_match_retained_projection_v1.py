@@ -128,14 +128,37 @@ def project(path: Path):
                 if tv is None:
                     raise ValueError('legacy_target_id')
                 cohort.add(tv)
+                external = str(s['external_key'])
+                accepted_bridge = False
+                if ns == 'provider_ref_digest:andromeda':
+                    try:
+                        value = json.loads(s['source_json'])
+                    except (ValueError, TypeError):
+                        continue
+                    expected_keys = {'schema_version','provider','supplier_namespace','external_hotel_id','accepted_local_hotel_id'}
+                    if (not isinstance(value, dict) or set(value) != expected_keys
+                            or s.get('acquired_via') != 'match_accepted_bridge'
+                            or type(value.get('schema_version')) is not int or value['schema_version'] != 1
+                            or value.get('provider') != 'andromeda'
+                            or type(value.get('accepted_local_hotel_id')) is not int
+                            or str(value['accepted_local_hotel_id']) != tv):
+                        continue
+                    ns = str(value['supplier_namespace'])
+                    external = str(value['external_hotel_id']).strip()
+                    if (ns not in NAMESPACES or positive(external) is None
+                            or s['external_key'] != hashlib.sha256((ns+':'+external).encode()).hexdigest()):
+                        continue
+                    accepted_bridge = True
                 # Exact namespaces only. Prefixes and equal integers do not
                 # authorize a provider/URL/SAMO namespace bridge.
-                if ns not in NAMESPACES or positive(s['external_key']) is None:
+                if ns not in NAMESPACES or positive(external) is None:
                     continue
-                key = (ns, str(s['external_key']), tv)
-                edge = edges.setdefault(key, {'namespace': ns, 'external_id': str(s['external_key']),
+                key = (ns, external, tv)
+                edge = edges.setdefault(key, {'namespace': ns, 'external_id': external,
                     'tv_hotel_id': int(tv), 'proof_kind': 'retained_legacy_source', 'evidence': [],
                     'namespace_bridge': 'exact_source_namespace', 'safe_to_write_now': False})
+                if accepted_bridge:
+                    edge['materialized_accepted_bridge'] = True
                 edge['evidence'].append({'old_local_id': row['old_local_id'],
                     'snapshot_sha256': row['snapshot_sha256'], 'source_sha256': s['source_sha256']})
             else:
@@ -159,6 +182,8 @@ def project(path: Path):
             state = 'already_accepted'
         elif accepted:
             state = 'hold_accepted_ownership'
+        elif edge.get('materialized_accepted_bridge'):
+            state = 'hold_stale_accepted_bridge'
         elif ns.startswith('operator_url:'):
             state = 'needs_independent_namespace_bridge'
         else:
@@ -178,13 +203,19 @@ def project(path: Path):
             'unique_registry_local_hotels': len(local) if registry_available else None,
             'accepted_on_retained_cohort': len(local & cohort) if registry_available else None,
             'without_accepted_on_retained_cohort': len(cohort-local) if registry_available else None,
-            'pending_conflict_rows': len(rows)-len(accepted) if registry_available else None})
+            'nonaccepted_rows': len(rows)-len(accepted) if registry_available else None,
+            'decision_status_counts': dict(collections.Counter(str(r['decision_status']) for r in rows)) if registry_available else None})
+    bg_local = {str(r['local_hotel_id']) for (ns,_),rr in registry.items()
+                if ns in ('bgoperator','operator_115') for r in rr if r['decision_status']=='accepted'}
     return {'schema_version': 1, 'state': 'projected_read_only', 'cohort': 'common4-retained',
         'captured_at_utc': scope['captured_at_utc'], 'database_snapshot': scope['database_snapshot'],
+        'target_scope': scope.get('target_scope','not_declared'),
         'cohort_tv_hotel_ids': sorted(map(int, cohort)), 'cohort_hotels': len(cohort),
         'raw_sha256': raw_hash.hexdigest(), 'raw_bytes': raw_bytes, 'capture_rows': dict(counts),
         'observed_operators': list(by_operator.values()), 'legacy_source_namespaces': dict(source_namespaces),
         'registry_coverage': coverage, 'candidate_states': dict(states),
+        'biblio_union_unique_registry_local_hotels': len(bg_local) if registry_available else None,
+        'biblio_union_on_retained_cohort': len(bg_local & cohort) if registry_available else None,
         'candidate_edges': list(edges.values()), 'new_accepted_mappings': 0,
         'supplier_calls': 0, 'database_writes': 0, 'mapping_writes': 0, 'safe_to_write_now': False,
         'limitations': ['retained cohort; not full registry or live30 coverage',
