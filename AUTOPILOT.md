@@ -41,37 +41,44 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-Follow the finite remaining-delivery section at the top of
-`docs/project/search3-product-development-plan.md` and the same
-`AUTOPILOT_STATE.json.current_task`. Owner23:06 requested work organization first.
-Approved Site203 is already transferred; installed originalNEXT product3bdd
-has terminal6273604203. QA4647/source564ef1b1 merged into release22850f1f with
-unchanged product bytes and terminal6274857599. Site199/d827 and older transfer/
-recovery pointers below are dated history, not instructions to repeat work.
+Owner20.10.2026 correction: follow the current top product plan and
+`AUTOPILOT_STATE.json.current_task`; completed packets are not future commands.
+Site203 is approved/transferred; installed originalNEXT product3bdd/app7ae9ba
+has terminal6273604203. Family4647 is accepted in its exact scope. Calendar4649
+sourcee8ba1e0e is checked and integrated9130a6aa, terminal6278527732;
+18frames/6receipts/15clock receipts reviewed, all4applicable CI successful.
+All843product payload hashes unchanged; no new publication/runtime replay.
+Site199/d827, old transfer and old permission-wait pointers are dated history.
 
-One next packet: missing calendar/date/filter/keyboard actions across ordinary
-360/390/430/768/1280 and short1280x720, confirmed defect repair, final review.
-Reuse existing exact-source5width calendar-open/Cancel/units and family evidence.
-The stock compiled-browser workflow can render these widths; cloudChrome's
-missing resize is only a limitation of that native installed route.
-No new workflow, browser install, local server or denied-route carrier workaround.
+Current stage: FINAL_PREVIEW_ACCEPTANCE_PENDING_EXTERNAL_SCOPES.
+One next result: separate acceptance of the installed coherent NEXT UI in its
+actual evidence scope. SEARCH owns this stage, read-only QA reviews the same
+artifact. Reuse accepted compiled6viewport/family/calendar evidence; the nearest
+missing action is the installed native mobile journey. Its exact condition is
+an available permitted native mobile runtime/device; physicalSafari/keyboard/
+panels/safearea are recorded separately. No unchanged capability probing or
+new test-only/cosmetic queue. Fix only confirmed material defects coherently.
+
+The active plan names the existing boundary owners and conditions for Rix
+canonicalalias/submittedIDs, INT repeated/all-pair authority, real lead delivery
+(disabled in this preview) and separate production approval. No new assignment
+or permission to INT/LOCAL/MATCH/foreignv2 is issued. GlobalDONE requires the
+existing mandatory gates and measured key criteria; partial9.5 is not inherited.
 
 One writer/integrator, independent read-only review, separate publisher only for
-a ready changed artifact. Fresh heads/claims/current state first; reuse already-read
-unchanged instructions/consumer maps by SHA. Focused checks during repair,
-all applicable final-source CI on the finished packet; no successful unchanged
-CI/deploy replay. Planning changes require applicable docs/state/security checks,
-not UI/browser publication. Preserve draft/ready and guard policy.
+a ready changed product artifact. Fresh heads/claims/state; reuse unchanged
+instructions/consumer maps by SHA. Focused checks during repair, applicable
+final-source CI once ready; no draft/ready/guard changes. Control-only repair:
+diff/JSON/current_task-only/historical/protected equality + owner-policy/security;
+no browser/build/publish solely for docs. Close a packet by updating active
+entry points with its terminal so the next run receives one current action.
 
-This organization request does not silently renew the single test-only allowance
-consumed by PR4647. A separate next QA-only packet needs a direct instruction for
-its concrete finite scope; regression for an authorized confirmed fix uses normal
-gates. Name exact artifact, route, actions/frames and limits before implementation.
-Real delivery remains disabled in this preview; do not invent async delivery states.
-Physical/native mobile, provider authority/live-ID and production gates stay separate.
-No score gain for plan/CI/version; no repeated unchanged report.200%/Compare deferred.
-Keep both approved application branches, public project/history, originalNEXT target
-and all protected contracts. Schedules/enabled/paused/settings/other tasks unchanged.
+Owner19.10 23:32 already authorized the completed4649 scope; allowances4647/4649
+are consumed and are not a stale wait for the same work. A genuinely new standalone
+QA-only scope needs a direct concrete instruction; necessary regression for an
+authorized confirmed defect uses normal gates. No supplier/paid/reallead or
+production operation is authorized by this control repair.200%/Compare deferred;
+no UX points for plan/CI/version. Schedules/enabled/paused/settings unchanged.
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 

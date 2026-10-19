@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "REMAINING_ACCEPTANCE_DEFINED_NOT_STARTED",
+    "status": "FINAL_PREVIEW_ACCEPTANCE_PENDING_EXTERNAL_SCOPES",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-19",
-    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками.",
-    "acceptance_status": "SITE203_TRANSFER_PUBLISHED_BOUNDED_JOURNEYS_ACCEPTED_KEY_SCOPES_OPEN",
-    "last_fully_checked_release_sha": "22850f1fbe40b4b8bc5f401376b4d418abe2210d",
+    "updated_at": "2026-10-20",
+    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей.",
+    "acceptance_status": "SITE203_PUBLISHED_FAMILY_CALENDAR_COMPILED_ACCEPTED_WHOLE_PRODUCT_OPEN",
+    "last_fully_checked_release_sha": "9130a6aa28f4319fcab24c65a817a510fd677417",
     "published_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
     "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
-    "planning_base_release_sha": "22850f1fbe40b4b8bc5f401376b4d418abe2210d",
+    "planning_base_release_sha": "9130a6aa28f4319fcab24c65a817a510fd677417",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "Organization delta0. Existing audit SEARCH-QUALITY-1 is authoritative: family compiled6274732781, installed calendar partial6275562364. No whole-product9.5; N is not summed, stages do not inherit scores."
+      "score_status": "Existing SEARCH-QUALITY-1/audit6278536658 authoritative. Calendar4649 bounded compiled FIRST baseline9.5/UI delta0; broad installed Calendar2/N/2/N/2 without sum, family carried6274732781. No whole-product9.5 or transfer of stage scores."
     },
-    "next_action": "Один конечный остаток из верхнего product plan: использовать retained5width calendar-open/Cancel/units и family exact3bdd; добрать changed-range Apply/reopen/history, filter/date/rail/card parity, недостающие calendar states/full dialog1280×720. Owner tests/search3-visual-live-browser.cjs/formPickerActionJourney + existing visual workflow. Сначала организация: отдельный новый QA-only PR/run не разрешён автоматически после consumedPR4647; нужно прямое поручение на конкретный конечный scope. Regression при подтверждённом разрешённом UI-fix следует обычным gates. Не повторять перенос Site203/family/desktopCancelApply/старыйlive/deploy/ключи. Source change: focused→применимыеCI на готовом source→разрешённыйrelease merge→отдельныйstockNEXTpublisher/readback→затронутоеinstalled действие. Physical/native mobile/real delivery/provider authority отдельно;200%/Compare deferred.",
+    "next_action": "Отдельная фактическая приёмка установленного цельного original NEXT3bdd/app7ae9ba по существующему audit. Ближайшее ещё не принятое действие — mobile путь поиск→отель→тур→optional рейсы→контакт→возврат на штатном разрешённом native mobile runtime; physicalSafari/OSkeyboard/panels/safearea отдельно. Условие продолжения — доступный такой runtime/устройство. До изменения capability/artifact/риска не повторять compiled6viewport/family/Calendar4649/desktop/старыеlive/ключи/CI/deploy. Исправлять только новые подтверждённые существенные дефекты связно. Rix canonicalalias/liveIDs, INT price authority, отключённая real delivery и production — отдельные точные условия таблицы activeplan, не новые операции. Если безопасного шага нет, сохранить одно условие, без повторного аудита/отчёта.",
     "next_task": {
-      "scope": "Один конечный остаток Calendar/date/filter/keyboard на360/390/430/768/1280 и1280×720: exact range Apply/reopen/BackForward, согласованность формы/URL/rail/cards, фильтр→дата, недостающие sparse/unknown/loading/error/recovery; затем связанные confirmed fixes и итоговый просмотр.",
+      "scope": "Один результат: отдельная приёмка текущего установленного NEXT в фактическом UI scope и исправление подтверждённых существенных дефектов. Ближайшее missing действие — установленный native mobile полный путь; условие — разрешённая mobile capability/устройство. Calendar4649/family завершены в exact compiled scope и не возвращаются в очередь.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён.",
-      "acceptance": "Тот же SEARCH-QUALITY-1 12/11/5,0/1/1.5/2,N без суммы, ключевые применимые полностью измеренные строки≥9.5. Existing exact evidence переиспользуется; accepted family не повторять. Минимум2новых кадра на размер для missingдействий и необходимые states. Native/compiled/physical/real supplier отдельно; whole-product приёмка остаётся открытой.",
-      "execution": "Свежие current_task/верхнийплан/heads/claims/сообщения; ранее прочитанные неизменённые инструкции/consumer map по SHA. Exact source/artifact/route+missingactions передпакетом. Existing tests/search3-visual-live-browser.cjs/formPickerActionJourney сoffline transport; semantic calendar-inventory не дублировать. Отдельный новый QA-only scope требует прямого поручения послеPR4647; planning не запускаетего. Focused во время изменения, обязательныеCI на готовом source; без draft/ready/workflow/guard изменений/успешныхповторов. Подтверждённый product defect — обычный разрешённый repair workflow.",
+      "acceptance": "Тот же SEARCH-QUALITY-1 12/11/5,0/1/1.5/2,N без суммы; ключевые применимые полностью измеренные строки≥9.5. Использовать сохранённое exact evidence; missing действия закрывать в том же связанном пути, не создавать PR на каждый N. Installed UI/physical/real supplier/delivery и глобальноеDONE разделены; обязательные N остаются открытыми.",
+      "execution": "SEARCH отвечает за installed UI и подключённые owners, независимый read-only QA проверяет тот же artifact; координатор4217 сохраняет один текущий шаг. Свежие heads/claims/currentplan/state; неизменённые инструкции/evidence по SHA. Owner19.10 23:32 allowance fulfilled/consumed4649; ожидание того же разрешения снято. Новый самостоятельный QA-only scope требует прямого конкретного поручения, необходимые regression разрешённого дефекта — обычные gates. Без новых browser/server/install/carrier/workflow обходов и без успешных повторов.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1357,7 +1357,7 @@
       "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
       "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
       "remaining": "Bounded original desktop live journey on05c is accepted at #4217/6264963728 and consumed: do not repeat it. Broader or changed-risk live acceptance, authoritative prices of other variants/pairs, mobile/physical Safari, real lead delivery, full comparable quality evaluation and separate production approval remain open under their exact gates. No score inheritance or full9.5.",
-      "historical_pins": "last_fully_checked_release_sha/planning_base_release_sha, existing_unapproved_drafts, scheduler_observation, dated_history/oldinstalls are datedprovenance/no-replay, notcurrentexecutionpins/commands/newauthority.",
+      "historical_pins": "dated_history/oldinstalls/existing drafts/scheduler_observation retain provenance and no-replay. Current checkedsource e8ba1e0e/integrated9130a6aa are not a new product publication; installed3bdd/readback6273604203 remains runtime authority. Fresh activeplan/state and later terminal govern execution.",
       "latest_next": {
         "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
         "release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
@@ -1456,11 +1456,11 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "PUBLIC_SITE203_COMPLETE_INSTALLED3BDD_REMAINING_ACCEPTANCE_DEFINED",
-        "checked_at": "2026-10-19",
-        "scope": "Stock compiledbrowser can render360/390/430/768/1280 and1280×720. Retained39302944211 already has fullcalendar-open/Cancel/units5widths; missing changedrange/filter/history/states/fullshortdialog. NativeCloudChrome1363×936 available, resize unavailable; physicalSafari N,200%deferred. No localserver/install/carrier workaround.",
-        "required_next": "Один конечный остаток из верхнего product plan: использовать retained5width calendar-open/Cancel/units и family exact3bdd; добрать changed-range Apply/reopen/history, filter/date/rail/card parity, недостающие calendar states/full dialog1280×720. Owner tests/search3-visual-live-browser.cjs/formPickerActionJourney + existing visual workflow. Сначала организация: отдельный новый QA-only PR/run не разрешён автоматически после consumedPR4647; нужно прямое поручение на конкретный конечный scope. Regression при подтверждённом разрешённом UI-fix следует обычным gates. Не повторять перенос Site203/family/desktopCancelApply/старыйlive/deploy/ключи. Source change: focused→применимыеCI на готовом source→разрешённыйrelease merge→отдельныйstockNEXTpublisher/readback→затронутоеinstalled действие. Physical/native mobile/real delivery/provider authority отдельно;200%/Compare deferred.",
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6277362122"
+        "status": "COMPILED_CALENDAR_FAMILY_COMPLETE_NATIVE_MOBILE_CONDITION_PENDING",
+        "checked_at": "2026-10-20",
+        "scope": "Stock compiled acceptance of current3bdd completed in4647/family and4649/calendar. NativeCloudChrome desktop remains available; resize unavailable at retained check. Missing installed native mobile/physicalSafari/keyboard/safearea requires its actual permitted capability/device. No new capability probe or all-browser-unavailable claim;200%deferred.",
+        "required_next": "Отдельная фактическая приёмка установленного цельного original NEXT3bdd/app7ae9ba по существующему audit. Ближайшее ещё не принятое действие — mobile путь поиск→отель→тур→optional рейсы→контакт→возврат на штатном разрешённом native mobile runtime; physicalSafari/OSkeyboard/panels/safearea отдельно. Условие продолжения — доступный такой runtime/устройство. До изменения capability/artifact/риска не повторять compiled6viewport/family/Calendar4649/desktop/старыеlive/ключи/CI/deploy. Исправлять только новые подтверждённые существенные дефекты связно. Rix canonicalalias/liveIDs, INT price authority, отключённая real delivery и production — отдельные точные условия таблицы activeplan, не новые операции. Если безопасного шага нет, сохранить одно условие, без повторного аудита/отчёта.",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6278527732"
       },
       "approved_site203": {
         "source_sha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
@@ -1488,6 +1488,18 @@
         "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6275557028",
         "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6275562364",
         "scope": "Native1363×936 mixed2A keyboardopen/draft/Escape/focusreturn, offlineApply10–12Oct form/URL/rail/cards agree;5JPEGs with exactcapture1348×926/1363×936. Partialscope only, no native-mobile/physical inheritance or replay."
+      },
+      "current_compiled_calendar": {
+        "source_sha": "e8ba1e0ea3801bd3c7dea9b42af7a3658235b738",
+        "release_sha": "9130a6aa28f4319fcab24c65a817a510fd677417",
+        "run_id": 39331698161,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6278527732",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6278536658",
+        "stage_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1719#issuecomment-6278543337",
+        "status": "COMPLETED_MERGED_REVIEWED_PRODUCT_UNCHANGED_NO_REPLAY",
+        "owner_allowance": "Owner19.10.2026 23:32 direct finite scope fulfilled/consumed PR4649.",
+        "scope": "6viewports range/budget/Apply/reopen/BackForward,18frames/6receipts; controlled readstates390+1280x720.15clock receipts and22existing selected-session cases pass; fourapplicable CI successful. Same installed3bdd/app7ae9ba,843payload hashes unchanged. FIRST bounded Calendar baseline9.5/UI delta0; broad/physical/live scopes not inherited.",
+        "evidence_index_sha256": "a7662ae475c9c0e96d35c441a05acc38cd2e9ad512147d9ba01a105b6fe7c3fb"
       }
     },
     "published_release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
@@ -1495,16 +1507,17 @@
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
       "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
-      "priority": "Emergency/data/lead-loss first; finish one finite remaining delivery packet and confirmed material defects. Current explicit owner organization request allows this docs/state packet, not a UX score gain.",
+      "priority": "Emergency/data/lead-loss first; one final installed-preview acceptance result and confirmed material defects. Completed Calendar4649 is not the next work. This control correction gives no UX points/new supplier/lead/production authority.",
       "parallelism": "One writer/shared owner and integrator; independent read-only plan/frame/behavior review in parallel; separate publisher only for ready changed artifact.",
       "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
-      "blocker_scope": "Retained5width calendar-open/Cancel/units already exists. Missing actions/short1280×720 are narrower. NativeChrome resize unavailable is route-specific; stock compiledCI is capable. No denied-route workaround. If no safe step, retain one concrete condition and avoid repeated audit; delivery/physical/authority separate.",
-      "qa_only_authority": "PR4647 consumed its single QA-only allowance. Organization request does not silently authorize another test-only PR/run. Next concrete finite QA-only scope needs direct execution instruction; necessary regression may accompany an authorized confirmed UI repair.",
-      "validation": "This4path docs/state packet: diff/JSON/current_task-only/protected-state equality, independent plan review and applicable owner-policy/security checks. No UI/browser CI/deploy solely for docs; no draft/ready toggles or gate weakening.",
-      "verification_pin": "Release22850 integrates checkedsource564 with sourceCI pins in6274857599; installedsource3bdd under6273604203. This is not a new release-CI or runtime readback."
+      "blocker_scope": "Nearest missing action is installed native mobile journey; exact condition is an available permitted native mobile runtime/device. Existing cloud desktop withoutresize and compiled6viewport cannot substitute physical scope. Other exact data/INT/delivery/production dependencies are in activeplan. No unchanged re-probe/audit or global blocked inference.",
+      "qa_only_authority": "Owner19.10 23:32 explicitly authorized completed4649; both4647/4649 allowances consumed, no stale wait for that same scope. A genuinely new standaloneQA-only packet needs direct concrete instruction; necessary regression of an authorized confirmed defect uses normal gates. Owner20.10 control repair does not authorize live/supplier/lead/production.",
+      "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
+      "verification_pin": "Checkedsource e8ba1e0e/integrated9130a6aa under terminal6278527732; all4checks successful, tree/readback exact. Installedproduct3bdd/readback6273604203 unchanged; no new runtime evidence implied by docs.",
+      "closeout": "Before terminal RELEASE, update active plan/current_task/entry pointers for the finished packet, retain immutable receipts/history and publish one next action/condition. Do not leave completed work as NOT_STARTED or awaiting an already-given allowance. No separate tracker or repeated unchanged reports."
     },
-    "last_fully_checked_source_sha": "564ef1b1d05999fe8c16e412c212152d8aef8615"
+    "last_fully_checked_source_sha": "e8ba1e0ea3801bd3c7dea9b42af7a3658235b738"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
