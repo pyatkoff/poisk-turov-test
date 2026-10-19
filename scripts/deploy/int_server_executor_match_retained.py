@@ -206,6 +206,8 @@ def completed_result(command, result, control_sha):
         for obj in (data, result):
             if any(type(obj.get(k)) is not int or obj[k] != 0 for k in ('supplier_calls','database_writes','mapping_writes')):
                 return False
+        if command['mode']=='match-retained-readback' and data.get('target_operation_id')!=command.get('target_operation_id'):
+            return False
         expected = {'match-retained-intake':'captured_and_projected_read_only',
                     'match-tourvisor-quota-policy':'quota_policy_applied_no_supplier_calls',
                     'match-retained-readback':'reconciled_read_only'}[command['mode']]
