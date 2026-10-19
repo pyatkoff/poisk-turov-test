@@ -38,6 +38,12 @@ FIXTURE = """<!doctype html><html lang=\"ru\"><head>
 <div class=\"hotel-links\" style=\"margin-top:18px\"><button class=\"text-button\">Об отеле</button><button class=\"compare-btn\">Сравнить</button></div>
 <div style=\"display:flex;gap:8px;align-items:center;margin-top:18px\"><button class=\"favorite-button\" style=\"position:static\" aria-label=\"В избранное\">♥</button><button class=\"card-photo-arrow next\" style=\"position:static;margin:0\" aria-label=\"Следующее фото\">›</button></div>
 <div class=\"hotel-more\" style=\"margin-top:18px\"><button class=\"text-button\">Показать все туры</button></div>
+<div class=\"hotel-price price-card-probe\" style=\"margin-top:18px\">
+  <div class=\"starting-price\"><span>Цена за всех туристов</span><strong>15 000 000 ₽</strong></div>
+  <div class=\"fuel-note\">Актуальность цены проверяется при выборе</div>
+  <button class=\"primary price-card-cta-probe\">Смотреть туры</button>
+  <small class=\"hotel-offer-count\">12 предложений</small>
+</div>
 <div class=\"offer-price\" style=\"text-align:left;margin-top:18px\"><button class=\"primary\">Выбрать тур</button></div>
 <div class=\"compare-tray\" style=\"position:static;transform:none;margin-top:18px\"><button class=\"primary\">Сравнить</button><button class=\"icon-button\" aria-label=\"Закрыть сравнение\">×</button></div>
 <div class=\"compare-hotel-card\" style=\"position:relative;min-height:54px;margin-top:18px\"><button class=\"icon-button compare-remove\" aria-label=\"Убрать отель из сравнения\">×</button></div>
@@ -111,6 +117,13 @@ def inspect_width(browser, origin, width, screenshot=False):
               whiteSpace:value.whiteSpace
             };
           };
+          const measure = selector => {
+            const node = document.querySelector(selector), rect = node.getBoundingClientRect();
+            return {
+              left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height,
+              clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,clientHeight:node.clientHeight,scrollHeight:node.scrollHeight
+            };
+          };
           return {
             hotelSort: style('.sort-label select'),
             offerSort: style('.offer-list-toolbar select'),
@@ -137,6 +150,13 @@ def inspect_width(browser, origin, width, screenshot=False):
             favorite: style('.favorite-button'),
             photoArrow: style('.card-photo-arrow'),
             expandOffers: style('.hotel-more .text-button'),
+            resultPriceCard: style('.price-card-probe'),
+            resultPriceValue: style('.price-card-probe .starting-price > strong'),
+            resultPriceCta: style('.price-card-cta-probe'),
+            resultPriceCardBox: measure('.price-card-probe'),
+            resultPriceValueBox: measure('.price-card-probe .starting-price > strong'),
+            resultPriceCtaBox: measure('.price-card-cta-probe'),
+            resultPriceCardOverflow: document.querySelector('.price-card-probe').scrollWidth > document.querySelector('.price-card-probe').clientWidth,
             offerCta: style('.offer-price .primary'),
             compareCta: style('.compare-tray > .primary'),
             compareClose: style('.compare-tray .icon-button'),
@@ -190,7 +210,14 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert float(values["tourDialog"]["width"].removesuffix("px")) >= width - 2, (width, values["tourDialog"])
             assert values["tourDialogOverflow"] is False, (width, values)
             assert values["tourFooterOverflow"] is False, (width, values)
+            assert values["resultPriceCardOverflow"] is False, (width, values)
+            card_box, price_box, cta_box = values["resultPriceCardBox"], values["resultPriceValueBox"], values["resultPriceCtaBox"]
+            assert price_box["width"] > 0 and price_box["left"] >= card_box["left"] - 1 and price_box["right"] <= card_box["right"] + 1, (width, values)
+            assert cta_box["width"] > 0 and cta_box["left"] >= card_box["left"] - 1 and cta_box["right"] <= card_box["right"] + 1, (width, values)
+            assert values["resultPriceValue"]["display"] != "none", (width, values["resultPriceValue"])
             if width <= 374:
+                assert len(values["resultPriceCard"]["gridTemplateColumns"].split()) == 1, (width, values["resultPriceCard"])
+                assert float(values["resultPriceCta"]["width"].removesuffix("px")) >= card_box["width"] - 34, (width, values["resultPriceCta"])
                 assert values["tourFooter"]["display"] == "grid", (width, values["tourFooter"])
                 assert float(values["tourCta"]["width"].removesuffix("px")) >= width - 60, (width, values["tourCta"])
         else:
@@ -212,6 +239,10 @@ def inspect_width(browser, origin, width, screenshot=False):
             assert tour_width >= (700 if width == 761 else 900), (width, values["tourDialog"])
             assert values["tourDialogOverflow"] is False, (width, values)
             assert values["tourFooterOverflow"] is False, (width, values)
+            assert values["resultPriceCardOverflow"] is False, (width, values)
+            card_box, price_box, cta_box = values["resultPriceCardBox"], values["resultPriceValueBox"], values["resultPriceCtaBox"]
+            assert price_box["left"] >= card_box["left"] - 1 and price_box["right"] <= card_box["right"] + 1, (width, values)
+            assert cta_box["left"] >= card_box["left"] - 1 and cta_box["right"] <= card_box["right"] + 1, (width, values)
         assert values["overflow"] is False, (width, values)
         assert not errors, errors
         if screenshot:
