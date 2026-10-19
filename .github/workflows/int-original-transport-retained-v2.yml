@@ -1,0 +1,114 @@
+name: INT original transport retained read v2
+on:
+  push:
+    branches: ['ops/int-original-transport-retained-20260919-v2']
+    paths: ['.github/workflows/int-original-transport-retained-v2.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.run_number == 1 && github.ref == 'refs/heads/ops/int-original-transport-retained-20260919-v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: 6468b0b4028a7fa4bc105dab9b3c32f33ed317dc
+      OPERATION_ID: int-original-transport-retained-1717-20260919-v2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 6468b0b4028a7fa4bc105dab9b3c32f33ed317dc
+          persist-credentials: false
+      - name: Verify exact source and offline regressions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SOURCE_SHA&per_page=100" > "$RUNNER_TEMP/checks.json"
+          python3 - <<'PY'
+          import json,os
+          runs=json.load(open(os.environ['RUNNER_TEMP']+'/checks.json'))['workflow_runs']
+          assert any(r['head_sha']==os.environ['SOURCE_SHA'] and r['name']=='Security guard' and r['conclusion']=='success' for r in runs)
+          PY
+          echo 'ef316c64fce3602c846f01f7307d0fe3290e3d04b49fdd0eae4bb6b657c33732  scripts/ops/andromeda_original_transport_retained_v2.php' | sha256sum -c -
+          echo '6eb9097ca66d6e4ab366367eb4e187b3d57ead805cd2795e89d3760e7ea59a9c  tests/andromeda-original-transport-retained-v2-test.php' | sha256sum -c -
+          php -l scripts/ops/andromeda_original_transport_retained_v2.php
+          php tests/andromeda-original-transport-retained-v2-test.php
+          php tests/andromeda-original-transport-facts-test.php
+          ! grep -E '(getFlights|changeService|curl_exec|fsockopen|file_put_contents|v2_data_db)[[:space:]]*\(' scripts/ops/andromeda_original_transport_retained_v2.php scripts/diagnostics/andromeda_original_transport_facts.php
+          mkdir -p "$RUNNER_TEMP/stage/scripts/ops" "$RUNNER_TEMP/stage/scripts/diagnostics"
+          cp scripts/ops/andromeda_original_transport_retained_v2.php "$RUNNER_TEMP/stage/scripts/ops/"
+          cp scripts/diagnostics/andromeda_original_transport_facts.php "$RUNNER_TEMP/stage/scripts/diagnostics/"
+          tar -C "$RUNNER_TEMP/stage" -czf "$RUNNER_TEMP/runtime.tar.gz" scripts
+      - name: Read existing original package checkpoints
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tar.gz"
+          archive_sha=$(sha256sum "$RUNNER_TEMP/runtime.tar.gz" | awk '{print $1}')
+          scp "${opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$REMOTE_USER@$HOST:$archive"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$archive" "$archive_sha" "$SOURCE_SHA" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; archive="$2"; archive_sha="$3"; source="$4"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha"
+          ledger="$HOME/.anytour-ops/$operation"
+          test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"
+          printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d /tmp/anytour-original-retained-v2.XXXXXX)"
+          trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php -d display_errors=0 "$work/scripts/ops/andromeda_original_transport_retained_v2.php" "$HOME/.anytoour-andromeda/searches" 1789811318 > "$ledger/result.json" 2> "$ledger/error.log"
+          rc=$?; set -e
+          RC="$rc" php -r '$p=$argv[1];$v=is_file($p)&&filesize($p)>0?json_decode(file_get_contents($p),true,64):null;$r=["operation"=>$argv[2],"source"=>$argv[3],"status"=>(int)getenv("RC")===0?"completed_read_only":"failed_read_only","result_sha256"=>hash_file("sha256",$p),"result"=>$v,"replay_allowed"=>false];file_put_contents($argv[4],json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);' "$ledger/result.json" "$operation" "$source" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_read_only || echo failed_read_only)" > "$ledger/state"
+          cat "$ledger/receipt.json"
+          exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/readback.json"
+          cmp "$RUNNER_TEMP/result/receipt.json" "$RUNNER_TEMP/result/readback.json"
+          test "$rc" = 0
+          python3 - <<'PY'
+          import json,os,collections
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert r['status']=='completed_read_only' and r['source']==os.environ['SOURCE_SHA']
+          d=r['result']; assert d['version']==2 and d['reported']==len(d['rows'])
+          for k in ['supplier_calls','db_connections','db_writes','retained_file_writes','get_flights_calls','changeservice_calls','calc_calls','booking_calls']: assert d[k]==0
+          print('RETAINED_V2_SUMMARY '+json.dumps({k:d[k] for k in ['matched_checkpoint_files','examined','reported','recovered_page_time','first32','skips']},ensure_ascii=False))
+          groups={}; positive=[]
+          for row in d['rows']:
+              c=row['context']; key=tuple(c[k] for k in ['operatorKey','tourKey','programKey','checkIn','nights','adult','child'])
+              g=groups.setdefault(key,{'packages':0,'transports':0,'details_states':collections.Counter(),'markup_states':collections.Counter(),'money':{}})
+              g['packages']+=1;g['transports']+=row['transport_count'];g['details_states'].update(row['details_states']);g['markup_states'].update(row['markup_states'])
+              for m in row['money_facts']:
+                  signature=json.dumps({'scope':m['scope'],'fields':m['fields']},sort_keys=True)
+                  g['money'][signature]={'scope':m['scope'],'fields':m['fields']}
+          for key,g in groups.items():
+              print('ORIGINAL_V2_CONTEXT '+json.dumps({'key':key,'packages':g['packages'],'transport_records':g['transports'],'details_states':dict(g['details_states']),'markup_states':dict(g['markup_states']),'distinct_money_count':len(g['money']),'money':list(g['money'].values())},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-original-transport-retained-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
