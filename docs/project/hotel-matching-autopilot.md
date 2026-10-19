@@ -27,6 +27,53 @@ MATCH — отдельное направление, не INT #1717 и не SEAR
 сохраняет алгоритм A/B/C и все действующие ограничения ниже. Другие направления,
 `AUTOPILOT_STATE.json.current_task`, расписания и enabled/paused состояния не меняются.
 
+### Источник текущего прохода — поручение 20.10.2026
+
+Все новые supplier-запросы MATCH для hotel/operator identity выполнять через
+**Турвизор, учётка `TOURVISOR_ANEX_JWT`**. Это выделенный ключ Турвизора,
+а не прямой API ANEX. В scope остаются common4: ANEX/FUN&SUN/БГ/Интурист,
+с фактической привязкой операторов к этой учётке и общим ledger/лимитом.
+Новые acquisition через обычный `TOURVISOR_JWT`, прямой ANEX или SAMO/Andromeda
+не входят в этот проход. Сохранённые доказательства и принятые связи этих источников
+переиспользуются; настройки и выполнение INT/SEARCH этим поручением не меняются.
+
+Проверка второго ключа 19.10 дала 25 hotel groups/103 tours у ANEX13, но не
+доказала доступ всего common4, полноту каталога или свободный остаток бюджета.
+Её search13943616554 и fixed operation завершены/no-replay; raw body не сохранён.
+Новый проход использует существующий account/provider-day ledger без сброса
+и новое обоснованное evidence, а не повтор этого теста.
+
+**Входящие совпадения проверять до нового платного сбора.** Найденные материалы
+зафиксированы в [результате проверки передачи](../../reports/hotel-match-tourvisor-handoff-review-20261020.json):
+
+| Найдено | Использование в MATCH |
+| --- | --- |
+| LOCAL: 5075 old→TV links, 6175 ready cards | Принятые каталоговые bridges; не число новых совпадений с ТО |
+| 37076 старых source records в before snapshot и `tour_operator_identity_observations` | Приоритетный retained intake: точные namespaces/IDs/operator links/paths/native fields/provenance; число новых допустимых пар ещё не измерено |
+| Старый CSV BG18 от 28.09 | Уже существующая candidate-only группа; `102+ID` не доказывает bridge, consumed scopes не открывать повторно |
+| Три проверенные legacy_catalog→own→TV цепочки | 1546→736→1546 (A11), 1584→763→1584 (WASSERMANN), 9374→1554→9374 (SUNRISE); это target proof, не принятие native-TO пары |
+
+В проверенных #4217/INT/LOCAL после 08.10 отдельный новый список точных
+hotel↔TO pairs не найден. Это граница выполненного поиска, не утверждение
+об отсутствии другой передачи. Новые исходные файлы принимаются в ту же очередь.
+
+Два явных public saved-data bridges подтвердили LOCAL↔TV targets трёх retained
+кандидатов. Полный raw каждого правильного ответа захвачен до parsing; в отчёте
+сохранены проверенные проекции, hashes и точные request/response receipts.
+Первый контрольный lookup с чужим namespace не используется как proof этих отелей.
+Operator/native source proof, CURRENT guards и SUNRISE/Kemper qualifier/cluster holds
+остаются отдельными; новых принятых соответствий это не создаёт.
+
+**Следующий конкретный data-пакет:** типизированные операторские строки из
+`tour_operator_identity_observations` и сохранённых
+`local_tv_legacy_links.snapshot_json.sources[]` → проверка independent TV/native
+proof и существующей accepted ownership → штатная CURRENT acceptance/readback
+для пригодной части. Публичный content DTO не заменяет private source records.
+Допустимый unfrozen маршрут этого intake ещё нужно подтвердить по текущему
+executor/claims; old fixed modes не ретаргетируются. Недостающее независимое
+доказательство получать адресно через `TOURVISOR_ANEX_JWT` в действующем контуре.
+Новых accepted mappings в проверке передачи нет; план/схема/исследование не gain.
+
 ### 1. Общий измеримый срез по ТО
 
 Первый приоритет — один сопоставимый read-only срез, когда он доступен в текущем
