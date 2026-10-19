@@ -211,6 +211,19 @@ class ProjectionTest(unittest.TestCase):
         row['source']['source_json']='tampered'
         with self.assertRaisesRegex(ValueError,'source_integrity'):self.fixture([row])
 
+    def test_materialized_bridge_requires_digest_and_current_acceptance(self):
+        value={'schema_version':1,'provider':'andromeda','supplier_namespace':'operator_315',
+               'external_hotel_id':'12','accepted_local_hotel_id':1546}
+        raw=json.dumps(value);source={'namespace':'provider_ref_digest:andromeda',
+            'external_key':hashlib.sha256(b'operator_315:12').hexdigest(),'acquired_via':'match_accepted_bridge',
+            'source_json':raw,'source_sha256':hashlib.sha256(raw.encode()).hexdigest()}
+        row={'kind':'legacy_source','old_local_id':736,'tv_hotel_id':1546,'snapshot_sha256':'a'*64,'source':source}
+        self.assertEqual({'hold_stale_accepted_bridge':1},self.fixture([row])['candidate_states'])
+        accepted={'kind':'identity','row':{'supplier_namespace':'operator_315','external_hotel_id':'12','local_hotel_id':1546,'decision_status':'accepted'}}
+        self.assertEqual({'already_accepted':1},self.fixture([row,accepted])['candidate_states'])
+        source['external_key']='0'*64
+        self.assertEqual([],self.fixture([row,accepted])['candidate_edges'])
+
 
 @unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL contract runs in stock CI')
 class NativeMySQLTest(unittest.TestCase):
@@ -228,9 +241,10 @@ class NativeMySQLTest(unittest.TestCase):
           $snapshot=json_encode(['sources'=>[$source]],JSON_THROW_ON_ERROR);$s=$db->prepare('INSERT INTO local_tv_legacy_links VALUES(?,?,?,?)');$s->execute([736,1546,$snapshot,hash('sha256',$snapshot)]);
           $db->exec("INSERT INTO andromeda_hotel_identities VALUES('operator_315','12',1546,'accepted')");
           $db->exec("INSERT INTO catalog_hotels VALUES(1546,'A11',4,'Turkey','Alanya','',36.5,32.0,1)");
+          $db->exec("INSERT INTO catalog_hotels VALUES(999999,'Unrelated catalog hotel',4,'Turkey','Alanya','',36.5,32.0,1)");
           $rows=[];$result=MatchRetainedIntakeV1::capture($db,static function($row)use(&$rows){$rows[]=$row;});
           $denied=false;try{MatchRetainedIntakeV1::capture($db,static function($row)use($db){$db->exec('DELETE FROM catalog_hotels');});}catch(PDOException $e){$denied=true;}
-          if(!$denied||(int)$db->query('SELECT COUNT(*) FROM catalog_hotels')->fetchColumn()!==1)throw new RuntimeException('read_only_not_enforced');
+          if(!$denied||(int)$db->query('SELECT COUNT(*) FROM catalog_hotels')->fetchColumn()!==2)throw new RuntimeException('read_only_not_enforced');
           echo json_encode(['result'=>$result,'rows'=>$rows,'dml_denied'=>$denied],JSON_THROW_ON_ERROR);
         }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
         run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_intake_v1.php')],capture_output=True,text=True,timeout=60)

@@ -15,7 +15,7 @@ MODES = {'match-retained-intake': 'common4-retained',
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
                 'scripts/diagnostics/hotel_match_retained_projection_v1.py',
                 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': 'baf51d8339fc96c856aa584c0c7693d655723ff00418f3594d672d5b5239f520', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '2d24fa4148f46f80ac2b275e1069fd50f476954dd20511b4a65f7c5b0d405b18', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5'}
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '4891d3f87fae1a49a6a3ed98bc7fbadce49584d48042dc5021fd6ebf6b794b04', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '7d76acee710e33cc5c649d909b59304f7937ca868519a1287c87b75d235df9c6', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5'}
 
 
 def need(value, reason):
@@ -140,7 +140,7 @@ def run_match_retained(stage):
             'stderr_sha256':hashlib.sha256(run.stderr.encode()).hexdigest()}
         try:
             child=json.loads(run.stdout)
-            failure['child_error']={k:child.get(k) for k in ('state','error_class','error_sha256')}
+            failure['child_error']={k:child.get(k) for k in ('state','error_code','error_class','error_sha256')}
         except Exception:pass
         result['match_retained_child_failure']=failure
         fail('retained_child_failed_no_replay')
