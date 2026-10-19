@@ -948,6 +948,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         await disclosure.click();
         await product.locator('[data-action="lead"]:visible').first().click();
         await screen('lead').waitFor({state:'visible'});
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         for(const fact of ['09:20','13:20','13:00','17:00','FX 101','FX 102','FIXTURE Moscow','FIXTURE Antalya','FIXTURE TV','Москва'])assert((await product.locator('[data-native-contact-facts]').innerText()).includes(fact),'Final contact review retains '+fact);
         assert.match(await product.locator('[data-lead-context]').innerText(),/12 окт — 19 окт/);
         assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена проверена с выбранным перелётом/);
@@ -966,6 +967,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         });
         assert(leadPriceFit?.captionCount===1&&leadPriceFit.amountCount===1&&leadPriceFit.readableCaptionWeight&&leadPriceFit.readableCaptionSpacing&&leadPriceFit.captionInsidePrice&&leadPriceFit.amountInsidePrice&&leadPriceFit.captionAboveAmount&&!leadPriceFit.overflow,'A single readable contact price caption and amount must stay together inside the bordered price block');
         row.proof.contactPriceBlockFit=leadPriceFit;
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         const form=product.locator('[data-lead-form]');
         await form.locator('[name="name"]').fill('FICTIONAL QA');await form.locator('[name="phone"]').fill('+7 999 000 00 00');await form.locator('[name="consent"]').check();
         await form.locator('button[type="submit"]').click();
@@ -1048,10 +1050,12 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().flightChoiceId),null);assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),110000);
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         assert.match(await product.locator('[data-native-contact-flight]').innerText(),/Рейс уточнит менеджер/);assert.doesNotMatch(await product.locator('[data-native-contact-flight]').innerText(),/FX /);
         assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена предложения проверена\. Рейс и доплаты уточнит менеджер/);
         assert.equal(await form.locator('[name="consent"]').isChecked(),false,'Changing the flight decision revokes prior consent');
         await capture(page,'native',width,percent,'lead-manager',row);
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         row.proof.managerContact={total:110000,flightChoiceId:null,oldPairRemoved:true,consentRevoked:true};
         await page.goBack();await screen('tour').waitFor({state:'visible'});
         await page.goBack();await screen('hotel').waitFor({state:'visible'});
@@ -1163,8 +1167,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().offer===window.__nativeFixture.group.offers[1]),true);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote+2,'Continue reuses the selected dearer quote');
         await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         assert.match(await product.locator('[data-lead-choice]').innerText(),/Семейный номер/);assert.match(await product.locator('[data-native-contact-flight]').innerText(),/FICTIONAL outbound/);
         await capture(page,'native',width,percent,'lead-selected-dearer',row);
+        if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         const selectedBefore=await page.evaluate(()=>({quote:window.__nativeFixture.calls.quote,search:window.__nativeFixture.calls.search}));
         await screen('lead').locator('[data-action="tour"]').click();await screen('tour').waitFor({state:'visible'});
         await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
@@ -1218,6 +1224,14 @@ async function referenceFrame(page,width,percent,screen,row) {
         await screen('tour').waitFor({state:'visible'});await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
         assert.match(await product.locator('[data-lead-choice]').innerText(),/standard room sea view · Всё включено/);
         assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
+        const contactDetails=product.locator('[data-native-contact-facts]');
+        assert.equal(await contactDetails.getAttribute('open'),width<=760?null:'');
+        const detailCalls=await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight]};});
+        if(width<=760)await contactDetails.locator('summary').click();
+        assert.equal(await product.locator('[data-native-contact-flight]').isVisible(),true);
+        if(width<=760)await contactDetails.locator('summary').click();
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight]};}),detailCalls);
+        row.proof.contactDisclosure={initiallyCollapsed:width<=760,expandedFactsVisible:true,passiveExtraOperations:0};
         const aiFit=await product.locator('[data-native-contact-summary]').evaluate(summary=>{
           const title=summary.querySelector('[data-lead-hotel]'),form=summary.parentElement.querySelector('[data-lead-form]'),box=summary.getBoundingClientRect(),titleBox=title.getBoundingClientRect(),formBox=form.getBoundingClientRect();
           return {width:box.width,titleWidth:titleBox.width,titleLines:Math.round(titleBox.height/parseFloat(getComputedStyle(title).lineHeight)),titleFits:title.scrollWidth<=title.clientWidth+1,summaryFits:summary.scrollWidth<=summary.clientWidth+1,columns:formBox.left>=box.right-1};

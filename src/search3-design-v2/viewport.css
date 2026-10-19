@@ -559,6 +559,26 @@ body { margin: 0; padding: 0; }
   overflow-wrap: break-word;
 }
 #design-v2-native-root #b4 .st-native-contact-facts dl { display: grid; gap: 8px; margin: 0; padding-top: 14px; border-top: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-native-contact-facts > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--blue);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+#design-v2-native-root #b4 .st-native-contact-facts > summary::-webkit-details-marker { display: none; }
+#design-v2-native-root #b4 .st-native-contact-facts > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 4px; }
+#design-v2-native-root #b4 .st-native-contact-facts > summary svg { flex: none; }
+#design-v2-native-root #b4 .st-native-contact-facts[open] > summary svg { transform: rotate(180deg); }
+#design-v2-native-root #b4 .st-desktop .st-native-contact-facts > summary { display: none; }
+#design-v2-native-root #b4 .st-mobile .st-native-contact-facts { padding-top: 6px; border-top: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-mobile .st-native-contact-facts dl { padding-top: 10px; border-top: 0; }
+#design-v2-native-root #b4 .st-mobile .st-native-contact-summary [data-lead-hotel] { font-size: 16px; line-height: 1.35; }
 #design-v2-native-root #b4 .st-native-contact-facts dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
 #design-v2-native-root #b4 .st-native-contact-facts dt { color: var(--muted); }
 #design-v2-native-root #b4 .st-native-contact-facts dd { margin: 0; font-weight: 500; }
@@ -584,6 +604,15 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-offer-price-caption { margin-bottom: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 #design-v2-native-root #b4 .st-native-offer-cost .st-offer-delta { line-height: 1.4; }
 #design-v2-native-root #b4 .st-native-facet-note { margin: 8px 0 0; line-height: 1.5; }
+/* A tablet comparison column still needs a full readable room title. Price
+   and its action share the next row; the canonical three-column wide view
+   and the mobile offer owner keep their existing composition. */
+@container native-offers (min-width: 23em) and (max-width: 34em) {
+  #design-v2-native-root #b4 .st-desktop [data-hotel-offers] .st-offer { grid-template-columns: minmax(0, 1fr) auto; }
+  #design-v2-native-root #b4 .st-desktop [data-hotel-offers] .st-offer > :first-child { grid-column: 1 / -1; }
+  #design-v2-native-root #b4 .st-desktop [data-hotel-offers] .st-native-offer-cost { grid-column: 1; grid-row: 2; max-width: none; }
+  #design-v2-native-root #b4 .st-desktop [data-hotel-offers] .st-offer-select { grid-column: 2; grid-row: 2; }
+}
 /* The required consent is one full-row control, not a tiny checkbox beside
    legal copy. Keep the donor wording and native validation while giving touch
    and keyboard users an explicit final-step target. */

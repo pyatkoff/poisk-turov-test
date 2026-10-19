@@ -50,7 +50,7 @@
     const controller = new window.AbortController();
     const form = $('[data-lead-form]'), tourScreen = $('[data-screen="tour"]');
     let alive = true, context = null, selection = null, epoch = 0, pending = Promise.resolve(), busy = false, error = '', review = null, expiryTimer = null;
-    let flightAlternativesOpen = false;
+    let flightAlternativesOpen = false, contactDetailsOpen = initialState?.contactDetailsOpen === true;
     const text = (selector, value) => $$(selector).forEach(node => { node.textContent = value; });
     const sameOffer = (value, offer = context?.offer) => Boolean(value && offer && (value.offer === offer || value.key === offer.key && value.raw === offer.raw));
     function current() {
@@ -123,15 +123,15 @@
         leadPrice.removeAttribute('data-tour-price');leadPrice.replaceChildren(caption,amount);
       }
       if(leadPrice&&!$('[data-native-contact-facts]')){
-        const facts=window.document.createElement('div');facts.className='st-native-contact-facts';facts.dataset.nativeContactFacts='';
-        facts.innerHTML='<dl><div><dt>Вылет из</dt><dd data-native-contact-origin></dd></div><div><dt>Туроператор</dt><dd data-native-contact-operator></dd></div><div data-native-contact-children><dt>Возраст детей</dt><dd data-native-contact-ages></dd></div></dl><div class="st-native-contact-itinerary"><b>Перелёт</b><div data-native-contact-flight></div></div><p class="st-small st-muted" data-native-contact-note></p>';
+        const facts=window.document.createElement('details');facts.className='st-native-contact-facts';facts.dataset.nativeContactFacts='';facts.open=!root.classList.contains('st-mobile')||contactDetailsOpen;
+        facts.innerHTML='<summary>Перелёт и детали тура'+icon('chevron-down')+'</summary><dl><div><dt>Вылет из</dt><dd data-native-contact-origin></dd></div><div><dt>Туроператор</dt><dd data-native-contact-operator></dd></div><div data-native-contact-children><dt>Возраст детей</dt><dd data-native-contact-ages></dd></div></dl><div class="st-native-contact-itinerary"><b>Перелёт</b><div data-native-contact-flight></div></div><p class="st-small st-muted" data-native-contact-note></p>';
         leadPrice.insertAdjacentElement('afterend',facts);
       }
       const lead = $('[data-screen="lead"] .st-lead');
       if (!lead.querySelector('[data-native-contact-summary]')) {
         const summary = window.document.createElement('section');summary.className='st-native-contact-summary';summary.dataset.nativeContactSummary='';summary.setAttribute('aria-label','Выбранный тур');
         const hotel = lead.querySelector('.st-tour-hotel');hotel.before(summary);
-        summary.append(hotel,leadPrice,$('[data-native-contact-facts]'));
+        summary.append(hotel,leadPrice,$('[data-native-contact-facts]'),$('[data-native-contact-note]'));
       }
       for (const amount of $$('[data-tour-price]')) {
         if (!amount.parentElement.querySelector('[data-native-price-origin]')) {
@@ -343,6 +343,7 @@
     },{signal:controller.signal});
     root.addEventListener('toggle',event=>{
       if(event.target.matches?.('[data-native-flight-alternatives]'))flightAlternativesOpen=event.target.open;
+      if(event.target.matches?.('[data-native-contact-facts]')&&root.classList.contains('st-mobile'))contactDetailsOpen=event.target.open;
     },{capture:true,signal:controller.signal});
     form.addEventListener('input',()=>{review=null;delete form.dataset.checked;window.V2LeadFormGuard?.validatePhone(form.elements.phone);renderContact();},{signal:controller.signal});
     form.addEventListener('change',()=>{review=null;delete form.dataset.checked;renderContact();},{signal:controller.signal});
@@ -359,7 +360,7 @@
       } catch(failure) {review=null;const message=form.querySelector('[data-native-contact-status]');message.setAttribute('role','alert');message.textContent=failure.message || 'Не удалось проверить выбранные условия.';}
     },{signal:controller.signal});
     prepare();renderContact();
-    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
+    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,contactDetailsOpen:root.classList.contains('st-mobile')?$('[data-native-contact-facts]').open:contactDetailsOpen,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
   }
   window.AnyTourDesignV2Tour=Object.freeze({mount,mealLabel,describePrice});
 })(window);

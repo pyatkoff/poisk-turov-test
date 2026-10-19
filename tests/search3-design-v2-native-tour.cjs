@@ -124,6 +124,10 @@ async function checkedMealPresentationChecks(){
     assert.equal(JSON.stringify(checkedTour),before);assert.equal(receipt.total,112000);assert.equal(view.getState().ready,true);
     assert.equal(r.querySelectorAll('[data-native-contact-summary]').length,1,'One complete summary owns identity, price and itinerary');
     assert(r.querySelector('[data-native-contact-summary] [data-tour-price]'));assert(r.querySelector('[data-native-contact-summary] [data-native-contact-flight]'));
+    const details=r.querySelector('[data-native-contact-facts]');assert.equal(details.open,false,'Mobile contact starts with concise chosen tour and price');
+    assert(!r.querySelector('[data-native-contact-note]').closest('details'),'Price and supplement caveats stay visible while optional details are closed');
+    details.open=true;details.dispatchEvent(new v.Event('toggle'));view.render({offer,hotel,screen:'tour'});view.render({offer,hotel,screen:'lead'});
+    assert.equal(view.getState().contactDetailsOpen,true,'The traveller’s disclosure choice survives Back without a supplier operation');
     view.destroy();v.close();
   }
 }
