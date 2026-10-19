@@ -1,0 +1,146 @@
+name: MATCH Side4 token5 CURRENT audit v13
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-side4-token5-current-audit-v13.yml]
+permissions: {contents: read, actions: read, issues: read}
+env:
+  OP: hotel-match-side4-token5-current-audit-1971-20260922-v13
+  CLAIM: '5783329525'
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact claim and one-file carrier
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+          BASE_SHA: '${{ github.event.pull_request.base.sha }}'
+        run: |
+          set -euo pipefail; umask 077; mkdir -p out
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD")" = ".github/workflows/hotel-match-side4-token5-current-audit-v13.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          required=[
+            os.environ['OP'],'TV56027','SAMO2000045053','TV59114','SAMO2000074413',
+            'TV72889','SAMO2000060910','TV9345','SAMO859728','TV55647','SAMO2000034905',
+            'CURRENT DB READ ONLY','DB writes0','No writer is authorized'
+          ]
+          for s in required: assert s in b,s
+          PY
+      - name: Require exact-head Security
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:
+                  runs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if runs and max(runs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(runs,key=lambda x:x['id'])['conclusion']=='success'
+                  break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Audit exact five strong pairs in CURRENT DB
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null
+          ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          cat >"$RUNNER_TEMP/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          function q(PDO $db,string $sql,array $params=[]):array{
+              $st=$db->prepare($sql);$st->execute(array_values($params));return $st->fetchAll(PDO::FETCH_ASSOC)?:[];
+          }
+          $pairs=[
+            ['tv'=>56027,'samo'=>'2000045053','name'=>'Elysium Elite Hotel & Spa'],
+            ['tv'=>59114,'samo'=>'2000074413','name'=>'Akdora Elite Hotel & Spa'],
+            ['tv'=>72889,'samo'=>'2000060910','name'=>'Side Square Hotel Adults Only 16+'],
+            ['tv'=>9345,'samo'=>'859728','name'=>'Art Poseidon Side'],
+            ['tv'=>55647,'samo'=>'2000034905','name'=>'Barut B Suites'],
+          ];
+          $out=['operation'=>getenv('OP'),'state'=>'started','provider_http_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'pairs'=>[]];
+          $db=null;
+          try{
+              $root=(string)getenv('ANYTOUR_ROOT');
+              require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+              $db=v2_data_db();$db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+              $db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+              $db->exec('START TRANSACTION READ ONLY');
+              $tv=array_column($pairs,'tv');$samo=array_column($pairs,'samo');
+              $tph=implode(',',array_fill(0,count($tv),'?'));$sph=implode(',',array_fill(0,count($samo),'?'));
+              $hotels=[];foreach(q($db,"SELECT id,name,country_name,region_name,subregion_name,category,is_active FROM catalog_hotels WHERE id IN ($tph) ORDER BY id",$tv) as $r)$hotels[(int)$r['id']]=$r;
+              $src=q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id IN ($sph) ORDER BY external_hotel_id,local_hotel_id",$samo);
+              $targets=q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,catalog_sha256,evidence_sha256 FROM andromeda_hotel_identities WHERE local_hotel_id IN ($tph) ORDER BY local_hotel_id,supplier_namespace,external_hotel_id",$tv);
+              $manual=q($db,"SELECT catalog_hotel_id,decision_status FROM anex_hotel_decisions WHERE catalog_hotel_id IN ($tph) ORDER BY catalog_hotel_id",$tv);
+              $bySource=[];foreach($src as $r)$bySource[(string)$r['external_hotel_id']][]=$r;
+              $byTarget=[];foreach($targets as $r)$byTarget[(int)$r['local_hotel_id']][]=$r;
+              $manualBy=[];foreach($manual as $r)$manualBy[(int)$r['catalog_hotel_id']][]=$r;
+              $counts=[];
+              foreach($pairs as $p){
+                  $h=$hotels[$p['tv']]??null;$source=$bySource[$p['samo']]??[];$targetRows=$byTarget[$p['tv']]??[];$manualRows=$manualBy[$p['tv']]??[];
+                  $targetCatalog=array_values(array_filter($targetRows,static fn($r)=>$r['supplier_namespace']==='andromeda_catalog'&&$r['decision_status']==='accepted'));
+                  $reason='current_missing_edge_candidate';
+                  if(!$h||(int)$h['is_active']!==1)$reason='target_missing_or_inactive';
+                  elseif(preg_match('/^(?:россия|абхазия|russia|russian federation|abkhazia)$/iu',trim((string)$h['country_name'])))$reason='excluded_country';
+                  elseif($manualRows)$reason='manual_target_protected';
+                  elseif(count($source)===1&&(int)$source[0]['local_hotel_id']===$p['tv']&&$source[0]['decision_status']==='accepted')$reason='already_accepted_same';
+                  elseif(count($source)>0)$reason='source_identity_occupied';
+                  elseif(count($targetCatalog)>0)$reason='target_catalog_occupied_other';
+                  $counts[$reason]=($counts[$reason]??0)+1;
+                  $out['pairs'][]=$p+[
+                      'current_reason'=>$reason,
+                      'catalog_hotel'=>$h,
+                      'source_identity_rows'=>$source,
+                      'target_identity_rows'=>$targetRows,
+                      'manual_rows'=>$manualRows,
+                      'safe_to_write_now'=>false,
+                  ];
+              }
+              ksort($counts,SORT_STRING);$db->rollBack();
+              $out['state']='completed_read_only_token5_current_audit';$out['counts']=$counts;$out['database_reads_verified']=true;
+          }catch(Throwable $e){
+              if($db instanceof PDO && $db->inTransaction())$db->rollBack();
+              $out['state']='failed_read_only_token5_current_audit';
+              $out['error_class']=get_class($e);$out['error_code']=(string)$e->getCode();
+              $out['error_message']=mb_substr(preg_replace('/[\r\n\t]+/',' ',$e->getMessage())??'',0,180,'UTF-8');
+          }
+          echo json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
+          exit($out['state']==='completed_read_only_token5_current_audit'?0:2);
+          PHP
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"; remoteFile="/tmp/match-token5-current-$GITHUB_RUN_ID.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/audit.php" "$remote:$remoteFile"
+          ssh "${opts[@]}" "$remote" "set -eu; trap 'rm -f $remoteFile' EXIT; OP='$OP' ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" php $remoteFile" >out/result.json 2>out/remote.stderr
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/result.json'))
+          assert x['state']=='completed_read_only_token5_current_audit'
+          assert x['provider_http_calls']==x['database_writes']==x['mapping_writes']==0
+          assert x['database_reads_verified'] is True and len(x['pairs'])==5
+          print(json.dumps({'state':x['state'],'counts':x['counts'],'pairs':[{'tv':p['tv'],'samo':p['samo'],'reason':p['current_reason']} for p in x['pairs']]},ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-side4-token5-current-v13-${{ github.run_id }}', path: out/, retention-days: 90, if-no-files-found: error}
