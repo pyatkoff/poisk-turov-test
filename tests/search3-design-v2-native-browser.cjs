@@ -1211,14 +1211,14 @@ async function referenceFrame(page,width,percent,screen,row) {
         await waitForFixture(page,()=>window.__nativeFixture.getSelection()?.total===163056);
         assert.equal(await product.locator('[data-action="lead"]:visible').first().isDisabled(),true);
         assert.equal(await product.locator('[data-tour-meal]:visible,[data-quick-meal]:visible').first().innerText(),'Всё включено');
-        assert.match(await product.locator('[data-native-price-origin]:visible').first().innerText(),/138 989 ₽/);
+        assert.match(await product.locator('[data-native-price-origin]:visible').first().innerText(),/138\s989\s₽/);
         await capture(page,'native',width,percent,'ai-price-changed',row);
         await product.locator('[data-action="accept-price"]:visible').first().click();
         await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
         const selectedAI=product.locator('.st-offer--selected');
         assert.equal(await selectedAI.locator('.st-offer-price').innerText(),'163 056 ₽');
         assert.equal(await selectedAI.locator('.st-offer-price-caption').innerText(),'С выбранным перелётом');
-        assert.match(await selectedAI.locator('.st-offer-delta').innerText(),/138 989 ₽/);
+        assert.match(await selectedAI.locator('.st-offer-delta').innerText(),/138\s989\s₽/);
         await capture(page,'native',width,percent,'ai-hotel-checked',row);
         if(width>760)await product.locator('[data-action="best-tour"]:visible').click();else await selectedAI.locator('[data-offer]').click();
         await screen('tour').waitFor({state:'visible'});await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});

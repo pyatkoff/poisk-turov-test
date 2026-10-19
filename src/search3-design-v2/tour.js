@@ -35,7 +35,7 @@
     return {total,quotedTotal,expired,failed,checkedPrice,selectedFlight,checkedFlight,
       caption:checkedPrice ? 'Проверенная цена за всех' : quotedTotal ? 'Последняя цена за всех · нужна проверка' : 'Цена из поиска за всех',
       basis:checkedFlight ? 'С выбранным перелётом' : checkedPrice ? 'Рейс уточнит менеджер' : quotedTotal ? 'Последняя цена · нужна проверка' : 'Цена из поиска',
-      origin:quotedTotal && total !== Number(offer.total) ? 'Выбранный номер в поиске: ' + money(offer.total) : '',
+      origin:quotedTotal && total !== Number(offer.total) ? 'В поиске: ' + money(offer.total).replace(/ /g,'\u00a0') : '',
       note:busy || value?.loading ? 'Проверяем цену и перелёт. Дождитесь результата.'
         : expired ? 'Срок цены истёк. Для оформления нужна новая проверка.'
         : failed ? 'Проверка не завершена. Цена и перелёт требуют уточнения.'

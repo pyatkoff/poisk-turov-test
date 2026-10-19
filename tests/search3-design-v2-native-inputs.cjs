@@ -61,7 +61,7 @@ async function returnedPriceStateChecks(){
    assert.equal(state.screen,'hotel');assert.equal(el('[data-about-hotel]').hidden,false);assert.strictEqual(win.document.activeElement,el('[data-hotel-section="about"]'));assert.equal(top,840);
    assert.equal(el('[data-hotel-min-price]').textContent,'179 000 ₽','A quote settling after Back refreshes the selected total');
    assert.match(el('[data-hotel-price-caption]').textContent,/Проверенная цена/);assert.match(el('.st-offer--selected .st-offer-price-caption').textContent,/С выбранным перелётом/);
-   assert.match(el('.st-offer--selected .st-offer-delta').textContent,/112 000 ₽/,'The selected row retains its original search baseline');
+   assert.match(el('.st-offer--selected .st-offer-delta').textContent,/112\s000\s₽/,'The selected row retains its original search baseline');
    assert.match(el('[data-lead-choice]').textContent,/Всё включено/,'An empty checked meal object retains the factual offer meal');
    clock+=11000;assert(expiry);expiry();
    assert.match(el('[data-hotel-price-caption]').textContent,/Последняя цена.*нужна проверка/,'Expiry updates the visible hotel, not only hidden tour/contact screens');

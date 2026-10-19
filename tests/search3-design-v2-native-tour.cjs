@@ -63,7 +63,7 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   assert.match(root.querySelector('[data-native-package-note]').textContent,/Трансфер, страховка и обязательные доплаты требуют уточнения/,'Unprovided package facts remain unknown');
   assert.match(root.querySelector('[data-native-cost-note]').textContent,/Цена проверена с выбранным перелётом/,'Desktop price area carries the same checked-price context as mobile');
   assert.equal(owner.getState().ready,false,'changed quoted price needs explicit acceptance');
-  assert.match(root.querySelector('[data-native-price-origin]').textContent,/Выбранный номер в поиске: 100 000 ₽/,'The changed full total retains the search baseline without replacing checked authority');
+  assert.match(root.querySelector('[data-native-price-origin]').textContent,/В поиске: 100\s000\s₽/,'The changed full total retains the search baseline without replacing checked authority');
   assert([...root.querySelectorAll('[data-price-change]')].every(node=>!node.hidden));
   click('[data-action="accept-price"]');
   assert.equal(accepted,1);assert.equal(owner.getState().ready,true);
