@@ -386,6 +386,22 @@ body { margin: 0; padding: 0; }
   position: sticky;
   top: 16px;
 }
+/* Search prices stay comparable in the room list; the existing continuation
+   card owns the checked total on both phone and desktop. */
+#design-v2-native-root #b4 .st-mobile [data-native-selected-panel] { display: block; margin-top: 20px; }
+#design-v2-native-root #b4 .st-mobile [data-screen="hotel"]:has([data-hotel-offers-panel]:not([hidden])) [data-native-selected-summary].st-aside-summary {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--blue);
+  border-radius: 14px;
+  background: var(--paper);
+}
+#design-v2-native-root #b4 .st-mobile [data-screen="hotel"]:has([data-hotel-offers-panel]:not([hidden])) [data-native-selected-summary].st-aside-summary > :is([data-hotel-price-caption],.st-price) { display: block; }
+#design-v2-native-root #b4 .st-mobile [data-screen="hotel"]:has([data-hotel-offers-panel]:not([hidden])) [data-native-selected-summary].st-aside-summary > .st-included-list { display: grid; }
+#design-v2-native-root #b4 .st-mobile [data-screen="hotel"]:has([data-hotel-offers-panel]:not([hidden])) [data-native-selected-summary].st-aside-summary > [data-action="best-tour"] { display: flex; }
+#design-v2-native-root #b4 [data-native-selected-title] { margin: 0 0 12px; font-size: 18px; line-height: 1.4; }
+#design-v2-native-root #b4 [data-native-selected-summary] .st-included-list { gap: 6px; }
+#design-v2-native-root #b4 [data-native-selected-summary] [data-action="best-tour"] { width: 100%; }
 /* A missing photo is an honest state, not a large empty gallery. Real hotel
    photography keeps the approved hero proportions. */
 #design-v2-native-root #b4 [data-hotel-hero].st-no-photo {
@@ -430,27 +446,10 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-flight-label { margin-bottom: 8px; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-cost-list { gap: 8px; margin: 12px 0; }
 #design-v2-native-root #b4 [data-screen="tour"] .st-total { padding-top: 12px; }
-#design-v2-native-root #b4 .st-native-package-facts {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-#design-v2-native-root #b4 .st-native-package-facts li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-width: 0;
-  line-height: 1.5;
-}
-#design-v2-native-root #b4 .st-native-package-facts li > svg {
-  flex: 0 0 18px;
-  color: var(--blue);
-  margin-top: 2px;
-}
-#design-v2-native-root #b4 .st-native-package-facts li > span { min-width: 0; overflow-wrap: anywhere; }
-#design-v2-native-root #b4 .st-native-package-note { margin: 12px 0 0; }
+#design-v2-native-root #b4 .st-native-conditions { min-width: 0; font-size: 13px; line-height: 1.55; }
+#design-v2-native-root #b4 .st-native-conditions > strong { display: block; font-weight: 500; }
+#design-v2-native-root #b4 .st-native-conditions > p { margin: 8px 0 0; color: var(--muted); }
+#design-v2-native-root #b4 [data-native-hotel-conditions] { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 #design-v2-native-root #b4 [data-native-flight-section] { container: native-itinerary / inline-size; }
 @container native-itinerary (min-width: 52em) {
   #design-v2-native-root #b4 .st-desktop [data-native-flight-content] {
@@ -487,6 +486,7 @@ body { margin: 0; padding: 0; }
   padding-top: 0;
 }
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-action="lead"] { margin-top: 0; }
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] [data-price-change] { display: none; }
 #design-v2-native-root #b4 .st-mobile .st-quick-tour .st-native-quick-party { margin: 8px 0 0; }
 #design-v2-native-root #b4 .st-mobile .st-quick-tour .st-native-quick-party b {
   font-size: 13px;
