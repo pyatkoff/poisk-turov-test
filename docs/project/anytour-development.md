@@ -2,38 +2,46 @@
 
 ## Организация ближайшей поставки — поручение владельца 19.10.2026
 
-Исполняемый порядок, пользовательские результаты и критерии завершения находятся
-в начале [единственного Search3 product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026).
-Это уточнение `S3_PRODUCT_CURRENT_ACCEPTANCE`; история и прежние guards сохранены.
-Автоматизируется продолжение текущего пакета, а не создание очередных черновиков.
+Уточнение владельца23:06: сначала выстроить и оптимизировать всю работу.
+Единственный исполняемый порядок — верхний раздел
+[Search3 product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026)
+и та же задача `AUTOPILOT_STATE.json.current_task`.
 
-Один основной продуктовый WIP: компактный выбор ANEX пар → честная цена за всех →
-контакт → Back/reopen, с сохранением ветки заявки после успешной цены без
-обязательного выбора рейсов («Рейс уточнит менеджер»). Один writer общих owners и
-один интегратор; независимый read-only QA/анализ contracts параллельно. Publisher
-имеет отдельный claim точного NEXT artifact после готовности. Новые концепции
-сначала в том же PUBLIC design-lab, одно согласование whole-version перед NEXT,
-затем отдельная установленная приёмка. Foreign design-v2 — другое поручение.
+Site203 согласован6270421744 и перенесён в ORIGINAL NEXT. Установленный продукт
+`3bdd75c40abc5c2d441e1edefcd494fcd9845336` имеет publication/readback6273604203.
+QA-only PR4647/source564ef1b1 принят6274857599, текущая release22850f1f сохраняет
+те же UI bytes. Семейный путь и native desktop Calendar Cancel/Apply6275557028
+повторно не запускаются. Site199/d827 и transfer-in-progress указатели ниже —
+датированная история, а не следующий шаг.
 
-Source-only draft `d827ccf7` сохранён по terminal6266119798; его browser/whole-path
-QA не пройдена. Пока поддержанный Sites `$control-browser` недоступен, не создавать
-новые визуальные кандидаты и не обходить skill через server/install/другой carrier.
-Один checkpoint/blocker; при новом основании — независимый разрешённый шаг.
-Первый пакет не ждёт готовности всех INT/LOCAL/MATCH; цена неизвестных пар остаётся
-unknown по существующему authority, API/формулы/locks не подменяются интерфейсом.
+Один ближайший конечный пакет: оставшиеся calendar/date/filter/keyboard действия
+на360/390/430/768/1280 и1280×720, необходимые исправления подтверждённых дефектов,
+затем итоговый просмотр. Часть5width calendar-open/Cancel/units и selected/error
+кадров уже сохранена; сначала переиспользовать её exact evidence. Штатный
+compiled-browser workflow и текущие test owners перечислены в product plan.
+Отсутствующий cloudChrome resize не блокирует все QA-маршруты.
 
-`current_task` должен продолжаться от published NEXT55fb/terminal6265776204 и
-завершённых recovery6263876510/real-journey6264963728. Не повторять восстановление
-или paid search из-за прежнего указателя05c292. Rix desktop уже принят6264165001:
-его remaining mobile/physical/exact-ID gates не означают новую реализацию picker.
-200% — deferred/not_measured, без дополнительных прогонов/UI или блокера.
+Один writer точных shared paths и интегратор; независимый read-only review
+параллельно; publisher отдельный и только после готовности изменённого artifact.
+Новые концепции проходят whole-version approval в том же PUBLIC design-lab
+`appgprj_6abcd9299ef88191bbce1fc1bf8c767a`; foreign design-v2 остаётся отдельным.
+Нынешняя организационная правка не выдаёт новый test-only/paid/live допуск:
+один QA-only допуск использован PR4647. Конкретный дополнительный конечный
+test-only scope требует прямого поручения, regression при разрешённом UI-fix
+следует существующим gates.
 
-Узкие проверки сопровождают разработку, полный обязательный exact-head набор —
-готовый связный пакет; successful artifacts/неизменённое evidence переиспользуются.
-Красные/pending/skipped gates не passed, workflows/allowlists не меняются. Отчёт —
-новый пользовательский эффект/stage/source/evidence/следующий шаг; баллы только
-по существующей SEARCH-QUALITY-1. Документы, CI и номер версии не являются ростом UX.
-Расписания, enabled/paused, модели, INT/LOCAL/MATCH и другие задания не изменяются.
+На старте читать свежий текущий раздел/state/сообщения/claims/heads; уже прочитанные
+неизменённые инструкции и consumer map переиспользовать по SHA. Узкие проверки —
+во время исправления; все применимые CI — на готовом source. Browser/deploy
+для изменения плана не нужны. Неизменённое evidence и successful CI не повторять
+ради отчёта. Claims освобождаются terminal RELEASE.
+
+Общий продукт ещё не принят9,5–10. SEARCH-QUALITY-1 остаётся12/11/5, N без суммы,
+стадии раздельны. Реальная доставка в preview отключена; её состояния не
+имитируются ради балла. Physical/native mobile, ANEX price authority, live-ID/data
+и production имеют отдельные точные gates.200%/Compare deferred.
+Результат/оценка/следующий шаг записываются компактно в существующие #4217/#1646/#1719.
+Расписания, enabled/paused, модели, настройки и другие задания сохраняются.
 
 ## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
 
