@@ -57,7 +57,12 @@ function fixtureBridge(fixture) {
   const publish=value=>{latest=value;for(const listener of listeners)listener(value);return value;};
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection,getSnapshot:()=>latest};
-  control.installManyFlights=()=>{selection=null;control.manyFlightCount=40;};
+  control.installManyFlights=()=>{
+    selection=null;control.manyFlightCount=40;
+    const hotel=rawHotels[0];
+    hotel.offers=[{...hotel.offers[0],key:'fixture:many-flight:1',raw:{fixture:true,manyFlightCase:true}},...hotel.offers.slice(1)];
+    control.deliverHotels(rawHotels,{status:'complete',message:''});
+  };
   control.deliverHotels=(hotels,values={})=>publish({...latest,...values,hotels,search:{...trip,ages:[]}});
   // Installed only after all existing captures and authority proofs. This
   // separate in-memory ANEX group never changes the paired donor corpus.
@@ -972,7 +977,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         const manyBefore=await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,flights:c.calls.flight.length};});
         await page.evaluate(()=>window.__nativeFixture.installManyFlights());
         await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
-        await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();
+        await product.locator('[data-hotel-offers] [data-offer="fixture:many-flight:1"]').click();
         await screen('tour').waitFor({state:'visible'});
         await waitForFixture(page,()=>window.__nativeFixture.getSelection()?.variants.length===40);
         assert.equal(await product.locator('[data-native-tour-flight]:visible').count(),3);
