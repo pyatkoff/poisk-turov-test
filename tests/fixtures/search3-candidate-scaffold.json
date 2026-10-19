@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 2,
+  "route": "/_preview/search3-candidate/poisk-turov/",
+  "canonical": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/",
+  "leadApi": "/_preview/search3-candidate/poisk-turov/?lead=disabled",
+  "robots": "noindex,follow,max-image-preview:large",
+  "visualBaseline": {
+    "status": "REFERENCE_PIXELS_AVAILABLE_COMPARISON_PENDING",
+    "referenceCount": 8,
+    "referenceManifestSha256": "cbecdac4080b7a7a541a3b9b5de4a4f8448203717728f7ca7afa4ea6373f45b8",
+    "baselineCompared": false,
+    "ownerVisualApproval": false
+  },
+  "presentation": {
+    "status": "REFERENCE_IMPLEMENTATION_IN_PROGRESS",
+    "approvedPixelsCompared": false,
+    "donorCommit": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+    "donorRunId": "33813829683",
+    "productionOwnedDirectTourText": "Проверить тур",
+    "assets": [
+      "search3-results-filters-v1.css",
+      "search3-entry-v1.css",
+      "search3-results-cards-v2.css",
+      "search3-selected-flow-v2.css",
+      "search3-results-filters-v1.js",
+      "search3-entry-v1.js",
+      "search3-results-cards-v2.js",
+      "search3-selected-flow-v2.js"
+    ],
+    "captures": [
+      "1440-first-hotel-expanded.png",
+      "375-first-hotel-expanded.png",
+      "375-selected-tour-handoff.png",
+      "1440-selected-tour-presentation.png",
+      "430-filters-open.png",
+      "375-filters-open.png"
+    ]
+  },
+  "viewports": [
+    {"width": 375, "height": 812},
+    {"width": 430, "height": 932},
+    {"width": 768, "height": 1024},
+    {"width": 1024, "height": 900},
+    {"width": 1440, "height": 1000}
+  ],
+  "visualTiers": {
+    "smoke": {
+      "lifecycleWidths": [375, 1440],
+      "finalOnlyWidths": [],
+      "presentationCaptures": [
+        "1440-first-hotel-expanded.png",
+        "375-first-hotel-expanded.png",
+        "375-selected-tour-handoff.png",
+        "1440-selected-tour-presentation.png",
+        "430-filters-open.png",
+        "375-filters-open.png"
+      ],
+      "runResponsiveBoundaries": false,
+      "runRaces": false,
+      "runFailureStates": false
+    },
+    "candidate": {
+      "lifecycleWidths": [375, 430, 768, 1024, 1440],
+      "finalOnlyWidths": [],
+      "presentationCaptures": [
+        "1440-first-hotel-expanded.png",
+        "375-first-hotel-expanded.png",
+        "375-selected-tour-handoff.png",
+        "1440-selected-tour-presentation.png",
+        "430-filters-open.png",
+        "375-filters-open.png"
+      ],
+      "runResponsiveBoundaries": true,
+      "runRaces": true,
+      "runFailureStates": true
+    }
+  },
+  "search": {
+    "from": "1",
+    "country": "4",
+    "dateFrom": "2099-09-10",
+    "dateTo": "2099-09-17",
+    "daysFrom": "7",
+    "daysTill": "10",
+    "count_people": "2"
+  },
+  "catalogs": {
+    "departures": [{"id": 1, "name": "Москва"}],
+    "countries": [{"id": 4, "name": "Турция"}],
+    "arrivals": [],
+    "regions": [],
+    "subregions": [],
+    "meals": [],
+    "operators": [],
+    "hotel_types": [],
+    "hotel_services": [],
+    "hotels": []
+  },
+  "progressive": {
+    "searchId": 3101,
+    "firstProgress": 20,
+    "firstLimit": 25,
+    "finalProgress": 100,
+    "finalLimit": 100
+  },
+  "races": {
+    "pendingStatusSearchId": 3201,
+    "pendingResultsSearchId": 3202
+  },
+  "emptySearchId": 3301,
+  "failureFixtures": {
+    "states": [
+      "search-empty",
+      "search-timeout",
+      "search-upstream-error",
+      "flight-empty",
+      "flight-timeout",
+      "flight-upstream-error",
+      "lead-ui-no-delivery"
+    ],
+    "search": {
+      "timeoutSearchId": 3401,
+      "timeoutCode": "TIMEOUT",
+      "timeoutMessage": "Tourvisor не ответил вовремя",
+      "upstreamStatus": 502,
+      "upstreamError": "Fixture search upstream unavailable"
+    },
+    "selectedTour": {
+      "searchId": 3501,
+      "id": "fixture-tour-no-flight",
+      "price": 101000,
+      "date": "2099-09-12",
+      "nights": 8,
+      "adults": 2,
+      "childs": 0,
+      "meal": {"id": 7, "name": "All Inclusive"},
+      "roomType": "Standard",
+      "placement": "DBL",
+      "operator": {"id": 41, "name": "Fixture Operator"},
+      "departure": {"id": 1, "name": "Москва"},
+      "isCharter": true,
+      "hotel": {
+        "id": "fixture-hotel-no-flight",
+        "name": "Fixture Hotel No Flight",
+        "country": {"id": 4, "name": "Турция"},
+        "region": {"id": 21, "name": "Анталья"},
+        "subRegion": {"id": 31, "name": "Лара"},
+        "category": 5,
+        "rating": 4.8,
+        "seaDistance": 250
+      }
+    },
+    "flights": {
+      "timeoutCode": "TIMEOUT",
+      "timeoutMessage": "Tourvisor не ответил вовремя",
+      "upstreamStatus": 503,
+      "upstreamError": "Fixture flights upstream unavailable",
+      "upstreamAttempts": 2
+    }
+  },
+  "hotelTemplate": {
+    "namePrefix": "Fixture Hotel",
+    "country": {"id": 4, "name": "Турция"},
+    "region": {"id": 21, "name": "Анталья"},
+    "subRegion": {"id": 31, "name": "Лара"},
+    "category": 5,
+    "rating": 4.8,
+    "seaDistance": 250,
+    "basePrice": 100000,
+    "tour": {
+      "date": "2099-09-12",
+      "nights": 8,
+      "meal": {"id": 7, "name": "All Inclusive"},
+      "roomType": "Standard",
+      "placement": "2 взрослых",
+      "operator": {"id": 41, "name": "Fixture Operator"},
+      "isCharter": true
+    }
+  }
+}
