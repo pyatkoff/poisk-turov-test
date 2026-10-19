@@ -195,6 +195,14 @@ class UpdateContracts(unittest.TestCase):
                 case['proof']['manyFlightChoices'] = {**proof['manyFlightChoices'],
                     'pairLayout': {'columns': 2 if width == 1280 else 1,
                         'paired': width == 1280, 'stacked': width != 1280}}
+                case['proof']['aiPriceContact'] = {'searchPrice': 138989, 'checkedFullTotal': 163056,
+                    'readableMeal': True, 'originalIndex': 0, 'explicitAcceptance': True,
+                    'selectedRowPriceRetained': True, 'backForwardExtraOperations': 0,
+                    'contactFit': {'width': 490 if width == 1280 else width - 60,
+                        'titleWidth': 370 if width == 1280 else width - 140,
+                        'titleLines': 2, 'titleFits': True, 'summaryFits': True, 'columns': width >= 768}}
+                case['proof']['contactDisclosure'] = {'initiallyCollapsed': width <= 760,
+                    'expandedFactsVisible': True, 'passiveExtraOperations': 0}
                 if (width, percent) == (390, 100):
                     case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
                 for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
@@ -209,7 +217,9 @@ class UpdateContracts(unittest.TestCase):
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
                                                                  'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                              else 'hotel' if logical_name.startswith('native-hotel-return-') else logical_name.split('-')[1])
+                              else 'tour' if logical_name.startswith('native-ai-price-changed-')
+                              else 'lead' if logical_name.startswith('native-ai-contact-')
+                              else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     if short_desktop:
                         png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', 1280, 720) + b'fictional offline verifier fixture'
@@ -393,8 +403,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39254022688)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '246670818bba433adc9b002e06b2d560f46eb6ac')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39278795885)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -463,12 +473,18 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_whole_journey_requires_exact_232_frames_and_preserves_all_212_predecessor_frames(self):
+    def test_ai_journey_requires_exact_247_frames_and_preserves_all_232_predecessor_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 247)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 247)
+            ai_frames = ('native-ai-price-changed-', 'native-ai-hotel-checked-', 'native-ai-contact-')
+            self.assertEqual(sum(frame['file'].startswith(ai_frames)
+                for case in report['cases'] for frame in case['frames']), 15)
+            for case in report['cases']:
+                case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(ai_frames)]
             self.assertEqual(sum(len(case['frames']) for case in report['cases']), 232)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 232)
             additions = ('native-tour-many-flights-', 'native-lead-manager-',
                          'native-hotel-selected-dearer-', 'native-lead-selected-dearer-')
             self.assertEqual(sum(frame['file'].startswith(additions)
@@ -488,7 +504,19 @@ class UpdateContracts(unittest.TestCase):
                 for case in report['cases'] for frame in case['frames']), 5)
         def frame(report, prefix, case=0):
             return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-        changes = [lambda r: r['cases'][0]['proof'].update(flightAlternativesExtraQuotes=1),
+        changes = [lambda r: r['cases'][0]['proof'].pop('contactDisclosure'),
+            lambda r: r['cases'][0]['proof']['contactDisclosure'].update(initiallyCollapsed=False),
+            lambda r: r['cases'][0]['proof']['contactDisclosure'].update(passiveExtraOperations=1),
+            lambda r: r['cases'][0]['proof'].pop('aiPriceContact'),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(checkedFullTotal=138989),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(originalIndex=1),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(explicitAcceptance=False),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(backForwardExtraOperations=1),
+            lambda r: r['cases'][0]['proof']['aiPriceContact']['contactFit'].update(titleFits=False),
+            lambda r: r['cases'][-1]['proof']['aiPriceContact']['contactFit'].update(width=300),
+            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-ai-contact-')),
+            lambda r: frame(r, 'native-ai-price-changed-').update(screen='hotel'),
+            lambda r: r['cases'][0]['proof'].update(flightAlternativesExtraQuotes=1),
             lambda r: r['cases'][0]['proof'].update(flightAlternativeOriginalIndices=[0, 0, 1]),
             lambda r: r['cases'][0]['proof'].pop('flightAlternativeOriginalIndices'),
             lambda r: r['cases'][0]['proof'].update(flightAlternativesSavedHeight=40),
@@ -962,7 +990,8 @@ class UpdateContracts(unittest.TestCase):
             '0fc16325635d113fafa96081f295a1a5696359c3',
             'f99306ffe3725f2badc70096d801608fc5393009',
             '1959dcabac17335fd09763389231e67db9afde6b',
-            'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d'))
+            'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
+            '246670818bba433adc9b002e06b2d560f46eb6ac'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1109,7 +1138,8 @@ class UpdateContracts(unittest.TestCase):
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688))
+             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
+             39278795885))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)

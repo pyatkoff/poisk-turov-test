@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('f58c12c41147e691bf8ca10b3e357c017fd92be2', '40a8ba4d0225c924840b52109466548cd5ed7045'),)
+    ('2af5ec182b96831dcf7208562040f60ab17cfe8d', '2ddec04188b02ee22162f7acf34a30b1e35757cd'),)
 NATIVE_RELEASE_PARENTS = (
-    ('168cf976a289d8b205dbabd2de8890b447f0591e', '28ff30d385e1d64f9d8f75946f4b33f1f49c89bf'),
-    ('246670818bba433adc9b002e06b2d560f46eb6ac', '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7'),)
+    ('3c0a29485b0a2de1c28a11aa2793d6e33a9abf44', '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7'),
+    ('756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d', '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -207,6 +207,8 @@ def native_frame_inventory(width, percent):
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'tour-many-flights', 'lead-manager', 'hotel-selected-dearer', 'lead-selected-dearer'))
+    frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
+        'ai-price-changed', 'ai-hotel-checked', 'ai-contact'))
     frames.update(f'native-terminal-{state}-{width}-text{percent}.png'
                   for state in ('complete', 'partial', 'error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
@@ -251,6 +253,28 @@ def native_selected_journey(actual, width):
         'readableCaptionWeight': True, 'readableCaptionSpacing': True,
         'captionInsidePrice': True, 'amountInsidePrice': True,
         'captionAboveAmount': True, 'overflow': False}, 'native_journey_contact_price_required')
+    facts(actual.get('contactDisclosure'), {'initiallyCollapsed': width <= 760,
+        'expandedFactsVisible': True, 'passiveExtraOperations': 0},
+        'native_contact_disclosure_required')
+    ai = actual.get('aiPriceContact')
+    need(isinstance(ai, dict) and set(ai) == {'searchPrice', 'checkedFullTotal',
+         'readableMeal', 'originalIndex', 'explicitAcceptance', 'selectedRowPriceRetained',
+         'backForwardExtraOperations', 'contactFit'}, 'native_ai_journey_required')
+    facts({k: v for k, v in ai.items() if k != 'contactFit'},
+          {'searchPrice': 138989, 'checkedFullTotal': 163056, 'readableMeal': True,
+           'originalIndex': 0, 'explicitAcceptance': True, 'selectedRowPriceRetained': True,
+           'backForwardExtraOperations': 0}, 'native_ai_price_and_selection_required')
+    fit = ai['contactFit']
+    need(isinstance(fit, dict) and set(fit) == {'width', 'titleWidth', 'titleLines',
+         'titleFits', 'summaryFits', 'columns'} and fit.get('titleFits') is True
+         and fit.get('summaryFits') is True and type(fit.get('columns')) is bool
+         and all(type(fit.get(k)) in (int, float) and 0 < fit[k] <= width + 1
+                 for k in ('width', 'titleWidth')) and fit['titleWidth'] <= fit['width']
+         and type(fit.get('titleLines')) is int and 0 < fit['titleLines'] <= 12,
+         'native_ai_contact_fit_required')
+    if width == 1280:
+        need(fit['width'] >= 450 and fit['titleWidth'] >= 330 and fit['titleLines'] <= 3
+             and fit['columns'] is True, 'native_ai_desktop_review_width_required')
     many = actual.get('manyFlightChoices')
     need(isinstance(many, dict) and set(many) == {'total', 'initiallyVisible', 'collapsed',
          'selectedCanonicalIndex', 'selectedTotal', 'managerBeforeList', 'pairLayout',
@@ -396,7 +420,9 @@ def native_evidence(archive, request, native):
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
                                                             'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                          else 'hotel' if logical_name.startswith('native-hotel-return-') else logical_name.split('-')[1])
+                          else 'tour' if logical_name.startswith('native-ai-price-changed-')
+                          else 'lead' if logical_name.startswith('native-ai-contact-')
+                          else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
@@ -695,7 +721,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 232, 'native_rendered_frame_count')
+    need(len(frames) == 247, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
