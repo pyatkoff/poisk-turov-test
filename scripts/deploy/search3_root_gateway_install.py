@@ -338,6 +338,45 @@ DEPENDENCY_EXPECTED={**CHECKED_EXPECTED,'api-v2.php':CHECKED_HASH}
 DEPENDENCY_APP='_preview/search3-next-candidate/visual-search/app.js'
 DEPENDENCY_APP_HASH='1772a1216ca111c1a1a9a2a5cbed0c14dc589674fe5d2bd0016171c2eb2a2f4b'
 DEPENDENCY_PROTECTED=(*CHECKED_PROTECTED,'config.php',DEPENDENCY_APP)
+DEPENDENCY_BLOCKED_CONTROL='9a3dd29670390aca00243b4b9e68098f90e005d5'
+DEPENDENCY_BLOCKED_COMMAND=6263652341
+DEPENDENCY_BLOCKED_RUN=39227575241
+DEPENDENCY_BLOCKED_JOB=117977506793
+DEPENDENCY_BLOCKED_ARTIFACT=12175215848
+DEPENDENCY_BLOCKED_DIGEST='sha256:703f6d603c3b0afc82f47d8338a6415e349c881730ba3d0fd4cf4cba5b05e758'
+
+def dependency_green_check(head,name,reason):
+ # GitHub attaches every issue-comment job to main. Name filtering retrieves
+ # the exact security guard even after unrelated jobs fill the first page.
+ checks=checked_api('/commits/'+head+'/check-runs?check_name='+name+'&per_page=100')
+ rows=checks.get('check_runs');total=checks.get('total_count')
+ need(type(total) is int and 0<=total<=100 and isinstance(rows,list) and len(rows)==total,'checks_incomplete')
+ need(all(isinstance(c,dict) and type(c.get('id')) is int and c['id']>0 for c in rows)
+      and len({c['id'] for c in rows})==len(rows),'checks_shape')
+ need(len(rows)==1 and rows[0].get('name')==name and rows[0].get('head_sha')==head
+      and rows[0].get('status')=='completed' and rows[0].get('conclusion')=='success'
+      and rows[0].get('app',{}).get('slug')=='github-actions',reason)
+
+def dependency_pre_ssh_blocked_proof():
+ # This one immutable retained ZIP was independently downloaded and reviewed:
+ # evidence.json only, before request/candidates were written and before SSH.
+ # Every reserved, unknown or runtime-started operation keeps its no-replay lock.
+ old=checked_api('/issues/comments/'+str(DEPENDENCY_BLOCKED_COMMAND))
+ need(old.get('id')==DEPENDENCY_BLOCKED_COMMAND and old.get('user',{}).get('id')==226193297 and old.get('author_association')=='OWNER'
+      and old.get('body')==f'{DEPENDENCY_PREFIX} {DEPENDENCY_BLOCKED_CONTROL} {DEPENDENCY_OPERATION}','blocked_command_proof')
+ run=checked_api('/actions/runs/'+str(DEPENDENCY_BLOCKED_RUN))
+ need(run.get('id')==DEPENDENCY_BLOCKED_RUN and type(run.get('run_attempt')) is int and run['run_attempt']==1
+      and run.get('event')=='issue_comment' and run.get('path')==CHECKED_WORKFLOW and run.get('head_sha')==DEPENDENCY_BLOCKED_CONTROL
+      and run.get('status')=='completed' and run.get('conclusion')=='failure','blocked_run_proof')
+ job=checked_api('/actions/jobs/'+str(DEPENDENCY_BLOCKED_JOB))
+ need(job.get('id')==DEPENDENCY_BLOCKED_JOB and job.get('run_id')==DEPENDENCY_BLOCKED_RUN and type(job.get('run_attempt')) is int and job['run_attempt']==1
+      and job.get('name')=='dependency-install' and job.get('head_sha')==DEPENDENCY_BLOCKED_CONTROL
+      and job.get('status')=='completed' and job.get('conclusion')=='failure','blocked_job_proof')
+ artifact=checked_api('/actions/artifacts/'+str(DEPENDENCY_BLOCKED_ARTIFACT))
+ need(artifact.get('id')==DEPENDENCY_BLOCKED_ARTIFACT and artifact.get('name')=='search3-root-gateway-dependencies-39227575241-1'
+      and type(artifact.get('size_in_bytes')) is int and artifact['size_in_bytes']==416 and artifact.get('digest')==DEPENDENCY_BLOCKED_DIGEST
+      and artifact.get('expired') is False and artifact.get('workflow_run',{}).get('id')==DEPENDENCY_BLOCKED_RUN
+      and artifact.get('workflow_run',{}).get('head_sha')==DEPENDENCY_BLOCKED_CONTROL,'blocked_artifact_proof')
 
 def dependency_event(event,env):
  # Reuse all current-owner/main/stock-workflow validation without changing the
@@ -360,10 +399,7 @@ def dependency_admission(identity):
  reviewed=checked_api('/git/commits/'+control['parents'][1]['sha'])
  need(reviewed['tree']['sha']==control['tree']['sha'],'reviewed_tree')
  for head,names,reason in ((reviewed['sha'],('guard','contracts','live-check-contracts'),'source_ci'),(identity['control_source_sha'],('guard',),'main_ci')):
-  checks=checked_api('/commits/'+head+'/check-runs?per_page=100')
-  for name in names:
-   matches=[c for c in checks.get('check_runs',[]) if c.get('name')==name]
-   need(len(matches)==1 and matches[0].get('status')=='completed' and matches[0].get('conclusion')=='success' and matches[0].get('app',{}).get('slug')=='github-actions',reason)
+  for name in names:dependency_green_check(head,name,reason)
  candidates={}
  for target,record in DEPENDENCY_CANDIDATES.items():
   item=checked_api('/contents/'+record['path']+'?ref='+record['source'])
@@ -392,7 +428,8 @@ def dependency_admission(identity):
   comments=checked_api(f'/issues/4217/comments?per_page=100&page={page}');need(isinstance(comments,list),'comments_shape')
   matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(DEPENDENCY_PREFIX+' ') or DEPENDENCY_OPERATION in c.get('body','') and c.get('body','').strip().startswith('/'))
   if len(comments)<100:
-   need(matched==[identity['command_comment_id']],'operation_already_reserved')
+   need(matched==[DEPENDENCY_BLOCKED_COMMAND,identity['command_comment_id']] and identity['command_comment_id']!=DEPENDENCY_BLOCKED_COMMAND,'operation_already_reserved')
+   dependency_pre_ssh_blocked_proof()
    fresh=checked_api('/issues/comments/'+str(identity['command_comment_id']))
    need(fresh.get('id')==identity['command_comment_id'] and fresh.get('user',{}).get('id')==226193297 and fresh.get('author_association')=='OWNER'
         and fresh.get('body')==f'{DEPENDENCY_PREFIX} '+identity['control_source_sha']+' '+DEPENDENCY_OPERATION,'command_changed')
@@ -614,7 +651,10 @@ def dependency_install():
   need(len(response)<=24576,'receipt_limit');result=json.loads(response)
   need(dependency_safe_receipt(identity,result),'receipt_unsafe');evidence['remote']=result
   completed=dependency_completed(identity,result);need(completed,'install_not_verified');evidence['status']='installed_verified'
- except Exception as exc:evidence['error_type']=type(exc).__name__
+ except Exception as exc:
+  evidence['error_type']=type(exc).__name__
+  reasons={'main_moved','release_moved','approval_changed','reviewed_merge_required','reviewed_tree','source_ci','main_ci','checks_incomplete','checks_shape','candidate_bytes','release_candidate','source_checks','delivery_identity','delivery_scope','collector_source','comments_shape','operation_already_reserved','blocked_command_proof','blocked_run_proof','blocked_job_proof','blocked_artifact_proof','command_changed','comment_history_incomplete','reader_source_drift','reader_missing','receipt_limit','receipt_unsafe','install_not_verified','ssh_identity'}
+  if type(exc) is RuntimeError and str(exc) in reasons:evidence['reason']=str(exc)
  finally:
   try:(work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True))
   finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)

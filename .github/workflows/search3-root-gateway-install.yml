@@ -43,7 +43,7 @@ jobs:
       github.event.comment.body == format('/install-search3-root-dependencies {0} install-20261019-dependency-reuse-v1', github.sha)
     runs-on: ubuntu-24.04
     timeout-minutes: 6
-    permissions: {contents: read, issues: read, checks: read}
+    permissions: {contents: read, issues: read, checks: read, actions: read}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: '${{ github.sha }}', persist-credentials: false}
