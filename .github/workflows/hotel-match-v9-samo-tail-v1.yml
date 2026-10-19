@@ -1,0 +1,162 @@
+name: MATCH v9 saved SAMO tail chunks5-7
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_v9_samo_tail_v1.php
+      - .github/workflows/hotel-match-v9-samo-tail-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-v9-samo-tail-1971-20260921-v1, cancel-in-progress: false}
+env:
+  BUNDLE_ID: hotel-match-v9-samo-tail-1971-20260921-v1
+  BASE_SHA: 2321db22b5dede7f1cb9b6d5dc9a098521ed86f6
+  SCRIPT_PATH: scripts/diagnostics/hotel_match_v9_samo_tail_v1.php
+  WORKFLOW_PATH: .github/workflows/hotel-match-v9-samo-tail-v1.yml
+  SCRIPT_SHA256: 4574deae22f956ce6902a2932d3523c320a75394edb6a725928c1044f8431de0
+  CLAIM: '5761172703'
+  CLAIM_SHA256: 4295a80c8fbf1d21e84b6941ce8470118c1d33818d84505e92e151f2cd947c12
+jobs:
+  current:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and authorization before access
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          printf '%s\n' 'validating_before_access' > terminal/stage.txt
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import hashlib,os,pathlib,subprocess
+          expected={os.environ['SCRIPT_PATH'],os.environ['WORKFLOW_PATH']}
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          assert actual==expected,(actual,expected)
+          source=pathlib.Path(os.environ['SCRIPT_PATH']).read_bytes()
+          assert hashlib.sha256(source).hexdigest()==os.environ['SCRIPT_SHA256']
+          assert ("const BUNDLE = '"+os.environ['BUNDLE_ID']+"';").encode() in source
+          PY
+          php -l "$SCRIPT_PATH"
+          php "$SCRIPT_PATH" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import hashlib,json,os
+          c=json.load(open('input/claim.json'))
+          assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url']=='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/issues/2530'
+          assert hashlib.sha256(c['body'].encode()).hexdigest()==os.environ['CLAIM_SHA256']
+          for s in [os.environ['BUNDLE_ID'],os.environ['BASE_SHA'],os.environ['SCRIPT_PATH'],os.environ['WORKFLOW_PATH'],'remaining23 country9','first90 country16','last14 country16','HTTP0','database_writes0','mapping_writes0']:
+              assert s in c['body'],s
+          PY
+      - name: Download verified immutable inputs and prove disjoint plan
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,io,os,pathlib,subprocess,zipfile
+          specs=[
+          ('10634643226','0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0','reconciliation.json','0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814','v9-reconciliation.json'),
+          ('10634204615','0a115458ac2fb4608bc62b835fefada979a246a9d891ce96ed4ef725c6dd3d2a','result.json','488b3b9c28cb6f6fd429a6a1925e86217b90022d9372b142ba6e3981c77bc351','chunk1-result.json'),
+          ('10634724683','5a19a8c11ddc05f6cbb1af6b17c4ac8b4b09d378100d0b31528ab96e9d9ccef9','result.json','3e5893d0e8580f3060cd1e8d947b1fa10e99d1e1f6a2398a6dc8617121ac1ba2','chunk2-result.json'),
+          ('10636707434','4a77c1309d13ada9be2bb26531118139300f9ea0b46baa82604916b90ff9903f','result.json','26c42c8910a396deb1359cd29998a827d165fb7c16329e862edbfcd6bad8cf44','chunk3-result.json'),
+          ('10640731017','603554ca3dc93681021cd4ec163fbe870e50f2c76dd18a3513055f05b99c515a','result.json','6ddedb9545a2715f34f7994f201e35336665cf0ee3c3a0500bd77949c1de2d70','chunk4-result.json')]
+          for aid,zsha,member,fsha,out in specs:
+              assert len(zsha)==len(fsha)==64
+              data=subprocess.check_output(['gh','api','repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/artifacts/'+aid+'/zip'])
+              assert hashlib.sha256(data).hexdigest()==zsha,(aid,'zip_digest')
+              with zipfile.ZipFile(io.BytesIO(data)) as z:
+                  assert z.namelist().count(member)==1
+                  body=z.read(member)
+              assert hashlib.sha256(body).hexdigest()==fsha,(aid,'member_digest')
+              pathlib.Path('input',out).write_bytes(body)
+          PY
+          MATCH_INPUT_DIR="$PWD/input" php "$SCRIPT_PATH" --plan > terminal/plan.json
+      - name: Reserve all three bounded operations before DB access
+        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          p=json.load(open('terminal/plan.json'))
+          assert [(x['selected_country_id'],x['selected_unique_hotels'],len(x['edges'])) for x in p['chunks'].values()]==[(9,23,27),(16,90,124),(16,14,19)]
+          for n,c in p['chunks'].items():
+              r={'operation':c['operation'],'state':'reserved_before_db','source_sha':os.environ['HEAD_SHA'],'script_sha256':os.environ['SCRIPT_SHA256'],'selected_hotel_ids':c['selected_hotel_ids'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+              with pathlib.Path('reservation',n+'.json').open('x') as f: f.write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-samo-tail-reservations-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security before server access
+        env: {GH_TOKEN: '${{ github.token }}', HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f: xs=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD_SHA']]
+              if xs and max(xs,key=lambda x:x['id'])['status']=='completed':
+                  assert max(xs,key=lambda x:x['id'])['conclusion']=='success'; break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Execute ordered CURRENT read-only chunks5-7 without replay
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'}
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/match-tail-key"; known="$RUNNER_TEMP/match-tail-known"; trap 'rm -f "$key" "$known"' EXIT
+          test -n "$KEY"; test -n "$HOST"; test -n "$USER"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; script="${SCRIPT_PATH##*/}"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          for n in 5 6 7; do
+            op=".anytoour-match/operations/hotel-match-v9-single-native-samo-chunk${n}-1971-20260921-v1"
+            out="terminal/chunk$n"; mkdir "$out"
+            printf '%s\n' "chunk${n}_server_access_starting" > terminal/stage.txt
+            ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/.anytoour-match/operations\"; mkdir \"\$HOME/$op\"; mkdir \"\$HOME/$op/payload\""
+            scp "${opts[@]}" "$SCRIPT_PATH" input/v9-reconciliation.json input/chunk1-result.json input/chunk2-result.json input/chunk3-result.json input/chunk4-result.json "$remote:$op/payload/"
+            scp "${opts[@]}" "reservation/$n.json" "$remote:$op/payload/reservation.json"
+            ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op/payload\" && echo '$SCRIPT_SHA256  $script' | sha256sum -c - && php -l '$script' && php '$script' --self-test" > "$out/server-preflight.txt"
+            printf '%s\n' "chunk${n}_current_read_starting_no_replay" > terminal/stage.txt
+            ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_DIR=\"\$HOME/$op/payload\" php \"\$HOME/$op/payload/$script\" --execute '$n'" > "$out/remote.stdout" 2> "$out/remote.stderr"
+            ssh "${opts[@]}" "$remote" 'cd "$HOME/'"$op"'" && tar -czf - result.json receipt.json' > "$out/server.tgz"
+          done
+      - name: Verify exact terminal membership and counts
+        run: |
+          python3 - <<'PY'
+          import collections,hashlib,json,pathlib,tarfile
+          p=json.load(open('terminal/plan.json')); summary=[]; seen=set(); edge_total=0
+          for n,c in p['chunks'].items():
+              out=pathlib.Path('terminal','chunk'+n)
+              with tarfile.open(out/'server.tgz','r:gz') as t:
+                  assert sorted(t.getnames())==['receipt.json','result.json']
+                  for name in ['result.json','receipt.json']:
+                      m=t.getmember(name); assert m.isfile(); (out/name).write_bytes(t.extractfile(m).read())
+              r=json.loads((out/'result.json').read_bytes()); q=json.loads((out/'receipt.json').read_bytes())
+              assert r['operation']==q['operation']==c['operation'] and r['state']==q['state']=='completed_read_only'
+              assert r['selected_hotel_ids']==c['selected_hotel_ids'] and r['selected_unique_hotels']==len(c['selected_hotel_ids'])<=90
+              assert r['selected_country_id']==c['selected_country_id'] and r['selected_edges']==len(r['rows'])==len(c['edges'])
+              assert all(r[k]==0 for k in ['provider_calls','tourvisor_calls','samo_calls','andromeda_calls','database_writes','mapping_writes'])
+              assert all(q[k]==0 for k in ['provider_calls','database_writes','mapping_writes']) and q['no_replay'] is True
+              assert q['result_sha256']==hashlib.sha256((out/'result.json').read_bytes()).hexdigest()
+              assert dict(collections.Counter(x['provider_classification'] for x in r['rows']))==r['provider_classification_counts']
+              assert dict(collections.Counter(x['bridge_classification'] for x in r['rows']))==r['bridge_classification_counts']
+              for a,b in zip(c['edges'],r['rows']):
+                  assert all(b[k]==v for k,v in a.items()) and b['safe_to_write_now'] is False
+              assert not seen.intersection(r['selected_hotel_ids']); seen.update(r['selected_hotel_ids']); edge_total+=r['selected_edges']
+              summary.append({'operation':r['operation'],'country':r['selected_country_id'],'hotels':r['selected_unique_hotels'],'edges':r['selected_edges'],'provider':r['provider_classification_counts'],'bridge':r['bridge_classification_counts'],'result_sha256':q['result_sha256']})
+          prior=[json.load(open('input/chunk'+str(n)+'-result.json')) for n in range(1,5)]
+          prior_ids={i for r in prior for i in r['selected_hotel_ids']}
+          assert len(prior_ids)==305 and len(seen)==127 and not seen.intersection(prior_ids)
+          assert sum(r['selected_edges'] for r in prior)+edge_total==532
+          result={'state':'completed_read_only_verified','chunks':summary,'new_hotels':len(seen),'new_edges':edge_total,'cumulative_receiver_hotels':len(seen|prior_ids),'cumulative_receiver_edges':532,'remaining_receiver_hotels':0,'provider_calls':0,'database_writes':0,'mapping_writes':0,'not_samo_acquisition_completion':True}
+          pathlib.Path('terminal/summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          pathlib.Path('terminal/stage.txt').write_text('completed_read_only_verified\n')
+          print(json.dumps(result,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-tail-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
