@@ -1,0 +1,71 @@
+name: MATCH Side4 retained growth curve v3
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-side4-retained-growth-curve-v3.yml]
+permissions: {contents: read, issues: read}
+env:
+  CLAIM: '5781936418'
+  OP: hotel-match-tv-samo-common4-side-star4-1971-20260922-v4b
+  SEARCH_ID: '13692326204'
+  BASE: a94e2053487af49ed6b01430d408bd4221bf8915
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail;mkdir out
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-side4-retained-growth-curve-v2.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > out/claim.json
+          grep -Fq 'Provider calls0' out/claim.json
+      - name: Read retained evidence with canonical PHP normalizer
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null)
+          cat >"$RUNNER_TEMP/read.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $root=getenv('ANYTOUR_ROOT');
+          require $root.'/scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php';
+          $d=getenv('HOME').'/.anytoour-match/operations/'.getenv('OP').'/evidence-private';
+          $sid=getenv('SEARCH_ID');$files=glob($d.'/*.meta.json');sort($files,SORT_STRING);
+          $round=0;$req=null;$prevH=[];$prevT=[];$rows=[];
+          foreach($files as $mp){
+            $m=json_decode(file_get_contents($mp),true,32,JSON_THROW_ON_ERROR);if(($m['source']??'')!=='tourvisor')continue;
+            $meta=$m['meta']??[];$path=(string)($meta['path']??'');$bp=str_replace('.meta.json','.bin',$mp);$raw=file_get_contents($bp);
+            if(hash('sha256',$raw)!==($m['raw_sha256']??'')||strlen($raw)!==(int)($m['bytes']??-1))throw new RuntimeException('hash');
+            $body=json_decode($raw,true,64,JSON_THROW_ON_ERROR);
+            if($path==='/tours/search/'.$sid.'/continue'){$round++;$req=hmc_request_count($body);continue;}
+            if($path!=='/tours/search/'.$sid)continue;
+            $hs=hmc_tv_result_rows($body);$H=[];$T=[];
+            foreach($hs as $h){$hid=hmc_id($h['id']??null);if($hid)$H[(string)$hid]=1;foreach((array)($h['tours']??[]) as $t){if(!is_array($t))continue;$tid=hmc_text($t['id']??$t['tourId']??'',220);$T[$tid!==''?$tid:hash('sha256',hmc_json($t))]=1;}}
+            $dh=count(array_diff_key($H,$prevH));$dt=count(array_diff_key($T,$prevT));$rh=count(array_diff_key($prevH,$H));$rt=count(array_diff_key($prevT,$T));
+            $limit=(int)(($meta['params']['limit']??0));$rows[]=['round'=>$round,'requestCount'=>$req,'hotels'=>count($H),'delta_hotels'=>$dh,'tours'=>count($T),'delta_tours'=>$dt,'removed_hotels'=>$rh,'removed_tours'=>$rt,'limit'=>$limit,'hit_limit'=>$limit>0&&count($H)>=$limit,'sha256'=>$m['raw_sha256'],'bytes'=>$m['bytes']];
+            $prevH=$H;$prevT=$T;$req=null;
+          }
+          $out=['result_reads'=>count($rows),'rows'=>$rows,'summary'=>['first'=>$rows[0]??null,'last'=>$rows[count($rows)-1]??null,'any_hit_limit'=>array_reduce($rows,fn($c,$x)=>$c||$x['hit_limit'],false),'any_decrease'=>array_reduce($rows,fn($c,$x)=>$c||$x['removed_hotels']||$x['removed_tours'],false),'positive_hotel_rounds'=>count(array_filter($rows,fn($x)=>$x['delta_hotels']>0)),'positive_tour_rounds'=>count(array_filter($rows,fn($x)=>$x['delta_tours']>0))]];
+          echo json_encode($out,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR),PHP_EOL;
+          PHP
+          scp "${opts[@]}" "$RUNNER_TEMP/read.php" scripts/diagnostics/hotel_match_tv_samo_common4_weekly_v2.php scripts/diagnostics/hotel_match_operator_fingerprint_room_evidence_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php v2/data/tourvisor-client-v1.php "$USER@$HOST:/tmp/"
+          ssh "${opts[@]}" "$USER@$HOST" "set -eu; d=/tmp/match-growth-src-$GITHUB_RUN_ID; mkdir -p \"\$d/scripts/diagnostics\" \"\$d/app/integrations\" \"\$d/v2/data\"; mv /tmp/hotel_match_tv_samo_common4_weekly_v2.php \"\$d/scripts/diagnostics/\"; mv /tmp/hotel_match_operator_fingerprint_room_evidence_v1.php \"\$d/scripts/diagnostics/\"; mv /tmp/andromeda-client.php /tmp/andromeda-transport.php /tmp/andromeda-network-transport-failure.php \"\$d/app/integrations/\"; mv /tmp/tourvisor-client-v1.php \"\$d/v2/data/\"; mv /tmp/read.php \"\$d/read.php\"; OP='$OP' SEARCH_ID='$SEARCH_ID' ANYTOUR_ROOT=\"\$d\" php \"\$d/read.php\"; rm -rf \"\$d\"" >out/growth.json
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/growth.json'));print(json.dumps(x['summary'],sort_keys=True))
+          assert x['summary']['last']['hotels']==140 and x['summary']['last']['tours']==1809
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-side4-growth-v2-${{ github.run_id }}', path: out/growth.json, retention-days: 90}
