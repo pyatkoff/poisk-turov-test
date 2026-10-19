@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('b4a6b7dbf2dff8bbbb7f4e989cc6095f78b27a81', '551875c05161bcf77cc2d2be1e04e44ad50296be'),)
+    ('f58c12c41147e691bf8ca10b3e357c017fd92be2', '40a8ba4d0225c924840b52109466548cd5ed7045'),)
 NATIVE_RELEASE_PARENTS = (
     ('168cf976a289d8b205dbabd2de8890b447f0591e', '28ff30d385e1d64f9d8f75946f4b33f1f49c89bf'),
-    ('f58c12c41147e691bf8ca10b3e357c017fd92be2', '40a8ba4d0225c924840b52109466548cd5ed7045'),)
+    ('246670818bba433adc9b002e06b2d560f46eb6ac', '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -232,11 +232,15 @@ def native_selected_journey(actual, width):
 
     nav = actual.get('screenNavigation')
     need(isinstance(nav, dict) and set(nav) == {'deepScroll', 'hotelHeadingVisible',
-         'resultFocusRestored', 'resultAnchorDelta', 'extraSearches'}
+         'resultFocusRestored', 'resultAnchorDelta', 'extraSearches',
+         'responsiveHiddenFocusFallback', 'responsiveRemountExtraOperations'}
          and type(nav.get('deepScroll')) in (int, float) and 44 < nav['deepScroll'] < 100000
          and nav.get('hotelHeadingVisible') is True and nav.get('resultFocusRestored') is True
          and type(nav.get('resultAnchorDelta')) in (int, float) and abs(nav['resultAnchorDelta']) <= 2
-         and type(nav.get('extraSearches')) is int and nav['extraSearches'] == 0,
+         and type(nav.get('extraSearches')) is int and nav['extraSearches'] == 0
+         and nav.get('responsiveHiddenFocusFallback') is True
+         and type(nav.get('responsiveRemountExtraOperations')) is int
+         and nav['responsiveRemountExtraOperations'] == 0,
          'native_journey_navigation_required')
     facts(actual.get('managerContact'), {'total': 110000, 'flightChoiceId': None,
         'oldPairRemoved': True, 'consentRevoked': True}, 'native_journey_manager_required')

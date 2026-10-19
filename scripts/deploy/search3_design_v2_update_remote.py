@@ -1,4 +1,4 @@
-"""Draft admission for one complete native selected-tour journey; no other target.
+"""Bounded admission for one complete native selected-tour journey; no other target.
 
 The predecessor is the published calendar-completion update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
@@ -77,21 +77,20 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
     'prototype-search/config.js', 'prototype-search/data.js', 'search3-canonical-profiles-v1.js',
     'data/local-tv-catalog-read-v1.php', 'visual-search/asset-size.json')))
 
-# Exact complete source and a PROVISIONAL GitHub test merge for draft review.
-# The release ref is still 168cf976, so native_provenance rejects this candidate.
-# Replace release_sha with the actual receiving merge after independent source
-# review, then complete final controller review before promotion/publication.
+# Exact independently reviewed source and its actual receiving release merge.
+# Source/release trees and ordered parents are independently verified before
+# final controller review; commands/artifacts cannot select alternative pins.
 NATIVE_ACCEPTANCE = {
-    'source_sha': 'f58c12c41147e691bf8ca10b3e357c017fd92be2',
-    'source_tree': '40a8ba4d0225c924840b52109466548cd5ed7045',
-    'release_sha': '6670e9f5205393d6b5ee2ad8f6f476b1ef36029c',
-    'release_tree': '40a8ba4d0225c924840b52109466548cd5ed7045',
-    'build_run': 39269417129,
-    'artifact_id': 12195610387,
-    'source_ZIP_sha256': '61d782784665d6ea678365dc08c1ef2c8e7dac64d33d44c95118299c77c902f4',
+    'source_sha': '246670818bba433adc9b002e06b2d560f46eb6ac',
+    'source_tree': '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7',
+    'release_sha': '3c0a29485b0a2de1c28a11aa2793d6e33a9abf44',
+    'release_tree': '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7',
+    'build_run': 39276387043,
+    'artifact_id': 12196684401,
+    'source_ZIP_sha256': 'f07a2fc8d35ebf88008f511ecbe14cb597ccfcff5054239bd1d28a08b62328b5',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': '33a5578ffcd8e13e5252ccf2304a1328a8fd78c2fcc2839876c486c37e27cb08',
+    'source_manifest_sha256': 'd8d5d098937011e42f791ad96883648065d8131fd1dc23b09b4e3c2cd5ef1624',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
