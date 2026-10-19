@@ -353,6 +353,33 @@ test('point request retains the full captured contract and changes only hotelIds
   assert.equal(api.pointSearchParams({ ...run, params: { ...run.params, hotelIds: ['245'] } }, 900), null);
 });
 
+test('point context preserves deeply immutable original criteria and its own search identity', () => {
+  const api = helpers(), original = { ...snapshot(), extra: { values: ['kept'] } };
+  const run = api.capture(original, 4), context = api.pointSearchContext(run, 900, 9900);
+  assert.deepEqual(plain(context), { provider: 'tourvisor', searchId: 9900, generation: 4,
+    localHotelId: 900, criteria: plain(original) });
+  assert.ok(Object.isFrozen(context)); assert.ok(Object.isFrozen(context.criteria));
+  assert.ok(Object.isFrozen(context.criteria.childs)); assert.ok(Object.isFrozen(context.criteria.extra.values));
+  original.childs.push(17); original.extra.values.push('changed'); run.params.childs.push(16);
+  assert.deepEqual(plain(context.criteria.childs), [4, 11]);
+  assert.deepEqual(plain(context.criteria.extra.values), ['kept']);
+  for (const id of [0, -1, '9900', NaN, 1.5]) assert.equal(api.pointSearchContext(run, 900, id), null);
+});
+
+test('missing malformed and duplicate point tour IDs remain comparison-only without losing offers', () => {
+  const api = helpers(), run = api.capture(snapshot(), 1), context = api.pointSearchContext(run, 900, 9900);
+  const ids = ['valid', '', null, {}, ' padded ', 'has\nnewline', 'x'.repeat(201), 'duplicate', 'duplicate',
+    'duplicate', 123, '123', 987, NaN, -5, 0, 1.5];
+  const tours = ids.map((id, index) => ({ id, date: '2027-02-01', nights: 7, price: 50000 + index }));
+  const h = api.pointSearchHotel([pointHotel(900, tours)], 900, run.params);
+  const entries = api.pointOfferContexts(h, context);
+  assert.deepEqual(Array.from(entries.keys()), ['valid', '987']);
+  assert.equal(h.tours.length, ids.length, 'bad identity does not suppress comparison prices');
+  assert.equal(entries.get('valid').tourId, 'valid'); assert.equal(entries.get('987').tourId, '987');
+  assert.ok(Object.isFrozen(entries.get('valid')));
+  assert.equal(api.pointOfferContexts(pointHotel(901), context).size, 0);
+});
+
 test('point response validates hotel identity and tour dates, nights and RUB without inventing offers', () => {
   const api = helpers(), params = snapshot();
   const tours = [
@@ -437,6 +464,68 @@ test('one explicit point click preserves broad state and renders readonly Tourvi
   page.sort.dispatchEvent({ type: 'change' });
   await tick();
   assert.equal(page.results.querySelector('.anex-search3-tv-offers').open, true);
+});
+
+test('point offer context survives local rendering and filters without changing broad search or enabling selection', async () => {
+  const page = await pointReady(preview(true));
+  const get = () => page.window.AnyTourAnexSearch3.getPointOfferContext(1, 900, 'tv-900-a');
+  assert.equal(get(), null);
+  page.click(pointButton(page)); await tick();
+  assert.equal(get(), null);
+  await pointFinish(page);
+  const context = get();
+  assert.equal(context.searchId, 9900); assert.equal(context.provider, 'tourvisor');
+  assert.equal(context.tourId, 'tv-900-a'); assert.equal(context.localHotelId, 900);
+  assert.deepEqual(plain(context.criteria), snapshot());
+  const before = page.requests.length;
+  page.sort.dispatchEvent({ type: 'change' }); await tick();
+  assert.equal(get(), context); assert.equal(page.requests.length, before);
+  page.controls.price.value = '45000';
+  page.rail.dispatchEvent({ type: 'input', target: page.controls.price }); await tick();
+  assert.equal(get(), context, 'local budget does not change the saved search criteria');
+  page.rail.dispatchEvent({ type: 'click', target: page.controls.reset }); await tick();
+  assert.equal(get(), context); assert.equal(page.requests.length, before);
+  assert.equal(page.window.V2Runtime.state.searchId, 777); assert.equal(page.lifecycle.searchId, 1001);
+  assert.equal(page.results.querySelector('.direct-tour'), null);
+  const params = page.lifecycle.params;
+  page.lifecycle.params = () => ({ ...snapshot(), adults: 3 });
+  assert.equal(get(), null, 'edited criteria cannot resolve an offer before dirty propagates');
+  page.lifecycle.params = params;
+  page.lifecycle.dirty = true; assert.equal(get(), null);
+  page.lifecycle.dirty = false; assert.equal(get(), context);
+  assert.equal(page.window.AnyTourAnexSearch3.getPointOfferContext(2, 900, 'tv-900-a'), null);
+  assert.equal(page.window.AnyTourAnexSearch3.getPointOfferContext(1, 901, 'tv-900-a'), null);
+  page.reset(2, snapshot()); assert.equal(get(), null);
+  page.requests.at(-1).respond(response(2, [hotel({ local_id: 900 })])); page.complete([{ id: 245 }]); await tick();
+  page.click(pointButton(page)); await tick(); await pointFinish(page, [pointHotel()], 9910);
+  assert.equal(get(), null, 'old generation cannot resolve a new offer with the same ID');
+  const next = page.window.AnyTourAnexSearch3.getPointOfferContext(2, 900, 'tv-900-a');
+  assert.equal(next.searchId, 9910); assert.notEqual(next, context);
+  assert.equal(context.searchId, 9900, 'held historic context is immutable, not retargeted');
+});
+
+test('two hotels keep separate point search identities even when returned tour IDs coincide', async () => {
+  const page = await pointReady(preview(), [hotel({ local_id: 900 }), hotel({ local_id: 901 })]);
+  page.click(pointButton(page, 900)); await tick(); await pointFinish(page, [pointHotel(900)], 9900);
+  const first = page.window.AnyTourAnexSearch3.getPointOfferContext(1, 900, 'tv-900-a');
+  page.click(pointButton(page, 901)); await tick(); await pointFinish(page, [pointHotel(901)], 9910);
+  const second = page.window.AnyTourAnexSearch3.getPointOfferContext(1, 901, 'tv-900-a');
+  assert.equal(first.searchId, 9900); assert.equal(first.localHotelId, 900);
+  assert.equal(second.searchId, 9910); assert.equal(second.localHotelId, 901);
+  assert.equal(page.window.AnyTourAnexSearch3.getPointOfferContext(1, 900, 'tv-900-a'), first);
+  assert.equal(page.window.V2Runtime.state.searchId, 777);
+  assert.equal(actionRequests(page, 'search_start').length, 2);
+  assert.equal(page.results.querySelector('.direct-tour'), null);
+});
+
+test('ambiguous point tour identity has no handoff context while both prices stay visible', async () => {
+  const page = await pointReady(); page.click(pointButton(page)); await tick();
+  await pointFinish(page, [pointHotel(900, [
+    { id: 'same', date: '2027-02-01', nights: 7, price: 50000 },
+    { id: 'same', date: '2027-02-01', nights: 7, price: 60000 }
+  ])]);
+  assert.equal(page.window.AnyTourAnexSearch3.getPointOfferContext(1, 900, 'same'), null);
+  assert.equal(page.results.querySelector('.anex-search3-tv-offers').querySelectorAll('.anex-search3-offer').length, 2);
 });
 
 test('all retained point offers can be revealed locally in price order and survive rerender', async () => {
