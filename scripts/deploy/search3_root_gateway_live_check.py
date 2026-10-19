@@ -30,6 +30,12 @@ ANEX_PROFILE = {'prefix': '/check-search3-tv-anex-key', 'operation': 'tv-anex-ke
                 'account_env': 'TOURVISOR_ANEX_JWT', 'approval_reference': 6262286069,
                 'approval_hash': '55c4cdfbab2a3c345684fff863a8f9d0d9e10a6eb2a1fced34aa129f92b0a6c7',
                 'budget_prefix': 'SEARCH3_TV_ANEX_KEY_BUDGET_V1\n', 'direct': True}
+ROOT_DIRECT_PROFILE = {'prefix': '/check-search3-tv-root-direct', 'operation': 'tv-root-direct-20261019-v1',
+                       'account_env': 'TOURVISOR_JWT', 'approval_reference': 6262670660,
+                       'approval_hash': '059425ea173d935837747e139aeecebc9bb131b91aa31a0f778a2335bf3f62b8',
+                       'budget_prefix': 'SEARCH3_ROOT_TV_DIRECT_BUDGET_V1\n', 'direct': True,
+                       'work_name': 'search3-tv-root-direct-check',
+                       'blocked_search_ids': ('13905446138', '13943172077', '13943616554')}
 
 
 def validate_event(event, env, profile=None):
@@ -114,6 +120,8 @@ REMOTE = r'''
 import datetime as dt,fcntl,hashlib,json,os,pathlib,re,stat,subprocess,sys,time,urllib.error,urllib.parse,urllib.request
 from zoneinfo import ZoneInfo
 direct=POLICY.get('direct') is True
+account_env=POLICY.get('account_env','TOURVISOR_JWT')
+anex_direct=direct and account_env=='TOURVISOR_ANEX_JWT'
 token=None;quota_day=None;quota_op=None;owns_quota_op=False
 def need(ok,why):
  if not ok:raise RuntimeError(why)
@@ -150,6 +158,10 @@ def quota_validate(value):
  need(isinstance(value.get('operations'),dict),'quota_shape')
 def quota_prepare(home):
  global quota_day,quota_op,owns_quota_op
+ if not anex_direct:
+  need(account_env=='TOURVISOR_JWT','root_account_budget_unproven')
+  result['quota_scope']='owner_single_operation_only'
+  return
  base=home/'.anytoour-match'
  for p in (base,base/'provider-quotas'):
   need(p.parent.resolve()==p.parent,'unsafe_quota')
@@ -170,6 +182,16 @@ def quota_prepare(home):
   result['known_accounted_units_before']=d['tariff_search_units']
 def quota_charge(action):
  need(dt.datetime.now(ZoneInfo('Europe/Moscow')).date().isoformat()=='2026-10-19','budget_day')
+ if not anex_direct:
+  used=result.get('operation_physical_attempts',0);charged=result.get('operation_tariff_units',0)
+  need(account_env=='TOURVISOR_JWT' and 0<=used<3 and 0<=charged<=1,'quota_exhausted')
+  need(action==('search_start','search_status','search_results')[used],'request_cap')
+  tariff=1 if action=='search_start' else 0;need(charged+tariff<=1,'quota_exhausted')
+  private_write(op/('http-attempt-'+str(used+1).zfill(2)+'.json'),
+                {'operation':POLICY['operation'],'account_env':account_env,'action':action,
+                 'physical_attempt':used+1,'tariff_search_units':charged+tariff,'provider_day':'2026-10-19'})
+  result.update(operation_physical_attempts=used+1,operation_tariff_units=charged+tariff,live_operation_started=True)
+  return
  with quota_open(quota_day) as df,quota_open(quota_op) as of:
   fcntl.flock(df,fcntl.LOCK_EX);fcntl.flock(of,fcntl.LOCK_EX);d,o=quota_read(df),quota_read(of);quota_validate(d)
   need(o.get('operation')==POLICY['operation'] and o.get('account')=='TOURVISOR_ANEX_JWT' and o.get('provider_day')=='2026-10-19'
@@ -201,7 +223,7 @@ def request(action,params):
   quota_charge(action)
   if action=='search_start':path='/tours/search';query=urllib.parse.urlencode({**params,'onlyCharter':'false','onlyDirect':'false'})
   else:
-   sid=str(params['searchId']);need(re.fullmatch(r'[1-9][0-9]{0,18}',sid) and sid not in ('13905446138','13943172077'),'historical_search_identity')
+   sid=str(params['searchId']);need(re.fullmatch(r'[1-9][0-9]{0,18}',sid) and sid not in POLICY.get('blocked_search_ids',('13905446138','13943172077')),'historical_search_identity')
    path='/tours/search/'+sid+('/status' if action=='search_status' else '')
    query=urllib.parse.urlencode({'operatorStatus':'false'} if action=='search_status' else {'limit':25})
   url='https://api.tourvisor.ru/search/api/v1'+path+'?'+query
@@ -234,7 +256,7 @@ result={'operation_id':POLICY['operation'],'status':'blocked_no_replay','live_op
         'requests':[],'tariff_searches_reserved':0,'real_leads':0,'application_file_writes':0,
         'normal_autosave_enabled':True,'database_write_count':'not_measured',
         'global_daily_usage':'not_measured','budget_basis':'owner_operation_allocation'}
-if direct:result.update(account_env='TOURVISOR_ANEX_JWT',route='direct_tourvisor_api',normal_autosave_enabled=False,database_write_count=0)
+if direct:result.update(account_env=account_env,route='direct_tourvisor_api',normal_autosave_enabled=False,database_write_count=0)
 op=None;reserved=False
 try:
  raw=sys.stdin.buffer.read(16385);need(len(raw)<=16384,'payload_limit');payload=json.loads(raw)
@@ -262,7 +284,8 @@ try:
  if direct:
   # Match the existing second-key owner's constant-first credential precedence.
   code=code.replace('$b=keyvalue("TOURVISOR_ANEX_JWT");','$b=defined("TOURVISOR_ANEX_JWT")?trim((string)constant("TOURVISOR_ANEX_JWT")):trim((string)getenv("TOURVISOR_ANEX_JWT"));')
-  code=code.replace('fwrite(STDOUT,json_encode(["root_configured"=>$a!=="","anex_configured"=>$b!=="","same_token"=>$a!==""&&hash_equals($a,$b),"same_subject"=>$sa!==null&&$sb!==null&&hash_equals($sa,$sb)]));','fwrite(STDOUT,json_encode(["token"=>$b,"root_equal"=>$a!==""&&hash_equals($a,$b),"same_subject"=>$sa!==null&&$sb!==null&&hash_equals($sa,$sb)]));')
+  selected='$b' if anex_direct else '$a'
+  code=code.replace('fwrite(STDOUT,json_encode(["root_configured"=>$a!=="","anex_configured"=>$b!=="","same_token"=>$a!==""&&hash_equals($a,$b),"same_subject"=>$sa!==null&&$sb!==null&&hash_equals($sa,$sb)]));','fwrite(STDOUT,json_encode(["token"=>'+selected+',"root_equal"=>$a!==""&&hash_equals($a,$b),"same_subject"=>$sa!==null&&$sb!==null&&hash_equals($sa,$sb)]));')
  cp=subprocess.run(['php','-r',code,'--',str(config)],capture_output=True,timeout=15,check=False)
  need(cp.returncode==0 and len(cp.stdout)<=(16384 if direct else 256),'root_account_binding_unproven')
  account=json.loads(cp.stdout)
@@ -271,7 +294,7 @@ try:
        and type(account['root_equal']) is bool and type(account['same_subject']) is bool,'root_account_binding_unproven')
   token=account['token'];need(isinstance(token,str) and 0<len(token)<=8192 and token.isascii() and not any(c.isspace() or ord(c)<33 or ord(c)==127 for c in token),'root_account_binding_unproven')
   need(not account['root_equal'] and not account['same_subject'],'shared_account_budget_unproven')
-  result.update(account_env='TOURVISOR_ANEX_JWT',route='direct_tourvisor_api',normal_autosave_enabled=False,database_write_count=0)
+  result.update(account_env=account_env,route='direct_tourvisor_api',normal_autosave_enabled=False,database_write_count=0)
  else:
   need(isinstance(account,dict) and set(account)=={'root_configured','anex_configured','same_token','same_subject'} and all(type(v) is bool for v in account.values()),'root_account_binding_unproven')
   need(account['root_configured'] and account['anex_configured'],'root_account_binding_unproven')
@@ -290,7 +313,7 @@ try:
  data=start.get('data',start);need(isinstance(data,dict),'start_shape')
  sid=data.get('searchId',data.get('id'))
  need(type(sid) is int and 0<sid<10**19 or isinstance(sid,str) and re.fullmatch(r'[1-9][0-9]{0,18}',sid),'search_identity')
- sid=str(sid);need(sid not in (('13905446138','13943172077') if direct else ('13905446138',)),'historical_search_identity')
+ sid=str(sid);need(sid not in POLICY.get('blocked_search_ids',('13905446138','13943172077') if direct else ('13905446138',)),'historical_search_identity')
  result['search_id']=sid;result['generation_id']=POLICY['operation']
  time.sleep(20)
  status=request('search_status',{'searchId':sid})
@@ -338,7 +361,7 @@ finally:
 def main(profile=None):
     profile = profile or {}
     operation = profile.get('operation', OPERATION)
-    work = pathlib.Path(os.environ['RUNNER_TEMP']) / ('search3-tv-anex-key-check' if profile else 'search3-root-tv-check')
+    work = pathlib.Path(os.environ['RUNNER_TEMP']) / (profile.get('work_name','search3-tv-anex-key-check') if profile else 'search3-root-tv-check')
     work.mkdir()
     key, known = work / 'key', work / 'known'
     evidence = {'operation_id': operation, 'status': 'blocked_no_replay', 'live_operation_started': False,
@@ -354,6 +377,7 @@ def main(profile=None):
         policy = {'operation': operation, 'api_hash': API_HASH, 'app_hash': APP_HASH, 'params': PARAMS}
         if profile:
             policy.update(direct=True, account_env=profile['account_env'], approval_reference=profile['approval_reference'])
+            if 'blocked_search_ids' in profile:policy['blocked_search_ids']=profile['blocked_search_ids']
             evidence.update(account_env=profile['account_env'], route='direct_tourvisor_api')
         program = 'POLICY=' + repr(policy) + '\n' + REMOTE
         key, known, opts, remote = ssh_options(work)
@@ -368,7 +392,7 @@ def main(profile=None):
                    *identity, 'budget', 'search_id', 'generation_id', 'hotel_groups', 'tour_count', 'progress', 'samples', 'before_files', 'after_files', 'reason', 'error_type'}
         if profile:
             allowed.update(('account_env','route','known_accounted_units_before','known_accounted_units_after',
-                            'operation_physical_attempts','operation_tariff_units','after_read_error'))
+                            'operation_physical_attempts','operation_tariff_units','after_read_error','quota_scope'))
         need(isinstance(result, dict) and set(result) <= allowed and result.get('operation_id') == operation, 'receipt_shape')
         need(all(result.get(k) == v for k, v in identity.items()), 'receipt_identity')
         need(result.get('real_leads') == 0 and result.get('application_file_writes') == 0, 'receipt_scope')
@@ -389,7 +413,10 @@ def main(profile=None):
                 if 'hash_scope' in request:need(request['hash_scope'] in ('bounded_prefix','complete_body'),'receipt_requests')
                 if 'error_category' in request:need(request['error_category'] in ('auth_denied','rate_limited','upstream_server_error','unexpected_http'),'receipt_requests')
         if profile:
-            need(result.get('account_env') in (None,'TOURVISOR_ANEX_JWT') and result.get('route') in (None,'direct_tourvisor_api'),'receipt_scope')
+            need(result.get('account_env') in (None,profile['account_env']) and result.get('route') in (None,'direct_tourvisor_api'),'receipt_scope')
+            if profile['account_env']=='TOURVISOR_JWT':
+                need(not ({'known_accounted_units_before','known_accounted_units_after'} & set(result)), 'receipt_scope')
+            if 'quota_scope' in result:need(profile['account_env']=='TOURVISOR_JWT' and result['quota_scope']=='owner_single_operation_only','receipt_scope')
             need(result.get('normal_autosave_enabled') is False and type(result.get('database_write_count')) is int and result['database_write_count']==0,'receipt_scope')
             for field, maximum in (('known_accounted_units_before',3000),('known_accounted_units_after',3000),('operation_physical_attempts',3),('operation_tariff_units',1)):
                 if field in result:need(type(result[field]) is int and 0<=result[field]<=maximum,'receipt_scope')
@@ -409,6 +436,7 @@ def main(profile=None):
 
 
 if __name__ == '__main__':
-    need(sys.argv[1:] in ([], ['anex-key']), 'usage')
-    main(ANEX_PROFILE if sys.argv[1:] else None)
+    need(sys.argv[1:] in ([], ['anex-key'], ['root-direct']), 'usage')
+    main(ROOT_DIRECT_PROFILE if sys.argv[1:]==['root-direct'] else ANEX_PROFILE if sys.argv[1:] else None)
+
 

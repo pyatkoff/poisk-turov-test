@@ -1170,6 +1170,385 @@ class AnexKeyRemoteTests(unittest.TestCase):
         self.assertTrue(rotation["same_subject"])
 
 
+def root_direct_event_fixture():
+    event = event_fixture()
+    event["comment"]["body"] = f"/check-search3-tv-root-direct {CONTROL} tv-root-direct-20261019-v1 6261699999"
+    return event
+
+
+def root_direct_budget_fixture(**changes):
+    value = json.loads(budget_fixture()["body"].split("\n", 1)[1])
+    value.update(operation_id="tv-root-direct-20261019-v1", approval_reference=6262670660)
+    value.update(changes)
+    note = budget_fixture()
+    note["body"] = "SEARCH3_ROOT_TV_DIRECT_BUDGET_V1\n" + json.dumps(value, sort_keys=True)
+    return note
+
+
+class RootDirectAdmissionTests(unittest.TestCase):
+    """A first-key direct comparison has a distinct grant and no historical replay."""
+
+    def test_direct_root_grant_and_command_cannot_authorize_prior_profiles(self):
+        profile = CHECK.ROOT_DIRECT_PROFILE
+        identity = CHECK.validate_event(root_direct_event_fixture(), env_fixture(), profile)
+        self.assertEqual(identity["control_source_sha"], CONTROL)
+        budget = CHECK.budget_note(root_direct_budget_fixture(), NOW, profile)
+        self.assertEqual(budget["account_env"], "TOURVISOR_JWT")
+        self.assertEqual(budget["approval_reference"], 6262670660)
+        self.assertEqual(profile["approval_hash"], "059425ea173d935837747e139aeecebc9bb131b91aa31a0f778a2335bf3f62b8")
+        for previous in (None, CHECK.ANEX_PROFILE):
+            with self.subTest(previous=previous):
+                with self.assertRaises(RuntimeError):
+                    CHECK.validate_event(root_direct_event_fixture(), env_fixture(), previous)
+                with self.assertRaises(RuntimeError):
+                    CHECK.budget_note(root_direct_budget_fixture(), NOW, previous)
+        for event in (event_fixture(), anex_event_fixture()):
+            with self.assertRaises(RuntimeError):
+                CHECK.validate_event(event, env_fixture(), profile)
+
+    def test_direct_root_budget_rejects_other_accounts_grants_caps_and_days(self):
+        for note in (
+            budget_fixture(), anex_budget_fixture(),
+            root_direct_budget_fixture(account_env="TOURVISOR_ANEX_JWT"),
+            root_direct_budget_fixture(approval_reference=6261576536),
+            root_direct_budget_fixture(operation_id="tv-anex-key-20261019-v1"),
+            root_direct_budget_fixture(reserved_search_units=2),
+            root_direct_budget_fixture(max_http_attempts=4),
+        ):
+            with self.subTest(body=note["body"]):
+                with self.assertRaises(RuntimeError):
+                    CHECK.budget_note(note, NOW, CHECK.ROOT_DIRECT_PROFILE)
+        with self.assertRaises(RuntimeError):
+            CHECK.budget_note(root_direct_budget_fixture(), NOW + dt.timedelta(days=1), CHECK.ROOT_DIRECT_PROFILE)
+
+    def test_direct_root_admission_reads_prior_commands_but_rejects_own_duplicate(self):
+        source, tree = "c" * 40, "d" * 40
+        approval_body = "offline direct-root owner approval"
+        note = root_direct_budget_fixture()
+        note["issue_url"] = "https://api.github.com/repos/pyatkoff/poisk-turov-test/issues/4217"
+        responses = {
+            "/git/ref/heads/main": {"object": {"sha": CONTROL}},
+            "/git/ref/heads/release/search3-production-ready-v1": {"object": {"sha": CHECK.RELEASE}},
+            "/contents/v2/api-v2.php?ref=" + CHECK.RELEASE: {"sha": CHECK.API_BLOB},
+            "/issues/comments/6262670660": {
+                "user": {"id": 226193297}, "author_association": "OWNER", "body": approval_body,
+            },
+            "/git/commits/" + CONTROL: {"parents": [{"sha": "b" * 40}, {"sha": source}], "tree": {"sha": tree}},
+            "/git/commits/" + source: {"sha": source, "tree": {"sha": tree}},
+            "/commits/" + source + "/check-runs?per_page=100": {
+                "check_runs": [{"name": name, "status": "completed", "conclusion": "success", "app": {"slug": "github-actions"}} for name in ("guard", "contracts", "live-check-contracts")]
+            },
+            "/issues/4217/comments?per_page=100&page=1": [event_fixture()["comment"], anex_event_fixture()["comment"], root_direct_event_fixture()["comment"]],
+            "/issues/comments/6261700001": root_direct_event_fixture()["comment"],
+            "/issues/comments/6261699999": note,
+        }
+        profile = dict(CHECK.ROOT_DIRECT_PROFILE, approval_hash=hashlib.sha256(approval_body.encode()).hexdigest())
+        identity = CHECK.validate_event(root_direct_event_fixture(), env_fixture(), profile)
+        with (
+            mock.patch.object(CHECK, "checked_api", side_effect=lambda path: copy.deepcopy(responses[path])),
+            mock.patch("datetime.datetime", FrozenDateTime),
+            mock.patch("urllib.request.urlopen", side_effect=AssertionError("real HTTP forbidden")),
+        ):
+            self.assertEqual(CHECK.admission(identity, profile)["operation_id"], "tv-root-direct-20261019-v1")
+            prior = copy.deepcopy(root_direct_event_fixture()["comment"])
+            prior["id"] = 6261698000
+            responses["/issues/4217/comments?per_page=100&page=1"].insert(0, prior)
+            with self.assertRaisesRegex(RuntimeError, "operation_no_replay"):
+                CHECK.admission(identity, profile)
+
+
+class RootDirectRemoteTests(unittest.TestCase):
+    """Execute real generated direct code with fake HTTP and a private root account."""
+
+    def setUp(self):
+        RemoteTests.setUp(self)
+        self.policy.update(
+            operation="tv-root-direct-20261019-v1", direct=True,
+            account_env="TOURVISOR_JWT", approval_reference=6262670660,
+            blocked_search_ids=CHECK.ROOT_DIRECT_PROFILE["blocked_search_ids"],
+        )
+        self.payload["budget"] = json.loads(root_direct_budget_fixture()["body"].split("\n", 1)[1])
+        self.operation_path = self.private / self.policy["operation"]
+
+    def execute(self, responses=None, **kwargs):
+        kwargs.setdefault("config", {
+            "token": "synthetic.root.token", "root_equal": False, "same_subject": False,
+        })
+        return RemoteTests.execute(self, responses, **kwargs)
+
+    def test_direct_root_uses_same_fixed_api_payload_with_selected_root_bearer(self):
+        before = self.api.read_bytes(), self.app.read_bytes()
+        result, sleep = self.execute()
+        urls = [urllib.parse.urlsplit(url) for url, _, _ in self.calls]
+        self.assertEqual([url.path for url in urls], [
+            "/search/api/v1/tours/search", "/search/api/v1/tours/search/2026101900001/status",
+            "/search/api/v1/tours/search/2026101900001",
+        ])
+        self.assertTrue(all(url.scheme == "https" and url.netloc == "api.tourvisor.ru" for url in urls))
+        self.assertEqual(urllib.parse.parse_qs(urls[0].query), {
+            **{key: [str(value)] for key, value in CHECK.PARAMS.items()},
+            "onlyCharter": ["false"], "onlyDirect": ["false"],
+        })
+        self.assertEqual(urllib.parse.parse_qs(urls[1].query), {"operatorStatus": ["false"]})
+        self.assertEqual(urllib.parse.parse_qs(urls[2].query), {"limit": ["25"]})
+        for _, headers, timeout in self.calls:
+            self.assertEqual(headers["Authorization"], "Bearer synthetic.root.token")
+            self.assertEqual(timeout, 55)
+            self.assertFalse(any(key.lower() in ("cookie", "x-ci-token") for key in headers))
+        self.assertEqual(result["status"], "fresh_populated_results_verified")
+        self.assertEqual(result["account_env"], "TOURVISOR_JWT")
+        self.assertEqual(result["route"], "direct_tourvisor_api")
+        self.assertIs(result["normal_autosave_enabled"], False)
+        self.assertEqual(result["database_write_count"], 0)
+        self.assertEqual(result["application_file_writes"], 0)
+        self.assertEqual(result["before_files"], result["after_files"])
+        self.assertEqual((self.api.read_bytes(), self.app.read_bytes()), before)
+        sleep.assert_called_once_with(20)
+
+    def test_direct_root_never_creates_shared_anex_quota_storage(self):
+        result, _ = self.execute()
+        self.assertFalse((self.home / ".anytoour-match").exists())
+        self.assertEqual(result["quota_scope"], "owner_single_operation_only")
+        self.assertEqual(result["global_daily_usage"], "not_measured")
+        self.assertNotIn("known_accounted_units_before", result)
+        self.assertNotIn("known_accounted_units_after", result)
+
+    def test_existing_foreign_anex_ledger_is_byte_identical_after_direct_root(self):
+        quota = self.home / ".anytoour-match/provider-quotas"
+        quota.mkdir(parents=True, mode=0o700)
+        for name, body in (
+            ("tourvisor-anex-2026-10-19.json", b'{"tariff_search_units":3000,"retained":"foreign writer"}\n'),
+            ("tourvisor-anex-tv-anex-key-20261019-v1.json", b'{"status":"unknown_no_replay","retained":true}\n'),
+        ):
+            (quota / name).write_bytes(body)
+            (quota / name).chmod(0o600)
+        before = {str(path.relative_to(quota)): path.read_bytes() for path in quota.iterdir()}
+        result, _ = self.execute()
+        self.assertEqual(result["status"], "fresh_populated_results_verified")
+        self.assertEqual({str(path.relative_to(quota)): path.read_bytes() for path in quota.iterdir()}, before)
+
+    def test_private_attempt_records_reserve_each_physical_attempt_before_http(self):
+        def observe(attempt):
+            files = sorted(self.operation_path.glob("http-attempt-*.json"))
+            self.assertEqual([path.name for path in files], [f"http-attempt-{i:02}.json" for i in range(1, attempt + 1)])
+            for index, path in enumerate(files, 1):
+                record = json.loads(path.read_text())
+                self.assertEqual(record["action"], ("search_start", "search_status", "search_results")[index - 1])
+                self.assertEqual(record, {
+                    "operation": self.policy["operation"], "account_env": "TOURVISOR_JWT",
+                    "action": ("search_start", "search_status", "search_results")[index - 1],
+                    "physical_attempt": index, "tariff_search_units": 1,
+                    "provider_day": "2026-10-19",
+                })
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        self.assertEqual(result["operation_physical_attempts"], 3)
+        self.assertEqual(result["operation_tariff_units"], 1)
+        self.assertEqual(self.operation_path.stat().st_mode & 0o777, 0o700)
+        for path in self.operation_path.iterdir():
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertNotIn("synthetic.root.token", path.read_text())
+            self.assertNotIn("tour-1", path.read_text())
+
+    def test_prior_private_operation_is_retained_and_not_replayed(self):
+        self.operation_path.mkdir(mode=0o700)
+        reservation = self.operation_path / "reservation.json"
+        reservation.write_text('{"status":"unknown_no_replay","retained":"previous attempt"}\n')
+        reservation.chmod(0o600)
+        before = reservation.read_bytes()
+        result, sleep = self.execute()
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(reservation.read_bytes(), before)
+        self.assertEqual(list(self.operation_path.iterdir()), [reservation])
+        sleep.assert_not_called()
+
+    def test_first_attempt_auth_failure_retains_safe_metadata_and_own_charge_only(self):
+        body = b'{"error":"synthetic.root.token must stay private"}'
+        failure = urllib.error.HTTPError("https://api.tourvisor.ru/search/api/v1/tours/search", 401, "denied", {}, io.BytesIO(body))
+        result, sleep = self.execute([failure])
+        self.assertEqual(result["status"], "unknown_no_replay")
+        self.assertEqual(result["reason"], "http_failed")
+        self.assertEqual(result["requests"][0]["error_category"], "auth_denied")
+        self.assertEqual(result["requests"][0]["sha256"], hashlib.sha256(body).hexdigest())
+        self.assertEqual(result["operation_physical_attempts"], 1)
+        self.assertEqual(result["operation_tariff_units"], 1)
+        self.assertEqual(len(self.calls), 1)
+        self.assertNotIn("synthetic.root.token", json.dumps(result))
+        self.assertFalse((self.home / ".anytoour-match").exists())
+        sleep.assert_not_called()
+
+    def test_direct_root_results_error_has_bounded_body_hash_without_raw_error(self):
+        body = b"synthetic.root.token " + b"x" * 66000
+        failure = urllib.error.HTTPError("https://api.tourvisor.ru/search/api/v1/tours/search/2026101900001", 500, "failed", {}, io.BytesIO(body))
+        result, _ = self.execute([{"searchId": "2026101900001"}, status_fixture(), failure])
+        self.assertEqual(result["reason"], "http_failed")
+        self.assertEqual(result["requests"][-1]["http"], 500)
+        self.assertEqual(result["requests"][-1]["error_category"], "upstream_server_error")
+        self.assertEqual(result["requests"][-1]["bytes"], 65537)
+        self.assertTrue(result["requests"][-1]["body_truncated"])
+        self.assertEqual(result["requests"][-1]["hash_scope"], "bounded_prefix")
+        self.assertEqual(result["operation_physical_attempts"], 3)
+        self.assertEqual(result["operation_tariff_units"], 1)
+        self.assertEqual(len(self.calls), 3)
+        self.assertNotIn("synthetic.root.token", json.dumps(result))
+
+    def test_all_consumed_search_ids_stop_after_start_without_status_or_results(self):
+        for search_id in ("13905446138", "13943172077", "13943616554"):
+            with self.subTest(search_id=search_id):
+                self.temp.cleanup()
+                self.setUp()
+                result, sleep = self.execute([{"searchId": search_id}])
+                self.assertEqual(result["reason"], "historical_search_identity")
+                self.assertEqual(len(self.calls), 1)
+                self.assertEqual(result["operation_physical_attempts"], 1)
+                sleep.assert_not_called()
+
+    def test_wrong_account_budget_cannot_authorize_direct_root_call(self):
+        payload = copy.deepcopy(self.payload)
+        payload["budget"] = json.loads(anex_budget_fixture()["body"].split("\n", 1)[1])
+        result, sleep = self.execute(payload=payload)
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.operation_path.exists())
+        self.assertFalse((self.home / ".anytoour-match").exists())
+        sleep.assert_not_called()
+
+    def test_root_missing_invalid_or_known_shared_credentials_block_before_http(self):
+        for config in (
+            {"token": "", "root_equal": False, "same_subject": False},
+            {"token": "synthetic.root.token", "root_equal": True, "same_subject": False},
+            {"token": "synthetic.root.token", "root_equal": False, "same_subject": True},
+            {"token": "synthetic.root.token\r\nX-Header: injection", "root_equal": False, "same_subject": False},
+        ):
+            with self.subTest(config=config):
+                result, sleep = self.execute(config=config)
+                self.assertFalse(result["live_operation_started"])
+                self.assertEqual(self.calls, [])
+                self.assertFalse(self.operation_path.exists())
+                sleep.assert_not_called()
+
+    def test_provider_day_change_after_root_start_stops_before_second_charge(self):
+        def observe(attempt):
+            if attempt == 1:
+                tomorrow = mock.patch(__name__ + ".NOW", NOW + dt.timedelta(days=1))
+                tomorrow.start()
+                self.addCleanup(tomorrow.stop)
+
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        self.assertEqual(result["reason"], "budget_day")
+        self.assertEqual(result["status"], "unknown_no_replay")
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(result["operation_physical_attempts"], 1)
+        self.assertEqual(result["operation_tariff_units"], 1)
+        self.assertEqual([path.name for path in self.operation_path.glob("http-attempt-*.json")], ["http-attempt-01.json"])
+        self.assertFalse((self.home / ".anytoour-match").exists())
+
+    def run_profile_main(self, receipt):
+        runner = pathlib.Path(tempfile.mkdtemp(prefix="offline-root-direct-main-", dir=self.home))
+        event_path = runner / "event.json"
+        event_path.write_text(json.dumps(root_direct_event_fixture()))
+        env = dict(env_fixture(), RUNNER_TEMP=str(runner), GITHUB_EVENT_PATH=str(event_path))
+
+        def ssh_fixture(work):
+            key, known = work / "key", work / "known"
+            key.write_text("synthetic private key")
+            known.write_text("synthetic known hosts")
+            return key, known, ["-F", "/dev/null"], "offline-host"
+
+        output, error = io.StringIO(), None
+        with (
+            mock.patch.dict(CHECK.os.environ, env, clear=True),
+            mock.patch.object(CHECK, "admission", return_value=self.payload["budget"]) as admission,
+            mock.patch.object(CHECK, "ssh_options", side_effect=ssh_fixture),
+            mock.patch.object(CHECK, "run", return_value=json.dumps(receipt).encode()) as remote_run,
+            mock.patch("urllib.request.urlopen", side_effect=AssertionError("real HTTP forbidden")),
+            contextlib.redirect_stdout(output),
+        ):
+            try:
+                CHECK.main(CHECK.ROOT_DIRECT_PROFILE)
+            except RuntimeError as exc:
+                error = exc
+        work = runner / "search3-tv-root-direct-check"
+        evidence = json.loads((work / "evidence.json").read_text())
+        self.assertEqual(json.loads(output.getvalue()), evidence)
+        self.assertFalse((work / "key").exists())
+        self.assertFalse((work / "known").exists())
+        admission.assert_called_once_with(
+            CHECK.validate_event(root_direct_event_fixture(), env, CHECK.ROOT_DIRECT_PROFILE), CHECK.ROOT_DIRECT_PROFILE,
+        )
+        return evidence, remote_run, error
+
+    def test_main_dispatches_root_direct_policy_and_accepts_only_its_account_receipt(self):
+        import ast
+
+        receipt, _ = self.execute()
+        evidence, remote_run, error = self.run_profile_main(receipt)
+        self.assertIsNone(error)
+        self.assertEqual(evidence["status"], "fresh_populated_results_verified")
+        self.assertEqual(evidence["remote"], receipt)
+        command = remote_run.call_args.args[0]
+        program = CHECK.shlex.split(command[-1])
+        policy = ast.literal_eval(program[2].split("\n", 1)[0].removeprefix("POLICY="))
+        self.assertTrue(policy["direct"])
+        self.assertEqual(policy["account_env"], "TOURVISOR_JWT")
+        self.assertEqual(policy["operation"], "tv-root-direct-20261019-v1")
+        self.assertEqual(policy["approval_reference"], 6262670660)
+        self.assertEqual(policy["params"], CHECK.PARAMS)
+        for altered in (
+            dict(receipt, account_env="TOURVISOR_ANEX_JWT"),
+            dict(receipt, known_accounted_units_before=0),
+            dict(receipt, quota_scope="tourvisor-anex-shared"),
+            dict(receipt, operation_physical_attempts=4),
+            dict(receipt, operation_tariff_units=2),
+        ):
+            with self.subTest(fields=sorted(altered)):
+                retained, _, error = self.run_profile_main(altered)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertNotIn("remote", retained)
+        self.assertNotIn("synthetic.root.token", json.dumps(evidence))
+
+    def test_native_php_root_selector_matches_api_env_first_then_constant(self):
+        import shutil
+
+        php = shutil.which("php")
+        if php is None:
+            if CHECK.os.environ.get("SEARCH3_ANEX_KEY_NATIVE_CI") == "1":
+                self.fail("Native PHP is required for the direct root credential selector in CI")
+            self.skipTest("Local PHP is unavailable; CI requires the native selector check")
+        self.execute()
+        code = self.config_calls[0].args[0][2]
+        config = self.home / "synthetic-root-native-config.php"
+        env = {
+            "PATH": str(pathlib.Path(php).parent), "HOME": str(self.home),
+            "TOURVISOR_JWT": "synthetic.root.environment",
+            "TOURVISOR_ANEX_JWT": "synthetic.anex.environment",
+        }
+
+        def select(config_body, active_env):
+            config.write_text("<?php\n" + config_body)
+            completed = subprocess.run(
+                [php, "-r", code, "--", str(config)],
+                env=active_env, cwd=self.home, capture_output=True, timeout=15, check=False,
+            )
+            self.assertEqual(completed.returncode, 0, "Generated root PHP selector failed")
+            self.assertEqual(completed.stderr, b"")
+            selected = json.loads(completed.stdout)
+            self.assertEqual(set(selected), {"token", "root_equal", "same_subject"})
+            return selected
+
+        both = "define('TOURVISOR_JWT', 'synthetic.root.constant'); define('TOURVISOR_ANEX_JWT', 'synthetic.anex.constant');"
+        self.assertEqual(select(both, env)["token"], "synthetic.root.environment")
+        self.assertEqual(select(both, dict(env, TOURVISOR_JWT=""))["token"], "synthetic.root.constant")
+        self.assertEqual(select(both, dict(env, TOURVISOR_JWT="   "))["token"], "synthetic.root.constant")
+        no_root = "define('TOURVISOR_ANEX_JWT', 'synthetic.anex.constant');"
+        self.assertEqual(select(no_root, dict(env, TOURVISOR_JWT=""))["token"], "")
+
+
 if __name__ == "__main__":
     unittest.main()
+
 
