@@ -366,8 +366,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, 'f99306ffe3725f2badc70096d801608fc5393009')
-        self.assertEqual(remote.PREDECESSOR_RUN, 38941719240)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '1959dcabac17335fd09763389231e67db9afde6b')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39242956656)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -887,7 +887,8 @@ class UpdateContracts(unittest.TestCase):
             '8d3d66eeb95ac69534ec7557c7c0926cf201543c',
             '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b',
             '0fc16325635d113fafa96081f295a1a5696359c3',
-            'f99306ffe3725f2badc70096d801608fc5393009'))
+            'f99306ffe3725f2badc70096d801608fc5393009',
+            '1959dcabac17335fd09763389231e67db9afde6b'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1034,7 +1035,7 @@ class UpdateContracts(unittest.TestCase):
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332, 38522678669, 38534763188, 38558081728, 38941719240))
+             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1101,12 +1102,12 @@ class UpdateContracts(unittest.TestCase):
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'visual-search/native-v2/bridge.js',
             'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/tour.js',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/tour.js',
+        for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
                      'visual-search/native-v2/viewport.css',
                      'visual-search/native-v2/donor.css',
                      'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
@@ -1126,7 +1127,7 @@ class UpdateContracts(unittest.TestCase):
     def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/tour.js')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/bridge.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')
