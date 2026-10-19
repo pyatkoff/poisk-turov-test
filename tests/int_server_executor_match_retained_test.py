@@ -41,6 +41,34 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def test_saved_projection_requires_complete_parent_and_preserves_its_files(self):
+        with tempfile.TemporaryDirectory() as td:
+            private=Path(td)/'private';target=private/OP;target.mkdir(parents=True)
+            project=Path(td)/'project';project.mkdir();child=private/'new-projection';child.mkdir()
+            scope={'kind':'scope','cohort':'common4-retained','captured_at_utc':'2026-10-20T00:00:00Z',
+                'database_snapshot':'repeatable-read-read-only','schema_columns':{'andromeda_hotel_identities':IDENTITY_COLUMNS}}
+            raw=(json.dumps(scope)+'\n').encode();(target/'retained-raw.ndjson').write_bytes(raw)
+            capture={'state':'captured_read_only','raw_sha256':hashlib.sha256(raw).hexdigest(),
+                     'raw_bytes':len(raw),'rows':{k:0 for k in ('observation','legacy_source','identity','target')}}
+            prior={'operation_id':OP,'mode':'match-retained-intake','status':'complete','production_unchanged':True,
+                   'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+                   'match_retained':{'data':{'operation_id':OP,'source_sha':SHA,'capture':capture}}}
+            prior['match_retained']['evidence_sha256']=hashlib.sha256(json.dumps(prior['match_retained']['data'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            (target/'reservation.json').write_text(json.dumps({'operation_id':OP,'source_sha':SHA}))
+            (target/'result.json').write_text(json.dumps(prior))
+            before={p.name:p.read_bytes() for p in target.iterdir()}
+            def fail(reason):raise ValueError(reason)
+            space={'private':private,'project':project,'op':child,'operation':'int-andromeda-match-retained-project-20261020-v1',
+                'source':SHA,'payload':{'target_operation_id':OP,'cohort':'common4-retained','match_retained_control_sha':CONTROL},
+                're':__import__('re'),'json':json,'hashlib':hashlib,'os':os,'subprocess':subprocess,'fail':fail,
+                'safe_json':lambda path,bound:json.loads(path.read_text()),
+                'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound}
+            exec(m.REMOTE_HANDLER,space);result=space['project_retained_target'](SOURCE)
+            self.assertEqual('reprojected_retained_read_only',result['data']['state'])
+            self.assertEqual(before,{p.name:p.read_bytes() for p in target.iterdir()})
+            prior['status']='unknown_no_replay';(target/'result.json').write_text(json.dumps(prior))
+            with self.assertRaisesRegex(ValueError,'parent_not_complete'):space['project_retained_target'](SOURCE)
+
     def test_readback_preserves_failed_receipt_and_never_loads_unreviewed_helper(self):
         with tempfile.TemporaryDirectory() as td:
             private=Path(td)/'private';target=private/OP;target.mkdir(parents=True)
@@ -69,8 +97,8 @@ class ContractTest(unittest.TestCase):
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op=OP if mode=='match-retained-intake' else 'int-andromeda-match-retained-readback-20261020-v1' if mode=='match-retained-readback' else QUOTA_OP
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode=='match-retained-readback' else '')
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP}[mode]
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode in ('match-retained-readback','match-retained-project') else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -92,11 +120,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op=OP if mode=='match-retained-intake' else 'int-andromeda-match-retained-readback-20261020-v1' if mode=='match-retained-readback' else QUOTA_OP
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode=='match-retained-readback' else ''))
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP}[mode]
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode in ('match-retained-readback','match-retained-project') else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
@@ -174,6 +202,17 @@ class QuotaTest(unittest.TestCase):
 
 
 class ProjectionTest(unittest.TestCase):
+    def test_absent_operator_name_and_stored_native_field_are_preserved(self):
+        row=self.observation(link=None);row['row'].update(operator_name=None,native_id_type='HOTELLIST',native_id_value='126268')
+        result=self.fixture([row]);self.assertEqual(1,result['observed_operators'][0]['with_stored_native_field'])
+        self.assertEqual('retained_code_hint_not_account_access_proof',result['observed_operators'][0]['family_binding'])
+        self.assertEqual('observer_native:25:HOTELLIST',result['candidate_edges'][0]['namespace'])
+        self.assertEqual('needs_independent_namespace_bridge',result['candidate_edges'][0]['state'])
+        row['row']['operator_id']=999
+        result=self.fixture([row]);self.assertEqual(1,result['observed_operators'][0]['observations'])
+        self.assertEqual('unknown',result['observed_operators'][0]['family_binding'])
+        self.assertEqual([],result['candidate_edges'])
+
     def fixture(self,extras,registry=True):
         scope={'kind':'scope','cohort':'common4-retained','captured_at_utc':'2026-10-20T00:00:00Z',
                'database_snapshot':'repeatable-read-read-only','schema_columns':{'andromeda_hotel_identities':IDENTITY_COLUMNS if registry else []}}
