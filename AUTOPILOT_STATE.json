@@ -1287,7 +1287,7 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "SOURCE_CHECKED_AWAITING_SUPPORTED_VISUAL_QA",
+    "status": "IMPLEMENTING_APPROVED_SITE203_EXISTING_NEXT_TRANSFER",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
@@ -1295,7 +1295,7 @@
     "roadmap": "docs/project/search3-product-development-plan.md",
     "updated_at": "2026-10-19",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок.",
-    "acceptance_status": "NEXT55FB_PUBLISHED_ORIGINAL_LIVE_JOURNEY_BOUNDED_ACCEPTED_COMPACT_DRAFT_SOURCE_ONLY_MOBILE_AND_PHYSICAL_PENDING",
+    "acceptance_status": "SITE203_WHOLE_VERSION_APPROVED_RECEIVER_SOURCE_IN_PROGRESS_NOT_PUBLISHED",
     "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
     "published_source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
     "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
@@ -1316,12 +1316,12 @@
       ],
       "score_status": "No new assessment; not_measured stays not_measured. A mockup does not close functional, authority, identity or architecture criteria."
     },
-    "next_action": "До нового продуктового пакета указать в существующем claim/PR exact source/artifact/runtime, разрешённый путь QA и минимальные matched кадры/действия; использовать известные capabilities/receipts, не создавать очередь проверок и не повторять unchanged тесты. Облачный Chrome для existing NEXT доступен по чтению существующей mixed-demo вкладки19.10; это не QA нового d827, не mobile/physical и не допуск нового live-поиска. Продолжить текущий compact ANEX draft d827ccf7d73c5af877945972a801fda825856824 после доступности поддержанного Sites visual QA: matched360/390/430/768/1280 и1280×720, полный выбор/честный итог за всех/контакт/Back-reopen. Сохранить ветку после успешной текущей цены без выбора рейсов («Рейс уточнит менеджер»). Пока managed Sites не имеет $control-browser, не запускать preview server/browser install/обходной carrier, не создавать следующие визуальные черновики и не повторять source/CI/evidence без нового основания. Сохранить released checkpoint/точный blocker; выбрать только независимый разрешённый шаг по новому подтверждённому дефекту. Далее whole-version visual+behavior approval → existing NEXT owners → applicable exact-head CI → отдельный stock publisher exact artifact/readback → отдельная установленная приёмка. Recovery6263876510, actual original journey6264963728 и NEXT55fb6265776204 уже terminal/consumed, не повторять.200%deferred.",
+    "next_action": "Продолжить уже согласованный whole-version Site203/source8c826b44/evidence dd7a48c0, approval#4217/6270421744; source claim6270542519+test extension6270605391. В original NEXT existing app/styles owners переносится цельный компактный exact-tour/optional-flight/contact/return путь; canonical receiver lead/data/quote/price/lifecycle сохраняются. Закончить focused/compiled regression и все применимые exact-head CI, разрешённый release merge, затем отдельный exclusive stock NEXT-only publisher exact artifact/readback и установленный релевантный сценарий. Новый дизайн/повторная публикация Sites/старый live/ключи не нужны. PUBLIC Site203 QA завершён; старый d827 local QA blocker исторический. Installed NEXT и его баллы не наследуют donor evidence. No supplier/real lead requests; physicalSafari N;200%deferred.",
     "next_task": {
       "scope": "Одна цельная поставка: компактные exact flight pairs → честный итог за группу → контакт → Back/reopen; optional flight/manager branch. Затем согласованный original NEXT перенос и накопленная mobile-приёмка всего пути.",
       "design_owner": "SITE#1719: тот жеPUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public. SEARCH#1646: только existingNEXT/release/search3-production-ready-v1. Один writer shared paths и отдельный publisher. Design-v2 — другой target/владелец, evidence/баллы не наследуются.",
       "acceptance": "SEARCH-QUALITY-1:12 исторических/11обязательных строк/5критериев0/1/1.5/2; fully measured применимые строки≥9.5, N без суммы. Source/DOM не visual/clickable passed; mockup/prototype/compiled/installed/physical/real supplier отдельно. Для whole-version approval реальные кадры и действия всего пакета; перенос не закрывает installed mobile/physical/real delivery.",
-      "execution": "WIP1. Продолжать d827/terminal6266119798, не новый draft/renderer. Узкие regressions при реализации, полный применимый exact-head набор на готовом кандидате; successful artifacts/неизменённое evidence переиспользовать. Failed/pending/skipped не passed; no CI/deploy rerun ради отчёта/баллов, no draft/ready toggling. После approval — отдельный exclusive stock NEXT-only publisher/readback, затем те же сценарии. Нет безопасного независимого шага — один blocker/условие, без повторяющихся неизменных отчётов. До нового пакета — один короткий verification preflight exactartifact/runtime/route/frames/actions в том же claim/PR. Блокер ограничивать соответствующим artifact/шагом; independent justified NEXT QA не блокировать отсутствием managed Sites route. Сам факт доступного инструмента не повод повторять unchanged evidence или расходовать budget.",
+      "execution": "WIP1: approved Site203 entire compact journey → existing original NEXT owners. Approval6270421744 and PUBLIC acceptance6270378393 already complete; do not replay d827/Sites publication or create another candidate. Source claim6270542519 +6270605391; focused checks during adaptation, all applicable final-head CI/compiled real-browser frames/actions on frozen package, permitted release merge, separately claimed stock NEXT-only publisher then readback/installed acceptance. No workflow changes, ready/draft toggles, repeated successful CI/deploy or supplier action. Exact artifact QA preflight retained in same claim; source/CI/publication/runtime/physical are separate statuses.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1394,6 +1394,13 @@
           "artifact_id": 12148805797,
           "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6254338132",
           "status": "Installed/readback verified; fixed operation completed/consumed/no-replay; observed HTTP500 recovery/live supplier authority not_measured."
+        },
+        "supported_visual_qa_before_public_site203": {
+          "status": "UNPUBLISHED_SITES_DRAFT_QA_BLOCKED_INSTALLED_NEXT_BROWSER_AVAILABLE",
+          "checked_at": "2026-10-19",
+          "scope": "Missing managed Sites $control-browser blocks only unpublishedd827 QA. Native cloud Chrome was separately confirmed available: inventory and existing mixed-demo NEXT tab selected,5hotels/15variants; no new navigation/Find/quote/lead, no viewport/mobile/fullpath/physical acceptance. TinyFish metadata is available as a metered public-URL tool, not executed; retained compiled-browser evidence is exact-artifact only. SitesSKILL still prohibits previewserver/browserinstall/improvised control for this draft. Do not generalise this blocker or replay other byte-identical checks.",
+          "required_next": "SupportedSitesQA exactd827, matchedframes/actions, whole-version owner approval before newNEXTlayout. In parallel only genuinely independent permitted work with a new confirmed reason; no new visual drafts or unsupported bypass.",
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266637185"
         }
       },
       "root_recovery": {
@@ -1424,14 +1431,27 @@
         "app_sha256": "64279b30971d095cda6fdc7fe10cf370f0f62323b3d8ce2bd6b1b38a383721cb",
         "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266119798",
         "status": "SOURCE_CHECKED_NOT_PUBLISHED_NOT_VISUALLY_APPROVED",
-        "scope": "Existingcompactflightowner reused;40fictional source-testpairs/fullunparsedlabels/unknown-before-oneexplicitcalc/pending-error-expiry/TVmarkup parity PASS. App+regression+existingauditonly;fixture-dataunchanged. No frames/fullconnectedpath/Siteversion/NEXTtransfer/realANEXauthority."
+        "scope": "Existingcompactflightowner reused;40fictional source-testpairs/fullunparsedlabels/unknown-before-oneexplicitcalc/pending-error-expiry/TVmarkup parity PASS. App+regression+existingauditonly;fixture-dataunchanged. No frames/fullconnectedpath/Siteversion/NEXTtransfer/realANEXauthority.",
+        "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "UNPUBLISHED_SITES_DRAFT_QA_BLOCKED_INSTALLED_NEXT_BROWSER_AVAILABLE",
+        "status": "PUBLIC_SITE203_QA_AND_OWNER_APPROVAL_COMPLETE_ORIGINAL_NEXT_TRANSFER_ACTIVE",
         "checked_at": "2026-10-19",
-        "scope": "Missing managed Sites $control-browser blocks only unpublishedd827 QA. Native cloud Chrome was separately confirmed available: inventory and existing mixed-demo NEXT tab selected,5hotels/15variants; no new navigation/Find/quote/lead, no viewport/mobile/fullpath/physical acceptance. TinyFish metadata is available as a metered public-URL tool, not executed; retained compiled-browser evidence is exact-artifact only. SitesSKILL still prohibits previewserver/browserinstall/improvised control for this draft. Do not generalise this blocker or replay other byte-identical checks.",
-        "required_next": "SupportedSitesQA exactd827, matchedframes/actions, whole-version owner approval before newNEXTlayout. In parallel only genuinely independent permitted work with a new confirmed reason; no new visual drafts or unsupported bypass.",
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266637185"
+        "scope": "Exact PUBLIC Site2038c runtime accepted in6270378393 and whole version approved6270421744. Original receiver uses existing compiled-browser CI real Chromium for360/390/430/768/1280 plus1280x720 and PUBLIC installed cloudChrome after stock publication. No local server/browser install/carrier bypass. Old unpublished d827 blocker is historical, no new Sites candidate needed.",
+        "required_next": "Frozen receiver exact-head CI and independent matched-frame review; permitted release merge/exclusive stock NEXT publication/readback/relevant installed scenario. Physical iPhone/Safari/keyboard/safe area N,200% deferred.",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270542519"
+      },
+      "approved_site203": {
+        "source_sha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
+        "evidence_source_sha": "dd7a48c0b018bd3b55a69a584de1f50d68b617fd",
+        "native_version": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_772af9e555dc81918f156f855376146f",
+        "native_archive_sha256": "532c18f9df32da40a4b6a759440acb03bcf28c85caa1ac074a8579f41f1be6c2",
+        "approval_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744",
+        "acceptance_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393",
+        "source_claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270542519",
+        "test_extension": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270605391",
+        "status": "WHOLE_VERSION_APPROVED_ORIGINAL_NEXT_TRANSFER_ACTIVE",
+        "bounded_donor_quality": "CONTACT_RETURN_ONLY:2/2/1.5/2/2=9.5; not inherited by installed NEXT"
       }
     },
     "published_release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",

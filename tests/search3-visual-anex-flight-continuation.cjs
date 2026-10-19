@@ -336,7 +336,34 @@ async function boundedRepriceScenario(provider,mode,width=390){
   assert.equal(aborts,0,'changing or leaving the picker never aborts mutable supplier work');assert.deepEqual(errors,[]);
  }finally{release?.();await settle();dom.window.close();}
 }
+async function compactAnexScenario(width){
+ const transport=fixture(),errors=[],vc=new VirtualConsole();vc.on('jsdomError',e=>errors.push(e.message));
+ transport.state.anexPackageChoiceCount=40;
+ const dom=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
+ const w=dom.window,d=w.document,q=s=>d.querySelector(s),click=s=>{assert(q(s),s);q(s).click();};
+ Object.defineProperty(w,'crypto',{value:require('node:crypto').webcrypto});w.innerWidth=width;w.structuredClone=structuredClone;w.TextEncoder=TextEncoder;w.CSS={escape:s=>String(s).replace(/[^a-zA-Z0-9_-]/g,x=>'\\'+x)};
+ w.matchMedia=()=>({matches:true,addEventListener(){},removeEventListener(){}});w.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};w.HTMLElement.prototype.scrollIntoView=function(){};w.scrollTo=()=>{};
+ w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};
+ let release;
+ w.fetch=async(url,options={})=>{const value=await transport.json(url,options);if(options.body&&JSON.parse(options.body).action==='quote_calculate')await new Promise(resolve=>release=resolve);return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});};
+ const settle=()=>new Promise(resolve=>setTimeout(resolve,70)),wait=async fn=>{for(let i=0;i<90;i++){if(fn())return;await settle();}assert.fail('Compact ANEX timeout at '+width+' '+q('#modal-body')?.textContent.slice(-1800)+' errors='+JSON.stringify(errors)+' actions='+transport.calls.map(c=>c.action).join(','));};
+ try{
+  loadFixtureScripts(w);await wait(()=>!q('.search-submit').disabled);click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('3 варианта')&&q('#search-status').hidden);
+  click('[data-action="all-offers"][data-id="501"]');await wait(()=>q('#all-offers-list'));click('[data-action="offer"][data-key^="anex%3A"]');click('[data-action="refresh-hotel"]');await wait(()=>q('#modal-body').textContent.includes('ANEX CONCRETE'));click('[data-action="select-anex-tour"]');await wait(()=>d.querySelectorAll('[name="anex-package-choice"]').length===40);
+  assert(q('#modal').classList.contains('tour-flight-editing'));assert.equal(d.querySelectorAll('.anex-package-options>.anex-pair-option').length,3);assert.equal(d.querySelectorAll('.anex-more-options>.anex-pair-option').length,37);assert.equal(q('.anex-more-options').open,false);
+  assert.equal(d.querySelectorAll('.anex-pair-option .flight-option-price strong').length,0,'uncalculated pairs have no numeric price');assert.equal(q('[data-action="anex-application-preview"]'),null);assert.match(q('.tour-flight-context').textContent,/ANEX CONCRETE/);
+  const radio=d.querySelectorAll('[name="anex-package-choice"]')[39],ref=radio.value;
+  q('.anex-more-options').open=true;radio.click();assert.equal(radio.checked,true);q('#modal-body').scrollTop=3200;click('[data-action="anex-package-calculate"]');await wait(()=>release);
+  assert.equal(q('[name="anex-package-choice"]:checked').value,ref);assert.equal(q('#modal-body').scrollTop,3200,'legacy pending retains the same picker scroll; source/DOM only');assert.equal(q('.anex-more-options').open,true,'pending last pair is revealed');assert([...d.querySelectorAll('[name="anex-package-choice"]')].every(el=>el.disabled));assert.equal(q('[data-action="anex-application-preview"]'),null);
+  release();await wait(()=>q('[data-action="anex-application-preview"]'));assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 OUT/);assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 BACK/);assert.match(q('#modal-footer').textContent.replace(/\s/g,''),/135678,9/);
+  click('[data-action="anex-application-preview"]');const form=q('#prototype-lead-form');form.elements.phone.value='+79990000000';form.elements.phone.dispatchEvent(new w.Event('input',{bubbles:true}));form.elements.consent.checked=true;
+  const before=transport.calls.length;click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/TEST ANEX PACKAGE 40 OUT/);click('[data-action="anex-application-preview"]');assert.equal(q('[name="phone"]').value,'+79990000000');assert.equal(q('[name="consent"]').checked,false);
+  click('[data-action="close-modal"]');await settle();w.history.forward();await wait(()=>q('#prototype-lead-form'));assert.equal(q('[name="phone"]').value,'+79990000000');assert.equal(transport.calls.length,before,'contact Back/reopen/Forward never repeats calculation');
+  assert.equal(transport.calls.filter(c=>c.action==='quote_start').length,1);assert.equal(transport.calls.filter(c=>c.action==='quote_calculate').length,1);assert.equal(transport.calls.find(c=>c.action==='quote_calculate').body.choice_ref,ref);assert.deepEqual(errors,[]);
+ }finally{release?.();await settle();dom.window.close();}
+}
 (async()=>{
+ for(const width of [360,390,430,768,1280])await compactAnexScenario(width);
  await boundedRepriceScenario('anex','initial-busy');
  console.log('VISUAL_ANEX_INITIAL_BUSY_RECOVERY_OK other context pending/manual same-offer retry/no abort/no automatic HTTP; supplier HTTP 0');
  // Every case has its own window, transport, history and quote state. Keep
