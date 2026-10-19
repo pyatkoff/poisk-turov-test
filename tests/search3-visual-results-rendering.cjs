@@ -34,7 +34,9 @@ function section(source,first,last){const a=source.indexOf(first),b=source.index
  context.searchResponse.canContinue=false;render();assert.ok(notice().querySelector('[data-action="retry-search"]'),'exhausted/error recovery keeps the explicit restart');
  context.terminalizeSearchForVerification();render();assert.match(notice().textContent,/Найденные туры сохранены/);assert.doesNotMatch(notice().textContent,/Поиск остановлен/,'entering tour conditions is not attributed to user Stop');
  context.stopSearch();render();assert.match(notice().textContent,/Поиск остановлен/,'explicit Stop remains truthful');
- context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
+ context.searchResponse={phase:'complete',canContinue:true,providers:{tourvisor:'partial'}};render();notice().querySelector('[data-action="continue-search"]').focus();
+ context.hotels=[];context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
+ assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
  context.data.live=false;context.searchResponse={phase:'complete',pending:false,canContinue:true,providers:{tourvisor:'partial'},sources:{tourvisor:{offers:4}}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 4$/,'offline fixtures retain their recorded source scope');
  dom.window.close();console.log('PASS current result status: canonical progressive/concrete counts, colocated continuation, retained/user-stop distinction, focus and recovery labels; no HTTP');
 }
@@ -780,4 +782,3 @@ require('./search3-visual-rating-render-inventory.cjs');
 
 // Run the approved whole form and exact-offer return against actual runtime scripts.
 require('./search3-visual-approved-interface.cjs');
-

@@ -2467,7 +2467,7 @@ function renderSearchStatus(items,total){
   return;
  }
  node.innerHTML=`<div class="search-status-top"><div><h3>${r.pending||providerPending?'<span class="search-progress-spinner" aria-hidden="true"></span>':icon('info')}${esc(title)}</h3><p>${esc(message)}</p></div></div>${delivery}<div class="search-status-actions">${r.pending||providerPending?'<button class="secondary" data-action="stop-search">Остановить поиск</button>':continueAction||'<button class="primary" data-action="retry-search">Повторить поиск</button>'}<button class="text-button" data-action="edit-search">Изменить условия</button></div>`;
- if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))node.querySelector(`[data-action="${focusedAction}"]`)?.focus({preventScroll:true});
+ if(['continue-search','stop-search','retry-search','edit-search'].includes(focusedAction))(node.querySelector(`[data-action="${focusedAction}"]`)||(focusedAction==='continue-search'?node.querySelector('[data-action="stop-search"]'):null))?.focus({preventScroll:true});
  if(!items.length&&r.pending)$('#cards').innerHTML=Array.from({length:2},()=>'<div class="search-skeleton" aria-hidden="true"><div class="skeleton-photo"></div><div class="skeleton-lines"><i></i><i></i><i></i></div></div>').join('');
 }
 
