@@ -160,7 +160,30 @@ class UpdateContracts(unittest.TestCase):
             'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
             'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
             'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
-            'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0}
+            'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0,
+            'contactExactItineraryRetained': True, 'contactDraftAndConsentRetained': True,
+            'groupMinimumOpenedHotelWithoutQuote': True, 'groupPassiveExtraSearches': 0,
+            'groupPassiveExpansions': 0, 'groupExplicitExpandCount': 1,
+            'groupExpansionExactReferences': True, 'groupPendingRemountRetained': True,
+            'groupPendingStatusFocusRetained': True, 'groupConcreteQuoteCount': 1,
+            'groupConcreteFocusRetained': True, 'groupBackRemountExtraOperations': 0,
+            'groupVisibleConcreteMinimum': 161400, 'groupVisibleConcreteDelta': 9000,
+            'groupDirectConcreteReopen': True,
+            'screenNavigation': {'deepScroll': 1200, 'hotelHeadingVisible': True,
+                'resultFocusRestored': True, 'resultAnchorDelta': 0, 'extraSearches': 0},
+            'managerContact': {'total': 110000, 'flightChoiceId': None,
+                'oldPairRemoved': True, 'consentRevoked': True},
+            'nonMinimumJourney': {'exactOfferIndex': 1, 'total': 170400,
+                'summaryAndContinueRetained': True, 'contactItineraryRetained': True,
+                'backReopenExtraOperations': 0},
+            'contactPriceBlockFit': {'captionCount': 1, 'amountCount': 1,
+                'readableCaptionWeight': True, 'readableCaptionSpacing': True,
+                'captionInsidePrice': True, 'amountInsidePrice': True,
+                'captionAboveAmount': True, 'overflow': False},
+            'manyFlightChoices': {'total': 40, 'initiallyVisible': 3, 'collapsed': 37,
+                'selectedCanonicalIndex': 39, 'selectedTotal': 151000,
+                'passiveExtraOperations': 0,
+                'managerBeforeList': {'before': True, 'visible': True, 'overflow': False}}}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
             'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
             'requiredTextPercents': [100], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
@@ -168,6 +191,9 @@ class UpdateContracts(unittest.TestCase):
         for width in (360,390,430,768,1280):
             for percent in (100,):
                 case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
+                case['proof']['manyFlightChoices'] = {**proof['manyFlightChoices'],
+                    'pairLayout': {'columns': 2 if width == 1280 else 1,
+                        'paired': width == 1280, 'stacked': width != 1280}}
                 if (width, percent) == (390, 100):
                     case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
                 for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
@@ -366,8 +392,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '1959dcabac17335fd09763389231e67db9afde6b')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39242956656)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, 'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39254022688)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -436,12 +462,19 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_visual_successor_requires_exact_212_ordinary_frames_and_preserves_197_baseline_frames(self):
+    def test_whole_journey_requires_exact_232_frames_and_preserves_all_212_predecessor_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 232)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 232)
+            additions = ('native-tour-many-flights-', 'native-lead-manager-',
+                         'native-hotel-selected-dearer-', 'native-lead-selected-dearer-')
+            self.assertEqual(sum(frame['file'].startswith(additions)
+                for case in report['cases'] for frame in case['frames']), 20)
+            for case in report['cases']:
+                case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(additions)]
             self.assertEqual(sum(len(case['frames']) for case in report['cases']), 212)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 212)
             self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-'))
                 for case in report['cases'] for frame in case['frames']), 132)
             self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 167)
@@ -551,6 +584,41 @@ class UpdateContracts(unittest.TestCase):
                 self.read_review(self.review_archive(mutate), 'bad-visual-evidence-' + str(i))
         with self.assertRaisesRegex(ValueError, 'native_rendered_evidence_inventory'):
             self.read_review(self.review_archive(lambda c: c.update({'evidence/unknown.png': b'unknown'})), 'extra-visual-frame')
+
+    def test_complete_selected_journey_cannot_be_replaced_by_frame_count_only(self):
+        mutations = [
+            lambda p: p.pop('screenNavigation'),
+            lambda p: p['screenNavigation'].update(deepScroll=0),
+            lambda p: p['screenNavigation'].update(resultAnchorDelta=200),
+            lambda p: p['screenNavigation'].update(resultFocusRestored=False),
+            lambda p: p['screenNavigation'].update(extraSearches=True),
+            lambda p: p['managerContact'].update(flightChoiceId=0),
+            lambda p: p['managerContact'].update(oldPairRemoved=False),
+            lambda p: p['managerContact'].update(consentRevoked=False),
+            lambda p: p['managerContact'].update(total=170400),
+            lambda p: p['nonMinimumJourney'].update(exactOfferIndex=0),
+            lambda p: p['nonMinimumJourney'].update(summaryAndContinueRetained=False),
+            lambda p: p['nonMinimumJourney'].update(backReopenExtraOperations=1),
+            lambda p: p['contactPriceBlockFit'].update(overflow=True),
+            lambda p: p['contactPriceBlockFit'].update(captionCount=True),
+            lambda p: p['manyFlightChoices'].update(initiallyVisible=40),
+            lambda p: p['manyFlightChoices'].update(selectedCanonicalIndex=3),
+            lambda p: p['manyFlightChoices'].update(selectedTotal=112000),
+            lambda p: p['manyFlightChoices'].update(passiveExtraOperations=1),
+            lambda p: p['manyFlightChoices']['managerBeforeList'].update(before=False),
+            lambda p: p['manyFlightChoices']['pairLayout'].update(columns=7),
+            lambda p: p.pop('groupMinimumOpenedHotelWithoutQuote'),
+            lambda p: p.update(groupExplicitExpandCount=2),
+            lambda p: p.update(contactExactItineraryRetained=False),
+            lambda p: p.update(contactDraftAndConsentRetained=False),
+        ]
+        for index, change in enumerate(mutations):
+            def mutate(contents):
+                report = json.loads(contents['evidence/acceptance.json'])
+                change(report['cases'][index % 5]['proof'])
+                contents['evidence/acceptance.json'] = remote.json_bytes(report)
+            with self.subTest(index=index), self.assertRaises(ValueError):
+                self.read_review(self.review_archive(mutate), 'bad-whole-journey-' + str(index))
 
     def test_tour_cost_label_evidence_is_required_for_each_tour_capture(self):
         captures = [('native-tour-', 0), ('native-tour-alternatives-', 2),
@@ -888,7 +956,8 @@ class UpdateContracts(unittest.TestCase):
             '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b',
             '0fc16325635d113fafa96081f295a1a5696359c3',
             'f99306ffe3725f2badc70096d801608fc5393009',
-            '1959dcabac17335fd09763389231e67db9afde6b'))
+            '1959dcabac17335fd09763389231e67db9afde6b',
+            'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1035,7 +1104,7 @@ class UpdateContracts(unittest.TestCase):
              38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656))
+             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1097,7 +1166,7 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_four_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
@@ -1105,10 +1174,11 @@ class UpdateContracts(unittest.TestCase):
             'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
             'visual-search/native-v2/tour.js',
+            'visual-search/native-v2/viewport.css',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
-                     'visual-search/native-v2/viewport.css',
+                     'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/donor.css',
                      'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
             bad = {**after, name: 'f' * 64}
