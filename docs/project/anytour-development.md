@@ -2,46 +2,55 @@
 
 ## Организация ближайшей поставки — поручение владельца 19.10.2026
 
-Уточнение владельца23:06: сначала выстроить и оптимизировать всю работу.
-Единственный исполняемый порядок — верхний раздел
+Уточнение владельца20.10.2026: убрать противоречие завершённого пакета и старого
+статуса. Единственный текущий порядок — верхний раздел
 [Search3 product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026)
 и та же задача `AUTOPILOT_STATE.json.current_task`.
+Датированные разделы ниже сохраняют решения и историю, не образуют новую очередь.
 
 Site203 согласован6270421744 и перенесён в ORIGINAL NEXT. Установленный продукт
 `3bdd75c40abc5c2d441e1edefcd494fcd9845336` имеет publication/readback6273604203.
-QA-only PR4647/source564ef1b1 принят6274857599, текущая release22850f1f сохраняет
-те же UI bytes. Семейный путь и native desktop Calendar Cancel/Apply6275557028
-повторно не запускаются. Site199/d827 и transfer-in-progress указатели ниже —
-датированная история, а не следующий шаг.
+QA4647/family принят6274857599. Calendar4649/sourcee8ba1e0e интегрирован9130a6aa,
+[terminal/RELEASE6278527732](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6278527732);
+4применимые CI успешны,18кадров/6receipts/15clock receipts проверены.
+Продуктовые843payload hashes не изменены. Site203/family/Calendar/старые live,
+ключи и публикации повторно не запускаются. UI delta0; общей9.5 пока нет.
 
-Один ближайший конечный пакет: оставшиеся calendar/date/filter/keyboard действия
-на360/390/430/768/1280 и1280×720, необходимые исправления подтверждённых дефектов,
-затем итоговый просмотр. Часть5width calendar-open/Cancel/units и selected/error
-кадров уже сохранена; сначала переиспользовать её exact evidence. Штатный
-compiled-browser workflow и текущие test owners перечислены в product plan.
-Отсутствующий cloudChrome resize не блокирует все QA-маршруты.
+Текущий этап — `FINAL_PREVIEW_ACCEPTANCE_PENDING_EXTERNAL_SCOPES`.
+Один следующий результат: отдельная фактическая приёмка установленного цельного
+NEXT интерфейса. SEARCH отвечает за путь и свои owners; независимый read-only QA
+проверяет тот же artifact. Ближайшее missing действие — native mobile путь;
+условие — доступный штатный разрешённый mobile runtime/устройство. PhysicalSafari,
+OSkeyboard/панели/safearea записываются отдельно. Существующий cloudChrome desktop
+без resize и compiled6viewport не подменяют этот scope.
+Точные условия Rix canonicalalias/liveIDs, INT price authority, отключённой реальной
+доставки и production указаны в таблице верхнего product plan. Это границы
+действующих исполнителей, не переназначение их задач или разрешений.
 
-Один writer точных shared paths и интегратор; независимый read-only review
-параллельно; publisher отдельный и только после готовности изменённого artifact.
-Новые концепции проходят whole-version approval в том же PUBLIC design-lab
-`appgprj_6abcd9299ef88191bbce1fc1bf8c767a`; foreign design-v2 остаётся отдельным.
-Нынешняя организационная правка не выдаёт новый test-only/paid/live допуск:
-один QA-only допуск использован PR4647. Конкретный дополнительный конечный
-test-only scope требует прямого поручения, regression при разрешённом UI-fix
-следует существующим gates.
+Законченный пакет сразу получает актуальные указатели в plan/current_task и
+terminal. Новый проход берёт только конкретное оставшееся действие или подтверждённый
+существенный дефект. Принятые данные/кадры/CI переиспользуются по exactsource;
+новая матрица проверок, косметическая очередь и отдельный PR на каждый N не нужны.
+Непринятые обязательные N остаются честными N; глобальноеDONE ими не подменяется.
 
-На старте читать свежий текущий раздел/state/сообщения/claims/heads; уже прочитанные
-неизменённые инструкции и consumer map переиспользовать по SHA. Узкие проверки —
-во время исправления; все применимые CI — на готовом source. Browser/deploy
-для изменения плана не нужны. Неизменённое evidence и successful CI не повторять
-ради отчёта. Claims освобождаются terminal RELEASE.
+Один writer точных shared paths/интегратор; read-only review параллельно;
+publisher только для готового изменённого продукта. Новый дизайн получает
+whole-version approval в том же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a
+с сохранением history/public. Foreign design-v2 остаётся у другого исполнителя.
+Owner19.10 23:32 разрешил конкретный4649 scope, allowance fulfilled/consumed;
+ожидание этого же допуска снято. Новый самостоятельный QA-only scope требует
+нового прямого конкретного поручения; regression разрешённого исправления
+следует существующим gates. Эта правка управления не разрешает supplier/live/
+lead/production и не меняет чужие active claims.
 
-Общий продукт ещё не принят9,5–10. SEARCH-QUALITY-1 остаётся12/11/5, N без суммы,
-стадии раздельны. Реальная доставка в preview отключена; её состояния не
-имитируются ради балла. Physical/native mobile, ANEX price authority, live-ID/data
-и production имеют отдельные точные gates.200%/Compare deferred.
-Результат/оценка/следующий шаг записываются компактно в существующие #4217/#1646/#1719.
-Расписания, enabled/paused, модели, настройки и другие задания сохраняются.
+Для правки управления: JSON/diff/current_task-only/protected/historical equality,
+независимый review и applicable owner-policy/security; UI/browser/build/deploy
+ради документов не запускаются. Для изменённого продукта — focused/compiled,
+все применимые final-source CI, разрешённый release merge, эксклюзивный штатный
+NEXT-only publisher exactartifact/readback и установленное затронутое действие.
+SEARCH-QUALITY-1 остаётся12/11/5, N без суммы, стадии раздельны.
+200%/Compare deferred. Расписания/enabled/paused/модели/настройки/другие задания
+сохраняются. Итог/оценка/следующий шаг — существующие#4217/#1646/#1719.
 
 ## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
 
