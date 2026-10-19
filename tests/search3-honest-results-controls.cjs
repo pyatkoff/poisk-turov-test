@@ -94,6 +94,23 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
   vm.runInNewContext(priceCalendar, { window, document, Intl });
   const api = window.V2CurrentPriceCalendar;
   const items = [{ tours: [{ date: '2099-09-01', price: 150000 }, { date: '2099-09-02', price: 140000 }, { date: '2099-09-03', price: 145000 }] }];
+  assert.equal(api.version, 5, 'DB-first calendar contract has an explicit version');
+  listeners.get('v2:search-started')({ detail: {} });
+  listeners.get('search3:local-results-filtered')({ detail: { items } });
+  assert.equal(box.hidden, true, 'filtered projection alone does not reveal a pre-terminal calendar');
+  listeners.get('v2:provider-status')({ detail: { provider: 'tourvisor', status: 'complete' } });
+  assert.equal(box.hidden, true, 'a non-local provider cannot unlock the DB-first calendar');
+  listeners.get('v2:provider-status')({ detail: { provider: 'local-db', status: 'complete' } });
+  assert.equal(box.hidden, false, 'local DB completion reveals the already-rendered price dates before supplier terminal');
+  assert.equal(details.open, true, 'early DB-first calendar uses the same disclosure contract');
+  listeners.get('v2:search-reset')({ detail: {} });
+  assert.equal(box.hidden, true, 'a new search hides the previous DB-first calendar');
+  listeners.get('search3:local-results-filtered')({ detail: { items } });
+  assert.equal(box.hidden, true, 'new filtered results wait for the new local DB completion');
+  listeners.get('v2:provider-status')({ detail: { provider: 'local-db', status: 'loading' } });
+  assert.equal(box.hidden, true, 'local DB loading does not unlock stale dates');
+  listeners.get('v2:provider-status')({ detail: { provider: 'local-db', status: 'complete' } });
+  assert.equal(box.hidden, false, 'the new local DB completion unlocks the new search calendar');
   listeners.get('v2:search-complete')({ detail: { items } });
   assert.equal(details.open, true);
   assert.equal(actions.hidden, true, 'confirmation stays hidden until the user chooses a date');
@@ -117,8 +134,8 @@ assert.ok(localFilters.includes("'Рейтинг указан у '+r.k+' из '+
 }
 assert.ok(priceCalendar.includes("head=compact?'summary':'div'"),
   'Search3 keeps one native disclosure owner instead of creating a second mobile calendar UI');
-assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:4}'),
-  'price calendar public presentation contract is versioned with explicit date confirmation');
+assert.ok(priceCalendar.includes('window.V2CurrentPriceCalendar={collect,render,clear,dateValue,version:5}'),
+  'price calendar public presentation contract is versioned with DB-first visibility and explicit date confirmation');
 
 for (const forbidden of ['fetch(', 'XMLHttpRequest', 'V2SearchLifecycle', 'startSearch(']) {
   assert.ok(!localFilters.includes(forbidden), `local result facets do not start supplier transport: ${forbidden}`);
