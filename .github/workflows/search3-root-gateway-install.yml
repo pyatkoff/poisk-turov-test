@@ -14,7 +14,15 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with: {ref: "${{ github.event.pull_request.head.sha }}", persist-credentials: false}
       - run: python3 -m py_compile scripts/deploy/search3_root_gateway_install.py scripts/deploy/search3_root_gateway_inspect.py scripts/deploy/search3_root_gateway_incident.py
-      - env: {SEARCH3_CHECKED_INSTALL_NATIVE_CI: '1'}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: d6780854c16f390ec9ad3117a484e72e0851c884, path: recovery-product-source, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6, path: recovery-local-source, persist-credentials: false}
+      - env:
+          SEARCH3_CHECKED_INSTALL_NATIVE_CI: '1'
+          SEARCH3_DEPENDENCY_INSTALL_NATIVE_CI: '1'
+          RECOVERY_PRODUCT_SOURCE_ROOT: '${{ github.workspace }}/recovery-product-source'
+          RECOVERY_LOCAL_SOURCE_ROOT: '${{ github.workspace }}/recovery-local-source'
         run: python3 tests/search3_root_gateway_install_test.py
   live-check-contracts:
     if: github.event_name == 'pull_request'
@@ -24,6 +32,80 @@ jobs:
         with: {ref: "${{ github.event.pull_request.head.sha }}", persist-credentials: false}
       - env: {SEARCH3_ANEX_KEY_NATIVE_CI: '1'}
         run: python3 tests/search3_root_gateway_live_check_test.py
+  dependency-install:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4217 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == format('/install-search3-root-dependencies {0} install-20261019-dependency-reuse-v1', github.sha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions: {contents: read, issues: read, checks: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: d6780854c16f390ec9ad3117a484e72e0851c884, path: recovery-product-source, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6, path: recovery-local-source, persist-credentials: false}
+      - env:
+          SEARCH3_CHECKED_INSTALL_NATIVE_CI: '1'
+          SEARCH3_DEPENDENCY_INSTALL_NATIVE_CI: '1'
+          RECOVERY_PRODUCT_SOURCE_ROOT: '${{ github.workspace }}/recovery-product-source'
+          RECOVERY_LOCAL_SOURCE_ROOT: '${{ github.workspace }}/recovery-local-source'
+        run: python3 tests/search3_root_gateway_install_test.py
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_root_gateway_install.py dependency_install
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-root-gateway-dependencies-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: |
+            ${{ runner.temp }}/search3-root-gateway-dependencies/evidence.json
+            ${{ runner.temp }}/search3-root-gateway-dependencies/request.json
+            ${{ runner.temp }}/search3-root-gateway-dependencies/api-v2.php
+            ${{ runner.temp }}/search3-root-gateway-dependencies/local-tv-catalog-v1.php
+          if-no-files-found: warn
+          retention-days: 30
+  bounded-tv-recovery-check:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4217 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, format('/check-search3-root-recovery {0} tv-gateway-recovery-20261019-v1 ', github.sha))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions: {contents: read, issues: read, checks: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - env: {SEARCH3_ANEX_KEY_NATIVE_CI: '1'}
+        run: python3 tests/search3_root_gateway_live_check_test.py
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_root_gateway_live_check.py gateway-recovery
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-root-recovery-check-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: |
+            ${{ runner.temp }}/search3-root-recovery-check/evidence.json
+            ${{ runner.temp }}/search3-root-recovery-check/request.json
+          if-no-files-found: warn
+          retention-days: 30
   bounded-tv-check:
     concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
     if: >-

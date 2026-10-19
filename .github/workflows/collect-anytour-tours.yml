@@ -162,7 +162,7 @@ jobs:
       - name: Exact reviewed LOCAL observation hook
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 8af3e190588bf61b067f81838aec3f0201205ec9
+          ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6
           path: local-tv-source
           persist-credentials: false
       - name: Prepare SSH key

@@ -462,6 +462,259 @@ class CheckedInstall(unittest.TestCase):
    self.assertTrue(m.checked_completed(identity,result),result);self.assertEqual(len(calls),3)
    self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
 
+class DependencyInstall(unittest.TestCase):
+ def module(self):return CheckedInstall.module(self)
+ def event(self,m):
+  event,env=CheckedInstall.event(self,m)
+  event['comment']['body']=f'{m.DEPENDENCY_PREFIX} '+env['GITHUB_SHA']+' '+m.DEPENDENCY_OPERATION
+  return event,env
+ def fixture(self,m,home,compatible=False):
+  import base64
+  project=home/'www/anytoour.ru';expected={}
+  for path in m.DEPENDENCY_EXPECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True)
+   p.write_bytes(b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","previous"); ?>' if path in m.DEPENDENCY_CANDIDATES else b'fixture '+path.encode());p.chmod(0o644)
+   expected[path]=m.sha(p.read_bytes())
+  candidates={path:b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","candidate '+path.encode()+b'"); ?>' for path in m.DEPENDENCY_CANDIDATES}
+  m.DEPENDENCY_EXPECTED=expected
+  m.DEPENDENCY_CANDIDATES={path:{**m.DEPENDENCY_CANDIDATES[path],'bytes':len(body),'sha256':m.sha(body),'blob':m.blob(body)} for path,body in candidates.items()}
+  if compatible:(project/'data/local-tv-catalog-v1.php').write_bytes(candidates['data/local-tv-catalog-v1.php'])
+  for path in ('index.php','config.php',m.DEPENDENCY_APP):
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'PRIVATE_CONFIG_MUST_NOT_RETAIN' if path=='config.php' else b'protected fixture');p.chmod(0o644)
+  m.DEPENDENCY_APP_HASH=m.sha((project/m.DEPENDENCY_APP).read_bytes())
+  event,env=self.event(m);identity=m.dependency_event(event,env)
+  payload={**identity,'candidates_b64':{p:base64.b64encode(b).decode() for p,b in candidates.items()}}
+  return project,candidates,identity,payload,m.dependency_remote()
+ def execute(self,m,home,payload,program,callback=None,native=False):
+  import types,shutil
+  actual=m.subprocess.run;calls=[]
+  def lint(args,**kw):
+   calls.append(args)
+   self.assertEqual(args[:3],['php','-n','-l']);self.assertEqual(len(args),4)
+   self.assertEqual(kw['env'],{'PATH':'/usr/bin:/bin','HOME':str(home)})
+   self.assertIs(kw['stdout'],m.subprocess.DEVNULL);self.assertIs(kw['stderr'],m.subprocess.DEVNULL)
+   if callback:
+    value=callback(args,len(calls))
+    if value is not None:return value
+   return actual([shutil.which('php'),*args[1:]],**kw) if native else mock.Mock(returncode=0)
+  stdin=types.SimpleNamespace(buffer=io.BytesIO(json.dumps(payload).encode()))
+  with mock.patch.object(pathlib.Path,'home',return_value=home),mock.patch('sys.stdin',stdin),mock.patch.object(m.subprocess,'run',side_effect=lint),contextlib.redirect_stdout(io.StringIO()) as out:exec(program,{})
+  value=json.loads(out.getvalue());self.assertNotIn('PRIVATE_CONFIG_MUST_NOT_RETAIN',out.getvalue());self.assertLess(len(out.getvalue()),24576)
+  return value,calls
+ def test_exact_new_owner_command_keeps_consumed_legacy_profiles_frozen(self):
+  import copy
+  m=self.module();event,env=self.event(m)
+  self.assertEqual(m.dependency_event(event,env),{'control_source_sha':'b'*40,'run_id':'777','command_comment_id':987})
+  self.assertEqual(m.CHECKED_OPERATION,'install-20261018-fcfe503e-v1');self.assertEqual(m.CHECKED_HASH,'ef60da2d948c42b7741771ef1e1a091280c14cd79eafea10d737cb7067e55463')
+  for name,value in {'GITHUB_REF':'refs/heads/other','GITHUB_SHA':'c'*40,'GITHUB_RUN_ATTEMPT':'2','GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_WORKFLOW_REF':'other','GITHUB_RUN_ID':'0'}.items():
+   with self.subTest(name=name),self.assertRaises(RuntimeError):m.dependency_event(event,{**env,name:value})
+  for body in (event['comment']['body']+' ',event['comment']['body'].replace(m.DEPENDENCY_OPERATION,'retry-v2'),f'{m.CHECKED_PREFIX} '+env['GITHUB_SHA']+' '+m.CHECKED_OPERATION):
+   changed=copy.deepcopy(event);changed['comment']['body']=body
+   with self.assertRaises(RuntimeError):m.dependency_event(changed,env)
+  for field,value in [('id',True),('user',{'id':1}),('author_association','MEMBER')]:
+   changed=copy.deepcopy(event);changed['comment'][field]=value
+   with self.assertRaises(RuntimeError):m.dependency_event(changed,env)
+ def admission_api(self,m,event,identity):
+  import base64
+  bodies={path:b'<?php /* candidate '+path.encode()+b' */ ?>' for path in m.DEPENDENCY_CANDIDATES}
+  m.DEPENDENCY_CANDIDATES={path:{**m.DEPENDENCY_CANDIDATES[path],'blob':m.blob(body),'sha256':m.sha(body),'bytes':len(body)} for path,body in bodies.items()}
+  approval='immutable owner source claim';m.DEPENDENCY_APPROVAL_HASH=m.sha(approval.encode())
+  collector_body=('existing reviewed collector '+m.DEPENDENCY_LOCAL_SOURCE).encode()
+  m.DEPENDENCY_COLLECTORS={p:m.blob(collector_body) for p in m.DEPENDENCY_COLLECTORS}
+  def api(path):
+   if path=='/git/ref/heads/main':return {'object':{'sha':identity['control_source_sha']}}
+   if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.DEPENDENCY_RELEASE}}
+   if path=='/issues/comments/'+str(m.DEPENDENCY_APPROVAL):return {'id':m.DEPENDENCY_APPROVAL,'user':{'id':226193297},'author_association':'OWNER','body':approval}
+   if path=='/issues/comments/987':return event['comment']
+   if path.startswith('/contents/'):
+    for target,record in m.DEPENDENCY_CANDIDATES.items():
+     if path.startswith('/contents/'+record['path']+'?'):return {'sha':record['blob'],'content':base64.b64encode(bodies[target]).decode()}
+    return {'sha':m.blob(collector_body),'content':base64.b64encode(collector_body).decode()}
+   if path=='/git/commits/'+identity['control_source_sha']:return {'sha':identity['control_source_sha'],'tree':{'sha':'e'*40},'parents':[{'sha':'a'*40},{'sha':'d'*40}]}
+   if path=='/git/commits/'+('d'*40):return {'sha':'d'*40,'tree':{'sha':'e'*40},'parents':[{'sha':'a'*40}]}
+   if path in ('/commits/'+('d'*40)+'/check-runs?per_page=100','/commits/'+identity['control_source_sha']+'/check-runs?per_page=100'):return {'check_runs':[{'id':100+n,'name':name,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for n,name in enumerate(('guard','contracts','live-check-contracts'))]}
+   if '/check-runs?' in path:return {'total_count':8,'check_runs':[{'id':i,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in m.DEPENDENCY_CHECK_IDS]+[{'id':117963841770,'status':'completed','conclusion':'skipped'}]}
+   if path.startswith('/git/commits/'):return {'tree':{'sha':m.DEPENDENCY_LOCAL_TREE},'parents':[{'sha':m.DEPENDENCY_LOCAL_PARENT}]}
+   if path.startswith('/compare/'):return {'status':'ahead','ahead_by':1,'behind_by':0,'total_commits':1,'files':[{'filename':'v2/data/local-tv-catalog-v1.php','status':'modified','sha':m.DEPENDENCY_CANDIDATES['data/local-tv-catalog-v1.php']['blob']}]}
+   if path.startswith('/issues/4217/comments?'):return [{'id':987,'body':event['comment']['body']}]
+   raise AssertionError('unrecognized GitHub path '+path)
+  return api,bodies
+ def test_admission_binds_two_sources_seven_ci_immutable_approval_delivery_scope_and_collectors(self):
+  import copy,base64
+  m=self.module();event,env=self.event(m);identity=m.dependency_event(event,env);api,bodies=self.admission_api(m,event,identity)
+  with mock.patch.object(m,'checked_api',side_effect=api):self.assertEqual(m.dependency_admission(identity),bodies)
+  for variant in ('main','release','approval_body','approval_owner','control_merge','control_tree','source_ci','main_ci','bytes','blob','ci','delivery_tree','delivery_parent','delivery_scope','collector','duplicate','replay_different_control','incomplete','fresh_command'):
+   def bad(path):
+    value=copy.deepcopy(api(path))
+    if variant=='main' and path=='/git/ref/heads/main':value['object']['sha']='c'*40
+    if variant=='release' and path.startswith('/git/ref/heads/release/'):value['object']['sha']='c'*40
+    if path.startswith('/issues/comments/'):
+     if variant=='approval_body':value['body']+=' changed'
+     if variant=='approval_owner':value['user']['id']=1
+     if variant=='fresh_command' and path=='/issues/comments/987':value['body']+=' changed'
+    if path.startswith('/contents/'):
+     if variant=='bytes':value['content']=base64.b64encode(b'foreign').decode()
+     if variant=='blob':value['sha']='c'*40
+     if variant=='collector' and any(path.startswith('/contents/'+p+'?') for p in m.DEPENDENCY_COLLECTORS):value['content']=base64.b64encode(b'old source').decode();value['sha']=m.blob(b'old source')
+    if variant=='ci' and path.startswith('/commits/'+m.DEPENDENCY_SOURCE+'/'):value['check_runs'][0]['conclusion']='failure'
+    if variant=='control_merge' and path=='/git/commits/'+identity['control_source_sha']:value['parents']=[{'sha':'a'*40}]
+    if variant=='control_tree' and path=='/git/commits/'+('d'*40):value['tree']['sha']='c'*40
+    if variant=='source_ci' and path.startswith('/commits/'+('d'*40)+'/'):value['check_runs'][0]['conclusion']='failure'
+    if variant=='main_ci' and path.startswith('/commits/'+identity['control_source_sha']+'/'):value['check_runs'][0]['conclusion']='failure'
+    if path=='/git/commits/'+m.DEPENDENCY_LOCAL_SOURCE:
+     if variant=='delivery_tree':value['tree']['sha']='c'*40
+     if variant=='delivery_parent':value['parents']=[{'sha':'c'*40}]
+    if variant=='delivery_scope' and path.startswith('/compare/'):value['files'].append({'filename':'foreign-path'})
+    if path.startswith('/issues/4217/comments?'):
+     if variant=='duplicate':value.append({'id':988,'body':event['comment']['body']})
+     if variant=='replay_different_control':value.append({'id':988,'body':event['comment']['body'].replace('b'*40,'c'*40)})
+     if variant=='incomplete':value=[{'id':i,'body':'ordinary comment'} for i in range(100)]
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),self.assertRaises(RuntimeError):m.dependency_admission(identity)
+ def test_two_file_transaction_preserves_unrelated_bodies_and_private_backups(self):
+  for compatible in (False,True):
+   with self.subTest(compatible=compatible),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home,compatible)
+    before={p:(project/p).read_bytes() for p in m.DEPENDENCY_EXPECTED};result,calls=self.execute(m,home,payload,program)
+    self.assertTrue(m.dependency_completed(identity,result),result);self.assertEqual(len(calls),5 if compatible else 6)
+    self.assertEqual(result['compatible_catalogue'],compatible);self.assertEqual(result['root_write_attempts'],1 if compatible else 2)
+    self.assertEqual(result['written_files'],(['api-v2.php'] if compatible else ['data/local-tv-catalog-v1.php','api-v2.php']))
+    for p in before:self.assertEqual((project/p).read_bytes(),candidates.get(p,before[p]))
+    op=home/'.anytoour-search3-root-gateway'/m.DEPENDENCY_OPERATION
+    self.assertEqual(json.loads((op/'result.json').read_text()),result)
+    for p in op.glob('previous-*.php'):self.assertEqual(p.stat().st_mode&0o777,0o600)
+    self.assertEqual((project/'api-v2.php').stat().st_mode&0o777,0o644);self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
+    for forbidden in ('urllib','action=health','repair_replace','mysql','PDO'):self.assertNotIn(forbidden,program)
+ def test_no_replay_preserves_consumed_operation_receipt_and_all_bytes(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home)
+   first,_=self.execute(m,home,payload,program);self.assertTrue(m.dependency_completed(identity,first))
+   before={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   replay,calls=self.execute(m,home,payload,program)
+   self.assertEqual(replay['reason'],'operation_exists_no_replay');self.assertEqual(calls,[])
+   self.assertEqual(before,{str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()})
+ def test_wrong_dependency_payload_symlink_hardlink_and_predecessor_abort_without_php(self):
+  import base64
+  for variant in ('api','catalogue','helper','app','config_symlink','catalogue_symlink','parent_symlink','hardlink','candidate','extra_payload','private_parent'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home)
+    if variant in ('api','catalogue','helper','app'):(project/{'api':'api-v2.php','catalogue':'data/local-tv-catalog-v1.php','helper':'data/db-v1.php','app':m.DEPENDENCY_APP}[variant]).write_bytes(b'foreign')
+    if variant in ('config_symlink','catalogue_symlink'):
+     p=project/('config.php' if variant=='config_symlink' else 'data/local-tv-catalog-v1.php');p.unlink();p.symlink_to(project/'data/db-v1.php')
+    if variant=='parent_symlink':(project/'data').rename(home/'real-data');(project/'data').symlink_to(home/'real-data',target_is_directory=True)
+    if variant=='hardlink':os.link(project/'api-v2.php',home/'foreign-link')
+    if variant=='candidate':payload['candidates_b64']['api-v2.php']=base64.b64encode(b'wrong').decode()
+    if variant=='extra_payload':payload['private_config']='PRIVATE_DETAIL'
+    if variant=='private_parent':(home/'.anytoour-search3-root-gateway').mkdir(mode=0o755)
+    result,calls=self.execute(m,home,payload,program)
+    self.assertEqual(result['status'],'blocked_no_replay');self.assertEqual(result['root_write_attempts'],0);self.assertEqual(calls,[])
+ def test_lint_and_stage_or_protected_races_abort_or_rollback_owned_partial_write(self):
+  for variant in ('lint','helper','public','config','stage'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);old={p:(project/p).read_bytes() for p in candidates}
+    def callback(args,count):
+     if count==4:
+      if variant=='lint':return mock.Mock(returncode=1)
+      if variant=='helper':(project/'data/db-v1.php').write_bytes(b'foreign helper')
+      if variant=='public':(project/'index.php').write_bytes(b'foreign home')
+      if variant=='config':(project/'config.php').write_bytes(b'foreign config')
+      if variant=='stage':pathlib.Path(args[-1]).write_bytes(b'foreign stage')
+    result,_=self.execute(m,home,payload,program,callback)
+    self.assertFalse(m.dependency_completed(identity,result))
+    self.assertEqual(result['root_write_attempts'],1 if variant=='stage' else 0)
+    self.assertEqual(result['status'],'rolled_back_no_replay' if variant=='stage' else 'blocked_no_replay')
+    for p,b in old.items():self.assertEqual((project/p).read_bytes(),b)
+ def test_partial_second_replace_failure_rolls_back_only_first_owned_target(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);old={p:(project/p).read_bytes() for p in candidates};actual=os.replace
+   def replace(src,dst):
+    if pathlib.Path(src).name=='candidate-1.php':raise OSError('PRIVATE_DETAIL')
+    return actual(src,dst)
+   with mock.patch('os.replace',side_effect=replace):result,_=self.execute(m,home,payload,program)
+   self.assertEqual(result['status'],'rolled_back_no_replay');self.assertEqual(result['root_write_attempts'],2);self.assertEqual(result['rollback_attempts'],1)
+   for p,b in old.items():self.assertEqual((project/p).read_bytes(),b)
+   self.assertNotIn('PRIVATE_DETAIL',json.dumps(result))
+ def test_installed_lint_failure_restores_own_bytes_but_never_foreign_inode_or_same_body(self):
+  for foreign in ('none','changed','same_body_foreign_inode'):
+   with self.subTest(foreign=foreign),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);old={p:(project/p).read_bytes() for p in candidates}
+    def callback(args,count):
+     if count==5:
+      p=project/'data/local-tv-catalog-v1.php'
+      if foreign=='changed':p.write_bytes(b'foreign owner')
+      if foreign=='same_body_foreign_inode':
+       temp=home/'foreign.php';temp.write_bytes(candidates['data/local-tv-catalog-v1.php']);temp.chmod(0o644);os.replace(temp,p)
+      return mock.Mock(returncode=1)
+    result,_=self.execute(m,home,payload,program,callback)
+    self.assertEqual(result['status'],'rolled_back_no_replay' if foreign=='none' else 'unknown_no_replay')
+    self.assertEqual((project/'api-v2.php').read_bytes(),old['api-v2.php'])
+    self.assertEqual((project/'data/local-tv-catalog-v1.php').read_bytes(),old['data/local-tv-catalog-v1.php'] if foreign=='none' else b'foreign owner' if foreign=='changed' else candidates['data/local-tv-catalog-v1.php'])
+ def test_safe_receipt_rejects_private_data_wrong_sources_partial_inventory_and_false_success(self):
+  import copy
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);good,_=self.execute(m,home,payload,program)
+  for mutate in (lambda r:r.__setitem__('private_config','PRIVATE_DETAIL'),lambda r:r.__setitem__('source_sha','c'*40),lambda r:r.__setitem__('local_source_sha','c'*40),lambda r:r.__setitem__('file_writes',True),lambda r:r.__setitem__('database_writes',1),lambda r:r.__setitem__('supplier_calls',1),lambda r:r.__setitem__('root_write_attempts',3),lambda r:r.__setitem__('compatible_catalogue',True),lambda r:r['after_files'].pop('data/db-v1.php'),lambda r:r['after_files']['api-v2.php'].__setitem__('sha256','c'*64),lambda r:r['production_after'].__setitem__('config.php','c'*64),lambda r:r.__setitem__('syntax_installed','not_run')):
+   changed=copy.deepcopy(good);mutate(changed);self.assertFalse(m.dependency_completed(identity,changed))
+ def test_runner_sanitizes_admission_and_transport_failures_and_never_retains_keys(self):
+  for variant in ('admission','transport','private_reply','success'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);reply,_=self.execute(m,home,payload,program)
+    if variant=='private_reply':reply['private_config']='PRIVATE_DETAIL'
+    event,env=self.event(m);path=home/'event.json';path.write_text(json.dumps(event))
+    def run(args,**kwargs):
+     if args[0]=='ssh-keyscan':return b'synthetic host'
+     self.assertEqual(args[0],'ssh');self.assertIn('StrictHostKeyChecking=yes',args);self.assertEqual(json.loads(kwargs['input'])['candidates_b64'],payload['candidates_b64'])
+     if variant=='transport':raise m.subprocess.CalledProcessError(255,args,stderr=b'PRIVATE_DETAIL')
+     return json.dumps(reply).encode()
+    with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path),'PREVIEW_HOST':'synthetic.example','PREVIEW_USER':'synthetic','PREVIEW_KEY':'c3ludGhldGlj'}),mock.patch.object(m,'dependency_admission',side_effect=RuntimeError('PRIVATE_DETAIL') if variant=='admission' else None,return_value=candidates),mock.patch.object(m,'run',side_effect=run) as network,contextlib.redirect_stdout(io.StringIO()) as out:
+     if variant=='success':m.dependency_install()
+     else:
+      with self.assertRaisesRegex(RuntimeError,'install_not_verified'):m.dependency_install()
+    work=home/'search3-root-gateway-dependencies';evidence=json.loads((work/'evidence.json').read_text())
+    self.assertNotIn('PRIVATE_DETAIL',json.dumps(evidence));self.assertNotIn('PRIVATE_DETAIL',out.getvalue());self.assertFalse((work/'key').exists());self.assertFalse((work/'known').exists())
+    if variant=='admission':network.assert_not_called()
+ @unittest.skipUnless(os.environ.get('SEARCH3_DEPENDENCY_INSTALL_NATIVE_CI')=='1','native PHP CI required')
+ def test_native_two_file_transaction_only_lints_side_effect_bodies(self):
+  import shutil
+  self.assertIsNotNone(shutil.which('php'),'native PHP required in exact-head CI')
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidates,identity,payload,program=self.fixture(m,home);result,calls=self.execute(m,home,payload,program,native=True)
+   self.assertTrue(m.dependency_completed(identity,result),result);self.assertEqual(len(calls),6);self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')))
+ @unittest.skipUnless(os.environ.get('SEARCH3_DEPENDENCY_INSTALL_NATIVE_CI')=='1','native reviewed-artifact PHP CI required')
+ def test_native_actual_product_api_and_delivery_class_pass_nine_source_layout_cases(self):
+  import base64,copy,shutil
+  m=self.module();php=shutil.which('php');self.assertIsNotNone(php,'native PHP required in exact-head CI')
+  product=pathlib.Path(os.environ['RECOVERY_PRODUCT_SOURCE_ROOT']);local=pathlib.Path(os.environ['RECOVERY_LOCAL_SOURCE_ROOT'])
+  files={'v2/api-v2.php':(product/'v2/api-v2.php',m.DEPENDENCY_CANDIDATES['api-v2.php']['sha256']),
+         'v2/data/local-tv-catalog-v1.php':(local/'v2/data/local-tv-catalog-v1.php',m.DEPENDENCY_CANDIDATES['data/local-tv-catalog-v1.php']['sha256']),
+         'tests/search3-tourvisor-results-limit.php':(product/'tests/search3-tourvisor-results-limit.php','dc366469fd0a9794742da1e12842f4af71a2057c4399f24a7f61a9889bf707f5')}
+  for path in ('data/db-v1.php','data/hotel-details-v1.php'):files['v2/'+path]=(local/'v2'/path,m.DEPENDENCY_EXPECTED[path])
+  with tempfile.TemporaryDirectory() as td:
+   fixture=pathlib.Path(td)
+   for path,(source,digest) in files.items():
+    body=source.read_bytes();self.assertEqual(m.sha(body),digest,path);target=fixture/path;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(body)
+   before={path:m.sha((fixture/path).read_bytes()) for path in files}
+   result=m.subprocess.run([php,str(fixture/'tests/search3-tourvisor-results-limit.php')],capture_output=True,text=True,check=False,timeout=60,env={'PATH':os.environ['PATH'],'HOME':str(fixture)})
+   self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+   self.assertIn('SEARCH3_TOURVISOR_DEPENDENCY_REUSE_OK native_subprocesses=9 legacy_distinct_copy_fatal=1 supplier_http=0 pdo_constructed=0 sql=0',result.stdout)
+   self.assertEqual(before,{path:m.sha((fixture/path).read_bytes()) for path in files})
+   print('RECOVERY_REVIEWED_ARTIFACT_DEPENDENCY_REUSE_OK native_subprocesses=9 supplier_http=0 pdo_constructed=0 sql=0')
+  # The real two-file envelope exceeds the historical 64 KiB one-file cap;
+  # exercise the new fixed 128 KiB mode with actual reviewed candidate bytes.
+  records=copy.deepcopy(m.DEPENDENCY_CANDIDATES)
+  actual={path:files['v2/'+path][0].read_bytes() for path in records}
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,_,identity,payload,_=self.fixture(m,home)
+   m.DEPENDENCY_CANDIDATES=records;payload['candidates_b64']={path:base64.b64encode(body).decode() for path,body in actual.items()}
+   size=len(json.dumps(payload).encode());self.assertGreater(size,65536);self.assertLessEqual(size,131072)
+   result,calls=self.execute(m,home,payload,m.dependency_remote(),native=True)
+   self.assertTrue(m.dependency_completed(identity,result),result);self.assertEqual(len(calls),6)
+   for path,body in actual.items():self.assertEqual((project/path).read_bytes(),body)
+
 if __name__=='__main__':unittest.main()
 
 
