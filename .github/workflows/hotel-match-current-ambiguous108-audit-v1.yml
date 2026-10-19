@@ -1,0 +1,102 @@
+name: MATCH CURRENT ambiguous108 audit
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_current_ambiguous108_audit_v1.php
+      - .github/workflows/hotel-match-current-ambiguous108-audit-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-current-ambiguous108-audit-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-current-ambiguous108-audit-1971-20260922-v1
+  BASE: e35c53a3846252ece9da882e37e8394014e41d16
+  SCRIPT: scripts/diagnostics/hotel_match_current_ambiguous108_audit_v1.php
+  CLAIM: '5768389456'
+  V9_ARTIFACT: '10634643226'
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and reconstruct immutable108
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD";test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-current-ambiguous108-audit-v1.yml scripts/diagnostics/hotel_match_current_ambiguous108_audit_v1.php "
+          php -l "$SCRIPT";php "$SCRIPT" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" >input/v9.zip
+          echo '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip'|sha256sum -c -
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          c=json.load(open('input/claim.json'));assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in [os.environ['OP'],'108 review links','READ ONLY CURRENT DB','Supplier/Tourvisor/SAMO/Andromeda calls0','DB/mapping writes0','resolved_existing_same_target']:assert s in c['body'],s
+          with zipfile.ZipFile('input/v9.zip') as z:b=z.read('reconciliation.json')
+          assert hashlib.sha256(b).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814';v=json.loads(b)
+          out=[]
+          for e in v['source_result']['edges']:
+              op=int(e.get('operator_id') or 0)
+              if op not in (25,43) or e.get('link_state')=='captured_single_native':continue
+              pos=[str(x) for x in e.get('positive_native_candidates',[]) if str(x)]
+              if not pos:continue
+              out.append({'tv_hotel_id':int(e['tv_hotel_id']),'operator_id':op,'supplier_namespace':'operator_315' if op==25 else 'operator_342','operator_link_sha256':e['operator_link_sha256'],'link_state':e.get('link_state'),'positive_native_candidates':pos})
+          out.sort(key=lambda x:(x['tv_hotel_id'],x['operator_id'],x['operator_link_sha256']))
+          from collections import Counter
+          print('candidate_count',len(out),'states',dict(Counter(x['link_state'] for x in out)))
+          assert len(out)==108,len(out)
+          pathlib.Path('input/ambiguous.json').write_text(json.dumps(out,ensure_ascii=False,separators=(',',':'))+'\n')
+          PY
+          export SCRIPT_SHA=$(sha256sum "$SCRIPT"|cut -d' ' -f1);export INPUT_SHA=$(sha256sum input/ambiguous.json|cut -d' ' -f1)
+          printf 'SCRIPT_SHA=%s\nINPUT_SHA=%s\n' "$SCRIPT_SHA" "$INPUT_SHA" >>"$GITHUB_ENV"
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_db','source_sha':os.environ['HEAD'],'script_sha256':os.environ['SCRIPT_SHA'],'input_sha256':os.environ['INPUT_SHA'],'input_edges':108,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'supplier_calls':0,'database_writes':0,'no_replay':True},sort_keys=True)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-ambiguous108-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if r and max(r,key=lambda x:x['id'])['status']=='completed':assert max(r,key=lambda x:x['id'])['conclusion']=='success';break
+              time.sleep(5)
+          else:raise SystemExit('security_not_green')
+          PY
+      - name: Execute CURRENT read-only audit
+        env: {KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}', HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}', USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/k";known="$RUNNER_TEMP/h";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          r="$USER@$HOST";op=".anytoour-match/operations/$OP";s="${SCRIPT##*/}";a=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known")
+          ssh "${a[@]}" "$r" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/.anytoour-match/operations\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$op/payload\""
+          scp "${a[@]}" "$SCRIPT" input/ambiguous.json reservation/reservation.json "$r:$op/payload/"
+          ssh "${a[@]}" "$r" "cd \"\$HOME/$op/payload\" && echo '$SCRIPT_SHA  $s'|sha256sum -c - && echo '$INPUT_SHA  ambiguous.json'|sha256sum -c - && php -l '$s' && php '$s' --self-test" >terminal/preflight
+          ssh "${a[@]}" "$r" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/$s\" --execute" >terminal/stdout 2>terminal/stderr
+          ssh "${a[@]}" "$r" "cd \"\$HOME/$op\" && tar -czf - result.json receipt.json" >terminal/server.tgz
+      - name: Verify terminal result
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,tarfile
+          root=pathlib.Path('terminal/extracted');root.mkdir()
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():assert m.isfile() and '/' not in m.name;(root/m.name).write_bytes(t.extractfile(m).read())
+          r=json.loads((root/'result.json').read_text());q=json.loads((root/'receipt.json').read_text())
+          assert r['state']=='completed_read_only' and r['input_edges']==108 and r['supplier_calls']==r['tourvisor_calls']==r['andromeda_calls']==0 and r['database_writes']==r['mapping_writes']==0
+          assert sum(r['counts'].values())==108 and q['result_sha256']==hashlib.sha256((root/'result.json').read_bytes()).hexdigest()
+          summary={'operation':r['operation'],'state':r['state'],'input_edges':108,'unique_tv_hotels':r['unique_tv_hotels'],'counts':r['counts'],'resolved_existing_unique_hotels':r['resolved_existing_unique_hotels'],'resolved_existing_keys':r['resolved_existing_keys'],'supplier_calls':0,'database_writes':0,'mapping_writes':0,'result_sha256':q['result_sha256']}
+          pathlib.Path('terminal/summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-ambiguous108-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
