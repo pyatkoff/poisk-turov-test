@@ -1221,6 +1221,8 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await selectedAI.locator('.st-offer-delta').innerText(),'+1 906 ₽');
         assert.equal(await product.locator('[data-hotel-offers] .st-offer-price-caption').evaluateAll(nodes=>nodes.every(node=>node.textContent==='В поиске')),true,'All room comparisons use the same search-price basis');
         assert.equal(await product.locator('[data-native-selected-panel]').isVisible(),true,'The checked selected package is available at every width');
+        assert.equal(await product.locator('[data-hotel-min-price]').isVisible(),true,'A visible panel cannot hide its checked price');
+        assert.equal(await product.locator('[data-native-hotel-conditions]').isVisible(),true,'Selected conditions stay visible beside the checked price');
         assert.equal(await product.locator('[data-hotel-min-price]').innerText(),'163 056 ₽');
         assert.match(await product.locator('[data-native-hotel-search-price]').innerText(),/138\s989\s₽/);
         const aiConditions=await product.locator('[data-native-hotel-conditions]').innerHTML();
