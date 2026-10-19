@@ -466,6 +466,9 @@ body { margin: 0; padding: 0; }
     border-radius: 10px;
     margin-bottom: 10px;
   }
+  #design-v2-native-root #b4 .st-desktop .st-native-flight-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 #design-v2-native-root #b4 .st-mobile [data-screen="tour"] .st-tour-section {
   padding: 12px 1px;
@@ -493,14 +496,16 @@ body { margin: 0; padding: 0; }
    Desktop uses the available width for a review/form split; mobile keeps the
    donor's linear reading order. */
 #design-v2-native-root #b4 .st-desktop .st-lead {
-  display: flow-root;
+  display: grid;
+  grid-template-columns: minmax(0, 43fr) minmax(0, 57fr);
+  column-gap: 28px;
   max-width: 780px;
   padding: 28px;
 }
+#design-v2-native-root #b4 .st-desktop .st-lead > :is(h2, .st-small) { grid-column: 1 / -1; }
 #design-v2-native-root #b4 .st-desktop .st-lead > .st-tour-hotel {
-  float: left;
-  clear: left;
-  width: calc(43% - 14px);
+  grid-column: 1;
+  grid-row: 3;
   margin: 22px 0 0 !important;
   padding: 16px 16px 13px;
   border: 1px solid var(--line);
@@ -509,21 +514,20 @@ body { margin: 0; padding: 0; }
   background: color-mix(in srgb, var(--bg) 70%, var(--paper));
 }
 #design-v2-native-root #b4 .st-desktop .st-lead > .st-price {
-  float: left;
-  clear: left;
-  width: calc(43% - 14px);
+  grid-column: 1;
+  grid-row: 4;
   margin: 0;
-  padding: 0 16px 17px;
+  padding: 0 16px 12px;
   border: 1px solid var(--line);
   border-top: 0;
-  border-radius: 0 0 12px 12px;
+  border-bottom: 0;
   background: color-mix(in srgb, var(--bg) 70%, var(--paper));
 }
 #design-v2-native-root #b4 .st-desktop .st-lead > [data-lead-form] {
-  width: calc(57% - 14px);
+  grid-column: 2;
+  grid-row: 3 / 6;
   min-width: 0;
-  margin-left: auto;
-  margin-top: 5px;
+  margin-top: 22px;
 }
 #design-v2-native-root #b4 .st-desktop .st-lead-label:first-child {
   margin-top: 0;
@@ -538,15 +542,36 @@ body { margin: 0; padding: 0; }
 }
 #design-v2-native-root #b4 .st-mobile .st-lead > .st-price {
   margin: 0;
-  padding: 0 14px 15px;
+  padding: 0 14px 12px;
   border: 1px solid var(--line);
   border-top: 0;
-  border-radius: 0 0 12px 12px;
+  border-bottom: 0;
   background: color-mix(in srgb, var(--bg) 70%, var(--paper));
 }
 #design-v2-native-root #b4 .st-mobile .st-lead-label:first-child {
   margin-top: 20px;
 }
+#design-v2-native-root #b4 .st-native-contact-facts {
+  min-width: 0;
+  padding: 0 14px 14px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#design-v2-native-root #b4 .st-desktop .st-native-contact-facts { grid-column: 1; grid-row: 5; padding-inline: 16px; }
+#design-v2-native-root #b4 .st-native-contact-facts dl { display: grid; gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-native-contact-facts dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
+#design-v2-native-root #b4 .st-native-contact-facts dt { color: var(--muted); }
+#design-v2-native-root #b4 .st-native-contact-facts dd { margin: 0; font-weight: 500; }
+#design-v2-native-root #b4 .st-native-contact-facts [hidden] { display: none; }
+#design-v2-native-root #b4 .st-native-contact-itinerary { margin-top: 12px; }
+#design-v2-native-root #b4 .st-native-contact-leg { display: grid; gap: 2px; margin-top: 8px; }
+#design-v2-native-root #b4 .st-native-contact-leg strong { color: var(--muted); font-size: 12px; font-weight: 500; }
+#design-v2-native-root #b4 [data-native-contact-note] { padding-top: 10px; margin: 12px 0 0; border-top: 1px solid var(--line); }
 /* The required consent is one full-row control, not a tiny checkbox beside
    legal copy. Keep the donor wording and native validation while giving touch
    and keyboard users an explicit final-step target. */
@@ -795,6 +820,7 @@ body { margin: 0; padding: 0; }
 }
 /* Keep alternative flight pairs in the existing tour section, with one action row. */
 #design-v2-native-root #b4 .st-native-flight-options { margin-top: 12px; }
+#design-v2-native-root #b4 [data-native-defer-flight] { min-height: 44px; }
 #design-v2-native-root #b4 .st-native-flight-alternatives > summary { min-height: 44px; padding: 12px 0; color: var(--blue); font-weight: 600; line-height: 1.4; cursor: pointer; overflow-wrap: normal; }
 #design-v2-native-root #b4 .st-native-flight-alternatives > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 #design-v2-native-root #b4 .st-native-flight-option { padding: 14px 0; }

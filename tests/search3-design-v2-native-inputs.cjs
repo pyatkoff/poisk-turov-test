@@ -17,6 +17,48 @@ const click=selector=>node(selector).click(),tick=()=>new Promise(resolve=>w.set
 function input(selector,value,type='input'){const target=node(selector);target.value=value;target.dispatchEvent(new w.Event(type,{bubbles:true}));return target;}
 function submit(){node('[data-search-form]').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}
 const pop=direction=>new Promise((resolve,reject)=>{const timeout=w.setTimeout(()=>reject(new Error('history '+direction+' did not complete')),1000);w.addEventListener('popstate',()=>{w.clearTimeout(timeout);resolve();},{once:true});w.history[direction]();});
+async function selectedJourneyChecks(){
+ for(const variant of ['st-mobile','st-desktop']){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
+  let product=win.document.querySelector('[data-product]');product.classList.remove('st-mobile');product.classList.add(variant);
+  const dearer={...offer,key:'tourvisor:dearer',total:161000,room:'Family Suite',meal:'Завтраки',raw:{receipt:'exact-dearer'}};
+  const loaded={...hotel,offers:[offer,dearer]},state={screen:'results',search:trip,filters:{...filters},hotels:[loaded],status:'complete',searchGeneration:1,hasSearched:true,favorites:[]};
+  let calls=0,top=0;Object.defineProperty(win,'scrollY',{get:()=>top});Object.defineProperty(win.document,'scrollingElement',{value:win.document.documentElement});
+  win.document.documentElement.scrollTo=options=>{top=options.top;};win.HTMLElement.prototype.scrollIntoView=function(){top=0;};
+  win.AnyTourDesignV2Tour={mount(){return{render({offer:chosen}){calls++;assert.strictEqual(chosen,dearer);},getState(){return{};},destroy(){}};}};
+  win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+  const api={async init(){return{dictionaries,requestedSearch:false};}};let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
+  try{
+   await owner.ready;const sort=el('.st-sort');sort.value='name';sort.dispatchEvent(new win.Event('change',{bubbles:true}));top=1320;tap('[data-hotel-open="7"]');assert.equal(top,0,'A hotel opened from a deep result starts at its heading');assert.strictEqual(win.document.activeElement,el('[data-hotel-name]'));
+   top=430;tap('[data-hotel-offers] [data-offer="tourvisor:dearer"]');assert.equal(top,0,'The chosen tour starts at the top');assert.strictEqual(owner.getState().selected,dearer);
+   tap('[data-action="hotel"]');assert.equal(top,430,'Return restores the exact offer comparison position');assert.strictEqual(win.document.activeElement,el('[data-hotel-offers] [data-offer="tourvisor:dearer"]'));
+   assert.equal(el('[data-hotel-min-price]').textContent,'161 000 ₽','The hotel summary follows the selected exact offer, not the minimum');assert.match(el('[data-action="best-tour"]').textContent,/К выбранному туру/);assert.match(el('.st-aside-summary').textContent,/Family Suite/);
+   tap('[data-hotel-section="about"]');tap('[data-action="best-tour"]');assert.strictEqual(owner.getState().selected,dearer,'Continue cannot silently replace a more expensive chosen offer');tap('[data-action="hotel"]');assert(!el('[data-about-hotel]').hidden,'Return preserves the hotel section');
+   const retained=owner.getState();owner.destroy();const container=win.document.createElement('div');container.innerHTML=builder.extract().markup;win.document.body.replaceChildren(container);product=container.querySelector('[data-product]');owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;assert(!el('[data-about-hotel]').hidden,'Responsive remount preserves the hotel section');
+   tap('[data-action="results"]');assert.equal(top,1320,'Return restores the initiating result position');assert.strictEqual(win.document.activeElement,el('[data-hotel-open="7"]'));
+   tap('[data-action="filters"]');const cap=el('[data-filter-form] input[type="number"][data-native-budget="max"]');cap.value='150000';cap.dispatchEvent(new win.Event('input',{bubbles:true}));tap('[data-action="apply-filters"]');assert.equal(top,0,'New filter results start at the top rather than restoring a previous list offset');assert.strictEqual(win.document.activeElement,el('[data-result-count]'),'New mobile results focus their visible count, not a hidden empty-state heading');
+   assert.equal(calls,2,'Only the two explicit visits render the retained exact tour');
+  }finally{owner.destroy();win.close();}
+ }
+}
+async function responsiveTourFocusChecks(){
+ const parts=builder.extract(),doc=new JSDOM('<!doctype html><head><style>'+parts.css+'\n'+parts.desktopCSS+'</style></head><body>'+parts.markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
+ let product=win.document.querySelector('[data-product]'),owner;
+ const state={screen:'tour',search:trip,filters:{...filters},hotels:[hotel],selected:offer,hotelId:hotel.id,status:'complete',hasSearched:true,favorites:[]};
+ const api={async init(){return{dictionaries,requestedSearch:false};}};
+ win.AnyTourDesignV2Tour={mount(){return{render({offer:chosen}){assert.strictEqual(chosen,offer);},getState(){return{};},destroy(){}};}};
+ win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+ try{
+  owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});await owner.ready;
+  const quick=product.querySelector('.st-quick-tour [data-action="lead"]');quick.focus();assert.strictEqual(win.document.activeElement,quick);
+  const retained=owner.getState();owner.destroy();const wrap=win.document.createElement('div');wrap.innerHTML=parts.markup;win.document.body.replaceChildren(wrap);product=wrap.querySelector('[data-product]');product.classList.replace('st-mobile','st-desktop');
+  owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;
+  assert.equal(win.getComputedStyle(product.querySelector('.st-quick-tour')).display,'none','The existing desktop CSS hides the mobile quick action');
+  assert.strictEqual(win.document.activeElement,product.querySelector('[data-screen="tour"] h1'),'A CSS-hidden initiating action falls back to the visible tour heading after responsive remount');
+  assert.strictEqual(owner.getState().selected,offer,'Responsive focus recovery retains the canonical offer');
+ }finally{owner?.destroy();win.close();}
+}
 async function groupMinimumChecks(){
  for(const outcome of ['complete','error','stale']){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
@@ -295,6 +337,8 @@ async function localCalendarDayChecks(){
  }finally{owner.destroy();win.close();}
 }
 (async()=>{
+ await selectedJourneyChecks();
+ await responsiveTourFocusChecks();
  await mounted.ready;await localCalendarDayChecks();await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');
