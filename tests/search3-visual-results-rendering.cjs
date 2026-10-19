@@ -9,6 +9,40 @@ const source=app+'\n'+section(cold,'function offerListInventory(','function moun
 const copy=x=>JSON.parse(JSON.stringify(x));
 const esc=x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,'actual owner boundaries');return source.slice(a,b);}
+// Source status must describe this current canonical inventory, not an earlier
+// terminal/raw-source receipt. Execute the real presentation owner without HTTP.
+{
+ const {JSDOM}=require('jsdom'),dom=new JSDOM('<div id="search-status"></div><div id="search-more"></div><div id="cards"></div>'),d=dom.window.document;
+ const context={document:d,$:selector=>d.querySelector(selector),state:{hasSearched:true},data:{live:true},hotels:[{offers:[{provider:'tourvisor'},{provider:'anex'},{provider:'anex'}]}],
+  searchResponse:{phase:'complete',pending:false,canContinue:true,currentInventory:true,providers:{tourvisor:'complete',anex:'partial'},sources:{tourvisor:{offers:99},anex:{offers:88}},union:{offersByProvider:{tourvisor:7,anex:6}}},
+  sameSelectedTourConditions:()=>false,needsRefresh:()=>false,icon:()=>'',esc,
+  clearSearchTimers(){this.stops=(this.stops||0)+1;},searchLifecycle:{invalidate(){}},renderResults(){}};
+ vm.createContext(context);vm.runInContext(section(app,'function terminalizeSearchForVerification(','function prepareSearchRun('),context);
+ const render=(items=[{}])=>context.renderSearchStatus(items,3),notice=()=>d.querySelector('#search-status');
+ render();
+ assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 1$/);
+ assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 2$/);
+ assert.ok(notice().querySelector('[data-action="continue-search"]'),'partial notice offers the action its message names');
+ assert.equal(notice().querySelector('[data-action="retry-search"]'),null,'available continuation is not presented as restart');
+ notice().querySelector('details').open=true;notice().querySelector('[data-action="continue-search"]').focus();
+ context.hotels[0].offers.push({provider:'tourvisor'});render();
+ assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'later published offers replace the stale receipt count');
+ assert.equal(notice().querySelector('details').open,true);assert.equal(d.activeElement.dataset.action,'continue-search','progressive repaint preserves the active continuation');
+ context.hotels[0].offers.splice(1,1,{provider:'anex'},{provider:'anex'});render();
+ assert.match(notice().querySelector('[data-search-source="anex"]').textContent,/Вариантов до фильтров: 3$/,'concrete replacement is counted from current exact offers');
+ context.searchResponse.retryRead=true;render();assert.equal(notice().querySelector('[data-action="continue-search"]').textContent,'Проверить результат','uncertain operation retains read-only recovery label');
+ context.searchResponse.canContinue=false;render();assert.ok(notice().querySelector('[data-action="retry-search"]'),'exhausted/error recovery keeps the explicit restart');
+ context.terminalizeSearchForVerification();render();assert.match(notice().textContent,/Найденные туры сохранены/);assert.doesNotMatch(notice().textContent,/Поиск остановлен/,'entering tour conditions is not attributed to user Stop');
+ context.stopSearch();render();assert.match(notice().textContent,/Поиск остановлен/,'explicit Stop remains truthful');
+ context.searchResponse={phase:'complete',canContinue:true,providers:{tourvisor:'partial'}};render();notice().querySelector('[data-action="continue-search"]').focus();
+ context.searchResponse={phase:'loading',pending:true,providers:{tourvisor:'loading'}};render([]);assert.ok(notice().querySelector('[data-action="stop-search"]'));assert.equal(notice().querySelector('[data-action="continue-search"]'),null);
+ assert.equal(d.activeElement.dataset.action,'stop-search','continuation keeps keyboard focus on the available pending action');assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'loading without received offers stays unknown');
+ assert.doesNotMatch(notice().textContent,/Вариантов до фильтров/,'retained previous-run offers cannot become current source counts before this generation receives results');context.searchResponse.currentInventory=true;render([]);assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 2$/,'accepted progressive inventory supplies counts during loading');context.hotels=[];
+ for(const status of ['unknown','error','partial']){context.searchResponse={phase:'error',pending:false,providers:{tourvisor:status}};render([]);assert.doesNotMatch(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров/,'unconfirmed empty source is not reported as received zero: '+status);}
+ context.searchResponse={phase:'complete',providers:{tourvisor:'complete',anex:'error'}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 0$/,'completed empty source has a known zero');
+ context.data.live=false;context.searchResponse={phase:'complete',pending:false,canContinue:true,providers:{tourvisor:'partial'},sources:{tourvisor:{offers:4}}};render();assert.match(notice().querySelector('[data-search-source="tourvisor"]').textContent,/Вариантов до фильтров: 4$/,'offline fixtures retain their recorded source scope');
+ dom.window.close();console.log('PASS current result status: canonical progressive/concrete counts, colocated continuation, retained/user-stop distinction, focus and recovery labels; no HTTP');
+}
 const requestLabels=vm.runInNewContext(`(()=>{${section(app,'const mealLabel=','const matchesMeal=')}return {mealLabel,displayMealLabel,roomLabel};})()`,{String});
 // Site197 alert presentation must leave the canonical failure and retry policy intact.
 {
