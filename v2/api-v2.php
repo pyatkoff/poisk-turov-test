@@ -193,7 +193,15 @@ function tourvisor_autosave_results(int $searchId, int $limit, array $response):
         require_once __DIR__ . '/data/local-tv-catalog-v1.php';
         if (LocalTvCatalogV1::enabled() && $searchId > 0 && array_is_list($response)
             && empty($_GET['ci_test']) && empty($_SERVER['HTTP_X_ANYTOUR_CI'])) {
-            require_once __DIR__ . '/data/db-v1.php';
+            (static function (): void {
+                $helpers = ['v2_data_db_config', 'v2_data_db', 'v2_data_normalize_text', 'v2_data_slug'];
+                $loaded = count(array_filter($helpers, 'function_exists'));
+                if ($loaded === 0) {
+                    require_once __DIR__ . '/data/db-v1.php';
+                } elseif ($loaded !== count($helpers)) {
+                    throw new RuntimeException('Incomplete data DB helpers');
+                }
+            })();
             (new LocalTvCatalogV1(v2_data_db()))->discover($response, 'user_search', gmdate('Y-m-d H:i:s'));
         }
     } catch (Throwable $ignored) {
