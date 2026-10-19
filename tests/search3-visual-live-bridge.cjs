@@ -551,6 +551,18 @@ async function pickerRetainedDraftRegressions(){
  click(`#price-strip [data-date="${day}"]`);click(`#price-strip [data-date="${day}"]`);
  assert.equal(dateScope(),allDates);assert.equal(w.location.search,dateURL);assert.equal(starts(),dateStarts,'local date selection/clear/Cancel never starts suppliers');
  console.log('PASS applied departure context: exact-day/empty-day narrowing, clear/chip/toggle, date edit Cancel and URL/card restoration; supplier HTTP0');
+ // Removing an explicitly focused empty-result action must leave a stable
+ // keyboard destination, rather than dropping focus onto the document body.
+ const resetRowsBefore=[...d.querySelectorAll('.hotel-card')].map(card=>card.id),resetURLBefore=w.location.href,resetStartsBefore=starts();
+ q('#hotel-query').value='no matching hotel for keyboard recovery';q('#hotel-query').dispatchEvent(new w.Event('input',{bubbles:true}));
+ assert.equal(d.querySelectorAll('.hotel-card').length,0);
+ const emptyReset=q('#cards [data-action="reset"]');assert(emptyReset);emptyReset.focus();assert.equal(d.activeElement,emptyReset);
+ emptyReset.click();
+ assert.equal(d.activeElement,q('#results'),'empty-result Reset leaves focus on the restored results');
+ assert.deepEqual([...d.querySelectorAll('.hotel-card')].map(card=>card.id),resetRowsBefore);
+ assert.equal(w.location.href,resetURLBefore,'Reset preserves the applied trip and removes only filter state');
+ assert.equal(starts(),resetStartsBefore,'keyboard recovery never starts a supplier search');
+ console.log('PASS empty-result keyboard Reset: stable results focus, exact trip/rows and no supplier restart');
  const changeOrigin=value=>{q('#origin').value=value;q('#origin').dispatchEvent(new w.Event('change',{bubbles:true}));};
  const frozenCards=q('#cards').innerHTML,frozenURL=w.location.search,searchesBeforeRecovery=starts();
  click('#applied-search [data-action="edit-search"]');transport.state.countriesFailure='2';let releaseFailedCountries;transport.state.countryGates['2']=new Promise(resolve=>releaseFailedCountries=resolve);changeOrigin('Казань');

@@ -142,6 +142,28 @@ const server=http.createServer((req,res)=>{
    await page.locator('[data-action="start-tour-flights"]').click();await page.locator('[data-action="apply-flight"]').waitFor();await shot('flights');
    await page.locator('[data-action="apply-flight"]').click();await page.locator('[data-action="confirm-tour"]').click();await page.locator('#prototype-lead-form').waitFor();await shot('application');
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);receipts.push({width,initial_downloads:0,failed_downloads:1,retry_downloads:1,warm_downloads:0,late_closed_modal_render:false,flat_exact_offers:true,editSearchNotice,exactConditionGuard,pagination,history_room_restored:true,history_owner_inventory_calls:0,saved_demo_photo:photo,geometry,density,calendarContext,supplier_requests:0,lead_requests:0,physicalSafari:false});
+   if(width===390||width===1280){
+    // Accept the actual disappearing recovery action through keyboard input,
+    // using incompatible conditions on different offers of the same hotels.
+    const filters=new URLSearchParams({scenario:'mixed',meals:'Всё включено · демо',operators:'Демо-оператор 2'});
+    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?${filters}`);
+    const reset=page.locator('#cards [data-action="reset"]');await reset.waitFor();
+    assert.equal(await page.locator('.hotel-card').count(),0,'incompatible offer conditions cannot manufacture a matching hotel');
+    const tripBefore=await page.locator('#applied-search').textContent();await shot('recovery-empty');
+    // Reach the action before measuring; focus() alone starts the page's smooth scroll.
+    await reset.scrollIntoViewIfNeeded();await reset.focus();
+    const before=await reset.evaluate(el=>({scrollY,top:el.getBoundingClientRect().top,resultsTop:document.querySelector('#results').getBoundingClientRect().top,pageHeight:document.documentElement.scrollHeight}));
+    const scrollBefore=before.scrollY;await page.keyboard.press('Enter');
+    assert.equal(await page.locator('.hotel-card').count(),5);assert.match(await page.locator('#results-summary').textContent(),/15 вариантов/);
+    assert.equal(await page.locator('#applied-search').textContent(),tripBefore,'Reset retains the applied dates and party');
+    const focus=await page.locator('#results').evaluate(el=>({active:document.activeElement===el,visible:el.matches(':focus-visible'),outline:getComputedStyle(el).outlineStyle,scrollY,resultsTop:el.getBoundingClientRect().top,pageHeight:document.documentElement.scrollHeight}));
+    fs.writeFileSync(path.join(evidence,`result-reset-scroll-${width}.json`),JSON.stringify({before,after:focus},null,2));await shot('recovery-reset-focus');
+    assert.equal(focus.active,true,'empty-result Reset focuses the restored results');assert.equal(focus.visible,true);assert.notEqual(focus.outline,'none');assert(Math.abs(focus.scrollY-scrollBefore)<=1,`focus restoration does not jump the page: ${JSON.stringify({before,after:focus})}`);
+    await page.keyboard.press('Tab');
+    const next=await page.evaluate(()=>({inside:document.querySelector('#results').contains(document.activeElement),tag:document.activeElement.tagName,id:document.activeElement.id,action:document.activeElement.dataset.action||''}));
+    assert.equal(next.inside,true);assert.notEqual(next.tag,'BODY','Tab continues from a defined results destination');
+    fs.writeFileSync(path.join(evidence,`result-reset-${width}.json`),JSON.stringify({width,zoom:100,compiled:true,fixture:'mixed5hotels15offers',cross_offer_false_match:false,empty:0,restored_hotels:5,restored_offers:15,trip_preserved:true,focus,scrollBefore,next,supplier_requests:0,real_leads:0,physicalSafari:false},null,2));
+   }
    // Verify the real retained long-name corpus separately from the mixed demo journey.
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=snapshot&searched=1`);await page.waitForFunction(()=>document.querySelector('#results-summary')?.textContent.includes('1047'));await page.evaluate(()=>document.fonts.ready);
    const realCardScan=await page.locator('.hotel-card').evaluateAll(cards=>cards.slice(0,24).map(card=>{const rect=el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};},entry=card.querySelector('[data-card-entry]'),profile=card.querySelector('h3 [data-action="hotel-details"]'),summary=card.querySelector('.card-minimum-offer'),footer=card.querySelector('.hotel-more'),variants=card.querySelector('.card-all-offers');return{id:card.dataset.hotelId,key:entry.dataset.key,total:card.querySelector('.starting-price strong').textContent,title:profile.textContent,geography:card.querySelector('.hotel-location').textContent,trip:card.querySelector('.price-trip-summary').textContent,room:card.querySelector('.card-room').textContent,operator:card.querySelector('.card-offer-flight .operator-logo').dataset.operator,card:rect(card),summary:rect(summary),profile:rect(profile),footerVisible:!!footer.getClientRects().length,variants:variants&&rect(variants)};}));
