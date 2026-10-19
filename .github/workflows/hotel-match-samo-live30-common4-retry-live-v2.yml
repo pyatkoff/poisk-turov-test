@@ -1,0 +1,118 @@
+name: MATCH SAMO live30 COMMON4 retry live v2
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: ['.github/workflows/hotel-match-samo-live30-common4-retry-live-v2.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-live30-common4-retry-1971-20260924-v2, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-live30-common4-retry-1971-20260924-v2
+  BASE: beafb5ec6c1f949941eaa06b43e474f9da13da8b
+  CLAIM: '5804336211'
+  PLAN_ARTIFACT: '10780093445'
+  PLAN_ARCHIVE_SHA: 6e88ad112b7ba53ff3608c80ad9a42683d6cf9ff980e21eb959a20597b326541
+  V1_ARTIFACT: '10780668144'
+  V1_ARCHIVE_SHA: 6f2a49cd7629cd97ac95b5878a2081f11dce18ea53356ac9cb6e7fadba48bdba
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority and immutable inputs
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/plan input/v1 terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-common4-retry-live-v2.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],'21 failed batch','max12 IDs','strlen(HOTELS)<=300','no successful v1 batch','zero retry','monthly Andromeda ledger <=5000000','Tourvisor/direct-ANEX HTTP0','database_writes0','mapping_writes0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success';break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          for pair in "$PLAN_ARTIFACT:$PLAN_ARCHIVE_SHA:plan" "$V1_ARTIFACT:$V1_ARCHIVE_SHA:v1"; do
+            IFS=: read -r aid digest dir <<<"$pair"
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$aid/zip" -o "input/$dir.zip"
+            test "$(sha256sum "input/$dir.zip"|awk '{print $1}')" = "$digest"
+            unzip -q "input/$dir.zip" -d "input/$dir"
+          done
+          planr="$(find input/plan -type f -name result.json -print -quit)"; planq="$(find input/plan -type f -name receipt.json -print -quit)"
+          v1r="$(find input/v1 -type f -name result.json -print -quit)"; v1q="$(find input/v1 -type f -name receipt.json -print -quit)"
+          test -n "$planr";test -n "$planq";test -n "$v1r";test -n "$v1q"
+          cp "$planr" input/plan-result.json;cp "$planq" input/plan-receipt.json;cp "$v1r" input/v1-result.json;cp "$v1q" input/v1-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          for p,q in [('input/plan-result.json','input/plan-receipt.json'),('input/v1-result.json','input/v1-receipt.json')]:
+              r=json.load(open(p));rc=json.load(open(q));assert rc['result_sha256']==hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+          p=json.load(open('input/plan-result.json'));v=json.load(open('input/v1-result.json'))
+          assert p['operation']=='hotel-match-samo-live30-common4-plan-1971-20260924-v1' and p['state']=='samo_live30_common4_plan_ready'
+          assert p['catalog_live30_count']==450 and p['acquisition_ready_count']==434
+          assert v['operation']=='hotel-match-samo-live30-common4-acquire-1971-20260924-v1' and v['state']=='completed_read_only_partial'
+          assert v['planned_batch_count']==40 and v['batch_error_count']==21 and v['samo_http_calls']==32
+          errs={}
+          for b in v['batches']:
+              if b.get('state')=='supplier_error': errs[b.get('reason')]=errs.get(b.get('reason'),0)+1
+          assert sum(errs.values())==21
+          assert any('INVALID_PARAMS' in str(k) for k in errs) and any('TRANSPORT_ERROR' in str(k) for k in errs)
+          PY
+      - name: Execute failed-batch-only retry
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_provider','provider':'andromeda','database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e "\$HOME/$op";mkdir -p "\$HOME/$op/payload/scripts/diagnostics" "\$HOME/$op/payload/app/integrations""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/plan-result.json "$remote:$op/payload/plan-result.json"
+          scp "${opts[@]}" input/v1-result.json "$remote:$op/payload/v1-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_live30_common4_acquire_v1.php scripts/diagnostics/hotel_match_samo_live30_common4_retry_v2.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd "\$HOME/www/anytoour.ru";ANYTOUR_ROOT="\$HOME/www/anytoour.ru" MATCH_OPERATION_DIR="\$HOME/$op" MATCH_PLAN_RESULT="\$HOME/$op/payload/plan-result.json" MATCH_V1_RESULT="\$HOME/$op/payload/v1-result.json" MATCH_SOURCE_SHA='$HEAD' php "\$HOME/$op/payload/scripts/diagnostics/hotel_match_samo_live30_common4_retry_v2.php" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          ssh "${opts[@]}" "$remote" "cd "\$HOME/$op";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          set -e
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state'] in ('completed_read_only','completed_read_only_partial')
+          assert r['v1_failed_batch_count']==21
+          assert all(b['hotel_count']<=12 and b['hotels_bytes']<=300 for b in r['batches'])
+          assert r['tourvisor_calls']==0 and r['direct_anex_calls']==0 and r['database_writes']==0 and r['mapping_writes']==0
+          print(json.dumps({k:r[k] for k in ['state','v1_failed_batch_count','retry_subbatch_count','queried_edge_count','batch_error_count','samo_http_calls','edge_state_counts','single_native_source_unique_count','single_native_source_collision_count']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-live30-common4-retry-v2-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
