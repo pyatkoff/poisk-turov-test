@@ -41,25 +41,37 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-For the original design-lab project and existing NEXT only, follow the current
-finite delivery sequence at the top of `docs/project/search3-product-development-plan.md`
-and the same `AUTOPILOT_STATE.json.current_task`. One main product WIP: compact
-optional flight choice, truthful whole-party total, application and retained return.
-Reuse source-only draft d827ccf7; no further visual drafts while supported Sites QA
-is unavailable. Preserve the successful-price application branch with flights left
-to the manager. NEXT55fb, root recovery and the actual original live journey have
-terminal receipts; stale recovery05c pins below are history/no-replay, not a queue.
-Focused checks during implementation, applicable exact-head gates on the complete
-candidate, one whole-version visual+behavior approval before a new concept reaches
-NEXT, separate exact-artifact publisher and installed acceptance. No guard changes.
-Before a new packet, name its exact artifact/runtime, permitted verification route
-and minimal frames/actions in the existing claim/PR; no extra tracker/test queue.
-Native cloud Chrome can inspect installed NEXT; a missing managed Sites route blocks
-only the unpublished candidate, not every browser. Reuse exact evidence; no repeat
-or metered fallback without reason/authority and no blocked-route workaround.
-200% text is deferred/not_measured; do not add runs/fixes or make it a blocker.
-Do not borrow design-v2 evidence or redirect its work. Schedules/enabled/paused and
-other tasks remain unchanged; a plan update does not authorize supplier/lead/production.
+Follow the finite remaining-delivery section at the top of
+`docs/project/search3-product-development-plan.md` and the same
+`AUTOPILOT_STATE.json.current_task`. Owner23:06 requested work organization first.
+Approved Site203 is already transferred; installed originalNEXT product3bdd
+has terminal6273604203. QA4647/source564ef1b1 merged into release22850f1f with
+unchanged product bytes and terminal6274857599. Site199/d827 and older transfer/
+recovery pointers below are dated history, not instructions to repeat work.
+
+One next packet: missing calendar/date/filter/keyboard actions across ordinary
+360/390/430/768/1280 and short1280x720, confirmed defect repair, final review.
+Reuse existing exact-source5width calendar-open/Cancel/units and family evidence.
+The stock compiled-browser workflow can render these widths; cloudChrome's
+missing resize is only a limitation of that native installed route.
+No new workflow, browser install, local server or denied-route carrier workaround.
+
+One writer/integrator, independent read-only review, separate publisher only for
+a ready changed artifact. Fresh heads/claims/current state first; reuse already-read
+unchanged instructions/consumer maps by SHA. Focused checks during repair,
+all applicable final-source CI on the finished packet; no successful unchanged
+CI/deploy replay. Planning changes require applicable docs/state/security checks,
+not UI/browser publication. Preserve draft/ready and guard policy.
+
+This organization request does not silently renew the single test-only allowance
+consumed by PR4647. A separate next QA-only packet needs a direct instruction for
+its concrete finite scope; regression for an authorized confirmed fix uses normal
+gates. Name exact artifact, route, actions/frames and limits before implementation.
+Real delivery remains disabled in this preview; do not invent async delivery states.
+Physical/native mobile, provider authority/live-ID and production gates stay separate.
+No score gain for plan/CI/version; no repeated unchanged report.200%/Compare deferred.
+Keep both approved application branches, public project/history, originalNEXT target
+and all protected contracts. Schedules/enabled/paused/settings/other tasks unchanged.
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 

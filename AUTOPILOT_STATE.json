@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "IMPLEMENTING_APPROVED_SITE203_EXISTING_NEXT_TRANSFER",
+    "status": "REMAINING_ACCEPTANCE_DEFINED_NOT_STARTED",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "updated_at": "2026-10-19",
-    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок.",
-    "acceptance_status": "SITE203_WHOLE_VERSION_APPROVED_RECEIVER_SOURCE_IN_PROGRESS_NOT_PUBLISHED",
-    "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
-    "published_source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
-    "planning_base_release_sha": "2816925ef50b56ed97a760cf2dd28ef318f3e7d4",
+    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками.",
+    "acceptance_status": "SITE203_TRANSFER_PUBLISHED_BOUNDED_JOURNEYS_ACCEPTED_KEY_SCOPES_OPEN",
+    "last_fully_checked_release_sha": "22850f1fbe40b4b8bc5f401376b4d418abe2210d",
+    "published_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
+    "planning_base_release_sha": "22850f1fbe40b4b8bc5f401376b4d418abe2210d",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "No new assessment; not_measured stays not_measured. A mockup does not close functional, authority, identity or architecture criteria."
+      "score_status": "Organization delta0. Existing audit SEARCH-QUALITY-1 is authoritative: family compiled6274732781, installed calendar partial6275562364. No whole-product9.5; N is not summed, stages do not inherit scores."
     },
-    "next_action": "Продолжить уже согласованный whole-version Site203/source8c826b44/evidence dd7a48c0, approval#4217/6270421744; source claim6270542519+test extension6270605391. В original NEXT existing app/styles owners переносится цельный компактный exact-tour/optional-flight/contact/return путь; canonical receiver lead/data/quote/price/lifecycle сохраняются. Закончить focused/compiled regression и все применимые exact-head CI, разрешённый release merge, затем отдельный exclusive stock NEXT-only publisher exact artifact/readback и установленный релевантный сценарий. Новый дизайн/повторная публикация Sites/старый live/ключи не нужны. PUBLIC Site203 QA завершён; старый d827 local QA blocker исторический. Installed NEXT и его баллы не наследуют donor evidence. No supplier/real lead requests; physicalSafari N;200%deferred.",
+    "next_action": "Один конечный остаток из верхнего product plan: использовать retained5width calendar-open/Cancel/units и family exact3bdd; добрать changed-range Apply/reopen/history, filter/date/rail/card parity, недостающие calendar states/full dialog1280×720. Owner tests/search3-visual-live-browser.cjs/formPickerActionJourney + existing visual workflow. Сначала организация: отдельный новый QA-only PR/run не разрешён автоматически после consumedPR4647; нужно прямое поручение на конкретный конечный scope. Regression при подтверждённом разрешённом UI-fix следует обычным gates. Не повторять перенос Site203/family/desktopCancelApply/старыйlive/deploy/ключи. Source change: focused→применимыеCI на готовом source→разрешённыйrelease merge→отдельныйstockNEXTpublisher/readback→затронутоеinstalled действие. Physical/native mobile/real delivery/provider authority отдельно;200%/Compare deferred.",
     "next_task": {
-      "scope": "Одна цельная поставка: компактные exact flight pairs → честный итог за группу → контакт → Back/reopen; optional flight/manager branch. Затем согласованный original NEXT перенос и накопленная mobile-приёмка всего пути.",
-      "design_owner": "SITE#1719: тот жеPUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public. SEARCH#1646: только existingNEXT/release/search3-production-ready-v1. Один writer shared paths и отдельный publisher. Design-v2 — другой target/владелец, evidence/баллы не наследуются.",
-      "acceptance": "SEARCH-QUALITY-1:12 исторических/11обязательных строк/5критериев0/1/1.5/2; fully measured применимые строки≥9.5, N без суммы. Source/DOM не visual/clickable passed; mockup/prototype/compiled/installed/physical/real supplier отдельно. Для whole-version approval реальные кадры и действия всего пакета; перенос не закрывает installed mobile/physical/real delivery.",
-      "execution": "WIP1: approved Site203 entire compact journey → existing original NEXT owners. Approval6270421744 and PUBLIC acceptance6270378393 already complete; do not replay d827/Sites publication or create another candidate. Source claim6270542519 +6270605391; focused checks during adaptation, all applicable final-head CI/compiled real-browser frames/actions on frozen package, permitted release merge, separately claimed stock NEXT-only publisher then readback/installed acceptance. No workflow changes, ready/draft toggles, repeated successful CI/deploy or supplier action. Exact artifact QA preflight retained in same claim; source/CI/publication/runtime/physical are separate statuses.",
+      "scope": "Один конечный остаток Calendar/date/filter/keyboard на360/390/430/768/1280 и1280×720: exact range Apply/reopen/BackForward, согласованность формы/URL/rail/cards, фильтр→дата, недостающие sparse/unknown/loading/error/recovery; затем связанные confirmed fixes и итоговый просмотр.",
+      "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён.",
+      "acceptance": "Тот же SEARCH-QUALITY-1 12/11/5,0/1/1.5/2,N без суммы, ключевые применимые полностью измеренные строки≥9.5. Existing exact evidence переиспользуется; accepted family не повторять. Минимум2новых кадра на размер для missingдействий и необходимые states. Native/compiled/physical/real supplier отдельно; whole-product приёмка остаётся открытой.",
+      "execution": "Свежие current_task/верхнийплан/heads/claims/сообщения; ранее прочитанные неизменённые инструкции/consumer map по SHA. Exact source/artifact/route+missingactions передпакетом. Existing tests/search3-visual-live-browser.cjs/formPickerActionJourney сoffline transport; semantic calendar-inventory не дублировать. Отдельный новый QA-only scope требует прямого поручения послеPR4647; planning не запускаетего. Focused во время изменения, обязательныеCI на готовом source; без draft/ready/workflow/guard изменений/успешныхповторов. Подтверждённый product defect — обычный разрешённый repair workflow.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1359,15 +1359,15 @@
       "remaining": "Bounded original desktop live journey on05c is accepted at #4217/6264963728 and consumed: do not repeat it. Broader or changed-risk live acceptance, authoritative prices of other variants/pairs, mobile/physical Safari, real lead delivery, full comparable quality evaluation and separate production approval remain open under their exact gates. No score inheritance or full9.5.",
       "historical_pins": "last_fully_checked_release_sha/planning_base_release_sha, existing_unapproved_drafts, scheduler_observation, dated_history/oldinstalls are datedprovenance/no-replay, notcurrentexecutionpins/commands/newauthority.",
       "latest_next": {
-        "source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
-        "release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
-        "build_run": 39240154686,
-        "artifact_id": 12181500570,
-        "publish_run": 39241812038,
-        "deployment_receipt_artifact": 12182016702,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
-        "compiled_app_sha256": "049239db1c0a92b44e6bbd5edcde8a84c9156a4bf1828c5a76df952b0978809a",
-        "scope": "PR4634 published/status-count-action repair; all exactheadCI/fiveordinarywidthframes and stock43asset/9route readback PASS; native1363x936 demo open/close retained selection. No NEWactualpartial/physical acceptance or scoreinheritance."
+        "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+        "release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
+        "build_run": 39294939406,
+        "artifact_id": 12206469035,
+        "publish_run": 39296816783,
+        "deployment_receipt_artifact": 12207723845,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
+        "compiled_app_sha256": "7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc",
+        "scope": "PR4646 installed Reset/focus repair; all5applicable sourceCI passed,43asset/9route readback, native1363×936 exact Reset retainedY339/focus#results. Command6273501393/run39296816783 consumed/no-replay; QA-only release22850 has unchanged UI bytes."
       },
       "root_api_install": {
         "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
@@ -1401,6 +1401,27 @@
           "scope": "Missing managed Sites $control-browser blocks only unpublishedd827 QA. Native cloud Chrome was separately confirmed available: inventory and existing mixed-demo NEXT tab selected,5hotels/15variants; no new navigation/Find/quote/lead, no viewport/mobile/fullpath/physical acceptance. TinyFish metadata is available as a metered public-URL tool, not executed; retained compiled-browser evidence is exact-artifact only. SitesSKILL still prohibits previewserver/browserinstall/improvised control for this draft. Do not generalise this blocker or replay other byte-identical checks.",
           "required_next": "SupportedSitesQA exactd827, matchedframes/actions, whole-version owner approval before newNEXTlayout. In parallel only genuinely independent permitted work with a new confirmed reason; no new visual drafts or unsupported bypass.",
           "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266637185"
+        },
+        "planning_pointers_before_organization_20261019": {
+          "status": "IMPLEMENTING_APPROVED_SITE203_EXISTING_NEXT_TRANSFER",
+          "acceptance_status": "SITE203_WHOLE_VERSION_APPROVED_RECEIVER_SOURCE_IN_PROGRESS_NOT_PUBLISHED",
+          "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
+          "published_source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
+          "published_release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
+          "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
+          "planning_base_release_sha": "2816925ef50b56ed97a760cf2dd28ef318f3e7d4",
+          "next_action": "Продолжить уже согласованный whole-version Site203/source8c826b44/evidence dd7a48c0, approval#4217/6270421744; source claim6270542519+test extension6270605391. В original NEXT existing app/styles owners переносится цельный компактный exact-tour/optional-flight/contact/return путь; canonical receiver lead/data/quote/price/lifecycle сохраняются. Закончить focused/compiled regression и все применимые exact-head CI, разрешённый release merge, затем отдельный exclusive stock NEXT-only publisher exact artifact/readback и установленный релевантный сценарий. Новый дизайн/повторная публикация Sites/старый live/ключи не нужны. PUBLIC Site203 QA завершён; старый d827 local QA blocker исторический. Installed NEXT и его баллы не наследуют donor evidence. No supplier/real lead requests; physicalSafari N;200%deferred.",
+          "latest_next": {
+            "source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
+            "release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
+            "build_run": 39240154686,
+            "artifact_id": 12181500570,
+            "publish_run": 39241812038,
+            "deployment_receipt_artifact": 12182016702,
+            "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
+            "compiled_app_sha256": "049239db1c0a92b44e6bbd5edcde8a84c9156a4bf1828c5a76df952b0978809a",
+            "scope": "PR4634 published/status-count-action repair; all exactheadCI/fiveordinarywidthframes and stock43asset/9route readback PASS; native1363x936 demo open/close retained selection. No NEWactualpartial/physical acceptance or scoreinheritance."
+          }
         }
       },
       "root_recovery": {
@@ -1420,10 +1441,10 @@
         "scope": "Chrome1363x936 originalNEXT oneMoscowTurkey2–8Nov/7n/2AFind;276hotels521variants observed; RIA3678/Standard/Breakfast5–12Nov40pairs; oneDP995/996calc86535→97015RUBwhole2A; previewrequiredphone/Back/reopen retainsidentity. No reallead/secondpair/Continue/retry; not allpairs/mobile/physical."
       },
       "rix_picker": {
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6264165001",
-        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6264170979",
-        "status": "EXISTING_DESKTOP_CANONICAL_BEHAVIOR_ACCEPTED_NOT_NEW_IMPLEMENTATION",
-        "scope": "Beforeoffercards canonical suggestions/realphotos/geography/stars/exact4234+813OR/Apply/Cancel/clear/empty/showmore/focus.10suggestions=limit, not globalcount. Remaining installed360/390/430/768, physicalkeyboard/safearea, completealias and submittedexactIDs in separatelyauthorizedsearch."
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6272447072",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6272566264",
+        "status": "CANONICAL_DESKTOP_ACCEPTED_ON31F_NATIVE_MOBILE_DATA_LIVE_ID_GATES_SEPARATE",
+        "scope": "Normal liveFORM noFind on31f: real first4Rix names/photos/geography,684+4234OR,full-name/case/Clear/Apply/Cancel/query-isolation. Риксос empty; canonicalaliasavailability unproven; compiledfictionalalias separate. Native mobile/physical/submittedliveIDs retain exact gates. No newpicker/matching."
       },
       "compact_flight_draft": {
         "source_sha": "d827ccf7d73c5af877945972a801fda825856824",
@@ -1435,11 +1456,11 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "PUBLIC_SITE203_QA_AND_OWNER_APPROVAL_COMPLETE_ORIGINAL_NEXT_TRANSFER_ACTIVE",
+        "status": "PUBLIC_SITE203_COMPLETE_INSTALLED3BDD_REMAINING_ACCEPTANCE_DEFINED",
         "checked_at": "2026-10-19",
-        "scope": "Exact PUBLIC Site2038c runtime accepted in6270378393 and whole version approved6270421744. Original receiver uses existing compiled-browser CI real Chromium for360/390/430/768/1280 plus1280x720 and PUBLIC installed cloudChrome after stock publication. No local server/browser install/carrier bypass. Old unpublished d827 blocker is historical, no new Sites candidate needed.",
-        "required_next": "Frozen receiver exact-head CI and independent matched-frame review; permitted release merge/exclusive stock NEXT publication/readback/relevant installed scenario. Physical iPhone/Safari/keyboard/safe area N,200% deferred.",
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270542519"
+        "scope": "Stock compiledbrowser can render360/390/430/768/1280 and1280×720. Retained39302944211 already has fullcalendar-open/Cancel/units5widths; missing changedrange/filter/history/states/fullshortdialog. NativeCloudChrome1363×936 available, resize unavailable; physicalSafari N,200%deferred. No localserver/install/carrier workaround.",
+        "required_next": "Один конечный остаток из верхнего product plan: использовать retained5width calendar-open/Cancel/units и family exact3bdd; добрать changed-range Apply/reopen/history, filter/date/rail/card parity, недостающие calendar states/full dialog1280×720. Owner tests/search3-visual-live-browser.cjs/formPickerActionJourney + existing visual workflow. Сначала организация: отдельный новый QA-only PR/run не разрешён автоматически после consumedPR4647; нужно прямое поручение на конкретный конечный scope. Regression при подтверждённом разрешённом UI-fix следует обычным gates. Не повторять перенос Site203/family/desktopCancelApply/старыйlive/deploy/ключи. Source change: focused→применимыеCI на готовом source→разрешённыйrelease merge→отдельныйstockNEXTpublisher/readback→затронутоеinstalled действие. Physical/native mobile/real delivery/provider authority отдельно;200%/Compare deferred.",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6277362122"
       },
       "approved_site203": {
         "source_sha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
@@ -1450,21 +1471,40 @@
         "acceptance_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393",
         "source_claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270542519",
         "test_extension": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270605391",
-        "status": "WHOLE_VERSION_APPROVED_ORIGINAL_NEXT_TRANSFER_ACTIVE",
-        "bounded_donor_quality": "CONTACT_RETURN_ONLY:2/2/1.5/2/2=9.5; not inherited by installed NEXT"
+        "status": "WHOLE_VERSION_APPROVED_ORIGINAL_NEXT_TRANSFER_COMPLETED",
+        "bounded_donor_quality": "CONTACT_RETURN_ONLY:2/2/1.5/2/2=9.5; not inherited by installed NEXT",
+        "receiver_terminal": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203"
+      },
+      "current_compiled_family": {
+        "source_sha": "564ef1b1d05999fe8c16e412c212152d8aef8615",
+        "release_sha": "22850f1fbe40b4b8bc5f401376b4d418abe2210d",
+        "run_id": 39302944211,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6274857599",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6274732781",
+        "scope": "Offline3A+[0,12] family5width+1280×720,54frames/6receipts,same3bdd UI. All3sourcechecks successful; attempt2 CI distinct from attempt1 cancelledjobs/rendered evidence. Do not replay."
+      },
+      "installed_calendar": {
+        "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6275557028",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6275562364",
+        "scope": "Native1363×936 mixed2A keyboardopen/draft/Escape/focusreturn, offlineApply10–12Oct form/URL/rail/cards agree;5JPEGs with exactcapture1348×926/1363×936. Partialscope only, no native-mobile/physical inheritance or replay."
       }
     },
-    "published_release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
+    "published_release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
       "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
-      "priority": "Emergency/data/lead-loss first; otherwise finish current complete user delivery. No cosmetic/docs/test-only product packet without a confirmed defect.",
-      "parallelism": "One source writer/shared owner and integrator; independent read-only QA/retained-contract review; separate publisher after exact artifact admission.",
-      "reporting": "New user effect or new decision/blocker; exactstage/source/evidence and existingrubricdelta fornewresult. No points for source/CI/plan and no repeated unchanged report.",
-      "verification_preflight": "Before a new packet, record exactsource/artifact/runtime + available permitted test route + minimal matchedframes/actions + uncovered scopes in its existing claim/PR. Reuse known capabilities/receipts; no mandatory live/paid discovery run/new test queue; recheck only on relevant artifact/environment/capability change or concrete failure.",
-      "blocker_scope": "A blocker belongs to exactartifact/runtime/step, not every QA lane. CloudChrome/publicNEXT, meteredTinyFish, retained compiledCI, unpublishedSites and physical evidence are separate. Continue only independent justified permitted work; no unchangedreruns, paidfallback or alternatecarrier to bypass refusal/permission/UNKNOWN."
-    }
+      "priority": "Emergency/data/lead-loss first; finish one finite remaining delivery packet and confirmed material defects. Current explicit owner organization request allows this docs/state packet, not a UX score gain.",
+      "parallelism": "One writer/shared owner and integrator; independent read-only plan/frame/behavior review in parallel; separate publisher only for ready changed artifact.",
+      "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
+      "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
+      "blocker_scope": "Retained5width calendar-open/Cancel/units already exists. Missing actions/short1280×720 are narrower. NativeChrome resize unavailable is route-specific; stock compiledCI is capable. No denied-route workaround. If no safe step, retain one concrete condition and avoid repeated audit; delivery/physical/authority separate.",
+      "qa_only_authority": "PR4647 consumed its single QA-only allowance. Organization request does not silently authorize another test-only PR/run. Next concrete finite QA-only scope needs direct execution instruction; necessary regression may accompany an authorized confirmed UI repair.",
+      "validation": "This4path docs/state packet: diff/JSON/current_task-only/protected-state equality, independent plan review and applicable owner-policy/security checks. No UI/browser CI/deploy solely for docs; no draft/ready toggles or gate weakening.",
+      "verification_pin": "Release22850 integrates checkedsource564 with sourceCI pins in6274857599; installedsource3bdd under6273604203. This is not a new release-CI or runtime readback."
+    },
+    "last_fully_checked_source_sha": "564ef1b1d05999fe8c16e412c212152d8aef8615"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
