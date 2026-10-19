@@ -30,13 +30,14 @@ async function selectedJourneyChecks(){
   const api={async init(){return{dictionaries,requestedSearch:false};}};let owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});
   const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>{const n=el(s);n.focus();n.click();};
   try{
-   await owner.ready;top=1320;tap('[data-hotel-open="7"]');assert.equal(top,0,'A hotel opened from a deep result starts at its heading');assert.strictEqual(win.document.activeElement,el('[data-hotel-name]'));
+   await owner.ready;const sort=el('.st-sort');sort.value='name';sort.dispatchEvent(new win.Event('change',{bubbles:true}));top=1320;tap('[data-hotel-open="7"]');assert.equal(top,0,'A hotel opened from a deep result starts at its heading');assert.strictEqual(win.document.activeElement,el('[data-hotel-name]'));
    top=430;tap('[data-hotel-offers] [data-offer="tourvisor:dearer"]');assert.equal(top,0,'The chosen tour starts at the top');assert.strictEqual(owner.getState().selected,dearer);
    tap('[data-action="hotel"]');assert.equal(top,430,'Return restores the exact offer comparison position');assert.strictEqual(win.document.activeElement,el('[data-hotel-offers] [data-offer="tourvisor:dearer"]'));
    assert.equal(el('[data-hotel-min-price]').textContent,'161 000 ₽','The hotel summary follows the selected exact offer, not the minimum');assert.match(el('[data-action="best-tour"]').textContent,/К выбранному туру/);assert.match(el('.st-aside-summary').textContent,/Family Suite/);
    tap('[data-hotel-section="about"]');tap('[data-action="best-tour"]');assert.strictEqual(owner.getState().selected,dearer,'Continue cannot silently replace a more expensive chosen offer');tap('[data-action="hotel"]');assert(!el('[data-about-hotel]').hidden,'Return preserves the hotel section');
    const retained=owner.getState();owner.destroy();const container=win.document.createElement('div');container.innerHTML=builder.extract().markup;win.document.body.replaceChildren(container);product=container.querySelector('[data-product]');owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;assert(!el('[data-about-hotel]').hidden,'Responsive remount preserves the hotel section');
    tap('[data-action="results"]');assert.equal(top,1320,'Return restores the initiating result position');assert.strictEqual(win.document.activeElement,el('[data-hotel-open="7"]'));
+   tap('[data-action="filters"]');const cap=el('[data-filter-form] input[type="number"][data-native-budget="max"]');cap.value='150000';cap.dispatchEvent(new win.Event('input',{bubbles:true}));tap('[data-action="apply-filters"]');assert.equal(top,0,'New filter results start at the top rather than restoring a previous list offset');assert.strictEqual(win.document.activeElement,el('[data-result-count]'),'New mobile results focus their visible count, not a hidden empty-state heading');
    assert.equal(calls,2,'Only the two explicit visits render the retained exact tour');
   }finally{owner.destroy();win.close();}
  }

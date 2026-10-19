@@ -215,6 +215,7 @@
     function viewKey(screen) {
       const s=state.search;
       return JSON.stringify([screen,s?.origin,s?.country,s?.from,s?.to,s?.minNights,s?.maxNights,s?.adults,s?.ages,
+        ['results','filters','hotel'].includes(screen)?[state.filters,state.sort,state.selectedDate,state.onlyFavorites]:null,
         ['hotel','gallery','tour','lead'].includes(screen)?state.hotelId:null,['tour','lead'].includes(screen)?state.selected?.key:null]);
     }
     function saveView() {
@@ -240,7 +241,7 @@
       if(!saved&&!fresh)return;
       const f=saved?.focus,target=f?[...screen.querySelectorAll('button,input,select,summary')].filter(node=>node.tagName===f.tag&&(!f.attribute||node.getAttribute(f.attribute)===f.value))[f.index]:null;
       const closed=target?.closest('details:not([open])'),available=target&&!target.disabled&&!target.closest('[hidden]')&&(!closed||closed.querySelector('summary')===target);
-      const heading=screen.querySelector('h1,h2');
+      const heading=shownScreen==='results'?screen.querySelector('[data-result-count]'):[...screen.querySelectorAll('h1,h2')].find(node=>!node.closest('[hidden]'));
       if(available)target.focus({preventScroll:true});else if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
       if(saved){const top=available&&target.getBoundingClientRect().height?window.scrollY+target.getBoundingClientRect().top-f.top:saved.top;window.document.scrollingElement?.scrollTo?.({top:Math.max(0,top),behavior:'instant'});}
       else root.scrollIntoView?.({block:'start',behavior:'instant'});
@@ -387,6 +388,7 @@
       renderResultConstraints(found,loadingEmpty,errorEmpty,partialEmpty);
       syncFavoriteControls();
       renderCalendar();redrawIcons();
+      if(shownScreen==='results'&&state.screen==='results')shownView=viewKey('results');
     }
     function concreteGroupOffers(offer) {
       const entry=groupExpansions.get(offer);
