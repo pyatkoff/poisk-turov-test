@@ -1,0 +1,153 @@
+name: MATCH December81154 pending audit v1
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php
+      - .github/workflows/hotel-match-december81154-pending-audit-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-december81154-pending-audit-1971-20260920-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-december81154-pending-audit-1971-20260920-v1
+  BASE_SHA: 3e1b0585739372998abf27087531f90a2a50c6a4
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5751067043'
+  PRIOR_ARTIFACT: '10608227589'
+  PRIOR_ZIP_SHA: c43816be9862b83721bdff39dc282794160e4c979764cc7d7171fc9c4f311cca
+  PRIOR_RESULT_SHA: dffa9cbfd64c8d14104cfe28cffeb0b08acb3aeca17b12ee07f48ad860982d67
+  RETAINED_ARTIFACT: '10588338849'
+  RETAINED_ZIP_SHA: f360237113f3c65003fc564efab5749f2ecc66fed41881a3043b526e7b3db5fc
+  CATALOG_FILE: raw-catalog-3565a80c17b2.json
+  CATALOG_SHA: 05a13bd6b8dd9821e630dc7cbe9ef7e55de70405e4eb37fad413bba36592c1ba
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-december81154-pending-audit-1971-20260920-v1' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.SOURCE_SHA }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p inputs payload/input payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          expected={'scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php','.github/workflows/hotel-match-december81154-pending-audit-v1.yml'}
+          assert actual==expected,actual
+          assert subprocess.check_output(['git','rev-parse','HEAD:app/integrations/anex-search-mapping-registry.php'],text=True).strip()=='cc135a95d2a6e0f73ce50be2141c9b8a26fddc58'
+          PY
+          php -l scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php
+          php scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json'))
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530') and c['created_at']==c['updated_at']
+          for s in (os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['PRIOR_ARTIFACT'],os.environ['PRIOR_ZIP_SHA'],os.environ['PRIOR_RESULT_SHA'],os.environ['RETAINED_ARTIFACT'],os.environ['CATALOG_SHA'],'supplier/Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0','DB/mapping writes0','safe_to_accept_pending_now=true'):
+              assert s in c['body'],s
+          PY
+          cp scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+      - name: Verify immutable saved evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$PRIOR_ARTIFACT/zip" > inputs/prior.zip
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$RETAINED_ARTIFACT/zip" > inputs/retained.zip
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          p=pathlib.Path('payload/input');a=pathlib.Path('inputs/prior.zip');b=pathlib.Path('inputs/retained.zip')
+          assert hashlib.sha256(a.read_bytes()).hexdigest()==os.environ['PRIOR_ZIP_SHA']
+          assert hashlib.sha256(b.read_bytes()).hexdigest()==os.environ['RETAINED_ZIP_SHA']
+          with zipfile.ZipFile(a) as z:
+              raw=z.read('server/result.json');assert hashlib.sha256(raw).hexdigest()==os.environ['PRIOR_RESULT_SHA'];d=json.loads(raw)
+              assert d['state']=='completed_current_hold_no_http' and d['provider_calls']==0 and d['local_hotel_id']==81154 and d['anex_native_id']==35406 and d['samo_hotel_id']==2000073578
+              rows=d['preflight']['source_identity_rows'];assert len(rows)==1 and rows[0]['supplier_namespace']=='andromeda_catalog' and rows[0]['external_hotel_id']=='2000073578' and rows[0]['decision_status']=='pending' and rows[0]['local_hotel_id'] is None
+              p.joinpath('previous-result.json').write_bytes(raw)
+          with zipfile.ZipFile(b) as z:
+              raw=z.read('server/'+os.environ['CATALOG_FILE']);assert hashlib.sha256(raw).hexdigest()==os.environ['CATALOG_SHA'];cat=json.loads(raw)
+              hs=[h for h in cat['HOTELS'] if int(h.get('id',0))==2000073578];assert len(hs)==1 and int(hs[0].get('stateKey',0))==126 and str(hs[0].get('star'))=='4'
+              p.joinpath('vietnam-catalog.json').write_bytes(raw)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+              time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Seal reservation before database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload');digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in p.rglob('*') if x.is_file()}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'base_sha':os.environ['BASE_SHA'],'claim_id':int(os.environ['CLAIM']),'state':'reserved_before_db_read','prior_result_sha256':os.environ['PRIOR_RESULT_SHA'],'catalog_sha256':os.environ['CATALOG_SHA'],'supplier_calls':0,'provider_calls':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode()
+          with (p/'reservation.json').open('xb') as f:f.write(raw);f.flush();os.fsync(f.fileno())
+          pathlib.Path('result/reservation.json').write_bytes(raw);digests['reservation.json']=hashlib.sha256(raw).hexdigest();(p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-december81154-pending-audit-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Audit CURRENT pending source read-only
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null;test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/input payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_december81154_pending_audit_v1.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";tar -czf - -- reservation.json execution-reservation.json result.json receipt.json" > result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?;set -e;printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json;test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result');s=p/'server';s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames());assert names==['execution-reservation.json','receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers():assert m.isfile() and m.size<=64000000;s.joinpath(m.name).write_bytes(t.extractfile(m).read())
+          assert p.joinpath('reservation.json').read_bytes()==s.joinpath('reservation.json').read_bytes()
+          r=json.loads(s.joinpath('result.json').read_bytes());q=json.loads(s.joinpath('receipt.json').read_bytes());digest=hashlib.sha256(s.joinpath('result.json').read_bytes()).hexdigest()
+          assert r['state']==q['state']=='completed_read_only' and q['result_sha256']==digest and q['readback_verified'] is True
+          assert r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA'] and r['operation_id']==q['operation_id']==os.environ['OPERATION_ID']
+          for k in ('supplier_calls','provider_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls','database_writes','mapping_writes'):assert r[k]==0
+          assert r['safe_to_write_now'] is False and r['local_hotel_id']==81154 and r['anex_native_id']==35406 and r['samo_hotel_id']=='2000073578'
+          assert len(r['source_identity_rows'])==1 and r['source_identity_rows'][0]['decision_status']=='pending' and r['source_identity_rows'][0]['local_hotel_id'] is None
+          summary={k:r[k] for k in ('state','clock','safe_to_accept_pending_now','acceptance_reasons','current_anex_resolution','direct_place_confirmed','actual_star_agreement','retrieved_token_candidates')};summary['result_sha256']=digest
+          p.joinpath('verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n');print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-december81154-pending-audit-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
