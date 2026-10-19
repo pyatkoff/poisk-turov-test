@@ -50,14 +50,19 @@ sourcee8ba1e0e is checked and integrated9130a6aa, terminal6278527732;
 All843product payload hashes unchanged; no new publication/runtime replay.
 Site199/d827, old transfer and old permission-wait pointers are dated history.
 
-Current stage: FINAL_PREVIEW_ACCEPTANCE_PENDING_EXTERNAL_SCOPES.
-One next result: separate acceptance of the installed coherent NEXT UI in its
-actual evidence scope. SEARCH owns this stage, read-only QA reviews the same
-artifact. Reuse accepted compiled6viewport/family/calendar evidence; the nearest
-missing action is the installed native mobile journey. Its exact condition is
-an available permitted native mobile runtime/device; physicalSafari/keyboard/
-panels/safearea are recorded separately. No unchanged capability probing or
-new test-only/cosmetic queue. Fix only confirmed material defects coherently.
+Owner20.10.2026 00:52 narrows current UI work to430/mobile and1280/desktop
+until the coherent applicable UI reaches9.5; other widths are deferred until
+after that milestone. Existing heights/short1280x720 evidence are reused.
+Current stage: TWO_WIDTH_UI_FINAL_REVIEW_WITH_EXTERNAL_SCOPES_OPEN.
+One next result: bounded whole-path review of retained exact430/1280 family4647
+andCalendar4649 frames/actions in the existing audit, then only a confirmed
+material defect or exact missing action. Do not rerun accepted byte-identical
+coverage or require native390 as the sole next step. Native430/physicalSafari/
+OSkeyboard/panels/safearea remain separateN where unmeasured; compiled is not
+installed acceptance and does not establish globalDONE. No unchanged capability
+probing/new cosmetic queue or paid retry of consumedTinyFish6279010055.
+Required final-source CI/workflows remain intact even if stockCI covers more
+widths; avoid extra manual/paid passes. This scope change gives UI delta0.
 
 The active plan names the existing boundary owners and conditions for Rix
 canonicalalias/submittedIDs, INT repeated/all-pair authority, real lead delivery
