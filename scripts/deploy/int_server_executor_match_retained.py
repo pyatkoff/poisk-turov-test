@@ -86,9 +86,11 @@ def project_retained_target(stage):
     prior=safe_json(target/'result.json',32*1024*1024);reservation=safe_json(target/'reservation.json',65536)
     parent=prior.get('match_retained',{}).get('data',{});capture=parent.get('capture',{})
     if (prior.get('status')!='complete' or prior.get('mode')!='match-retained-intake'
+            or prior.get('production_unchanged') is not True
             or prior.get('operation_id')!=target_name or reservation.get('operation_id')!=target_name
             or parent.get('operation_id')!=target_name or parent.get('source_sha')!=reservation.get('source_sha')
             or capture.get('state')!='captured_read_only'
+            or hashlib.sha256(json.dumps(parent,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=prior.get('match_retained',{}).get('evidence_sha256')
             or any(type(prior.get(k)) is not int or prior[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes'))):
         fail('retained_projection_parent_not_complete')
     raw=target/'retained-raw.ndjson'

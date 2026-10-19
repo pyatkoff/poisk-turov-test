@@ -50,9 +50,10 @@ class ContractTest(unittest.TestCase):
             raw=(json.dumps(scope)+'\n').encode();(target/'retained-raw.ndjson').write_bytes(raw)
             capture={'state':'captured_read_only','raw_sha256':hashlib.sha256(raw).hexdigest(),
                      'raw_bytes':len(raw),'rows':{k:0 for k in ('observation','legacy_source','identity','target')}}
-            prior={'operation_id':OP,'mode':'match-retained-intake','status':'complete',
+            prior={'operation_id':OP,'mode':'match-retained-intake','status':'complete','production_unchanged':True,
                    'supplier_calls':0,'database_writes':0,'mapping_writes':0,
                    'match_retained':{'data':{'operation_id':OP,'source_sha':SHA,'capture':capture}}}
+            prior['match_retained']['evidence_sha256']=hashlib.sha256(json.dumps(prior['match_retained']['data'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
             (target/'reservation.json').write_text(json.dumps({'operation_id':OP,'source_sha':SHA}))
             (target/'result.json').write_text(json.dumps(prior))
             before={p.name:p.read_bytes() for p in target.iterdir()}
