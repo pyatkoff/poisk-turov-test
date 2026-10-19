@@ -76,3 +76,9 @@ jobs:
               raise SystemExit(1)
           print('OWNER_DIRECTION_SECURITY_GUARD_OK mode=search_ux_ds2 stage=SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE design_system=2.0 technical_refactor=paused')
           PY
+      - name: Validate Search3 reference boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/validate_search3_reference_dossier.py
+          python3 tests/search3_reference_dossier_test.py
