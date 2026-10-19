@@ -1287,14 +1287,14 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "FINAL_PREVIEW_ACCEPTANCE_PENDING_EXTERNAL_SCOPES",
+    "status": "TWO_WIDTH_UI_FINAL_REVIEW_WITH_EXTERNAL_SCOPES_OPEN",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "updated_at": "2026-10-20",
-    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей.",
+    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа.",
     "acceptance_status": "SITE203_PUBLISHED_FAMILY_CALENDAR_COMPILED_ACCEPTED_WHOLE_PRODUCT_OPEN",
     "last_fully_checked_release_sha": "9130a6aa28f4319fcab24c65a817a510fd677417",
     "published_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
@@ -1316,11 +1316,11 @@
       ],
       "score_status": "Existing SEARCH-QUALITY-1/audit6278536658 authoritative. Calendar4649 bounded compiled FIRST baseline9.5/UI delta0; broad installed Calendar2/N/2/N/2 without sum, family carried6274732781. No whole-product9.5 or transfer of stage scores."
     },
-    "next_action": "Отдельная фактическая приёмка установленного цельного original NEXT3bdd/app7ae9ba по существующему audit. Ближайшее ещё не принятое действие — mobile путь поиск→отель→тур→optional рейсы→контакт→возврат на штатном разрешённом native mobile runtime; physicalSafari/OSkeyboard/panels/safearea отдельно. Условие продолжения — доступный такой runtime/устройство. До изменения capability/artifact/риска не повторять compiled6viewport/family/Calendar4649/desktop/старыеlive/ключи/CI/deploy. Исправлять только новые подтверждённые существенные дефекты связно. Rix canonicalalias/liveIDs, INT price authority, отключённая real delivery и production — отдельные точные условия таблицы activeplan, не новые операции. Если безопасного шага нет, сохранить одно условие, без повторного аудита/отчёта.",
+    "next_action": "Один итоговый review существующих exact430/1280 кадров и действий family4647/Calendar4649 в том же SEARCH-QUALITY-1 для цельного пути поиск→отель→exact тур→optional рейсы→контакт→возврат. Сохранить фактические пять оснований покрытых UI-строк, назвать только оставшийся существенный дефект или точный недостающий action; принятые байт-идентичные проверки не повторять. До применимого цельного UI≥9.5 работать только на430/1280, остальные ширины deferred до этого результата. Installed native430/physical/real supplier/lead/production — отдельные честныеN и условия; compiled не подменяет installed, отсутствие resize не единственный nextstep всего проекта. Исправлять только подтверждённые существенные дефекты связным пакетом с обычными mandatoryCI/approval/publisher gates; workflows не менять, платныйTinyFish6279010055 consumed.",
     "next_task": {
-      "scope": "Один результат: отдельная приёмка текущего установленного NEXT в фактическом UI scope и исправление подтверждённых существенных дефектов. Ближайшее missing действие — установленный native mobile полный путь; условие — разрешённая mobile capability/устройство. Calendar4649/family завершены в exact compiled scope и не возвращаются в очередь.",
+      "scope": "Цельный UI≥9.5 на двух рабочих ширинах430/mobile и1280/desktop. Сначала bounded closeout уже имеющихся exact430/1280 кадров/действий в существующем audit, затем только подтверждённый существенный дефект/точный missingaction. Остальные размеры — после завершения этого этапа; Calendar4649/family не возвращаются в тестовую очередь.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён.",
-      "acceptance": "Тот же SEARCH-QUALITY-1 12/11/5,0/1/1.5/2,N без суммы; ключевые применимые полностью измеренные строки≥9.5. Использовать сохранённое exact evidence; missing действия закрывать в том же связанном пути, не создавать PR на каждый N. Installed UI/physical/real supplier/delivery и глобальноеDONE разделены; обязательные N остаются открытыми.",
+      "acceptance": "Тот же SEARCH-QUALITY-1 12/11/5,0/1/1.5/2,N без суммы; ключевые полностью измеренные применимые UI-строки430/1280≥9.5. Exact retained evidence переиспользуется без прогона и без роста за смену scope. Остальные ширины deferred; installed native430/physical/real supplier/delivery/production остаются отдельнымиN до собственного evidence. Снижение матрицы не является installed9.5/globalDONE.",
       "execution": "SEARCH отвечает за installed UI и подключённые owners, независимый read-only QA проверяет тот же artifact; координатор4217 сохраняет один текущий шаг. Свежие heads/claims/currentplan/state; неизменённые инструкции/evidence по SHA. Owner19.10 23:32 allowance fulfilled/consumed4649; ожидание того же разрешения снято. Новый самостоятельный QA-only scope требует прямого конкретного поручения, необходимые regression разрешённого дефекта — обычные gates. Без новых browser/server/install/carrier/workflow обходов и без успешных повторов.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
@@ -1456,10 +1456,10 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "COMPILED_CALENDAR_FAMILY_COMPLETE_NATIVE_MOBILE_CONDITION_PENDING",
+        "status": "TWO_WIDTH_UI_RETAINED_REVIEW_READY_NATIVE_PHYSICAL_SEPARATE_N",
         "checked_at": "2026-10-20",
-        "scope": "Stock compiled acceptance of current3bdd completed in4647/family and4649/calendar. NativeCloudChrome desktop remains available; resize unavailable at retained check. Missing installed native mobile/physicalSafari/keyboard/safearea requires its actual permitted capability/device. No new capability probe or all-browser-unavailable claim;200%deferred.",
-        "required_next": "Отдельная фактическая приёмка установленного цельного original NEXT3bdd/app7ae9ba по существующему audit. Ближайшее ещё не принятое действие — mobile путь поиск→отель→тур→optional рейсы→контакт→возврат на штатном разрешённом native mobile runtime; physicalSafari/OSkeyboard/panels/safearea отдельно. Условие продолжения — доступный такой runtime/устройство. До изменения capability/artifact/риска не повторять compiled6viewport/family/Calendar4649/desktop/старыеlive/ключи/CI/deploy. Исправлять только новые подтверждённые существенные дефекты связно. Rix canonicalalias/liveIDs, INT price authority, отключённая real delivery и production — отдельные точные условия таблицы activeplan, не новые операции. Если безопасного шага нет, сохранить одно условие, без повторного аудита/отчёта.",
+        "scope": "Accepted compiled430/1280 frames/actions from family4647/Calendar4649 are reused for the owner20.10 two-width UI milestone; other widths deferred until coherent applicable UI≥9.5. NativeCloudChrome desktop remains available without verified resize; actual native430/physicalSafari/keyboard/safearea stayN in their own scope. No replay or compiled→installed score inheritance.",
+        "required_next": "Один итоговый review существующих exact430/1280 кадров и действий family4647/Calendar4649 в том же SEARCH-QUALITY-1 для цельного пути поиск→отель→exact тур→optional рейсы→контакт→возврат. Сохранить фактические пять оснований покрытых UI-строк, назвать только оставшийся существенный дефект или точный недостающий action; принятые байт-идентичные проверки не повторять. До применимого цельного UI≥9.5 работать только на430/1280, остальные ширины deferred до этого результата. Installed native430/physical/real supplier/lead/production — отдельные честныеN и условия; compiled не подменяет installed, отсутствие resize не единственный nextstep всего проекта. Исправлять только подтверждённые существенные дефекты связным пакетом с обычными mandatoryCI/approval/publisher gates; workflows не менять, платныйTinyFish6279010055 consumed.",
         "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6278527732"
       },
       "approved_site203": {
@@ -1500,6 +1500,12 @@
         "owner_allowance": "Owner19.10.2026 23:32 direct finite scope fulfilled/consumed PR4649.",
         "scope": "6viewports range/budget/Apply/reopen/BackForward,18frames/6receipts; controlled readstates390+1280x720.15clock receipts and22existing selected-session cases pass; fourapplicable CI successful. Same installed3bdd/app7ae9ba,843payload hashes unchanged. FIRST bounded Calendar baseline9.5/UI delta0; broad/physical/live scopes not inherited.",
         "evidence_index_sha256": "a7662ae475c9c0e96d35c441a05acc38cd2e9ad512147d9ba01a105b6fe7c3fb"
+      },
+      "tinyfish_mobile_attempt": {
+        "run_id": "4df685a1-b55e-40f2-8272-d7f1138eaeb2",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6279010055",
+        "status": "TERMINAL_CONSUMED_VIEWPORT_CAPABILITY_UNAVAILABLE_NO_REPLAY",
+        "scope": "No390viewport, no mobile frames/path or exact script verification.11steps,observed wallet debit0.176USD; no accepted UX evidence."
       }
     },
     "published_release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
@@ -1507,15 +1513,26 @@
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
       "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
-      "priority": "Emergency/data/lead-loss first; one final installed-preview acceptance result and confirmed material defects. Completed Calendar4649 is not the next work. This control correction gives no UX points/new supplier/lead/production authority.",
+      "priority": "One coherent UI closeout at430/1280 until applicable UI≥9.5, then other widths. Review retained same-artifact frames/actions first; only confirmed material defects justify product repair. Completed4647/4649 andTinyFish6279010055 no-replay; no UX points for scope/CI/plan.",
       "parallelism": "One writer/shared owner and integrator; independent read-only plan/frame/behavior review in parallel; separate publisher only for ready changed artifact.",
       "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
-      "blocker_scope": "Nearest missing action is installed native mobile journey; exact condition is an available permitted native mobile runtime/device. Existing cloud desktop withoutresize and compiled6viewport cannot substitute physical scope. Other exact data/INT/delivery/production dependencies are in activeplan. No unchanged re-probe/audit or global blocked inference.",
+      "blocker_scope": "Native430/physical and external data/INT/delivery/production conditions remain separateN; lack of resize is not the sole nextstep or a stop to available430/1280 UI work. Compiled is not relabeled installed. Other widths deferred until the coherent two-width UI milestone; no unchanged capability probe/paid retry.",
       "qa_only_authority": "Owner19.10 23:32 explicitly authorized completed4649; both4647/4649 allowances consumed, no stale wait for that same scope. A genuinely new standaloneQA-only packet needs direct concrete instruction; necessary regression of an authorized confirmed defect uses normal gates. Owner20.10 control repair does not authorize live/supplier/lead/production.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
       "verification_pin": "Checkedsource e8ba1e0e/integrated9130a6aa under terminal6278527732; all4checks successful, tree/readback exact. Installedproduct3bdd/readback6273604203 unchanged; no new runtime evidence implied by docs.",
-      "closeout": "Before terminal RELEASE, update active plan/current_task/entry pointers for the finished packet, retain immutable receipts/history and publish one next action/condition. Do not leave completed work as NOT_STARTED or awaiting an already-given allowance. No separate tracker or repeated unchanged reports."
+      "closeout": "Before terminal RELEASE, update active plan/current_task/entry pointers for the finished packet, retain immutable receipts/history and publish one next action/condition. Do not leave completed work as NOT_STARTED or awaiting an already-given allowance. No separate tracker or repeated unchanged reports.",
+      "viewport_scope": {
+        "owner_direction": "20.10.2026 00:52",
+        "current_widths_px": [
+          430,
+          1280
+        ],
+        "other_widths": "deferred until coherent applicable UI reaches9.5, then responsive completion",
+        "heights": "reuse retained matching heights/short1280x720; no extra dimensions for coverage",
+        "ci": "preserve existing required final-source CI/workflows even if broader; no additional manual/paid passes for deferred widths",
+        "score": "exact measured scope only; UI delta0 for this control change"
+      }
     },
     "last_fully_checked_source_sha": "e8ba1e0ea3801bd3c7dea9b42af7a3658235b738"
   },
