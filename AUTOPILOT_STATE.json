@@ -1286,19 +1286,19 @@
   },
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
-    "title": "Search3: приёмка перенесённого Site198 в existing NEXT и устранение подтверждённого Tourvisor root gateway500",
-    "status": "SITE198_TRANSFERRED_DESKTOP_OFFLINE_ACCEPTED_REMAINING_GATES_OPEN",
+    "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
+    "status": "SOURCE_CHECKED_AWAITING_SUPPORTED_VISUAL_QA",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
     "updated_at": "2026-10-19",
-    "owner_request": "10.10.2026: сделать план для автопилотов, чтобы получить поисковик9,5–10 визуально и по юзабилити, хотя бы макеты по этому плану.",
-    "acceptance_status": "SITE198_OWNER_APPROVED_TRANSFERRED_DESKTOP_OFFLINE_ACCEPTED_PHONE_REAL_SUPPLIER_AND_LEAD_DELIVERY_PENDING",
+    "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков.",
+    "acceptance_status": "NEXT55FB_PUBLISHED_ORIGINAL_LIVE_JOURNEY_BOUNDED_ACCEPTED_COMPACT_DRAFT_SOURCE_ONLY_MOBILE_AND_PHYSICAL_PENDING",
     "last_fully_checked_release_sha": "1ec419388769d14949a2bad79d8e13465f2f8978",
-    "published_source_sha": "05c292249d6e1d027ada3a69c1bc78af9c3ae8a9",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6257267437",
+    "published_source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
     "planning_base_release_sha": "2816925ef50b56ed97a760cf2dd28ef318f3e7d4",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
@@ -1316,13 +1316,13 @@
       ],
       "score_status": "No new assessment; not_measured stays not_measured. A mockup does not close functional, authority, identity or architecture criteria."
     },
-    "next_action": "Продолжать с установленного original NEXT source05c292249d6e1d027ada3a69c1bc78af9c3ae8a9: PR4626 опубликован и прочитан обратно по receipt6257267437. Утверждённый Site198 и принятый desktop offline путь не повторять. Root API PR4618 уже установлен18.10.2026 по terminal6254338132; установку, старый search13905446138 и consumed/failed/UNKNOWN операции не переигрывать. Следующий интеграционный гейт — отдельно разрешённый и бюджетированный новый ограниченный TV-поиск через актуальный штатный контур с новой search/generation identity и фактическим HTTP/API/UI readback; установка/CI не доказывают recovery500. До этого допуска продолжать только независимую разрешённую phone-приёмку того же artifact без новых supplier запросов или реальных заявок; documented viewport/access blocks не обходить. Physical iPhone/Safari/keyboard/safe-area, authority/all-flight-prices, lead delivery и production остаются отдельными гейтами;200% текста отложено владельцем.",
+    "next_action": "Продолжить текущий compact ANEX draft d827ccf7d73c5af877945972a801fda825856824 после доступности поддержанного Sites visual QA: matched360/390/430/768/1280 и1280×720, полный выбор/честный итог за всех/контакт/Back-reopen. Сохранить ветку после успешной текущей цены без выбора рейсов («Рейс уточнит менеджер»). Пока managed Sites не имеет $control-browser, не запускать preview server/browser install/обходной carrier, не создавать следующие визуальные черновики и не повторять source/CI/evidence без нового основания. Сохранить released checkpoint/точный blocker; выбрать только независимый разрешённый шаг по новому подтверждённому дефекту. Далее whole-version visual+behavior approval → existing NEXT owners → applicable exact-head CI → отдельный stock publisher exact artifact/readback → отдельная установленная приёмка. Recovery6263876510, actual original journey6264963728 и NEXT55fb6265776204 уже terminal/consumed, не повторять.200%deferred.",
     "next_task": {
-      "scope": "Текущий original NEXT после Site198 и опубликованных подтверждённых исправлений: оставшаяся phone/mobile приёмка того же artifact и отдельно допущенный новый контроль живого поиска после уже завершённой установки root API. Весь design deliverable и непроверенные release gates остаются открытыми.",
-      "design_owner": "SITE #1719 сохраняет existing public Sites project/history; SEARCH #1646 владеет existing NEXT owners. Один writer на shared paths и отдельный publisher; design-v2 — другой target.",
-      "acceptance": "SEARCH-QUALITY-1/evidence scopes неизменны. Site198 approval/transfer и desktop offline acceptance имеют exact receipts. Новые UI концепции требуют approval. Desktop local variant/pair/price/draft/consent/Back не доказывает phone/physical Safari, live supplier/price authority, lead delivery, production или полный9.5.",
-      "execution": "Свежие claims/heads/CI/receipts; latest published frontend и root API installation приведены в resume_evidence. Source claim6257061254 и publisher6257230870 RELEASE, command6257231708/run39181957123 consumed. Не повторять принятые design/transfer/desktop, API install6254320607/run39160145003 и completed/failed/UNKNOWN operations. Для нового supplier search нужен отдельный exact admission/budget, не исторический executor или новая метка старой операции. При блокере брать только независимую разрешённую SEARCH-задачу; без duplicate tracker/schedule и повторных неизменных проверок ради оценки.",
-      "protected": "Tourvisor+direct ANEX remain current live sources; SAMO paused. Preserve mobile photo1.8,7-date strip/month/year, primary fields, logo, exact offer/search/party context, URL/payload/auth, price/fuel/authority, provider/lead/CRM/Metrika/goals, DB/LOCAL/MATCH. No new supplier requests, real lead send, main/production/sibling/SEO or schedule/enabled/paused changes. 200% text work remains deferred by owner; new UI concepts still require exact approval."
+      "scope": "Одна цельная поставка: компактные exact flight pairs → честный итог за группу → контакт → Back/reopen; optional flight/manager branch. Затем согласованный original NEXT перенос и накопленная mobile-приёмка всего пути.",
+      "design_owner": "SITE#1719: тот жеPUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public. SEARCH#1646: только existingNEXT/release/search3-production-ready-v1. Один writer shared paths и отдельный publisher. Design-v2 — другой target/владелец, evidence/баллы не наследуются.",
+      "acceptance": "SEARCH-QUALITY-1:12 исторических/11обязательных строк/5критериев0/1/1.5/2; fully measured применимые строки≥9.5, N без суммы. Source/DOM не visual/clickable passed; mockup/prototype/compiled/installed/physical/real supplier отдельно. Для whole-version approval реальные кадры и действия всего пакета; перенос не закрывает installed mobile/physical/real delivery.",
+      "execution": "WIP1. Продолжать d827/terminal6266119798, не новый draft/renderer. Узкие regressions при реализации, полный применимый exact-head набор на готовом кандидате; successful artifacts/неизменённое evidence переиспользовать. Failed/pending/skipped не passed; no CI/deploy rerun ради отчёта/баллов, no draft/ready toggling. После approval — отдельный exclusive stock NEXT-only publisher/readback, затем те же сценарии. Нет безопасного независимого шага — один blocker/условие, без повторяющихся неизменных отчётов.",
+      "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
       {
@@ -1356,25 +1356,91 @@
       "artifact_id": 11958778448,
       "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
       "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
-      "remaining": "Phone/mobile, physical Safari, separately authorized real supplier/authoritative pricing/lead delivery, full comparable quality evaluation and separate production approval remain open. No score inheritance or full9.5.",
-      "historical_pins": "last_fully_checked_release_sha/planning_base_release_sha, existing_unapproved_drafts and scheduler_observation are retained dated provenance, not current execution pins or new authorization.",
+      "remaining": "Bounded original desktop live journey on05c is accepted at #4217/6264963728 and consumed: do not repeat it. Broader or changed-risk live acceptance, authoritative prices of other variants/pairs, mobile/physical Safari, real lead delivery, full comparable quality evaluation and separate production approval remain open under their exact gates. No score inheritance or full9.5.",
+      "historical_pins": "last_fully_checked_release_sha/planning_base_release_sha, existing_unapproved_drafts, scheduler_observation, dated_history/oldinstalls are datedprovenance/no-replay, notcurrentexecutionpins/commands/newauthority.",
       "latest_next": {
-        "source_sha": "05c292249d6e1d027ada3a69c1bc78af9c3ae8a9",
-        "release_sha": "2afcb2515b090a6a8eb8cee0a5da62e05a7ac88c",
-        "build_run": 39181157159,
-        "artifact_id": 12155962736,
-        "publish_run": 39181957123,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6257267437",
-        "scope": "Local-civil-day defaults/minimum fix;9 native timezone cases plus independent12; frozen-clock compiled390/1280 form/calendar and4frame review PASS. Installed43asset/9route readback and offline mixed app1772a1216ca1. Physical Safari and real supplier remain separate; baseline Site198/desktop evidence below is retained at its original source."
+        "source_sha": "55fbf6d98db877933ccf63ee2eb67dab2eb82b38",
+        "release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
+        "build_run": 39240154686,
+        "artifact_id": 12181500570,
+        "publish_run": 39241812038,
+        "deployment_receipt_artifact": 12182016702,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6265776204",
+        "compiled_app_sha256": "049239db1c0a92b44e6bbd5edcde8a84c9156a4bf1828c5a76df952b0978809a",
+        "scope": "PR4634 published/status-count-action repair; all exactheadCI/fiveordinarywidthframes and stock43asset/9route readback PASS; native1363x936 demo open/close retained selection. No NEWactualpartial/physical acceptance or scoreinheritance."
       },
       "root_api_install": {
-        "source_sha": "fcfe503e33f902ec19a9eff8cfc7985b1c242f04",
-        "confirmed_installed_at": "2026-10-18T19:45:04Z",
-        "run_id": 39160145003,
-        "artifact_id": 12148805797,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6254338132",
-        "status": "Installed/readback verified; fixed operation completed/consumed/no-replay; observed HTTP500 recovery/live supplier authority not_measured."
+        "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
+        "release_sha": "4ff952d8d5c8a943a7ba6b3af78e06f206e1e25e",
+        "run_id": 39228513520,
+        "artifact_id": 12176595784,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6263819913",
+        "status": "Terminal installed/readback; operation install-20261019-dependency-reuse-v1 consumed/no-replay; oldLOCALclassbody preserved, no auth/APIversion/URL change."
+      },
+      "dated_history": {
+        "latest_next_before_55fb": {
+          "source_sha": "05c292249d6e1d027ada3a69c1bc78af9c3ae8a9",
+          "release_sha": "2afcb2515b090a6a8eb8cee0a5da62e05a7ac88c",
+          "build_run": 39181157159,
+          "artifact_id": 12155962736,
+          "publish_run": 39181957123,
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6257267437",
+          "scope": "Local-civil-day defaults/minimum fix;9 native timezone cases plus independent12; frozen-clock compiled390/1280 form/calendar and4frame review PASS. Installed43asset/9route readback and offline mixed app1772a1216ca1. Physical Safari and real supplier remain separate; baseline Site198/desktop evidence below is retained at its original source."
+        },
+        "root_install_before_recovery_20261019": {
+          "source_sha": "fcfe503e33f902ec19a9eff8cfc7985b1c242f04",
+          "confirmed_installed_at": "2026-10-18T19:45:04Z",
+          "run_id": 39160145003,
+          "artifact_id": 12148805797,
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6254338132",
+          "status": "Installed/readback verified; fixed operation completed/consumed/no-replay; observed HTTP500 recovery/live supplier authority not_measured."
+        }
+      },
+      "root_recovery": {
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6263876510",
+        "run_id": 39228739972,
+        "artifact_id": 12176371374,
+        "operation": "tv-gateway-recovery-20261019-v1",
+        "status": "TERMINAL_CONSUMED_NO_REPLAY",
+        "scope": "OneNEWROOTAPIv1search200/200/200/progress100/1group9tours. Not finalpairauthority/fullpath; DBwritesnot_measured."
+      },
+      "actual_original_live_journey": {
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6264963728",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6264978004",
+        "operation": "live-ui-journey-20261019-v1",
+        "status": "TERMINAL_CONSUMED_NO_REPLAY",
+        "source_sha": "05c292249d6e1d027ada3a69c1bc78af9c3ae8a9",
+        "scope": "Chrome1363x936 originalNEXT oneMoscowTurkey2–8Nov/7n/2AFind;276hotels521variants observed; RIA3678/Standard/Breakfast5–12Nov40pairs; oneDP995/996calc86535→97015RUBwhole2A; previewrequiredphone/Back/reopen retainsidentity. No reallead/secondpair/Continue/retry; not allpairs/mobile/physical."
+      },
+      "rix_picker": {
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6264165001",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6264170979",
+        "status": "EXISTING_DESKTOP_CANONICAL_BEHAVIOR_ACCEPTED_NOT_NEW_IMPLEMENTATION",
+        "scope": "Beforeoffercards canonical suggestions/realphotos/geography/stars/exact4234+813OR/Apply/Cancel/clear/empty/showmore/focus.10suggestions=limit, not globalcount. Remaining installed360/390/430/768, physicalkeyboard/safearea, completealias and submittedexactIDs in separatelyauthorizedsearch."
+      },
+      "compact_flight_draft": {
+        "source_sha": "d827ccf7d73c5af877945972a801fda825856824",
+        "base_source_sha": "611502562a25c12149a96da9c10d28f1e07da9f5",
+        "app_sha256": "64279b30971d095cda6fdc7fe10cf370f0f62323b3d8ce2bd6b1b38a383721cb",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6266119798",
+        "status": "SOURCE_CHECKED_NOT_PUBLISHED_NOT_VISUALLY_APPROVED",
+        "scope": "Existingcompactflightowner reused;40fictional source-testpairs/fullunparsedlabels/unknown-before-oneexplicitcalc/pending-error-expiry/TVmarkup parity PASS. App+regression+existingauditonly;fixture-dataunchanged. No frames/fullconnectedpath/Siteversion/NEXTtransfer/realANEXauthority."
+      },
+      "supported_visual_qa": {
+        "status": "BLOCKED_CAPABILITY_NOT_OWNER_AUTHORIZATION",
+        "checked_at": "2026-10-19",
+        "scope": "ManagedSites1 lacks$control-browser; skill/metadata discovery found no nativecapability. SitesSKILL prohibits previewserver/browserinstall/improvisedalternative. Recheck only onchangedcapability/newevidence; no newdraft/unchangedaudits.",
+        "required_next": "SupportedSitesQA exactd827, matchedframes/actions, wholeversionownerapproval before newNEXTlayout."
       }
+    },
+    "published_release_sha": "db3124a2a686f3d37067ceb6afac3fccc2299747",
+    "execution_policy": {
+      "product_wip_limit": 1,
+      "unreviewed_visual_candidates_limit": 1,
+      "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
+      "priority": "Emergency/data/lead-loss first; otherwise finish current complete user delivery. No cosmetic/docs/test-only product packet without a confirmed defect.",
+      "parallelism": "One source writer/shared owner and integrator; independent read-only QA/retained-contract review; separate publisher after exact artifact admission.",
+      "reporting": "New user effect or new decision/blocker; exactstage/source/evidence and existingrubricdelta fornewresult. No points for source/CI/plan and no repeated unchanged report."
     }
   },
   "local_filter_zero_match_recovery_20260910": {
