@@ -672,5 +672,504 @@ class RemoteTests(unittest.TestCase):
         self.assertFalse((self.private / CHECK.OPERATION).exists())
 
 
+def anex_event_fixture():
+    value = event_fixture()
+    value["comment"]["body"] = (
+        f"/check-search3-tv-anex-key {CONTROL} tv-anex-key-20261019-v1 6261699999"
+    )
+    return value
+
+
+def anex_budget_fixture(**changes):
+    value = json.loads(budget_fixture()["body"].split("\n", 1)[1])
+    value.update(
+        operation_id="tv-anex-key-20261019-v1",
+        account_env="TOURVISOR_ANEX_JWT",
+        approval_reference=6262286069,
+    )
+    value.update(changes)
+    note = budget_fixture()
+    note["body"] = "SEARCH3_TV_ANEX_KEY_BUDGET_V1\n" + json.dumps(value, sort_keys=True)
+    return note
+
+
+class AnexKeyAdmissionTests(unittest.TestCase):
+    """The second-key grant cannot silently reuse the consumed root-key grant."""
+
+    def setUp(self):
+        self.network = mock.patch(
+            "urllib.request.urlopen", side_effect=AssertionError("offline tests must not use HTTP")
+        )
+        self.network.start()
+        self.addCleanup(self.network.stop)
+
+    def test_second_key_command_uses_new_fixed_operation_and_owner_identity(self):
+        identity = CHECK.validate_event(anex_event_fixture(), env_fixture(), CHECK.ANEX_PROFILE)
+        self.assertEqual(identity["control_source_sha"], CONTROL)
+        self.assertEqual(identity["budget_comment_id"], 6261699999)
+        for event in (event_fixture(), dict(anex_event_fixture(), action="edited")):
+            with self.subTest(body=event["comment"]["body"], action=event["action"]):
+                with self.assertRaises(RuntimeError):
+                    CHECK.validate_event(event, env_fixture(), CHECK.ANEX_PROFILE)
+        with self.assertRaises(RuntimeError):
+            CHECK.validate_event(anex_event_fixture(), env_fixture())
+
+    def test_second_key_budget_binds_account_grant_and_operation(self):
+        value = CHECK.budget_note(anex_budget_fixture(), NOW, CHECK.ANEX_PROFILE)
+        self.assertEqual(value["account_env"], "TOURVISOR_ANEX_JWT")
+        self.assertEqual(value["approval_reference"], 6262286069)
+        self.assertEqual(value["operation_id"], "tv-anex-key-20261019-v1")
+        for note in (
+            budget_fixture(),
+            anex_budget_fixture(account_env="TOURVISOR_JWT"),
+            anex_budget_fixture(approval_reference=6261576536),
+            anex_budget_fixture(operation_id="tv-20261019-anex13-v1"),
+            anex_budget_fixture(max_http_attempts=4),
+            anex_budget_fixture(reserved_search_units=2),
+        ):
+            with self.subTest(body=note["body"]):
+                with self.assertRaises(RuntimeError):
+                    CHECK.budget_note(note, NOW, CHECK.ANEX_PROFILE)
+        with self.assertRaises(RuntimeError):
+            CHECK.budget_note(anex_budget_fixture(), NOW)
+
+    def test_second_key_budget_is_not_reusable_on_another_provider_day(self):
+        with self.assertRaises(RuntimeError):
+            CHECK.budget_note(anex_budget_fixture(), NOW + dt.timedelta(days=1), CHECK.ANEX_PROFILE)
+
+    def test_second_key_source_admission_keeps_root_operation_history_separate(self):
+        source, tree = "c" * 40, "d" * 40
+        approval_body = "offline second-key owner approval"
+        note = anex_budget_fixture()
+        note["issue_url"] = "https://api.github.com/repos/pyatkoff/poisk-turov-test/issues/4217"
+        responses = {
+            "/git/ref/heads/main": {"object": {"sha": CONTROL}},
+            "/git/ref/heads/release/search3-production-ready-v1": {"object": {"sha": CHECK.RELEASE}},
+            "/contents/v2/api-v2.php?ref=" + CHECK.RELEASE: {"sha": CHECK.API_BLOB},
+            "/issues/comments/6262286069": {
+                "user": {"id": 226193297}, "author_association": "OWNER", "body": approval_body,
+            },
+            "/git/commits/" + CONTROL: {"parents": [{"sha": "b" * 40}, {"sha": source}], "tree": {"sha": tree}},
+            "/git/commits/" + source: {"sha": source, "tree": {"sha": tree}},
+            "/commits/" + source + "/check-runs?per_page=100": {
+                "check_runs": [{"name": name, "status": "completed", "conclusion": "success", "app": {"slug": "github-actions"}} for name in ("guard", "contracts", "live-check-contracts")]
+            },
+            "/issues/4217/comments?per_page=100&page=1": [event_fixture()["comment"], anex_event_fixture()["comment"]],
+            "/issues/comments/6261700001": anex_event_fixture()["comment"],
+            "/issues/comments/6261699999": note,
+        }
+        profile = dict(CHECK.ANEX_PROFILE, approval_hash=hashlib.sha256(approval_body.encode()).hexdigest())
+        identity = CHECK.validate_event(anex_event_fixture(), env_fixture(), profile)
+        with (
+            mock.patch.object(CHECK, "checked_api", side_effect=lambda path: copy.deepcopy(responses[path])),
+            mock.patch("datetime.datetime", FrozenDateTime),
+        ):
+            self.assertEqual(CHECK.admission(identity, profile)["account_env"], "TOURVISOR_ANEX_JWT")
+            prior = copy.deepcopy(anex_event_fixture()["comment"])
+            prior["id"] = 6261698000
+            responses["/issues/4217/comments?per_page=100&page=1"].insert(0, prior)
+            with self.assertRaisesRegex(RuntimeError, "operation_no_replay"):
+                CHECK.admission(identity, profile)
+
+
+class ObservedCalls(list):
+    def __init__(self, observe):
+        super().__init__()
+        self.observe = observe
+
+    def append(self, value):
+        super().append(value)
+        self.observe(len(self))
+
+
+class AnexKeyRemoteTests(unittest.TestCase):
+    """Run the direct second-key program using fake HTTP and real temporary ledgers."""
+
+    def setUp(self):
+        RemoteTests.setUp(self)
+        self.policy.update(
+            operation="tv-anex-key-20261019-v1", direct=True,
+            account_env="TOURVISOR_ANEX_JWT", approval_reference=6262286069,
+        )
+        self.payload["budget"] = json.loads(anex_budget_fixture()["body"].split("\n", 1)[1])
+        self.quota_dir = self.home / ".anytoour-match/provider-quotas"
+        self.quota_dir.mkdir(parents=True, mode=0o700)
+        self.day_path = self.quota_dir / "tourvisor-anex-2026-10-19.json"
+        self.op_path = self.quota_dir / "tourvisor-anex-tv-anex-key-20261019-v1.json"
+        self.write_day()
+
+    def write_day(self, **changes):
+        value = {
+            "provider": "tourvisor-anex", "provider_day": "2026-10-19",
+            "owner_daily_limit": 3000, "tariff_search_units": 16,
+            "physical_http_attempts": 67,
+            "operations": {"other-writer": {"tariff_search_units": 2, "physical_http_attempts": 9}},
+            "retained_metadata": {"owner": "other writer", "unknown": True},
+        }
+        value.update(changes)
+        self.day_path.write_text(json.dumps(value, sort_keys=True))
+        self.day_path.chmod(0o600)
+        return value
+
+    def execute(self, responses=None, **kwargs):
+        kwargs.setdefault("config", {
+            "token": "synthetic.secret.token", "root_equal": False, "same_subject": False,
+        })
+        return RemoteTests.execute(self, responses, **kwargs)
+
+    def test_direct_second_key_uses_fixed_tourvisor_urls_and_internal_bearer(self):
+        before = self.api.read_bytes(), self.app.read_bytes()
+        result, sleep = self.execute()
+        self.assertEqual(result["status"], "fresh_populated_results_verified")
+        urls = [urllib.parse.urlsplit(url) for url, _, _ in self.calls]
+        self.assertEqual([url.path for url in urls], [
+            "/search/api/v1/tours/search", "/search/api/v1/tours/search/2026101900001/status",
+            "/search/api/v1/tours/search/2026101900001",
+        ])
+        self.assertTrue(all(url.scheme == "https" and url.netloc == "api.tourvisor.ru" for url in urls))
+        self.assertEqual(urllib.parse.parse_qs(urls[0].query), {
+            **{key: [str(value)] for key, value in CHECK.PARAMS.items()},
+            "onlyCharter": ["false"], "onlyDirect": ["false"],
+        })
+        self.assertEqual(urllib.parse.parse_qs(urls[1].query), {"operatorStatus": ["false"]})
+        self.assertEqual(urllib.parse.parse_qs(urls[2].query), {"limit": ["25"]})
+        for _, headers, timeout in self.calls:
+            self.assertEqual(headers["Authorization"], "Bearer synthetic.secret.token")
+            self.assertEqual(timeout, 55)
+            self.assertFalse(any(key.lower() in ("cookie", "x-ci-token") for key in headers))
+        self.assertEqual(result["account_env"], "TOURVISOR_ANEX_JWT")
+        self.assertEqual(result["route"], "direct_tourvisor_api")
+        self.assertFalse(result["normal_autosave_enabled"])
+        self.assertEqual(result["database_write_count"], 0)
+        self.assertEqual(result["application_file_writes"], 0)
+        self.assertEqual((self.api.read_bytes(), self.app.read_bytes()), before)
+        sleep.assert_called_once_with(20)
+
+    def test_second_key_and_raw_tours_are_absent_from_retained_receipts(self):
+        result, _ = self.execute()
+        serialized = json.dumps(result)
+        self.assertNotIn("synthetic.secret.token", serialized)
+        self.assertNotIn("tour-1", serialized)
+        self.assertEqual(result["global_daily_usage"], "not_measured")
+        for path in self.home.rglob("*.json"):
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                self.assertNotIn("synthetic.secret.token", text)
+                self.assertNotIn("tour-1", text)
+        self.assertEqual(self.op_path.stat().st_mode & 0o777, 0o600)
+
+    def test_shared_quota_preserves_prior_writer_fields_and_charges_before_http(self):
+        before = json.loads(self.day_path.read_text())
+
+        def observe(attempt):
+            day, operation = json.loads(self.day_path.read_text()), json.loads(self.op_path.read_text())
+            self.assertEqual(day["tariff_search_units"], before["tariff_search_units"] + 1)
+            self.assertEqual(day["physical_http_attempts"], before["physical_http_attempts"] + attempt)
+            self.assertEqual(operation["used"], attempt)
+            self.assertEqual(operation["tariff_used"], 1)
+
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        after = json.loads(self.day_path.read_text())
+        self.assertEqual(after["operations"]["other-writer"], before["operations"]["other-writer"])
+        self.assertEqual(after["retained_metadata"], before["retained_metadata"])
+        self.assertEqual(after["operations"][self.policy["operation"]], {
+            "tariff_search_units": 1, "physical_http_attempts": 3,
+        })
+        self.assertEqual(result["known_accounted_units_before"], 16)
+        self.assertEqual(result["known_accounted_units_after"], 17)
+        self.assertEqual(result["operation_physical_attempts"], 3)
+        self.assertEqual(result["operation_tariff_units"], 1)
+
+    def test_known_daily_cap_exhaustion_blocks_before_any_http(self):
+        before = self.write_day(tariff_search_units=3000)
+        result, sleep = self.execute()
+        self.assertEqual(result["reason"], "quota_exhausted")
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(json.loads(self.day_path.read_text()), before)
+        self.assertFalse(self.op_path.exists())
+        sleep.assert_not_called()
+
+    def test_last_daily_unit_allows_exactly_one_start_and_its_two_readbacks(self):
+        self.write_day(tariff_search_units=2999)
+        result, _ = self.execute()
+        self.assertEqual(result["status"], "fresh_populated_results_verified")
+        self.assertEqual(json.loads(self.day_path.read_text())["tariff_search_units"], 3000)
+        self.assertEqual(len(self.calls), 3)
+
+    def test_existing_operation_companion_is_never_overwritten(self):
+        prior = {"operation": self.policy["operation"], "status": "unknown_no_replay", "retained": "prior owner receipt"}
+        self.op_path.write_text(json.dumps(prior))
+        self.op_path.chmod(0o600)
+        retained = self.op_path.read_bytes(), self.day_path.read_bytes()
+        result, _ = self.execute()
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertEqual((self.op_path.read_bytes(), self.day_path.read_bytes()), retained)
+
+    def test_unknown_operation_in_shared_day_cannot_be_replayed(self):
+        before = self.write_day(operations={self.policy["operation"]: {
+            "tariff_search_units": 1, "physical_http_attempts": 1,
+        }})
+        result, _ = self.execute()
+        self.assertEqual(result["reason"], "quota_operation_exists")
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(json.loads(self.day_path.read_text()), before)
+
+    def test_malformed_or_wrong_day_shared_ledger_blocks_without_replacement(self):
+        for changes in (
+            {"provider_day": "2026-10-18"}, {"provider": "another-account"},
+            {"owner_daily_limit": 3001}, {"tariff_search_units": True},
+            {"physical_http_attempts": -1}, {"operations": []},
+        ):
+            with self.subTest(changes=changes):
+                self.temp.cleanup()
+                self.setUp()
+                self.write_day(**changes)
+                before = self.day_path.read_bytes()
+                result, _ = self.execute()
+                self.assertEqual(result["reason"], "quota_shape")
+                self.assertEqual(self.calls, [])
+                self.assertEqual(self.day_path.read_bytes(), before)
+
+    def test_symlink_shared_ledger_never_follows_or_mutates_target(self):
+        target = self.quota_dir / "other-ledger.json"
+        self.day_path.rename(target)
+        self.day_path.symlink_to(target)
+        before = target.read_bytes()
+        result, _ = self.execute()
+        self.assertEqual(result["reason"], "unsafe_quota")
+        self.assertEqual(self.calls, [])
+        self.assertEqual(target.read_bytes(), before)
+
+    def test_direct_results_500_retains_bounded_diagnostics_without_raw_body(self):
+        body = b'{"error":"synthetic.secret.token must remain private"}'
+        failure = urllib.error.HTTPError("https://api.tourvisor.ru/search/api/v1/tours/search/2026101900001", 500, "internal", {}, io.BytesIO(body))
+        result, _ = self.execute([{"searchId": "2026101900001"}, status_fixture(), failure])
+        self.assertEqual(result["status"], "unknown_no_replay")
+        self.assertEqual(result["reason"], "http_failed")
+        self.assertEqual(len(self.calls), 3)
+        record = result["requests"][-1]
+        self.assertEqual(record["http"], 500)
+        self.assertEqual(record["bytes"], len(body))
+        self.assertEqual(record["sha256"], hashlib.sha256(body).hexdigest())
+        self.assertEqual(record["json_kind"], "dict")
+        self.assertEqual(record["error_category"], "upstream_server_error")
+        self.assertEqual(record["hash_scope"], "complete_body")
+        self.assertFalse(record["body_truncated"])
+        self.assertNotIn("synthetic.secret.token", json.dumps(result))
+        self.assertEqual(result["before_files"], result["after_files"])
+        operation = json.loads(self.op_path.read_text())
+        self.assertEqual((operation["tariff_used"], operation["used"]), (1, 3))
+
+    def test_auth_or_rate_limit_failure_consumes_one_attempt_without_retry(self):
+        for code, category in ((401, "auth_denied"), (403, "auth_denied"), (429, "rate_limited")):
+            with self.subTest(code=code):
+                self.temp.cleanup()
+                self.setUp()
+                failure = urllib.error.HTTPError("https://api.tourvisor.ru/search/api/v1/tours/search", code, "blocked", {}, io.BytesIO(b'{}'))
+                result, sleep = self.execute([failure])
+                self.assertEqual(result["status"], "unknown_no_replay")
+                self.assertEqual(result["requests"][0]["error_category"], category)
+                self.assertEqual(len(self.calls), 1)
+                self.assertEqual(json.loads(self.op_path.read_text())["used"], 1)
+                self.assertEqual(json.loads(self.op_path.read_text())["tariff_used"], 1)
+                sleep.assert_not_called()
+
+    def test_large_error_body_has_explicit_bounded_prefix_hash(self):
+        body = b"x" * (65536 + 200)
+        failure = urllib.error.HTTPError("https://api.tourvisor.ru/search/api/v1/tours/search", 500, "internal", {}, io.BytesIO(body))
+        result, _ = self.execute([failure])
+        record = result["requests"][0]
+        self.assertEqual(record["bytes"], 65537)
+        self.assertTrue(record["body_truncated"])
+        self.assertEqual(record["hash_scope"], "bounded_prefix")
+        self.assertEqual(record["sha256"], hashlib.sha256(body[:65537]).hexdigest())
+        self.assertEqual(record["json_kind"], "not_measured")
+        self.assertEqual(len(self.calls), 1)
+
+    def test_historical_search_ids_never_trigger_status_or_result_calls(self):
+        for search_id in ("13905446138", "13943172077"):
+            with self.subTest(search_id=search_id):
+                self.temp.cleanup()
+                self.setUp()
+                result, sleep = self.execute([{"searchId": search_id}])
+                self.assertEqual(result["reason"], "historical_search_identity")
+                self.assertEqual(len(self.calls), 1)
+                sleep.assert_not_called()
+
+    def test_second_key_cannot_fall_back_to_missing_or_same_root_credentials(self):
+        for config in (
+            {"token": "", "root_equal": False, "same_subject": False},
+            {"token": "synthetic.secret.token", "root_equal": True, "same_subject": False},
+            {"token": "synthetic.secret.token", "root_equal": False, "same_subject": True},
+            {"token": "synthetic.secret.token\r\nX-Header: injection", "root_equal": False, "same_subject": False},
+        ):
+            with self.subTest(config=config):
+                result, sleep = self.execute(config=config)
+                self.assertFalse(result["live_operation_started"])
+                self.assertEqual(self.calls, [])
+                self.assertFalse(self.op_path.exists())
+                sleep.assert_not_called()
+
+    def test_remote_budget_for_root_account_cannot_authorize_second_key(self):
+        payload = copy.deepcopy(self.payload)
+        payload["budget"] = json.loads(budget_fixture()["body"].split("\n", 1)[1])
+        result, _ = self.execute(payload=payload)
+        self.assertFalse(result["live_operation_started"])
+        self.assertEqual(self.calls, [])
+        self.assertFalse(self.op_path.exists())
+
+    def test_provider_day_change_after_start_stops_before_status(self):
+        def observe(attempt):
+            if attempt == 1:
+                tomorrow = mock.patch(__name__ + ".NOW", NOW + dt.timedelta(days=1))
+                tomorrow.start()
+                self.addCleanup(tomorrow.stop)
+
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        self.assertEqual(result["reason"], "budget_day")
+        self.assertEqual(result["status"], "unknown_no_replay")
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(json.loads(self.op_path.read_text())["used"], 1)
+
+    def test_pending_direct_results_are_partial_instead_of_complete_readiness(self):
+        result, _ = self.execute([
+            {"searchId": "2026101900001"}, status_fixture(progress=35),
+            [{"id": 101, "tours": [tour_fixture()]}],
+        ])
+        self.assertEqual(result["status"], "fresh_partial_results_verified")
+        self.assertEqual(result["progress"], 35)
+        self.assertEqual(result["tour_count"], 1)
+        self.assertEqual(len(self.calls), 3)
+
+    def run_profile_main(self, receipt):
+        runner = pathlib.Path(tempfile.mkdtemp(prefix="offline-main-", dir=self.home))
+        event_path = runner / "event.json"
+        event_path.write_text(json.dumps(anex_event_fixture()))
+        env = dict(env_fixture(), RUNNER_TEMP=str(runner), GITHUB_EVENT_PATH=str(event_path))
+
+        def ssh_fixture(work):
+            key, known = work / "key", work / "known"
+            key.write_text("synthetic private key")
+            known.write_text("synthetic known hosts")
+            return key, known, ["-F", "/dev/null"], "offline-host"
+
+        output, error = io.StringIO(), None
+        with (
+            mock.patch.dict(CHECK.os.environ, env, clear=True),
+            mock.patch.object(CHECK, "admission", return_value=self.payload["budget"]) as admission,
+            mock.patch.object(CHECK, "ssh_options", side_effect=ssh_fixture),
+            mock.patch.object(CHECK, "run", return_value=json.dumps(receipt).encode()) as remote_run,
+            mock.patch("urllib.request.urlopen", side_effect=AssertionError("real HTTP forbidden")),
+            contextlib.redirect_stdout(output),
+        ):
+            try:
+                CHECK.main(CHECK.ANEX_PROFILE)
+            except RuntimeError as exc:
+                error = exc
+        work = runner / "search3-tv-anex-key-check"
+        evidence = json.loads((work / "evidence.json").read_text())
+        self.assertEqual(json.loads(output.getvalue()), evidence)
+        self.assertFalse((work / "key").exists())
+        self.assertFalse((work / "known").exists())
+        admission.assert_called_once_with(
+            CHECK.validate_event(anex_event_fixture(), env, CHECK.ANEX_PROFILE), CHECK.ANEX_PROFILE,
+        )
+        return evidence, remote_run, error
+
+    def test_main_profile_dispatches_new_account_policy_and_accepts_safe_receipt(self):
+        import ast
+
+        receipt, _ = self.execute()
+        evidence, remote_run, error = self.run_profile_main(receipt)
+        self.assertIsNone(error)
+        self.assertEqual(evidence["status"], "fresh_populated_results_verified")
+        self.assertEqual(evidence["remote"], receipt)
+        command = remote_run.call_args.args[0]
+        self.assertEqual(command[:4], ["ssh", "-F", "/dev/null", "offline-host"])
+        program = CHECK.shlex.split(command[-1])
+        self.assertEqual(program[:2], ["python3", "-c"])
+        policy = ast.literal_eval(program[2].split("\n", 1)[0].removeprefix("POLICY="))
+        self.assertTrue(policy["direct"])
+        self.assertEqual(policy["account_env"], "TOURVISOR_ANEX_JWT")
+        self.assertEqual(policy["operation"], "tv-anex-key-20261019-v1")
+        self.assertEqual(policy["approval_reference"], 6262286069)
+        self.assertEqual(policy["params"], CHECK.PARAMS)
+        self.assertNotIn("synthetic.secret.token", json.dumps(evidence))
+        self.assertEqual(remote_run.call_args.kwargs["timeout"], 220)
+
+    def test_main_rejects_secret_fields_and_unsanctioned_error_categories(self):
+        receipt, _ = self.execute()
+        variants = []
+        extra = copy.deepcopy(receipt)
+        extra["token"] = "DO_NOT_RETAIN_SYNTHETIC_SECRET"
+        variants.append(extra)
+        raw_body = copy.deepcopy(receipt)
+        raw_body["requests"][0]["raw_body"] = "DO_NOT_RETAIN_SYNTHETIC_SECRET"
+        variants.append(raw_body)
+        category = copy.deepcopy(receipt)
+        category["requests"][0]["error_category"] = "DO_NOT_RETAIN_SYNTHETIC_SECRET"
+        variants.append(category)
+        for altered in variants:
+            with self.subTest(fields=sorted(altered)):
+                evidence, _, error = self.run_profile_main(altered)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertEqual(evidence["status"], "unknown_no_replay")
+                self.assertNotIn("remote", evidence)
+                self.assertNotIn("DO_NOT_RETAIN_SYNTHETIC_SECRET", json.dumps(evidence))
+
+    def test_native_php_selects_actual_second_key_with_synthetic_config_only(self):
+        import base64
+        import shutil
+
+        php = shutil.which("php")
+        if php is None:
+            if CHECK.os.environ.get("SEARCH3_ANEX_KEY_NATIVE_CI") == "1":
+                self.fail("Native PHP is required for the ANEX credential selector in CI")
+            self.skipTest("Local PHP is unavailable; CI must require the native selector check")
+        self.execute()
+        code = self.config_calls[0].args[0][2]
+        config = self.home / "synthetic-native-config.php"
+        # Deliberately do not inherit host credentials or any actual server config.
+        env = {
+            "PATH": str(pathlib.Path(php).parent), "HOME": str(self.home),
+            "TOURVISOR_JWT": "synthetic.root.token",
+            "TOURVISOR_ANEX_JWT": "synthetic.environment.token",
+        }
+
+        def select(config_body, active_env):
+            config.write_text("<?php\n" + config_body)
+            completed = subprocess.run(
+                [php, "-r", code, "--", str(config)],
+                env=active_env, cwd=self.home, capture_output=True, timeout=15, check=False,
+            )
+            self.assertEqual(completed.returncode, 0, "Generated PHP credential selector failed")
+            self.assertEqual(completed.stderr, b"")
+            selected = json.loads(completed.stdout)
+            self.assertEqual(set(selected), {"token", "root_equal", "same_subject"})
+            self.assertIs(type(selected["root_equal"]), bool)
+            self.assertIs(type(selected["same_subject"]), bool)
+            return selected
+
+        constant = select("define('TOURVISOR_ANEX_JWT', 'synthetic.constant.token');", env)
+        self.assertEqual(constant, {"token": "synthetic.constant.token", "root_equal": False, "same_subject": False})
+        fallback = select("/* No ANEX constant: use its environment value. */", env)
+        self.assertEqual(fallback["token"], "synthetic.environment.token")
+        empty = select("define('TOURVISOR_ANEX_JWT', '');", env)
+        self.assertEqual(empty["token"], "")
+        same_key = select("define('TOURVISOR_ANEX_JWT', 'synthetic.root.token');", env)
+        self.assertTrue(same_key["root_equal"])
+        payload = base64.urlsafe_b64encode(b'{"iss":"synthetic","sub":"same-account"}').decode().rstrip("=")
+        rotated_env = dict(env, TOURVISOR_JWT=f"header.{payload}.signature-a", TOURVISOR_ANEX_JWT=f"header.{payload}.signature-b")
+        rotation = select("/* Different token strings with the same synthetic subject. */", rotated_env)
+        self.assertFalse(rotation["root_equal"])
+        self.assertTrue(rotation["same_subject"])
+
+
 if __name__ == "__main__":
     unittest.main()
+
