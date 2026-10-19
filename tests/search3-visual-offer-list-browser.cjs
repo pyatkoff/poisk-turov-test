@@ -164,6 +164,90 @@ const server=http.createServer((req,res)=>{
     assert.equal(next.inside,true);assert.notEqual(next.tag,'BODY','Tab continues from a defined results destination');
     fs.writeFileSync(path.join(evidence,`result-reset-${width}.json`),JSON.stringify({width,zoom:100,compiled:true,fixture:'mixed5hotels15offers',cross_offer_false_match:false,empty:0,restored_hotels:5,restored_offers:15,trip_preserved:true,focus,scrollBefore,next,supplier_requests:0,real_leads:0,physicalSafari:false},null,2));
    }
+   // Owner-authorized finite acceptance gap: the existing offline family graph,
+   // without replacing providers, prices, contacts or rendering owners.
+   const familyJourney=async height=>{
+    const short=height===720,prefix=short?'family-short':'family',stages=[],network=[];
+    const observe=request=>network.push({method:request.method(),path:new URL(request.url()).pathname});page.on('request',observe);
+    const receipt={width,height,scope:'compiled ordinary-text offline family; fictional totals and local validation',runtimeAppSHA256:require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(root,'visual-search/app.js'))).digest('hex'),party:{adults:3,ages:[0,12]},offerKey:'demo-flight-24',hotelId:900001,stages,network,supplier_requests:0,real_leads:0,physicalSafari:false};
+    const file=path.join(evidence,`${prefix}-receipt-${width}.json`);
+    const save=()=>fs.writeFileSync(file,JSON.stringify(receipt,null,2)+'\n');
+    const capture=async name=>{
+     const state=await page.evaluate(()=>({url:location.search,scrollY,modalOpen:document.querySelector('#modal').open,title:document.querySelector('#modal-title').textContent,offerKey:document.querySelector('#modal').dataset.offerKey||null,bodyScroll:document.querySelector('#modal-body').scrollTop,active:{tag:document.activeElement.tagName,id:document.activeElement.id,name:document.activeElement.getAttribute('name'),action:document.activeElement.dataset.action||null},footer:document.querySelector('#modal-footer').textContent,party:document.querySelector('.chosen-trip')?.textContent||null,application:document.querySelector('.application-review')?.textContent||null,checked:document.querySelector('#prototype-lead-form')?.dataset.checked||null}));
+     stages.push({name,...state});save();await shot(prefix+'-'+name);
+    };
+    const total=async expected=>assert.equal(Number((await page.locator('#modal-footer .footer-total>strong').textContent()).replace(/\D/g,'')),expected,'one footer total for the exact family choice');
+    const party=async selector=>{const text=await page.locator(selector).textContent();assert.match(text,/3 взр\./);assert.match(text,/2 реб\./);assert.match(text,/до (?:1 )?года/i);assert.match(text,/12 лет/);return text;};
+    const contact=()=>page.locator('#prototype-lead-form');
+    const draft={phone:'+7 000 000-00-00',name:'Учебная семья',comment:'Демо: 3 взрослых, дети 0 и 12 лет. Ничего не отправлять.'};
+    const assertDraft=async()=>{for(const [name,value] of Object.entries(draft))assert.equal(await contact().locator(`[name="${name}"]`).inputValue(),value,'same-offer contact draft '+name);};
+    const submit=()=>page.locator('#modal-footer [type="submit"][form="prototype-lead-form"]');
+    try{
+     await page.setViewportSize({width,height});
+     const initial=new URLSearchParams({scenario:'family',origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-07',minNights:'7',maxNights:'7',adults:'2',ages:'0,8',searched:'1'});
+     await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?${initial}`);
+     await page.locator('#hotel-900001').waitFor();
+     await page.locator('#applied-search [data-action="edit-search"]:visible,#compact-search .secondary[data-action="top"]:visible').first().click();
+     await page.locator('#search-form [data-action="guests"]').click();
+     await page.locator('[data-action="adults-plus"]').click();
+     await page.locator('[data-action="child-age"][data-index="1"]').click();
+     await page.locator('[data-action="age-pick"][data-value="12"]').click();await page.locator('[data-action="apply-age"]').click();
+     assert.match(await page.locator('#guest-count-summary').textContent(),/3 взр\..*2 реб\./);
+     await reachable(page.locator('[data-action="apply-guests"]'),'family Apply tourists');await page.locator('[data-action="apply-guests"]').click();
+     assert.equal(await page.locator('#guests-label').textContent(),'3 взр. · 2 реб.');assert.equal(await page.locator('#guests-detail').textContent(),'До 1 года и 12 лет');
+     await page.locator('#search-form').scrollIntoViewIfNeeded();await capture('form');
+     await reachable(page.locator('#search-form .search-submit'),'family offline Find');await page.locator('#search-form .search-submit').click();
+     await page.waitForFunction(()=>document.querySelector('#hotel-900001 .starting-price')?.textContent.includes('3 взр.'));
+     const search=new URL(page.url()).searchParams;assert.equal(search.get('adults'),'3');assert.equal(search.get('ages'),'0,12');assert.equal(search.get('scenario'),'family');
+     const range=await page.locator('#result-calendar-range').textContent();
+     if(width<=760&&await page.locator('[data-action="toggle-result-calendar"]').getAttribute('aria-expanded')==='false')await page.locator('[data-action="toggle-result-calendar"]').click();
+     assert.equal(await page.locator('#price-strip .date-price').count(),7);assert.match(range,/2026/);
+     await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await capture('results-calendar');
+     const profile=page.locator('#hotel-900001 h3 [data-action="hotel-details"]');await profile.scrollIntoViewIfNeeded();
+     const anchor=await profile.evaluate(el=>({cardTop:el.closest('.hotel-card').getBoundingClientRect().top,scrollY}));
+     await profile.click();const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();
+     await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
+     await page.locator('[data-action="continue-hotel-offer"][data-key="demo-flight-24"]').click();
+     await page.locator('[data-action="start-lead"]').waitFor();assert.equal(await page.locator('#modal').getAttribute('data-offer-key'),'demo-flight-24');await party('.chosen-trip');await total(186400);await capture('tour-manager');
+     await reachable(page.locator('[data-action="start-lead"]'),'family manager-flight application');await page.locator('[data-action="start-lead"]').click();await contact().waitFor();
+     await party('.application-review');assert.match(await page.locator('.application-review').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
+     await submit().click();assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'invalid phone receives focus');
+     await contact().locator('[name="phone"]').fill(draft.phone);
+     await page.keyboard.press('Tab');assert.equal(await contact().locator('[name="consent"]').evaluate(el=>document.activeElement===el),true,'phone Tab reaches separate consent');
+     await page.keyboard.press('Shift+Tab');assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'consent Shift+Tab returns to phone');
+     await contact().locator('.rehearsal-optional>summary').click();
+     for(const name of ['name','comment'])await contact().locator(`[name="${name}"]`).fill(draft[name]);
+     await contact().locator('[name="consent"]').check();await submit().click();
+     assert.equal(await contact().getAttribute('data-checked'),'1');assert.match(await contact().locator('.handoff-status').textContent(),/Заявка не отправлена\. Контакты не сохранены\./);await assertDraft();await capture('contact-manager-checked');
+     await page.locator('#modal-back').click();await page.locator('[data-action="retry-flights"]').waitFor();await page.locator('[data-action="retry-flights"]').click();
+     await page.locator('[name="flight-pair"][value="2"]').waitFor();assert.equal(await page.locator('[name="flight-pair"]').count(),3,'family uses its existing three fictional pairs');
+     await page.locator('[name="flight-pair"][value="2"]').check();await total(189000);
+     const pair=page.locator('.flight-option[data-flight-index="2"]');assert.equal(await pair.getAttribute('data-flight-price'),'189000');assert.match(await page.locator('#flight-price-change').textContent(),/2[\s\u00a0\u202f]*600/);
+     await capture('flight-pair3');await reachable(page.locator('[data-action="apply-flight"]'),'family Apply pair');await page.locator('[data-action="apply-flight"]').click();
+     await total(189000);await party('.chosen-trip');assert.match(await page.locator('#modal-body').textContent(),/07:10.*11:45/s);
+     await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();await total(189000);await party('.application-review');await assertDraft();
+     assert.equal(await contact().locator('[name="consent"]').isChecked(),false,'a changed pair invalidates prior consent');assert.equal(await contact().getAttribute('data-checked'),null,'a changed pair invalidates the previous check');
+     await submit().click();assert.equal(await contact().locator('[name="consent"]').evaluate(el=>document.activeElement===el),true,'required fresh consent receives focus');
+     await contact().locator('[name="consent"]').check();await submit().click();
+     const status=await contact().locator('.handoff-status').textContent();assert.match(status,/DEMO 103.*DEMO 103/s);assert.match(status,/189[\s\u00a0\u202f]*000/);assert.match(status,/3 взр\..*до года.*12 лет/s);assert.match(status,/не отправлена/);
+     await capture('contact-pair3');
+     await page.locator('#modal-back').click();await page.locator('[data-action="choose-flight"]').waitFor();await total(189000);
+     await page.locator('[data-action="choose-flight"]').click();await page.locator('[name="flight-pair"][value="2"]').waitFor();assert.equal(await page.locator('[name="flight-pair"]:checked').inputValue(),'2','passive reopen retains exact pair');
+     await page.locator('#modal-footer [data-action="modal-back"]').click();await page.locator('[data-action="confirm-tour"]').waitFor();await total(189000);
+     await page.locator('#modal-back').click();await page.locator('#hotel-room-count').waitFor();assert.equal(await page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]').getAttribute('aria-pressed'),'true');
+     await page.locator('#modal .modal-header [data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open);
+     await page.waitForFunction(()=>document.activeElement?.dataset.action==='hotel-details');
+     const returned=await profile.evaluate(el=>({cardTop:el.closest('.hotel-card').getBoundingClientRect().top,active:document.activeElement===el,scrollY}));
+     assert.equal(returned.active,true,'Close returns focus to the original hotel');assert(Math.abs(returned.cardTop-anchor.cardTop)<=2,'Close retains the original card position');
+     const current=page.locator('#hotel-900001 .current-card-selection');await current.waitFor();assert.equal(await current.getAttribute('data-selected-key'),'demo-flight-24');assert.match(await current.textContent(),/189[\s\u00a0\u202f]*000/);
+     await current.locator('[data-action="offer"]').click();await page.locator('[data-action="confirm-tour"]').waitFor();await total(189000);await page.locator('[data-action="confirm-tour"]').click();await contact().waitFor();
+     await party('.application-review');await assertDraft();await total(189000);assert.equal(await contact().locator('[name="consent"]').isChecked(),true,'same conditions retain explicit demo consent');assert.equal(await contact().getAttribute('data-checked'),null,'passive reopen does not repeat local validation');
+     receipt.returned={anchor,after:returned,exactPair:2,total:189000,consentResetOnChange:true,sameChoiceConsentRetained:true,draftRetained:true,automaticSubmit:false};
+     await capture('return-contact');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+     assert.deepEqual(network.filter(row=>row.method!=='GET'||row.path.endsWith('.php')&&!row.path.endsWith('/visual-search/index.php')),[],'family Find/quote/validation/Back have no API or mutating HTTP requests');receipt.status='passed';save();
+    }catch(error){receipt.status='failed';receipt.error=error.message;save();await page.screenshot({path:path.join(evidence,`${prefix}-failure-${width}.png`)});throw error;}finally{page.off('request',observe);}
+   };
+   await familyJourney(900);if(width===1280)await familyJourney(720);await page.setViewportSize({width,height:900});
    // Verify the real retained long-name corpus separately from the mixed demo journey.
    await page.goto(`http://127.0.0.1:${server.address().port}${base}visual-search/?scenario=snapshot&searched=1`);await page.waitForFunction(()=>document.querySelector('#results-summary')?.textContent.includes('1047'));await page.evaluate(()=>document.fonts.ready);
    const realCardScan=await page.locator('.hotel-card').evaluateAll(cards=>cards.slice(0,24).map(card=>{const rect=el=>{const r=el.getBoundingClientRect();return{width:r.width,height:r.height};},entry=card.querySelector('[data-card-entry]'),profile=card.querySelector('h3 [data-action="hotel-details"]'),summary=card.querySelector('.card-minimum-offer'),footer=card.querySelector('.hotel-more'),variants=card.querySelector('.card-all-offers');return{id:card.dataset.hotelId,key:entry.dataset.key,total:card.querySelector('.starting-price strong').textContent,title:profile.textContent,geography:card.querySelector('.hotel-location').textContent,trip:card.querySelector('.price-trip-summary').textContent,room:card.querySelector('.card-room').textContent,operator:card.querySelector('.card-offer-flight .operator-logo').dataset.operator,card:rect(card),summary:rect(summary),profile:rect(profile),footerVisible:!!footer.getClientRects().length,variants:variants&&rect(variants)};}));
