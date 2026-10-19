@@ -1162,6 +1162,13 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   await summary.click();assert.match(await status.textContent(),/Вариантов до фильтров: 1/);assert.doesNotMatch(await status.textContent(),/не загрузил|недоступн/,'normal bounded first page is not a failure');
   assert.equal(await status.locator('[data-action="continue-search"]').textContent(),'Продолжить поиск','partial explanation has its existing continuation next to it');
   assert.equal(await status.locator('[data-action="retry-search"]').count(),0,'continuation is not silently presented as a fresh search');
+  for(const width of [360,390,430,768,1280]){
+   await page.setViewportSize({width,height:900});const control=status.locator('[data-action="continue-search"]');await control.scrollIntoViewIfNeeded();
+   const box=await control.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{height:r.height,reachable:!!hit&&(hit===el||el.contains(hit)),overflow:document.documentElement.scrollWidth>innerWidth};});
+   assert(box.height>=44&&box.reachable&&!box.overflow,'nearby continuation is readable and reachable at '+width);
+   await status.screenshot({path:path.join(evidence,`search-delivery-continue-${width}.png`)});
+  }
+  await page.setViewportSize({width:390,height:900});
   assert.equal(await status.locator('[data-search-source="andromeda"]').count(),0,'paused SAMO is not presented as an active source');
   await page.screenshot({path:path.join(evidence,'search-delivery-first-page-390.png')});
   assert.deepEqual(anexCalls,['search'],'no automatic page drain');
@@ -1201,7 +1208,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
      });assert(routeWords,'compact route preserves whole city/country words at '+width+' text200='+largeText);
     }
     await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
-    for(const action of ['continue-search','edit-search']){
+    for(const action of ['retry-search','edit-search']){
      const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
      const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
      assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
