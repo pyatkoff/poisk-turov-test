@@ -2435,11 +2435,11 @@ function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasO
 $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=!fromMonth&&state.selectedDate===day?null:day;updateSearchUI();renderResults({keepFilters:true});updateURL();if(fromMonth)closeModal();else $(`#price-strip [data-date="${day}"]`)?.focus({preventScroll:true});}
 function resetFilters(){
- const restoreResults=document.activeElement?.matches('#cards [data-action="reset"]');
+ const restoreResults=document.activeElement?.matches('#cards [data-action="reset"]'),returnScroll=scrollY;
  state.filters=defaultFilters();state.onlyFavorites=false;state.selectedDate=null;syncFilters();updateURL();
- // The empty-state action is removed by the reset. Keep a stable keyboard
- // destination without moving the page or stealing focus from another control.
- if(restoreResults&&document.activeElement===document.body)$('#results').focus({preventScroll:true});
+ // Removing active chips can temporarily clamp bottom-of-page scroll before
+ // cards appear. Restore that position and the removed action's keyboard destination.
+ if(restoreResults&&document.activeElement===document.body){$('#results').focus({preventScroll:true});if(scrollY!==returnScroll)window.scrollTo({top:returnScroll,behavior:'instant'});}
 }
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
 function terminalizeSearchForVerification(reason='verification'){
