@@ -47,6 +47,7 @@ const shortAmount = (n,calendar=false) => calendar?(n>=1000000?String(Math.round
 const shortMoney = n => shortAmount(n)+' тыс.';
 const dateObj = s=>new Date(s+'T12:00:00Z');
 const iso = d=>d.toISOString().slice(0,10);
+const localDay = d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const addDays = (s,n)=>iso(new Date(dateObj(s).getTime()+n*86400000));
 const formatDate=(formatter,date)=>Number.isNaN(date.getTime())?'Invalid Date':formatter.format(date);
 const dateText = s=>formatDate(dayFormatter,dateObj(s)).replace('.','');
@@ -95,7 +96,7 @@ function cardOperatorLayoutClass(name){
 }
 function minimumOfferSummary(o){const roomText=roomLabel(o);return `<div class="card-minimum-offer${flightLabel(o)?'':' room-operator-inline'}${cardOperatorLayoutClass(o.operator)}" data-minimum-key="${esc(o.key)}" aria-label="Условия тура по указанной цене"><strong><time datetime="${esc(o.day)}">${dateText(o.day)}</time> → <time datetime="${esc(o.returnDay)}">${dateText(o.returnDay)}</time> · ${nightsText(o.nights)}</strong><p class="card-meal-line">${icon('food')}<span>${esc(displayMealLabel(o))}</span></p><p class="card-room"><span class="card-room-label">Номер</span> ${esc(roomText==='Номер уточняется'?'уточняется':roomText)}</p><div class="card-offer-flight">${flightLabel(o)?`<span class="flight-tag ${o.flight}">${flightLabel(o)}</span>`:''}${operatorBadge(o.operator)}</div></div>`;}
 function selectionStepsHTML(step,{flightDeferred=false}={}){return `<ol class="selection-steps" aria-label="Этапы выбора тура">${['Номер и питание',flightDeferred?'Перелёт позже':'Перелёт','Заявка'].map((label,i)=>{const deferred=flightDeferred&&i===1;return `<li ${i===step?'aria-current="step"':''} class="${i===step?'current':i<step&&!deferred?'previous':''}"><span aria-hidden="true">${i+1}</span>${label}</li>`;}).join('')}</ol>`;}
-const startDay=data.clockStart||addDays(iso(new Date()),1),endDay=addDays(startDay,180);
+const startDay=data.clockStart||addDays(localDay(new Date()),1),endDay=addDays(startDay,180);
 let hotels=[];
 let resultCalendar={key:null,hotels:[],observations:[],basePrices:[],remotePrices:[],observationPrices:[],phase:'idle',controller:null};
 

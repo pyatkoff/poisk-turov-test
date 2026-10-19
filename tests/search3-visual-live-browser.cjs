@@ -48,6 +48,25 @@ const editResultSearch=async(page,width)=>{
  await page.locator(width<=760?'#compact-search .secondary[data-action="top"]':'#applied-search [data-action="edit-search"]').click();
  assert(await page.locator('#search-form').isVisible(),'the approved edit action opens the complete form at '+width);
 };
+const localCivilDateJourney=async(browser,origin,base,evidence)=>{
+ const records=[],instant=Date.parse('2026-10-18T22:30:00Z');
+ for(const width of [390,1280]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900},timezoneId:'Europe/Kaliningrad'}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.addInitScript(instant=>{const NativeDate=Date;window.Date=class extends NativeDate{constructor(...args){super(...(args.length?args:[instant]));}static now(){return instant;}};},instant);
+   await page.route('**/*',async route=>{const request=route.request(),url=new URL(request.url());if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}});
+   await page.goto(origin+base+'visual-search/');await page.locator('.search-submit:not(:disabled)').waitFor();
+   const initial=await page.evaluate(()=>({from:window.AnyTourPrototypeData.initialSearch.from,to:window.AnyTourPrototypeData.initialSearch.to,localDay:new Date().getDate(),localHour:new Date().getHours()}));assert.deepEqual(initial,{from:'2026-11-02',to:'2026-11-08',localDay:19,localHour:0});
+   const label=await page.locator('#dates-label').textContent(),url=page.url();assert.match(label,/2–8 ноября/);await page.screenshot({path:path.join(evidence,`local-civil-date-form-${width}.png`)});
+   await page.locator('#search-form [data-action="dates"]').click();await page.locator('#date-calendar').waitFor();if(width>760)await page.locator('[data-action="month-prev"]').click();
+   const previous=page.locator('#date-calendar [data-date="2026-10-19"]'),minimum=page.locator('#date-calendar [data-date="2026-10-20"]');assert.equal(await previous.isDisabled(),true,'the local current day remains outside the tomorrow-based calendar');assert.equal(await minimum.isEnabled(),true,'the local next day is the first available departure');await minimum.scrollIntoViewIfNeeded();
+   assert.equal(await page.locator('#modal').evaluate(el=>el.scrollWidth>el.clientWidth+1),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);await page.screenshot({path:path.join(evidence,`local-civil-date-calendar-${width}.png`)});
+   await page.locator('[data-action="close-modal"]').click();assert.equal(await page.locator('#dates-label').textContent(),label);assert.equal(page.url(),url,'inspecting/cancelling the calendar preserves the current URL');
+   const operations=transport.calls.filter(call=>/^(search(?:_.*)?|continue|tour|flights|quote(?:_.*)?|offer|lead(?:_.*)?)$/.test(call.action)||/api-anex-|api-andromeda-|quote|lead/.test(call.url));assert.deepEqual(operations,[],'default dates/calendar never submit a supplier search, quote, offer or lead operation');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);records.push({width,timezone:'Europe/Kaliningrad',instant:'2026-10-18T22:30:00Z',initial,minimum:'2026-10-20',calendar_cancel_preserved:true,search_submits:0,quote_calls:0,supplier_HTTP:0,real_leads:0,physicalSafari:false});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'local-civil-date.json'),JSON.stringify({records,fictional_catalogues:true,supplier_HTTP:0,real_leads:0},null,2));console.log('PASS compiled local civil dates: midnight Kaliningrad390/1280 defaults, tomorrow boundary and calendar Cancel; no search submit/quote');
+};
 const resultFilterViewportJourney=async(browser,origin,base,evidence)=>{
  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage(),records=[];transport.state.wideFacets=true;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
  try{
@@ -1218,6 +1237,7 @@ const server=http.createServer((req,res)=>{
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
+   await localCivilDateJourney(browser,origin,base,evidence);
   for(const width of [390,1280]){
    const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{

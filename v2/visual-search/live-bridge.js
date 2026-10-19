@@ -3,7 +3,7 @@
 (() => {
  const canonical=window.AnyTourPrototypeData,lead=window.AnyTourPrototypeLead;
  if(!canonical||!lead)throw new Error('Не удалось загрузить поиск. Обновите страницу.');
- const first=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+ const today=new Date(),first=new Date(Date.UTC(today.getFullYear(),today.getMonth(),today.getDate()+14)).toISOString().slice(0,10);
  const last=new Date(Date.parse(first+'T12:00:00Z')+6*86400000).toISOString().slice(0,10);
  const bridge=Object.create(canonical);
  Object.defineProperties(bridge,{

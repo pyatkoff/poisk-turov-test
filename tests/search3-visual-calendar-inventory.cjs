@@ -6,6 +6,33 @@ const defaultFilters=()=>({hotelId:0,q:'',stars:[],meals:[],resorts:[],operators
 const day=i=>new Date(Date.UTC(2026,9,28+i)).toISOString().slice(0,10);
 function fixture(){return Array.from({length:12},(_,i)=>({id:i+1,country:i===11?'9':'4',name:'Hotel '+i,subRegion:i%2?'Кемер':'Анталья',region:'Анталья',resort:'Кемер',stars:i%4+2,rating:i%3?4.8:3.2,beach:i%2?100:null,family:!!(i%2),spa:!!(i%3),amenities:i%2?[{key:'pool'}]:[],offers:Array.from({length:18},(_,j)=>({key:i+':'+j,search:{origin:j===17?'Казань':'Москва',country:j===16?'9':'4'},adults:j===15?3:2,ages:j===14?[0]:j===13?['17',0]:j===12?[17,0]:[0,17],day:day(j%7),nights:j===11?10:7,meal:j%2?'AI':'BB',mealPlanId:j%2?7:3,total:j===0?0:j===1?Infinity:100000+i*100+j*10,operator:j%2?'A':'B',flight:j%2?'charter':'regular'}))}));}
 function section(source,first,last){const a=source.indexOf(first),b=source.indexOf(last,a);assert(a>=0&&b>a,first);return source.slice(a,b);}
+// Freeze the real clock, but retain native local calendar fields in each zone.
+// Execute both connected owners; neither bootstrap nor a supplier runs here.
+{
+ const bridge=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/live-bridge.js'),'utf8'),clock=section(source,'const dateObj =','const formatDate='),period=source.match(/^const startDay=[^\n]+/m)[0],restore=section(source,'function restoreURL(','let compactSearchFrame='),previousTZ=process.env.TZ,NativeDate=Date,rows=[];
+ const cases=[
+  ['Europe/Kaliningrad','2026-10-18T22:30:00Z','2026-10-20','2026-11-02','2026-11-08'],
+  ['Europe/Kaliningrad','2026-10-19T09:00:00Z','2026-10-20','2026-11-02','2026-11-08'],
+  ['America/Los_Angeles','2026-10-19T06:30:00Z','2026-10-19','2026-11-01','2026-11-07'],
+  ['Europe/Kaliningrad','2026-12-31T22:30:00Z','2027-01-02','2027-01-15','2027-01-21'],
+  ['America/Los_Angeles','2027-01-01T07:30:00Z','2027-01-01','2027-01-14','2027-01-20'],
+  ['Pacific/Kiritimati','2026-12-31T10:30:00Z','2027-01-02','2027-01-15','2027-01-21'],
+  ['America/Los_Angeles','2026-03-02T07:30:00Z','2026-03-02','2026-03-15','2026-03-21'],
+  ['Europe/Berlin','2026-10-22T22:30:00Z','2026-10-24','2026-11-06','2026-11-12'],
+  ['UTC','2026-10-19T00:30:00Z','2026-10-20','2026-11-02','2026-11-08']
+ ];
+ try{for(const [zone,instant,min,from,to] of cases){
+  process.env.TZ=zone;const now=NativeDate.parse(instant);class FrozenDate extends NativeDate{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
+  const window={AnyTourPrototypeData:{},AnyTourPrototypeLead:{}},context={Date:FrozenDate,window,document:{getElementById:()=>null},data:{date:value=>value},URLSearchParams,structuredClone,state:{search:{},selectedDate:null},location:{search:''}};
+  vm.createContext(context);vm.runInContext(bridge,context);vm.runInContext(clock+'\n'+period+'\n'+restore+'\nglobalThis.clockPeriod={startDay,endDay};globalThis.dateOnly=[iso(dateObj("2026-12-31")),addDays("2026-12-31",1),addDays("2028-02-28",1),addDays("2026-03-28",2)];',context);
+  const initial=window.AnyTourPrototypeData.initialSearch;rows.push({zone,instant,actual:[context.clockPeriod.startDay,initial.from,initial.to],expected:[min,from,to]});
+  assert.deepEqual(Array.from(context.dateOnly),['2026-12-31','2027-01-01','2028-02-29','2026-03-30'],'UTC date-only arithmetic is independent of the local clock');
+  context.state.search={...initial};context.location.search='?'+new URLSearchParams({from,to,date:from,minNights:'7',maxNights:'10',adults:'3',ages:'0,17'});context.restoreURL(true);assert.deepEqual(JSON.parse(JSON.stringify(context.state.search)),{...initial,from,to,minNights:7,maxNights:10,adults:3,ages:[0,17]},'explicit valid URL dates and party remain exact');assert.equal(context.state.selectedDate,from);assert.deepEqual(JSON.parse(JSON.stringify(context.draft)),JSON.parse(JSON.stringify(context.state.search)));
+  const saved={...context,data:{clockStart:'2026-09-24',date:value=>value},state:{search:{...initial},selectedDate:null},location:{search:'?from=2026-10-01&to=2026-10-07&date=2026-10-03&adults=2&ages=0,8'}};vm.createContext(saved);vm.runInContext(clock+'\n'+period+'\n'+restore+'\nglobalThis.snapshotStart=startDay;',saved);saved.restoreURL(true);assert.equal(saved.snapshotStart,'2026-09-24');assert.equal(saved.state.search.from,'2026-10-01');assert.equal(saved.state.search.to,'2026-10-07');assert.equal(saved.state.selectedDate,'2026-10-03');assert.deepEqual(Array.from(saved.state.search.ages),[0,8]);
+ }}finally{if(previousTZ===undefined)delete process.env.TZ;else process.env.TZ=previousTZ;}
+ assert.deepEqual(rows.map(row=>row.actual),rows.map(row=>row.expected),'real-clock minimum/default dates follow local civil days across midnight, month/year and DST boundaries');
+ console.log('PASS local civil calendar day: '+rows.length+' native timezone/frozen-clock cases, actual app/bridge owners, UTC date-only/leap/year arithmetic, explicit URL/party and snapshot clockStart retained; supplier/lead HTTP0');
+}
 // Exercise the actual mobile disclosure without bootstrap/network suppliers.
 // The UI preference is independent of the applied dates, prices and URL.
 {
