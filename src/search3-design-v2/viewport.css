@@ -466,6 +466,9 @@ body { margin: 0; padding: 0; }
     border-radius: 10px;
     margin-bottom: 10px;
   }
+  #design-v2-native-root #b4 .st-desktop .st-native-flight-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 #design-v2-native-root #b4 .st-mobile [data-screen="tour"] .st-tour-section {
   padding: 12px 1px;

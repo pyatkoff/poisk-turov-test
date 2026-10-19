@@ -988,6 +988,11 @@ async function referenceFrame(page,width,percent,screen,row) {
           return{before:a.bottom<=b.top,visible:a.width>0&&a.height>=44,overflow:node.scrollWidth>node.clientWidth+1};
         });
         assert(managerBeforeList.before&&managerBeforeList.visible&&!managerBeforeList.overflow,'Manager action stays above all flight options with a readable44px target');
+        const pairLayout=await product.locator('.st-native-flight-facts').first().evaluate(node=>{
+          const [outbound,inbound]=[...node.children].map(leg=>leg.getBoundingClientRect());
+          return{columns:getComputedStyle(node).gridTemplateColumns.split(' ').length,paired:Math.abs(outbound.top-inbound.top)<1&&outbound.right<=inbound.left,stacked:outbound.bottom<=inbound.top};
+        });
+        assert.equal(width===1280?pairLayout.paired:pairLayout.stacked,true,'Wide tour keeps both directions side by side; phone and narrow tablet keep their reading order');
         await capture(page,'native',width,percent,'tour-many-flights',row);
         await manyDisclosure.locator('summary').click();
         assert.equal(await product.locator('[data-native-tour-flight]:visible').count(),40);
@@ -1004,7 +1009,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().flightChoiceId),39);
         assert.equal(await manyDisclosure.getAttribute('open'),null);
         assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,flights:c.calls.flight.length};}),{search:manyBefore.search,quote:manyBefore.quote+1,flights:manyBefore.flights+1},'Contact and Back retain the exact last pair without a quote or flight replay');
-        row.proof.manyFlightChoices={total:40,initiallyVisible:3,collapsed:37,selectedCanonicalIndex:39,selectedTotal:151000,managerBeforeList,passiveExtraOperations:0};
+        row.proof.manyFlightChoices={total:40,initiallyVisible:3,collapsed:37,selectedCanonicalIndex:39,selectedTotal:151000,managerBeforeList,pairLayout,passiveExtraOperations:0};
         await page.goBack();await screen('hotel').waitFor({state:'visible'});
         await page.goBack();await screen('results').waitFor({state:'visible'});
 
