@@ -38,6 +38,17 @@ module.exports=async function({browser,origin,base,evidence}){
   const application=provider==='anex'?'anex-application-preview':'andromeda-application-preview';
   const oldPrice=mode==='editing'?'101000':provider==='anex'?'135678,9':'125500',contacts=mode!=='verified'&&mode!=='editing';
   const calls=()=>transport.calls.length;
+  let receiptDeadline=null,expiryClock=null;
+  const advancePastReceipt=async()=>{
+   assert(Number.isSafeInteger(receiptDeadline),'the fictional verified receipt supplies its exact expiry');
+   const before=await page.evaluate(()=>Date.now()),fixed=Math.max(before+901000,receiptDeadline+1000);
+   // Playwright1.55 can finish an older asynchronous timer loop after
+   // fastForward and roll timer ticks backwards. Keep business Date fixed past
+   // this receipt while still advancing the real idle-expiry timer under test.
+   await page.clock.setFixedTime(new Date(fixed));await page.clock.fastForward(901000);
+   expiryClock={deadline:receiptDeadline,before,fixed,after:await page.evaluate(()=>Date.now())};
+   assert(expiryClock.after>=receiptDeadline,'expiry is observed strictly after the retained receipt deadline');
+  };
   try{
    await page.clock.install({time:new Date()});
    await page.route('**/*',async route=>{
@@ -51,6 +62,7 @@ module.exports=async function({browser,origin,base,evidence}){
     }
     try{
      const value=await transport.json(request.url(),{body:request.postData()});
+     if(value.data?.final_price_verified===true&&Number.isSafeInteger(value.data.expires_at))receiptDeadline=value.data.expires_at*1000;
      if(mode==='return'&&url.pathname==='/api-v2.php'&&url.searchParams.get('action')==='search_results'){
       const first=value[0].tours[0],tomorrow=new Date(Date.parse(trip.from+'T12:00:00Z')+86400000).toISOString().slice(0,10);
       // A real selectable refinement needs multiple retained meal values; the
@@ -103,7 +115,7 @@ module.exports=async function({browser,origin,base,evidence}){
     await page.locator('[data-action="close-modal"]').click();
     await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
     await list();await choose('tourvisor');const before=calls();
-    await page.clock.fastForward(901000);await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
+    await advancePastReceipt();await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
     assert.equal(await page.locator('#provider-price-expiry').count(),0,'stale provider timer cannot mark another offer expired');
     assert.doesNotMatch(await page.locator('#modal-footer').textContent(),/Срок подтверждения цены истёк/);
     assert.equal(calls(),before,'stale timer never quotes another offer');
@@ -152,7 +164,7 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.screenshot({path:path.join(evidence,`selected-session-preexpiry-${provider}-${mode}-${width}.png`)});
      fs.writeFileSync(path.join(evidence,`selected-session-preexpiry-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,baselineScroll:scroll,beforeScreenshot,afterScreenshot:await sessionGeometry(page),compiled:true,physical_device:false},null,2)+'\n');
     }
-    await page.clock.fastForward(901000);
+    await advancePastReceipt();
     await page.waitForFunction(()=>document.querySelector('#modal').dataset.quoteExpired==='1');
     await page.evaluate(()=>{dispatchEvent(new Event('focus'));document.dispatchEvent(new Event('visibilitychange'));});
     const expiryViewportSettlement=contacts?await settleSessionViewport(page):null;
@@ -195,17 +207,21 @@ module.exports=async function({browser,origin,base,evidence}){
      await page.locator('#modal-back').click();
      assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Back cannot restore an expired application action');
     }
-    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);
-    await page.evaluate(()=>history.forward());
-    await page.waitForTimeout(50);
+    const expiredRoute=await page.evaluate(key=>structuredClone(history.state?.[key]),historyKey);
+    await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']&&history.scrollRestoration==='auto');
+    await page.goForward();
+    await page.waitForFunction(({route,provider})=>{const modal=document.querySelector('#modal'),current=history.state?.['anytour.prototype.v18.ui.v1'];if(!modal.open)return !current&&history.scrollRestoration==='auto';return current?.key===route.key&&current.type===(provider==='anex'?'anex-quote':'offer')&&/ист[её]к/.test(modal.textContent);},{route:expiredRoute,provider});
+    expiryClock.afterForward=await page.evaluate(()=>Date.now());assert(expiryClock.afterForward>=receiptDeadline,'Forward keeps the same receipt expired in the test clock');
     assert.equal(await page.locator('[data-action="'+application+'"]:enabled').count(),0,'Forward does not restore expired price authority');
+    assert.doesNotMatch((await page.locator('#modal-footer').textContent()).replace(/\s/g,''),new RegExp(oldPrice),'Forward never restores the old verified total');
     assert.equal(calls(),before,'Back and Forward do not recalculate');
+    fs.writeFileSync(path.join(evidence,`selected-session-clock-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,expiryClock,expiredRoute,afterForward:await sessionGeometry(page),supplier_HTTP:0,real_leads:0},null,2));
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
    records.push({provider,width,mode,compiled:true,expiry_presentation:mode!=='other',same_hotel_return:mode==='return',independent_offer:mode==='other',root_200_reduced_height:width===390&&mode==='application',supplier_HTTP:0,real_leads:0,physical_device:false});
   }catch(error){
    const geometry=await sessionGeometry(page).catch(diagnosticError=>({diagnosticError:diagnosticError.message}));
-   fs.writeFileSync(path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,error:error.stack,errors,forbidden,geometry,compiled:true,physical_device:false},null,2)+'\n');
+   fs.writeFileSync(path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.json`),JSON.stringify({provider,width,mode,error:error.stack,errors,forbidden,geometry,receiptDeadline,expiryClock,compiled:true,physical_device:false},null,2)+'\n');
    console.error(`FAIL compiled selected session ${provider}/${mode}/${width}`,error.stack);
    await page.screenshot({path:path.join(evidence,`selected-session-failure-${provider}-${mode}-${width}.png`)}).catch(()=>{});
    throw error;
