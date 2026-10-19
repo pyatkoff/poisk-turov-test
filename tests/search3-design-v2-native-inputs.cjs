@@ -42,6 +42,23 @@ async function selectedJourneyChecks(){
   }finally{owner.destroy();win.close();}
  }
 }
+async function responsiveTourFocusChecks(){
+ const parts=builder.extract(),doc=new JSDOM('<!doctype html><head><style>'+parts.css+'\n'+parts.desktopCSS+'</style></head><body>'+parts.markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
+ let product=win.document.querySelector('[data-product]'),owner;
+ const state={screen:'tour',search:trip,filters:{...filters},hotels:[hotel],selected:offer,hotelId:hotel.id,status:'complete',hasSearched:true,favorites:[]};
+ const api={async init(){return{dictionaries,requestedSearch:false};}};
+ win.AnyTourDesignV2Tour={mount(){return{render({offer:chosen}){assert.strictEqual(chosen,offer);},getState(){return{};},destroy(){}};}};
+ win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+ try{
+  owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});await owner.ready;
+  const quick=product.querySelector('.st-quick-tour [data-action="lead"]');quick.focus();assert.strictEqual(win.document.activeElement,quick);
+  const retained=owner.getState();owner.destroy();const wrap=win.document.createElement('div');wrap.innerHTML=parts.markup;win.document.body.replaceChildren(wrap);product=wrap.querySelector('[data-product]');product.classList.replace('st-mobile','st-desktop');
+  owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;
+  assert.equal(win.getComputedStyle(product.querySelector('.st-quick-tour')).display,'none','The existing desktop CSS hides the mobile quick action');
+  assert.strictEqual(win.document.activeElement,product.querySelector('[data-screen="tour"] h1'),'A CSS-hidden initiating action falls back to the visible tour heading after responsive remount');
+  assert.strictEqual(owner.getState().selected,offer,'Responsive focus recovery retains the canonical offer');
+ }finally{owner?.destroy();win.close();}
+}
 async function groupMinimumChecks(){
  for(const outcome of ['complete','error','stale']){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
@@ -321,6 +338,7 @@ async function localCalendarDayChecks(){
 }
 (async()=>{
  await selectedJourneyChecks();
+ await responsiveTourFocusChecks();
  await mounted.ready;await localCalendarDayChecks();await unstartedNavigationChecks();await destinationFocusChecks();await popupSubmitChecks();assert.equal(starts,0,'passive hydration does not search suppliers');
  click('[data-search-nights-toggle]');assert.equal(node('[data-search-nights-toggle]').getAttribute('aria-expanded'),'true');
  click('[data-native-night="10"]');assert.equal(node('[name="minNights"]').value,'10');assert.equal(node('[name="maxNights"]').value,'10','first tap replaces the previous exact duration');

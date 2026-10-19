@@ -1165,6 +1165,27 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),170400);
         row.proof.nonMinimumJourney={exactOfferIndex:1,total:170400,summaryAndContinueRetained:true,contactItineraryRetained:true,backReopenExtraOperations:0};
 
+        // The mobile quick action is absent from desktop layout. A responsive
+        // remount must recover visible focus without another supplier action.
+        await screen('lead').locator('[data-action="tour"]').click();await screen('tour').waitFor({state:'visible'});
+        const focusOperations=await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,expand:c.expand,quote:c.quote};});
+        const resizeTour=async responsiveWidth=>{
+          await page.setViewportSize({width:responsiveWidth,height:900});
+          await waitForFixture(page,()=>{
+            const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+            return root&&root.classList.contains('st-mobile')===(innerWidth<=760)&&!root.querySelector('[data-screen="tour"]').hidden&&document.querySelector('[data-native-startup]').hidden;
+          });
+        };
+        await resizeTour(390);await product.locator('.st-quick-tour [data-action="lead"]').focus();
+        await resizeTour(1280);
+        assert.equal(await product.locator('.st-quick-tour [data-action="lead"]').isVisible(),false);
+        assert.equal(await screen('tour').locator('h1').evaluate(node=>node===document.activeElement&&node.getBoundingClientRect().height>0),true,'A hidden mobile initiating control falls back to the visible desktop tour heading');
+        await resizeTour(width);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection()?.offer===window.__nativeFixture.group.offers[1]),true);
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,expand:c.expand,quote:c.quote};}),focusOperations);
+        row.proof.screenNavigation.responsiveHiddenFocusFallback=true;
+        row.proof.screenNavigation.responsiveRemountExtraOperations=0;
+
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.
         terminalJourney=true;

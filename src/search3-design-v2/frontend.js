@@ -230,6 +230,17 @@
       }
       navigationViews.set(shownView,{top:window.scrollY,focus,about:shownScreen==='hotel'&&!$('[data-about-hotel]').hidden});
     }
+    function visibleViewTarget(node) {
+      if(!node||node.closest('[hidden]'))return false;
+      const visibility=window.getComputedStyle(node).visibility;
+      if(visibility==='hidden'||visibility==='collapse')return false;
+      for(let ancestor=node;ancestor;ancestor=ancestor.parentElement){
+        if(window.getComputedStyle(ancestor).display==='none')return false;
+        if(ancestor.tagName==='DETAILS'&&!ancestor.open&&!ancestor.querySelector(':scope > summary')?.contains(node))return false;
+        if(ancestor===root)break;
+      }
+      return true;
+    }
     function restoreView(fresh=false) {
       if(root.hidden || !shownView)return;
       const saved=navigationViews.get(shownView),screen=$('[data-screen="'+shownScreen+'"]');
@@ -240,8 +251,8 @@
       }
       if(!saved&&!fresh)return;
       const f=saved?.focus,target=f?[...screen.querySelectorAll('button,input,select,summary')].filter(node=>node.tagName===f.tag&&(!f.attribute||node.getAttribute(f.attribute)===f.value))[f.index]:null;
-      const closed=target?.closest('details:not([open])'),available=target&&!target.disabled&&!target.closest('[hidden]')&&(!closed||closed.querySelector('summary')===target);
-      const heading=shownScreen==='results'?screen.querySelector('[data-result-count]'):[...screen.querySelectorAll('h1,h2')].find(node=>!node.closest('[hidden]'));
+      const available=target&&!target.disabled&&visibleViewTarget(target);
+      const heading=shownScreen==='results'?screen.querySelector('[data-result-count]'):[...screen.querySelectorAll('h1,h2')].find(visibleViewTarget);
       if(available)target.focus({preventScroll:true});else if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
       if(saved){const top=available&&target.getBoundingClientRect().height?window.scrollY+target.getBoundingClientRect().top-f.top:saved.top;window.document.scrollingElement?.scrollTo?.({top:Math.max(0,top),behavior:'instant'});}
       else root.scrollIntoView?.({block:'start',behavior:'instant'});
