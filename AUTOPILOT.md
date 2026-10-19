@@ -52,6 +52,11 @@ terminal receipts; stale recovery05c pins below are history/no-replay, not a que
 Focused checks during implementation, applicable exact-head gates on the complete
 candidate, one whole-version visual+behavior approval before a new concept reaches
 NEXT, separate exact-artifact publisher and installed acceptance. No guard changes.
+Before a new packet, name its exact artifact/runtime, permitted verification route
+and minimal frames/actions in the existing claim/PR; no extra tracker/test queue.
+Native cloud Chrome can inspect installed NEXT; a missing managed Sites route blocks
+only the unpublished candidate, not every browser. Reuse exact evidence; no repeat
+or metered fallback without reason/authority and no blocked-route workaround.
 200% text is deferred/not_measured; do not add runs/fixes or make it a blocker.
 Do not borrow design-v2 evidence or redirect its work. Schedules/enabled/paused and
 other tasks remain unchanged; a plan update does not authorize supplier/lead/production.
