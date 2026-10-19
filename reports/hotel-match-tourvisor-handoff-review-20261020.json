@@ -1,0 +1,636 @@
+{
+  "schema_version": 1,
+  "status": "completed_readonly_intake_review_not_mapping_acceptance",
+  "date_local": "2026-10-20",
+  "owner_scope": "Все новые supplier acquisition MATCH через Tourvisor, учётка TOURVISOR_ANEX_JWT; найденные ранее ТО совпадения проверить и переиспользовать.",
+  "supplier_source": {
+    "account_env": "TOURVISOR_ANEX_JWT",
+    "service": "Tourvisor",
+    "not_direct_anex_api": true,
+    "common4": [
+      "ANEX",
+      "FUN&SUN",
+      "Библио-Глобус",
+      "Интурист"
+    ],
+    "actor_request": "2026-10-20 Europe/Kaliningrad, «давай все по турвизору, по АНЕКС_ЖВТ»",
+    "evidence": [
+      "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6262286069",
+      "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6262486003"
+    ],
+    "prior_probe": {
+      "date": "2026-10-19",
+      "state": "completed_consumed_no_replay",
+      "search_id": "13943616554",
+      "hotel_groups": 25,
+      "tours": 103,
+      "operator_id": 13,
+      "physical_http": 3,
+      "local_accounted_tariff_searches": 1,
+      "global_usage": "not_measured",
+      "raw_response_retained": false
+    },
+    "supplier_calls_this_review": 0,
+    "daily_ledger": "Existing shared account/provider-day ledger; no inferred free budget from the old probe; exact account/operator bindings required before new requests.",
+    "paused_sources": "No SAMO/Andromeda resume; new direct ANEX API acquisition is outside this MATCH pass. Existing mappings and INT/SEARCH runtime remain unchanged."
+  },
+  "incoming_evidence": [
+    {
+      "kind": "new_local_catalog_bridge",
+      "date": "2026-10-10",
+      "old_to_tv_links": 5075,
+      "link_issues": 0,
+      "ready_tv_cards": 6175,
+      "discovered_tv_cards": 6389,
+      "source_records_preserved": 37076,
+      "is_new_to_match_count": false,
+      "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6097147166",
+      "published_handoff": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6097387169",
+      "namespaces": {
+        "old_local": "anytour_hotels.id",
+        "tv": "Tourvisor hotel ID"
+      },
+      "exact_roster_exported_in_receipt": false,
+      "source_records_count_scope": "37076 is the whole old anytour_hotel_sources before-snapshot count; number copied into migrated snapshot_json.sources[] is not measured."
+    },
+    {
+      "kind": "retained_operator_observations",
+      "table": "tour_operator_identity_observations",
+      "fields": [
+        "hotel_id",
+        "operator_id",
+        "tour_id",
+        "operator_link",
+        "operator_link_host",
+        "operator_link_path",
+        "operator_link_query",
+        "native_id_type",
+        "native_id_value",
+        "native_id_conflict",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "source_path": "v2/data/operator-identity-observer-v1.php",
+      "source_blob": "ad1018a4ac9e43ae938526dde9bba25d23b1f7ab",
+      "available_rows": "not_exported_or_counted_in_this_review",
+      "path_fields_preserved_when_native_null": true,
+      "new_accepted_mappings": "not_measured_by_schema_review"
+    },
+    {
+      "kind": "preserved_legacy_sources",
+      "table": "local_tv_legacy_links",
+      "json_path": "snapshot_json.sources[]",
+      "origin_table": "anytour_hotel_sources",
+      "fields": [
+        "namespace",
+        "external_key",
+        "acquired_via",
+        "source_json",
+        "source_sha256",
+        "first_seen_at",
+        "last_seen_at"
+      ],
+      "source_path": "v2/data/local-tv-catalog-v1.php",
+      "source_blob": "f91e1bd204d512d3c303ae2543cfda9f3e98f09b",
+      "guard": "Reuse exact namespace/provider provenance and accepted status; inherited source records are not automatically new matches."
+    },
+    {
+      "kind": "historical_BG18_candidate_file",
+      "filename": "AnyTour_BG_102_Matches_18_2026-09-28.csv",
+      "source_modified_at": "2026-09-28T21:14:10.593918Z",
+      "access": "complete current Library text read; not original byte capture",
+      "rows": 18,
+      "already_known_frontier": true,
+      "admission": "candidate_only; literal 102+native115 equality does not establish namespace crosswalk",
+      "current_admission": "not_evaluated",
+      "latest_known_review": "https://github.com/pyatkoff/poisk-turov-test/issues/1971#issuecomment-5929173850",
+      "pairs": [
+        {
+          "samo_catalog_id": "13293",
+          "tv_hotel_id": "367",
+          "operator115_native_id": "610184500",
+          "bgoperator_full_id": "102610184500",
+          "tv_name": "SWISSOTEL RESORT EL QUSIER (EX. RADISSON BLU QUSIER)",
+          "historical_gap_bucket": "anex_only",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "efed6bc3f6f3b0768dac1b8c1ba714a1cbd473373a5146d3d258b11388bdfc8d",
+          "review_note": "В SAMO перечислены Reef Oasis Suakin и Swissotel El Quseir; проверить происхождение вариантов названия. ID совпал точно."
+        },
+        {
+          "samo_catalog_id": "60328",
+          "tv_hotel_id": "9242",
+          "operator115_native_id": "625162113",
+          "bgoperator_full_id": "102625162113",
+          "tv_name": "AMBROSIA HOTEL BEACH & SPA",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "34d5b423c7cb48d38e340e8cd82f122eadbf7eda10e83db836e87f051f75ac51",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "205729",
+          "tv_hotel_id": "9283",
+          "operator115_native_id": "625414997",
+          "bgoperator_full_id": "102625414997",
+          "tv_name": "GRAND BELISH",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "3a14c5ac5a683bb68691b2e8b15c827882b0c07e68ecedc1744f20ed2fdb9938",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000041008",
+          "tv_hotel_id": "62868",
+          "operator115_native_id": "610121438",
+          "bgoperator_full_id": "102610121438",
+          "tv_name": "AMORE BOUTIQUE",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "b5e01e1200b9db97f0cdcc522da0ee66d7280c074e420bb7b0db96016a19621d",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000041090",
+          "tv_hotel_id": "1572",
+          "operator115_native_id": "625076488",
+          "bgoperator_full_id": "102625076488",
+          "tv_name": "BELDIBI BEACH HOTEL",
+          "historical_gap_bucket": "samo_only",
+          "historical_target_has_samo": true,
+          "source_evidence_sha256": "1c3c20d737d0d72c225b651a174bee4d87ab4aba87a9831fe663a6b4c0c0e8e1",
+          "review_note": "У TV уже есть другая принятая SAMO-связь; требуется разбор дополнительного ID, не замена."
+        },
+        {
+          "samo_catalog_id": "2000052316",
+          "tv_hotel_id": "70457",
+          "operator115_native_id": "610144591",
+          "bgoperator_full_id": "102610144591",
+          "tv_name": "LIKYA APART HOTEL",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "74d6e71cf27927d4edd5ef9da290aa155ace394cac7b09ecf23063e91375389c",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000059209",
+          "tv_hotel_id": "67000",
+          "operator115_native_id": "610155352",
+          "bgoperator_full_id": "102610155352",
+          "tv_name": "TRYP BY WYNDHAM DIDIM (EX. ASEL HOTEL DIDIM)",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "40231ac234d8fedebdba5a9d09e1a3013a5cb6174a1daada51d4d7aa2f02af43",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000060910",
+          "tv_hotel_id": "72889",
+          "operator115_native_id": "610175943",
+          "bgoperator_full_id": "102610175943",
+          "tv_name": "SIDE SQUARE HOTEL ADULTS ONLY 16+",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "a9dcf24b6839315e9fdef05ac65bc19eba094144353bd943b282cbfd683feaf4",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000062548",
+          "tv_hotel_id": "72865",
+          "operator115_native_id": "610149698",
+          "bgoperator_full_id": "102610149698",
+          "tv_name": "YAMANLIFE HOTEL",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "62a68c78644e3f5fc0f5cdb8989257e32387bf4bb14fc62092704f90993bf4fd",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000062557",
+          "tv_hotel_id": "75791",
+          "operator115_native_id": "610179507",
+          "bgoperator_full_id": "102610179507",
+          "tv_name": "IPEK APART HOTEL",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "ca8cde45a2b5b69700e891542289338fc7e03fd6ccf381d11a9493e36d887843",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000071830",
+          "tv_hotel_id": "15902",
+          "operator115_native_id": "610210401",
+          "bgoperator_full_id": "102610210401",
+          "tv_name": "CITYS HILLS (EX. THE PANORAMA HILL)",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "a07e46f8599d4634a6885e33e82a28dab72ede87a0b381108bd6d0939ee09139",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000072753",
+          "tv_hotel_id": "1267",
+          "operator115_native_id": "610197738",
+          "bgoperator_full_id": "102610197738",
+          "tv_name": "CLOVER MAGIC PARK BEACH (EX. CLOVER MAGIC GARDEN BEACH)",
+          "historical_gap_bucket": "samo_only",
+          "historical_target_has_samo": true,
+          "source_evidence_sha256": "ba4f91704ed033b450db86a376e613f3b837cc2b2853c23dd64854da19bf48ec",
+          "review_note": "У TV уже есть другая принятая SAMO-связь; требуется разбор дополнительного ID, не замена."
+        },
+        {
+          "samo_catalog_id": "2000072804",
+          "tv_hotel_id": "65770",
+          "operator115_native_id": "610175325",
+          "bgoperator_full_id": "102610175325",
+          "tv_name": "PALMORA LARA HOTEL (EX. JURA HOTELS LARA RESORT)",
+          "historical_gap_bucket": "samo_only",
+          "historical_target_has_samo": true,
+          "source_evidence_sha256": "0271d7392b1d93add1822ed777f87b2000927b3f3043273212263d99f510b0ef",
+          "review_note": "У TV уже есть другая принятая SAMO-связь; требуется разбор дополнительного ID, не замена. Названия различаются: Royal Towers / Prado Family Lara и Palmora / Jura Hotels Lara. Проверить историю ID; существующую связь не заменять."
+        },
+        {
+          "samo_catalog_id": "2000079689",
+          "tv_hotel_id": "1175",
+          "operator115_native_id": "610214047",
+          "bgoperator_full_id": "102610214047",
+          "tv_name": "NEX ROYAL BEACH HOTEL (EX. VOGUE ROYAL)",
+          "historical_gap_bucket": "samo_only",
+          "historical_target_has_samo": true,
+          "source_evidence_sha256": "a2c4a2243558d5c190d7b578eb315818e03cfd2db00f356e4d5fefa588b9de91",
+          "review_note": "У TV уже есть другая принятая SAMO-связь; требуется разбор дополнительного ID, не замена."
+        },
+        {
+          "samo_catalog_id": "2000081107",
+          "tv_hotel_id": "83106",
+          "operator115_native_id": "610227700",
+          "bgoperator_full_id": "102610227700",
+          "tv_name": "PICKALBATROS VILLAGIO RESORT PORTOFINO MARSA ALAM",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "07daafa72b2332aa82a55c0ffb40045242ded26dc2a2c4e1417b273e24040600",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000086021",
+          "tv_hotel_id": "316",
+          "operator115_native_id": "668981793",
+          "bgoperator_full_id": "102668981793",
+          "tv_name": "NAAMA BAY PROMENADE MOUNTAIN (EX. SHARM EL SHEIKH MARRIOTT RESORT MOUNTAIN)",
+          "historical_gap_bucket": "anex_only",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "b9a5cd19e6c1c37c357004ac2738a0ec46c5051791e83675d7fe9454206e60db",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000086129",
+          "tv_hotel_id": "75538",
+          "operator115_native_id": "610160139",
+          "bgoperator_full_id": "102610160139",
+          "tv_name": "THE NORM COLLECTION DOORA (EX. SELECTUM DOORA BODRUM)",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "5a806f36c5793b5a4b6da5713b60f289082ac9d06146f77836c4bbaa942fbc26",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        },
+        {
+          "samo_catalog_id": "2000087863",
+          "tv_hotel_id": "99582",
+          "operator115_native_id": "610222069",
+          "bgoperator_full_id": "102610222069",
+          "tv_name": "SOLEIL OTEL",
+          "historical_gap_bucket": "neither",
+          "historical_target_has_samo": false,
+          "source_evidence_sha256": "fe3696db0f80437e2875f247a569b4fc92f86b6c754ac773cef7b23bb61db70e",
+          "review_note": "Точное совпадение по правилу 102 + ID; кандидат, без записи в БД."
+        }
+      ],
+      "no_replay": "Do not replay consumed BG18/native110 scopes or re-register these18 as newly found physical hotels."
+    }
+  ],
+  "namespace_check": {
+    "purpose": "Test whether new LOCAL legacy links can satisfy independent TV-target proof for retained native-absent3 historical hints.",
+    "projection": {
+      "evidence_type": "sanitized_projection_of_single_public_read",
+      "raw_response_retained": false,
+      "raw_response_limitation": "The original JSON body was parsed in memory and only the listed projection plus byte count and SHA256 were emitted. Do not claim this file is the original JSON response.",
+      "exact_url": "https://anytoour.ru/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php?oldLocalHotelIds%5B%5D=1546&oldLocalHotelIds%5B%5D=1584&oldLocalHotelIds%5B%5D=9374",
+      "method": "GET",
+      "http_status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "raw_response_bytes": 29436,
+      "raw_response_sha256": "4c9cdaf1db6e7f8a2821662e6dc30be6ee22e727098adb3caa4e38ef9bdf9b06",
+      "http_date_header": "not_recorded",
+      "response_projection": {
+        "ok": true,
+        "source": "anytour-local-tv-catalog-v1",
+        "catalog": "local-tv",
+        "requestedIds": [
+          1546,
+          1584,
+          9374
+        ],
+        "missingIds": [
+          9374
+        ],
+        "links": [
+          {
+            "oldLocalId": 1546,
+            "tourvisorHotelId": 9358
+          },
+          {
+            "oldLocalId": 1584,
+            "tourvisorHotelId": 11740
+          }
+        ],
+        "items": [
+          {
+            "id": 9358,
+            "name": "CARETTA RELAX HOTEL (EX. XENO RELAX HOTEL)",
+            "catalog": "local-tv",
+            "revision": 3,
+            "contentState": "ready",
+            "country": {
+              "name": "Турция",
+              "id": 4
+            },
+            "region": {
+              "name": "Аланья",
+              "id": 19,
+              "countryId": 4
+            },
+            "subRegion": {
+              "name": "Конаклы",
+              "id": 188,
+              "regionId": 19
+            },
+            "detailsAvailable": true,
+            "detailsFetchedAt": "2026-09-12 08:09:37"
+          },
+          {
+            "id": 11740,
+            "name": "CASUARINA RESORT & SPA",
+            "catalog": "local-tv",
+            "revision": 3,
+            "contentState": "ready",
+            "country": {
+              "name": "Маврикий",
+              "id": 27
+            },
+            "region": {
+              "name": "Маврикий",
+              "id": 195,
+              "countryId": 27
+            },
+            "subRegion": null,
+            "detailsAvailable": true,
+            "detailsFetchedAt": "2026-10-04 10:16:06"
+          }
+        ]
+      },
+      "source_verification": {
+        "ref": "fe730120c30a5fc8586bc94aa7d1253649fbf8b8",
+        "reader_path": "v2/data/local-tv-catalog-read-v1.php",
+        "reader_blob": "466719886d4add2a3bd8aee3ff9959957de9203e",
+        "helper_path": "v2/data/local-tv-catalog-v1.php",
+        "helper_blob": "f91e1bd204d512d3c303ae2543cfda9f3e98f09b",
+        "read_semantics": "SELECT-only join local_tv_legacy_links.old_local_id -> local_tv_hotels.id; excluded rows omitted; 1..100 IDs; no supplier HTTP/discovery/writes.",
+        "oldLocalId_origin": "migrateLinks() selects anytour_hotels.id, validates unique proven legacy_catalog edge, and writes local_tv_legacy_links.old_local_id.",
+        "match_hint_origin": "Parent-verified historical native-absent3 hints 1546/1584/9374 came from catalog_hotels.h.id. These are a distinct namespace from anytour_hotels.id.",
+        "conclusion": "Do not attach returned bridges to A11/Kemper/SUNRISE. Returned1546 and1584 denote different named properties; missing9374 is endpoint-specific absence, not source absence."
+      },
+      "side_effects": {
+        "supplier_http_calls": 0,
+        "public_content_read_calls": 1,
+        "mapping_writes": 0,
+        "server_carrier_runs": 0,
+        "workflow_dispatches": 0
+      },
+      "preceding_web_open": {
+        "outcome": "tool_internal_error_url_not_accessible",
+        "no_json_or_http_status_obtained": true
+      },
+      "projection_recorded_at_utc": "2026-10-19T22:38:10.935768+00:00"
+    },
+    "conclusion": "Initial same-number oldLocal lookup was invalid: anytour_hotels.id differs from catalog_hotels.id. Corrected typed chains now provide supporting LOCAL↔TV target proof for three targets. Operator-native identity, CURRENT admission and property qualifier/cluster holds remain unresolved; missing9374 from the initial wrong namespace is not source absence.",
+    "correct_typed_chain": {
+      "supporting_reads": [
+        {
+          "receipt": {
+            "url": "https://anytoour.ru/_preview/search3-local-candidate/data/hotel-details-read-v1.php?catalog=anytour&legacyHotelIds%5B%5D=1546&legacyHotelIds%5B%5D=1584&legacyHotelIds%5B%5D=9374",
+            "method": "GET",
+            "request_at_utc": "2026-10-19T22:41:31.209771+00:00",
+            "namespace": "legacy_catalog",
+            "requested_ids": [
+              1546,
+              1584,
+              9374
+            ],
+            "supplier_http_calls": 0,
+            "mapping_writes": 0,
+            "response_at_utc": "2026-10-19T22:41:35.763923+00:00",
+            "http_status": 200,
+            "http_date": "Mon, 19 Oct 2026 22:41:35 GMT",
+            "content_type": "application/json; charset=utf-8",
+            "bytes": 32383,
+            "sha256": "5c6a23e7081dfd3000505806240fb7798f672999eb7681cd8fe506dc71fa14f1"
+          },
+          "projection": {
+            "ok": true,
+            "source": "anytour-canonical-catalog",
+            "catalog": "anytour",
+            "requestedLegacyIds": [
+              1546,
+              1584,
+              9374
+            ],
+            "links": [
+              {
+                "legacyHotelId": 1546,
+                "anytourHotelId": 736
+              },
+              {
+                "legacyHotelId": 1584,
+                "anytourHotelId": 763
+              },
+              {
+                "legacyHotelId": 9374,
+                "anytourHotelId": 1554
+              }
+            ],
+            "missingLegacyIds": []
+          },
+          "items": [
+            {
+              "id": 736,
+              "name": "A11 HOTEL OBAKOY (EX.TAKSIM INTERNATIONAL OBAKOY)",
+              "revision": 1,
+              "contentState": null,
+              "catalog": "anytour",
+              "country": {
+                "name": "Турция"
+              }
+            },
+            {
+              "id": 763,
+              "name": "WASSERMANN HOTEL",
+              "revision": 1,
+              "contentState": null,
+              "catalog": "anytour",
+              "country": {
+                "name": "Турция"
+              }
+            },
+            {
+              "id": 1554,
+              "name": "SUNRISE ARABIAN BEACH RESORT",
+              "revision": 1,
+              "contentState": null,
+              "catalog": "anytour",
+              "country": {
+                "name": "Египет"
+              }
+            }
+          ],
+          "raw_body_captured_before_parsing": true,
+          "raw_body_embedded_in_this_report": false
+        },
+        {
+          "receipt": {
+            "url": "https://anytoour.ru/_preview/search3-next-candidate/data/local-tv-catalog-read-v1.php?oldLocalHotelIds%5B%5D=736&oldLocalHotelIds%5B%5D=763&oldLocalHotelIds%5B%5D=1554",
+            "method": "GET",
+            "request_at_utc": "2026-10-19T22:42:20.660211+00:00",
+            "namespace": "anytour_hotels.id via oldLocalHotelIds",
+            "requested_ids": [
+              736,
+              763,
+              1554
+            ],
+            "supplier_http_calls": 0,
+            "mapping_writes": 0,
+            "typed_parent_receipt": "/tmp/match-legacy-hints-canonical-read-20261020.receipt.json",
+            "response_at_utc": "2026-10-19T22:42:24.861964+00:00",
+            "http_status": 200,
+            "http_date": "Mon, 19 Oct 2026 22:42:24 GMT",
+            "content_type": "application/json; charset=utf-8",
+            "bytes": 52198,
+            "sha256": "8d5b28da38bc17910336d8e551aaa46edece8ea4caabbf06366a9eebe02d787d"
+          },
+          "projection": {
+            "ok": true,
+            "source": "anytour-local-tv-catalog-v1",
+            "catalog": "local-tv",
+            "requestedIds": [
+              736,
+              763,
+              1554
+            ],
+            "missingIds": [],
+            "links": [
+              {
+                "oldLocalId": 736,
+                "tourvisorHotelId": 1546
+              },
+              {
+                "oldLocalId": 763,
+                "tourvisorHotelId": 1584
+              },
+              {
+                "oldLocalId": 1554,
+                "tourvisorHotelId": 9374
+              }
+            ]
+          },
+          "items": [
+            {
+              "id": 1546,
+              "name": "A11 HOTEL OBAKOY (EX.TAKSIM INTERNATIONAL OBAKOY)",
+              "revision": 3,
+              "contentState": "ready",
+              "catalog": "local-tv",
+              "country": {
+                "name": "Турция",
+                "id": 4
+              }
+            },
+            {
+              "id": 1584,
+              "name": "WASSERMANN HOTEL",
+              "revision": 3,
+              "contentState": "ready",
+              "catalog": "local-tv",
+              "country": {
+                "name": "Турция",
+                "id": 4
+              }
+            },
+            {
+              "id": 9374,
+              "name": "SUNRISE ARABIAN BEACH RESORT",
+              "revision": 3,
+              "contentState": "ready",
+              "catalog": "local-tv",
+              "country": {
+                "name": "Египет",
+                "id": 1
+              }
+            }
+          ],
+          "raw_body_captured_before_parsing": true,
+          "raw_body_embedded_in_this_report": false
+        }
+      ],
+      "links": [
+        {
+          "catalog_namespace": "legacy_catalog / catalog_hotels.id",
+          "catalog_id": 1546,
+          "anytour_hotel_id": 736,
+          "tourvisor_hotel_id": 1546,
+          "name": "A11 HOTEL OBAKOY (EX.TAKSIM INTERNATIONAL OBAKOY)"
+        },
+        {
+          "catalog_namespace": "legacy_catalog / catalog_hotels.id",
+          "catalog_id": 1584,
+          "anytour_hotel_id": 763,
+          "tourvisor_hotel_id": 1584,
+          "name": "WASSERMANN HOTEL"
+        },
+        {
+          "catalog_namespace": "legacy_catalog / catalog_hotels.id",
+          "catalog_id": 9374,
+          "anytour_hotel_id": 1554,
+          "tourvisor_hotel_id": 9374,
+          "name": "SUNRISE ARABIAN BEACH RESORT"
+        }
+      ],
+      "conclusion": "Two explicit saved public bridges establish all three typed legacy_catalog→own→TV chains. The equality of final TV and initial numeric IDs is observed, not assumed. This supplies supporting LOCAL↔TV target proof, not operator-native identity, acceptance, CURRENT uniqueness/occupancy/manual clearance or SUNRISE/Kemper property-qualifier adjudication."
+    }
+  },
+  "search_for_additional_handoffs": {
+    "scope": "All coordination4217 comments after2026-10-08 and INT2506/1493, LOCAL2690/4191; current Library exactCSV and recent matching searches.",
+    "new_exact_TO_pairs_after_oct8_found": false,
+    "meaning": "No such packet identified in these sources; not a statement that no other handoff/file exists.",
+    "confirmation_needed_from_new_evidence": "Exact file/issue/namespace+IDs and provenance if another transfer is intended."
+  },
+  "result": {
+    "new_accepted_operator_mappings": 0,
+    "mapping_writes": 0,
+    "supplier_http": 0,
+    "public_saved_data_GET": 3,
+    "server_carrier_runs": 0,
+    "workflow_dispatches": 0,
+    "matched_candidate_count_not_established": true,
+    "new_supporting_legacy_own_tv_chains": 3
+  },
+  "next_step": {
+    "unit": "One existing retained-evidence intake, before more Tourvisor requests",
+    "selected_sources": [
+      "tour_operator_identity_observations",
+      "local_tv_legacy_links.snapshot_json.sources[]"
+    ],
+    "extract": "Exact typed common4 hotel/operator/native/link+provenance rows from retained operator observations and preserved legacy source rows. For native-absent3 use catalog1546→own736→TV1546;1584→763→1584;9374→1554→9374 as supporting target chains; preserve property/cluster holds.",
+    "route_status": "No generic unfrozen capture/acceptance route certified in this review; old fixed probes and consumed captures cannot be retargeted.",
+    "acquisition_rule": "Only missing independent operator proof through TOURVISOR_ANEX_JWT after current ledger/reservation and existing gates; prepared proof pairs use normal CURRENT writer/readback.",
+    "authority": "Current user authorizes this MATCH source priority and evidence review; no production credential/config switch, no arbitrary source/endpoint/operation replay.",
+    "existing_gap_closed": "Published typed LOCAL↔TV chain established for three retained native-absent3 target hints; independent operator/native proof and CURRENT writer admission remain."
+  }
+}
