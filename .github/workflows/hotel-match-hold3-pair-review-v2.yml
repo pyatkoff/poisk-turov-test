@@ -1,0 +1,141 @@
+name: MATCH hold3 pair review v2
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-hold3-pair-review-1971-20260920-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-hold3-pair-review-1971-20260920-v2
+  BASE_SHA: 70b69b49639357cb7bd283435ee8ee32e7ebc066
+  CLAIM: '5746301442'
+  PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}'
+  A3156: '10593744303'
+  A3144: '10591517115'
+  A3135: '10591695073'
+jobs:
+  review:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.head.ref == 'ops/match-hold3-pair-review-1971-20260920-v2' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate source and build immutable three-pair input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git diff --name-only "$BASE_SHA..HEAD" | sort)" = "$(printf '%s\n' '.github/workflows/hotel-match-hold3-pair-review-v2.yml' 'scripts/diagnostics/hotel_match_hold3_pair_review_v2.php' | sort)"
+          php -l scripts/diagnostics/hotel_match_hold3_pair_review_v2.php
+          php scripts/diagnostics/hotel_match_hold3_pair_review_v2.php --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in [os.environ['OPERATION_ID'],'355cf753939b1218b692b4dba8e7f0234712ce5e4a66af7edc23316a8dbf4726','3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a','9d8be005458ca901dac8f94a7224662ae25833882dda2ed6687d184a660af034','2000034436→49104','2000063032→69340','2000089754→150945','provider0/writes0']:
+              assert s in b,s
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$A3156/zip" > input/a3156.zip
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$A3144/zip" > input/a3144.zip
+          gh api "repos/pyatkoff/poisk-turov-test/actions/artifacts/$A3135/zip" > input/a3135.zip
+          python3 - <<'PY'
+          import hashlib,json,zipfile,pathlib
+          specs={'a3156.zip':'883e2e296c8abdc5b194c0fe76a528f1b86ea554051e5cd3a3cac32563e4e530','a3144.zip':'389b97a73c9e668fd36bf41d23bd62f0eb990faa1db79c2cad82a64203f171f7','a3135.zip':'bc9157f7ec36e2e3f556a90077613a3cb33682263845d4e3b6f68f8bf283a7c3'}
+          for f,h in specs.items(): assert hashlib.sha256(pathlib.Path('input/'+f).read_bytes()).hexdigest()==h,(f,'zip_sha')
+          with zipfile.ZipFile('input/a3156.zip') as z: b3156=z.read('server/result.json')
+          with zipfile.ZipFile('input/a3144.zip') as z: b3144=z.read('result.json')
+          with zipfile.ZipFile('input/a3135.zip') as z:
+            b3135=z.read('server/result.json'); assert hashlib.sha256(b3135).hexdigest()=='9d8be005458ca901dac8f94a7224662ae25833882dda2ed6687d184a660af034'
+            edges=[json.loads(z.read(n)) for n in z.namelist() if n.startswith('server/edge-') and n.endswith('.json')]
+          assert hashlib.sha256(b3156).hexdigest()=='355cf753939b1218b692b4dba8e7f0234712ce5e4a66af7edc23316a8dbf4726'
+          assert hashlib.sha256(b3144).hexdigest()=='3144fbbfe9a886bb94954d8a12147119172f570285ae7622edf2ffb8ed16657a'
+          a=json.loads(b3156); b=json.loads(b3144)
+          assert a['state']=='completed_read_only' and a['classification_counts']=={'protected_hold':3,'review_candidate':3}
+          assert b['state']=='completed_read_only' and b['state_counts']=={'safe_candidate':26,'hold':6}
+          keys={('2000034436',49104),('2000063032',69340),('2000089754',150945)}; rows=[]
+          for sid,tv in sorted(keys):
+            x=next(x for x in a['rows'] if str(x['samo_hotel_id'])==sid and int(x['tv_hotel_id'])==tv)
+            y=next(x for x in b['rows'] if str(x['samo_hotel_id'])==sid and int(x['tv_hotel_id'])==tv)
+            assert x['classification']=='review_candidate' and y['state']=='hold'
+            proofs=[]
+            for p in y['operator_proofs']:
+              op=int(p['operator_id'])
+              if op not in (13,43): continue
+              assert len(p['native_proofs'])==1
+              native=str(p['native_proofs'][0]['native_token']); rawsha=p['native_proofs'][0]['fact']['raw_sha256']; linksha=p['operator_link_sha256']
+              ms=[e for e in edges if int(e.get('tv_hotel_id',0))==tv and int(e.get('operator_id',0))==op and e.get('operator_link_sha256')==linksha and native in [str(v) for v in e.get('positive_native_candidates',[])]]
+              assert len(ms)==1,(sid,tv,op,native,len(ms)); e=ms[0]
+              assert int(e['returned_tv_hotel_id'])==tv and int(e['returned_operator_id'])==op and e['state']=='detail_identity_verified'
+              proofs.append({'operator_id':op,'operator':p['operator'],'native_token':native,'samo_raw_sha256':rawsha,'operator_link_sha256':linksha,'detail_tour_id':str(e['returned_tour_id']),'detail_search_id':int(e['retained_search_id']),'detail_date':e['retained_date'],'detail_nights':int(e['retained_nights']),'verified':True})
+            assert {p['operator_id'] for p in proofs}=={13,43}
+            rows.append({'samo_hotel_id':sid,'tv_hotel_id':tv,'source_classification':x['classification'],'source_candidate_reason':x['candidate_reason'],'source_catalog':y['source_catalog'],'source_target':y['target'],'source_hold_reasons':y['hold_reasons'],'proofs':proofs})
+          out={'source_3156_result_sha256':hashlib.sha256(b3156).hexdigest(),'source_3144_result_sha256':hashlib.sha256(b3144).hexdigest(),'source_3135_result_sha256':hashlib.sha256(b3135).hexdigest(),'rows':rows}
+          body=(json.dumps(out,sort_keys=True,separators=(',',':'),ensure_ascii=False)+'\n').encode(); pathlib.Path('input/pair3.json').write_bytes(body); pathlib.Path('input/pair3.sha256').write_text(hashlib.sha256(body).hexdigest()+'\n')
+          print('PAIR3_INPUT_OK',hashlib.sha256(body).hexdigest())
+          PY
+          python3 - <<'PY'
+          import json,os,datetime,pathlib
+          h=pathlib.Path('input/pair3.sha256').read_text().strip(); r={'operation':os.environ['OPERATION_ID'],'source_sha':os.environ['PR_HEAD_SHA'],'state':'reserved_before_db_read','reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'input_sha256':h,'provider_calls':0,'mapping_writes':0,'no_replay':True}
+          open('reservation/reservation.json','x').write(json.dumps(r,sort_keys=True)+'\n')
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['PR_HEAD_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+            with urllib.request.urlopen(q) as f: runs=json.load(f)['workflow_runs']
+            xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['PR_HEAD_SHA']]
+            if xs:
+              x=max(xs,key=lambda z:z['id'])
+              if x['status']=='completed': assert x['conclusion']=='success'; print('SECURITY_OK',x['id']); break
+            time.sleep(5)
+          else: raise SystemExit('exact_security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'hold3-pair-review-v2-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Pair-local CURRENT review
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER@$HOST"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu; test ! -e \"\$HOME/$op\"; mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/pair3.json scripts/diagnostics/hotel_match_hold3_pair_review_v2.php "$remote:$op/payload/"
+          sha="$(cat input/pair3.sha256)"; ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          set +e; ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\"; ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/pair3.json\" MATCH_INPUT_SHA256=\"$sha\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" \"\$HOME/$op/payload/hotel_match_hold3_pair_review_v2.php\"" >terminal/stdout.json 2>terminal/stderr.txt; rc=$?; set -e; printf '%s\n' "$rc">terminal/remote-exit.txt
+          if [ "$rc" -eq 0 ]; then ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";tar -czf - reservation.json result.json receipt.json' >terminal/server.tgz; printf '%s\n' "$?">terminal/tar-exit.txt; fi
+          test "$rc" -eq 0
+      - name: Verify immutable read-only result
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib,os
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True)
+          with tarfile.open(p/'server.tgz','r:gz') as t:
+            for n in ['reservation.json','result.json','receipt.json']: (s/n).write_bytes(t.extractfile(n).read())
+          r=json.load(open(s/'result.json')); q=json.load(open(s/'receipt.json'))
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['state']==q['state']=='completed_read_only'
+          assert r['provider_calls']==r['database_writes']==r['mapping_writes']==0 and q['readback_verified'] is True and q['no_replay'] is True
+          assert len(r['rows'])==3 and sum(r['classification_counts'].values())==3 and all(x['safe_to_write_now'] is False for x in r['rows'])
+          assert q['result_sha256']==hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          print(json.dumps({'classification_counts':r['classification_counts'],'rows':[{'samo_hotel_id':x['samo_hotel_id'],'tv_hotel_id':x['tv_hotel_id'],'classification':x['classification'],'anex_mapping_state':x['anex_mapping_state'],'hold_reasons':x['hold_reasons']} for x in r['rows']],'result_sha256':q['result_sha256']},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-hold3-pair-review-v2-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known_hosts"
