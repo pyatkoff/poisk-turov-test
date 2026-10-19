@@ -1,0 +1,92 @@
+name: MATCH v3 checkpoint read v4b
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-tv-samo-common4-v3-checkpoint-read-v4b.yml]
+permissions: {contents: read, issues: read}
+env:
+  CLAIM: '5780548512'
+  V3_OP: hotel-match-tv-samo-common4-weekly-resume-1971-20260922-v3
+  V2_OP: hotel-match-tv-samo-common4-weekly-1971-20260922-v2
+  BASE: 487ca7313d372e4cd044e273a0ec0109fbf67c0b
+jobs:
+  read:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-tv-samo-common4-v3-checkpoint-read-1971-20260922-v4b'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact read-only claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;mkdir -p out
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD")" = ".github/workflows/hotel-match-tv-samo-common4-v3-checkpoint-read-v4b.yml"
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > out/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('out/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for s in ['V3_OP=`'+os.environ['V3_OP']+'`','V2_OP=`'+os.environ['V2_OP']+'`','PROVIDER_CALLS=0','QUOTA_MUTATION=0','SERVER_MUTATION=0','RAW_EXPORT=FORBIDDEN']:assert s in b,s
+          PY
+      - name: Read sanitized checkpoint over SSH
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          ssh "${opts[@]}" "$remote" "V3_OP='$V3_OP' V2_OP='$V2_OP' python3 -" > out/checkpoint.json <<'PY'
+          import json,os,pathlib,re
+          home=pathlib.Path.home();v3=home/'.anytoour-match/operations'/os.environ['V3_OP'];v2=home/'.anytoour-match/operations'/os.environ['V2_OP']
+          def load(p):
+            x=json.loads(p.read_text());assert isinstance(x,dict);return x
+          result=load(v3/'result.json');receipt=load(v3/'receipt.json');reservation=load(v3/'reservation.json')
+          assert result.get('operation')==os.environ['V3_OP'] and receipt.get('operation')==os.environ['V3_OP']
+          assert receipt.get('provider_accessed') is True and receipt.get('no_replay') is True
+          v2plan=load(v2/'search-plan.json')
+          out={'v3_result':result,'v3_receipt':receipt,'v3_reservation':reservation,
+               'v3_tariff_reservation':load(v3/'tariff-reservation.json') if (v3/'tariff-reservation.json').exists() else None,
+               'v3_tariff_reconcile':load(v3/'tariff-reconcile.json') if (v3/'tariff-reconcile.json').exists() else None,
+               'v2_search_plan':v2plan,'evidence':[],'checkpoint':{'star3_new_continues':0,'star3_exhausted':False,'samo_price_pages':{},'tv_starts':{}}}
+          for mp in sorted((v3/'evidence-private').glob('*.meta.json')):
+            m=load(mp);meta=m.get('meta') or {};src=str(m.get('source',''));path=str(meta.get('path',''));raw_sha=str(m.get('raw_sha256',''))
+            assert re.fullmatch(r'[0-9a-f]{64}',raw_sha)
+            e={'sequence':m.get('sequence'),'source':src,'http_status':m.get('http_status'),'raw_sha256':raw_sha,'bytes':m.get('bytes')}
+            bp=pathlib.Path(str(mp).replace('.meta.json','.bin'));raw=bp.read_bytes();assert __import__('hashlib').sha256(raw).hexdigest()==raw_sha
+            body=json.loads(raw);safe={}
+            if src=='tourvisor':
+              safe['path']=path
+              if path.endswith('/continue'):
+                safe['requestCount']=body.get('requestCount',body.get('request_count'));out['checkpoint']['star3_new_continues']+=1
+                if safe['requestCount']==0:out['checkpoint']['star3_exhausted']=True
+              if path=='/tours/search':
+                hc=(meta.get('params') or {}).get('hotelCategory');safe['hotelCategory']=hc
+                sid=body.get('searchId',body.get('search_id'));safe['searchId']=sid
+                if hc is not None:out['checkpoint']['tv_starts'][str(hc)]=sid
+            elif src=='samo-price':
+              safe['star']=meta.get('star');safe['page']=meta.get('page');safe['PAGES_COUNT']=body.get('PAGES_COUNT')
+              out['checkpoint']['samo_price_pages'].setdefault(str(meta.get('star')),[]).append(meta.get('page'))
+            elif src=='samo-http':safe['kind']=meta.get('kind')
+            e['safe']=safe;out['evidence'].append(e)
+          assert out['evidence']
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True))
+          PY
+          python3 - <<'PY'
+          import json
+          x=json.load(open('out/checkpoint.json'))
+          raw=json.dumps(x,ensure_ascii=False)
+          for bad in ['Authorization','password','sessionId','operatorLink','hotel_url','room_raw','PRICES']:
+            assert bad not in raw,bad
+          assert x['v3_receipt']['provider_accessed'] is True and x['v3_receipt']['no_replay'] is True
+          print(json.dumps(x['checkpoint'],ensure_ascii=False,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-v3-checkpoint-v4-${{ github.run_id }}', path: out/checkpoint.json, retention-days: 90, if-no-files-found: error}
