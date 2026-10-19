@@ -1129,6 +1129,73 @@ const multiHotelReload=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,`multi-hotel-reload-${width}.json`),JSON.stringify({width,full_reload:true,pending_blocked:true,partial_failure_blocked:true,retry_missing_only:true,cancel_preserved:true,open_modal_reload:true,unresolved_draft_retained:true,forward_and_apply:true,ownIds:[2001,2002],legacyIds:[7001,7002],overflow:false,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));await context.close();
  }
 };
+const remainingCalendarJourney=async(browser,origin,base,evidence)=>{
+ const records=[],shift=n=>new Date(Date.parse(day+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
+ for(const [width,height] of [[360,900],[390,900],[430,900],[768,900],[1280,900],[1280,720]]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),tag=width+'x'+height;
+  const reads=[],releases=[];let calendarMode=null;
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     const mode=calendarMode,isCalendar=url.pathname.endsWith('/search3-local-results-read-v1.php')&&body.action==='price_calendar';
+     if(isCalendar){reads.push(body);if(mode){mode.reached();await mode.gate;if(mode.fail){await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'Controlled calendar read unavailable'})});return;}}}
+     const value=await transport.json(request.url(),{body:request.postData()});
+     if(isCalendar)value.data.series=value.data.series.filter(point=>point.date>=body.dateFrom&&point.date<=body.dateTo);
+     await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   // Marked, date-aware mixed demo uses the SAME installed renderer. This is
+   // not provider authority or a change to the immutable live-adapter corpus.
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',scenario:'mixed',searched:'1'}));
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===5&&document.querySelector('#search-form').hidden);
+   await openResultFilters(page,width);await page.locator('#min-price').fill('160000');await page.locator('#max-price').fill('180000');
+   if(width<=1100){await page.locator('#apply-filters').click();await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open')&&history.scrollRestoration==='auto');}
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1);
+   const capture=()=>page.evaluate(()=>({url:location.href,summary:document.querySelector('#results-summary').textContent,route:document.querySelector('#route-label').textContent,dates:document.querySelector('#dates-label').textContent,compact:document.querySelector('#compact-details').textContent,min:document.querySelector('#min-price').value,max:document.querySelector('#max-price').value,sort:document.querySelector('#sort').value,cards:[...document.querySelectorAll('.hotel-card')].map(card=>({id:card.dataset.hotelId,key:card.querySelector('[data-card-entry]').dataset.key,dates:[...card.querySelectorAll('.card-minimum-offer time')].map(time=>time.dateTime),price:card.querySelector('.starting-price strong').textContent,conditions:card.querySelector('.card-minimum-offer').textContent,party:card.querySelector('.starting-price span').textContent})),rail:[...document.querySelectorAll('#price-strip [data-date]')].map(button=>button.dataset.date)}));
+   const openCalendar=async()=>{const trigger=page.locator('#price-calendar [data-action="calendar"]');if(!(await trigger.isVisible()))await page.locator('#price-calendar [data-action="toggle-result-calendar"]').click();await trigger.click();await page.locator('#date-calendar').waitFor();};
+   const closed=()=>page.waitForFunction(()=>!document.querySelector('#modal').open&&history.scrollRestoration==='auto');
+   const before=await capture();assert.equal(before.min,'160000');assert.equal(before.max,'180000');assert.match(before.cards[0].price,/167/);assert.equal(before.cards[0].dates[0],day);
+   await openCalendar();assert.match(await page.locator('.calendar-context').textContent(),/160|180/);
+   await page.locator('[data-action="day-pick"][data-date="'+shift(2)+'"]').click();await page.locator('[data-action="day-pick"][data-date="'+shift(4)+'"]').click();
+   assert.equal(await page.locator('[data-date="'+shift(2)+'"]').last().getAttribute('aria-pressed'),'true');assert.equal(await page.locator('[data-date="'+shift(4)+'"]').last().getAttribute('aria-pressed'),'true');assert.deepEqual(await capture(),before,'date draft leaves applied URL/cards/filter conditions unchanged');
+   await page.locator('[data-action="apply-dates"]').scrollIntoViewIfNeeded();
+   const draftGeometry=await page.locator('#modal').evaluate(modal=>{const box=el=>{const r=el.getBoundingClientRect();return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,height:r.height};},apply=modal.querySelector('[data-action="apply-dates"]'),r=apply.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{modal:box(modal),apply:box(apply),reachable:!!hit&&(hit===apply||apply.contains(hit)),overflow:document.documentElement.scrollWidth>innerWidth||modal.scrollWidth>modal.clientWidth+1,caption:modal.querySelector('#date-selection-label').textContent,price:modal.querySelector('#date-selection-price').textContent};});
+   assert(!draftGeometry.overflow&&draftGeometry.reachable&&draftGeometry.apply.height>=44&&draftGeometry.apply.bottom<=height,'changed-range confirmation is reachable without overflow');
+   await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false');assert.match(await page.locator('#date-selection-price').textContent(),/не сохранены|не означает/);await page.screenshot({path:path.join(evidence,'calendar-range-draft-'+tag+'.png')});
+   await page.locator('[data-action="apply-dates"]').press('Enter');await closed();await page.waitForFunction(from=>new URL(location.href).searchParams.get('from')===from&&document.querySelectorAll('.hotel-card').length===1&&document.querySelector('.hotel-card .card-minimum-offer time')?.dateTime===from&&document.querySelectorAll('#price-strip [data-date]').length===3&&document.activeElement.id==='results',shift(2));
+   const applied=await capture(),params=new URL(applied.url).searchParams;assert.equal(params.get('from'),shift(2));assert.equal(params.get('to'),shift(4));assert.equal(params.get('min'),'160000');assert.equal(params.get('max'),'180000');assert.equal(applied.cards.length,1);assert.equal(applied.cards[0].id,before.cards[0].id);assert.equal(applied.cards[0].key,before.cards[0].key);assert.equal(applied.cards[0].price,before.cards[0].price);assert.equal(applied.cards[0].party,before.cards[0].party);assert.deepEqual(applied.cards[0].dates,[shift(2),shift(9)]);assert.deepEqual(applied.rail,[shift(2),shift(3),shift(4)]);assert.equal(await page.evaluate(()=>document.activeElement.id),'results');
+   assert.notEqual(applied.dates,before.dates,'the full form date label follows the applied range');
+   assert((await page.locator('#result-calendar-range').textContent()).startsWith(applied.dates),'calendar and full form describe the same applied range');assert.notEqual(applied.route,before.route);assert.notEqual(applied.compact,before.compact);assert.equal(applied.sort,before.sort);assert.match(applied.cards[0].conditions,/Standard.*демонстрационный номер/);assert.match(applied.cards[0].conditions,/Всё включено.*демо/);assert.match(applied.cards[0].conditions,/7 ночей/);
+   if(!(await page.locator('#price-calendar').isVisible()))await page.locator('[data-action="toggle-result-calendar"]').click();
+   await page.locator('#price-calendar').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,'calendar-range-applied-'+tag+'.png')});
+   await openCalendar();assert.equal(await page.locator('[data-action="day-pick"][data-date="'+shift(2)+'"]').getAttribute('aria-pressed'),'true');
+   await page.locator('[data-action="day-pick"][data-date="'+shift(6)+'"]').click();
+   const pending=await page.locator('#date-selection-label').textContent();await page.goBack();await closed();assert.deepEqual(await capture(),applied,'Back closes an unsubmitted calendar draft without changing results');
+   await page.goForward();await page.locator('#date-calendar').waitFor();assert.equal(await page.locator('#date-selection-label').textContent(),pending,'Forward restores the same unsubmitted date draft');assert.deepEqual(await capture(),applied);await page.keyboard.press('Escape');await closed();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'calendar');
+   // Actual canonical calendar read states are separate fictional adapter
+   // evidence. Only390 and short1280 need the missing bounded state sequence.
+   let readStates=null;
+   if(width===390||height===720){
+    await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',min:'150000',max:'180000'}));await page.locator('.search-submit:not(:disabled)').waitFor();
+    let release,mark;const reached=new Promise(resolve=>mark=resolve);calendarMode={gate:new Promise(resolve=>release=resolve),reached:mark,fail:true};releases.push(release);
+    await page.locator('#search-form [data-action="dates"]').click();let deadline;try{await Promise.race([reached,new Promise((_,reject)=>deadline=setTimeout(()=>reject(new Error('Controlled calendar read did not dispatch')),10000))]);}finally{clearTimeout(deadline);}
+    await page.locator('[data-action="day-pick"][data-date="'+shift(1)+'"]').click();await page.locator('[data-action="day-pick"][data-date="'+shift(2)+'"]').click();
+    assert.equal(await page.locator('.date-choice-tools').getAttribute('aria-busy'),'true');assert.equal(await page.locator('[data-action="apply-dates"]').isEnabled(),true);const pendingLabel=await page.locator('#date-selection-label').textContent();await page.screenshot({path:path.join(evidence,'calendar-read-pending-'+tag+'.png')});
+    release();await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&!document.querySelector('.calendar-legend').hidden);assert.match(await page.locator('.calendar-legend').textContent(),/Даты можно выбрать без цены/);assert.equal(await page.locator('#date-selection-label').textContent(),pendingLabel);await page.screenshot({path:path.join(evidence,'calendar-read-error-'+tag+'.png')});
+    await page.keyboard.press('Escape');await closed();calendarMode=null;const beforeRecovery=reads.length;
+    await page.locator('#search-form [data-action="dates"]').click();await page.waitForFunction(()=>document.querySelector('.date-choice-tools').getAttribute('aria-busy')==='false'&&document.querySelector('#date-calendar').textContent.includes('167,5'));assert(reads.length>beforeRecovery,'fresh reopen actually rereads failed calendar data');assert.equal(await page.locator('.calendar-legend').isVisible(),false);assert.match(await page.locator('#date-calendar [data-date="'+day+'"]').textContent(),/167,5/);assert.match(await page.locator('#date-calendar [data-date="'+shift(1)+'"]').textContent(),/—/);
+    const scope=reads.at(-1);assert.equal(scope.priceFrom,150000);assert.equal(scope.priceTo,180000);await page.screenshot({path:path.join(evidence,'calendar-read-recovered-'+tag+'.png')});await page.keyboard.press('Escape');await closed();assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'dates');readStates={pending:true,error_retains_draft:true,fresh_reopen_recovered:true,known:167500.5,unknown_is_dash:true,read_count:reads.length};
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);const mutations=transport.calls.filter(call=>/^(search(?:_.*)?|continue|tour|flights|quote(?:_.*)?|offer|lead(?:_.*)?)$/.test(call.action)||/api-anex-|api-andromeda-|quote|lead/.test(call.url));assert.deepEqual(mutations,[],'mixed demo and passive calendar reads perform no provider mutation');
+   records.push({width,height,scope:'marked mixed demo + separate controlled calendar reads',before,applied,draftGeometry,modal_history_retained:true,readStates,supplier_HTTP:0,real_leads:0,physicalSafari:false});
+  }finally{for(const release of releases)release();await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'calendar-remaining-acceptance.json'),JSON.stringify({records,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));console.log('PASS compiled remaining calendar: six viewports filter/range/Apply/reopen/BackForward,390+short1280 controlled read recovery; supplier HTTP0');
+};
 const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
  const transport=fixture(),errors=[],forbidden=[],anexCalls=[],context=await browser.newContext({viewport:{width:390,height:900}}),page=await context.newPage();
  let releaseAnex;const firstPageGate=new Promise(resolve=>releaseAnex=resolve);
@@ -1239,7 +1306,7 @@ const server=http.createServer((req,res)=>{
  const file=fs.existsSync(local)&&fs.statSync(local).isDirectory()?path.join(local,'index.php'):local;
  if(!fs.existsSync(file)){res.writeHead(404).end();return;}
  if(file.endsWith('.php')){
-  let html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; include $argv[1];',file]).toString();
+  let html=execFileSync('php',['-r','$_SERVER["SCRIPT_NAME"]="/_preview/search3-next-candidate/visual-search/index.php"; $_GET["scenario"]=$argv[2]; include $argv[1];',file,u.searchParams.get('scenario')||'']).toString();
   if(u.searchParams.get('loadingMode')==='eager'){
    const cold=html.match(/data-flight-picker-src="([^"]+)"/);assert(cold,'explicit cold asset for controlled eager baseline');
    const initial=html;html=html.replace(/(<script src="\.\/app\.js[^"\n]*" defer><\/script>)/,`<script src="${cold[1]}" defer></script>\n$1`);assert.notEqual(html,initial,'controlled eager baseline inserts before the host');
@@ -1308,6 +1375,7 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   // server and evidence directory. Default/SAMO-mode transition tests above stay
   // ordered. Retain every rejection and settle every matrix before shared cleanup.
   const completed=await Promise.allSettled([
+   remainingCalendarJourney(browser,origin,base,evidence),
    resultFilterViewportJourney(browser,origin,base,evidence),
    formPickerActionJourney(browser,origin,base,evidence),
    (async()=>{
