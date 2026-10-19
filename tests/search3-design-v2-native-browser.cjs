@@ -412,7 +412,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   }
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -772,24 +772,65 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.boundedInitialCards=24;row.proof.boundedLoadedHotels=55;row.proof.boundedBackCards=48;row.proof.boundedExtraSearches=0;
         await page.evaluate(()=>window.__nativeFixture.deliverHotels(window.__nativeFixture.hotels));
         const calendar=product.locator('.q8c9');
+        const dateFullyVisible=(calendar,day)=>calendar.locator(`[data-native-day="${day}"]`).evaluate(cell=>{
+          const strip=cell.closest('[data-native-calendar-strip]'),rail=strip.getBoundingClientRect(),box=cell.getBoundingClientRect();
+          return strip.clientWidth>0&&box.width>0&&box.left>=rail.left-1&&box.right<=rail.right+1;
+        });
+        const waitForCalendarDate=(day,mobile)=>waitForFixture(page,({day,mobile})=>{
+          const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+          const strip=root?.querySelector('[data-native-calendar-strip]'),cell=strip?.querySelector(`[data-native-day="${day}"]`);
+          if(!strip?.clientWidth||!cell||root.classList.contains('st-mobile')!==mobile||root.querySelector('[data-screen="results"]').hidden)return false;
+          const rail=strip.getBoundingClientRect(),box=cell.getBoundingClientRect();
+          return box.width>0&&box.left>=rail.left-1&&box.right<=rail.right+1;
+        },{day,mobile});
         if(width<=760){
           await calendar.locator('[data-native-calendar]').click();
           assert.equal(await calendar.locator('[data-native-calendar]').evaluate(node=>node===document.activeElement),true,'The mobile calendar toggle keeps keyboard focus after its panel rerenders');
         }
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-12','2026-10-13','2026-10-14','2026-10-15','2026-10-16','2026-10-17','2026-10-18']);
-        const nextDates=calendar.locator('[data-native-calendar-page="next"]');await nextDates.focus();await nextDates.press('Enter');
+        const nextDates=calendar.locator('[data-native-calendar-page="next"]');await nextDates.focus();
+        if(width<=760){
+          await nextDates.press('Enter');
+          assert.equal(await calendar.locator('[data-native-day="2026-10-12"]').count(),1,'The arrow exposes hidden dates before changing the seven-day page');
+          assert.equal(await dateFullyVisible(calendar,'2026-10-18'),true,'Visible arrows reach the end of the first mobile date strip');
+        }
+        await nextDates.press('Enter');
         assert.deepEqual(await calendar.locator('[data-native-day]').evaluateAll(nodes=>nodes.map(node=>node.dataset.nativeDay)),['2026-10-19','2026-10-20','2026-10-21','2026-10-22','2026-10-23','2026-10-24','2026-10-25']);
+        if(width<=760){
+          assert.equal(await nextDates.isEnabled(),true,'The last page still has reachable hidden dates');
+          assert.equal(await dateFullyVisible(calendar,'2026-10-25'),false,'The navigation proof starts before any day locator can auto-scroll');
+          const previousDates=calendar.locator('[data-native-calendar-page="prev"]');
+          await previousDates.press('Enter');
+          assert.equal(await dateFullyVisible(calendar,'2026-10-18'),true,'Backward page crossing lands at the previous strip end, without skipping dates');
+          await previousDates.press('Enter');
+          assert.equal(await dateFullyVisible(calendar,'2026-10-12'),true,'The previous arrow then exposes the beginning of that week');
+          await nextDates.press('Enter');await nextDates.press('Enter');
+          await nextDates.press('Enter');
+        }
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'The priced later date is visibly reached using only the arrows');
+        assert.equal(await nextDates.isEnabled(),false,'Next is disabled only after every date is exposed');
         assert.equal(await calendar.locator('[data-native-calendar-page="prev"]').evaluate(node=>node===document.activeElement),true,'The enabled paging control keeps keyboard focus after the last page replaces its button');
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"] .st-pc-full').innerText(),'166 400 ₽','Later page uses the exact loaded full-tour total');
         assert.match(await calendar.locator('[data-native-day="2026-10-24"]').getAttribute('aria-label'),/цена пока не получена/,'Unknown later-day price stays explicit without asserting availability');
         await capture(page,'native',width,percent,'calendar-later',row);
+        await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
+        await page.goBack();await screen('results').waitFor({state:'visible'});
+        await waitForCalendarDate('2026-10-25',width<=760);
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'Unselected strip position survives Back without a date click or URL update');
+        if(width<=760){
+          await page.setViewportSize({width:1280,height:900});await waitForCalendarDate('2026-10-25',false);
+          await page.setViewportSize({width,height:900});await waitForCalendarDate('2026-10-25',true);
+          assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'A fitting desktop remount does not discard the mobile strip position');
+        }
         await calendar.locator('[data-native-day="2026-10-25"]').click();
         assert.equal(await product.locator('.st-hotel-card').count(),1,'A later loaded date filters existing cards locally');
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').getAttribute('aria-pressed'),'true','The selected later date remains visible on its page');
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'Selecting a date cannot hide it during the local result rerender');
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').evaluate(node=>node===document.activeElement),true,'The selected date keeps keyboard focus after local result rerender');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Paging and later-date selection start no supplier search');
         await calendar.locator('[data-native-day="2026-10-25"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"]').evaluate(node=>node===document.activeElement),true,'The cleared date keeps keyboard focus after local result rerender');
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'Clearing a date retains the date-strip position');
         await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
         const currentFavorite=product.locator('[data-favorite-current]');await currentFavorite.focus();await currentFavorite.press('Enter');
         assert.equal(await currentFavorite.getAttribute('aria-pressed'),'true');assert.equal(await currentFavorite.getAttribute('aria-label'),'Удалить из избранного');
@@ -798,8 +839,11 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Hotel favorite starts zero supplier requests');
         await page.goBack();await screen('results').waitFor({state:'visible'});
         assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Back restores the same calendar page');
+        await waitForCalendarDate('2026-10-25',width<=760);
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'Back restores the visible end of the date strip without an implicit locator scroll');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts,'Calendar history return starts no supplier search');
         row.proof.calendarPages=2;row.proof.calendarLaterLoadedTotal=166400;row.proof.calendarControlFocusRetained=true;row.proof.calendarPagingExtraSearches=0;row.proof.calendarHistoryPageRetained=true;row.proof.hotelFavoriteStateTruthful=true;
+        row.proof.calendarVisibleNavigation={lastPriceReachableByArrows:true,backwardDatesNotSkipped:width<=760?true:null,unselectedBackPositionVisible:true,mobileRemountPositionRetained:width<=760?true:null,selectedDateVisible:true,clearedDateVisible:true,backPositionVisible:true,implicitDayLocatorScroll:false};
         if(width===430&&percent===100){
           await page.evaluate(()=>window.__nativeFixture.deliverHotels([window.__nativeFixture.hotels[0]]));
           assert.equal(await calendar.locator('[data-native-day="2026-10-19"]').count(),1,'Progressive results retain the visible calendar page');
@@ -1260,13 +1304,28 @@ async function referenceFrame(page,width,percent,screen,row) {
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.
         terminalJourney=true;
-        const params=new URLSearchParams({...fixture.trip,ages:''});
+        const params=new URLSearchParams({...fixture.trip,from:'2026-10-19',to:'2026-10-25',ages:''});
         await page.goto(origin+base+'/visual-search/?'+params);
         await page.locator('[data-native-startup]').waitFor({state:'hidden'});
         const actualProduct=page.locator('[data-product]:visible');
         assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.search),0);
         await actualProduct.locator('[data-screen="search"] button[type="submit"]').click();
         await actualProduct.locator('[data-screen="results"]').waitFor({state:'visible'});
+        const singleCalendar=actualProduct.locator('.q8c9');
+        assert.equal(await singleCalendar.locator('[data-native-day]').count(),7,'The actual bridge retains a single seven-day range');
+        if(width<=760){
+          await singleCalendar.locator('[data-native-calendar]').click();
+          const singleNext=singleCalendar.locator('[data-native-calendar-page="next"]');
+          assert.equal(await singleNext.isEnabled(),true,'A single week exposes navigation while dates overflow');
+          await singleNext.press('Enter');
+          assert.equal(await dateFullyVisible(singleCalendar,'2026-10-25'),true,'Visible arrows also reach the last date without another week');
+          assert.equal(await singleNext.isEnabled(),false);
+          await capture(page,'native',width,percent,'calendar-single-range',row);
+          await singleCalendar.locator('[data-native-calendar]').click();
+        }else await singleCalendar.locator('[data-native-calendar-pages]').waitFor({state:'hidden'});
+        assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.search),1,'Date navigation starts no additional search');
+        assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.other),0);
+        row.proof.calendarSingleWeekNavigation=true;
         for(const kind of ['complete','partial','error']){
           const retained=await page.evaluate(kind=>{const control=window.__nativeTerminalFixture;control.terminal(kind);return control.refresh();},kind);
           assert.equal(retained.before,kind);assert.equal(retained.after,kind);

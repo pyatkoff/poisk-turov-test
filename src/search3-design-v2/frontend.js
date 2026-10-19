@@ -81,7 +81,7 @@
         $(editorFields[editor].focus)?.focus({preventScroll:true});
       }
     }
-    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sources:null,sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,hasSearched:false};
+    const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sources:null,sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,calendarScroll:null,hasSearched:false};
     let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
@@ -205,7 +205,7 @@
     function rememberRoute(push) {
       const previous = window.history.state?.anytourNative?.id;
       const id = push || !historyRoutes.has(previous) ? ++historySequence : previous;
-      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,sources:state.sources?Object.fromEntries(Object.entries(state.sources).map(([key,value])=>[key,value&&typeof value==='object'?{...value}:value])):null,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,resultLimit:state.resultLimit,searchGeneration:state.searchGeneration});
+      historyRoutes.set(id,{screen:state.screen,search:{...state.search,ages:[...state.search.ages]},filters:cloneFilters(state.filters),hotels:state.hotels,status:state.status,message:state.message,sources:state.sources?Object.fromEntries(Object.entries(state.sources).map(([key,value])=>[key,value&&typeof value==='object'?{...value}:value])):null,hasSearched:state.hasSearched,hotelId:state.hotelId,selected:state.selected,selectedDate:state.selectedDate,sort:state.sort,onlyFavorites:state.onlyFavorites,calendarOpen:state.calendarOpen,calendarPage:state.calendarPage,calendarRange:state.calendarRange,calendarScroll:state.calendarScroll?{...state.calendarScroll}:null,resultLimit:state.resultLimit,searchGeneration:state.searchGeneration});
       state.historyRoutes=historyRoutes;state.historySequence=historySequence;
       window.history[push?'pushState':'replaceState']({anytourNative:{id,screen:state.screen}},'',routeURL());
     }
@@ -350,7 +350,42 @@
       }
       updateFilterDraft();
     }
-    function renderCalendar() {
+    function syncCalendarNavigation() {
+      const strip=$('[data-native-calendar-strip]'),pager=$('[data-native-calendar-pages]');
+      if(!strip?.clientWidth||!pager)return;
+      const end=Math.max(0,strip.scrollWidth-strip.clientWidth),pages=Number(pager.dataset.nativeCalendarPages);
+      pager.hidden=pages===1&&end<=1;
+      $('[data-native-calendar-page="prev"]').disabled=state.calendarPage===0&&strip.scrollLeft<=1;
+      $('[data-native-calendar-page="next"]').disabled=state.calendarPage===pages-1&&strip.scrollLeft>=end-1;
+      const prior=state.calendarScroll,left=end>1?strip.scrollLeft:prior?.range===state.calendarRange&&prior.page===state.calendarPage?prior.left:0;
+      state.calendarScroll={range:state.calendarRange,page:state.calendarPage,left};
+      const route=historyRoutes.get(window.history.state?.anytourNative?.id);
+      if(route?.screen==='results'&&route.calendarRange===state.calendarRange&&route.calendarPage===state.calendarPage)route.calendarScroll={...state.calendarScroll};
+    }
+    function restoreCalendarPosition(strip,left,revealSelected=true) {
+      if(!alive||$('[data-native-calendar-strip]')!==strip||!strip.clientWidth)return;
+      strip.scrollLeft=left;
+      const selected=strip.querySelector('[aria-pressed="true"]');
+      if(selected&&revealSelected){
+        const bounds=strip.getBoundingClientRect(),cell=selected.getBoundingClientRect();
+        if(cell.left<bounds.left)strip.scrollLeft+=cell.left-bounds.left;
+        else if(cell.right>bounds.right)strip.scrollLeft+=cell.right-bounds.right;
+      }
+      syncCalendarNavigation();
+    }
+    function moveCalendar(direction) {
+      const strip=$('[data-native-calendar-strip]'),end=strip?Math.max(0,strip.scrollWidth-strip.clientWidth):0;
+      if(strip?.clientWidth&&(direction>0?strip.scrollLeft<end-1:strip.scrollLeft>1)){
+        const step=Math.max(1,strip.clientWidth-(strip.firstElementChild?.getBoundingClientRect().width||0));
+        strip.scrollLeft=Math.max(0,Math.min(end,strip.scrollLeft+direction*step));
+        syncCalendarNavigation();
+      }else{
+        state.calendarPage+=direction;renderCalendar(direction);redrawIcons();updateURL();
+      }
+      const name=direction>0?'next':'prev',other=direction>0?'prev':'next';
+      ($(`[data-native-calendar-page="${name}"]:not(:disabled)`)||$(`[data-native-calendar-page="${other}"]:not(:disabled)`))?.focus({preventScroll:true});
+    }
+    function renderCalendar(direction=0) {
       const days = [], s = state.search, range=s.from+'|'+s.to;
       for(let day=s.from;day<=s.to;day=addDays(day,1))days.push(day);
       const selectedIndex=state.selectedDate?days.indexOf(state.selectedDate):-1,maxPage=Math.max(0,Math.ceil(days.length/7)-1);
@@ -361,7 +396,12 @@
       const unfiltered=defaultFilters();
       const cells = pageDays.map(day=>{const prices=state.hotels.flatMap(h=>eligible(h,state.filters,day).map(o=>o.total));return {day,price:prices.length?Math.min(...prices):null,loaded:state.hotels.some(h=>eligible(h,unfiltered,day,false).length)};});
       const minimum=cells.filter(c=>c.price!==null).sort((a,b)=>a.price-b.price)[0], opened=!root.classList.contains('st-mobile')||state.calendarOpen;
-      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" style="--date-count:${Math.max(1,cells.length)}" role="group" aria-label="Дата вылета и цена за всех туристов">${cells.map(c=>`<button type="button" class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''} cursor-interaction" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}" aria-label="Вылет ${dateText(c.day)}${c.price===null?(c.loaded?', нет предложений по выбранным условиям':', цена пока не получена'):', от '+money(c.price)+' за всех туристов'}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):cells.some(c=>c.loaded)?'По выбранным условиям на этих датах предложений нет':'Цены по этим датам пока не получены'}</span>${days.length>7?`<nav class="st-pc-pager" aria-label="Другие даты вылета"><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="prev" aria-label="Предыдущие даты" ${state.calendarPage===0?'disabled':''}>${icon('chevron-left')}</button><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="next" aria-label="Следующие даты" ${state.calendarPage===maxPage?'disabled':''}>${icon('chevron-right')}</button></nav>`:''}</div></div>`;
+      const saved=state.calendarScroll,left=saved?.range===range&&saved.page===state.calendarPage?saved.left:0;
+      $('.q8c9').innerHTML=`<div class="st-pc-head"><span>Цены по датам вылета</span><span>За всех туристов</span></div>${root.classList.contains('st-mobile')?`<button class="st-pc-toggle" data-native-calendar aria-expanded="${opened}"><span class="st-pc-label">${icon('calendar-days')}Цены по датам</span><span class="st-pc-price">${icon(opened?'chevron-up':'chevron-down')}</span></button>`:''}<div class="st-pc-panel ${opened?'is-open':''}" ${opened?'':'hidden'}><div class="st-pc-grid" data-native-calendar-strip="${state.calendarPage}" style="--date-count:${Math.max(1,cells.length)}" role="group" aria-label="Дата вылета и цена за всех туристов">${cells.map(c=>`<button type="button" class="st-pc-date ${minimum&&c.price===minimum.price?'st-pc-date--lowest':''} cursor-interaction" data-native-day="${c.day}" aria-pressed="${state.selectedDate===c.day}" aria-label="Вылет ${dateText(c.day)}${c.price===null?(c.loaded?', нет предложений по выбранным условиям':', цена пока не получена'):', от '+money(c.price)+' за всех туристов'}"><span class="st-pc-day">${dateText(c.day)}</span>${c.price===null?'<span class="st-pc-none">—</span>':`<span class="st-pc-full">${money(c.price)}</span><span class="st-pc-short"><strong>${(c.price/1000).toLocaleString('ru-RU',{maximumFractionDigits:1})}</strong><span>тыс. ₽</span></span>`}</button>`).join('')}</div><div class="st-pc-foot"><span>${minimum?'Минимум на этих датах: '+dateText(minimum.day)+' · '+money(minimum.price):cells.some(c=>c.loaded)?'По выбранным условиям на этих датах предложений нет':'Цены по этим датам пока не получены'}</span>${cells.length>1||maxPage>0?`<nav data-native-calendar-pages="${maxPage+1}" class="st-pc-pager" aria-label="Другие даты вылета"><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="prev" aria-label="Предыдущие даты" ${state.calendarPage===0?'disabled':''}>${icon('chevron-left')}</button><button type="button" class="st-pc-page cursor-interaction" data-native-calendar-page="next" aria-label="Следующие даты" ${state.calendarPage===maxPage?'disabled':''}>${icon('chevron-right')}</button></nav>`:''}</div></div>`;
+      const strip=$('[data-native-calendar-strip]');
+      const restore=()=>restoreCalendarPosition(strip,direction<0?strip.scrollWidth:left,direction===0);
+      restore();
+      if(opened&&!strip.clientWidth)window.requestAnimationFrame?.(restore);
     }
     function renderResults() {
       if (!state.search) return;
@@ -652,7 +692,7 @@
       const invalid=originPending?'Подождите загрузки стран для выбранного города.':dateError(draft.from,draft.to)||(!Number.isInteger(draft.minNights)||!Number.isInteger(draft.maxNights)||draft.minNights<1||draft.maxNights>28||draft.minNights>draft.maxNights||draft.maxNights-draft.minNights>10?'Выберите от 1 до 28 ночей, с диапазоном до 10 ночей.':'')||(draftFilters.max!==null&&draftFilters.min>draftFilters.max?'Бюджет «от» должен быть не больше бюджета «до».':'')||(draft.ages.length>3||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17)?'Укажите возраст каждого ребёнка.':'')||(agesReviewNeeded&&draft.ages.length?'После изменения дат или ночей подтвердите возраста детей кнопкой «Выбрать туристов».':'');
       if(invalid){text('[data-search-error]',invalid);$('[data-search-error]').hidden=false;if(!originPending){if(dateError(draft.from,draft.to))openEditor('dates');else if(agesReviewNeeded||draft.ages.some(age=>!Number.isInteger(age)||age<0||age>17))openEditor('travelers');}return;}
       rememberRoute(false);
-      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.hotels=[];state.status='loading';state.message='';state.sources=null;
+      state.search={...draft,ages:[...draft.ages]};state.filters=cloneFilters(draftFilters);state.hasSearched=true;state.restoredHistory=false;state.selected=null;resetResultLimit();if(!preserveDate)state.selectedDate=null;state.calendarPage=0;state.calendarRange=null;state.calendarScroll=null;state.hotels=[];state.status='loading';state.message='';state.sources=null;
       navigationViews.delete(viewKey('results'));
       $('[data-search-error]').hidden=true;show('results');const epoch=++searchEpoch;
       try{if(state.filters.resorts.length&&typeof bridge.regions==='function')await bridge.regions(state.search.country);if(!alive||epoch!==searchEpoch)return;const snapshot=await bridge.search(state.search,state.filters,event=>{if(!alive||epoch!==searchEpoch)return;state.hotels=event.hotels;state.status=event.status;state.message=event.message||'';state.sources=event.sources||null;state.searchGeneration=event.searchGeneration;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();});if(alive&&epoch===searchEpoch){state.hotels=snapshot.hotels;state.status=snapshot.status;state.message=snapshot.message||'';state.sources=snapshot.sources||null;if(state.screen==='results')renderResults();else if(state.screen==='filters')refreshFilterEditor();updateURL();}}
@@ -684,7 +724,7 @@
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
       if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();$('[data-native-calendar]')?.focus({preventScroll:true});return;}
-      if(d.nativeCalendarPage){state.calendarPage+=d.nativeCalendarPage==='prev'?-1:1;renderCalendar();redrawIcons();const same=$(`[data-native-calendar-page="${d.nativeCalendarPage}"]:not(:disabled)`),fallback=$(`[data-native-calendar-page="${d.nativeCalendarPage==='prev'?'next':'prev'}"]:not(:disabled)`);(same||fallback)?.focus({preventScroll:true});updateURL();return;}
+      if(d.nativeCalendarPage){moveCalendar(d.nativeCalendarPage==='prev'?-1:1);return;}
       if(button.hasAttribute('data-native-result-more')){const firstNew=rows()[state.resultLimit];state.resultLimit+=resultBatch;renderResults();const next=$('[data-native-result-more]'),first=firstNew?$(`[data-hotel-card="${firstNew.id}"] [data-hotel-open]`):null;(next||first)?.focus({preventScroll:true});rememberRoute(false);return;}
       if(d.nativeDay){const day=d.nativeDay;state.selectedDate=state.selectedDate===day?null:day;resetResultLimit();renderResults();updateURL();$(`[data-native-day="${day}"]`)?.focus({preventScroll:true});return;}
       const toggles={'searchDestinationToggle':'destination','searchDateToggle':'dates','searchNightsToggle':'nights','searchTravelersToggle':'travelers'};
@@ -722,6 +762,7 @@
     }
     root.addEventListener('click',handleClick,{signal:listeners.signal});
     root.addEventListener('focusin',saveView,{signal:listeners.signal});
+    root.addEventListener('scroll',event=>{if(event.target.matches?.('[data-native-calendar-strip]'))syncCalendarNavigation();},{capture:true,passive:true,signal:listeners.signal});
     window.addEventListener('scroll',saveView,{passive:true,signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
       if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();[...$('[data-filter-sidebar]').querySelectorAll('[data-native-filter]')].find(control=>control.dataset.nativeFilter===key&&control.value===node.value)?.focus({preventScroll:true});}}
