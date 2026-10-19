@@ -73,6 +73,12 @@ function fixtureBridge(fixture) {
     control.group={hotel,offer:group,offers,expectedReferenceRetained:false};rawHotels.push(hotel);
     control.deliverHotels(rawHotels,{status:'complete',message:''});
   };
+  control.installAI=()=>{
+    const seed=rawHotels[0].offers[0],sea={...seed,key:'fixture:ai:sea',hotelId:902,provider:'tourvisor',operator:'FIXTURE TV',room:'standard room sea view',meal:'Всё включено',mealFacet:'Всё включено',total:138989,raw:{fixture:true,aiJourney:true}};
+    const land={...sea,key:'fixture:ai:land',room:'standard room land view',total:137083,raw:{fixture:true,aiJourney:true}};
+    const hotel={...rawHotels[0],id:902,name:'FIXTURE GRAND BARHAN HOTEL (EX. AS BLUE COAST)',offers:[land,sea]};
+    rawHotels.push(hotel);control.ai={hotel,offer:sea};control.deliverHotels(rawHotels,{status:'complete',message:''});
+  };
   let initResolve,initReject,initialization;
   control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
@@ -121,7 +127,8 @@ function fixtureBridge(fixture) {
       }
       const variants=[{price:112000,forward:[leg()],backward:[leg(true)]},{price:123000,forward:[{...leg(),departure:{...leg().departure,time:'10:20'}}],backward:[leg(true)]}];
       for(let index=variants.length;index<(control.manyFlightCount||2);index++)variants.push({price:112000+index*1000,forward:[{...leg(),number:'FX '+(200+index)}],backward:[{...leg(true),number:'FX '+(300+index)}]});
-      selection={...offer,offer,tour:{id:'fixture-tour:'+offer.hotelId,price:110000,roomType:offer.room,meal:{name:offer.meal}},total:110000,variants,flightChoiceId:null,pricePending:true,priceAccepted:false,expiresAt:Math.floor(Date.now()/1000)+600};
+      if(offer.raw?.aiJourney){variants[0]={...variants[0],price:163056};variants.splice(1);}
+      selection={...offer,offer,tour:{id:'fixture-tour:'+offer.hotelId,price:offer.raw?.aiJourney?138989:110000,roomType:offer.room,meal:{name:offer.raw?.aiJourney?'AI':offer.meal}},total:offer.raw?.aiJourney?138989:110000,variants,flightChoiceId:null,pricePending:true,priceAccepted:false,expiresAt:Math.floor(Date.now()/1000)+600};
       return selection;
     },
     selectFlight(index){if(!selection||!selection.variants[index])throw new Error('Invalid fixture variant');calls.flight.push(index);selection={...selection,total:selection.variants[index].price,flightChoiceId:index,pricePending:false,priceAccepted:false};return selection;},
@@ -947,7 +954,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.contactExactItineraryRetained=true;
         await capture(page,'native',width,percent,'lead',row);await referenceFrame(reference,width,percent,'lead',row);
         const leadPriceFit=await screen('lead').evaluate(root=>{
-          const card=root.querySelector('.st-lead'),price=card?.querySelector(':scope > .st-price'),caption=card?.querySelector('[data-native-price-caption]'),amount=card?.querySelector('[data-tour-price]');
+          const card=root.querySelector('.st-lead'),price=card?.querySelector('[data-native-contact-summary] > .st-price'),caption=card?.querySelector('[data-native-price-caption]'),amount=card?.querySelector('[data-tour-price]');
           if(!price||!caption||!amount)return null;
           const bounds=price.getBoundingClientRect(),label=caption.getBoundingClientRect(),value=amount.getBoundingClientRect();
           const captionStyle=getComputedStyle(caption);
@@ -1185,6 +1192,45 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,expand:c.expand,quote:c.quote};}),focusOperations);
         row.proof.screenNavigation.responsiveHiddenFocusFallback=true;
         row.proof.screenNavigation.responsiveRemountExtraOperations=0;
+
+        // Same retained facts as the installed AI audit, explicitly fictional
+        // supplier responses. Exercise long identity, changed full total and
+        // consistent room/tour/contact price provenance at every width.
+        await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+        await product.locator('[data-screen="hotel"] [data-action="results"]').click();await screen('results').waitFor({state:'visible'});
+        await page.evaluate(()=>window.__nativeFixture.installAI());
+        await product.locator('[data-hotel-open="902"]').first().click();await screen('hotel').waitFor({state:'visible'});
+        await product.locator('[data-hotel-offers] [data-offer="fixture:ai:sea"]').click();await screen('tour').waitFor({state:'visible'});
+        await product.locator('[data-native-tour-flight="0"]').click();
+        await waitForFixture(page,()=>window.__nativeFixture.getSelection()?.total===163056);
+        assert.equal(await product.locator('[data-action="lead"]:visible').first().isDisabled(),true);
+        assert.equal(await product.locator('[data-tour-meal]:visible,[data-quick-meal]:visible').first().innerText(),'Всё включено');
+        assert.match(await product.locator('[data-native-price-origin]:visible').first().innerText(),/138 989 ₽/);
+        await capture(page,'native',width,percent,'ai-price-changed',row);
+        await product.locator('[data-action="accept-price"]:visible').first().click();
+        await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+        const selectedAI=product.locator('.st-offer--selected');
+        assert.equal(await selectedAI.locator('.st-offer-price').innerText(),'163 056 ₽');
+        assert.equal(await selectedAI.locator('.st-offer-price-caption').innerText(),'С выбранным перелётом');
+        assert.match(await selectedAI.locator('.st-offer-delta').innerText(),/138 989 ₽/);
+        await capture(page,'native',width,percent,'ai-hotel-checked',row);
+        if(width>760)await product.locator('[data-action="best-tour"]:visible').click();else await selectedAI.locator('[data-offer]').click();
+        await screen('tour').waitFor({state:'visible'});await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        assert.match(await product.locator('[data-lead-choice]').innerText(),/standard room sea view · Всё включено/);
+        assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
+        const aiFit=await product.locator('[data-native-contact-summary]').evaluate(summary=>{
+          const title=summary.querySelector('[data-lead-hotel]'),form=summary.parentElement.querySelector('[data-lead-form]'),box=summary.getBoundingClientRect(),titleBox=title.getBoundingClientRect(),formBox=form.getBoundingClientRect();
+          return {width:box.width,titleWidth:titleBox.width,titleLines:Math.round(titleBox.height/parseFloat(getComputedStyle(title).lineHeight)),titleFits:title.scrollWidth<=title.clientWidth+1,summaryFits:summary.scrollWidth<=summary.clientWidth+1,columns:formBox.left>=box.right-1};
+        });
+        assert(aiFit.titleFits&&aiFit.summaryFits,'The long AI hotel identity and complete selected summary fit');
+        if(width===1280)assert(aiFit.width>=450&&aiFit.titleWidth>=330&&aiFit.titleLines<=3&&aiFit.columns,'Desktop gives the chosen tour enough width beside the form');
+        await capture(page,'native',width,percent,'ai-contact',row);
+        const aiCalls=await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight]};});
+        await page.goBack();await screen('tour').waitFor({state:'visible'});await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        await page.goForward();await screen('tour').waitFor({state:'visible'});await page.goForward();await screen('lead').waitFor({state:'visible'});
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight]};}),aiCalls);
+        assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
+        row.proof.aiPriceContact={searchPrice:138989,checkedFullTotal:163056,readableMeal:true,originalIndex:0,explicitAcceptance:true,selectedRowPriceRetained:true,backForwardExtraOperations:0,contactFit:aiFit};
 
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.

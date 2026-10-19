@@ -480,6 +480,7 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-mobile .st-quick-price-note { margin-top: 8px !important; }
 #design-v2-native-root #b4 .st-mobile .st-quick-tour [data-quick-party],
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > .st-small,
+#design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-native-price-origin],
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total > [data-tour-price] { display: none; }
 #design-v2-native-root #b4 .st-mobile [data-native-cost-details] .st-total {
   border-top: 0;
@@ -492,86 +493,97 @@ body { margin: 0; padding: 0; }
   font-weight: 500;
   line-height: 1.4;
 }
-/* Keep the exact tour visible while the traveller enters contact details.
-   Desktop uses the available width for a review/form split; mobile keeps the
-   donor's linear reading order. */
+/* One readable review beside the form. The selected hotel, checked total and
+   itinerary share a single card instead of three narrow grid fragments. */
 #design-v2-native-root #b4 .st-desktop .st-lead {
   display: grid;
-  grid-template-columns: minmax(0, 43fr) minmax(0, 57fr);
-  column-gap: 28px;
-  max-width: 780px;
-  padding: 28px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  column-gap: 32px;
+  max-width: 1040px;
+  padding: 32px;
 }
 #design-v2-native-root #b4 .st-desktop .st-lead > :is(h2, .st-small) { grid-column: 1 / -1; }
-#design-v2-native-root #b4 .st-desktop .st-lead > .st-tour-hotel {
+#design-v2-native-root #b4 .st-native-contact-summary {
+  container: native-contact / inline-size;
+  min-width: 0;
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
+}
+#design-v2-native-root #b4 .st-desktop .st-native-contact-summary {
   grid-column: 1;
   grid-row: 3;
-  margin: 22px 0 0 !important;
-  padding: 16px 16px 13px;
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: 12px 12px 0 0;
-  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
 }
-#design-v2-native-root #b4 .st-desktop .st-lead > .st-price {
-  grid-column: 1;
-  grid-row: 4;
-  margin: 0;
-  padding: 0 16px 12px;
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-bottom: 0;
-  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
+#design-v2-native-root #b4 .st-native-contact-summary .st-tour-hotel {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  margin: 0 0 18px !important;
 }
+#design-v2-native-root #b4 .st-native-contact-summary .st-mini-photo { width: 64px; height: 72px; }
+#design-v2-native-root #b4 .st-native-contact-summary [data-lead-hotel] {
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#design-v2-native-root #b4 .st-native-contact-summary [data-lead-context] { margin-top: 6px; font-size: 13px; line-height: 1.5; }
+#design-v2-native-root #b4 .st-native-contact-summary [data-lead-choice] { margin-top: 8px; font-size: 14px; line-height: 1.5; }
+#design-v2-native-root #b4 .st-native-contact-summary > .st-price {
+  margin: 0 0 18px;
+  padding: 0;
+  line-height: 1.2;
+}
+#design-v2-native-root #b4 .st-native-contact-summary [data-native-price-caption] { margin-bottom: 5px; font-size: 13px; line-height: 1.45; }
 #design-v2-native-root #b4 .st-desktop .st-lead > [data-lead-form] {
   grid-column: 2;
-  grid-row: 3 / 6;
+  grid-row: 3;
   min-width: 0;
-  margin-top: 22px;
+  margin-top: 24px;
 }
 #design-v2-native-root #b4 .st-desktop .st-lead-label:first-child {
   margin-top: 0;
 }
-#design-v2-native-root #b4 .st-mobile .st-lead > .st-tour-hotel {
-  margin: 20px 0 0 !important;
-  padding: 14px 14px 11px;
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: 12px 12px 0 0;
-  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
-}
-#design-v2-native-root #b4 .st-mobile .st-lead > .st-price {
-  margin: 0;
-  padding: 0 14px 12px;
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-bottom: 0;
-  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
-}
+#design-v2-native-root #b4 .st-mobile .st-native-contact-summary { margin-top: 20px; padding: 16px; }
 #design-v2-native-root #b4 .st-mobile .st-lead-label:first-child {
   margin-top: 20px;
 }
 #design-v2-native-root #b4 .st-native-contact-facts {
   min-width: 0;
-  padding: 0 14px 14px;
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-radius: 0 0 12px 12px;
-  background: color-mix(in srgb, var(--bg) 70%, var(--paper));
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
-#design-v2-native-root #b4 .st-desktop .st-native-contact-facts { grid-column: 1; grid-row: 5; padding-inline: 16px; }
-#design-v2-native-root #b4 .st-native-contact-facts dl { display: grid; gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-native-contact-facts dl { display: grid; gap: 8px; margin: 0; padding-top: 14px; border-top: 1px solid var(--line); }
 #design-v2-native-root #b4 .st-native-contact-facts dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; }
 #design-v2-native-root #b4 .st-native-contact-facts dt { color: var(--muted); }
 #design-v2-native-root #b4 .st-native-contact-facts dd { margin: 0; font-weight: 500; }
 #design-v2-native-root #b4 .st-native-contact-facts [hidden] { display: none; }
-#design-v2-native-root #b4 .st-native-contact-itinerary { margin-top: 12px; }
-#design-v2-native-root #b4 .st-native-contact-leg { display: grid; gap: 2px; margin-top: 8px; }
-#design-v2-native-root #b4 .st-native-contact-leg strong { color: var(--muted); font-size: 12px; font-weight: 500; }
-#design-v2-native-root #b4 [data-native-contact-note] { padding-top: 10px; margin: 12px 0 0; border-top: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-native-contact-itinerary { margin-top: 16px; }
+#design-v2-native-root #b4 [data-native-contact-flight] { display: grid; gap: 12px; margin-top: 10px; }
+#design-v2-native-root #b4 .st-native-contact-leg { display: grid; align-content: start; gap: 4px; min-width: 0; }
+#design-v2-native-root #b4 .st-native-contact-leg strong { color: var(--muted); font-size: 13px; font-weight: 500; }
+#design-v2-native-root #b4 [data-native-contact-note] { padding-top: 14px; margin: 16px 0 0; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; }
+@container native-contact (min-width: 26em) {
+  #design-v2-native-root #b4 [data-native-contact-flight]:has(> .st-native-contact-leg:nth-child(2):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+#design-v2-native-root #b4 .st-native-price-origin {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: normal;
+  line-height: 1.45;
+}
+#design-v2-native-root #b4 .st-native-price-origin[hidden] { display: none; }
+#design-v2-native-root #b4 .st-native-offer-cost { max-width: 210px; }
+#design-v2-native-root #b4 .st-offer-price-caption { margin-bottom: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+#design-v2-native-root #b4 .st-native-offer-cost .st-offer-delta { line-height: 1.4; }
+#design-v2-native-root #b4 .st-native-facet-note { margin: 8px 0 0; line-height: 1.5; }
 /* The required consent is one full-row control, not a tiny checkbox beside
    legal copy. Keep the donor wording and native validation while giving touch
    and keyboard users an explicit final-step target. */

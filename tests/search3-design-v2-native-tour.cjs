@@ -10,7 +10,7 @@ const trip={origin:'Москва',country:'4',from:'2026-10-25',to:'2026-10-31',
 const offer={key:'canonical:one',hotelId:7,provider:'tourvisor',raw:{id:'offer-one'},cached:false,total:100000,room:'Standard',meal:'Завтраки',operator:'Supplier',day:trip.from,returnDay:'2026-11-01',nights:7,adults:2,ages:trip.ages,search:trip};
 const hotel={id:7,name:'Real fixture hotel',location:'Турция · Кемер',photos:[]};
 const leg=(number,time)=>({number,company:{name:'Fixture airline'},departure:{date:trip.from,time,port:{name:'SVO'}},arrival:{date:trip.from,time:'15:25',port:{name:'AYT'}},baggage:'20',carryOn:'5 кг'});
-const tour={id:'offer-one',price:105000,roomType:'Verified Standard',meal:{name:'Verified breakfast'}};
+const tour={id:'offer-one',price:105000,roomType:'Verified Standard',meal:{name:'BB'}};
 const placeholder=leg('FV 000','00:00');placeholder.arrival.time='00:00';
 const variants=[{price:103000,forward:[placeholder],backward:[leg('FV 001','16:30')]},{price:112000,forward:[leg('FV 101','10:50')],backward:[leg('FV 102','18:00')]}];
 let quoted=0,current=null,payloadCalls=0,selectedIndices=[],accepted=0,leadSent=0,resolveFirst=null;
@@ -35,6 +35,9 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   assert(!root.querySelector('[data-screen="tour"]').textContent.includes('08:10'),'donor mock flight removed while pending');
   assert([...root.querySelectorAll('[data-action="lead"]')].every(button=>button.disabled),'no contact before canonical quote');
   resolveFirst();await owner.ready();
+  assert.equal(root.querySelector('[data-tour-meal]').textContent,'Завтраки','A checked supplier meal code keeps the readable meal on the tour');
+  assert.match(root.querySelector('[data-lead-choice]').textContent,/Завтраки/,'Contact uses the same checked meal label');
+  assert.equal(tour.meal.name,'BB','Display normalization never mutates the supplier fact');
   assert.equal(root.querySelectorAll('[data-native-tour-flight]').length,2);
   const firstOption=root.querySelector('[data-native-tour-flight="0"]').closest('.st-native-flight-option');
   assert.match(firstOption.textContent,/Расписание уточняется/);
@@ -60,6 +63,7 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   assert.match(root.querySelector('[data-native-package-note]').textContent,/Трансфер, страховка и обязательные доплаты требуют уточнения/,'Unprovided package facts remain unknown');
   assert.match(root.querySelector('[data-native-cost-note]').textContent,/Цена проверена с выбранным перелётом/,'Desktop price area carries the same checked-price context as mobile');
   assert.equal(owner.getState().ready,false,'changed quoted price needs explicit acceptance');
+  assert.match(root.querySelector('[data-native-price-origin]').textContent,/Выбранный номер в поиске: 100 000 ₽/,'The changed full total retains the search baseline without replacing checked authority');
   assert([...root.querySelectorAll('[data-price-change]')].every(node=>!node.hidden));
   click('[data-action="accept-price"]');
   assert.equal(accepted,1);assert.equal(owner.getState().ready,true);
@@ -105,8 +109,24 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   await viewportRemount();
   await manyFlightChoices();
   await familyCopyChecks();
+  await checkedMealPresentationChecks();
   console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry; 24 family compositions use correct summary/price/contact cases');
 })().catch(error=>{console.error(error);owner.destroy();w.close();process.exitCode=1;});
+
+async function checkedMealPresentationChecks(){
+  for(const [raw,label] of [['AI','Всё включено'],[{name:'BB'},'Завтраки'],[{fullName:'Питание от поставщика',name:'AI'},'Питание от поставщика'],['AI+','AI+']]){
+    const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{runScripts:'outside-only'}),v=doc.window,r=v.document.querySelector('[data-product]');
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+    const checkedTour={...tour,meal:raw},receipt={offer,tour:checkedTour,total:112000,variants,flightChoiceId:1,pricePending:false,priceAccepted:true};
+    const before=JSON.stringify(checkedTour),view=v.AnyTourDesignV2Tour.mount({root:r,bridge:{getSelection:()=>receipt,quoteOffer(){throw new Error('Retained checked fact cannot requote');}}});
+    view.render({offer,hotel,screen:'lead'});await view.ready();
+    assert.equal(r.querySelector('[data-tour-meal]').textContent,label);assert(r.querySelector('[data-lead-choice]').textContent.endsWith(label));
+    assert.equal(JSON.stringify(checkedTour),before);assert.equal(receipt.total,112000);assert.equal(view.getState().ready,true);
+    assert.equal(r.querySelectorAll('[data-native-contact-summary]').length,1,'One complete summary owns identity, price and itinerary');
+    assert(r.querySelector('[data-native-contact-summary] [data-tour-price]'));assert(r.querySelector('[data-native-contact-summary] [data-native-contact-flight]'));
+    view.destroy();v.close();
+  }
+}
 
 async function manyFlightChoices(){
   for(const provider of ['tourvisor','anex']){
