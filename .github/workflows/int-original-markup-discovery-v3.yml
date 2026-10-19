@@ -1,0 +1,108 @@
+name: INT original markup discovery v3
+on:
+  push:
+    branches: ['ops/int-original-markup-discovery-20260919-v3']
+    paths: ['.github/workflows/int-original-markup-discovery-v3.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1 &&
+      github.ref == 'refs/heads/ops/int-original-markup-discovery-20260919-v3'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: 3b2a5b12107b8aabbba2da380a16d70ff9e65ab1
+      OPERATION_ID: int-original-markup-discovery-1717-20260919-v3
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 3b2a5b12107b8aabbba2da380a16d70ff9e65ab1
+          persist-credentials: false
+      - name: Verify exact source and offline regressions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/35436951651" > "$RUNNER_TEMP/check.json"
+          python3 - <<'PY'
+          import json,os
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/check.json'))
+          assert r['head_sha']==os.environ['SOURCE_SHA'] and r['name']=='Security guard' and r['conclusion']=='success'
+          PY
+          echo '17247ad7817b81a40d584b1cadfac8fd03a636012c8e70ec347ac1e3fed9d0f8  scripts/ops/andromeda_original_markup_discovery_v3.php' | sha256sum -c -
+          echo '44399ddeeec88f9bc9a06a5450d0f564bd9f0e178e945e0606c273e0e389b8cd  tests/andromeda-original-markup-discovery-v3-test.php' | sha256sum -c -
+          php -l scripts/ops/andromeda_original_markup_discovery_v3.php
+          php tests/andromeda-original-markup-discovery-v3-test.php
+          php tests/andromeda-original-transport-retained-v2-test.php
+          php tests/andromeda-original-transport-facts-test.php
+          mkdir -p "$RUNNER_TEMP/stage/scripts/ops" "$RUNNER_TEMP/stage/scripts/diagnostics"
+          cp scripts/ops/andromeda_original_markup_discovery_v3.php scripts/ops/andromeda_original_transport_retained_v2.php "$RUNNER_TEMP/stage/scripts/ops/"
+          cp scripts/diagnostics/andromeda_original_transport_facts.php "$RUNNER_TEMP/stage/scripts/diagnostics/"
+          tar -C "$RUNNER_TEMP/stage" -czf "$RUNNER_TEMP/runtime.tar.gz" scripts
+      - name: Inspect existing original JSON only
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          opts=(-i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          archive="/tmp/$OPERATION_ID.$GITHUB_RUN_ID.tar.gz"; archive_sha=$(sha256sum "$RUNNER_TEMP/runtime.tar.gz" | awk '{print $1}')
+          scp "${opts[@]}" "$RUNNER_TEMP/runtime.tar.gz" "$REMOTE_USER@$HOST:$archive"
+          set +e
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" bash -s -- "$OPERATION_ID" "$archive" "$archive_sha" "$SOURCE_SHA" > "$RUNNER_TEMP/result/receipt.json" <<'REMOTE'
+          set -euo pipefail
+          umask 077
+          operation="$1"; archive="$2"; archive_sha="$3"; source="$4"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha"
+          ledger="$HOME/.anytour-ops/$operation"; test ! -e "$ledger"
+          mkdir -p "$HOME/.anytour-ops"; mkdir -m 700 "$ledger"; printf '%s\n' reserved > "$ledger/state"
+          work="$(mktemp -d /tmp/anytour-original-markup-v3.XXXXXX)"
+          trap 'rm -rf "$work"; rm -f "$archive"' EXIT
+          tar -C "$work" -xzf "$archive"
+          set +e
+          php -d display_errors=0 "$work/scripts/ops/andromeda_original_markup_discovery_v3.php" "$HOME/.anytoour-andromeda/searches" 1789811318 > "$ledger/result.json" 2> "$ledger/error.log"
+          rc=$?; set -e
+          RC="$rc" php -r '$p=$argv[1];$v=is_file($p)&&filesize($p)>0?json_decode(file_get_contents($p),true,64):null;$r=["operation"=>$argv[2],"source"=>$argv[3],"status"=>(int)getenv("RC")===0?"completed_read_only":"failed_read_only","result_sha256"=>hash_file("sha256",$p),"result"=>$v,"replay_allowed"=>false];file_put_contents($argv[4],json_encode($r,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);' "$ledger/result.json" "$operation" "$source" "$ledger/receipt.json"
+          printf '%s\n' "$([ "$rc" -eq 0 ] && echo completed_read_only || echo failed_read_only)" > "$ledger/state"
+          cat "$ledger/receipt.json"; exit "$rc"
+          REMOTE
+          rc=$?; set -e
+          test -s "$RUNNER_TEMP/result/receipt.json"
+          ssh -T "${opts[@]}" "$REMOTE_USER@$HOST" "cat \"\$HOME/.anytour-ops/$OPERATION_ID/receipt.json\"" > "$RUNNER_TEMP/result/readback.json"
+          cmp "$RUNNER_TEMP/result/receipt.json" "$RUNNER_TEMP/result/readback.json"; test "$rc" = 0
+          python3 - <<'PY'
+          import json,os,collections
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/result/receipt.json'))
+          assert r['status']=='completed_read_only' and r['source']==os.environ['SOURCE_SHA']
+          d=r['result']; assert d['version']==3
+          for k in ['supplier_calls','db_connections','db_writes','retained_file_writes','get_flights_calls','changeservice_calls','calc_calls','booking_calls']: assert d[k]==0
+          totals=collections.Counter(); groups={}
+          for row in d['rows']:
+              assert row['package_integrity_verified'] is True
+              s=row['scan'];totals.update({k:s[k] for k in ['markup_count','details_key_count','transport_key_count']})
+              if not s['markup']:continue
+              c=row['context']; key=tuple(c[k] for k in ['operatorKey','tourKey','programKey','checkIn','nights','adult','child'])
+              g=groups.setdefault(key,{'packages':0,'facts':{}});g['packages']+=1
+              for fact in s['markup']:
+                  sig=json.dumps(fact,sort_keys=True);g['facts'][sig]=fact
+          print('MARKUP_V3_SUMMARY '+json.dumps({'bound':d['bound_packages'],'inspected':d['inspected_originals'],'skips':d['skips'],'totals':dict(totals),'contexts_with_markup':len(groups)},ensure_ascii=False))
+          for key,g in groups.items():print('MARKUP_V3_FACTS '+json.dumps({'key':key,'packages':g['packages'],'facts':list(g['facts'].values())},ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-original-markup-discovery-v3-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
