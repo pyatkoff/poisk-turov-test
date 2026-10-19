@@ -128,14 +128,37 @@ def project(path: Path):
                 if tv is None:
                     raise ValueError('legacy_target_id')
                 cohort.add(tv)
+                external = str(s['external_key'])
+                accepted_bridge = False
+                if ns == 'provider_ref_digest:andromeda':
+                    try:
+                        value = json.loads(s['source_json'])
+                    except (ValueError, TypeError):
+                        continue
+                    expected_keys = {'schema_version','provider','supplier_namespace','external_hotel_id','accepted_local_hotel_id'}
+                    if (not isinstance(value, dict) or set(value) != expected_keys
+                            or s.get('acquired_via') != 'match_accepted_bridge'
+                            or type(value.get('schema_version')) is not int or value['schema_version'] != 1
+                            or value.get('provider') != 'andromeda'
+                            or type(value.get('accepted_local_hotel_id')) is not int
+                            or str(value['accepted_local_hotel_id']) != tv):
+                        continue
+                    ns = str(value['supplier_namespace'])
+                    external = str(value['external_hotel_id']).strip()
+                    if (ns not in NAMESPACES or positive(external) is None
+                            or s['external_key'] != hashlib.sha256((ns+':'+external).encode()).hexdigest()):
+                        continue
+                    accepted_bridge = True
                 # Exact namespaces only. Prefixes and equal integers do not
                 # authorize a provider/URL/SAMO namespace bridge.
-                if ns not in NAMESPACES or positive(s['external_key']) is None:
+                if ns not in NAMESPACES or positive(external) is None:
                     continue
-                key = (ns, str(s['external_key']), tv)
-                edge = edges.setdefault(key, {'namespace': ns, 'external_id': str(s['external_key']),
+                key = (ns, external, tv)
+                edge = edges.setdefault(key, {'namespace': ns, 'external_id': external,
                     'tv_hotel_id': int(tv), 'proof_kind': 'retained_legacy_source', 'evidence': [],
                     'namespace_bridge': 'exact_source_namespace', 'safe_to_write_now': False})
+                if accepted_bridge:
+                    edge['materialized_accepted_bridge'] = True
                 edge['evidence'].append({'old_local_id': row['old_local_id'],
                     'snapshot_sha256': row['snapshot_sha256'], 'source_sha256': s['source_sha256']})
             else:
@@ -159,6 +182,8 @@ def project(path: Path):
             state = 'already_accepted'
         elif accepted:
             state = 'hold_accepted_ownership'
+        elif edge.get('materialized_accepted_bridge'):
+            state = 'hold_stale_accepted_bridge'
         elif ns.startswith('operator_url:'):
             state = 'needs_independent_namespace_bridge'
         else:
