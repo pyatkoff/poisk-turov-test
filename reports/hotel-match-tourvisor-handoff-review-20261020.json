@@ -411,7 +411,7 @@
       },
       "projection_recorded_at_utc": "2026-10-19T22:38:10.935768+00:00"
     },
-    "conclusion": "No. anytour_hotels.id accepted by LOCAL reader differs from MATCH historical catalog_hotels.h.id. Returned1546/1584 identify other properties; missing9374 is only reader-scope absence. Never apply to A11/Kemper/SUNRISE or infer overwrite authority.",
+    "conclusion": "Initial same-number oldLocal lookup was invalid: anytour_hotels.id differs from catalog_hotels.id. Corrected typed chains now provide supporting LOCAL↔TV target proof for three targets. Operator-native identity, CURRENT admission and property qualifier/cluster holds remain unresolved; missing9374 from the initial wrong namespace is not source absence.",
     "correct_typed_chain": {
       "supporting_reads": [
         {
