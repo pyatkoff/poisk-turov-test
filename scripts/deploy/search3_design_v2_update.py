@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('4418a317d904f81acbbf2becdf9f7f0f4ad4f223', '4cb315067c0d0d508f7f822c9178699c23f056c2'),)
+    ('f58c12c41147e691bf8ca10b3e357c017fd92be2', '40a8ba4d0225c924840b52109466548cd5ed7045'),)
 NATIVE_RELEASE_PARENTS = (
-    ('4418a317d904f81acbbf2becdf9f7f0f4ad4f223', '4cb315067c0d0d508f7f822c9178699c23f056c2'),
-    ('dc69049f126cac2ae516f5ee41e886a7cbfc8c2d', '28ff30d385e1d64f9d8f75946f4b33f1f49c89bf'),)
+    ('168cf976a289d8b205dbabd2de8890b447f0591e', '28ff30d385e1d64f9d8f75946f4b33f1f49c89bf'),
+    ('246670818bba433adc9b002e06b2d560f46eb6ac', '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -205,6 +205,8 @@ def native_frame_inventory(width, percent):
     frames.add(f'native-calendar-later-{width}-text{percent}.png')
     frames.add(f'native-results-bounded-{width}-text{percent}.png')
     frames.add(f'native-tour-alternatives-{width}-text{percent}.png')
+    frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
+        'tour-many-flights', 'lead-manager', 'hotel-selected-dearer', 'lead-selected-dearer'))
     frames.update(f'native-terminal-{state}-{width}-text{percent}.png'
                   for state in ('complete', 'partial', 'error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
@@ -220,6 +222,48 @@ def native_frame_inventory(width, percent):
         frames.update(f'native-short-desktop-{screen}-{width}-text{percent}.png'
                       for screen in ('search', 'results', 'hotel', 'tour', 'lead'))
     return frames
+
+
+def native_selected_journey(actual, width):
+    """Require the retained full journey, not just a larger screenshot count."""
+    def facts(value, expected, code):
+        need(isinstance(value, dict) and set(value) == set(expected)
+             and all(type(value.get(k)) is type(v) and value[k] == v for k, v in expected.items()), code)
+
+    nav = actual.get('screenNavigation')
+    need(isinstance(nav, dict) and set(nav) == {'deepScroll', 'hotelHeadingVisible',
+         'resultFocusRestored', 'resultAnchorDelta', 'extraSearches',
+         'responsiveHiddenFocusFallback', 'responsiveRemountExtraOperations'}
+         and type(nav.get('deepScroll')) in (int, float) and 44 < nav['deepScroll'] < 100000
+         and nav.get('hotelHeadingVisible') is True and nav.get('resultFocusRestored') is True
+         and type(nav.get('resultAnchorDelta')) in (int, float) and abs(nav['resultAnchorDelta']) <= 2
+         and type(nav.get('extraSearches')) is int and nav['extraSearches'] == 0
+         and nav.get('responsiveHiddenFocusFallback') is True
+         and type(nav.get('responsiveRemountExtraOperations')) is int
+         and nav['responsiveRemountExtraOperations'] == 0,
+         'native_journey_navigation_required')
+    facts(actual.get('managerContact'), {'total': 110000, 'flightChoiceId': None,
+        'oldPairRemoved': True, 'consentRevoked': True}, 'native_journey_manager_required')
+    facts(actual.get('nonMinimumJourney'), {'exactOfferIndex': 1, 'total': 170400,
+        'summaryAndContinueRetained': True, 'contactItineraryRetained': True,
+        'backReopenExtraOperations': 0}, 'native_journey_selected_offer_required')
+    facts(actual.get('contactPriceBlockFit'), {'captionCount': 1, 'amountCount': 1,
+        'readableCaptionWeight': True, 'readableCaptionSpacing': True,
+        'captionInsidePrice': True, 'amountInsidePrice': True,
+        'captionAboveAmount': True, 'overflow': False}, 'native_journey_contact_price_required')
+    many = actual.get('manyFlightChoices')
+    need(isinstance(many, dict) and set(many) == {'total', 'initiallyVisible', 'collapsed',
+         'selectedCanonicalIndex', 'selectedTotal', 'managerBeforeList', 'pairLayout',
+         'passiveExtraOperations'}, 'native_journey_flight_inventory_required')
+    facts({k: many[k] for k in ('total', 'initiallyVisible', 'collapsed',
+          'selectedCanonicalIndex', 'selectedTotal', 'passiveExtraOperations')},
+          {'total': 40, 'initiallyVisible': 3, 'collapsed': 37,
+           'selectedCanonicalIndex': 39, 'selectedTotal': 151000, 'passiveExtraOperations': 0},
+          'native_journey_flight_choices_required')
+    facts(many['managerBeforeList'], {'before': True, 'visible': True, 'overflow': False},
+          'native_journey_manager_action_required')
+    facts(many['pairLayout'], {'columns': 2 if width == 1280 else 1,
+          'paired': width == 1280, 'stacked': width != 1280}, 'native_journey_flight_layout_required')
 
 
 def native_evidence(archive, request, native):
@@ -260,13 +304,22 @@ def native_evidence(archive, request, native):
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
         'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
         'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
-        'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0}
+        'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0,
+        'contactExactItineraryRetained': True, 'contactDraftAndConsentRetained': True,
+        'groupMinimumOpenedHotelWithoutQuote': True, 'groupPassiveExtraSearches': 0,
+        'groupPassiveExpansions': 0, 'groupExplicitExpandCount': 1,
+        'groupExpansionExactReferences': True, 'groupPendingRemountRetained': True,
+        'groupPendingStatusFocusRetained': True, 'groupConcreteQuoteCount': 1,
+        'groupConcreteFocusRetained': True, 'groupBackRemountExtraOperations': 0,
+        'groupVisibleConcreteMinimum': 161400, 'groupVisibleConcreteDelta': 9000,
+        'groupDirectConcreteReopen': True}
     for case in cases:
         key = (case.get('width'), case.get('textPercent'))
         need(key in matrix and key not in seen and not case.get('error')
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
+        native_selected_journey(actual, key[0])
         ages = actual.get('familyAges')
         need(isinstance(ages, list) and ages == [0, 7, 17]
              and all(type(age) is int for age in ages), 'native_family_age_identity_required')
@@ -642,7 +695,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 212, 'native_rendered_frame_count')
+    need(len(frames) == 232, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
