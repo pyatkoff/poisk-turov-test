@@ -285,7 +285,7 @@ jobs:
           path: source
           persist-credentials: false
       - name: Recheck new MATCH source contract before its operation
-        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy'
+        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy' || steps.command.outputs.mode == 'match-retained-readback'
         env:
           MATCH_RETAINED_SOURCE_ROOT: ${{ github.workspace }}/source
         run: python3 tests/int_server_executor_match_retained_test.py -q

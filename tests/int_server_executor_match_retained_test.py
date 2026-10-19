@@ -41,13 +41,36 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def test_readback_preserves_failed_receipt_and_never_loads_unreviewed_helper(self):
+        with tempfile.TemporaryDirectory() as td:
+            private=Path(td)/'private';target=private/OP;target.mkdir(parents=True)
+            project=Path(td)/'project';(project/'data').mkdir(parents=True)
+            (project/'data/db-v1.php').write_text('unreviewed helper')
+            reservation={'operation_id':OP,'source_sha':SHA}
+            prior={**reservation,'status':'unknown_no_replay','supplier_calls':0,'database_writes':0,'reason':'retained_child_failed_no_replay'}
+            (target/'reservation.json').write_text(json.dumps(reservation));(target/'result.json').write_text(json.dumps(prior))
+            (target/'retained-raw.ndjson').write_text('{"kind":"observation","operator_link":"private raw"}\n{bad-partial-json')
+            before={p.name:p.read_bytes() for p in target.iterdir()}
+            def fail(reason):raise ValueError(reason)
+            space={'private':private,'project':project,'payload':{'target_operation_id':OP},'re':__import__('re'),
+                   'json':json,'hashlib':hashlib,'fail':fail,
+                   'safe_json':lambda path,bound:json.loads(path.read_text()),
+                   'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound}
+            exec(m.REMOTE_HANDLER,space)
+            result=space['retained_readback']()
+            self.assertEqual('reconciled_read_only',result['state'])
+            self.assertEqual({'observation':1,'invalid_json':1},result['raw_row_kinds'])
+            self.assertNotIn('database_schema',result)
+            self.assertNotIn('private raw',json.dumps(result))
+            self.assertEqual(before,{p.name:p.read_bytes() for p in target.iterdir()})
+
     def test_closed_parser_keeps_old_modes_and_rejects_scope_expansion(self):
         c=core();original=c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0')
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op=OP if mode=='match-retained-intake' else QUOTA_OP
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort
+            op=OP if mode=='match-retained-intake' else 'int-andromeda-match-retained-readback-20261020-v1' if mode=='match-retained-readback' else QUOTA_OP
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode=='match-retained-readback' else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -69,11 +92,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op=OP if mode=='match-retained-intake' else QUOTA_OP
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort)
+            op=OP if mode=='match-retained-intake' else 'int-andromeda-match-retained-readback-20261020-v1' if mode=='match-retained-readback' else QUOTA_OP
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode=='match-retained-readback' else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
