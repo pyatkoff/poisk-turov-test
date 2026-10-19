@@ -197,7 +197,8 @@ class UpdateContracts(unittest.TestCase):
                         'paired': width == 1280, 'stacked': width != 1280}}
                 case['proof']['aiPriceContact'] = {'searchPrice': 138989, 'checkedFullTotal': 163056,
                     'readableMeal': True, 'originalIndex': 0, 'explicitAcceptance': True,
-                    'selectedRowPriceRetained': True, 'backForwardExtraOperations': 0,
+                    'comparableSearchPrices': True, 'selectedPackagePriceRetained': True,
+                    'conditionsAgreement': True, 'backForwardExtraOperations': 0,
                     'contactFit': {'width': 490 if width == 1280 else width - 60,
                         'titleWidth': 370 if width == 1280 else width - 140,
                         'titleLines': 2, 'titleFits': True, 'summaryFits': True, 'columns': width >= 768}}
@@ -403,8 +404,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '246670818bba433adc9b002e06b2d560f46eb6ac')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39278795885)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39291592436)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -511,6 +512,9 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['proof']['aiPriceContact'].update(checkedFullTotal=138989),
             lambda r: r['cases'][0]['proof']['aiPriceContact'].update(originalIndex=1),
             lambda r: r['cases'][0]['proof']['aiPriceContact'].update(explicitAcceptance=False),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(comparableSearchPrices=False),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(selectedPackagePriceRetained=False),
+            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(conditionsAgreement=False),
             lambda r: r['cases'][0]['proof']['aiPriceContact'].update(backForwardExtraOperations=1),
             lambda r: r['cases'][0]['proof']['aiPriceContact']['contactFit'].update(titleFits=False),
             lambda r: r['cases'][-1]['proof']['aiPriceContact']['contactFit'].update(width=300),
@@ -991,7 +995,8 @@ class UpdateContracts(unittest.TestCase):
             'f99306ffe3725f2badc70096d801608fc5393009',
             '1959dcabac17335fd09763389231e67db9afde6b',
             'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
-            '246670818bba433adc9b002e06b2d560f46eb6ac'))
+            '246670818bba433adc9b002e06b2d560f46eb6ac',
+            '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1139,7 +1144,7 @@ class UpdateContracts(unittest.TestCase):
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
              38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885))
+             39278795885, 39291592436))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)

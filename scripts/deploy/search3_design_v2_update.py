@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('2af5ec182b96831dcf7208562040f60ab17cfe8d', '2ddec04188b02ee22162f7acf34a30b1e35757cd'),)
+    ('db900a34232477c028b8e9f701a13d7d6b96e548', '2bd8c0b2007e5276331e91e67259406d0b81d796'),)
 NATIVE_RELEASE_PARENTS = (
-    ('3c0a29485b0a2de1c28a11aa2793d6e33a9abf44', '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7'),
-    ('756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d', '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7'),)
+    ('ed6ba82601c6f51c4eb8b8edf11bfee08bbbaafd', '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7'),
+    ('185739d46757bd34a05709e3656eab76d1003fa5', '34a4443806a2c4d3b29ea143e7577329ace2a751'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -258,11 +258,13 @@ def native_selected_journey(actual, width):
         'native_contact_disclosure_required')
     ai = actual.get('aiPriceContact')
     need(isinstance(ai, dict) and set(ai) == {'searchPrice', 'checkedFullTotal',
-         'readableMeal', 'originalIndex', 'explicitAcceptance', 'selectedRowPriceRetained',
+         'readableMeal', 'originalIndex', 'explicitAcceptance', 'comparableSearchPrices',
+         'selectedPackagePriceRetained', 'conditionsAgreement',
          'backForwardExtraOperations', 'contactFit'}, 'native_ai_journey_required')
     facts({k: v for k, v in ai.items() if k != 'contactFit'},
           {'searchPrice': 138989, 'checkedFullTotal': 163056, 'readableMeal': True,
-           'originalIndex': 0, 'explicitAcceptance': True, 'selectedRowPriceRetained': True,
+           'originalIndex': 0, 'explicitAcceptance': True, 'comparableSearchPrices': True,
+           'selectedPackagePriceRetained': True, 'conditionsAgreement': True,
            'backForwardExtraOperations': 0}, 'native_ai_price_and_selection_required')
     fit = ai['contactFit']
     need(isinstance(fit, dict) and set(fit) == {'width', 'titleWidth', 'titleLines',
