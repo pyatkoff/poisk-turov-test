@@ -46,7 +46,7 @@ const fixtureNow = new Date('2026-10-12T08:00:00Z');
 fs.writeFileSync(path.join(evidence,'fixture.json'),JSON.stringify(fixture,null,2)+'\n');
 
 function fixtureBridge(fixture) {
-  const trip=fixture.trip, calls={init:0,search:0,quote:0,flight:[],preview:0,submit:0};
+  const trip=fixture.trip, calls={init:0,search:0,quote:0,expand:0,flight:[],preview:0,submit:0};
   const rawHotels=fixture.hotels.map(row=>({id:row.id,name:row.name,country:'4',location:'Турция · Кемер',region:'Кемер',stars:row.stars,photos:[],amenities:[],raw:{description:'FICTIONAL fixture hotel description'},offers:[{
     key:'fixture:offer:'+row.id,hotelId:row.id,day:trip.from,returnDay:'2026-10-19',nights:7,adults:2,ages:[],room:row.room,meal:row.meal,mealFacet:row.meal,operator:'FIXTURE TV',provider:'tourvisor',total:row.total,search:trip,raw:{fixture:true}
   },...(row.id===1?[{key:'fixture:later:1',hotelId:row.id,day:trip.to,returnDay:'2026-11-01',nights:7,adults:2,ages:[],room:row.room,meal:row.meal,mealFacet:row.meal,operator:'FIXTURE TV',provider:'tourvisor',total:166400,search:trip,raw:{fixture:true}}]:[])]}));
@@ -58,6 +58,15 @@ function fixtureBridge(fixture) {
   const leg=(back=false)=>({company:{name:'FIXTURE AIR'},number:back?'FX 102':'FX 101',departure:{date:back?'2026-10-19':trip.from,time:back?'13:00':'09:20',port:{name:back?'FIXTURE Antalya':'FIXTURE Moscow'}},arrival:{date:back?'2026-10-19':trip.from,time:back?'17:00':'13:20',port:{name:back?'FIXTURE Moscow':'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'});
   const control=window.__nativeFixture={calls,hotels:rawHotels,failNextSearch:false,failNextQuote:false,getSelection:()=>selection,getSnapshot:()=>latest};
   control.deliverHotels=(hotels,values={})=>publish({...latest,...values,hotels,search:{...trip,ages:[]}});
+  // Installed only after all existing captures and authority proofs. This
+  // separate in-memory ANEX group never changes the paired donor corpus.
+  control.installGroup=()=>{
+    const group={...rawHotels[0].offers[0],key:'fixture:group:901',hotelId:901,provider:'anex',operator:'FIXTURE ANEX',room:'Номер уточняется',raw:{fixture:true,anexKind:'group_minimum'}};
+    const offers=[0,1].map(index=>({...group,key:'fixture:concrete:901:'+index,room:index?'Семейный номер':'Точный стандартный номер',total:group.total+5000+index*9000,raw:{fixture:true,anexKind:'concrete'}}));
+    const hotel={...rawHotels[0],id:901,name:'FIXTURE Explicit ANEX Group Hotel',offers:[group]};
+    control.group={hotel,offer:group,offers,expectedReferenceRetained:false};rawHotels.push(hotel);
+    control.deliverHotels(rawHotels,{status:'complete',message:''});
+  };
   let initResolve,initReject,initialization;
   control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
   const api={
@@ -85,11 +94,25 @@ function fixtureBridge(fixture) {
       const complete={hotels:rawHotels,status:'complete',searchGeneration:generation};publish(complete);callback?.(complete);return complete;
     },
     getSelection(){return selection;},
-    async quoteOffer(key){
+    async expandOfferGroup(key,{expectedOffer=null}={}){
+      const group=control.group;
+      if(!group||key!==group.offer.key||expectedOffer!==group.offer||!rawHotels.includes(group.hotel)||group.hotel.offers[0]!==group.offer)throw new Error('Fixture group must be the exact current canonical offer');
+      calls.expand++;group.expectedReferenceRetained=true;
+      await new Promise(resolve=>{control.releaseGroupExpansion=resolve;});
+      group.hotel.offers.push(...group.offers);control.deliverHotels(rawHotels);
+      return group.offers;
+    },
+    async quoteOffer(key,{expectedOffer=null}={}){
       calls.quote++;
       const offer=rawHotels.flatMap(row=>row.offers).find(row=>row.key===key);
-      if(!offer)throw new Error('Unknown fixture offer');
+      if(!offer||expectedOffer&&offer!==expectedOffer)throw new Error('Unknown or replaced fixture offer');
       if(control.failNextQuote){control.failNextQuote=false;throw new Error('FICTIONAL controlled quote failure');}
+      if(offer.provider==='anex'){
+        if(offer.raw?.anexKind!=='concrete')throw new Error('Only a concrete fixture may be quoted');
+        const expiresAt=Math.floor(Date.now()/1000)+600;
+        selection={...offer,offer,total:offer.total,variants:[],flightChoiceId:null,pricePending:false,priceAccepted:true,expiresAt,quoteResult:{state:'quote_verified',expiresAt,choice:{choiceRef:'fixture:choice:901',legs:[{label:'FICTIONAL outbound'},{label:'FICTIONAL inbound'}]}}};
+        return selection;
+      }
       selection={...offer,offer,tour:{id:'fixture-tour:'+offer.hotelId,price:110000,roomType:offer.room,meal:{name:offer.meal}},total:110000,variants:[{price:112000,forward:[leg()],backward:[leg(true)]},{price:123000,forward:[{...leg(),departure:{...leg().departure,time:'10:20'}}],backward:[leg(true)]}],flightChoiceId:null,pricePending:true,priceAccepted:false,expiresAt:Math.floor(Date.now()/1000)+600};
       return selection;
     },
@@ -890,6 +913,19 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-action="lead"]:visible').first().click();
         await screen('lead').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'lead',row);await referenceFrame(reference,width,percent,'lead',row);
+        const leadPriceFit=await screen('lead').evaluate(root=>{
+          const card=root.querySelector('.st-lead'),price=card?.querySelector(':scope > .st-price'),caption=card?.querySelector('[data-native-price-caption]'),amount=card?.querySelector('[data-tour-price]');
+          if(!price||!caption||!amount)return null;
+          const bounds=price.getBoundingClientRect(),label=caption.getBoundingClientRect(),value=amount.getBoundingClientRect();
+          const captionStyle=getComputedStyle(caption);
+          const inside=box=>box.width>0&&box.height>0&&box.left>=bounds.left-1&&box.right<=bounds.right+1&&box.top>=bounds.top-1&&box.bottom<=bounds.bottom+1;
+          return{captionCount:card.querySelectorAll('[data-native-price-caption]').length,amountCount:card.querySelectorAll('[data-tour-price]').length,
+            readableCaptionWeight:Number(captionStyle.fontWeight)<=500,readableCaptionSpacing:captionStyle.letterSpacing==='normal'||parseFloat(captionStyle.letterSpacing)>=0,
+            captionInsidePrice:inside(label),amountInsidePrice:inside(value),captionAboveAmount:label.bottom<=value.top+1,
+            overflow:price.scrollWidth>price.clientWidth+1||caption.scrollWidth>caption.clientWidth+1||amount.scrollWidth>amount.clientWidth+1};
+        });
+        assert(leadPriceFit?.captionCount===1&&leadPriceFit.amountCount===1&&leadPriceFit.readableCaptionWeight&&leadPriceFit.readableCaptionSpacing&&leadPriceFit.captionInsidePrice&&leadPriceFit.amountInsidePrice&&leadPriceFit.captionAboveAmount&&!leadPriceFit.overflow,'A single readable contact price caption and amount must stay together inside the bordered price block');
+        row.proof.contactPriceBlockFit=leadPriceFit;
         const form=product.locator('[data-lead-form]');
         await form.locator('[name="name"]').fill('FICTIONAL QA');await form.locator('[name="phone"]').fill('+7 999 000 00 00');await form.locator('[name="consent"]').check();
         await form.locator('button[type="submit"]').click();
@@ -927,6 +963,96 @@ async function referenceFrame(page,width,percent,screen,row) {
         await product.locator('[data-favorite="1"]').click();
         assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1],'Existing favorite key preserved');
         row.proof.favoriteStoragePreserved=true;
+
+        // Exercise the new group route after all paired captures. Its held
+        // fixture proves that opening a hotel is passive, only the explicit
+        // hotel CTA expands, and responsive mounts join that same operation.
+        const groupBefore=await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,expand:c.calls.expand};});
+        await page.evaluate(()=>window.__nativeFixture.installGroup());
+        await product.locator('[data-hotel-card="901"] [data-offer="fixture:group:901"]').click();
+        await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await screen('tour').isVisible(),false,'A group minimum never opens a preliminary tour screen');
+        const groupCTA=product.locator('[data-native-expand-group="fixture:group:901"]');
+        assert.equal(await groupCTA.count(),1,'Exactly one explicit group-expansion action');
+        assert.equal(await groupCTA.innerText(),'Варианты');
+        assert.equal(await groupCTA.getAttribute('aria-label'),'Показать точные варианты этого предложения');
+        assert.equal(await groupCTA.evaluate(node=>node===document.activeElement),true,'The group card focuses its exact hotel action');
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,expand:c.calls.expand};}),groupBefore,'Opening group hotel starts no search, expansion or quote');
+        const groupActionFit=await groupCTA.evaluate(node=>{
+          const box=node.getBoundingClientRect(),row=node.closest('.st-offer').getBoundingClientRect(),doc=document.documentElement;
+          const range=document.createRange();range.selectNodeContents(node);
+          return{height:box.height,contained:box.left>=row.left-1&&box.right<=row.right+1&&box.top>=row.top-1&&box.bottom<=row.bottom+1,
+            textContained:[...range.getClientRects()].every(rect=>rect.left>=box.left-1&&rect.right<=box.right+1&&rect.top>=box.top-1&&rect.bottom<=box.bottom+1),
+            documentOverflow:doc.scrollWidth>doc.clientWidth+1};
+        });
+        assert(groupActionFit.height>=43.5&&groupActionFit.contained&&groupActionFit.textContained&&!groupActionFit.documentOverflow,'The exact-variant CTA is readable and reachable at the current ordinary width');
+        await groupCTA.press('Enter');
+        await waitForFixture(page,()=>window.__nativeFixture.calls.expand===1&&typeof window.__nativeFixture.releaseGroupExpansion==='function');
+        assert.equal(await groupCTA.isDisabled(),true);
+        assert.match(await product.locator('[data-hotel-offers]').innerText(),/Получаем точные варианты/);
+        const groupStatus=product.locator('[data-native-group-status="fixture:group:901"]');
+        assert.equal(await groupStatus.getAttribute('tabindex'),'-1');assert.equal(await groupStatus.getAttribute('role'),'status');
+        assert.equal(await groupStatus.evaluate(node=>node===document.activeElement),true,'The disabled expansion action hands keyboard focus to its pending status');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote,'Pending group expansion never quotes a minimum');
+        const oppositeWidth=width<=760?768:390;
+        const resizeGroupHotel=async responsiveWidth=>{
+          await page.setViewportSize({width:responsiveWidth,height:900});
+          await waitForFixture(page,()=>{
+            const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+            return root&&root.classList.contains('st-mobile')===(innerWidth<=760)&&!root.querySelector('[data-screen="hotel"]').hidden&&document.querySelector('[data-native-startup]').hidden;
+          });
+        };
+        for(const responsiveWidth of [oppositeWidth,width]){
+          await resizeGroupHotel(responsiveWidth);
+          assert.equal(await groupCTA.isDisabled(),true,'Responsive remount retains the pending explicit operation');
+          assert.equal(await groupStatus.evaluate(node=>node===document.activeElement),true,'Responsive remount restores pending-status focus');
+          assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.expand),1,'Responsive remount never repeats expansion');
+          assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote);
+        }
+        await page.evaluate(()=>window.__nativeFixture.releaseGroupExpansion());
+        const exactGroupOffer=product.locator('[data-hotel-offers] [data-offer="fixture:concrete:901:0"]');
+        await exactGroupOffer.waitFor({state:'visible'});
+        await waitForFixture(page,()=>document.activeElement?.getAttribute('data-offer')==='fixture:concrete:901:0');
+        assert.equal(await groupCTA.count(),0,'A resolved minimum is replaced by its concrete choices');
+        assert.equal(await product.locator('[data-hotel-offers] [data-offer]').count(),2);
+        assert.equal(await product.locator('[data-hotel-min-price]').innerText(),'161 400 ₽','The hotel minimum describes its visible concrete choices, without the hidden lower group minimum');
+        assert.deepEqual(await product.locator('[data-hotel-offers] .st-offer-price').allInnerTexts(),['161 400 ₽','170 400 ₽']);
+        assert.deepEqual(await product.locator('[data-hotel-offers] .st-offer-delta').allInnerTexts(),['Минимальная цена','+9 000 ₽'],'Displayed deltas use the minimum of the visible concrete list');
+        assert.equal(await page.evaluate(()=>{const g=window.__nativeFixture.group;return g.expectedReferenceRetained&&g.offers.every(offer=>g.hotel.offers.includes(offer));}),true,'Expansion binds the exact current minimum and returns exact canonical concrete objects');
+        await exactGroupOffer.press('Enter');await screen('tour').waitFor({state:'visible'});
+        await waitForFixture(page,()=>window.__nativeFixture.getSelection()?.offer===window.__nativeFixture.group.offers[0]);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote+1,'Only choosing a concrete variant authorizes one quote');
+        assert.match(await screen('tour').innerText(),/Точный стандартный номер/);
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await groupCTA.count(),0,'Back retains resolved concrete variants');
+        assert.equal(await product.locator('[data-hotel-offers] .st-offer--selected [data-offer="fixture:concrete:901:0"]').count(),1);
+        for(const responsiveWidth of [oppositeWidth,width]){
+          await resizeGroupHotel(responsiveWidth);
+          assert.equal(await groupCTA.count(),0,'Responsive remount retains resolved concrete objects');
+          assert.equal(await product.locator('[data-hotel-offers] .st-offer--selected [data-offer="fixture:concrete:901:0"]').count(),1);
+          assert.equal(await exactGroupOffer.evaluate(node=>node===document.activeElement),true,'Responsive remount restores focus to the exact selected concrete choice');
+        }
+        // The approved mobile hotel has no visible desktop summary. Reopen its
+        // concrete row there; the desktop summary must choose that same row.
+        if(width>760)await product.locator('[data-action="best-tour"]:visible').first().click();
+        else await exactGroupOffer.click();
+        await screen('tour').waitFor({state:'visible'});
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection()?.offer===window.__nativeFixture.group.offers[0]),true,'The visible hotel action opens its displayed concrete minimum directly');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.quote),groupBefore.quote+1,'Reopening reuses the exact checked concrete offer');
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        await exactGroupOffer.click();await screen('tour').waitFor({state:'visible'});
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        await page.goForward();await screen('tour').waitFor({state:'visible'});
+        const groupAfter=await page.evaluate(()=>{const c=window.__nativeFixture;return{search:c.calls.search,quote:c.calls.quote,expand:c.calls.expand,exactSelection:c.getSelection()?.offer===c.group.offers[0]};});
+        assert.deepEqual(groupAfter,{search:groupBefore.search,quote:groupBefore.quote+1,expand:1,exactSelection:true},'Back, reopen and responsive mounts keep the exact loaded choice without another operation');
+        row.proof.groupMinimumOpenedHotelWithoutQuote=true;row.proof.groupPassiveExtraSearches=0;row.proof.groupPassiveExpansions=0;
+        row.proof.groupExplicitExpandCount=1;row.proof.groupExpansionExactReferences=true;row.proof.groupPendingRemountRetained=true;row.proof.groupPendingStatusFocusRetained=true;
+        row.proof.groupConcreteQuoteCount=1;row.proof.groupConcreteFocusRetained=true;row.proof.groupBackRemountExtraOperations=0;
+        row.proof.groupVisibleConcreteMinimum=161400;row.proof.groupVisibleConcreteDelta=9000;row.proof.groupDirectConcreteReopen=true;
+        row.proof.groupReopenAction=width>760?'desktop-summary':'mobile-concrete-row';if(width>760)row.proof.groupSummaryOpensConcreteDirectly=true;
+        row.proof.groupActionFit=groupActionFit;
+        row.checks.push('group minimum -> hotel passively -> one explicit expansion -> exact concrete offer -> one quote; pending/resolved responsive remount, focus and Back/reopen retain the same objects with zero repeated operations');
+
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.
         terminalJourney=true;

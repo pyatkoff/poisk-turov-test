@@ -63,20 +63,34 @@
         sections[1].dataset.nativeFlightSection = '';
         sections[1].innerHTML = '<div class="st-step-label">ПЕРЕЛЁТ</div><div class="st-section-top"><h3>Туда и обратно</h3><span class="st-status-pill" data-native-flight-status>Требует проверки</span></div><div data-native-flight-content></div>';
       }
-      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">СОСТАВ ТУРА</div><ul class="st-native-package-facts" data-native-inclusions><li>'+icon('bed-double')+'<span><b>Проживание:</b> <span data-native-inclusion-room></span></span></li><li>'+icon('utensils')+'<span><b>Питание:</b> <span data-native-inclusion-meal></span></span></li></ul><p class="st-small st-muted st-native-package-note">Перелёт, трансфер, страховка и обязательные доплаты требуют подтверждения по условиям пакета.</p>';
+      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">СОСТАВ ТУРА</div><ul class="st-native-package-facts" data-native-inclusions><li>'+icon('bed-double')+'<span><b>Проживание:</b> <span data-native-inclusion-room></span></span></li><li>'+icon('utensils')+'<span><b>Питание:</b> <span data-native-inclusion-meal></span></span></li></ul><p class="st-small st-muted st-native-package-note" data-native-package-note></p>';
       const costDetails = tourScreen.querySelector('.st-tour-layout > aside');
       if (costDetails) {
         costDetails.dataset.nativeCostDetails='';
+        const priceCaption=costDetails.querySelector('.st-total > .st-small');
+        if(priceCaption)priceCaption.dataset.nativePriceCaption='';
+        const priceNote=costDetails.querySelector('.st-safety');
+        if(priceNote)priceNote.innerHTML=icon('shield-check')+'<span data-native-cost-note></span>';
         if (root.classList.contains('st-mobile')) {
           costDetails.querySelector('h3').textContent='Условия тура';
-          const partyDetails=window.document.createElement('div');
-          partyDetails.className='st-cost-list st-native-quick-party';
-          partyDetails.append(costDetails.querySelector('.st-cost-list > div:first-child'));
-          tourScreen.querySelector('[data-quick-dates]').insertAdjacentElement('afterend',partyDetails);
-          const priceCaption=window.document.createElement('div');
-          priceCaption.className='st-small st-muted';priceCaption.textContent='За всю группу';
-          tourScreen.querySelector('[data-quick-party]').insertAdjacentElement('afterend',priceCaption);
+          if(!tourScreen.querySelector('.st-native-quick-party')){
+            const partyDetails=window.document.createElement('div');partyDetails.className='st-cost-list st-native-quick-party';
+            const partyRow=costDetails.querySelector('[data-cost-party]')?.parentElement;
+            if(partyRow){partyDetails.append(partyRow);tourScreen.querySelector('[data-quick-dates]').insertAdjacentElement('afterend',partyDetails);}
+          }
+          const quickPrice=tourScreen.querySelector('.st-quick-price');
+          if(quickPrice&&!quickPrice.querySelector('[data-native-price-caption]')){
+            const priceCaption=window.document.createElement('div');priceCaption.className='st-small st-muted';priceCaption.dataset.nativePriceCaption='';
+            quickPrice.querySelector('[data-quick-party]').insertAdjacentElement('afterend',priceCaption);
+          }
         }
+      }
+      const leadPrice=$('[data-screen="lead"] .st-lead > .st-price');
+      if(leadPrice&&!leadPrice.querySelector('[data-native-price-caption]')){
+        const caption=window.document.createElement('div');caption.className='st-small st-muted';caption.dataset.nativePriceCaption='';
+        caption.style.fontWeight='400';caption.style.letterSpacing='normal';
+        const amount=window.document.createElement('div');amount.dataset.tourPrice='';
+        leadPrice.removeAttribute('data-tour-price');leadPrice.replaceChildren(caption,amount);
       }
       let status = $('[data-native-tour-status]');
       if (!status) {status = window.document.createElement('p');status.className = 'st-small st-muted';status.dataset.nativeTourStatus='';status.setAttribute('aria-live','polite');tourScreen.querySelector('.st-screen-title').insertAdjacentElement('afterend',status);}
@@ -151,6 +165,21 @@
       const offer=context.offer,hotel=context.hotel,value=current(),tour=value?.tour;
       selection=value;
       const total=value && !value.pricePending && Number.isFinite(Number(value.total)) && Number(value.total)>0 ? Number(value.total) : Number(offer.total);
+      const quotedTotal=Boolean(value && !value.pricePending && Number.isFinite(Number(value.total)) && Number(value.total)>0);
+      const expired=[value?.expiresAt,value?.quoteResult?.expiresAt].some(expires=>expires && expires*1000<=Date.now());
+      const failed=Boolean(error || value?.quoteError || value?.flightsError);
+      const checkedPrice=Boolean(quotedTotal && !busy && !expired && !failed && !value.flightsLoading);
+      const flightIndex=value?.flightChoiceId===null || value?.flightChoiceId===undefined ? null : Number(value.flightChoiceId);
+      const selectedFlight=Boolean(value?.quoteResult?.state==='quote_verified' && value.quoteResult.choice
+        || Number.isInteger(flightIndex) && flightIndex>=0 && value?.variants?.[flightIndex]);
+      const checkedFlight=checkedPrice && selectedFlight;
+      const priceCaption=checkedPrice ? 'Проверенная цена за всех' : quotedTotal ? 'Последняя цена за всех · нужна проверка' : 'Цена из поиска за всех';
+      const priceNote=busy ? 'Проверяем цену и перелёт. Дождитесь результата.'
+        : expired ? 'Срок цены истёк. Для оформления нужна новая проверка.'
+        : failed ? 'Проверка не завершена. Цена и перелёт требуют уточнения.'
+        : checkedFlight ? 'Цена проверена с выбранным перелётом. Доплаты и наличие уточнит менеджер.'
+        : checkedPrice ? 'Цена предложения проверена. Рейс и доплаты уточнит менеджер.'
+        : 'Цена из поиска. Выберите точное предложение и проверьте условия.';
       const room=textFact(tour?.roomType) || offer.room || 'Номер уточняется',meal=textFact(tour?.meal) || offer.meal || 'Питание уточняется';
       text('[data-tour-hotel],[data-quick-hotel],[data-lead-hotel]',hotel?.name || 'Отель уточняется');
       text('[data-tour-location]',hotel?.location || 'Расположение уточняется');
@@ -158,6 +187,8 @@
       const stay=dateText(offer.day)+(offer.returnDay ? ' — '+dateText(offer.returnDay) : '')+' · '+nights(offer.nights);
       text('[data-tour-stay],[data-quick-dates]',stay);text('[data-tour-party],[data-cost-party]',party(offer));text('[data-quick-party]','За '+party(offer,true));
       text('[data-tour-price]',money(total));text('[data-tour-operator]',offer.operator || 'Туроператор уточняется');
+      text('[data-native-price-caption]',priceCaption);
+      text('.st-quick-price-note',priceNote);text('[data-native-cost-note]','Без оплаты сейчас. '+priceNote);
       text('[data-lead-choice]',room+' · '+meal);text('[data-lead-context]',dateText(offer.day)+' · '+nights(offer.nights)+' · '+party(offer));
       photo('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]');
       const changed=value && !value.pricePending && Number(value.total)!==Number(offer.total);
@@ -165,7 +196,6 @@
       text('[data-price-change-text]',changed ? 'Было '+money(offer.total)+' → стало '+money(value.total)+' за всех туристов.' : '');
       $$('[data-action="accept-price"]').forEach(node=>node.disabled=busy || !changed);
       $$('[data-action="lead"]').forEach(node=>{node.disabled=!canContinue();node.setAttribute('aria-disabled',String(node.disabled));});
-      text('.st-quick-price-note',canContinue() ? value.flightChoiceId!==null && value.flightChoiceId!==undefined || value.quoteResult?.state==='quote_verified' ? 'Стоимость проверена для выбранного перелёта. Другие возможные доплаты уточнит менеджер.' : 'Цена предложения проверена. Перелёт уточнит менеджер.' : busy ? 'Проверяем цену и рейсы выбранного тура…' : 'Цена из поиска. Проверьте точный тур и выбранный перелёт.');
       const flightContent=$('[data-native-flight-content]');
       if (flightContent) {
         if (context.offer.raw?.anexKind==='group_minimum') flightContent.innerHTML='<p class="st-small st-muted">Это минимальная цена группы предложений. Для выбора нужны точные варианты.</p><button type="button" class="st-secondary" data-native-expand-offer '+(busy?'disabled':'')+'>Показать точные варианты</button>';
@@ -174,8 +204,12 @@
         else if (value) flightContent.innerHTML=flightChoiceHTML(value);
         else flightContent.innerHTML='<p class="st-small st-muted">'+esc(error || 'Рейсы не подтверждены.')+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Проверить тур</button>' : '');
       }
-      text('[data-native-flight-status]',value?.quoteResult?.state==='quote_verified' || value?.flightChoiceId!==null && value?.flightChoiceId!==undefined ? 'Выбранный перелёт' : 'Требует уточнения');
+      text('[data-native-flight-status]',busy ? 'Проверяем' : expired ? 'Нужна новая проверка' : failed ? 'Требует проверки' : checkedFlight ? 'Выбранный перелёт' : checkedPrice ? 'Уточнит менеджер' : 'Требует уточнения');
       text('[data-native-inclusion-room]',room);text('[data-native-inclusion-meal]',meal);
+      text('[data-native-package-note]',checkedFlight
+        ? 'Выбранный перелёт учтён в проверенной цене. Трансфер, страховка и обязательные доплаты требуют уточнения.'
+        : checkedPrice ? 'Рейс уточнит менеджер. Трансфер, страховка и обязательные доплаты требуют уточнения.'
+        : 'Перелёт, трансфер, страховка и обязательные доплаты пока не подтверждены.');
       const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(busy ? 'Проверяем точное предложение…' : failure, Boolean(failure));
