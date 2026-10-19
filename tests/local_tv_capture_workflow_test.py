@@ -138,7 +138,7 @@ class CopyOwnerPins(unittest.TestCase):
     def test_both_daily_copy_owners_pin_one_exact_reviewed_source_and_never_run_on_push(self):
         for name in ("collect-hotel-details.yml", "collect-anytour-tours.yml"):
             text=(ROOT / ".github/workflows" / name).read_text()
-            self.assertIn("ref: 8af3e190588bf61b067f81838aec3f0201205ec9", text)
+            self.assertIn("ref: 8bb7336cfa8e6e702ea656c762fe331a1c8283c6", text)
             live=text.split("  collect-production:\n",1)[1]
             self.assertIn("if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'", live)
             self.assertNotIn("if: github.event_name != 'pull_request'", live)

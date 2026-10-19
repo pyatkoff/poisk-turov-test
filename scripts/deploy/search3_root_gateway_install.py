@@ -317,5 +317,308 @@ def checked_install():
   finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)
  print(json.dumps(evidence,sort_keys=True));need(completed,'install_not_verified')
 
+# Separately approved dependency-reuse installation. Frozen earlier operations above
+# remain available only under their original exact commands and no-replay guards.
+DEPENDENCY_PREFIX='/install-search3-root-dependencies'
+DEPENDENCY_OPERATION='install-20261019-dependency-reuse-v1'
+DEPENDENCY_SOURCE='d6780854c16f390ec9ad3117a484e72e0851c884'
+DEPENDENCY_RELEASE='4ff952d8d5c8a943a7ba6b3af78e06f206e1e25e'
+DEPENDENCY_APPROVAL=6263435322
+DEPENDENCY_APPROVAL_HASH='68502f397f771f6d757c943372bba0671e6a0f83d402047c4429ddf465acd7c2'
+DEPENDENCY_CHECK_IDS={117963783814,117963785119,117963784790,117963784645,117963784614,117963784447,117963784155}
+DEPENDENCY_LOCAL_SOURCE='8bb7336cfa8e6e702ea656c762fe331a1c8283c6'
+DEPENDENCY_LOCAL_TREE='f805a7fdadf2ff351aa4351ec489058d25cbdcaa'
+DEPENDENCY_LOCAL_PARENT='8af3e190588bf61b067f81838aec3f0201205ec9'
+DEPENDENCY_COLLECTORS={'.github/workflows/collect-hotel-details.yml':'f00d9986655f56ce1a5dcfc68dd681b199abe018','.github/workflows/collect-anytour-tours.yml':'9c8e7f8d3747c5f628353f1bb56e1b57d596551a'}
+DEPENDENCY_CANDIDATES={
+ 'api-v2.php':{'source':DEPENDENCY_SOURCE,'path':'v2/api-v2.php','blob':'72d4845f7074584db34b2d67c481f81ea64f4a49','bytes':14995,'sha256':'2d92cba5cee08d4d112255ebcddf0cd0f4b023a5233761ace27453337385e3be'},
+ 'data/local-tv-catalog-v1.php':{'source':DEPENDENCY_LOCAL_SOURCE,'path':'v2/data/local-tv-catalog-v1.php','blob':'b4ac8e188122e6a3df78eae64f6a4cb41a182f32','bytes':36000,'sha256':'9dc60eb39100126d97307b83083d6a1b190cfdf8f684a18af47d8edd87b1c3b5'},
+}
+DEPENDENCY_EXPECTED={**CHECKED_EXPECTED,'api-v2.php':CHECKED_HASH}
+DEPENDENCY_APP='_preview/search3-next-candidate/visual-search/app.js'
+DEPENDENCY_APP_HASH='1772a1216ca111c1a1a9a2a5cbed0c14dc589674fe5d2bd0016171c2eb2a2f4b'
+DEPENDENCY_PROTECTED=(*CHECKED_PROTECTED,'config.php',DEPENDENCY_APP)
+
+def dependency_event(event,env):
+ # Reuse all current-owner/main/stock-workflow validation without changing the
+ # historical checked command or its fixed installation identity.
+ import copy
+ changed=copy.deepcopy(event);control=env.get('GITHUB_SHA','')
+ need(changed.get('comment',{}).get('body')==f'{DEPENDENCY_PREFIX} {control} {DEPENDENCY_OPERATION}','command')
+ changed['comment']['body']=f'{CHECKED_PREFIX} {control} {CHECKED_OPERATION}'
+ return checked_event(changed,env)
+
+def dependency_admission(identity):
+ need(checked_api('/git/ref/heads/main')['object']['sha']==identity['control_source_sha'],'main_moved')
+ need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==DEPENDENCY_RELEASE,'release_moved')
+ approval=checked_api('/issues/comments/'+str(DEPENDENCY_APPROVAL))
+ need(approval.get('id')==DEPENDENCY_APPROVAL and approval.get('user',{}).get('id')==226193297
+      and approval.get('author_association')=='OWNER'
+      and sha(approval.get('body','').encode())==DEPENDENCY_APPROVAL_HASH,'approval_changed')
+ control=checked_api('/git/commits/'+identity['control_source_sha'])
+ need(len(control['parents'])==2,'reviewed_merge_required')
+ reviewed=checked_api('/git/commits/'+control['parents'][1]['sha'])
+ need(reviewed['tree']['sha']==control['tree']['sha'],'reviewed_tree')
+ for head,names,reason in ((reviewed['sha'],('guard','contracts','live-check-contracts'),'source_ci'),(identity['control_source_sha'],('guard',),'main_ci')):
+  checks=checked_api('/commits/'+head+'/check-runs?per_page=100')
+  for name in names:
+   matches=[c for c in checks.get('check_runs',[]) if c.get('name')==name]
+   need(len(matches)==1 and matches[0].get('status')=='completed' and matches[0].get('conclusion')=='success' and matches[0].get('app',{}).get('slug')=='github-actions',reason)
+ candidates={}
+ for target,record in DEPENDENCY_CANDIDATES.items():
+  item=checked_api('/contents/'+record['path']+'?ref='+record['source'])
+  data=base64.b64decode(item['content'],validate=False)
+  need(item['sha']==record['blob'] and blob(data)==record['blob'] and sha(data)==record['sha256'] and len(data)==record['bytes'],'candidate_bytes')
+  if target=='api-v2.php':need(checked_api('/contents/'+record['path']+'?ref='+DEPENDENCY_RELEASE)['sha']==record['blob'],'release_candidate')
+  candidates[target]=data
+ checks=checked_api('/commits/'+DEPENDENCY_SOURCE+'/check-runs?per_page=100')
+ selected=[c for c in checks['check_runs'] if c['id'] in DEPENDENCY_CHECK_IDS]
+ need({c['id'] for c in selected}==DEPENDENCY_CHECK_IDS and len(selected)==len(DEPENDENCY_CHECK_IDS),'source_checks')
+ need(all(c.get('status')=='completed' and c.get('conclusion')=='success' and c.get('app',{}).get('slug')=='github-actions' for c in selected),'source_checks')
+ delivery=checked_api('/git/commits/'+DEPENDENCY_LOCAL_SOURCE)
+ need(delivery['tree']['sha']==DEPENDENCY_LOCAL_TREE and [p['sha'] for p in delivery['parents']]==[DEPENDENCY_LOCAL_PARENT],'delivery_identity')
+ difference=checked_api('/compare/'+DEPENDENCY_LOCAL_PARENT+'...'+DEPENDENCY_LOCAL_SOURCE)
+ need(difference.get('status')=='ahead' and difference.get('ahead_by')==1 and difference.get('behind_by')==0
+      and difference.get('total_commits')==1 and len(difference.get('files',[]))==1
+      and difference['files'][0].get('filename')=='v2/data/local-tv-catalog-v1.php'
+      and difference['files'][0].get('status')=='modified'
+      and difference['files'][0].get('sha')==DEPENDENCY_CANDIDATES['data/local-tv-catalog-v1.php']['blob'],'delivery_scope')
+ for path,expected_blob in DEPENDENCY_COLLECTORS.items():
+  item=checked_api('/contents/'+path+'?ref='+identity['control_source_sha'])
+  body=base64.b64decode(item['content'],validate=False)
+  need(blob(body)==item['sha']==expected_blob and DEPENDENCY_LOCAL_SOURCE.encode() in body,'collector_source')
+ matched=[]
+ for page in range(1,31):
+  comments=checked_api(f'/issues/4217/comments?per_page=100&page={page}');need(isinstance(comments,list),'comments_shape')
+  matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(DEPENDENCY_PREFIX+' ') or DEPENDENCY_OPERATION in c.get('body','') and c.get('body','').strip().startswith('/'))
+  if len(comments)<100:
+   need(matched==[identity['command_comment_id']],'operation_already_reserved')
+   fresh=checked_api('/issues/comments/'+str(identity['command_comment_id']))
+   need(fresh.get('id')==identity['command_comment_id'] and fresh.get('user',{}).get('id')==226193297 and fresh.get('author_association')=='OWNER'
+        and fresh.get('body')==f'{DEPENDENCY_PREFIX} '+identity['control_source_sha']+' '+DEPENDENCY_OPERATION,'command_changed')
+   return candidates
+ raise RuntimeError('comment_history_incomplete')
+
+def dependency_remote():
+ import ast
+ body=pathlib.Path(__file__).with_name('int_server_executor_local_tv_capture.py').read_bytes()
+ need(sha(body)==CHECKED_READER_HASH,'reader_source_drift')
+ module=ast.parse(body)
+ remote=ast.literal_eval(next(n.value for n in module.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='REMOTE_REPAIR' for t in n.targets)))
+ reader=next(n for n in ast.parse(remote).body if isinstance(n,ast.FunctionDef) and n.name=='repair_read')
+ code=ast.get_source_segment(remote,reader);need(code is not None,'reader_missing')
+ policy={'operation':DEPENDENCY_OPERATION,'source':DEPENDENCY_SOURCE,'release':DEPENDENCY_RELEASE,
+         'local_source':DEPENDENCY_LOCAL_SOURCE,'candidates':DEPENDENCY_CANDIDATES,'expected':DEPENDENCY_EXPECTED,
+         'protected':DEPENDENCY_PROTECTED,'app':DEPENDENCY_APP,'app_hash':DEPENDENCY_APP_HASH}
+ return 'POLICY='+repr(policy)+'\n'+code+'\n'+REMOTE_DEPENDENCY_INSTALL
+
+REMOTE_DEPENDENCY_INSTALL=r'''
+import base64,hashlib,json,os,pathlib,re,stat,subprocess,sys
+def fail(reason):raise RuntimeError(reason)
+project=pathlib.Path.home()/'www/anytoour.ru'
+REPAIR_POLICY={'good':dict.fromkeys((*POLICY['expected'],*POLICY['protected']))}
+def identity(path):
+ s=path.lstat();return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+def checked_read(path):
+ first=identity(project/path);body,record=repair_read(path)
+ if identity(project/path)!=first:fail('file_changed')
+ return body,record,first
+def snapshot():
+ records={};identities={};bodies={}
+ for path in POLICY['expected']:bodies[path],records[path],identities[path]=checked_read(path)
+ return records,identities,bodies
+def protected():
+ values={};identities={}
+ for path in POLICY['protected']:
+  try:_,record,identities[path]=checked_read(path);values[path]=record['sha256']
+  except FileNotFoundError:
+   if path in ('config.php',POLICY['app']):raise
+   for parent in (project/path).parents:
+    if parent==project.parent:break
+    if parent.is_symlink():fail('unsafe_parent')
+   values[path]=None;identities[path]=None
+ return values,identities
+def write_private(path,body,mode=0o600):
+ fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,mode)
+ with os.fdopen(fd,'wb') as f:os.fchmod(f.fileno(),mode);f.write(body);f.flush();os.fsync(f.fileno())
+def lint(path):
+ result=subprocess.run(['php','-n','-l',str(path)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15,check=False,env={'PATH':'/usr/bin:/bin','HOME':str(pathlib.Path.home())})
+ if result.returncode:fail('syntax_failed')
+def sync(path):
+ fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ try:os.fsync(fd)
+ finally:os.close(fd)
+def current_guard(records,identities,public,public_ids):
+ fresh,fresh_ids,_=snapshot();p,pids=protected()
+ if fresh!=records or fresh_ids!=identities or p!=public or pids!=public_ids:fail('file_changed')
+data={'schema_version':1,'operation_id':POLICY['operation'],'source_sha':POLICY['source'],'release_sha':POLICY['release'],
+      'local_source_sha':POLICY['local_source'],'status':'blocked_no_replay',
+      'supplier_calls':0,'database_writes':0,'profile_writes':0,'mapping_writes':0,'schema_writes':0,'lead_calls':0,'booking_calls':0,
+      'root_write_attempts':0,'file_writes':0,'rollback_attempts':0,'written_files':[],'rollback_files':[],
+      'compatible_catalogue':False,'before_files':{},'after_files':{},'syntax_previous':'not_run','syntax_candidate':'not_run',
+      'syntax_installed':'not_run','backup_retained':False}
+reserved=False;op=None;owned={};old={};planned=[]
+try:
+ raw=sys.stdin.buffer.read(131073)
+ if len(raw)>131072:fail('payload_limit')
+ payload=json.loads(raw)
+ if set(payload)!={'control_source_sha','run_id','command_comment_id','candidates_b64'}:fail('payload_fields')
+ if (re.fullmatch(r'[a-f0-9]{40}',str(payload['control_source_sha'])) is None or re.fullmatch(r'[1-9][0-9]{0,19}',str(payload['run_id'])) is None or type(payload['command_comment_id']) is not int or payload['command_comment_id']<=0):fail('payload_identity')
+ data.update({k:payload[k] for k in ('control_source_sha','run_id','command_comment_id')})
+ if not isinstance(payload['candidates_b64'],dict) or set(payload['candidates_b64'])!=set(POLICY['candidates']):fail('candidate_fields')
+ candidates={}
+ for path,record in POLICY['candidates'].items():
+  body=base64.b64decode(payload['candidates_b64'][path],validate=True)
+  if len(body)!=record['bytes'] or hashlib.sha256(body).hexdigest()!=record['sha256'] or hashlib.sha1(b'blob '+str(len(body)).encode()+b'\0'+body).hexdigest()!=record['blob']:fail('candidate_bytes')
+  candidates[path]=body
+ home=pathlib.Path.home();private=home/'.anytoour-search3-root-gateway'
+ if home.resolve()!=home or home.is_symlink() or not stat.S_ISDIR(home.lstat().st_mode):fail('unsafe_private_parent')
+ try:private.mkdir(mode=0o700)
+ except FileExistsError:pass
+ p=private.lstat()
+ if not stat.S_ISDIR(p.st_mode) or stat.S_IMODE(p.st_mode)!=0o700 or p.st_uid!=os.getuid():fail('unsafe_private_parent')
+ op=private/POLICY['operation']
+ try:op.mkdir(mode=0o700)
+ except FileExistsError:fail('operation_exists_no_replay')
+ reserved=True
+ write_private(op/'reservation.json',json.dumps({k:data[k] for k in ('operation_id','source_sha','release_sha','local_source_sha','control_source_sha','run_id','command_comment_id')},sort_keys=True).encode())
+ public,public_ids=protected();data['production_before']=public
+ if public[POLICY['app']]!=POLICY['app_hash']:fail('frontend_drift')
+ before,ids,old=snapshot();data['before_files']=before
+ catalogue='data/local-tv-catalog-v1.php'
+ data['compatible_catalogue']=before[catalogue]['sha256']==POLICY['candidates'][catalogue]['sha256']
+ for path,digest in POLICY['expected'].items():
+  if before[path]['mode']!=0o644 or before[path]['sha256']!=digest and not (path==catalogue and data['compatible_catalogue']):fail('predecessor_drift')
+ if project.stat().st_dev!=op.stat().st_dev or (project/'data').stat().st_dev!=op.stat().st_dev:fail('different_filesystem')
+ planned=([catalogue] if not data['compatible_catalogue'] else [])+['api-v2.php']
+ stages={};stage_ids={}
+ for n,path in enumerate(planned):
+  stages[path]=op/('candidate-'+str(n)+'.php')
+  write_private(stages[path],candidates[path],0o644);stage_ids[path]=identity(stages[path])
+  write_private(op/('previous-'+str(n)+'.php'),old[path])
+ data['backup_retained']=True
+ for path in POLICY['candidates']:lint(project/path)
+ data['syntax_previous']='ok'
+ for path in planned:lint(stages[path])
+ data['syntax_candidate']='ok'
+ current=dict(before);current_ids=dict(ids)
+ for path in planned:
+  current_guard(current,current_ids,public,public_ids)
+  if identity(stages[path])!=stage_ids[path]:fail('file_changed')
+  data['root_write_attempts']+=1
+  os.replace(stages[path],project/path);data['file_writes']+=1;data['written_files'].append(path)
+  # Ownership follows the staged inode, never merely the body or a racing path.
+  installed=identity(project/path)
+  if installed[:2]!=stage_ids[path][:2]:fail('installed_identity')
+  owned[path]=installed;sync((project/path).parent)
+  current[path]={'sha256':POLICY['candidates'][path]['sha256'],'bytes':POLICY['candidates'][path]['bytes'],'mode':0o644};current_ids[path]=installed
+  current_guard(current,current_ids,public,public_ids)
+ for path in POLICY['candidates']:lint(project/path)
+ data['syntax_installed']='ok'
+ current_guard(current,current_ids,public,public_ids)
+ data['after_files']=snapshot()[0];data['production_after']=protected()[0]
+ data['status']='installed_verified'
+except Exception as exc:
+ allowed={'payload_limit','payload_fields','payload_identity','candidate_fields','candidate_bytes','unsafe_private_parent','operation_exists_no_replay','predecessor_drift','different_filesystem','syntax_failed','file_changed','installed_identity','unsafe_parent','frontend_drift'}
+ data.update(reason=str(exc) if type(exc) is RuntimeError and str(exc) in allowed else 'operation_failed',error_type=type(exc).__name__)
+ if data['root_write_attempts']:
+  data['status']='unknown_no_replay'
+  for n,path in enumerate(reversed(data['written_files'])):
+   try:
+    _,record,now_id=checked_read(path)
+    if path not in owned or now_id!=owned[path] or record['sha256']!=POLICY['candidates'][path]['sha256']:continue
+    rollback=op/('rollback-'+str(n)+'.php');write_private(rollback,old[path],0o644)
+    if identity(project/path)!=owned[path]:continue
+    data['rollback_attempts']+=1;os.replace(rollback,project/path);data['file_writes']+=1;sync((project/path).parent)
+    if checked_read(path)[1]['sha256']==hashlib.sha256(old[path]).hexdigest():data['rollback_files'].append(path)
+   except Exception:pass
+  try:
+   data['after_files']=snapshot()[0];data['production_after']=protected()[0]
+   if set(data['rollback_files'])==set(data['written_files']) and data['after_files']==data['before_files'] and data['production_after']==data['production_before']:data['status']='rolled_back_no_replay'
+  except Exception:pass
+finally:
+ if reserved:
+  try:write_private(op/'result.json',json.dumps(data,sort_keys=True).encode())
+  except Exception:data['status']='unknown_no_replay';data['reason']='private_receipt_failed'
+ print(json.dumps(data,sort_keys=True))
+'''
+
+def dependency_safe_receipt(identity,result):
+ try:
+  counters=('supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls')
+  required={'schema_version','operation_id','source_sha','release_sha','local_source_sha','status',*counters,'root_write_attempts','file_writes','rollback_attempts','written_files','rollback_files','compatible_catalogue','before_files','after_files','syntax_previous','syntax_candidate','syntax_installed','backup_retained'}
+  allowed=required|set(identity)|{'production_before','production_after','reason','error_type'}
+  need(isinstance(result,dict) and required<=set(result)<=allowed,'receipt_fields')
+  need(type(result['schema_version']) is int and result['schema_version']==1,'receipt_schema')
+  need(result['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','installed_verified'),'receipt_status')
+  for k,v in {'operation_id':DEPENDENCY_OPERATION,'source_sha':DEPENDENCY_SOURCE,'release_sha':DEPENDENCY_RELEASE,'local_source_sha':DEPENDENCY_LOCAL_SOURCE}.items():need(result[k]==v,'receipt_identity')
+  for k,v in identity.items():need(k not in result or result[k]==v,'receipt_identity')
+  for k in counters:need(type(result[k]) is int and result[k]==0,'receipt_counters')
+  for k,maximum in (('root_write_attempts',2),('file_writes',4),('rollback_attempts',2)):need(type(result[k]) is int and 0<=result[k]<=maximum,'receipt_writes')
+  need(type(result['compatible_catalogue']) is bool and type(result['backup_retained']) is bool,'receipt_flags')
+  for key in ('written_files','rollback_files'):need(isinstance(result[key],list) and len(result[key])==len(set(result[key])) and set(result[key])<=set(DEPENDENCY_CANDIDATES),'receipt_scope')
+  need(set(result['rollback_files'])<=set(result['written_files']),'receipt_scope')
+  need(all(result['syntax_'+p] in ('not_run','ok') for p in ('previous','candidate','installed')),'receipt_syntax')
+  for phase in ('before_files','after_files'):
+   need(isinstance(result[phase],dict) and set(result[phase])<=set(DEPENDENCY_EXPECTED),'receipt_inventory')
+   for record in result[phase].values():
+    need(set(record)=={'sha256','bytes','mode'} and isinstance(record['sha256'],str) and re.fullmatch('[a-f0-9]{64}',record['sha256']) is not None,'receipt_record')
+    need(type(record['bytes']) is int and 0<record['bytes']<=2*1024*1024 and type(record['mode']) is int and 0<=record['mode']<=0o7777,'receipt_metadata')
+  for phase in ('production_before','production_after'):
+   if phase in result:
+    need(set(result[phase])==set(DEPENDENCY_PROTECTED),'receipt_public')
+    need(all(v is None or isinstance(v,str) and re.fullmatch('[a-f0-9]{64}',v) is not None for v in result[phase].values()),'receipt_public_hashes')
+  if 'reason' in result:need(result['reason'] in ('payload_limit','payload_fields','payload_identity','candidate_fields','candidate_bytes','unsafe_private_parent','operation_exists_no_replay','predecessor_drift','different_filesystem','syntax_failed','file_changed','installed_identity','unsafe_parent','frontend_drift','operation_failed','private_receipt_failed'),'receipt_reason')
+  if 'error_type' in result:need(result['error_type'] in ('RuntimeError','FileNotFoundError','PermissionError','OSError','TimeoutExpired','JSONDecodeError','Error','ValueError'),'receipt_error_type')
+  return True
+ except (RuntimeError,AttributeError,KeyError,TypeError,ValueError):return False
+
+def dependency_completed(identity,result):
+ try:
+  need(dependency_safe_receipt(identity,result) and result['status']=='installed_verified','receipt_status')
+  for k,v in identity.items():need(result.get(k)==v,'receipt_identity')
+  planned=([] if result['compatible_catalogue'] else ['data/local-tv-catalog-v1.php'])+['api-v2.php']
+  need(result['written_files']==planned and result['rollback_files']==[] and result['root_write_attempts']==result['file_writes']==len(planned) and result['rollback_attempts']==0,'receipt_writes')
+  need(result['backup_retained'] and all(result['syntax_'+p]=='ok' for p in ('previous','candidate','installed')),'receipt_syntax')
+  before,after=result['before_files'],result['after_files'];need(set(before)==set(after)==set(DEPENDENCY_EXPECTED),'receipt_inventory')
+  for path,h in DEPENDENCY_EXPECTED.items():
+   need(before[path]['mode']==0o644 and before[path]['sha256']==(DEPENDENCY_CANDIDATES[path]['sha256'] if path=='data/local-tv-catalog-v1.php' and result['compatible_catalogue'] else h),'receipt_predecessor')
+  expected=dict(before)
+  for path,record in DEPENDENCY_CANDIDATES.items():expected[path]={'sha256':record['sha256'],'bytes':record['bytes'],'mode':0o644}
+  need(after==expected,'receipt_after')
+  need(result['production_before']==result['production_after'] and result['production_before'][DEPENDENCY_APP]==DEPENDENCY_APP_HASH and result['production_before']['config.php'] is not None,'receipt_public')
+  need('reason' not in result and 'error_type' not in result,'receipt_error')
+  return True
+ except (RuntimeError,AttributeError,KeyError,TypeError,ValueError):return False
+
+def dependency_install():
+ import shlex
+ work=pathlib.Path(os.environ['RUNNER_TEMP'])/'search3-root-gateway-dependencies';work.mkdir()
+ evidence={'status':'blocked_no_replay','operation_id':DEPENDENCY_OPERATION,'source_sha':DEPENDENCY_SOURCE,'release_sha':DEPENDENCY_RELEASE,'local_source_sha':DEPENDENCY_LOCAL_SOURCE}
+ key,known=work/'key',work/'known';completed=False
+ try:
+  identity=dependency_event(json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+  evidence.update(identity);candidates=dependency_admission(identity)
+  (work/'api-v2.php').write_bytes(candidates['api-v2.php']);(work/'local-tv-catalog-v1.php').write_bytes(candidates['data/local-tv-catalog-v1.php'])
+  (work/'request.json').write_text(json.dumps({**identity,'operation_id':DEPENDENCY_OPERATION,'source_sha':DEPENDENCY_SOURCE,'release_sha':DEPENDENCY_RELEASE,'local_source_sha':DEPENDENCY_LOCAL_SOURCE,'candidates':DEPENDENCY_CANDIDATES},sort_keys=True))
+  program=dependency_remote();payload={**identity,'candidates_b64':{p:base64.b64encode(b).decode() for p,b in candidates.items()}}
+  host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+  need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]*',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+  raw=os.environ['PREVIEW_KEY'].replace('\r','')
+  if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+  key.write_text(raw.rstrip()+'\n');key.chmod(0o600)
+  known.write_bytes(run(['ssh-keyscan','-T','15','-t','ed25519',host]));known.chmod(0o600)
+  opts=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','ConnectTimeout=15']
+  evidence['status']='unknown_no_replay'
+  response=run(['ssh',*opts,user+'@'+host,'python3 -c '+shlex.quote(program)],input=json.dumps(payload).encode(),timeout=180)
+  need(len(response)<=24576,'receipt_limit');result=json.loads(response)
+  need(dependency_safe_receipt(identity,result),'receipt_unsafe');evidence['remote']=result
+  completed=dependency_completed(identity,result);need(completed,'install_not_verified');evidence['status']='installed_verified'
+ except Exception as exc:evidence['error_type']=type(exc).__name__
+ finally:
+  try:(work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True))
+  finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+ print(json.dumps(evidence,sort_keys=True));need(completed,'install_not_verified')
+
 if __name__=='__main__':
- need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install'),'usage');globals()[sys.argv[1]]()
+ need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install'),'usage');globals()[sys.argv[1]]()

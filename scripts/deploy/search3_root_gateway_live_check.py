@@ -36,6 +36,19 @@ ROOT_DIRECT_PROFILE = {'prefix': '/check-search3-tv-root-direct', 'operation': '
                        'budget_prefix': 'SEARCH3_ROOT_TV_DIRECT_BUDGET_V1\n', 'direct': True,
                        'work_name': 'search3-tv-root-direct-check',
                        'blocked_search_ids': ('13905446138', '13943172077', '13943616554')}
+RECOVERY_PROFILE = {'prefix': '/check-search3-root-recovery', 'operation': 'tv-gateway-recovery-20261019-v1',
+                    'account_env': 'TOURVISOR_JWT', 'approval_reference': 6263435322,
+                    'approval_hash': '68502f397f771f6d757c943372bba0671e6a0f83d402047c4429ddf465acd7c2',
+                    'budget_prefix': 'SEARCH3_ROOT_TV_RECOVERY_BUDGET_V1\n', 'direct': False,
+                    'gateway_recovery': True, 'work_name': 'search3-root-recovery-check',
+                    'release': '4ff952d8d5c8a943a7ba6b3af78e06f206e1e25e',
+                    'api_blob': '72d4845f7074584db34b2d67c481f81ea64f4a49',
+                    'api_hash': '2d92cba5cee08d4d112255ebcddf0cd0f4b023a5233761ace27453337385e3be',
+                    'catalogue_hash': '9dc60eb39100126d97307b83083d6a1b190cfdf8f684a18af47d8edd87b1c3b5',
+                    'main_source_blobs': {
+                        '.github/workflows/collect-hotel-details.yml': 'f00d9986655f56ce1a5dcfc68dd681b199abe018',
+                        '.github/workflows/collect-anytour-tours.yml': '9c8e7f8d3747c5f628353f1bb56e1b57d596551a'},
+                    'blocked_search_ids': ('13905446138', '13943172077', '13943616554', '13943850272')}
 
 
 def validate_event(event, env, profile=None):
@@ -84,8 +97,9 @@ def admission(identity, profile=None):
     profile = profile or {}
     prefix, operation = profile.get('prefix', PREFIX), profile.get('operation', OPERATION)
     need(checked_api('/git/ref/heads/main')['object']['sha'] == identity['control_source_sha'], 'main_moved')
-    need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha'] == RELEASE, 'release_moved')
-    need(checked_api('/contents/v2/api-v2.php?ref=' + RELEASE)['sha'] == API_BLOB, 'api_source_changed')
+    release = profile.get('release', RELEASE)
+    need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha'] == release, 'release_moved')
+    need(checked_api('/contents/v2/api-v2.php?ref=' + release)['sha'] == profile.get('api_blob', API_BLOB), 'api_source_changed')
     approval = checked_api('/issues/comments/' + str(profile.get('approval_reference', 6261576536)))
     need(approval.get('user', {}).get('id') == 226193297 and approval.get('author_association') == 'OWNER'
          and hashlib.sha256(approval.get('body', '').encode()).hexdigest() == profile.get('approval_hash', APPROVAL_HASH), 'approval_changed')
@@ -99,6 +113,14 @@ def admission(identity, profile=None):
         need(len(matches) == 1 and matches[0].get('status') == 'completed'
              and matches[0].get('conclusion') == 'success'
              and matches[0].get('app', {}).get('slug') == 'github-actions', 'source_ci')
+    if profile.get('gateway_recovery'):
+        main_checks = checked_api('/commits/' + identity['control_source_sha'] + '/check-runs?per_page=100')
+        matches = [c for c in main_checks.get('check_runs', []) if c.get('name') == 'guard']
+        need(len(matches) == 1 and matches[0].get('status') == 'completed'
+             and matches[0].get('conclusion') == 'success'
+             and matches[0].get('app', {}).get('slug') == 'github-actions', 'main_ci')
+        for path, blob in profile.get('main_source_blobs', {}).items():
+            need(checked_api('/contents/' + path + '?ref=' + identity['control_source_sha'])['sha'] == blob, 'main_source_changed')
     matched = []
     for page in range(1, 31):
         rows = checked_api(f'/issues/4217/comments?per_page=100&page={page}')
@@ -120,12 +142,13 @@ REMOTE = r'''
 import datetime as dt,fcntl,hashlib,json,os,pathlib,re,stat,subprocess,sys,time,urllib.error,urllib.parse,urllib.request
 from zoneinfo import ZoneInfo
 direct=POLICY.get('direct') is True
+recovery=POLICY.get('gateway_recovery') is True
 account_env=POLICY.get('account_env','TOURVISOR_JWT')
 anex_direct=direct and account_env=='TOURVISOR_ANEX_JWT'
 token=None;quota_day=None;quota_op=None;owns_quota_op=False
 def need(ok,why):
  if not ok:raise RuntimeError(why)
-def read_file(path):
+def read_file(path,json_receipt=False):
  need(path.resolve()==path,'unsafe_parent')
  before=path.lstat();need(stat.S_ISREG(before.st_mode) and before.st_nlink==1,'unsafe_file')
  fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW)
@@ -133,7 +156,7 @@ def read_file(path):
   opened=os.fstat(f.fileno());need((opened.st_dev,opened.st_ino)==(before.st_dev,before.st_ino),'file_changed')
   body=f.read(2*1024*1024+1);after=os.fstat(f.fileno())
  need(len(body)<=2*1024*1024 and (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns)==(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns),'file_changed')
- return hashlib.sha256(body).hexdigest()
+ return json.loads(body) if json_receipt else hashlib.sha256(body).hexdigest()
 def private_write(path,value):
  fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
  with os.fdopen(fd,'w') as f:os.fchmod(f.fileno(),0o600);json.dump(value,f,sort_keys=True);f.flush();os.fsync(f.fileno())
@@ -219,8 +242,9 @@ def request(action,params):
  need(action in ('search_start','search_status','search_results') and len(result['requests'])<3,'request_cap')
  entry={'action':action,'http':None,'bytes':0,'json_kind':'not_measured'}
  result['requests'].append(entry) # reserve the physical attempt BEFORE sending
- if direct:
+ if direct or recovery:
   quota_charge(action)
+ if direct:
   if action=='search_start':path='/tours/search';query=urllib.parse.urlencode({**params,'onlyCharter':'false','onlyDirect':'false'})
   else:
    sid=str(params['searchId']);need(re.fullmatch(r'[1-9][0-9]{0,18}',sid) and sid not in POLICY.get('blocked_search_ids',('13905446138','13943172077')),'historical_search_identity')
@@ -229,25 +253,27 @@ def request(action,params):
   url='https://api.tourvisor.ru/search/api/v1'+path+'?'+query
   req=urllib.request.Request(url,headers={'Authorization':'Bearer '+token,'Accept':'application/json'})
  else:
+  if recovery and action!='search_start':
+   sid=str(params['searchId']);need(re.fullmatch(r'[1-9][0-9]{0,18}',sid) and sid not in POLICY['blocked_search_ids'],'historical_search_identity')
   query=urllib.parse.urlencode({'action':action,**params})
   req=urllib.request.Request('https://anytoour.ru/api-v2.php?'+query,headers={'Accept':'application/json','User-Agent':'AnyTour-owner-bounded-root-check'})
  try:
   response=urllib.request.build_opener(NoRedirect).open(req,timeout=55)
  except urllib.error.HTTPError as e:
-  if not direct:entry['http']=e.code;raise RuntimeError('http_failed') from None
+  if not (direct or recovery):entry['http']=e.code;raise RuntimeError('http_failed') from None
   response=e
  with response as response:
   entry['http']=response.status
-  maximum=65536 if direct and entry['http']!=200 else 8*1024*1024
+  maximum=65536 if (direct or recovery) and entry['http']!=200 else 8*1024*1024
   body=response.read(maximum+1)
  entry['bytes']=len(body);entry['sha256']=hashlib.sha256(body).hexdigest()
- if direct:
+ if direct or recovery:
   entry['body_truncated']=len(body)>maximum
   entry['hash_scope']='bounded_prefix' if len(body)>maximum else 'complete_body'
   try:entry['json_kind']=type(json.loads(body)).__name__ if len(body)<=maximum else 'not_measured'
   except (ValueError,UnicodeError):entry['json_kind']='invalid_json'
   if entry['http']!=200:
-   entry['error_category']='auth_denied' if entry['http'] in (401,403) else 'rate_limited' if entry['http']==429 else 'upstream_server_error' if 500<=entry['http']<=599 else 'unexpected_http'
+   entry['error_category']='auth_denied' if entry['http'] in (401,403) else 'rate_limited' if entry['http']==429 else ('gateway_server_error' if recovery else 'upstream_server_error') if 500<=entry['http']<=599 else 'unexpected_http'
    raise RuntimeError('http_failed')
  need(entry['http']==200 and len(body)<=8*1024*1024,'http_or_body_limit')
  value=json.loads(body);entry['json_kind']=type(value).__name__
@@ -257,6 +283,7 @@ result={'operation_id':POLICY['operation'],'status':'blocked_no_replay','live_op
         'normal_autosave_enabled':True,'database_write_count':'not_measured',
         'global_daily_usage':'not_measured','budget_basis':'owner_operation_allocation'}
 if direct:result.update(account_env=account_env,route='direct_tourvisor_api',normal_autosave_enabled=False,database_write_count=0)
+if recovery:result.update(account_env=account_env,route='existing_root_gateway')
 op=None;reserved=False
 try:
  raw=sys.stdin.buffer.read(16385);need(len(raw)<=16384,'payload_limit');payload=json.loads(raw)
@@ -276,7 +303,31 @@ try:
  # Compiled frontend remains bound to the exact already-published artifact.
  app=project/'_preview/search3-next-candidate/visual-search/app.js'
  app_before=read_file(app);need(app_before==POLICY['app_hash'],'frontend_drift')
+ if recovery:
+  catalogue=project/'data/local-tv-catalog-v1.php'
+  catalogue_before=read_file(catalogue);need(catalogue_before==POLICY['catalogue_hash'],'catalogue_drift')
  result['before_files']={'api-v2.php':api_before,'frontend_app':app_before}
+ if recovery:
+  result['before_files']['data/local-tv-catalog-v1.php']=catalogue_before
+  installed=read_file(home/'.anytoour-search3-root-gateway/install-20261019-dependency-reuse-v1/result.json',True)
+  need(isinstance(installed,dict) and installed.get('status')=='installed_verified'
+       and installed.get('operation_id')=='install-20261019-dependency-reuse-v1'
+       and installed.get('source_sha')=='d6780854c16f390ec9ad3117a484e72e0851c884'
+       and installed.get('release_sha')=='4ff952d8d5c8a943a7ba6b3af78e06f206e1e25e'
+       and installed.get('local_source_sha')=='8bb7336cfa8e6e702ea656c762fe331a1c8283c6'
+       and installed.get('control_source_sha')==payload['control_source_sha']
+       and re.fullmatch(r'[1-9][0-9]{0,19}',str(installed.get('run_id','')))
+       and type(installed.get('command_comment_id')) is int and installed['command_comment_id']>0,'installation_unverified')
+  need(all(type(installed.get(k)) is int and installed[k]==0 for k in ('supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls','rollback_attempts'))
+       and installed.get('rollback_files')==[] and installed.get('backup_retained') is True
+       and all(installed.get('syntax_'+p)=='ok' for p in ('previous','candidate','installed'))
+       and 'reason' not in installed and 'error_type' not in installed,'installation_unverified')
+  expected_install={'api-v2.php':POLICY['api_hash'],'data/local-tv-catalog-v1.php':POLICY['catalogue_hash']}
+  need(all(installed.get('after_files',{}).get(k,{}).get('sha256')==v for k,v in expected_install.items())
+       and installed.get('production_before')==installed.get('production_after')
+       and isinstance(installed.get('production_after'),dict)
+       and installed['production_after'].get('_preview/search3-next-candidate/visual-search/app.js')==POLICY['app_hash'],'installation_unverified')
+  result['installation_receipt']={k:installed[k] for k in ('operation_id','status','control_source_sha','run_id','command_comment_id')}
  # Credentials stay inside the remote process; no token enters a retained receipt.
  # Equal known subjects also stop: different JWT strings can be rotations of one account.
  config=project/'config.php';need(config.resolve()==config and stat.S_ISREG(config.lstat().st_mode),'unsafe_parent')
@@ -305,7 +356,7 @@ try:
  op=base/POLICY['operation'];op.mkdir(mode=0o700);reserved=True
  private_write(op/'reservation.json',payload)
  result['tariff_searches_reserved']=1;result['budget']=b
- if direct:quota_prepare(home)
+ if direct or recovery:quota_prepare(home)
  else:result['live_operation_started']=True
  result['status']='unknown_no_replay'
  start=request('search_start',POLICY['params'])
@@ -336,16 +387,18 @@ try:
    if len(samples)<3:samples.append({'hotel_id':h['id'],'tour_id_sha256':hashlib.sha256(str(t['id']).encode()).hexdigest(),'date':date[:10],'nights':7,'adults':2,'children':0,'operator_id':13,'currency':'RUB','reported_price':price})
  result['hotel_groups']=len(values);result['tour_count']=count;result['samples']=samples
  result['after_files']={'api-v2.php':read_file(project/'api-v2.php'),'frontend_app':read_file(app)}
+ if recovery:result['after_files']['data/local-tv-catalog-v1.php']=read_file(catalogue)
  need(result['after_files']==result['before_files'],'installed_drift')
- result['status']='fresh_partial_results_verified' if direct and progress<100 else 'fresh_populated_results_verified' if count else 'fresh_empty_results_verified'
+ result['status']='fresh_partial_results_verified' if (direct or recovery) and progress<100 else 'fresh_populated_results_verified' if count else 'fresh_empty_results_verified'
 except Exception as e:
- reasons={'unsafe_file','file_changed','request_cap','http_failed','http_or_body_limit','payload_limit','payload_fields','payload_identity','budget_fields','root_account_budget_unproven','budget_approval','budget_day','budget_reservation','root_account_binding_unproven','shared_account_budget_unproven','unsafe_parent','api_drift','frontend_drift','unsafe_private_parent','start_shape','search_identity','historical_search_identity','status_shape','results_shape','result_scope','hotel_limit','installed_drift','unsafe_quota','quota_shape','quota_exhausted','quota_operation_exists'}
+ reasons={'unsafe_file','file_changed','request_cap','http_failed','http_or_body_limit','payload_limit','payload_fields','payload_identity','budget_fields','root_account_budget_unproven','budget_approval','budget_day','budget_reservation','root_account_binding_unproven','shared_account_budget_unproven','unsafe_parent','api_drift','catalogue_drift','frontend_drift','installation_unverified','unsafe_private_parent','start_shape','search_identity','historical_search_identity','status_shape','results_shape','result_scope','hotel_limit','installed_drift','unsafe_quota','quota_shape','quota_exhausted','quota_operation_exists'}
  result['reason']=str(e) if type(e) is RuntimeError and str(e) in reasons else 'operation_failed'
  result['error_type']=type(e).__name__
 finally:
- if direct and 'before_files' in result and 'after_files' not in result:
+ if (direct or recovery) and 'before_files' in result and 'after_files' not in result:
   try:
    result['after_files']={'api-v2.php':read_file(project/'api-v2.php'),'frontend_app':read_file(app)}
+   if recovery:result['after_files']['data/local-tv-catalog-v1.php']=read_file(project/'data/local-tv-catalog-v1.php')
    if result['after_files']!=result['before_files']:result.update(status='unknown_no_replay',reason='installed_drift')
   except Exception:result['after_read_error']='not_verified'
  if direct:
@@ -365,8 +418,9 @@ def main(profile=None):
     work.mkdir()
     key, known = work / 'key', work / 'known'
     evidence = {'operation_id': operation, 'status': 'blocked_no_replay', 'live_operation_started': False,
-                'release_sha': RELEASE, 'frontend_source_sha': FRONTEND, 'api_sha256': API_HASH,
+                'release_sha': profile.get('release', RELEASE), 'frontend_source_sha': FRONTEND, 'api_sha256': profile.get('api_hash', API_HASH),
                 'frontend_sha256': APP_HASH}
+    if profile.get('gateway_recovery'):evidence['catalogue_sha256'] = profile['catalogue_hash']
     try:
         event = json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text())
         identity = validate_event(event, os.environ, profile) if profile else validate_event(event, os.environ)
@@ -374,11 +428,12 @@ def main(profile=None):
         budget = admission(identity, profile) if profile else admission(identity)
         payload = {**identity, 'budget': budget}
         (work / 'request.json').write_text(json.dumps(payload, sort_keys=True))
-        policy = {'operation': operation, 'api_hash': API_HASH, 'app_hash': APP_HASH, 'params': PARAMS}
+        policy = {'operation': operation, 'api_hash': profile.get('api_hash', API_HASH), 'app_hash': APP_HASH, 'params': PARAMS}
         if profile:
-            policy.update(direct=True, account_env=profile['account_env'], approval_reference=profile['approval_reference'])
+            policy.update(direct=profile.get('direct', True), account_env=profile['account_env'], approval_reference=profile['approval_reference'])
             if 'blocked_search_ids' in profile:policy['blocked_search_ids']=profile['blocked_search_ids']
-            evidence.update(account_env=profile['account_env'], route='direct_tourvisor_api')
+            if profile.get('gateway_recovery'):policy.update(gateway_recovery=True, catalogue_hash=profile['catalogue_hash'])
+            evidence.update(account_env=profile['account_env'], route='existing_root_gateway' if profile.get('gateway_recovery') else 'direct_tourvisor_api')
         program = 'POLICY=' + repr(policy) + '\n' + REMOTE
         key, known, opts, remote = ssh_options(work)
         evidence['status'] = 'unknown_no_replay'
@@ -393,6 +448,7 @@ def main(profile=None):
         if profile:
             allowed.update(('account_env','route','known_accounted_units_before','known_accounted_units_after',
                             'operation_physical_attempts','operation_tariff_units','after_read_error','quota_scope'))
+        if profile.get('gateway_recovery'):allowed.add('installation_receipt')
         need(isinstance(result, dict) and set(result) <= allowed and result.get('operation_id') == operation, 'receipt_shape')
         need(all(result.get(k) == v for k, v in identity.items()), 'receipt_identity')
         need(result.get('real_leads') == 0 and result.get('application_file_writes') == 0, 'receipt_scope')
@@ -411,13 +467,32 @@ def main(profile=None):
                 if 'sha256' in request:need(re.fullmatch(r'[a-f0-9]{64}',request['sha256']) is not None,'receipt_requests')
                 if 'body_truncated' in request:need(type(request['body_truncated']) is bool,'receipt_requests')
                 if 'hash_scope' in request:need(request['hash_scope'] in ('bounded_prefix','complete_body'),'receipt_requests')
-                if 'error_category' in request:need(request['error_category'] in ('auth_denied','rate_limited','upstream_server_error','unexpected_http'),'receipt_requests')
+                categories = ('auth_denied','rate_limited','upstream_server_error','unexpected_http')
+                if profile.get('gateway_recovery'):categories += ('gateway_server_error',)
+                if 'error_category' in request:need(request['error_category'] in categories,'receipt_requests')
         if profile:
-            need(result.get('account_env') in (None,profile['account_env']) and result.get('route') in (None,'direct_tourvisor_api'),'receipt_scope')
+            route = 'existing_root_gateway' if profile.get('gateway_recovery') else 'direct_tourvisor_api'
+            need(result.get('account_env') in (None,profile['account_env']) and result.get('route') in (None,route),'receipt_scope')
             if profile['account_env']=='TOURVISOR_JWT':
                 need(not ({'known_accounted_units_before','known_accounted_units_after'} & set(result)), 'receipt_scope')
             if 'quota_scope' in result:need(profile['account_env']=='TOURVISOR_JWT' and result['quota_scope']=='owner_single_operation_only','receipt_scope')
-            need(result.get('normal_autosave_enabled') is False and type(result.get('database_write_count')) is int and result['database_write_count']==0,'receipt_scope')
+            if profile.get('gateway_recovery'):
+                need(result.get('normal_autosave_enabled') is True and result.get('database_write_count')=='not_measured','receipt_scope')
+                installation = result.get('installation_receipt')
+                if installation is not None:
+                    need(isinstance(installation,dict) and set(installation)=={'operation_id','status','control_source_sha','run_id','command_comment_id'}
+                         and installation['operation_id']=='install-20261019-dependency-reuse-v1'
+                         and installation['status']=='installed_verified' and installation['control_source_sha']==identity['control_source_sha']
+                         and re.fullmatch(r'[1-9][0-9]{0,19}',str(installation['run_id']))
+                         and type(installation['command_comment_id']) is int and installation['command_comment_id']>0,'receipt_scope')
+                if result.get('status') in ('fresh_populated_results_verified','fresh_empty_results_verified','fresh_partial_results_verified'):
+                    need(installation is not None,'receipt_scope')
+                    expected = {'api-v2.php': profile['api_hash'], 'frontend_app': APP_HASH,
+                                'data/local-tv-catalog-v1.php': profile['catalogue_hash']}
+                    need(result.get('before_files')==result.get('after_files')==expected, 'receipt_scope')
+                    need(result.get('operation_physical_attempts')==3 and result.get('operation_tariff_units')==1,'receipt_scope')
+            else:
+                need(result.get('normal_autosave_enabled') is False and type(result.get('database_write_count')) is int and result['database_write_count']==0,'receipt_scope')
             for field, maximum in (('known_accounted_units_before',3000),('known_accounted_units_after',3000),('operation_physical_attempts',3),('operation_tariff_units',1)):
                 if field in result:need(type(result[field]) is int and 0<=result[field]<=maximum,'receipt_scope')
         evidence.update(status=result.get('status'), live_operation_started=result.get('live_operation_started'), remote=result)
@@ -436,7 +511,7 @@ def main(profile=None):
 
 
 if __name__ == '__main__':
-    need(sys.argv[1:] in ([], ['anex-key'], ['root-direct']), 'usage')
-    main(ROOT_DIRECT_PROFILE if sys.argv[1:]==['root-direct'] else ANEX_PROFILE if sys.argv[1:] else None)
+    need(sys.argv[1:] in ([], ['anex-key'], ['root-direct'], ['gateway-recovery']), 'usage')
+    main(RECOVERY_PROFILE if sys.argv[1:]==['gateway-recovery'] else ROOT_DIRECT_PROFILE if sys.argv[1:]==['root-direct'] else ANEX_PROFILE if sys.argv[1:] else None)
 
 

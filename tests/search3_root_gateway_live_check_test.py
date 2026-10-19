@@ -1548,6 +1548,298 @@ class RootDirectRemoteTests(unittest.TestCase):
         self.assertEqual(select(no_root, dict(env, TOURVISOR_JWT=""))["token"], "")
 
 
+def recovery_event_fixture():
+    event = event_fixture()
+    event['comment']['body'] = f'/check-search3-root-recovery {CONTROL} tv-gateway-recovery-20261019-v1 6261699999'
+    return event
+
+
+def recovery_budget_fixture(**changes):
+    note = budget_fixture()
+    value = json.loads(note['body'].split('\n', 1)[1])
+    value.update(operation_id='tv-gateway-recovery-20261019-v1', approval_reference=6263435322)
+    value.update(changes)
+    note['body'] = 'SEARCH3_ROOT_TV_RECOVERY_BUDGET_V1\n' + json.dumps(value, sort_keys=True)
+    return note
+
+
+class RecoveryAdmissionTests(unittest.TestCase):
+    def setUp(self):
+        source, tree = 'c' * 40, 'd' * 40
+        self.approval_body = 'offline recovery owner approval'
+        self.profile = dict(CHECK.RECOVERY_PROFILE, approval_hash=hashlib.sha256(self.approval_body.encode()).hexdigest())
+        self.identity = CHECK.validate_event(recovery_event_fixture(), env_fixture(), self.profile)
+        note = recovery_budget_fixture()
+        note['issue_url'] = 'https://api.github.com/repos/pyatkoff/poisk-turov-test/issues/4217'
+        self.responses = {
+            '/git/ref/heads/main': {'object': {'sha': CONTROL}},
+            '/git/ref/heads/release/search3-production-ready-v1': {'object': {'sha': self.profile['release']}},
+            '/contents/v2/api-v2.php?ref=' + self.profile['release']: {'sha': self.profile['api_blob']},
+            '/issues/comments/6263435322': {'user': {'id': 226193297}, 'author_association': 'OWNER', 'body': self.approval_body},
+            '/git/commits/' + CONTROL: {'parents': [{'sha': 'b' * 40}, {'sha': source}], 'tree': {'sha': tree}},
+            '/git/commits/' + source: {'sha': source, 'tree': {'sha': tree}},
+            '/commits/' + source + '/check-runs?per_page=100': {'check_runs': [
+                {'name': name, 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}
+                for name in ('guard', 'contracts', 'live-check-contracts')]},
+            '/commits/' + CONTROL + '/check-runs?per_page=100': {'check_runs': [
+                {'name': 'guard', 'status': 'completed', 'conclusion': 'success', 'app': {'slug': 'github-actions'}}]},
+            '/issues/4217/comments?per_page=100&page=1': [event_fixture()['comment'], anex_event_fixture()['comment'], root_direct_event_fixture()['comment'], recovery_event_fixture()['comment']],
+            '/issues/comments/6261700001': recovery_event_fixture()['comment'],
+            '/issues/comments/6261699999': note,
+        }
+        for path, blob in self.profile.get('main_source_blobs', {}).items():
+            self.responses['/contents/' + path + '?ref=' + CONTROL] = {'sha': blob}
+
+    def admit(self):
+        with (mock.patch.object(CHECK, 'checked_api', side_effect=lambda path: copy.deepcopy(self.responses[path])),
+              mock.patch('datetime.datetime', FrozenDateTime)):
+            return CHECK.admission(self.identity, self.profile)
+
+    def test_recovery_has_new_immutable_grant_without_rewriting_consumed_profiles(self):
+        self.assertEqual(self.admit()['operation_id'], 'tv-gateway-recovery-20261019-v1')
+        self.assertEqual(CHECK.RECOVERY_PROFILE['approval_hash'], '68502f397f771f6d757c943372bba0671e6a0f83d402047c4429ddf465acd7c2')
+        self.assertEqual(CHECK.RELEASE, '34bb747dcd1ed625590a60de17112cfd8ab0b28b')
+        self.assertEqual(CHECK.API_BLOB, '6fb963e68a99945118d04f8e46845ecd6bcb6bc9')
+        for prior in (None, CHECK.ANEX_PROFILE, CHECK.ROOT_DIRECT_PROFILE):
+            with self.subTest(prior=prior):
+                with self.assertRaises(RuntimeError):CHECK.validate_event(recovery_event_fixture(), env_fixture(), prior)
+                with self.assertRaises(RuntimeError):CHECK.budget_note(recovery_budget_fixture(), NOW, prior)
+        for prior in (budget_fixture(), anex_budget_fixture(), root_direct_budget_fixture()):
+            with self.assertRaises(RuntimeError):CHECK.budget_note(prior, NOW, self.profile)
+
+    def test_recovery_requires_current_reviewed_merge_release_main_ci_and_source_blobs(self):
+        cases = [('/git/ref/heads/release/search3-production-ready-v1', {'object': {'sha': CHECK.RELEASE}}),
+                 ('/contents/v2/api-v2.php?ref=' + self.profile['release'], {'sha': CHECK.API_BLOB}),
+                 ('/commits/' + CONTROL + '/check-runs?per_page=100', {'check_runs': []})]
+        cases += [('/contents/' + path + '?ref=' + CONTROL, {'sha': 'f' * 40}) for path in self.profile.get('main_source_blobs', {})]
+        for path, changed in cases:
+            with self.subTest(path=path):
+                original = self.responses[path]
+                self.responses[path] = changed
+                with self.assertRaises(RuntimeError):self.admit()
+                self.responses[path] = original
+
+    def test_recovery_does_not_replay_even_after_other_completed_commands(self):
+        path = '/issues/4217/comments?per_page=100&page=1'
+        duplicate = copy.deepcopy(recovery_event_fixture()['comment'])
+        duplicate['id'] = 6261698000
+        self.responses[path].insert(0, duplicate)
+        with self.assertRaisesRegex(RuntimeError, 'operation_no_replay'):self.admit()
+
+    def test_recovery_budget_does_not_expand_account_day_or_attempts(self):
+        for changes in ({'account_env': 'TOURVISOR_ANEX_JWT'}, {'max_http_attempts': 4},
+                        {'reserved_search_units': 2}, {'approval_reference': 6262670660},
+                        {'provider_day': '2026-10-20'}):
+            with self.subTest(changes=changes):
+                with self.assertRaises(RuntimeError):CHECK.budget_note(recovery_budget_fixture(**changes), NOW, self.profile)
+
+
+class RecoveryRemoteTests(unittest.TestCase):
+    def setUp(self):
+        RemoteTests.setUp(self)
+        self.catalogue = self.project / 'data/local-tv-catalog-v1.php'
+        self.catalogue.parent.mkdir()
+        self.catalogue.write_bytes(b'offline repaired LOCAL include owner')
+        self.policy.update(operation='tv-gateway-recovery-20261019-v1', direct=False, gateway_recovery=True,
+                           account_env='TOURVISOR_JWT', approval_reference=6263435322,
+                           catalogue_hash=hashlib.sha256(self.catalogue.read_bytes()).hexdigest(),
+                           blocked_search_ids=CHECK.RECOVERY_PROFILE['blocked_search_ids'])
+        self.payload['budget'] = json.loads(recovery_budget_fixture()['body'].split('\n', 1)[1])
+        self.operation_path = self.private / self.policy['operation']
+        install_path = self.private / 'install-20261019-dependency-reuse-v1'
+        install_path.mkdir(mode=0o700)
+        self.install_receipt_path = install_path / 'result.json'
+        protected = {'_preview/search3-next-candidate/visual-search/app.js': self.policy['app_hash'], 'config.php': 'b' * 64}
+        self.install_receipt = {
+            'operation_id': 'install-20261019-dependency-reuse-v1', 'status': 'installed_verified',
+            'source_sha': 'd6780854c16f390ec9ad3117a484e72e0851c884',
+            'release_sha': CHECK.RECOVERY_PROFILE['release'], 'local_source_sha': '8bb7336cfa8e6e702ea656c762fe331a1c8283c6',
+            'control_source_sha': CONTROL, 'run_id': '39190000000', 'command_comment_id': 6261699000,
+            **dict.fromkeys(('supplier_calls', 'database_writes', 'profile_writes', 'mapping_writes', 'schema_writes', 'lead_calls', 'booking_calls', 'rollback_attempts'), 0),
+            'rollback_files': [], 'backup_retained': True,
+            'syntax_previous': 'ok', 'syntax_candidate': 'ok', 'syntax_installed': 'ok',
+            'after_files': {key: {'sha256': value} for key, value in {
+                'api-v2.php': self.policy['api_hash'], 'data/local-tv-catalog-v1.php': self.policy['catalogue_hash']}.items()},
+            'production_before': copy.deepcopy(protected), 'production_after': protected,
+        }
+        self.install_receipt_path.write_text(json.dumps(self.install_receipt))
+        self.install_receipt_path.chmod(0o600)
+
+    execute = RemoteTests.execute
+
+    def test_recovery_uses_existing_gateway_with_no_direct_bearer_or_extra_calls(self):
+        result, sleep = self.execute()
+        self.assertEqual(result['status'], 'fresh_populated_results_verified')
+        self.assertEqual(result['route'], 'existing_root_gateway')
+        self.assertEqual(result['normal_autosave_enabled'], True)
+        self.assertEqual(result['database_write_count'], 'not_measured')
+        self.assertEqual(result['quota_scope'], 'owner_single_operation_only')
+        self.assertEqual(result['global_daily_usage'], 'not_measured')
+        self.assertEqual(result['before_files'], result['after_files'])
+        self.assertEqual(set(result['before_files']), {'api-v2.php', 'frontend_app', 'data/local-tv-catalog-v1.php'})
+        queries = []
+        for url, headers, timeout in self.calls:
+            parts = urllib.parse.urlsplit(url)
+            self.assertEqual((parts.scheme, parts.netloc, parts.path), ('https', 'anytoour.ru', '/api-v2.php'))
+            self.assertNotIn('Authorization', headers)
+            self.assertEqual(timeout, 55)
+            queries.append(urllib.parse.parse_qs(parts.query))
+        self.assertEqual(queries, [
+            {'action': ['search_start'], **{key: [str(value)] for key, value in CHECK.PARAMS.items()}},
+            {'action': ['search_status'], 'searchId': ['2026101900001']},
+            {'action': ['search_results'], 'searchId': ['2026101900001'], 'limit': ['25']}])
+        self.assertNotIn('"token"', self.config_calls[0].args[0][2])
+        sleep.assert_called_once_with(20)
+
+    def test_recovery_records_each_private_attempt_before_http_without_anex_quota_access(self):
+        quota = self.home / '.anytoour-match/provider-quotas'
+        quota.mkdir(parents=True)
+        foreign = quota / 'tourvisor-anex-2026-10-19.json'
+        foreign.write_bytes(b'{"retained":"do not touch","tariff_search_units":3000}\n')
+        original = foreign.read_bytes()
+        def observe(attempt):
+            files = sorted(self.operation_path.glob('http-attempt-*.json'))
+            self.assertEqual(len(files), attempt)
+            record = json.loads(files[-1].read_text())
+            self.assertEqual(record, {'operation': self.policy['operation'], 'account_env': 'TOURVISOR_JWT',
+                'action': ('search_start', 'search_status', 'search_results')[attempt - 1],
+                'physical_attempt': attempt, 'tariff_search_units': 1, 'provider_day': '2026-10-19'})
+            self.assertEqual(files[-1].stat().st_mode & 0o777, 0o600)
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        self.assertEqual((result['operation_physical_attempts'], result['operation_tariff_units']), (3, 1))
+        self.assertEqual(foreign.read_bytes(), original)
+        self.assertEqual(list(quota.iterdir()), [foreign])
+
+    def test_recovery_preserves_unknown_operation_instead_of_retrying(self):
+        self.operation_path.mkdir(mode=0o700)
+        previous = self.operation_path / 'reservation.json'
+        previous.write_bytes(b'{"status":"unknown_no_replay"}')
+        result, sleep = self.execute()
+        self.assertFalse(result['live_operation_started'])
+        self.assertEqual(self.calls, [])
+        self.assertEqual(previous.read_bytes(), b'{"status":"unknown_no_replay"}')
+        sleep.assert_not_called()
+
+    def test_recovery_missing_or_changed_catalogue_blocks_before_supplier_access(self):
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                if missing:self.catalogue.unlink()
+                else:self.catalogue.write_bytes(b'old LOCAL owner')
+                result, _ = self.execute()
+                self.assertFalse(result['live_operation_started'])
+                self.assertEqual(self.calls, [])
+                self.assertFalse(self.operation_path.exists())
+
+    def test_recovery_unverified_installation_blocks_before_live_reservation_or_http(self):
+        for changed in (dict(self.install_receipt, status='unknown_no_replay'),
+                        dict(self.install_receipt, source_sha='f' * 40),
+                        dict(self.install_receipt, control_source_sha='f' * 40),
+                        dict(self.install_receipt, supplier_calls=1),
+                        dict(self.install_receipt, syntax_installed='not_run'),
+                        dict(self.install_receipt, after_files={}),
+                        dict(self.install_receipt, production_after={}),
+                        dict(self.install_receipt, reason='operation_failed')):
+            with self.subTest(fields=sorted(changed)):
+                self.install_receipt_path.write_text(json.dumps(changed))
+                result, sleep = self.execute()
+                self.assertEqual(result['reason'], 'installation_unverified')
+                self.assertFalse(result['live_operation_started'])
+                self.assertFalse(self.operation_path.exists())
+                self.assertEqual(self.calls, [])
+                sleep.assert_not_called()
+        self.install_receipt_path.unlink()
+        result, _ = self.execute()
+        self.assertFalse(result['live_operation_started'])
+        self.assertFalse(self.operation_path.exists())
+        self.assertEqual(self.calls, [])
+
+    def test_recovery_all_consumed_search_ids_stop_after_one_attempt(self):
+        for sid in CHECK.RECOVERY_PROFILE['blocked_search_ids']:
+            with self.subTest(sid=sid):
+                self.temp.cleanup();self.setUp()
+                result, sleep = self.execute([{'searchId': sid}])
+                self.assertEqual(result['reason'], 'historical_search_identity')
+                self.assertEqual(len(self.calls), 1)
+                self.assertEqual(result['operation_physical_attempts'], 1)
+                sleep.assert_not_called()
+
+    def test_recovery_http_error_retains_bounded_metadata_not_body_or_config(self):
+        body = b'synthetic private error text ' + b'x' * 66000
+        failure = urllib.error.HTTPError('https://anytoour.ru/api-v2.php', 500, 'failed', {}, io.BytesIO(body))
+        result, _ = self.execute([{'searchId': '2026101900001'}, status_fixture(), failure])
+        entry = result['requests'][-1]
+        self.assertEqual(entry, {'action': 'search_results', 'http': 500, 'bytes': 65537,
+            'json_kind': 'not_measured', 'sha256': hashlib.sha256(body[:65537]).hexdigest(),
+            'body_truncated': True, 'hash_scope': 'bounded_prefix', 'error_category': 'gateway_server_error'})
+        self.assertEqual(len(self.calls), 3)
+        self.assertEqual(result['before_files'], result['after_files'])
+        self.assertNotIn('synthetic private error text', json.dumps(result))
+        self.assertEqual(result['database_write_count'], 'not_measured')
+
+    def test_recovery_partial_results_do_not_claim_complete_search(self):
+        result, _ = self.execute([{'searchId': '2026101900001'}, status_fixture(progress=50), []])
+        self.assertEqual(result['status'], 'fresh_partial_results_verified')
+        self.assertEqual(len(self.calls), 3)
+        self.assertFalse((self.home / '.anytoour-match').exists())
+
+    def test_recovery_day_change_stops_before_second_http_and_preserves_first_charge(self):
+        def observe(attempt):
+            if attempt == 1:
+                tomorrow = mock.patch(__name__ + '.NOW', NOW + dt.timedelta(days=1))
+                tomorrow.start();self.addCleanup(tomorrow.stop)
+        self.calls = ObservedCalls(observe)
+        result, _ = self.execute()
+        self.assertEqual(result['reason'], 'budget_day')
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(result['operation_physical_attempts'], 1)
+
+    def run_profile_main(self, receipt):
+        runner = pathlib.Path(tempfile.mkdtemp(prefix='offline-recovery-main-', dir=self.home))
+        event_path = runner / 'event.json';event_path.write_text(json.dumps(recovery_event_fixture()))
+        env = dict(env_fixture(), RUNNER_TEMP=str(runner), GITHUB_EVENT_PATH=str(event_path))
+        def ssh_fixture(work):
+            key, known = work / 'key', work / 'known';key.write_text('synthetic');known.write_text('synthetic')
+            return key, known, ['-F', '/dev/null'], 'offline-host'
+        output, error = io.StringIO(), None
+        with (mock.patch.dict(CHECK.os.environ, env, clear=True),
+              mock.patch.object(CHECK, 'admission', return_value=self.payload['budget']),
+              mock.patch.object(CHECK, 'ssh_options', side_effect=ssh_fixture),
+              mock.patch.object(CHECK, 'run', return_value=json.dumps(receipt).encode()) as remote_run,
+              contextlib.redirect_stdout(output)):
+            try:CHECK.main(CHECK.RECOVERY_PROFILE)
+            except RuntimeError as exc:error = exc
+        work = runner / 'search3-root-recovery-check'
+        evidence = json.loads((work / 'evidence.json').read_text())
+        self.assertEqual(json.loads(output.getvalue()), evidence)
+        self.assertFalse((work / 'key').exists());self.assertFalse((work / 'known').exists())
+        return evidence, remote_run, error
+
+    def test_recovery_main_dispatches_fixed_repaired_policy_and_does_not_assert_db_zero(self):
+        import ast
+        receipt, _ = self.execute()
+        # Runtime fixtures use synthetic file bytes; the controller must enforce published pins.
+        receipt['before_files'] = receipt['after_files'] = {
+            'api-v2.php': CHECK.RECOVERY_PROFILE['api_hash'], 'frontend_app': CHECK.APP_HASH,
+            'data/local-tv-catalog-v1.php': CHECK.RECOVERY_PROFILE['catalogue_hash']}
+        evidence, remote_run, error = self.run_profile_main(receipt)
+        self.assertIsNone(error)
+        self.assertEqual(evidence['remote'], receipt)
+        program = CHECK.shlex.split(remote_run.call_args.args[0][-1])
+        policy = ast.literal_eval(program[2].split('\n', 1)[0].removeprefix('POLICY='))
+        self.assertFalse(policy['direct']);self.assertTrue(policy['gateway_recovery'])
+        self.assertEqual(policy['api_hash'], CHECK.RECOVERY_PROFILE['api_hash'])
+        self.assertEqual(policy['catalogue_hash'], CHECK.RECOVERY_PROFILE['catalogue_hash'])
+        self.assertEqual(evidence['release_sha'], CHECK.RECOVERY_PROFILE['release'])
+        for changed in (dict(receipt, database_write_count=0), dict(receipt, normal_autosave_enabled=False),
+                        dict(receipt, route='direct_tourvisor_api'), dict(receipt, operation_physical_attempts=4),
+                        dict(receipt, after_files={'api-v2.php': CHECK.API_HASH}), dict(receipt, token='must-not-retain')):
+            with self.subTest(fields=sorted(changed)):
+                retained, _, error = self.run_profile_main(changed)
+                self.assertIsInstance(error, RuntimeError)
+                self.assertNotIn('remote', retained)
+
+
 if __name__ == "__main__":
     unittest.main()
 
