@@ -357,8 +357,8 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     const calendar=root.querySelector('.q8c9'),calendarPanel=calendar?.querySelector('.st-pc-panel');let calendarFit=null;
     if(calendar&&!calendar.closest('[hidden]')&&calendar.getBoundingClientRect().width>0&&calendarPanel&&!calendarPanel.hidden&&calendarPanel.getBoundingClientRect().width>0){
       const bounds=calendar.getBoundingClientRect(),foot=calendar.querySelector('.st-pc-foot'),pager=calendar.querySelector('.st-pc-pager');
-      const buttons=[...calendar.querySelectorAll('.st-pc-page')].map(node=>{const rect=node.getBoundingClientRect();return{disabled:node.disabled,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height};});
-      const pagerBounds=pager?.getBoundingClientRect();
+      const buttons=[...calendar.querySelectorAll('.st-pc-page')].filter(visible).map(node=>{const rect=node.getBoundingClientRect();return{disabled:node.disabled,left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height};});
+      const pagerBounds=pager&&visible(pager)?pager.getBoundingClientRect():null;
       calendarFit={left:bounds.left,right:bounds.right,footClientWidth:foot?.clientWidth||0,footScrollWidth:foot?.scrollWidth||0,
         pager:pagerBounds?{left:pagerBounds.left,right:pagerBounds.right,top:pagerBounds.top,bottom:pagerBounds.bottom}:null,buttons,
         clipped:Boolean(pagerBounds&&(pagerBounds.left<bounds.left-1||pagerBounds.right>bounds.right+1)||buttons.some(rect=>rect.left<bounds.left-1||rect.right>bounds.right+1)||foot&&foot.scrollWidth>foot.clientWidth+1)};
@@ -813,6 +813,8 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await calendar.locator('[data-native-day="2026-10-25"] .st-pc-full').innerText(),'166 400 ₽','Later page uses the exact loaded full-tour total');
         assert.match(await calendar.locator('[data-native-day="2026-10-24"]').getAttribute('aria-label'),/цена пока не получена/,'Unknown later-day price stays explicit without asserting availability');
         await capture(page,'native',width,percent,'calendar-later',row);
+        assert.equal(await dateFullyVisible(calendar,'2026-10-25'),true,'The last priced date stays fully visible after paint and native scroll settling');
+        assert.equal(await nextDates.isEnabled(),false,'The final arrow state stays consistent after paint');
         await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
         await page.goBack();await screen('results').waitFor({state:'visible'});
         await waitForCalendarDate('2026-10-25',width<=760);
@@ -1321,6 +1323,8 @@ async function referenceFrame(page,width,percent,screen,row) {
           assert.equal(await dateFullyVisible(singleCalendar,'2026-10-25'),true,'Visible arrows also reach the last date without another week');
           assert.equal(await singleNext.isEnabled(),false);
           await capture(page,'native',width,percent,'calendar-single-range',row);
+          assert.equal(await dateFullyVisible(singleCalendar,'2026-10-25'),true,'The single-week end stays visible after paint');
+          assert.equal(await singleNext.isEnabled(),false);
           await singleCalendar.locator('[data-native-calendar]').click();
         }else await singleCalendar.locator('[data-native-calendar-pages]').waitFor({state:'hidden'});
         assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.search),1,'Date navigation starts no additional search');
