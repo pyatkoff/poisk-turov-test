@@ -1,0 +1,156 @@
+{
+  "schema": "match-url90-status-and-independent-receiving-join/1",
+  "read_only_url_lane": {
+    "implementation_sha": "51e6a85e150b5f8ee00295f32f583820e74c1841",
+    "source_blob": "b23790cf53b3dbc1e2afc112b827aa712db3a472",
+    "state": "workflow_creation_blocked_by_OpenAI_tool_safety_before_commit_or_reservation",
+    "target_count": 90,
+    "php_tests": 22,
+    "workflow_created": false,
+    "operation_reserved": false,
+    "server_reads": 0,
+    "supplier_calls": 0,
+    "mapping_writes": 0,
+    "no_bypass_attempted": true,
+    "security_run": 34912126668,
+    "security_result": "success",
+    "php_lint": "PASS",
+    "source_matches_tested_blob": true,
+    "hosted_functional_read_test": "not_run",
+    "database_result": "not_obtained",
+    "blocked_workflow_path": ".github/workflows/hotel-match-saved-url-bridge-v1.yml"
+  },
+  "sources": {
+    "current_v8": {
+      "run": 34910651032,
+      "artifact": 10374133289,
+      "zip_sha256": "6e4124958df93b2fa35c22765bce4fbdd486c2a4ed9b53738ebf8b0f728aa255",
+      "result_sha256": "52acba203042e86a1650ece5b0ae079dac6cfb49f25b5bc6747cdaefd316b09d",
+      "queue_sha256": "f17ca8e8d9d3945f6aea3d232fca96708fc6f119c504461f95a4cc51af8ed3ed"
+    },
+    "saved_handles_v3": {
+      "run": 34911950420,
+      "artifact": 10375290392,
+      "zip_sha256": "fcc05c91dbbf207bc60fd2e112fef270c28f3986b11ef89424d842bbcb9c5698",
+      "result_sha256": "8537f074b5c4c01a9e1ffbf08602e9cc3f9b8a64a7c35b38e4989f4b9b79ad99",
+      "evidence_sha256": "fa14cadb7cc4dd217b8b7dd34ede543791238570a97364d4124978103bebc043"
+    },
+    "original_batch_v2": {
+      "run": 34900396467,
+      "artifact": 10371125528,
+      "zip_sha256": "886eb380318fbf7699a49541662544bf5ae9624a865247a77a8a46bda88e1431",
+      "result_sha256": "f379062abd43c36e6feb792f8e0313466ddd579a1959cfe814e90b863a43968e"
+    },
+    "historical_native_detail": {
+      "run": 34884599885,
+      "artifact": 10364322730,
+      "zip_sha256": "a740032d12381a2841c141dd0dfea269ad8cdd152e4e9f1e9a811d7702b2809f",
+      "result_sha256": "d26d02edbdb8765083fa5462d22361bc893e06eac3ddfa1b9658c35827b53035"
+    }
+  },
+  "offline_receiving_join": {
+    "anex_targets_examined": 97,
+    "targets_with_handles": 35,
+    "unique_local_detail_targets": 34,
+    "saved_anex_rows": 626,
+    "double_hit_count": 4,
+    "double_hit_combined_frequency": 169,
+    "double_hits": [
+      {
+        "anex_id": "23894",
+        "anex_name": "Greenport Hotel",
+        "andromeda_id": "2000067227",
+        "andromeda_name": "Greenport Hotel",
+        "candidate_local_id": 1600,
+        "candidate_name": "GREENPORT HOTEL BODRUM (EX. AEGEAN GARDEN)",
+        "anex_frequency": 61,
+        "andromeda_frequency": 44,
+        "combined_frequency": 105,
+        "saved_tour_id": "13278066713780",
+        "original_request_sha256": "242f6c22caaef6bd81669e248eb59b3d10b18679515d2a858bc06117fbfdb3e6",
+        "original_response_sha256": "ba0a765299ee18b025e82dee97a317da2ecb7a03a9c26113119e2645c6ee61e2",
+        "current_hold_reason": "meaningful_qualifier_conflict",
+        "andromeda_current_hold": "meaningful_qualifier_conflict",
+        "status": "candidate_not_mapping; require actual detail and CURRENT identity guards"
+      },
+      {
+        "anex_id": "42927",
+        "anex_name": "Cardina Resort By Sunrise",
+        "andromeda_id": "2000110036",
+        "andromeda_name": "Cardina Resort By Sunrise",
+        "candidate_local_id": 131347,
+        "candidate_name": "POSH CLUB BY SUNRISE TUCANA RESORT",
+        "anex_frequency": 49,
+        "andromeda_frequency": 8,
+        "combined_frequency": 57,
+        "saved_tour_id": "13278525958252",
+        "original_request_sha256": "2d0fe9829779cd7535da8807ebfb5d13bd35238a38b4d7a0a2730e9e08ab1b73",
+        "original_response_sha256": "bf680f6006bd9b6f824394f65ee7d9b55b35cf5189334812e9a9d5deedfec7c0",
+        "current_hold_reason": "meaningful_qualifier_conflict",
+        "andromeda_current_hold": "meaningful_qualifier_conflict",
+        "status": "candidate_not_mapping; require actual detail and CURRENT identity guards",
+        "independent_contradiction": "Prior actual TV131347 detail contains ANEX37723/POSH CLUB BY SUNRISE TUCANA, not42927; no local propagation without resolving conflict."
+      },
+      {
+        "anex_id": "14812",
+        "anex_name": "Innvista Hotel Belek",
+        "andromeda_id": "444805",
+        "andromeda_name": "Innvista Hotel Belek",
+        "candidate_local_id": 5535,
+        "candidate_name": "INNVISTA (EX. VERA VERDE RESORT BELEK)",
+        "anex_frequency": 1,
+        "andromeda_frequency": 4,
+        "combined_frequency": 5,
+        "saved_tour_id": "13269210461028",
+        "original_request_sha256": "6d7b411fde918b12dec800c63047757f82bc5ec4eb4164701603da48c9313060",
+        "original_response_sha256": "72a02feb22f73fa42d717d6e5513fce425b3d953cd03800ee27720acf2c5b8ac",
+        "current_hold_reason": "ambiguous_or_insufficient_independent_evidence",
+        "andromeda_current_hold": "ambiguous_or_insufficient_independent_evidence",
+        "status": "candidate_not_mapping; require actual detail and CURRENT identity guards"
+      },
+      {
+        "anex_id": "29332",
+        "anex_name": "Calimera Side Resort",
+        "andromeda_id": "2000062523",
+        "andromeda_name": "Calimera Side Resort",
+        "candidate_local_id": 60388,
+        "candidate_name": "CALIMERA SIDE RESORT HOTEL (EX. SIDE RESORT)",
+        "anex_frequency": 1,
+        "andromeda_frequency": 1,
+        "combined_frequency": 2,
+        "saved_tour_id": "13273771803432",
+        "original_request_sha256": "41e2848a2a3c77513e7a98b8d37b9804214566d69d9b23e9340a2bdefd7888fd",
+        "original_response_sha256": "4e65440aef568f8c8a3ee31efd2c97b8e914baaca29aedcdc31929c175242f83",
+        "current_hold_reason": "ambiguous_or_insufficient_independent_evidence",
+        "andromeda_current_hold": "strong_candidate_held_for_aggregate_or_manual",
+        "status": "candidate_not_mapping; require actual detail and CURRENT identity guards"
+      }
+    ],
+    "owner": "existing PR2412 detail collector; no duplicate source/calls",
+    "new_accepted_mappings": 0,
+    "handoff_comment": 5672682379
+  },
+  "issue": 1971,
+  "coordination_claim": 5672588246,
+  "pr": 2469,
+  "scope": "MATCH evidence/tooling only",
+  "saved_native_proof_reuse": {
+    "posh": {
+      "anex_id": 37719,
+      "local_id": 132075,
+      "confirmed_by_operator_link": true,
+      "pending_reason": "qualifier_conflict; not_missing_native_proof",
+      "new_detail_for_same_native_proof": "not_needed"
+    },
+    "cardina": {
+      "wanted_anex_id": 42927,
+      "candidate_local_id": 131347,
+      "actual_prior_anex_id": 37723,
+      "prior_name": "POSH CLUB BY SUNRISE TUCANA RESORT",
+      "reason": "independent_existing_candidate_contradiction"
+    }
+  },
+  "mapping_writes_this_continuation": 0,
+  "supplier_calls_this_continuation": 0,
+  "main_or_production_changes": false
+}
