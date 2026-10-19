@@ -97,9 +97,51 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   await staleAndExpiry();
   await anexPackageAndGroup();
   await viewportRemount();
+  await manyFlightChoices();
   await familyCopyChecks();
   console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry; 24 family compositions use correct summary/price/contact cases');
 })().catch(error=>{console.error(error);owner.destroy();w.close();process.exitCode=1;});
+
+async function manyFlightChoices(){
+  for(const provider of ['tourvisor','anex']){
+    const other=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'});
+    const v=other.window,r=v.document.querySelector('[data-product]');
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+    const exact={...offer,provider,raw:{...offer.raw,anexKind:'concrete'}};
+    const pairs=Array.from({length:40},(_,index)=>provider==='anex'
+      ? {choiceRef:'canonical-many-'+index,legs:[{label:'Туда: рейс '+index},{label:'Обратно: рейс '+index}]}
+      : {price:100000+index*100,forward:[leg('FV '+index,'10:50')],backward:[leg('FB '+index,'18:00')]});
+    let present={...exact,offer:exact,tour:provider==='tourvisor'?{...tour,price:100000}:null,variants:pairs,flightChoiceId:null,total:100000,pricePending:true,priceAccepted:false};
+    let quotes=0;const selected=[];
+    const adapter={getSelection:()=>present,
+      quoteOffer(){quotes++;throw new Error('No new quote while browsing retained choices');},
+      selectFlight(index){assert.strictEqual(present.variants[index],pairs[index]);selected.push(index);present={...present,flightChoiceId:index,total:pairs[index].price,pricePending:false,priceAccepted:false};return present;},
+      selectProviderFlight(ref){const choice=pairs.find(pair=>pair.choiceRef===ref);assert.strictEqual(choice,pairs[39]);selected.push(ref);present={...present,total:103900,pricePending:false,priceAccepted:false,quoteResult:{state:'quote_verified',choice}};return present;},
+      acceptPrice(){present={...present,priceAccepted:true};return present;},
+      deferFlight(){present={...present,flightChoiceId:null,total:100000,pricePending:false,priceAccepted:false};return present;}};
+    let view=v.AnyTourDesignV2Tour.mount({root:r,bridge:adapter});view.render({offer:exact,hotel,screen:'tour'});await view.ready();
+    const selector=provider==='anex'?'[data-native-provider-flight]':'[data-native-tour-flight]';
+    const visible=()=>[...r.querySelectorAll(selector)].filter(node=>!node.closest('details:not([open])'));
+    assert.equal(r.querySelectorAll(selector).length,40,'All exact supplier choices are retained');
+    assert.equal(visible().length,3,'Only three unselected pairs are initially expanded');
+    const more=r.querySelector('[data-native-flight-alternatives]');
+    assert.equal(more.open,false);assert.equal(more.querySelector('summary').textContent,'Ещё перелёты · 37');
+    if(provider==='tourvisor')assert(r.querySelector('[data-native-defer-flight]').compareDocumentPosition(visible()[0])&v.Node.DOCUMENT_POSITION_FOLLOWING,'Manager action precedes all40 options');
+    more.open=true;more.dispatchEvent(new v.Event('toggle'));assert.equal(visible().length,40);
+    const retained=view.getState();view.destroy();
+    view=v.AnyTourDesignV2Tour.mount({root:r,bridge:adapter,initialState:retained});view.render({offer:exact,hotel,screen:'tour'});await view.ready();
+    assert.equal(r.querySelector('[data-native-flight-alternatives]').open,true,'Responsive remount retains the expanded remainder');assert.equal(visible().length,40);assert.equal(quotes,0);assert.deepEqual(selected,[]);
+    r.querySelector(provider==='anex'?'[data-native-provider-flight="canonical-many-39"]':'[data-native-tour-flight="39"]').click();await view.ready();
+    assert.deepEqual(selected,[provider==='anex'?'canonical-many-39':39],'Last initially hidden pair retains its exact canonical reference');
+    assert.equal(present.total,103900);assert.equal(view.getState().ready,false,'New total still needs explicit acceptance');
+    assert.equal(r.querySelector('[data-native-flight-alternatives]').open,false);assert.equal(r.querySelector('[data-native-flight-alternatives] summary').textContent,'Другие перелёты · 39');
+    assert.equal(visible().length,0,'Selected pair is shown separately with other39 collapsed');
+    r.querySelector('[data-action="accept-price"]').click();assert.equal(view.getState().ready,true);
+    view.render({offer:exact,hotel,screen:'lead'});view.render({offer:exact,hotel,screen:'tour'});
+    assert.equal(present.total,103900);assert.equal(quotes,0);assert.equal(selected.length,1,'Return never repeats selection or quote');
+    view.destroy();other.window.close();
+  }
+}
 
 async function staleAndExpiry(){
   const other=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:'https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/',runScripts:'outside-only'});

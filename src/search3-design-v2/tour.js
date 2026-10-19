@@ -122,9 +122,13 @@
     }
     function flightChoiceHTML(value) {
       const variants=Array.isArray(value?.variants) ? value.variants : [];
-      const alternatives=(html,count,hasSelection)=>!html?'':hasSelection
-        ? '<details class="st-native-flight-alternatives" data-native-flight-alternatives '+(flightAlternativesOpen?'open':'')+'><summary>Другие перелёты · '+count+'</summary><div class="st-native-flight-options">'+html+'</div></details>'
-        : '<div class="st-native-flight-options">'+html+'</div>';
+      const alternatives=(rows,hasSelection)=>{
+        if(!rows.length)return '';
+        const options=items=>'<div class="st-native-flight-options">'+items.join('')+'</div>';
+        const disclosure=(items,label)=>'<details class="st-native-flight-alternatives" data-native-flight-alternatives '+(flightAlternativesOpen?'open':'')+'><summary>'+label+' · '+items.length+'</summary>'+options(items)+'</details>';
+        if(hasSelection)return disclosure(rows,'Другие перелёты');
+        return rows.length>3 ? options(rows.slice(0,3))+disclosure(rows.slice(3),'Ещё перелёты') : options(rows);
+      };
       const option=(facts,amount,button)=>'<div class="st-offer-choice st-native-flight-option"><div class="st-native-flight-facts">'+facts+'</div><div class="st-native-flight-option-footer">'+(amount===null?'':'<div class="st-offer-price">'+money(amount)+'</div>')+button+'</div></div>';
       if (context.offer.provider==='anex') {
         const chosen=value?.quoteResult?.choice;
@@ -134,10 +138,11 @@
             const facts=variant.legs.map((leg,index)=>'<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+(index?'Обратно':'Туда')+'</span><div class="st-native-flight-route">'+esc(leg.label)+'</div></div>').join('');
             const button='<button type="button" class="st-secondary st-offer-select" data-native-provider-flight="'+esc(variant.choiceRef)+'" '+(busy ? 'disabled' : '')+'>Проверить цену</button>';
             return option(facts,null,button);
-          }).join(''),otherVariants.length,Boolean(chosen));
+          }),Boolean(chosen));
       }
       const index=value?.flightChoiceId===null || value?.flightChoiceId===undefined ? null : Number(value.flightChoiceId),selected=index===null ? null : variants[index];
       let content=selected ? legHTML(selected.forward,'Туда')+legHTML(selected.backward,'Обратно') : '<p class="st-small st-muted">Выберите перелёт или оставьте уточнение рейсов менеджеру.</p>';
+      if (value?.tour && bridge.deferFlight) content+='<button type="button" class="st-link" data-native-defer-flight '+(busy ? 'disabled' : '')+'>Рейс уточнит менеджер</button>';
       const directionHTML=(segments,label)=>{
         if(!Array.isArray(segments)||!segments.length)return '<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+label+'</span><div class="st-native-flight-route">Расписание уточняется</div></div>';
         return segments.map((segment,connection)=>{
@@ -155,8 +160,7 @@
         const facts=directionHTML(variant?.forward,'Туда')+directionHTML(variant?.backward,'Обратно');
         const button='<button type="button" class="st-secondary st-offer-select" data-native-tour-flight="'+originalIndex+'" '+(!Number.isFinite(amount) || amount<=0 || busy ? 'disabled' : '')+'>Выбрать</button>';
         return option(facts,amount,button);
-      }).join(''),otherVariants.length,Boolean(selected));
-      if (value?.tour && bridge.deferFlight) content+='<button type="button" class="st-link" data-native-defer-flight '+(busy ? 'disabled' : '')+'>Рейс уточнит менеджер</button>';
+      }),Boolean(selected));
       if (value?.tour && bridge.retryFlights && value.flightsError) content+='<button type="button" class="st-secondary" data-native-retry-flights '+(busy ? 'disabled' : '')+'>Повторить загрузку рейсов</button>';
       return content;
     }
