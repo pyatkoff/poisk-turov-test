@@ -1,6 +1,6 @@
-"""Bounded admission for one complete native selected-tour journey; no other target.
+"""Bounded admission for the coherent native price/contact journey; no other target.
 
-The predecessor is the published calendar-completion update, not a caller-selected path.
+The predecessor is the published native selected-tour update, not a caller-selected path.
 The backup and durable receipt survive failures; unknown state never authorizes replay.
 """
 from __future__ import annotations
@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = 'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d'
-PREDECESSOR_RUN = 39254022688
-PREDECESSOR_DIGEST = 'd0a29ea3d0417b4d00a725ceedce77dc4e780e9c56d87a14ea59c6d6eefba5f5'
+PREDECESSOR_SOURCE = '246670818bba433adc9b002e06b2d560f46eb6ac'
+PREDECESSOR_RUN = 39278795885
+PREDECESSOR_DIGEST = 'acb96b2f1bb98c17bab68bbff960e5e2db846237985f90b646d73c687377f576'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -58,14 +58,16 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     '0fc16325635d113fafa96081f295a1a5696359c3',
     'f99306ffe3725f2badc70096d801608fc5393009',
     '1959dcabac17335fd09763389231e67db9afde6b',
-    'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d')
+    'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
+    '246670818bba433adc9b002e06b2d560f46eb6ac')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
     38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
     38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
     38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-    38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688)
+    38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
+    39278795885)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -81,16 +83,16 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 # Source/release trees and ordered parents are independently verified before
 # final controller review; commands/artifacts cannot select alternative pins.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '246670818bba433adc9b002e06b2d560f46eb6ac',
-    'source_tree': '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7',
-    'release_sha': '3c0a29485b0a2de1c28a11aa2793d6e33a9abf44',
-    'release_tree': '06cb8c0c4c85f8cc23656f8abbd463f9f15a5ac7',
-    'build_run': 39276387043,
-    'artifact_id': 12196684401,
-    'source_ZIP_sha256': 'f07a2fc8d35ebf88008f511ecbe14cb597ccfcff5054239bd1d28a08b62328b5',
+    'source_sha': '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
+    'source_tree': '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7',
+    'release_sha': 'ed6ba82601c6f51c4eb8b8edf11bfee08bbbaafd',
+    'release_tree': '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7',
+    'build_run': 39289736709,
+    'artifact_id': 12204203234,
+    'source_ZIP_sha256': 'dba7ff2b0f2d85f0c8400982a6d5a70067233690bbdfe55aec29b863de3e1a8b',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': 'd8d5d098937011e42f791ad96883648065d8131fd1dc23b09b4e3c2cd5ef1624',
+    'source_manifest_sha256': '28512d8d2f0ba77d5027945b4d5548d2cb57630bd91314aca855a70f9f1a2fb8',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
