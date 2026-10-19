@@ -1,0 +1,114 @@
+name: MATCH Biblio direct dictionary frontier
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-biblio-direct-dictionary-frontier-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-direct-dictionary-frontier-1971-20260922-v1
+  BASE: a79f8eb2bae4793e28906564b4ce2a06af3f473a
+  CLAIM: '5772213562'
+  V9_ARTIFACT: '10634643226'
+  URL: 'https://export.bgoperator.ru/yandex?action=hotelsJson'
+jobs:
+  probe:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-biblio-direct-dictionary-frontier-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim, immutable F4 frontier, reserve
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input reservation terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"; test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-direct-dictionary-frontier-v1.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$V9_ARTIFACT/zip" > input/v9.zip
+          echo '0a4337d6a00f668b643b8babb14867e3cae5189bbb881c724c24e5b74e7baaf0  input/v9.zip' | sha256sum -c -
+          python3 - <<'PY'
+          import datetime,hashlib,json,os,pathlib,zipfile
+          c=json.load(open('input/claim.json')); assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/2530')
+          for s in [os.environ['OP'],os.environ['BASE'],'816 Biblio links / 838 distinct F4 IDs','exactly one unauthenticated HTTPS GET',os.environ['URL'],'max4 MiB','DB/mapping writes0']: assert s in c['body'],s
+          with zipfile.ZipFile('input/v9.zip') as z: raw=z.read('reconciliation.json')
+          assert hashlib.sha256(raw).hexdigest()=='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814'
+          v=json.loads(raw); edges=[e for e in v['source_result']['edges'] if int(e.get('operator_id') or 0)==18]
+          assert len(edges)==816,len(edges)
+          by={}
+          for e in edges:
+              assert hashlib.sha256(e['operator_link'].encode()).hexdigest()==e['operator_link_sha256']
+              for f in e.get('positive_native_candidates') or []:
+                  f=str(f); by.setdefault(f,[]).append({'tv_hotel_id':int(e['tv_hotel_id']),'tour_id':e.get('tour_id'),'search_id':e.get('search_id'),'batch':e.get('batch'),'operator_link_sha256':e['operator_link_sha256']})
+          assert len(by)==838,len(by)
+          pathlib.Path('input/frontier.json').write_text(json.dumps({'operation':os.environ['OP'],'f4_count':len(by),'edge_count':len(edges),'by_f4':by},sort_keys=True,separators=(',',':'))+'\n')
+          r={'operation':os.environ['OP'],'state':'reserved_before_supplier_http','source_sha':os.environ['HEAD'],'provider':'biblio_direct_dictionary','url':os.environ['URL'],'f4_count':838,'edge_count':816,'max_supplier_http_requests':1,'database_writes':0,'mapping_writes':0,'at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'no_replay':True}
+          pathlib.Path('reservation/reservation.json').write_text(json.dumps(r,sort_keys=True)+'\n')
+          PY
+          rm input/claim.json input/v9.zip
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-biblio-direct-dictionary-frontier-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=30) as f:r=[x for x in json.load(f)['workflow_runs'] if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if r and max(r,key=lambda x:x['id'])['status']=='completed': assert max(r,key=lambda x:x['id'])['conclusion']=='success'; break
+              time.sleep(5)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Fail closed on concurrent supplier acquisition
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,urllib.request
+          req=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?status=in_progress&per_page=100',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+          with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+          bad=[]
+          for r in runs:
+              if str(r['id'])==os.environ['GITHUB_RUN_ID'] or r['name']=='Security guard': continue
+              t=(r.get('name','')+' '+r.get('path','')+' '+str(r.get('head_branch') or '')).lower()
+              if any(x in t for x in ['andromeda','anex','tourvisor','hotel-match','match-biblio','supplier']): bad.append((r['id'],r['name']))
+          assert not bad,bad
+          PY
+      - name: Fetch once and retain only saved F4 matches
+        env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; cp reservation/reservation.json terminal/reservation.json
+          set +e; curl --proto '=https' --tlsv1.2 --compressed --silent --show-error --connect-timeout 10 --max-time 30 --header 'Accept: application/json' --header 'User-Agent: AnyTour-MATCH/1.0' --output input/body.json --write-out '%{http_code}\n%{content_type}\n%{size_download}\n' "$URL" > input/meta 2>input/err; rc=$?; set -e; echo "$rc" > input/rc
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('input'); body=(p/'body.json').read_bytes() if (p/'body.json').exists() else b''; meta=(p/'meta').read_text().splitlines(); rc=int((p/'rc').read_text()); http=int(meta[0] or 0) if meta else 0
+          front=json.load(open(p/'frontier.json')); wanted=set(front['by_f4']); base={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'supplier_http_requests':1,'tourvisor_calls':0,'anex_calls':0,'andromeda_calls':0,'database_writes':0,'mapping_writes':0,'no_replay':True,'http_status':http,'response_bytes':len(body),'response_sha256':hashlib.sha256(body).hexdigest() if body else None,'frontier_f4_count':len(wanted),'frontier_edge_count':front['edge_count']}
+          rows=[]
+          if rc!=0: state='transport_error'
+          elif http!=200: state='http_non_200'
+          elif len(body)>4*1024*1024: state='response_too_large'
+          else:
+              try:data=json.loads(body)
+              except Exception:state='invalid_json'
+              else:
+                  items=data if isinstance(data,list) else []
+                  seen=set()
+                  for x in items:
+                      if not isinstance(x,dict): continue
+                      k=str(x.get('key',''))
+                      if k in wanted:
+                          rows.append({q:x.get(q) for q in ['key','name','stars','countryKey','cityKey','inPr'] if q in x}); seen.add(k)
+                  state='matched_frontier'; matched=len(seen)
+          result=base|{'state':state,'matched_distinct_f4':len({str(x.get('key')) for x in rows}),'matched_rows':len(rows),'rows':rows}
+          rb=(json.dumps(result,ensure_ascii=False,sort_keys=True,indent=2)+'\n').encode(); pathlib.Path('terminal/result.json').write_bytes(rb)
+          receipt={'operation':os.environ['OP'],'source_sha':os.environ['HEAD'],'state':'completed_read_only','result_state':state,'result_sha256':hashlib.sha256(rb).hexdigest(),'supplier_http_requests':1,'database_writes':0,'mapping_writes':0,'no_replay':True}; pathlib.Path('terminal/receipt.json').write_text(json.dumps(receipt,sort_keys=True,indent=2)+'\n')
+          pathlib.Path('terminal/summary.json').write_text(json.dumps({k:result.get(k) for k in ['operation','state','http_status','response_bytes','response_sha256','frontier_f4_count','frontier_edge_count','matched_distinct_f4','matched_rows']},sort_keys=True,indent=2)+'\n')
+          print(pathlib.Path('terminal/summary.json').read_text())
+          PY
+          rm -f input/body.json input/meta input/err input/rc input/frontier.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-biblio-direct-dictionary-frontier-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
