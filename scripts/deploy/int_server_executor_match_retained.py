@@ -14,8 +14,9 @@ MODES = {'match-retained-intake': 'common4-retained',
          'match-retained-readback': 'common4-retained'}
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
                 'scripts/diagnostics/hotel_match_retained_projection_v1.py',
-                'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '4891d3f87fae1a49a6a3ed98bc7fbadce49584d48042dc5021fd6ebf6b794b04', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '7d76acee710e33cc5c649d909b59304f7937ca868519a1287c87b75d235df9c6', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5'}
+                'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py',
+                'v2/data/db-v1.php')
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '7d76acee710e33cc5c649d909b59304f7937ca868519a1287c87b75d235df9c6', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'}
 
 
 def need(value, reason):
@@ -126,6 +127,7 @@ def run_match_retained(stage):
         return {'evidence_sha256':hashlib.sha256(raw_result).hexdigest(),'data':data}
     env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
     env['MATCH_RETAINED_DIR']=str(op)
+    env['MATCH_RETAINED_SOURCE_ROOT']=str(stage)
     if mode=='match-tourvisor-quota-policy':
         env['MATCH_QUOTA_ACTION']='apply-owner-5000'
         args=['python3',str(stage/'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py')]

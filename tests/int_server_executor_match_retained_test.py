@@ -243,13 +243,19 @@ class NativeMySQLTest(unittest.TestCase):
           $db->exec("INSERT INTO catalog_hotels VALUES(1546,'A11',4,'Turkey','Alanya','',36.5,32.0,1)");
           $db->exec("INSERT INTO catalog_hotels VALUES(999999,'Unrelated catalog hotel',4,'Turkey','Alanya','',36.5,32.0,1)");
           $rows=[];$result=MatchRetainedIntakeV1::capture($db,static function($row)use(&$rows){$rows[]=$row;});
+          define('ANYTOUR_DATA_DSN',getenv('MATCH_RETAINED_TEST_DSN').';dbname='.$name);
+          define('ANYTOUR_DATA_DB_USER','root');define('ANYTOUR_DATA_DB_PASSWORD',getenv('MATCH_RETAINED_TEST_PASSWORD'));
+          require $argv[2].'/v2/data/db-v1.php';
+          $isolated=MatchRetainedIntakeV1::capture(v2_data_db(),static function($row){});
+          if($isolated['rows']!==$result['rows'])throw new RuntimeException('isolated_source_helper_snapshot_mismatch');
           $denied=false;try{MatchRetainedIntakeV1::capture($db,static function($row)use($db){$db->exec('DELETE FROM catalog_hotels');});}catch(PDOException $e){$denied=true;}
           if(!$denied||(int)$db->query('SELECT COUNT(*) FROM catalog_hotels')->fetchColumn()!==2)throw new RuntimeException('read_only_not_enforced');
-          echo json_encode(['result'=>$result,'rows'=>$rows,'dml_denied'=>$denied],JSON_THROW_ON_ERROR);
+          echo json_encode(['result'=>$result,'rows'=>$rows,'dml_denied'=>$denied,'isolated_source_helper_verified'=>true],JSON_THROW_ON_ERROR);
         }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
-        run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_intake_v1.php')],capture_output=True,text=True,timeout=60)
+        run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_intake_v1.php'),str(SOURCE)],capture_output=True,text=True,timeout=60)
         self.assertEqual(0,run.returncode,run.stderr);data=json.loads(run.stdout)
-        self.assertTrue(data['dml_denied']);self.assertEqual({'observation':1,'legacy_source':1,'identity':1,'target':1},data['result']['rows'])
+        self.assertTrue(data['dml_denied']);self.assertTrue(data['isolated_source_helper_verified'])
+        self.assertEqual({'observation':1,'legacy_source':1,'identity':1,'target':1},data['result']['rows'])
         with tempfile.TemporaryDirectory() as td:
             path=Path(td)/'raw';path.write_text(''.join(json.dumps(r)+'\n' for r in data['rows']))
             result=p.project(path)
