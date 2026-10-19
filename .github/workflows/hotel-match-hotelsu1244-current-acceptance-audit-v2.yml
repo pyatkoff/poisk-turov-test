@@ -1,0 +1,162 @@
+name: MATCH HOTEL SU 1244 current acceptance audit v2
+on:
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php
+      - .github/workflows/hotel-match-hotelsu1244-current-acceptance-audit-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency:
+  group: hotel-match-hotelsu1244-current-acceptance-audit-1971-20260920-v2
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-hotelsu1244-current-acceptance-audit-1971-20260920-v2
+  BASE_SHA: a3d2eab2827d35dfdb2997fc86a99087163199c4
+  SOURCE_SHA: '${{ github.event.pull_request.head.sha }}'
+  CLAIM: '5752041044'
+  QUEUE_CLAIM: '5752040287'
+  DELTA_ARTIFACT: '10608562725'
+  DELTA_ZIP_SHA: bdaaa624ebcf89bf387adb224345fd7c3f988f4c857c02f1dc4ef36c7156d8d9
+  DELTA_RESULT_SHA: 9dc3c7246d545915cd311a6175bcbeb04b58feebdafd0e83d54978fca4deae69
+  EVIDENCE_ARTIFACT: '10608779382'
+  EVIDENCE_ZIP_SHA: 216af9e3b13cf69f65c96f1183ba1c153fca4ffe18d5c771a7ca461b83907d9e
+  EVIDENCE_SHA: 26f8ab7ba5dcf9e81287a83e3d2c2e1f3971d8a0102a57103f3498a382d7bc0b
+  SCHEMA_ARTIFACT: '10611243916'
+  SCHEMA_ZIP_SHA: fd8f1a3b8747e733f5d75a20abc8abade6c177f81bbff19e125f4f2f7706b4cc
+  SCHEMA_RESULT_SHA: bfe3c0c5b3ceda32e6a85b92e9fe77affb2e981cf42dda09b4842c88f8f8f52a
+jobs:
+  audit:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'ops/match-hotelsu1244-current-acceptance-audit-1971-20260920-v2' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ env.SOURCE_SHA }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source, claims and immutable evidence
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          mkdir -p inputs payload/input payload/source/scripts/diagnostics payload/source/app/integrations result
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA"
+          test "$(git hash-object app/integrations/anex-search-mapping-registry.php)" = cc135a95d2a6e0f73ce50be2141c9b8a26fddc58
+          php -l scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php
+          php scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php --self-test
+          python3 - <<'PY'
+          import os,subprocess
+          actual=set(subprocess.check_output(['git','diff','--name-only',os.environ['BASE_SHA']+'..HEAD'],text=True).splitlines())
+          expected={'scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php','.github/workflows/hotel-match-hotelsu1244-current-acceptance-audit-v2.yml'}
+          assert actual==expected,(actual,expected)
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" > inputs/claim.json
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$QUEUE_CLAIM" > inputs/queue-claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('inputs/claim.json')); q=json.load(open('inputs/queue-claim.json'))
+          for x in (c,q):
+              assert x['user']['id']==226193297 and x['author_association']=='OWNER' and x['created_at']==x['updated_at']
+          assert c['issue_url'].endswith('/issues/2530') and q['issue_url'].endswith('/issues/1971')
+          b=c['body']+'\n'+q['body']
+          for s in (os.environ['OPERATION_ID'],os.environ['BASE_SHA'],os.environ['DELTA_ARTIFACT'],os.environ['DELTA_RESULT_SHA'],os.environ['EVIDENCE_ARTIFACT'],os.environ['EVIDENCE_SHA'],os.environ['SCHEMA_ARTIFACT'],os.environ['SCHEMA_RESULT_SHA'],'Provider/Tourvisor/SAMO/Andromeda/direct-ANEX calls0','DB writes0','mapping writes0','quota'):
+              assert s in b,s
+          PY
+          cp scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php payload/source/scripts/diagnostics/
+          cp app/integrations/anex-search-mapping-registry.php payload/source/app/integrations/
+          for spec in "$DELTA_ARTIFACT:delta.zip" "$EVIDENCE_ARTIFACT:evidence.zip" "$SCHEMA_ARTIFACT:schema.zip"; do
+            id="${spec%%:*}"; out="inputs/${spec#*:}"
+            curl -fL --silent --show-error --retry 2 -H "Authorization: Bearer $GH_TOKEN" -H 'Accept: application/vnd.github+json' "https://api.github.com/repos/pyatkoff/poisk-turov-test/actions/artifacts/$id/zip" -o "$out"
+          done
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,zipfile
+          p=pathlib.Path('payload/input')
+          specs=[('delta.zip','DELTA_ZIP_SHA'),('evidence.zip','EVIDENCE_ZIP_SHA'),('schema.zip','SCHEMA_ZIP_SHA')]
+          for f,e in specs: assert hashlib.sha256(pathlib.Path('inputs',f).read_bytes()).hexdigest()==os.environ[e],f
+          with zipfile.ZipFile('inputs/delta.zip') as z:
+              raw=z.read('server/result.json'); assert hashlib.sha256(raw).hexdigest()==os.environ['DELTA_RESULT_SHA']; d=json.loads(raw)
+              rows=[r for r in d['dossiers'] if int(r.get('local_hotel_id',0))==1244]; assert d['state']=='completed_read_only' and len(rows)==1 and rows[0]['anex_native_ids']==[15072]
+              p.joinpath('delta-result.json').write_bytes(raw)
+          with zipfile.ZipFile('inputs/evidence.zip') as z:
+              raw=z.read('evidence.json'); assert hashlib.sha256(raw).hexdigest()==os.environ['EVIDENCE_SHA']; d=json.loads(raw)
+              xs=[r for r in d['all_turkey_su_token_rows'] if str(r.get('id'))=='2000032277']; assert xs and all(str(r.get('star'))=='5' and r.get('town')=='Коньяалты' for r in xs)
+              p.joinpath('hotelsu-evidence.json').write_bytes(raw)
+          with zipfile.ZipFile('inputs/schema.zip') as z:
+              raw=z.read('server/result.json'); assert hashlib.sha256(raw).hexdigest()==os.environ['SCHEMA_RESULT_SHA']; d=json.loads(raw)
+              assert d['state']=='completed_read_only' and d['root_cause']=='invalid_order_by_id_columns'
+              assert d['id_column_present']=={'anex_hotel_decisions':False,'anex_review_pair_exclusions':False}
+              p.joinpath('schema-result.json').write_bytes(raw)
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['SOURCE_SHA']+'&per_page=100'
+          for _ in range(72):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(req,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['SOURCE_SHA']]
+              if xs:
+                  r=max(xs,key=lambda x:x['id'])
+                  if r['status']=='completed':
+                      assert r['conclusion']=='success',r
+                      print('SECURITY_OK',r['id']); break
+              time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - name: Seal reservation before database access
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('payload'); digests={str(x.relative_to(p)):hashlib.sha256(x.read_bytes()).hexdigest() for x in p.rglob('*') if x.is_file()}
+          r={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['SOURCE_SHA'],'base_sha':os.environ['BASE_SHA'],'claim_id':int(os.environ['CLAIM']),'queue_claim_id':int(os.environ['QUEUE_CLAIM']),'state':'reserved_before_db_read','delta_result_sha256':os.environ['DELTA_RESULT_SHA'],'evidence_sha256':os.environ['EVIDENCE_SHA'],'schema_result_sha256':os.environ['SCHEMA_RESULT_SHA'],'supplier_calls':0,'provider_calls':0,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'quota_mutations':0,'safe_to_write_now':False,'no_replay':True}
+          raw=(json.dumps(r,sort_keys=True)+'\n').encode(); f=(p/'reservation.json').open('xb'); f.write(raw); f.flush(); os.fsync(f.fileno()); f.close(); pathlib.Path('result/reservation.json').write_bytes(raw)
+          digests['reservation.json']=hashlib.sha256(raw).hexdigest(); (p/'SHA256SUMS').write_text(''.join(v+'  '+k+'\n' for k,v in sorted(digests.items())))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-hotelsu1244-audit-v2-reservation-${{ github.run_id }}', path: result/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Audit CURRENT candidate read-only
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -e;umask 077;mkdir -p \"\$HOME/.anytoour-match/operations\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\""
+          scp "${opts[@]}" -r payload/source payload/input payload/reservation.json payload/SHA256SUMS "$remote:$op/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";sha256sum -c SHA256SUMS >/dev/null;cd \"\$HOME/www/anytoour.ru\";MATCH_OPERATION_ID='$OPERATION_ID' MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$SOURCE_SHA' php -d allow_url_fopen=0 -d display_errors=0 -d log_errors=0 -d memory_limit=768M \"\$HOME/$op/source/scripts/diagnostics/hotel_match_hotelsu1244_current_acceptance_audit_v2.php\"" > result/remote.stdout 2> result/remote.stderr
+          rc=$?
+          ssh "${opts[@]}" "$remote" "set -e;cd \"\$HOME/$op\";tar -czf - -- reservation.json execution-reservation.json result.json receipt.json" > result/server-operation.tgz 2>>result/remote.stderr
+          trc=$?; set -e; printf '{"remote":%s,"tar":%s}\n' "$rc" "$trc">result/exit-codes.json; test "$trc" -eq 0
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,tarfile
+          p=pathlib.Path('result'); s=p/'server'; s.mkdir()
+          with tarfile.open(p/'server-operation.tgz','r:gz') as t:
+              names=sorted(t.getnames()); assert names==['execution-reservation.json','receipt.json','reservation.json','result.json'],names
+              for m in t.getmembers(): assert m.isfile() and m.size<=64000000; s.joinpath(m.name).write_bytes(t.extractfile(m).read())
+          assert p.joinpath('reservation.json').read_bytes()==s.joinpath('reservation.json').read_bytes()
+          raw=s.joinpath('result.json').read_bytes(); r=json.loads(raw); q=json.loads(s.joinpath('receipt.json').read_bytes()); h=hashlib.sha256(raw).hexdigest()
+          assert r['state']=='completed_read_only' and q['state']=='completed_read_only' and q['result_sha256']==h and q['readback_verified'] is True
+          assert r['operation_id']==q['operation_id']==os.environ['OPERATION_ID'] and r['source_sha']==q['source_sha']==os.environ['SOURCE_SHA']
+          assert r['local_hotel_id']==1244 and r['anex_native_id']==15072 and str(r['samo_hotel_id'])=='2000032277' and r['safe_to_write_now'] is False
+          for k in ('supplier_calls','provider_calls','tourvisor_calls','samo_calls','andromeda_calls','direct_anex_calls','database_writes','mapping_writes','quota_mutations'): assert r[k]==0,(k,r[k])
+          summary={k:r.get(k) for k in ('clock','current_anex_resolution','current_name_phrase_unique','current_direct_place_confirmed','saved_star_agreement','already_same','safe_to_accept_candidate_now','acceptance_reasons','next_evidence_needed')}
+          summary['identity_conflict_count']=len(r.get('identity_conflicts',[])); summary['source_identity_count']=len(r.get('source_identity_rows',[])); summary['target_identity_count']=len(r.get('target_identity_rows',[])); summary['country_candidate_ids']=[x.get('id') for x in r.get('country_hotel_su_candidates',[])]; summary['user_search_row_count']=len(r.get('current_user_search_rows',[])); summary['operator13_identity_row_count']=len(r.get('current_operator13_identity_rows',[])); summary['result_sha256']=h
+          p.joinpath('verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n'); print(json.dumps(summary,ensure_ascii=False))
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-hotelsu1244-audit-v2-result-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
