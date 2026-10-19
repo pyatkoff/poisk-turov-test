@@ -2109,7 +2109,7 @@ function openAnexApplicationPreview(){
 const anexFlightViews=new WeakMap();
 function openAnexPackageQuote(o,result,error='',pending=false){
  const h=selectedTourHotel(o);if(!h)return;
- const previous=retainedProviderView(o),body=$('#modal-body'),samePicker=typeof modalType!=='undefined'&&modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&previous?.result?.repricing?.enabled===true&&!previous.sealed&&!!body.querySelector('[name="anex-package-choice"]');
+ const previous=retainedProviderView(o),body=$('#modal-body'),samePicker=typeof modalType!=='undefined'&&modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&(previous?.result?.repricing?.enabled!==true||!previous.sealed)&&!!body.querySelector('[name="anex-package-choice"]');
  const focused=samePicker?document.activeElement:null,focusName=focused?.name,focusValue=focused?.value,scroll=body.scrollTop,moreOpen=typeof modalType!=='undefined'&&modalType==='anex-quote'&&selectedOffer?.raw===o.raw&&body.querySelector('.anex-more-options')?.open===true;let anchor=null;
  if(samePicker){
   const bounds=body.getBoundingClientRect(),bottom=Math.min(bounds.bottom,$('#modal-footer').getBoundingClientRect().top);
@@ -2145,7 +2145,7 @@ function openAnexPackageQuote(o,result,error='',pending=false){
  showModal('anex-quote',verified?'Цена тура подтверждена':'Перелёт и цена тура','ANEX · АКТУАЛИЗАЦИЯ',content,true);
  $('#modal').classList.add('tour-dialog');$('#modal-footer').hidden=false;$('#modal-footer').innerHTML=offerDetailFooterHTML({total:price,pricePending:price===null},verified?(repricing&&!view?.editing&&result.choices?.length>1?'<button class="secondary" data-action="edit-anex-flights">Изменить рейсы</button>':'')+'<button class="primary" data-action="anex-application-preview">К заявке</button>':choices.length&&(repricing||!error)&&!view?.sealed?`<button class="primary" data-action="anex-package-calculate" ${pending?'disabled':''}>Уточнить цену с этими рейсами</button>`:`<button class="secondary" data-action="all-offers" data-id="${h.id}">К вариантам</button>`,status);
  if(choices.length){$('#modal').classList.add('tour-flight-editing');syncDestinationViewport();}
- if(samePicker&&repricing&&view?.editing){
+ if(samePicker&&(repricing?view?.editing:pending||error)){
   if(focusName)$$('[name="'+focusName+'"]')?.find(input=>input.value===focusValue)?.focus({preventScroll:true});
   body.scrollTop=scroll;
   const input=anchor&&$$('[name="anex-package-choice"]').find(input=>input.value===anchor.value);
