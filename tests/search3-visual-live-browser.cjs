@@ -1160,10 +1160,12 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   releaseAnex();await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('Получена часть предложений')&&!document.querySelector('#search-more').hidden);
   const status=page.locator('#search-status'),summary=status.locator('summary');
   await summary.click();assert.match(await status.textContent(),/Вариантов до фильтров: 1/);assert.doesNotMatch(await status.textContent(),/не загрузил|недоступн/,'normal bounded first page is not a failure');
+  assert.equal(await status.locator('[data-action="continue-search"]').textContent(),'Продолжить поиск','partial explanation has its existing continuation next to it');
+  assert.equal(await status.locator('[data-action="retry-search"]').count(),0,'continuation is not silently presented as a fresh search');
   assert.equal(await status.locator('[data-search-source="andromeda"]').count(),0,'paused SAMO is not presented as an active source');
   await page.screenshot({path:path.join(evidence,'search-delivery-first-page-390.png')});
   assert.deepEqual(anexCalls,['search'],'no automatic page drain');
-  await page.locator('#search-more [data-action="continue-search"]').click();
+  await status.locator('[data-action="continue-search"]').click();
   await page.waitForFunction(()=>document.querySelector('#search-status summary')?.textContent.includes('ANEX')&&document.querySelector('[data-search-source="anex"]')?.textContent.includes('не загрузилась'));
   assert.deepEqual(anexCalls,['search','continue'],'one explicit continuation, no duplicate/retry');
   assert.match(await status.locator('[data-search-source="anex"]').textContent(),/Вариантов до фильтров: 1/,'failed continuation retains its received first-page count');
@@ -1175,7 +1177,8 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   const samples=[];
   for(const width of [360,390,430,768,1280]){
    await page.setViewportSize({width,height:900});await status.scrollIntoViewIfNeeded();
-   for(const largeText of [false,true]){
+   // Owner deferred text200; retain its historical branches without rerunning them.
+   for(const largeText of [false]){
     await page.evaluate(large=>document.documentElement.style.fontSize=large?'32px':'',largeText);
     const geometry=await status.evaluate(el=>{
      const rect=node=>{const r=node.getBoundingClientRect();return{x:r.x,right:r.right,width:r.width,height:r.height};},bounds=rect(el);
@@ -1198,7 +1201,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
      });assert(routeWords,'compact route preserves whole city/country words at '+width+' text200='+largeText);
     }
     await status.screenshot({path:path.join(evidence,`search-delivery-failed-${width}${largeText?'-text200':''}.png`)});samples.push({width,largeText,geometry});
-    for(const action of ['retry-search','edit-search']){
+    for(const action of ['continue-search','edit-search']){
      const control=status.locator(`[data-action="${action}"]`);await control.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
      const hit=await control.evaluate(el=>{const r=el.getBoundingClientRect(),node=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{reachable:!!node&&(node===el||el.contains(node)),y:r.y,bottom:r.bottom,scrollY,hit:node?.className};});
      assert(hit.reachable,'status '+action+' remains reachable above fixed mobile controls at '+width+' text200='+largeText+': '+JSON.stringify(hit));
@@ -1208,10 +1211,16 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
    await page.evaluate(()=>document.documentElement.style.fontSize='');
   }
   assert.equal(transport.calls.filter(call=>call.action==='search_start').length,1);assert.equal(transport.calls.filter(call=>call.action==='search_continue').length,1);assert.deepEqual(anexCalls,['search','continue']);
+  await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();
+  await page.locator('[data-action="refresh-hotel"]').click();await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('ANEX CONCRETE'));
+  await page.locator('[data-action="close-modal"]').click();
+  assert.match(await status.locator('summary').textContent(),/Найденные туры сохранены/);assert.doesNotMatch(await status.textContent(),/Поиск остановлен/,'explicit tour verification is not a manual search stop');
+  assert.equal(transport.calls.filter(call=>call.action==='search_start').length,1);assert.equal(transport.calls.filter(call=>call.action==='search_continue').length,1,'return does not resume or repeat suppliers');
+  await status.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(evidence,'search-delivery-tour-return-1280.png')});
   assert(!transport.calls.some(call=>/andromeda|quote|lead/.test(call.url)),'delivery inspection/filter/resize do not issue SAMO, quote or lead operations');
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
-  console.log('PASS compiled search delivery: pending unknown count, healthy native first page, explicit failed continuation/retained offers, passive disclosure/focus and five widths/text200; supplier HTTP0');
+  fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers','tour-return-retained-not-user-stopped'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,text200:'deferred',samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
+  console.log('PASS compiled search delivery: pending unknown count, healthy native first page, colocated explicit continuation/retained offers, passive disclosure/focus and five ordinary widths; text200 deferred, supplier HTTP0');
  }finally{releaseAnex();await context.close();}
 };
 // Off for the real-default regression below. Retained SAMO integration journeys
@@ -1874,3 +1883,4 @@ const server=http.createServer((req,res)=>{
  }finally{await browser.close();server.close();}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify({published:false,live_data:false,engine:'Chromium',physical_device:false,results:receipts},null,2));console.log('PASS visual live browser',JSON.stringify(receipts));
 })().catch(e=>{console.error(require('node:util').inspect(e,{depth:null}));server.close();process.exitCode=1;});
+
