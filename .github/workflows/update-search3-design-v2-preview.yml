@@ -1,6 +1,6 @@
-# Reviewed focus-retention successor in the approved design.
+# Reviewed native calendar and selected-tour successor in the approved design.
 # Requires 212 ordinary100 frames, exact merge topology, and the published
-# tour-reading 0fc/run385580 predecessor.
+# focus-retention f99306/run389417 predecessor.
 # The previous updater and command are consumed; this is a new bounded gate.
 name: Update only the separate design v2 Search3 preview
 
