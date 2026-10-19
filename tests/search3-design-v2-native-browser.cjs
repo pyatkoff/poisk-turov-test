@@ -246,6 +246,20 @@ async function setTextSize(page,percent) {
 
 async function capture(page,side,width,percent,screen,row,fullPage=true) {
   console.log('NATIVE_FRAME',side,width,percent,screen);
+  const calendarPosition=async phase=>{
+    if(side!=='native'||screen!=='calendar-later')return;
+    const position=await page.evaluate(()=>{
+      const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+      const strip=root.querySelector('[data-native-calendar-strip]'),cell=strip.querySelector('[data-native-day="2026-10-25"]');
+      const rail=strip.getBoundingClientRect(),date=cell.getBoundingClientRect();
+      return{page:strip.dataset.nativeCalendarStrip,left:strip.scrollLeft,client:strip.clientWidth,scroll:strip.scrollWidth,
+        railLeft:rail.left,railRight:rail.right,dateLeft:date.left,dateRight:date.right,
+        snap:getComputedStyle(strip).scrollSnapType,behavior:getComputedStyle(strip).scrollBehavior,
+        nextDisabled:root.querySelector('[data-native-calendar-page="next"]').disabled};
+    });
+    row.checks.push({calendarPosition:phase,...position});console.log('NATIVE_CALENDAR_POSITION',width,phase,JSON.stringify(position));
+  };
+  await calendarPosition('before-paint');
   if(side==='native')await waitForFixture(page,pending=>pending?window.__nativeFixture?.getSnapshot?.().status==='loading':window.__nativeFixture?.getSnapshot?.().status!=='loading',screen==='results-loading');
   await page.evaluate(()=>document.fonts.ready);
   await page.evaluate(()=>new Promise((resolve,reject)=>{
@@ -253,9 +267,12 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
     requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(deadline);resolve();}));
   }));
   await setTextSize(page,percent);
+  await calendarPosition('after-paint');
   await page.evaluate(()=>window.scrollTo(0,0));
+  await calendarPosition('page-top');
   const file=side+'-'+screen+'-'+width+'-text'+percent+'.png';
   await page.screenshot({path:path.join(evidence,file),fullPage,animations:'disabled'});
+  await calendarPosition('captured');
   const measurements=await page.evaluate(percent=>{
     const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'))||document.querySelector('[data-native-startup]:not([hidden])');
     const stage=root?.closest('.st-stage');
