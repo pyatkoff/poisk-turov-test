@@ -124,6 +124,14 @@ local_tv_capture = importlib.util.module_from_spec(local_tv_capture_spec)
 local_tv_capture_spec.loader.exec_module(local_tv_capture)
 local_tv_capture.register_parser(core)
 
+MATCH_RETAINED_SCRIPT = SCRIPT.with_name('int_server_executor_match_retained.py')
+match_retained_spec = importlib.util.spec_from_file_location('int_server_executor_match_retained', MATCH_RETAINED_SCRIPT)
+if match_retained_spec is None or match_retained_spec.loader is None:
+    raise RuntimeError('match_retained_registration_import')
+match_retained = importlib.util.module_from_spec(match_retained_spec)
+match_retained_spec.loader.exec_module(match_retained)
+match_retained.register_parser(core)
+
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
@@ -281,6 +289,7 @@ def main() -> None:
     local_tv_seed.activate(core, command)
     local_tv_content.activate(core, command)
     local_tv_capture.activate(core, command)
+    match_retained.activate(core, command)
     if command['mode'] in SUPPLIER_SLOT_MODES or (command['mode']=='local-tv-content-v1' and command['action']=='fill'):
         core.ensure_supplier_slot(token)
     if command['mode'] in DIRECT_ANEX_MODES:
@@ -294,3 +303,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
