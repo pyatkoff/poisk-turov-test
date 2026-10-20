@@ -4,6 +4,8 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root { max-width: 1280px; margin: 14px auto; }
 #design-v2-native-root #b4 { width: 100%; }
 #design-v2-native-root #b4 .st-app { --muted: light-dark(#526078, #b1bdcf); }
+/* Route headings receive focus for navigation context, not a control border. */
+#design-v2-native-root #b4 [data-screen] :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 #design-v2-native-root #b4 > .st-stage { padding: 0; min-height: 0; }
 #design-v2-native-root #b4 > .st-stage[hidden] { display: none !important; }
 #design-v2-native-root #b4 > .st-stage[data-variant="Мобильная версия"] { width: 100%; max-width: 100%; }

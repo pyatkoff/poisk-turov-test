@@ -736,6 +736,10 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),1);
         row.proof.formSubmitSearches=1;
+        const resultHeading=product.locator('[data-result-count]');
+        const headingFocus=await resultHeading.evaluate(node=>({focused:node===document.activeElement,tabIndex:node.tabIndex,outline:getComputedStyle(node).outlineStyle}));
+        assert.deepEqual(headingFocus,{focused:true,tabIndex:-1,outline:'none'},'Pointer search keeps navigation focus on the static result heading without a browser control border');
+        row.proof.staticHeadingFocus={results:headingFocus};
         assert.deepEqual(await product.locator('.st-name-button').allTextContents(),fixture.hotels.map(hotel=>hotel.name),'Complete hotel names survive title/arrow wrapping');
         assert.equal(await product.locator('.st-hotel-card .st-card-bottom').count(),0,'Provisional price explanation has one shared owner');
         const notice=product.locator('.st-results-note');
@@ -745,6 +749,9 @@ async function referenceFrame(page,width,percent,screen,row) {
         await capture(page,'native',width,percent,'results',row);await referenceFrame(reference,width,percent,'results',row);
         const originalStarts=await page.evaluate(()=>window.__nativeFixture.calls.search);
         const firstFavorite=product.locator('[data-favorite="1"]');await firstFavorite.focus();await firstFavorite.press('Enter');
+        const favoriteFocus=await product.locator('[data-favorite="1"]').evaluate(node=>({focused:node===document.activeElement,visible:node.matches(':focus-visible'),outline:getComputedStyle(node).outlineStyle,width:parseFloat(getComputedStyle(node).outlineWidth)}));
+        assert(favoriteFocus.focused&&favoriteFocus.visible&&favoriteFocus.outline!=='none'&&favoriteFocus.width>0,'The static-heading rule retains visible keyboard focus on interactive controls');
+        row.proof.staticHeadingFocus.control=favoriteFocus;
         assert.equal(await product.locator('[data-favorite="1"]').getAttribute('aria-pressed'),'true');
         assert.equal(await product.locator('[data-favorite="1"]').evaluate(node=>node===document.activeElement),true,'Favorite rerender restores the same card control');
         const secondFavorite=product.locator('[data-favorite="2"]');await secondFavorite.focus();await secondFavorite.press('Enter');
@@ -765,6 +772,9 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await product.locator('[data-empty-action]').isVisible(),false);
         assert.equal(await product.locator('[data-source-alert]').isVisible(),false);
         assert.equal(await product.locator('[data-empty]').getAttribute('aria-busy'),'true');
+        await resultHeading.focus();
+        assert.equal(await resultHeading.evaluate(node=>getComputedStyle(node).outlineStyle),'none','The loading heading has no control border even when focused');
+        row.proof.staticHeadingFocus.loading=true;
         await capture(page,'native',width,percent,'results-loading',row);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),originalStarts);
         row.proof.loadingInitialCountNeutral=true;row.proof.loadingEmptyActionHidden=true;row.proof.loadingExtraSearches=0;
@@ -997,6 +1007,8 @@ async function referenceFrame(page,width,percent,screen,row) {
         await deepResult.click();await screen('hotel').waitFor({state:'visible'});
         const hotelLanding=await product.locator('[data-hotel-name]').evaluate(node=>({focused:node===document.activeElement,top:node.getBoundingClientRect().top,bottom:node.getBoundingClientRect().bottom,height:innerHeight}));
         assert(hotelLanding.focused&&hotelLanding.top>=0&&hotelLanding.bottom<=hotelLanding.height,'Opening a deep result lands at the visible hotel heading');
+        assert.equal(await product.locator('[data-hotel-name]').evaluate(node=>getComputedStyle(node).outlineStyle),'none','The static hotel heading keeps navigation context without a browser control border');
+        row.proof.staticHeadingFocus.hotel=true;
         await screen('hotel').locator('[data-action="results"]').click();await screen('results').waitFor({state:'visible'});
         const returnedPosition=await deepResult.evaluate(node=>({focused:node===document.activeElement,scroll:scrollY,top:node.getBoundingClientRect().top}));
         assert(returnedPosition.focused&&Math.abs(returnedPosition.top-deepPosition.top)<=2,'The saved-results return restores the initiating card and viewport position');
