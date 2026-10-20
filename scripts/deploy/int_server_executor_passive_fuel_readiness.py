@@ -27,7 +27,10 @@ PLAN_OPERATION = 'int-anex-passive-fuel-activation-plan-20261020-v1'
 INSTALL_MODE = 'passive-fuel-activate'
 INSTALL_SOURCE = '0415fe57046a8929d1b857e13cd0d0d8824e904d'
 INSTALL_OPERATION = 'int-anex-passive-fuel-activate-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE)
+STOCK_MODE = 'passive-fuel-stock-activate'
+STOCK_SOURCE = '0415fe57046a8929d1b857e13cd0d0d8824e904d'
+STOCK_OPERATION = 'int-anex-passive-fuel-stock-activate-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -56,7 +59,8 @@ def need(value, reason):
 def parse(parts):
     need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION],
                   [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION],
-                  [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION]),
+                  [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION],
+                  [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -76,7 +80,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -101,7 +105,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 
 def bundle_source(source_root, command=None):
     command = policy(command)
-    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE) else SOURCE_HASHES
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE) else SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -671,6 +675,84 @@ def passive_fuel_activate(stage,op,production_before):
 '''
 
 
+# Stock publisher c03dbecd at this deployed source excludes api-v2.php at
+# every path component. Its safe wrapper does not change build_payload; the
+# isolated UI keeps ROOT /api-v2.php. These seven rows were independently
+# reproduced by that exact publisher, without PHP/config/provider execution.
+STOCK_PUBLISHER_SOURCE = '7d21538b56a463ced185dd893361469e92911c77'
+STOCK_REQUIRED = {
+    'poisk-turov/index.php': (1272, 'a6d151903685c4aaf68163c339a57a52f2979e7587d6635b2a64e0d6e6548c67'),
+    'api-anex-search3-preview.php': (52903, 'd69aaedf759d2d7cdfd3d8a0cbedf400bb1cc92a285b79ad9746fa825338f8db'),
+    'api-andromeda-search3-preview.php': (43929, 'fc338f37496290871793c6b1fe0f5614b4aea4db2a2f0503277117a676a912e4'),
+    'anex-search3-preview-v1.js': (47839, 'a5343ea7cc716e1319ba0bb93548a5f08162672e406c4718f909252537a6aa7e'),
+    'preview-lead-disabled.php': (378, '15d1c61b6fde806caa52820748050b8bd55c82345499390d5f2a8e04577c2f5d'),
+    'app/integrations/anex-search-mapping-registry.php': (8865, 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814'),
+    'app/integrations/anex-additional-prices-client.php': (21737, '82811acb7908d95315287d5e552b4d8ccf1f30103f6714ee5424aec8788fd34a'),
+}
+
+STOCK_REMOTE = INSTALL_REMOTE + '\nPS_SOURCE=' + repr(STOCK_PUBLISHER_SOURCE) + '\nPS_REQUIRED=' + repr(STOCK_REQUIRED) + r'''
+ps_base_snapshot=pp_snapshot
+ps_base_plan=passive_fuel_activation_plan
+
+def pp_snapshot():
+    bodies,records,identities,directories=ps_base_snapshot()
+    for key,path in (('stock_manifest',runtime/'anex-preview-manifest.json'),
+                     ('nested_gateway',runtime/'v2/api-v2.php')):
+        bodies[key],records[key]=pf_read(path,limit=1024*1024)
+        identities[key]=None if records[key] is None else pf_identity(path.lstat())
+    return bodies,records,identities,directories
+
+def ps_manifest(body):
+    if body is None:return False
+    def unique(pairs):
+        result={}
+        for key,value in pairs:
+            if key in result:raise ValueError('duplicate')
+            result[key]=value
+        return result
+    try:
+        value=json.loads(body,object_pairs_hook=unique,parse_constant=lambda _:None)
+        if (not isinstance(value,dict) or type(value.get('schema_version')) is not int or value['schema_version']!=1
+                or value.get('source_sha')!=PS_SOURCE or value.get('route')!='/_preview/search3-anex-candidate/'
+                or value.get('production_entry_changes') is not False or value.get('production_lead_delivery') is not False
+                or type(value.get('preview_metrika_counter')) is not int or value['preview_metrika_counter']!=0
+                or value.get('mapping_scope')!='preview' or not isinstance(value.get('files'),list)
+                or type(value.get('file_count')) is not int or not len(PS_REQUIRED)<=value['file_count']<=3000
+                or value['file_count']!=len(value['files'])):return False
+        rows={}
+        for row in value['files']:
+            if not isinstance(row,dict) or set(row)!={'path','sha256','bytes'}:return False
+            path=row['path']
+            if (not isinstance(path,str) or not 1<=len(path)<=240 or '\\' in path
+                    or pathlib.PurePosixPath(path).is_absolute() or str(pathlib.PurePosixPath(path))!=path
+                    or any(part in ('.','..','api-v2.php') for part in path.split('/')) or path in rows
+                    or not isinstance(row['sha256'],str) or re.fullmatch('[a-f0-9]{64}',row['sha256']) is None
+                    or type(row['bytes']) is not int or not 0<row['bytes']<=8*1024*1024):return False
+            rows[path]=(row['bytes'],row['sha256'])
+        return all(rows.get(path)==record for path,record in PS_REQUIRED.items())
+    except (ValueError,UnicodeError,RecursionError):return False
+
+def passive_fuel_activation_plan(snapshot=None):
+    initial=pp_snapshot() if snapshot is None else snapshot
+    value=ps_base_plan(initial)  # Full extended snapshot also checked after validation.
+    records=initial[1]
+    absent=records['private_gateway'] is None and records['nested_gateway'] is None
+    verified=(ps_manifest(initial[0]['stock_manifest']) and records['stock_manifest']['mode']==0o644
+        and initial[2]['stock_manifest'][-2]==os.getuid())
+    topology=verified and absent
+    value['stock_topology']={'status':'verified_stock_exclusion' if topology else 'gateway_present'
+        if not absent else 'unrecognized_manifest','publisher_source_sha':PS_SOURCE,
+        'required_rows_verified':verified,'manifest_record':records['stock_manifest'],
+        'nested_gateway_record':records['nested_gateway']}
+    if topology:value['private_caller_state']='excluded_by_stock_publisher'
+    flags=('gateway_predecessor_matches','passive_predecessor_matches','dependencies_exact',
+        'db_predecessor_matches','private_db_dependency_matches','root_config_predecessor_matches',
+        'proxy_predecessor_matches','store_directory_owner_matches','binding_identity_stable','protected_unchanged')
+    value['status']='ready' if topology and all(value[k] for k in flags) and value['store_state']=='verified_stock_binding' else 'hold'
+    return value
+'''
+
+
 def remote_program(remote, command=None):
     command = policy(command)
     mode = command['mode']
@@ -680,8 +762,8 @@ def remote_program(remote, command=None):
     size = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(marker) == remote.count(dispatch) == remote.count(size) == 1
          and remote.count(exclusion) == 2, 'passive_registration_drift')
-    reader = INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
-    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE) else SOURCE_HASHES
+    reader = STOCK_REMOTE if mode == STOCK_MODE else INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
+    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE) else SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -691,7 +773,7 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
-    if mode == INSTALL_MODE:
+    if mode in (INSTALL_MODE, STOCK_MODE):
         registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
         activation=result['passive_fuel_activation']
         result['production_after']=fingerprints()
@@ -709,6 +791,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
     if command['mode'] == PLAN_MODE:return plan_completed(command, result)
     private = command['mode'] == PRIVATE_MODE
@@ -841,3 +924,33 @@ def install_completed(command,result):
         and type(value['runtime_writes']) is int and value['runtime_writes']==2
         and type(value['staging_file_writes']) is int and value['staging_file_writes']==2
         and result.get('runtime_changed') is True)
+
+
+def stock_completed(command,result):
+    if (command!=parse([STOCK_SOURCE,STOCK_MODE,STOCK_OPERATION])
+            or any(result.get(k)!=command[k] for k in command)):return False
+    value=result.get('passive_fuel_activation')
+    if not isinstance(value,dict) or not isinstance(value.get('preflight'),dict):return False
+    preflight=dict(value['preflight']);topology=preflight.pop('stock_topology',None)
+    if (not isinstance(topology,dict) or set(topology)!={'status','publisher_source_sha','required_rows_verified',
+            'manifest_record','nested_gateway_record'} or topology['publisher_source_sha']!=STOCK_PUBLISHER_SOURCE
+            or type(topology['required_rows_verified']) is not bool
+            or topology['status'] not in ('verified_stock_exclusion','gateway_present','unrecognized_manifest')):return False
+    def record(row):
+        return row is None or (isinstance(row,dict) and set(row)=={'sha256','bytes','mode'}
+            and isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256']) is not None
+            and type(row['bytes']) is int and 0<row['bytes']<=1024*1024
+            and type(row['mode']) is int and 0<=row['mode']<=0o7777)
+    if not all(record(topology[k]) for k in ('manifest_record','nested_gateway_record')):return False
+    if topology['status']=='verified_stock_exclusion':
+        if (topology['required_rows_verified'] is not True or topology['manifest_record'] is None
+                or topology['manifest_record']['mode']!=0o644
+                or topology['nested_gateway_record'] is not None or preflight.get('private_gateway_record') is not None
+                or preflight.get('private_caller_state')!='excluded_by_stock_publisher'):return False
+        # Reuse the complete original two-file receipt validator only after this
+        # separate positive publisher-topology proof, never for the sealed mode.
+        preflight['private_caller_state']='compatible_pr4732'
+    elif preflight.get('status')!='hold' or preflight.get('private_caller_state')=='excluded_by_stock_publisher':return False
+    original=parse([INSTALL_SOURCE,INSTALL_MODE,INSTALL_OPERATION])
+    normalized={**result,**original,'passive_fuel_activation':{**value,'preflight':preflight}}
+    return install_completed(original,normalized)
