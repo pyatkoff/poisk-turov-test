@@ -124,7 +124,11 @@ copy($dbSource,$preloadedDb);
 $runtimeStart = strpos($api,'function tourvisor_fuel_passive_runtime(');
 $runtimeEnd = strpos($api,'function tourvisor_fuel_passive_tour(',$runtimeStart===false?0:$runtimeStart);
 tvpf_ok($runtimeStart!==false&&$runtimeEnd!==false&&$runtimeEnd>$runtimeStart,'runtime function bounds');
-$runtime = str_replace('__DIR__',var_export($gatewayDirectory,true),substr($api,$runtimeStart,$runtimeEnd-$runtimeStart));
+$rootStart = strpos($api,'function tourvisor_fuel_passive_root(');
+$rootEnd = strpos($api,'/** Optional passive evidence', $rootStart === false ? 0 : $rootStart);
+tvpf_ok($rootStart !== false && $rootEnd !== false && $rootEnd > $rootStart, 'runtime root bounds');
+$rootSource = substr($api,$rootStart,$rootEnd-$rootStart);
+$runtime = str_replace('__DIR__',var_export($gatewayDirectory,true),$rootSource.substr($api,$runtimeStart,$runtimeEnd-$runtimeStart));
 $passivePath = realpath(__DIR__.'/../app/integrations/tourvisor-operator-fuel-passive-intake.php');
 foreach (['absent','none','complete','partial'] as $case) {
     $child = '$case='.var_export($case,true).';$preloaded='.var_export($preloadedDb,true).';'
@@ -154,25 +158,30 @@ CHILD;
 }
 unlink($gatewayDirectory.'/data/db-v1.php');rmdir($gatewayDirectory.'/data');rmdir($gatewayDirectory);unlink($preloadedDb);
 
-// Optional helpers must load from the deployed root or source /v2 layout;
-// incomplete installation and already loaded classes must stay harmless.
-$bootstrapStart = strpos($api, 'function tourvisor_fuel_passive_bootstrap(');
+// Only the existing private INT runtime is authoritative. Decoy ROOT/parent
+// layouts, incomplete dependencies and symlink ancestors must not be loaded.
+$bootstrapStart = $rootStart;
 $bootstrapEnd = strpos($api, 'tourvisor_fuel_passive_bootstrap();', $bootstrapStart === false ? 0 : $bootstrapStart);
 tvpf_ok($bootstrapStart !== false && $bootstrapEnd !== false, 'bootstrap function bounds');
 $bootstrapSource = substr($api, $bootstrapStart, $bootstrapEnd - $bootstrapStart);
 $helperFiles = ['tourvisor-operator-fuel-passive-intake.php', 'tourvisor-operator-fuel-retained-intake.php',
     'operator-fuel-rule-store.php', 'operator-fuel-rule-evidence.php'];
-foreach (['root', 'v2', 'missing', 'complete', 'partial', 'symlink'] as $case) {
+foreach (['runtime', 'root', 'parent', 'missing', 'complete', 'partial', 'symlink', 'ancestor'] as $case) {
     $layout = $root.'/layout-'.$case;
-    $gateway = $case === 'v2' ? $layout.'/v2' : $layout;
+    $gateway = $case === 'parent' ? $layout.'/v2' : $layout;
     mkdir($gateway, 0700, true);
-    $helpers = $layout.'/app/integrations';
+    $privateRuntime = $gateway.'/_preview/search3-anex-candidate';
+    $helpers = in_array($case,['root','parent'],true) ? $layout.'/app/integrations' : $privateRuntime.'/app/integrations';
     mkdir($helpers, 0700, true);
     foreach ($helperFiles as $file) {
         if ($case === 'missing' && $file === 'operator-fuel-rule-store.php') continue;
         $source = dirname($passivePath).'/'.$file;
         if ($case === 'symlink' && $file === 'operator-fuel-rule-store.php') symlink($source, $helpers.'/'.$file);
         else copy($source, $helpers.'/'.$file);
+    }
+    if ($case === 'ancestor') {
+        rename($privateRuntime.'/app', $layout.'/linked-app');
+        symlink($layout.'/linked-app', $privateRuntime.'/app');
     }
     $bootstrap = str_replace('__DIR__', var_export($gateway, true), $bootstrapSource);
     $child = '$case='.var_export($case,true).';$helper='.var_export($passivePath,true).';'
@@ -184,7 +193,7 @@ eval($bootstrap);
 tourvisor_fuel_passive_bootstrap();
 tourvisor_fuel_passive_bootstrap();
 $loaded=class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1',false);
-if($loaded!==in_array($case,['root','v2','complete'],true)) throw new RuntimeException('Bootstrap readiness');
+if($loaded!==in_array($case,['runtime','complete'],true)) throw new RuntimeException('Bootstrap readiness');
 if(function_exists('v2_data_db')) throw new RuntimeException('Bootstrap eagerly loaded DB');
 echo 'bootstrap-ok';
 CHILD;
@@ -194,9 +203,16 @@ CHILD;
     fclose($pipes[0]);$stdout=stream_get_contents($pipes[1]);$stderr=stream_get_contents($pipes[2]);
     fclose($pipes[1]);fclose($pipes[2]);$status=proc_close($process);
     tvpf_ok($status===0 && $stderr==='' && $stdout==='bootstrap-ok', $case.' safe bootstrap: '.$stderr);
+    if ($case === 'ancestor') {
+        unlink($privateRuntime.'/app');
+        $helpers = $layout.'/linked-app/integrations';
+    }
     foreach (glob($helpers.'/*') ?: [] as $file) unlink($file);
     rmdir($helpers);rmdir(dirname($helpers));
-    if ($case === 'v2') rmdir($gateway);
+    if (!in_array($case,['root','parent'],true)) {
+        rmdir($privateRuntime);rmdir(dirname($privateRuntime));
+    }
+    if ($case === 'parent') rmdir($gateway);
     rmdir($layout);
 }
 
@@ -204,9 +220,11 @@ CHILD;
 // Best-effort evidence failure must not alter the supplier response or call count.
 $gatewayDirectory = $root.'/response-gateway';
 mkdir($gatewayDirectory,0700);
-file_put_contents($gatewayDirectory.'/.andromeda-private.php', '<?php return '.var_export(['catalog_path'=>$root.'/catalog.json'],true).';');
+$privateRuntime = $gatewayDirectory.'/_preview/search3-anex-candidate';
+mkdir($privateRuntime,0700,true);
+file_put_contents($privateRuntime.'/.andromeda-private.php', '<?php return '.var_export(['catalog_path'=>$root.'/catalog.json'],true).';');
 $wrapperEnd = strpos($api, '$action = short_text(', $runtimeStart);
-$wrappers = str_replace('__DIR__', var_export($gatewayDirectory,true), substr($api,$runtimeStart,$wrapperEnd-$runtimeStart));
+$wrappers = str_replace('__DIR__', var_export($gatewayDirectory,true), $rootSource.substr($api,$runtimeStart,$wrapperEnd-$runtimeStart));
 foreach (['tour','flights'] as $action) {
     $start = strpos($api,"case '".$action."':");
     $end = strpos($api,$action==='tour'?"case 'flights':":"case 'rooms':",$start+1);
@@ -235,8 +253,8 @@ CHILD;
     fclose($pipes[1]);fclose($pipes[2]);$status=proc_close($process);
     tvpf_ok($status===0 && $stderr==='' && $stdout==='response-ok',$action.' transparent response: '.$stderr);
 }
-unlink($gatewayDirectory.'/.andromeda-private.php');rmdir($gatewayDirectory);
+unlink($privateRuntime.'/.andromeda-private.php');rmdir($privateRuntime);rmdir(dirname($privateRuntime));rmdir($gatewayDirectory);
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 bootstrap_cases=6 response_cases=2\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 bootstrap_cases=8 response_cases=2\n";
