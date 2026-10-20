@@ -132,6 +132,12 @@ $withInfants = json_decode((string)file_get_contents($rules[0]),true,64,JSON_THR
 $infantRows = array_values(array_filter($withInfants['observations'],static fn(array $row): bool => $row['scope']['party']===$infantParty));
 tvpf_ok(count($infantRows)===2 && $infantRows[0]['scope']['party']['child_ages']===[0],'age zero retained in both observations');
 
+$nearExpiryId = '43282561000943';
+$add($nearExpiryId);
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($nearExpiryId,tvpf_tour($nearExpiryId,1250,7),$db,$directory,$now);
+$nearExpiryPair = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($nearExpiryId,tvpf_flights(),$directory,$now->modify('+899 seconds'));
+tvpf_ok(($nearExpiryPair['ok']??null)===true && ($nearExpiryPair['ruleConfirmed']??null)===true,'pending pair usable immediately before expiry');
+
 $expiredId = '43282561000940';
 $add($expiredId);
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($expiredId,tvpf_tour($expiredId,1300,7),$db,$directory,$now);
@@ -164,10 +170,16 @@ AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($changedId,$changedTour
 $changedFuel = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($changedId,$changedFlights,$directory,$now->modify('+60 seconds'));
 tvpf_ok(($changedFuel['ruleConfirmed']??null)===false,'changed fuel invalidates prior corroboration');
 $beforeConflictReads = file_get_contents($rules[0]);
+$conflicting = json_decode((string)$beforeConflictReads,true,64,JSON_THROW_ON_ERROR);
+foreach ($stored['observations'] as $original) {
+    tvpf_ok(in_array($original,$conflicting['observations'],true),'conflict retains each original adult observation');
+}
+$changedRows = array_values(array_filter($conflicting['observations'],static fn(array $row): bool => $row['amount']==='35000.00'));
+tvpf_ok(count($changedRows)===1,'new changed amount retained alongside original evidence');
 tvpf_ok(AnyTourOperatorFuelRuleStoreV1::inputForTarget($directory,$target,$now->getTimestamp()+60)===null,'conflicting fresh fuel unavailable for target');
 tvpf_ok(AnyTourOperatorFuelRuleStoreV1::inputForTarget($directory,$target,$now->getTimestamp()+60)===null,'repeated resolution cannot revive conflicting rule');
 tvpf_ok(file_get_contents($rules[0])===$beforeConflictReads,'conflict resolution does not rewrite old evidence');
-tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===7,'lifecycle bridge made no DB writes');
+tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===8,'lifecycle bridge made no DB writes');
 
 $missing = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour('999999',tvpf_tour('999999',1111,7),$db,$directory,$now);
 tvpf_ok(($missing['reason']??null)==='offer_context_missing','unknown offer fails closed');
@@ -330,4 +342,4 @@ unlink($privateRuntime.'/.andromeda-private.php');rmdir($privateRuntime);rmdir(d
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK baseline_observations=2 baseline_rules=1 lifecycle_cases=5 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 bootstrap_cases=8 response_cases=2\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK baseline_observations=2 baseline_rules=1 lifecycle_cases=5 supplier_http_added=0 db_writes=0 baseline_hotels=2 baseline_nights=7,14 include_cases=4 bootstrap_cases=8 response_cases=2\n";
