@@ -454,7 +454,8 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   }
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  assert.equal(measurements.screen,logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen,'Captured frame must show the requested usable screen, never a replacement startup shell');
+  const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead'}[logicalScreen];
+  assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
@@ -1356,20 +1357,20 @@ async function referenceFrame(page,width,percent,screen,row) {
 
         // Genuine saved hotel identity/media, explicitly controlled fictional
         // offers. These exact JPEG URLs are fulfilled from retained bytes above.
-        await page.goBack();await screen('tour').waitFor({state:'visible'});
-        await page.goBack();await screen('hotel').waitFor({state:'visible'});
-        await page.goBack();await screen('results').waitFor({state:'visible'});
+        await screen('lead').locator('[data-action="tour"]').click();await screen('tour').waitFor({state:'visible'});
+        await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+        await screen('hotel').locator('[data-action="results"]').click();await screen('results').waitFor({state:'visible'});
         const reset=product.locator('[data-action="reset-filters"]:visible').first();if(await reset.isVisible())await reset.click();
         const onlyFavorite=product.locator('[data-action="favorites"][aria-pressed="true"]:visible').first();if(await onlyFavorite.isVisible())await onlyFavorite.click();
         const mediaOps=await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit};});
         await page.evaluate(()=>window.__nativeFixture.installContent());
         const contentCard=product.locator('[data-hotel-card="'+retainedMedia.hotel.id+'"]'),cardPhoto=contentCard.locator('[data-card-photo]');
         await contentCard.waitFor({state:'visible'});
-        await page.waitForFunction(id=>document.querySelector('[data-product]:not([hidden]) [data-card-photo="'+id+'"]')?.dataset.nativePhotoState==='error',retainedMedia.hotel.id);
+        await contentCard.locator('[data-card-photo][data-native-photo-state="error"]').waitFor({state:'visible'});
         assert.match(await cardPhoto.innerText(),/Не удалось загрузить фото/);
         assert.equal(await cardPhoto.evaluate(node=>node.style.backgroundImage),'none');
         failFirstMedia=false;await cardPhoto.locator('[data-native-photo-retry]').click();
-        await page.waitForFunction(id=>document.querySelector('[data-product]:not([hidden]) [data-card-photo="'+id+'"]')?.dataset.nativePhotoState==='loaded',retainedMedia.hotel.id);
+        await contentCard.locator('[data-card-photo][data-native-photo-state="loaded"]').waitFor({state:'visible'});
         assert((await cardPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[0].sourceURL));
         await capture(page,'native',width,percent,'content-results',row);
         await contentCard.locator('[data-hotel-open]').first().click();await screen('hotel').waitFor({state:'visible'});
@@ -1380,7 +1381,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await galleryPhoto.evaluate(node=>node.style.backgroundSize),'contain','Gallery shows the whole photograph instead of a card crop');
         const secondRequest=page.waitForRequest(retainedMedia.images[1].sourceURL);
         await screen('gallery').locator('[data-direction="1"]').click();await secondRequest;
-        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='loading');
+        await product.locator('[data-gallery-photo][data-native-photo-state="loading"]').waitFor({state:'visible'});
         assert(releaseSecondMedia,'The second original photograph is held, not replaced with another image');
         await screen('gallery').locator('[data-direction="-1"]').click();
         assert.equal(await product.locator('[data-gallery-counter]').innerText(),'1 / 2');
@@ -1390,11 +1391,11 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await galleryPhoto.getAttribute('data-native-photo-state'),'loaded','Late failed image must not replace the current photograph');
         assert((await galleryPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[0].sourceURL));
         await screen('gallery').locator('[data-direction="1"]').click();
-        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='error');
+        await product.locator('[data-gallery-photo][data-native-photo-state="error"]').waitFor({state:'visible'});
         assert.equal(await product.locator('[data-gallery-counter]').innerText(),'2 / 2');
         await capture(page,'native',width,percent,'content-gallery-error',row);
         await galleryPhoto.locator('[data-native-photo-retry]').click();
-        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='loaded');
+        await product.locator('[data-gallery-photo][data-native-photo-state="loaded"]').waitFor({state:'visible'});
         assert((await galleryPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[1].sourceURL));
         await capture(page,'native',width,percent,'content-gallery',row);
         await screen('gallery').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
@@ -1411,13 +1412,13 @@ async function referenceFrame(page,width,percent,screen,row) {
         await checkContact.click();assert.match(await contactStatus.innerText(),/от 10 до 15 цифр/);
         failFirstMedia=true;
         await page.setViewportSize({width:width===430?1280:430,height:900});await screen('lead').waitFor({state:'visible'});
-        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-lead-thumb]')?.dataset.nativePhotoState==='error');
+        await product.locator('[data-lead-thumb][data-native-photo-state="error"]').waitFor({state:'visible'});
         assert.equal(await product.locator('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]').evaluateAll(nodes=>nodes.length===3 && nodes.every(node=>!node.querySelector('button') && !node.querySelector('.st-photo-empty-message span'))),true,'Small thumbnails use a truthful icon without large photo error controls');
         assert.equal(await contentForm.locator('[name="phone"]').inputValue(),'123');assert.equal(await contentForm.locator('[name="phone"]').evaluate(node=>node.validity.customError),true);
         await checkContact.click();assert.match(await contactStatus.innerText(),/от 10 до 15 цифр/);
         failFirstMedia=false;
         await page.setViewportSize({width,height:900});await screen('lead').waitFor({state:'visible'});
-        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-lead-thumb]')?.dataset.nativePhotoState==='loaded');
+        await product.locator('[data-lead-thumb][data-native-photo-state="loaded"]').waitFor({state:'visible'});
         await capture(page,'native',width,percent,'content-contact-invalid',row);
         await contentForm.locator('[name="phone"]').fill('   ');await checkContact.click();assert.match(await contactStatus.innerText(),/Укажите номер телефона/);
         await contentForm.locator('[name="phone"]').fill('+7 999 000 00 00');await contentForm.locator('[name="consent"]').uncheck();
