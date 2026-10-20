@@ -637,17 +637,34 @@ class ContinuationTest(unittest.TestCase):
 
     def test_new_owner60_policy_does_not_retarget_or_reopen_the_old_scope(self):
         self.assertEqual('458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31',m.NEXT_SCOPE['sha256'])
-        c=core();m.register_parser(c);p=m.NEXT_60_SCOPE
-        command=c.PREFIX+' '.join((SHA,'match-retained-acquire',p['operation_id'],p['cohort'],p['parent_operation_id']))
-        parsed=c.parse_command(command)
-        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
-        self.assertIn('NEXT_SCOPE='+repr(p),c.REMOTE)
-        for bad in (command.replace(p['operation_id'],m.NEXT_SCOPE['operation_id']),
-                    command.replace(p['cohort'],m.NEXT_SCOPE['cohort']),command.replace('match-retained-acquire','match-retained-readback')):
-            with self.assertRaises(ValueError):c.parse_command(bad)
+        self.assertEqual('266f0791573661882104a39ec1b4206940cec16eefef29de4d2e0a11f52ede07',m.NEXT_60_SCOPE['sha256'])
+        for p in (m.NEXT_60_SCOPE,m.NEXT_WIDE_SCOPE):
+            c=core();m.register_parser(c)
+            command=c.PREFIX+' '.join((SHA,'match-retained-acquire',p['operation_id'],p['cohort'],p['parent_operation_id']))
+            parsed=c.parse_command(command)
+            with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+            self.assertIn('NEXT_SCOPE='+repr(p),c.REMOTE)
+            self.assertIn("'continuation_scope_path':NEXT_SCOPE['path']",c.REMOTE)
+            for bad in (command.replace(p['operation_id'],m.NEXT_SCOPE['operation_id']),
+                        command.replace(p['cohort'],m.NEXT_SCOPE['cohort']),command.replace('match-retained-acquire','match-retained-readback')):
+                with self.assertRaises(ValueError):c.parse_command(bad)
 
 
 class AcquisitionTest(unittest.TestCase):
+    def test_scope_loader_requires_both_controller_digest_and_exact_carrier_manifest_without_path_escape(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);relative=m.NEXT_WIDE_SCOPE['path'];path=root/relative;path.parent.mkdir(parents=True)
+            scope={'scope_id':'fixture'};raw=a.canonical(scope);path.write_bytes(raw);digest=hashlib.sha256(raw).hexdigest()
+            manifest={'schema_version':1,'files':{relative:digest}};(root/'manifest.json').write_bytes(a.canonical(manifest))
+            data={'continuation_scope':scope,'continuation_scope_path':relative,'continuation_scope_sha256':digest}
+            self.assertEqual(scope,a.load_scope_file(root,data))
+            for rel in ('../scope.json','/tmp/scope.json','scripts/diagnostics/fixtures/../../secret.json'):
+                with self.assertRaisesRegex(ValueError,'scope_path'):a.load_scope_file(root,dict(data,continuation_scope_path=rel))
+            for changed in (dict(data,continuation_scope_sha256='0'*64),dict(data,continuation_scope={'scope_id':'changed'})):
+                with self.assertRaisesRegex(ValueError,'scope_binding'):a.load_scope_file(root,changed)
+            manifest['files'].clear();(root/'manifest.json').write_bytes(a.canonical(manifest))
+            with self.assertRaisesRegex(ValueError,'scope_binding'):a.load_scope_file(root,data)
+
     def date_scope(self):
         scope,current=ContinuationTest().fixture()
         peer={'tv_hotel_id':103,'target':{'country_id':2},'future_context':dict(current['rows'][0]['future_context'],hotel_id=103,departure_date='2099-02-01',nights=6)}
