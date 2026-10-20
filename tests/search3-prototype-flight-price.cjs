@@ -33,6 +33,48 @@ vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/d
  assert.equal(data.fuel({fuelCharge:20686},{}),20686,'Only an absent pair fuel field can use the tour amount');
  assert.equal(calls.length,beforeFuel,'Fuel validation makes no supplier calls');
  await data.init();await data.search({origin:'Москва',country:'4',from:'2026-10-01',to:'2026-10-01',minNights:7,maxNights:7,adults:2,ages:[]},()=>{});
+ const blockedOperators=['Coral',' CORAL-TRAVEL ','Корал Тревел','Корал Трэвел','Sunmar','Sunmar Tour','Санмар',
+  {name:'Coral Travel'},{russianName:'Санмар'},{name:'Coral Travel',russianName:'Неизвестная подпись'},
+  {name:'Неизвестная подпись',russianName:'Санмар'}];
+ const blocked=error=>error.code==='tourvisor_operator_unsupported'&&error.retryable===false;
+ for(const operator of blockedOperators){
+  for(const field of ['operator','operatorName']){
+   const before=calls.length;
+   await assert.rejects(data.quote({raw:{id:'exact-tour',[field]:operator},provider:'tourvisor',cached:false}),blocked);
+   await assert.rejects(data.flights({id:'exact-tour',[field]:operator}),blocked);
+   assert.equal(calls.length,before,'Unsupported operators never initiate a Tourvisor quote or flight request');
+  }
+ }
+ for(const operator of ['ANEX','FUN&SUN','Unknown operator',undefined]){
+  reply={id:'exact-tour',price:120000};flightReply=[];
+  const before=calls.length,quoted=await data.quote({raw:{id:'exact-tour',operator},provider:'tourvisor',cached:false});
+  assert.equal(quoted.price,120000,'Allowed/unknown operator retains its own unchanged supplier price');
+  await data.flights(quoted);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls.slice(before))),[
+   {action:'tour',params:{tourId:'exact-tour',currency:'RUB'}},
+   {action:'flights',params:{tourId:'exact-tour',currency:'RUB'}}
+  ],'Allowed operators keep the existing request contract when response operator is absent');
+  quoted.operator={name:'Sunmar'};
+  const afterQuote=calls.length;
+  await assert.rejects(data.flights(quoted),blocked);
+  assert.equal(calls.length,afterQuote,'A blocked operator discovered after quoting cannot request flights');
+ }
+ for(const operator of blockedOperators){
+  reply={id:'exact-tour',price:120000,operator};
+  const before=calls.length;
+  await assert.rejects(data.quote({raw:{id:'exact-tour'},provider:'tourvisor',cached:false}),blocked);
+  assert.equal(calls.length,before+1,'Unknown listing ownership may be discovered only by its one quote response');
+  assert.throws(()=>data.leadSession({raw:{id:'exact-tour'},tour:reply,provider:'tourvisor',cached:false,flightChoiceId:null}),/устарело/,'Rejected response never acquires quote authority');
+ }
+ reply={id:'exact-tour',price:120000};
+ const sourceOperator={name:'ANEX'},quotedWithoutOperator=await data.quote({raw:{id:'exact-tour',operator:sourceOperator},provider:'tourvisor',cached:false});
+ sourceOperator.name='Sunmar';
+ const beforeReceiptCheck=calls.length;
+ await assert.rejects(data.flights(quotedWithoutOperator),blocked);
+ assert.equal(calls.length,beforeReceiptCheck,'Receipt retains source policy when the quote response omits operator');
+ reply={id:'exact-tour',price:120000,operatorName:'Coral Travel'};
+ await assert.rejects(data.quote({raw:{id:'exact-tour'},provider:'tourvisor',cached:false}),blocked);
+ reply={id:'exact-tour',price:120000};flightReply=[];
  const raw={id:'exact-tour'},offer={raw,provider:'tourvisor',cached:false,flightChoiceId:null};
  offer.tour=await data.quote(offer);
  for(const flightState of [{flightsLoading:true},{flightsError:'Не удалось загрузить рейсы.'}]){
@@ -70,5 +112,5 @@ vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/d
  assert.equal(handoffs[1].flight,null,'The existing no-flight fallback remains explicit');
  for(const price of [undefined,null,0,-1]){reply={id:'exact-tour',price};await assert.rejects(data.quote(offer),/подтвердить/,'An unavailable exact-tour price cannot reuse the listing');}
  data.stop();assert.throws(()=>session.payload({}),/изменились/);
- console.log('Prototype flight handoff: pending/failed/malformed blocked; priced and explicit empty flight context preserved. Supplier/lead calls: 0.');
+ console.log('Prototype flight handoff: Coral/Sunmar zero-call policy; allowed contracts and pending/failed/malformed guards preserved. Supplier/lead calls: 0.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

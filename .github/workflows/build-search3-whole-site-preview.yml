@@ -20,6 +20,7 @@ on:
       - 'tests/search3-prototype-continuation-coverage.cjs'
       - 'tests/search3-prototype-anex-continuation.cjs'
       - 'tests/search3-prototype-selected-tour-retention.cjs'
+      - 'tests/search3-prototype-flight-price.cjs'
       - 'tests/search3-prototype-provider-config-v1.cjs'
       - 'tests/search3-prototype-inventory-browser.py'
       - 'tests/search3-hotel-content-browser.py'
@@ -107,6 +108,7 @@ jobs:
           node tests/search3-prototype-continuation-coverage.cjs
           node tests/search3-prototype-anex-continuation.cjs
           node tests/search3-prototype-selected-tour-retention.cjs
+          node tests/search3-prototype-flight-price.cjs
           node tests/search3-prototype-provider-application-preview.cjs
           node tests/search3-prototype-provider-config-v1.cjs
           python3 -B tests/search3_source_build_test.py
