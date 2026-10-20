@@ -240,6 +240,14 @@
     const key=label.toLocaleUpperCase('ru-RU').replace(/[._-]+/g,' ').replace(/\s*&\s*/g,'&').replace(/\s+/g,' ').trim();
     return operatorAliases[key]||label;
   }
+  function assertTourvisorRecalculationSupported(...values){
+    const blocked=new Set(['CORAL','CORAL TRAVEL','КОРАЛ','КОРАЛ ТРЕВЕЛ','КОРАЛ ТРЭВЕЛ','SUNMAR','SUNMAR TOUR','САНМАР']);
+    for(const value of values){
+      const labels=value&&typeof value==='object'?[value.name,value.russianName]:[value];
+      if(labels.some(label=>typeof label==='string'&&blocked.has(label.trim().toLocaleUpperCase('ru-RU').replace(/[._-]+/g,' ').replace(/\s+/g,' ').trim())))
+        throw Object.assign(new Error('Актуализация и рейсы Coral Travel и Sunmar через Tourvisor недоступны.'),{code:'tourvisor_operator_unsupported',retryable:false});
+    }
+  }
   const image = value => { const raw=typeof value === 'object' && value ? value.url || value.src : value; if(typeof raw!=='string'||!raw.trim())return ''; try { const url = new URL(raw, root.location.href); return ['https:', 'http:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
   async function destinationCatalog(action,params={},signal){
     const query=new URLSearchParams({action});Object.entries(params).forEach(([key,value])=>{if(value!==''&&value!==null&&value!==undefined)query.set(key,String(value));});
@@ -1919,14 +1927,18 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
   }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
+    assertTourvisorRecalculationSupported(o.raw.operator,o.raw.operatorName);
     const run=generation,id=searchId;
+    const sourceOperators=[o.raw.operator,o.raw.operatorName];
     const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
     if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
     if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
-    quoteReceipts.set(t,{generation:run,searchId:id});
+    assertTourvisorRecalculationSupported(...sourceOperators,t.operator,t.operatorName);
+    quoteReceipts.set(t,{generation:run,searchId:id,sourceOperators});
     return t;
   }
   async function flights(t) {
+    assertTourvisorRecalculationSupported(...(quoteReceipts.get(t)?.sourceOperators||[]),t?.operator,t?.operatorName);
     const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
     if(Array.isArray(data))return data;
     if(Array.isArray(data?.flights))return data.flights;
