@@ -36,12 +36,13 @@ tariff/search units учитывать отдельно, не выдавая и�
 израсходованными, зарезервированными и UNKNOWN вызовами и учётом остальных
 потребителей этой учётки. Неизмеренный глобальный расход не означает5000 свободных.
 
-Аудит исходников выявил расхождение: MATCH v10 ограничивает3000 тарифных units,
-fixed selectors —3000 физических и тарифных, а cap5000 в v10 относится к одной
-операции. Старые frozen операции не менять и не переоткрывать. Для следующего
-нового acquisition согласовать в существующем контуре одну действующую policy5000,
-один протокол блокировки общего day ledger и раздельные счётчики; сохранить
-used/operations/UNKNOWN. Правка плана не означает, что runtime уже переведён на5000.
+**Реализовано и применено20.10.2026:** общий helper
+`hotel_match_tourvisor_quota_v1.py` и owner policy5000 в существующем
+account/provider-day ledger (успешный run39341012567, день2026-10-20).
+Physical HTTP и tariff units раздельны; reservation до HTTP, request-ID no-replay,
+оба существующих lock protocol и used/operations/UNKNOWN сохранены. Новый acquisition
+обязан использовать этот helper; старые frozen runners/receipts не переоткрываются.
+Глобальный расход учётки остаётся not_measured:5000 не объявляются свободным остатком.
 
 Все новые supplier-запросы MATCH для hotel/operator identity выполнять через
 **Турвизор, учётка `TOURVISOR_ANEX_JWT`**. Это выделенный ключ Турвизора,
@@ -78,19 +79,37 @@ hotel↔TO pairs не найден. Это граница выполненног
 Operator/native source proof, CURRENT guards и SUNRISE/Kemper qualifier/cluster holds
 остаются отдельными; новых принятых соответствий это не создаёт.
 
-**Следующий конкретный data-пакет:** типизированные операторские строки из
-`tour_operator_identity_observations` и сохранённых
-`local_tv_legacy_links.snapshot_json.sources[]` → проверка independent TV/native
-proof и существующей accepted ownership → штатная CURRENT acceptance/readback
-для пригодной части. Публичный content DTO не заменяет private source records.
-Read-only проверка действующего main/executor завершена: подходящего unfrozen
-режима для этих двух источников нет. Первый инженерный результат — один конечный
-пакетный capture/projection contract в существующем carrier: явный cohort/поля,
-read-only и durable evidence, supplier0/DML0; затем обычные review/действующие gates.
-Старые fixed modes не ретаргетируются; причина — недостающий intake-контракт.
-Полученный пакет разбирать целиком, принимать независимо доказанную часть и
-адресно получать недостающий proof через `TOURVISOR_ANEX_JWT` с общей policy5000.
-Новых accepted mappings в проверке передачи нет; план/схема/исследование не gain.
+**Пакетный intake реализован и выполнен20.10.2026.** Штатный carrier теперь
+читает `tour_operator_identity_observations` и проверенные
+`local_tv_legacy_links.snapshot_json.sources[]` одной SELECT-only snapshot,
+сохраняет private raw до parsing и sanitized projection. Используется reviewed DB
+helper из immutable source bundle; меняющаяся installed копия не исполняется.
+Target SELECT ограничен observed/legacy IDs, без переписи всего каталога.
+
+Фактический результат и receipts — в
+[отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json):
+13611 observations,14687 sources,15298 registry rows,5310 scoped targets,
+raw62108585bytes/SHA25600c992ec…. Saved projection повторно использует эту выгрузку
+без нового чтения БД и supplier calls; parent receipt/raw остаются неизменными.
+Проверены448 уже accepted common4 tuples на195 TV hotels; **новых accepted0**.
+Registry counts относятся к `andromeda_hotel_identities`, direct ANEX effective
+registry и live30/SEARCH эффект в этом пакете не измерялись.
+
+Рабочий retained cohort5214 TV-ID включает5075 мигрированных и139 дополнительных
+ID наблюдений. Это не139 новых отелей или доказанных missing-provider связей.
+6917 наблюдений отнесены к common4 по retained ID hints13/18/25/43; остальные6694
+сохранены как other/unbound. Hints не доказывают доступ текущей учётки или namespace
+bridge. В поддержанных URL/native fields этих6917 новые native IDs не распознаны;
+полнота/формат всего raw operatorLink ещё не установлены.
+
+**Следующий data-результат:** проверить полноту/формат сохранённых operatorLink и
+независимый native namespace proof для полезной группы из этой же выгрузки.
+Только недостающие факты получать адресно через `TOURVISOR_ANEX_JWT` с общим
+quota helper; до массового acquisition подтвердить operator/account binding.
+Пригодные независимые пары проходят штатные CURRENT/manual/exclusion/occupancy/geo
+guards, acceptance/readback/resolver; извлечение ID или CI не считаются gain.
+Старые fixed modes не ретаргетируются. Failed intakev1/v2 reconciled/no-replay;
+успешные quota apply/intakev3/saved projection не повторяются без нового решения.
 
 ### 1. Общий измеримый срез по ТО
 
@@ -183,14 +202,13 @@ MATCH автоматически. Это не требует включать pr
 При отсутствии всех доступных действий сохранить конечный checkpoint и точное
 условие продолжения, без неизменённых нулевых прогонов/новых имён старых операций.
 
-**Ближайший конечный пакет:** пакетный retained intake → разбор сохранённых
-операторских доказательств → штатная проверка/запись пригодной части с per-TO
-readback. Таблица покрытия — результат того же прохода. Параллельно подготовить
-единую quota-policy5000 для следующего acquisition; новые запросы направлять на
-конкретные пробелы, а не на исчерпание дневного лимита. Считать принятые связи/HTTP
-и время;5000 запросов не означают5000 новых отелей. Датированный старый срез
-остаётся историческим. Подготовка плана не является data gain или возобновлением
-приостановленного MATCH task; операционные состояния читаются из свежих receipts.
+**Ближайший конечный пакет:** независимое native/namespace доказательство для
+полезной retained группы → CURRENT → пригодная acceptance/readback. Пакетные
+intake и quota helper уже реализованы и не образуют новую подготовительную очередь.
+Повторный parsing выполняется над COMPLETE saved raw; неизменённую перепись/HTTP
+не повторять. Новые запросы направлять на конкретный пробел и считать принятые
+связи/HTTP/время;5000 запросов не означают5000 новых отелей. Расписания и enabled/paused
+состояния этим пакетом не менялись; текущие operational states читать из receipts.
 
 ## Старт каждого запуска
 
