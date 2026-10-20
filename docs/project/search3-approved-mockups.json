@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "CHECKSUM_ADDRESSED_PRIVATE_EXPORTS_AVAILABLE_COMPARISON_PENDING",
+  "archive": {
+    "filename": "Search3-final-8-mockups.zip",
+    "size_bytes": 10693495,
+    "sha256": "475e9b8f5c40e49c038c880e064c3977b34292ae402d60beae5496494b083699",
+    "entry_count": 8
+  },
+  "exports_total_size_bytes": 11830930,
+  "exports_manifest_sha256": "cbecdac4080b7a7a541a3b9b5de4a4f8448203717728f7ca7afa4ea6373f45b8",
+  "pixels_vendored_in_repository": false,
+  "public_redistribution_authorized": false,
+  "owner_visual_approval": false,
+  "comparison_status": "PENDING",
+  "exports": [
+    {"layout_id":1,"filename":"Интерфейс поиска туров AnyTour.png","width":1536,"height":1024,"size_bytes":1716602,"sha256":"1b53a8968279efa632d5f050a3e18b69c31d32c53708224c166639322c4c1a36"},
+    {"layout_id":2,"filename":"Макет фильтров поиска туров AnyTour.png","width":1024,"height":1536,"size_bytes":1354969,"sha256":"d629be607070d7bbf7bf62235f644a0b22f1180b32c820e59ac3ff98acf68f98"},
+    {"layout_id":3,"filename":"Выбор рейсов AnyTour: десктоп и мобильная версия.png","width":1536,"height":1024,"size_bytes":1410204,"sha256":"262b0049aa5cff521a17c516bcb3d9f490cc30d4048cf12eeaea3b80c7202e22"},
+    {"layout_id":4,"filename":"Итог тура AnyTour: десктоп и мобильная версии.png","width":1536,"height":1024,"size_bytes":1451150,"sha256":"2b3092dc0a9b7e68822a639fa394b91db5ca9697c896ebc82a141a88c6f02f5c"},
+    {"layout_id":5,"filename":"Дизайн страницы бронирования тура AnyTour.png","width":1536,"height":1024,"size_bytes":1429054,"sha256":"8d6a193f7194a21b5050b6e3d4e416686555bb9cb4cb46761c6e4ba02e7b12da"},
+    {"layout_id":6,"filename":"UI-кит заявки на тур AnyTour.png","width":1024,"height":1536,"size_bytes":1514456,"sha256":"3d31322a2d4d4ffdb602d3e450b1c685ea65e6716b243c581dda808046b3c657"},
+    {"layout_id":7,"filename":"Спецификация футера AnyTour: десктоп и мобильная версия.png","width":1536,"height":1024,"size_bytes":1490353,"sha256":"182927f17e5a32a15a6e165270ba51c6c52376e22b219f11931e00e91ff4a5ca"},
+    {"layout_id":8,"filename":"Цельный mobile flow AnyTour: бронирование тура и общение.png","width":1214,"height":1295,"size_bytes":1464142,"sha256":"d5022c84ffcae47215b23920f20715770099773253d332324e9a8a29a61345a7"}
+  ]
+}
