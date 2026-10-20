@@ -813,6 +813,70 @@ class AcquisitionTest(unittest.TestCase):
             self.assertNotIn(token,serialized)
         self.assertEqual(['hotels','opaque:20'],result['path_shape']);self.assertEqual(['HOTELLIST','redacted'],result['query_key_shapes'])
 
+    def test_new_saved_detail_readback_is_exact_receipt_bound_read_only_and_preserves_inputs(self):
+        operation='int-andromeda-match-retained-readback-20261020-v7';profile=copy.deepcopy(m.SAVED_DETAIL_READBACKS[operation])
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);private=home/'private';target=private/profile['target_operation_id'];target.mkdir(parents=True)
+            ledger=home/'.anytoour-match';(ledger/'provider-quotas').mkdir(parents=True)
+            paths={'hotel_selection':ledger/'retained-selection-claims.json','context_selection':ledger/'retained-context-claims.json',
+                   'account_day':ledger/'provider-quotas/tourvisor-anex-2026-10-20.json'}
+            for path in paths.values():path.write_bytes(b'{}')
+            profile.update(hotel_ledger_sha256=hashlib.sha256(b'{}').hexdigest(),context_ledger_sha256=hashlib.sha256(b'{}').hexdigest())
+            scope=dict(m.NEXT_NEVER13_SCOPE);detail={'hotel':616,'operator':13,'operatorLink':'https://agent.anextour.ru/search/tour?HOTELLIST=private-hotel-name'}
+            raw=a.canonical(detail);digest=hashlib.sha256(raw).hexdigest();profile['raw_sha256']=digest
+            data={'operation_id':profile['target_operation_id'],'source_sha':profile['source_sha'],'acquisition_state':'completed',
+                  'unknown_http_calls':0,'selected_hotels':13,'continuation_scope_sha256':scope['sha256'],'scope_id':scope['scope_id'],
+                  'database_writes':0,'mapping_writes':0,'edges':[{'tv_hotel_id':616,'detail_raw':{'raw_sha256':digest,'response_number':4},
+                  'tour_id_sha256':hashlib.sha256(b'1234').hexdigest()}]}
+            profile['evidence_sha256']=hashlib.sha256(a.canonical(data)).hexdigest()
+            wrapper={'operation_id':profile['target_operation_id'],'source_sha':profile['source_sha'],'status':'complete',
+                     'mode':'match-retained-acquire','production_unchanged':True,'database_writes':0,'mapping_writes':0,
+                     'match_retained':{'data':data,'evidence_sha256':profile['evidence_sha256']}}
+            receipt=a.canonical(wrapper);profile['receipt_sha256']=hashlib.sha256(receipt).hexdigest()
+            (target/'result.json').write_bytes(receipt)
+            reservation=a.canonical({'operation_id':profile['target_operation_id'],'source_sha':profile['source_sha']})
+            (target/'reservation.json').write_bytes(reservation);(target/'response-0004.bin').write_bytes(raw)
+            (target/'response-0004.json').write_bytes(a.canonical({'raw_sha256':digest,'http_status':200,'complete_body':True}))
+            (target/'request-0004.json').write_bytes(a.canonical({'action':'tour_detail','path':'/tours/1234'}))
+            def fail(reason):raise ValueError(reason)
+            space={'private':private,'operation':operation,'payload':{'cohort':profile['cohort'],'target_operation_id':profile['target_operation_id']},
+                   'SAVED_DETAIL_READBACKS':{operation:profile},'NEXT_SCOPE':scope,'safe_file':lambda p,b:p.is_file() and not p.is_symlink() and p.stat().st_size<=b,
+                   'safe_json':lambda p,b:json.loads(p.read_bytes()),'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail}
+            exec(m.REMOTE_HANDLER,space);space['retained_next_scope']=lambda stage:scope;space['retained_prior_selection']=lambda value:None
+            before={p:p.read_bytes() for p in target.iterdir()};before.update({p:p.read_bytes() for p in paths.values()})
+            with mock.patch('pathlib.Path.home',return_value=home),mock.patch('subprocess.run',side_effect=AssertionError('no child/HTTP')):
+                out=space['retained_saved_detail'](SOURCE)
+                self.assertEqual((616,0,True),(out['tv_hotel_id'],out['supplier_calls'],out['protected_inputs_unchanged']))
+                self.assertNotIn('private-hotel-name',json.dumps(out));self.assertEqual('non_identifier_text',out['inspection']['selector_analysis'][0]['format'])
+                self.assertFalse(out['inspection']['selector_analysis'][0]['native_namespace_authority'])
+                for path,value in [(target/'result.json',receipt+b' '),(target/'reservation.json',reservation.replace(profile['source_sha'].encode(),b'f'*40)),
+                                   (target/'response-0004.bin',raw+b' '),(paths['hotel_selection'],b'{"changed":true}')]:
+                    saved=path.read_bytes();path.write_bytes(value)
+                    with self.assertRaises(ValueError):space['retained_saved_detail'](SOURCE)
+                    path.write_bytes(saved)
+            self.assertEqual(before,{p:p.read_bytes() for p in before})
+
+    def test_new_saved_readback_parser_completion_and_old_profiles_stay_closed(self):
+        operation='int-andromeda-match-retained-readback-20261020-v7';p=m.SAVED_DETAIL_READBACKS[operation];scope=m.NEXT_NEVER13_SCOPE
+        c=core();m.register_parser(c);body=c.PREFIX+' '.join((SHA,'match-retained-readback',operation,p['cohort'],p['target_operation_id']))
+        parsed=c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+        ast.parse(c.REMOTE);self.assertIn('SAVED_DETAIL_READBACKS='+repr(m.SAVED_DETAIL_READBACKS),c.REMOTE)
+        for bad in [body.replace('readback-20261020-v7','readback-20261020-v8'),body.replace(p['target_operation_id'],m.NEXT_WIDE_SCOPE['operation_id']),
+                    body.replace(p['cohort'],m.NEXT_WIDE_SCOPE['cohort'])]:
+            with self.assertRaises((ValueError,KeyError)):c.parse_command(bad)
+        data={**parsed,'control_source_sha':CONTROL,'state':'saved_detail_inspected_read_only','supplier_calls':0,'database_writes':0,'mapping_writes':0,
+              'no_replay':True,'safe_to_write_now':False,'new_accepted_mappings':0,'continuation_scope_sha256':scope['sha256'],'scope_id':scope['scope_id'],
+              'tv_hotel_id':616,'raw_sha256':p['raw_sha256'],'source_acquisition_receipt_sha256':p['receipt_sha256'],'protected_inputs_unchanged':True,
+              'protected_ledger_sha256':{'hotel_selection':p['hotel_ledger_sha256'],'context_selection':p['context_ledger_sha256'],'account_day':'c'*64}}
+        result={**parsed,'status':'complete','production_unchanged':True,'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(a.canonical(data)).hexdigest()}}
+        self.assertTrue(m.completed_result(parsed,result,CONTROL))
+        for key,value in [('tv_hotel_id',8038),('raw_sha256','f'*64),('source_acquisition_receipt_sha256','f'*64),('protected_inputs_unchanged',False),('new_accepted_mappings',1)]:
+            bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+            bad['match_retained']['evidence_sha256']=hashlib.sha256(a.canonical(bad['match_retained']['data'])).hexdigest()
+            self.assertFalse(m.completed_result(parsed,bad,CONTROL))
+
     def test_saved_selector_structure_preserves_arrays_and_never_promotes_namespace(self):
         for text,kind,tokens in [('[100000001]','json_positive_integer_array',[100000001]),
                                  ('[5844,5844]','json_positive_integer_array',[5844,5844]),
