@@ -32,6 +32,55 @@ jobs:
         with: {ref: "${{ github.event.pull_request.head.sha }}", persist-credentials: false}
       - env: {SEARCH3_ANEX_KEY_NATIVE_CI: '1'}
         run: python3 tests/search3_root_gateway_live_check_test.py
+  tv-diagnostic-contracts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: 19694ed619b57001f32b81c793d862a574a47e0e, path: tv-diagnostic-source, persist-credentials: false}
+      - env:
+          TV_DIAGNOSTIC_NATIVE_CI: '1'
+          TV_DIAGNOSTIC_PRODUCT_SOURCE_ROOT: '${{ github.workspace }}/tv-diagnostic-source'
+        run: python3 tests/search3_root_gateway_install_test.py TvDiagnosticInstall
+  tv-diagnostic-install:
+    concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.ref == 'refs/heads/main' &&
+      github.actor == 'pyatkoff' && github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 &&
+      github.event_name == 'issue_comment' && github.event.action == 'created' &&
+      github.event.issue.number == 4709 && !github.event.issue.pull_request &&
+      github.event.comment.user.id == 226193297 && github.event.comment.author_association == 'OWNER' &&
+      github.event.comment.body == format('/install-search3-root-tv-diagnostics {0} install-20261020-tv-diagnostics-v1', github.sha)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {contents: read, issues: read, checks: read}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: 19694ed619b57001f32b81c793d862a574a47e0e, path: tv-diagnostic-source, persist-credentials: false}
+      - env:
+          TV_DIAGNOSTIC_NATIVE_CI: '1'
+          TV_DIAGNOSTIC_PRODUCT_SOURCE_ROOT: '${{ github.workspace }}/tv-diagnostic-source'
+        run: python3 tests/search3_root_gateway_install_test.py TvDiagnosticInstall
+      - env:
+          GH_TOKEN: '${{ github.token }}'
+          PREVIEW_HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          PREVIEW_USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          PREVIEW_KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+        run: python3 scripts/deploy/search3_root_gateway_install.py tv_diagnostic_install
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: 'search3-root-tv-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}'
+          path: |
+            ${{ runner.temp }}/search3-root-tv-diagnostics/evidence.json
+            ${{ runner.temp }}/search3-root-tv-diagnostics/request.json
+            ${{ runner.temp }}/search3-root-tv-diagnostics/api-v2.php
+          if-no-files-found: warn
+          retention-days: 30
   dependency-install:
     concurrency: {group: deploy-anytoour-production, cancel-in-progress: false}
     if: >-
