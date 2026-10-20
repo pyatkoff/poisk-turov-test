@@ -54,6 +54,7 @@ on:
       - 'tests/int_server_executor_local_tv_capture_test.py'
       - 'tests/local_tv_capture_workflow_test.py'
       - 'scripts/deploy/int_server_executor_match_retained.py'
+      - 'scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json'
       - 'tests/int_server_executor_match_retained_test.py'
   workflow_dispatch:
     inputs:
@@ -156,7 +157,7 @@ jobs:
       - name: Exact reviewed MATCH retained source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: 3f94bbf6c33cdf076983b8e3e712b9156e1b27b7
+          ref: df27fbaff4d0be8945f3ccce2791205c3dbc82ec
           path: match-retained-source
           persist-credentials: false
       - name: MATCH retained intake and shared quota native acceptance
@@ -352,4 +353,5 @@ jobs:
           path: ${{ runner.temp }}/int-direction-store-readback/result.json
           if-no-files-found: warn
           retention-days: 30
+
 
