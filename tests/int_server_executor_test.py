@@ -1194,6 +1194,173 @@ class PrivatePassiveFuelReadinessTest(unittest.TestCase):
             self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
 
 
+class PassiveFuelActivationPlanTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.PLAN_SOURCE,self.p.PLAN_MODE,self.p.PLAN_OPERATION])
+
+    def reader(self,directory):
+        fixture=PrivatePassiveFuelReadinessTest();fixture.setUp()
+        ns,home,project,runtime=fixture.reader(directory)
+        db=ns['PF_DB'];api=ns['PF_PREDECESSOR'];expected=ns['PF_EXPECTED']
+        exec(self.p.PLAN_REMOTE_READER,ns)
+        ns['PP_DB']=db;ns['PF_EXPECTED']=expected
+        ns['PP_TARGETS']['api-v2.php']=(api,ns['PP_TARGETS']['api-v2.php'][1])
+        passive='app/integrations/tourvisor-operator-fuel-passive-intake.php'
+        ns['PP_OLD_PASSIVE']=expected[passive]
+        ns['PP_TARGETS']['_preview/search3-anex-candidate/'+passive]=(expected[passive],self.p.PRIVATE_SOURCE_HASHES[passive])
+        (project/'config.php').write_bytes(b'<?php /* isolated config, never executed */')
+        ns['PP_CONFIG']=hashlib.sha256((project/'config.php').read_bytes()).hexdigest()
+        proxy=b"<?php\nreturn require dirname(__DIR__,4).'/.anytoour-andromeda/search3-preview.php';\n"
+        (runtime/'.andromeda-private.php').write_bytes(proxy);(runtime/'.andromeda-private.php').chmod(0o600)
+        private=home/'.anytoour-andromeda';private.mkdir(mode=0o700)
+        (private/'searches').mkdir(mode=0o700)
+        body="<?php return array ('enabled' => true, 'catalog_path' => '"+str(private/'catalog.json')+"', 'token'=>'SECRET_NEVER_EXPORT');"
+        (private/'search3-preview.php').write_text(body);(private/'search3-preview.php').chmod(0o600)
+        caller=b'<?php /* isolated compatible caller fixture */'
+        (runtime/'api-v2.php').write_bytes(caller);ns['PP_CALLER']=hashlib.sha256(caller).hexdigest()
+        return ns,home,project,runtime,private
+
+    def test_only_fixed_new_plan_scope_and_old_policies_immutable(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.SOURCE,self.p.PLAN_MODE,self.p.PLAN_OPERATION],
+                      [self.p.PLAN_SOURCE,self.p.PLAN_MODE,self.p.PRIVATE_OPERATION],
+                      [self.p.PLAN_SOURCE,self.p.PLAN_MODE,self.p.PLAN_OPERATION,'install']):
+            with self.subTest(parts=parts),self.assertRaises(ValueError):self.p.parse(parts)
+        self.assertEqual('670245c83b8fd47429a51a5d079e5106125476f9',self.p.SOURCE)
+        self.assertEqual('266848221cc78b1299c675171d7fe53fbb7e0cce',self.p.PRIVATE_SOURCE)
+
+    def test_plan_is_read_only_exact_scope_and_never_exports_private_material(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory)
+            paths=[];original=ns['pf_read']
+            def observe(path,*args,**kwargs):paths.append(path);return original(path,*args,**kwargs)
+            ns['pf_read']=observe
+            before={str(p):p.read_bytes() for p in home.rglob('*') if p.is_file()}
+            result=ns['passive_fuel_activation_plan']()
+            self.assertEqual('ready',result['status']);self.assertEqual('verified_stock_binding',result['store_state'])
+            self.assertEqual('compatible_pr4732',result['private_caller_state'])
+            self.assertEqual(2,len(result['plan_files']))
+            self.assertEqual({private/'search3-preview.php'},{p for p in paths if private in p.parents})
+            self.assertNotIn('SECRET_NEVER_EXPORT',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
+            self.assertEqual(before,{str(p):p.read_bytes() for p in home.rglob('*') if p.is_file()})
+            self.assertEqual([],list((private/'searches').iterdir()))
+
+    def test_legacy_missing_or_unknown_private_caller_holds_without_extra_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory)
+            path=runtime/'api-v2.php';data=path.read_bytes()
+            ns['PP_LEGACY_CALLER']=hashlib.sha256(data).hexdigest();ns['PP_CALLER']='0'*64
+            self.assertEqual('legacy_eager_dependency',ns['passive_fuel_activation_plan']()['private_caller_state'])
+            path.write_bytes(b'<?php /* unreviewed */')
+            self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+            path.unlink();result=ns['passive_fuel_activation_plan']()
+            self.assertEqual('missing',result['private_caller_state']);self.assertEqual('hold',result['status'])
+            self.assertFalse(path.exists());self.assertEqual(2,len(result['plan_files']))
+
+    def test_only_unambiguous_literal_enabled_catalog_binding_is_authority(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory)
+            parser=ns['pp_literal_config'];catalog=str(private/'catalog.json')
+            for wrapper in ("['enabled'=>true,'catalog_path'=>'PATH']","array('enabled'=>true,'catalog_path'=>'PATH',)"):
+                self.assertEqual(catalog,parser(('<?php return '+wrapper.replace('PATH',catalog)+';').encode()))
+            for raw in ("['enabled'=>true,'nested'=>['catalog_path'=>'PATH']]",
+                        "['enabled'=>true,'catalog_path'=>'PATH','catalog_path'=>'PATH']",
+                        "['enabled'=>true,'enabled'=>false,'catalog_path'=>'PATH']",
+                        "['enabled'=>1,'catalog_path'=>'PATH']","['enabled'=>false,'catalog_path'=>'PATH']",
+                        "['enabled'=>true,'catalog_path'=>getenv('SECRET')]",
+                        "['enabled'=>true,'catalog_path'=>'PATH','bad'=>08]",
+                        "['enabled'=>true,'catalog_path'=>'PATH']; file_put_contents('/tmp/NEVER','bad')",
+                        "require '/arbitrary.php'"):
+                with self.subTest(raw=raw):self.assertIsNone(parser(('<?php return '+raw.replace('PATH',catalog)+';').encode()))
+            (private/'search3-preview.php').write_text("<?php return ['enabled'=>true,'catalog_path'=>'/etc/catalog.json'];")
+            self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+
+    def test_proxy_target_config_symlink_hardlink_and_ancestor_are_rejected(self):
+        for case in ('ancestor','leaf','hardlink','store'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private=self.reader(directory)
+                path=private if case=='ancestor' else private/'searches' if case=='store' else private/'search3-preview.php'
+                saved=home/'saved-private'
+                if case=='hardlink':os.link(path,saved)
+                else:path.rename(saved);path.symlink_to(saved,target_is_directory=saved.is_dir())
+                with self.assertRaises((RuntimeError,OSError)):ns['passive_fuel_activation_plan']()
+
+    def test_missing_store_or_bad_mode_holds_without_creation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory);store=private/'searches'
+            for mode in (0o777,0o500,0o200):
+                store.chmod(mode);self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+            store.chmod(0o700)
+            with patch.object(os,'getuid',return_value=-1):self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+            store.rmdir();self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status']);self.assertFalse(store.exists())
+
+    def test_config_store_or_private_caller_drift_is_terminal(self):
+        for case in ('config','store','caller'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private=self.reader(directory);original=ns['pp_snapshot'];count=0
+                def changed():
+                    nonlocal count
+                    count+=1
+                    if count==2:
+                        if case=='config':(private/'search3-preview.php').write_bytes(b'<?php return [];')
+                        elif case=='caller':(runtime/'api-v2.php').write_bytes(b'changed')
+                        else:(private/'searches').rename(private/'old-searches');(private/'searches').mkdir()
+                    return original()
+                ns['pp_snapshot']=changed
+                with self.assertRaisesRegex(RuntimeError,'passive_plan_drift'):ns['passive_fuel_activation_plan']()
+
+    def test_remote_registration_has_no_installer_php_or_db_fallthrough(self):
+        import ast
+        value=self.p.remote_program(m.REMOTE,self.command);ast.parse(value)
+        self.assertEqual(2,value.count("if mode not in ('passive-fuel-activation-plan','reconcile',"))
+        self.assertIn("result['passive_fuel_activation_plan']=passive_fuel_activation_plan()",value)
+        self.assertIn('files!='+repr(self.p.PRIVATE_SOURCE_HASHES),value)
+        for forbidden in ('subprocess','glob(','iterdir(','mkdir(','.write_','eval(','exec('):
+            self.assertNotIn(forbidden,self.p.PLAN_REMOTE_READER)
+
+    def test_completion_is_plan_only_strict_closed_shape_and_zero_side_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory);value=ns['passive_fuel_activation_plan']()
+            value['plan_files']['api-v2.php']['predecessor_sha256']='01ac5ed43961f73879cd36c2c1d387ac79fadaf53ad66d3c4aaebcc617464c61'
+            value['plan_files']['_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php']['predecessor_sha256']='be4380b64caf4c98fc572c8db526f079a89bd04c301db5eccea3c2f2f232cc22'
+            result={**self.command,'status':'complete','runtime_changed':False,'production_unchanged':True,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                'passive_fuel_activation_plan':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('runtime_writes',1),('backing_config_record',{'raw':'SECRET'}),
+                            ('private_caller_state','unrecognized'),('store_directory_owner_matches',False)]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation_plan'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed))
+            value['status']='hold';value['private_caller_state']='unrecognized'
+            self.assertTrue(m.completed_result(self.command,result))
+            value['plan_files']['third.php']={};self.assertFalse(m.completed_result(self.command,result))
+
+    def test_plan_admission_requires_own_unique_created_command_and_exact_candidate_ci(self):
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+            'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        event={'action':'created','repository':{'full_name':m.REPO},'comment':{'id':123}}
+        body=m.PREFIX+' '.join(self.command.values())
+        checks={'total_count':5,'check_runs':[{'id':i,'status':'completed','conclusion':'success',
+            'app':{'slug':'github-actions'}} for i in self.p.PRIVATE_CHECK_IDS]}
+        old=[{'id':121,'body':m.PREFIX+' '.join([self.p.SOURCE,self.p.MODE,self.p.OPERATION])},
+             {'id':122,'body':m.PREFIX+' '.join([self.p.PRIVATE_SOURCE,self.p.PRIVATE_MODE,self.p.PRIVATE_OPERATION])}]
+        def api(path,token):
+            if '/check-runs?' in path:
+                self.assertIn(self.p.PRIVATE_SOURCE_CHECK_COMMIT,path);return checks
+            return old+[{'id':123,'body':body}]
+        self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        for event_change in ({**event,'action':'edited'},{**event,'repository':{'full_name':'other/repo'}}):
+            with self.assertRaises(ValueError):self.p.admission(api,event_change,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        with self.assertRaisesRegex(ValueError,'no_replay'):
+            self.p.admission(lambda path,token:checks if '/check-runs?' in path else
+                old+[{'id':120,'body':body},{'id':123,'body':body}],event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        checks['check_runs'][0]['conclusion']='failure'
+        with self.assertRaisesRegex(ValueError,'source_ci'):
+            self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 

@@ -20,7 +20,10 @@ OPERATION = 'int-anex-passive-fuel-readiness-20261020-v1'
 PRIVATE_MODE = 'passive-fuel-private-readiness'
 PRIVATE_SOURCE = '266848221cc78b1299c675171d7fe53fbb7e0cce'
 PRIVATE_OPERATION = 'int-anex-passive-fuel-private-readiness-20261020-v1'
-MODES = (MODE, PRIVATE_MODE)
+PLAN_MODE = 'passive-fuel-activation-plan'
+PLAN_SOURCE = '6ab833957b62a6486a79d53821bb3f3a9f080fff'
+PLAN_OPERATION = 'int-anex-passive-fuel-activation-plan-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -47,7 +50,8 @@ def need(value, reason):
 
 
 def parse(parts):
-    need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION]),
+    need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION],
+                  [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -67,7 +71,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] == PRIVATE_MODE
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -92,7 +96,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 
 def bundle_source(source_root, command=None):
     command = policy(command)
-    hashes = PRIVATE_SOURCE_HASHES if command['mode'] == PRIVATE_MODE else SOURCE_HASHES
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE) else SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -338,6 +342,149 @@ REMOTE_DISPATCH = r'''
                       runtime_changed=False,production_unchanged=True)
 '''
 
+# Installer planning only. Unlike the sealed metadata operations, this fixed
+# closure validates the stock proxy target and private gateway caller before
+# producing a two-file plan. It cannot execute an include or install any file.
+PLAN_REMOTE_READER = (REMOTE_READER[:REMOTE_READER.index('def pf_snapshot():')]
+    .replace("anchor=home/'www'", 'anchor=home', 1) + r'''
+PP_PROXY='52e05b625b63a611f34cb87b58bd0e554c024df1e277bede469416330812d5aa'
+PP_DB='c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'
+PP_CONFIG='121839ce1956ec7a48f0a94758e2c2359293ee01d601c69f720a294c4bda7def'
+PP_OLD_PASSIVE='be4380b64caf4c98fc572c8db526f079a89bd04c301db5eccea3c2f2f232cc22'
+PP_CALLER='2dedef982d7036c3f8520e8b8ca1175d83eb89fe14be865198441e33ff2c2ff4'
+PP_LEGACY_CALLER='9935a1cd571ee58146e5fdec906833f3f678c38d3723c59c62d7796659c03dda'
+PP_TARGETS={'api-v2.php':('01ac5ed43961f73879cd36c2c1d387ac79fadaf53ad66d3c4aaebcc617464c61',
+    '04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15'),
+    '_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php':
+    (PP_OLD_PASSIVE,'da89e7e5dc7816419140b716cb965462542ebc2ff3f42b4ec96dc623d823fa8d')}
+
+def pf_identity(s):
+    return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_uid,s.st_gid)
+
+def pp_literal_config(body):
+    # Parse bounded PHP literals, including var_export's array(...), never PHP.
+    if body is None:return None
+    try:text=body.decode('utf-8')
+    except UnicodeDecodeError:return None
+    literal=re.fullmatch(r'\s*<\?php\s*(?:declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;\s*)?return\s*(.*?)\s*;\s*',text,re.S)
+    if literal is None:return None
+    pattern=re.compile(r"""\s*(=>|array\b|\(|\)|\[|\]|,|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|true\b|false\b|null\b)""")
+    tokens=[];position=0;raw=literal[1]
+    while position<len(raw):
+        match=pattern.match(raw,position)
+        if match is None or len(tokens)>=4096:return None
+        tokens.append(match[1]);position=match.end()
+    cursor=0
+    def value(depth=0):
+        nonlocal cursor
+        if depth>8 or cursor>=len(tokens):raise ValueError('shape')
+        token=tokens[cursor];cursor+=1
+        if token in ('[','array'):
+            closing=']'
+            if token=='array':
+                if cursor>=len(tokens) or tokens[cursor]!='(':raise ValueError('array')
+                cursor+=1;closing=')'
+            entries=[]
+            while cursor<len(tokens) and tokens[cursor]!=closing:
+                first=value(depth+1);key=None
+                if cursor<len(tokens) and tokens[cursor]=='=>':
+                    cursor+=1;key=first;first=value(depth+1)
+                    if not isinstance(key,(str,int)) or isinstance(key,bool):raise ValueError('key')
+                entries.append((key,first))
+                if cursor<len(tokens) and tokens[cursor]==',':cursor+=1
+                elif cursor>=len(tokens) or tokens[cursor]!=closing:raise ValueError('separator')
+            if cursor>=len(tokens):raise ValueError('array')
+            cursor+=1;return entries
+        if token[:1] in ("'",'"'):
+            text=token[1:-1]
+            if token[0]=='"' and '$' in text:raise ValueError('interpolation')
+            # Only unambiguous escapes emitted by literal configuration writers.
+            if re.search(r"\\(?![\\'\"])" ,text):raise ValueError('escape')
+            return re.sub(r"\\([\\'\"])",r'\1',text)
+        if token in ('true','false','null'):return {'true':True,'false':False,'null':None}[token]
+        if re.fullmatch(r'-?(?:0|[1-9][0-9]*)',token):return int(token)
+        if re.fullmatch(r'-?(?:0|[1-9][0-9]*)\.[0-9]+',token):return float(token)
+        raise ValueError('value')
+    try:entries=value()
+    except (ValueError,RecursionError):return None
+    if cursor!=len(tokens) or not isinstance(entries,list):return None
+    enabled=[v for k,v in entries if k=='enabled']
+    catalogs=[v for k,v in entries if k=='catalog_path']
+    if len(enabled)!=1 or enabled[0] is not True or len(catalogs)!=1 or not isinstance(catalogs[0],str):return None
+    return catalogs[0]
+
+def pp_directory(path):
+    # Metadata only. No directory listing, observations, or catalog contents.
+    try:parts=path.relative_to(home).parts
+    except ValueError:fail('passive_plan_directory_scope')
+    if not parts or '..' in parts:fail('passive_plan_directory_scope')
+    descriptor=os.open(home,os.O_PATH|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:
+        for part in parts:
+            try:child=os.open(part,os.O_PATH|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=descriptor)
+            except FileNotFoundError:return None
+            os.close(descriptor);descriptor=child
+        first=os.fstat(descriptor);second=path.lstat()
+        if path.resolve()!=path or not pf_stat.S_ISDIR(first.st_mode) or pf_identity(first)!=pf_identity(second):
+            fail('passive_plan_directory_changed')
+        mode=pf_stat.S_IMODE(first.st_mode)
+        return (pf_identity(first),mode,first.st_uid==os.getuid(),
+                first.st_uid==os.getuid() and mode&0o300==0o300 and not mode&0o002)
+    finally:os.close(descriptor)
+
+def pp_snapshot():
+    runtime=project/'_preview/search3-anex-candidate'
+    paths={p:project/p for p in PF_PROTECTED}
+    for p in PF_EXPECTED:
+        if p.startswith('app/integrations/'):paths['helper:'+p]=runtime/p
+    paths.update(proxy=runtime/'.andromeda-private.php',private_gateway=runtime/'api-v2.php',
+        backing_config=home/'.anytoour-andromeda/search3-preview.php')
+    bodies={};records={};identities={}
+    for key,path in paths.items():
+        bodies[key],records[key]=pf_read(path,limit=2*1024*1024 if key in PF_PROTECTED else 65536)
+        identities[key]=None if records[key] is None else pf_identity(path.lstat())
+    directories=(pp_directory(home/'.anytoour-andromeda'),pp_directory(home/'.anytoour-andromeda/searches'))
+    return bodies,records,identities,directories
+
+def passive_fuel_activation_plan():
+    bodies,before,identities,directories=pp_snapshot()
+    helpers=[p for p in PF_EXPECTED if p.startswith('app/')]
+    passive='app/integrations/tourvisor-operator-fuel-passive-intake.php'
+    digest=lambda name:None if before[name] is None else before[name]['sha256']
+    proxy_ok=digest('proxy')==PP_PROXY and before['proxy']['mode']==0o600
+    db_ok=digest('data/db-v1.php')==PP_DB
+    config_ok=digest('config.php')==PP_CONFIG
+    api_ok=digest('api-v2.php')==PP_TARGETS['api-v2.php'][0]
+    passive_ok=digest('helper:'+passive)==PP_OLD_PASSIVE
+    dependencies_ok=all(digest('helper:'+p)==PF_EXPECTED[p] for p in helpers if p!=passive)
+    caller=digest('private_gateway')
+    caller_state=('compatible_pr4732' if caller==PP_CALLER else 'legacy_eager_dependency'
+        if caller==PP_LEGACY_CALLER else 'missing' if caller is None else 'unrecognized')
+    catalog=pp_literal_config(bodies['backing_config'])
+    expected=home/'.anytoour-andromeda/catalog.json'
+    config_owned=(identities['backing_config'] is not None and identities['backing_config'][-2]==os.getuid()
+        and before['backing_config']['mode']==0o600)
+    binding=(proxy_ok and config_owned and catalog==str(expected))
+    store_ok=binding and all(d is not None and d[3] for d in directories)
+    store_state=('verified_stock_binding' if store_ok else 'config_unrecognized'
+        if catalog is None else 'config_binding_mismatch' if not binding else 'store_unavailable')
+    _,after,after_identities,after_directories=pp_snapshot()
+    if before!=after or identities!=after_identities or directories!=after_directories:fail('passive_plan_drift')
+    ready=all((api_ok,passive_ok,dependencies_ok,db_ok,config_ok,proxy_ok,store_ok,caller_state=='compatible_pr4732'))
+    return {'status':'ready' if ready else 'hold','gateway_predecessor_matches':api_ok,
+        'passive_predecessor_matches':passive_ok,'dependencies_exact':dependencies_ok,
+        'db_predecessor_matches':db_ok,'root_config_predecessor_matches':config_ok,
+        'proxy_predecessor_matches':proxy_ok,'private_caller_state':caller_state,
+        'store_state':store_state,'store_directory_mode':None if directories[1] is None else directories[1][1],
+        'store_directory_owner_matches':False if directories[1] is None else directories[1][2],
+        'backing_config_record':before['backing_config'],'private_gateway_record':before['private_gateway'],
+        'proxy_record':before['proxy'],'loaded_db_state':'not_executed','binding_identity_stable':True,
+        'plan_files':{p:{'predecessor_sha256':v[0],'candidate_sha256':v[1]} for p,v in PP_TARGETS.items()},
+        'protected_before':{p:before[p] for p in PF_PROTECTED},
+        'protected_after':{p:after[p] for p in PF_PROTECTED},'protected_unchanged':True,
+        'supplier_calls':0,'database_reads':0,'database_writes':0,'runtime_writes':0,'booking_calls':0,'lead_calls':0}
+''').replace('PF_EXPECTED='+repr(SOURCE_HASHES), 'PF_EXPECTED='+repr(PRIVATE_SOURCE_HASHES), 1)
+
 
 def remote_program(remote, command=None):
     command = policy(command)
@@ -348,14 +495,18 @@ def remote_program(remote, command=None):
     size = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(marker) == remote.count(dispatch) == remote.count(size) == 1
          and remote.count(exclusion) == 2, 'passive_registration_drift')
-    reader = PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
-    hashes = PRIVATE_SOURCE_HASHES if mode == PRIVATE_MODE else SOURCE_HASHES
+    reader = PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
+    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE) else SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
     fixed = "    if mode==" + repr(mode) + " and (source!=" + repr(command['source_sha']) + " or operation!=" + repr(command['operation_id']) + "):fail('passive_fixed_scope')\n"
     remote = remote.replace(gate, fixed + gate, 1)
-    remote = remote.replace(dispatch, REMOTE_DISPATCH.replace(repr(MODE), repr(mode), 1) + dispatch, 1)
+    registration = REMOTE_DISPATCH.replace(repr(MODE), repr(mode), 1)
+    if mode == PLAN_MODE:
+        registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
+            "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
+    remote = remote.replace(dispatch, registration + dispatch, 1)
     remote = remote.replace(exclusion, "    if mode not in (" + repr(mode) + ",'reconcile',")
     remote = remote.replace(size, "if not isinstance(files,dict) or files!=" + repr(hashes) + ": fail('passive_manifest')", 1)
     ast.parse(remote)
@@ -364,6 +515,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == PLAN_MODE:return plan_completed(command, result)
     private = command['mode'] == PRIVATE_MODE
     value = result.get('passive_fuel_readiness')
     counts = ('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
@@ -406,3 +558,44 @@ def completed(command, result):
             and all(type(result.get(k)) is int and result[k] == 0
                     for k in ('supplier_calls', 'database_reads', 'database_writes', 'booking_calls', 'lead_calls'))
             and all(type(value.get(k)) is int and value[k] == 0 for k in counts))
+
+
+def plan_completed(command, result):
+    value=result.get('passive_fuel_activation_plan')
+    counts={'supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls'}
+    flags={'gateway_predecessor_matches','passive_predecessor_matches','dependencies_exact',
+           'db_predecessor_matches','root_config_predecessor_matches','proxy_predecessor_matches',
+           'store_directory_owner_matches','binding_identity_stable','protected_unchanged'}
+    fields={'status','private_caller_state','store_state','store_directory_mode','backing_config_record',
+            'private_gateway_record','proxy_record','loaded_db_state','plan_files','protected_before','protected_after',
+            *flags,*counts}
+    def record(row):
+        return row is None or (isinstance(row,dict) and set(row)=={'sha256','bytes','mode'}
+            and isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256']) is not None
+            and type(row['bytes']) is int and 0<row['bytes']<=2*1024*1024
+            and type(row['mode']) is int and 0<=row['mode']<=0o7777)
+    if not isinstance(value,dict) or set(value)!=fields:return False
+    if (value['status'] not in ('ready','hold') or any(type(value[k]) is not bool for k in flags)
+            or value['private_caller_state'] not in ('compatible_pr4732','legacy_eager_dependency','missing','unrecognized')
+            or value['store_state'] not in ('verified_stock_binding','config_unrecognized','config_binding_mismatch','store_unavailable')
+            or value['store_directory_mode'] is not None and (type(value['store_directory_mode']) is not int
+                or not 0<=value['store_directory_mode']<=0o7777)
+            or value['loaded_db_state']!='not_executed'
+            or any(not record(value[k]) for k in ('backing_config_record','private_gateway_record','proxy_record'))):return False
+    before=value['protected_before']
+    if (not isinstance(before,dict) or set(before)!=set(PROTECTED) or not all(map(record,before.values()))
+            or before!=value['protected_after'] or value['protected_unchanged'] is not True
+            or value['binding_identity_stable'] is not True):return False
+    expected={'api-v2.php':{'predecessor_sha256':'01ac5ed43961f73879cd36c2c1d387ac79fadaf53ad66d3c4aaebcc617464c61',
+                          'candidate_sha256':PRIVATE_SOURCE_HASHES['v2/api-v2.php']},
+        '_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php':{
+            'predecessor_sha256':'be4380b64caf4c98fc572c8db526f079a89bd04c301db5eccea3c2f2f232cc22',
+            'candidate_sha256':PRIVATE_SOURCE_HASHES['app/integrations/tourvisor-operator-fuel-passive-intake.php']}}
+    if value['plan_files']!=expected:return False
+    if value['status']=='ready' and (not all(value[k] for k in flags)
+            or value['private_caller_state']!='compatible_pr4732' or value['store_state']!='verified_stock_binding'):return False
+    return (command==parse([PLAN_SOURCE,PLAN_MODE,PLAN_OPERATION])
+        and all(result.get(k)==command[k] for k in command) and result.get('status')=='complete'
+        and result.get('production_unchanged') is True and result.get('runtime_changed') is False
+        and all(type(value[k]) is int and value[k]==0 for k in counts)
+        and all(type(result.get(k)) is int and result[k]==0 for k in counts-{'runtime_writes'}))
