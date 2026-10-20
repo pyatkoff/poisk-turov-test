@@ -5,6 +5,42 @@ Execution remains in [INT #2506](https://github.com/pyatkoff/poisk-turov-test/is
 and coordination [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
 This document records one concrete delivery boundary, not a second queue.
 
+## Current checked boundary — 20.10.2026, 15:01 UTC
+
+Gateway binding is corrected in [PR4745](https://github.com/pyatkoff/poisk-turov-test/pull/4745),
+source65a802303afc3bedd6a8b674b9f5a9579ab4a38a/release266848221cc78b1299c675171d7fe53fbb7e0cce.
+All five exact-source checks succeeded, including native39442829138/job118696895774
+(8bootstrap/4include/2actual-action DBfailure cases); independent review accepted.
+The corrected API is **source only, NOT INSTALLED**.
+
+The distinct private-runtime metadata operation is also completed/consumed/no-replay:
+command6293929408, run39444434407/job118702478080/attempt1SUCCESS, control196ffab0,
+source26684822; [terminal6294014947](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6294014947).
+Its carrier source PR4746/fa59ea27 passed native39443850191/job118700431508
+(76core tests plus existing suites), Security and independent review; merged196ffab0.
+Neither this nor the old ROOT operation may be renamed/refreshed/replayed.
+
+| Actual private boundary | Checked result |
+| --- | --- |
+| Evidence/store/retained helpers |All three match the accepted hashes below, 0644 |
+| Passive helper |13823B/0644, SHA256 `be4380b64caf4c98fc572c8db526f079a89bd04c301db5eccea3c2f2f232cc22`; byte-exact historical feature488fe40 helper |
+| Only passive-helper delta needed |Remove the eager `require_once dirname(__DIR__, 2) . '/v2/data/db-v1.php';`; accepted13766B/da89 helper below already does this |
+| Private config |84B/0600, SHA256 `52e05b625b63a611f34cb87b58bd0e554c024df1e277bede469416330812d5aa`; exact stock proxy, not missing/bad configuration |
+| ROOT DB helper |3282B/0644, SHA256 `c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13`; exact canonical main blob4ac8258, four declarations, NOT_EXECUTED |
+| Remaining metadata |Literal-only reader returned config_binding=unrecognized for the proxy; backing configuration/store identity, mode and ownership remain NOT_MEASURED |
+
+All14 protected before/after records matched, including ROOT API01ac, DB and
+NEXT/native apps. Provider/DB reads/DB writes/runtime writes/booking/lead0;
+only the existing carrier reservation/staging/receipt was written. No PHP/config
+execution, supplier request, observations/log read or application/config/store change.
+Actual inventory completed **not_ready**, not installation or live fuel acceptance.
+
+Artifact12275770285,1744B: ZIP SHA256
+`8aa8bcd61dd463f1aeee58300e62a3a8892492904eb2c0147c9d0c4009070d26`;
+sole result.json SHA256 `87c9874e8c8f0468676b1813fc8fafbe1f16d1f2ed79679e3d4165dfc55b0487`.
+Downloaded ZIP/CRC/job JSON equality verified; independent runtime/static review
+confirmed the counters, exact helper/DB/proxy provenance separately.
+
 ## Verified delivery gap
 
 [PR4737](https://github.com/pyatkoff/poisk-turov-test/pull/4737) prepared the existing
@@ -35,7 +71,7 @@ cause, global helper absence, supplier recovery or installed fuel acceptance.
 Installing only the prepared API would leave capture inactive. Do not create a
 second ROOT config, helper copy or evidence store to conceal that gap.
 
-## Concrete binding to prepare
+## Existing binding and remaining preflight
 
 The existing permanent carrier defines the INT runtime as
 `project/_preview/search3-anex-candidate` and already refers to its
@@ -44,15 +80,48 @@ URL parameter, guessed filesystem fallback or new transport.
 
 | Existing component | Candidate binding | Evidence still required |
 | --- | --- | --- |
-| ROOT passive bootstrap |The existing runtime's app/integrations, using the same four classes/files |Actual hashes/modes/regular-file and complete-dependency checks at these exact previously uninspected paths |
-| ROOT passive configuration |That runtime's existing .andromeda-private.php |Safe local config identity and unambiguous catalog_path binding; publish only hash/booleans |
+| ROOT passive bootstrap |PR4745 uses the existing runtime's app/integrations, same four classes/files |All four inspected; replace only the stale passive helper, reuse the three exact helpers |
+| ROOT passive configuration |PR4745 uses that runtime's existing .andromeda-private.php |Proxy identity verified; backing config/store binding still requires exact scoped preflight |
 | Evidence directory |The existing configured catalog parent/searches |Directory identity/ownership, no symlinks, same before/after snapshot; no listing or observation reads |
 | DB helpers |Reuse the already loaded complete gateway helper set; partial → no capture |Keep PR4732/4737 include protections; do not require a second physical DB helper |
 
-The current source's root/parent-only bootstrap and ROOT-only config lookup need
-a narrowly reviewed correction before activation. This document does not make
-that code change or claim the private runtime is ready. Its four helper versions,
-config and store binding remain **NOT_MEASURED**.
+The absent root/parent-only binding from PR4737 is superseded in source by PR4745.
+The ROOT inventory below remains historical proof, not a new operation. Private
+helper/config metadata is now measured, but the backing store is not ready-accepted.
+
+The exact84B proxy comes from the existing
+`.github/workflows/int-andromeda-private-proxy-restore-v3.yml` literal:
+`return require dirname(__DIR__,4).'/.anytoour-andromeda/search3-preview.php';`.
+That source binds the account-owned private directory/config and catalog; do not
+run its consumed restore operation or execute PHP to discover the path. Do not
+rewrite this valid proxy or copy its backing credentials into ROOT.
+
+Next narrowly reviewed **installer preflight**, not another generic reader:
+verify this exact proxy hash; inspect only the source-owned account-relative
+`.anytoour-andromeda/search3-preview.php` regular-file metadata and literal
+top-level enabled/catalog_path binding to that same directory's catalog.json;
+verify its existing searches directory identity/owner/write+search modes before
+and after. No arbitrary include, directory fallback, catalog/observation listing,
+PHP/config execution, DB/log/provider access, new directories or storage creation.
+The current consumed reader deliberately cannot follow this proxy or leave its
+project scope; do not weaken/reissue it. The additional fixed private closure
+needs its own exact code/review/admission in the same carrier before any action.
+Unsupported syntax, missing binding or drift remains not_ready; never invent a path.
+
+The passive helper is shared with the existing private gateway. Before removing
+its eager include, the installer package must also prove that gateway's DB-helper
+ownership remains compatible: exact existing runtime api-v2.php identity and
+bounded static passive-caller/include facts only, no execution or public output
+of source/config/URLs. Do not assume the private gateway was upgraded with PR4732.
+If its caller depends on the removed side effect or remains unproven, hold the
+two-file activation; an extra API change needs a separately reviewed bounded
+package, not an automatic third write or a broad feature installation.
+
+The old DB pin ca7 mismatch is not corruption: canonical main4ac8258 is exactly
+the observedc1c helper. Releaseca7 adds only a config fallback when ROOTconfig is
+absent; observed ROOTconfig exists (0600/hash121839ce). Keep DB/config bytes
+unchanged, explicitly pin this actual predecessor and prove compatibility in the
+activation package. No blanket DB allowlist or unreviewed overwrite is authorized.
 
 ## Closed runtime-file package
 
@@ -65,33 +134,30 @@ The four helpers remain the existing engine, byte-for-byte from feature37df6227:
 |operator-fuel-rule-evidence.php|`cecd23217cc5e74b81f6c2ecd22db5813770edde3e861be888026393693ae1f2`|
 |operator-fuel-rule-store.php|`774c5bc01e213c614644b269b111593967bd82dc2ea120a15175df846bcd386d`|
 
-Prepared API19663B/SHA256 `b87733d4f604f404c25f8d127c6b5949f6e0d42dcb3120c0e3c02df1793aa468`
-still has the absent binding. It is **not** an activation candidate until the
-binding correction has its own exact source, CI and review.
+Historical PR4737 API19663B/SHA256 `b87733d4f604f404c25f8d127c6b5949f6e0d42dcb3120c0e3c02df1793aa468`
+has the absent binding and must not be installed. Corrected PR4745 API20233B,
+SHA256 `04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15`,
+has its own exact source, five CI successes and review. Store preflight is still open.
 
-The maximum runtime delta is the corrected ROOT API plus only necessary files
-from this four-helper closure in the existing INT runtime. Reuse identical
-helpers. Do not install the whole feature runtime, import mappings/LOCAL
+The minimal candidate runtime delta is **two files only**: ROOT API01ac→04c plus the
+existing private passive helper be4380→da89. Reuse all three identical helpers;
+DB/config/proxy/store stay unchanged. Do not install the whole feature runtime, import mappings/LOCAL
 profiles, alter arithmetic/ANEX/APD, create directories/config/storage, or copy
 private credentials. A missing approved runtime directory/config is a separate
 blocker, not implicit creation authority.
 
 ## Admission and acceptance
 
-1. Prepare one narrow, separately reviewed metadata scope inside the same
-   permanent carrier for the exact existing runtime's four helpers/config/store.
-   This is distinct from the consumed ROOT-layout inventory above. Do not replay
-   its operation, issue another command for it, or widen it into a generic reader.
-   No PHP/config execution, DB/client/supplier/log/observation access. Unsupported
-   config syntax, ambiguous binding, path escape or drift yields not_ready.
-2. Correct only the current gateway bootstrap/config binding; retain every
-   existing diagnostics/limit/LOCAL/autosave/response contract. Exercise the actual
-   configured runtime layout, absent/partial dependencies, duplicate DB globals
-   and persistence failures with the existing narrow PHP tests. Exact required
-   CI and independent review precede merge; no UI/general QA cycle is added.
+1. ROOT and private-helper inventories above are closed/no-replay. Prepare only
+   the exact stock-proxy/backing-store preflight defined above inside the existing
+   carrier/installer, with code/review/admission before execution. This document
+   provides no executable command or new server permission.
+2. Gateway binding correction and its narrow PHP CI/review are accepted in PR4745;
+   do not redo them or add a UI/general QA cycle. Keep existing diagnostics/limit/
+   LOCAL/autosave/response contracts and complete-DB-reuse/partial rejection.
 3. After actual metadata acceptance, pin exact predecessors/candidate bytes for a
-   bounded transaction on the existing installer/carrier. Complete dependencies
-   before API activation, retain backups and rollback, recheck unchanged ROOT
+   two-file transaction on the existing installer/carrier. Update the stale passive
+   dependency before API activation, retain backups and rollback, recheck unchanged ROOT
    helpers/config/NEXT/native/protected fingerprints and publish sanitized
    readback. Current-main/source/actor/owner/attempt, concurrency, reservation and
    no-replay guards remain. No command is defined or authorized here.
