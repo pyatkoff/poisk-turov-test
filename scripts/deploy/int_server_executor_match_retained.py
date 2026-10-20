@@ -23,6 +23,18 @@ SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c50
 
 NEXT_SCOPE = {'cohort': 'anex-next-ee68d11668a22e84', 'operation_id': 'int-andromeda-match-retained-acquire-20261020-v4', 'write_operation_id': 'int-andromeda-match-retained-anex-write-20261020-v5', 'readback_operation_id': 'int-andromeda-match-retained-readback-20261020-v3', 'saved_acquisition_operation_id': 'int-andromeda-match-retained-acquire-20261020-v2', 'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2', 'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57', 'scope_id': 'ee68d11668a22e84934fa4acd94a779238491f8a0db822ee2f91dc2212456f04', 'selected_count': 25, 'path': 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'sha256': '458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31'}
 
+TRANSPORT_DIAGNOSTIC = {
+    'operation_id': 'int-andromeda-match-retained-readback-20261020-v5',
+    'target_operation_id': 'int-andromeda-match-retained-acquire-20261020-v4',
+    'parents': [
+        {'version': 1, 'calls': 38, 'unknown': 0, 'evidence': 'cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb'},
+        {'version': 2, 'calls': 7, 'unknown': 1, 'evidence': 'cd58ab7c155c28688de65b43c196cbc8c6ddf406c76e92c890460af6b712b2f8'},
+        {'version': 3, 'calls': 1, 'unknown': 1, 'evidence': '91a307969dedc5f160acb1ebf088e450f7d40299f9f0981dc5cc69fe9f3ed23f'},
+        {'version': 4, 'calls': 1, 'unknown': 1, 'evidence': '41c2949ab853ce88dc8509e20e18135e45cd05770ebcb1ae48ae005c094fbc9c'},
+    ],
+}
+
+
 def need(value, reason):
     if not value:
         raise ValueError(reason)
@@ -45,10 +57,14 @@ def register_parser(core):
              'retained_operation_scope')
         continuation = cohort == NEXT_SCOPE['cohort'] and mode in ('match-retained-acquire','match-retained-anex-write-v2','match-retained-readback')
         need(cohort == MODES[mode] or continuation, 'retained_cohort')
+        transport_diagnostic = operation == TRANSPORT_DIAGNOSTIC['operation_id']
+        if transport_diagnostic:
+            need(continuation and mode == 'match-retained-readback', 'transport_diagnostic_scope')
         if continuation:
             selector_projection=mode=='match-retained-readback' and operation=='int-andromeda-match-retained-readback-20261020-v4'
-            need(selector_projection or operation == NEXT_SCOPE['operation_id' if mode=='match-retained-acquire' else 'readback_operation_id' if mode=='match-retained-readback' else 'write_operation_id'], 'continuation_operation')
-            need(parts[4] == NEXT_SCOPE['parent_operation_id' if mode=='match-retained-acquire' else 'saved_acquisition_operation_id' if mode=='match-retained-readback' else 'operation_id'], 'continuation_parent')
+            need(transport_diagnostic or selector_projection or operation == NEXT_SCOPE['operation_id' if mode=='match-retained-acquire' else 'readback_operation_id' if mode=='match-retained-readback' else 'write_operation_id'], 'continuation_operation')
+            expected_target = TRANSPORT_DIAGNOSTIC['target_operation_id'] if transport_diagnostic else NEXT_SCOPE['parent_operation_id' if mode=='match-retained-acquire' else 'saved_acquisition_operation_id' if mode=='match-retained-readback' else 'operation_id']
+            need(parts[4] == expected_target, 'continuation_parent')
         if mode=='match-retained-acquire' and not continuation:need(operation=='int-andromeda-match-retained-acquire-20261020-v1','acquire_consumed_scope')
         if mode=='match-retained-anex-write':need(operation=='int-andromeda-match-retained-anex-write-20261020-v1','write_fixed_scope')
         if mode=='match-retained-anex-write-v2' and not continuation:need(operation=='int-andromeda-match-retained-anex-write-20261020-v2','write_reconciled_fixed_scope')
@@ -161,6 +177,104 @@ def retained_effective_requests(scope):
                              'request_sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'params':p})
         if starts!=data.get('tariff_search_units') or starts!=data.get('actions',{}).get('search_start',0):fail('context_prior_start_count')
     return requests
+
+def retained_transport_diagnostic(stage):
+    import datetime as dt
+    profile=TRANSPORT_DIAGNOSTIC
+    if (operation!=profile['operation_id'] or payload.get('target_operation_id')!=profile['target_operation_id']
+            or payload.get('cohort')!=NEXT_SCOPE['cohort']):fail('transport_diagnostic_scope')
+    scope=retained_next_scope(stage);retained_prior_selection(scope)
+    protected={}
+    def read(path,bound):
+        if (not safe_file(path,bound) or path.resolve()!=path or path.stat().st_nlink!=1):fail('transport_evidence_path')
+        before=path.stat();raw=path.read_bytes();after=path.stat()
+        signature=lambda s:(s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+        if signature(before)!=signature(after) or len(raw)!=after.st_size:fail('transport_evidence_drift')
+        protected[path]=(hashlib.sha256(raw).hexdigest(),signature(after))
+        return raw,after
+    rows=[];parents=[]
+    for pin in profile['parents']:
+        name='int-andromeda-match-retained-acquire-20261020-v'+str(pin['version'])
+        target=private/name
+        if target.is_symlink() or target.resolve()!=target:fail('transport_parent_path')
+        raw,terminal=read(target/'result.json',4194304);wrapper=json.loads(raw)
+        reservation=json.loads(read(target/'reservation.json',65536)[0]);data=wrapper.get('match_retained',{}).get('data',{})
+        evidence=hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        if (wrapper.get('status')!='complete' or wrapper.get('mode')!='match-retained-acquire'
+                or wrapper.get('production_unchanged') is not True
+                or any(x.get('operation_id')!=name for x in (wrapper,reservation,data))
+                or wrapper.get('source_sha')!=reservation.get('source_sha') or data.get('source_sha')!=reservation.get('source_sha')
+                or evidence!=pin['evidence'] or evidence!=wrapper.get('match_retained',{}).get('evidence_sha256')
+                or any(type(x.get(k)) is not int or x[k]!=0 for x in (wrapper,data) for k in ('database_writes','mapping_writes'))
+                or any(type(x.get('supplier_calls')) is not int or x['supplier_calls']!=pin['calls'] for x in (wrapper,data))
+                or type(data.get('physical_http_reservations')) is not int or data['physical_http_reservations']!=pin['calls']
+                or type(data.get('unknown_http_calls')) is not int or data['unknown_http_calls']!=pin['unknown']
+                or data.get('acquisition_state')!=('partial_no_replay' if pin['unknown'] else 'completed')):fail('transport_parent_binding')
+        if len(list(target.glob('request-*.json')))!=pin['calls']:fail('transport_request_count')
+        actions={};missing=0
+        for n in range(1,pin['calls']+1):
+            req_path=target/('request-%04d.json'%n);req_raw,stamp=read(req_path,65536);request=json.loads(req_raw)
+            action=request.get('action')
+            if action not in ('search_start','search_status','search_results','tour_detail'):fail('transport_request_action')
+            actions[action]=actions.get(action,0)+1
+            row={'operation_id':name,'request_number':n,'action':action,'request_sha256':hashlib.sha256(req_raw).hexdigest(),
+                 'request_file_mtime_utc':dt.datetime.fromtimestamp(stamp.st_mtime_ns/1e9,dt.timezone.utc).isoformat(),
+                 'failure_phase':'not_recorded','http_status':None,'response_capture_lag_ms':None,'request_to_terminal_file_ms':None}
+            meta_path=target/('response-%04d.json'%n);body_path=target/('response-%04d.bin'%n)
+            if meta_path.is_symlink() or body_path.is_symlink():fail('transport_response_path')
+            if meta_path.exists()!=body_path.exists():fail('transport_response_pair')
+            if meta_path.exists():
+                meta_raw,captured=read(meta_path,65536);meta=json.loads(meta_raw)
+                if (type(meta.get('http_status')) is not int or not 100<=meta['http_status']<=599
+                        or not re.fullmatch(r'[a-f0-9]{64}',str(meta.get('raw_sha256','')))
+                        or not safe_file(body_path,16*1024*1024+1) or body_path.stat().st_nlink!=1):fail('transport_response_metadata')
+                lag=captured.st_mtime_ns-stamp.st_mtime_ns
+                if lag<0:fail('transport_evidence_clock')
+                row.update(http_status=meta['http_status'],failure_phase=None,response_capture_lag_ms=round(lag/1e6,3),
+                           response_sha256=meta['raw_sha256'],response_bytes=body_path.stat().st_size)
+            else:
+                missing+=1;lag=terminal.st_mtime_ns-stamp.st_mtime_ns
+                if lag<0:fail('transport_evidence_clock')
+                row['request_to_terminal_file_ms']=round(lag/1e6,3)
+            rows.append(row)
+        if missing!=pin['unknown'] or actions!=data.get('actions'):fail('transport_unknown_or_action_binding')
+        parents.append({'operation_id':name,'receipt_sha256':hashlib.sha256(raw).hexdigest(),'evidence_sha256':evidence,
+                        'recorded_http_attempts':pin['calls'],'recorded_unknown':pin['unknown'],'stop_reason':data.get('stop_reason')})
+    home=Path.home();account_root=home/'.anytoour-match'
+    ledgers={}
+    for label,path in [('hotel_selection',account_root/'retained-selection-claims.json'),
+                       ('context_selection',account_root/'retained-context-claims.json'),
+                       ('account_day',account_root/'provider-quotas/tourvisor-anex-2026-10-20.json')]:
+        raw,_=read(path,8*1024*1024);json.loads(raw);ledgers[label]=hashlib.sha256(raw).hexdigest()
+    config=project/'config.php';config_raw,config_stat=read(config,1048576)
+    php=r"""require $argv[1];$a=defined('TOURVISOR_ANEX_JWT')?constant('TOURVISOR_ANEX_JWT'):getenv('TOURVISOR_ANEX_JWT');$b=defined('TOURVISOR_JWT')?constant('TOURVISOR_JWT'):getenv('TOURVISOR_JWT');$p=explode('.',trim((string)$a));$claims=null;if(count($p)===3){$part=strtr($p[1],'-_','+/');$raw=base64_decode($part.str_repeat('=',(4-strlen($part)%4)%4),true);if($raw!==false)$claims=json_decode($raw,true);}$exp=is_array($claims)&&isset($claims['exp'])&&is_int($claims['exp'])?$claims['exp']:null;$now=time();echo json_encode(['configured'=>is_string($a)&&trim($a)!=='','matches_default_token'=>is_string($a)&&$a!==''&&is_string($b)&&hash_equals($a,$b),'jwt_claims_parseable'=>is_array($claims),'expiry_epoch_seconds'=>$exp,'expired_at_capture'=>$exp===null?null:$exp<=$now,'capture_epoch_seconds'=>$now],JSON_THROW_ON_ERROR);"""
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0','-d','disable_functions='+disabled,
+                        '-r',php,'--',str(config)],cwd=project,env=env,capture_output=True,text=True,timeout=15)
+    if run.returncode or run.stderr.strip() or len(run.stdout)>4096:fail('transport_config_metadata_failed')
+    account=json.loads(run.stdout)
+    if (not isinstance(account,dict) or set(account)!={'configured','matches_default_token','jwt_claims_parseable','expiry_epoch_seconds','expired_at_capture','capture_epoch_seconds'}
+            or any(type(account.get(k)) is not bool for k in ('configured','matches_default_token','jwt_claims_parseable'))
+            or type(account.get('capture_epoch_seconds')) is not int
+            or (account.get('expiry_epoch_seconds') is not None and type(account['expiry_epoch_seconds']) is not int)
+            or (account.get('expired_at_capture') is not None and type(account['expired_at_capture']) is not bool)
+            or (account['expiry_epoch_seconds'] is None)!=(account['expired_at_capture'] is None)
+            or (account['expiry_epoch_seconds'] is not None and account['expired_at_capture']!=(account['expiry_epoch_seconds']<=account['capture_epoch_seconds']))):fail('transport_config_metadata_shape')
+    for path,(digest,signature) in protected.items():
+        raw,stamp=read(path,8*1024*1024)
+        if hashlib.sha256(raw).hexdigest()!=digest or (stamp.st_dev,stamp.st_ino,stamp.st_size,stamp.st_mtime_ns,stamp.st_ctime_ns)!=signature:fail('transport_protected_drift')
+    return {'state':'retained_transport_inspected_read_only','target_operation_id':profile['target_operation_id'],
+            'continuation_scope_sha256':NEXT_SCOPE['sha256'],'scope_id':scope['scope_id'],'parents':parents,'requests':rows,
+            'known_lineage_http_attempts':sum(p['calls'] for p in profile['parents']),
+            'known_lineage_unknown':sum(p['unknown'] for p in profile['parents']),
+            'account_selector':'TOURVISOR_ANEX_JWT','current_account_metadata':account,'metadata_signature_verified':False,
+            'current_config_sha256':hashlib.sha256(config_raw).hexdigest(),'config_metadata_is_current_not_historical':True,
+            'config_file_mtime_utc':dt.datetime.fromtimestamp(config_stat.st_mtime_ns/1e9,dt.timezone.utc).isoformat(),
+            'protected_ledger_sha256':ledgers,'protected_inputs_unchanged':True,'raw_response_bodies_read':False,
+            'timing_scope':'filesystem capture lag includes local work/fsync; terminal lag is not network latency',
+            'historical_network_phase_recorded':False,'cause_established':False,
+            'supplier_calls':0,'database_writes':0,'mapping_writes':0,'new_accepted_mappings':0,'safe_to_write_now':False}
 
 def retained_saved_detail(stage):
     scope=retained_next_scope(stage);retained_prior_selection(scope)
@@ -508,7 +622,7 @@ def run_match_retained(stage):
     if not safe_file(config,1048576) or not safe_file(dbhelper,65536):fail('retained_config_paths')
     config_hash=hashlib.sha256(config.read_bytes()).hexdigest()
     if mode=='match-retained-readback':
-        data=retained_saved_detail(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else retained_readback()
+        data=retained_transport_diagnostic(stage) if operation=='int-andromeda-match-retained-readback-20261020-v5' else retained_saved_detail(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else retained_readback()
         data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
             cohort=payload['cohort'],supplier_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
         raw_result=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
@@ -613,9 +727,21 @@ def completed_result(command, result, control_sha):
             if data.get('state') not in ('committed_verified','completed_no_eligible'):return False
             if data.get('state')=='completed_no_eligible' and n!=0:return False
         if command['cohort']==NEXT_SCOPE['cohort'] and (data.get('continuation_scope_sha256')!=NEXT_SCOPE['sha256'] or data.get('scope_id')!=NEXT_SCOPE['scope_id']):return False
+        if command['operation_id']==TRANSPORT_DIAGNOSTIC['operation_id']:
+            if (command['mode']!='match-retained-readback' or command['cohort']!=NEXT_SCOPE['cohort']
+                    or command.get('target_operation_id')!=TRANSPORT_DIAGNOSTIC['target_operation_id']
+                    or data.get('protected_inputs_unchanged') is not True
+                    or any(data.get(k) is not False for k in ('cause_established','historical_network_phase_recorded','metadata_signature_verified','raw_response_bodies_read'))
+                    or data.get('config_metadata_is_current_not_historical') is not True
+                    or type(data.get('new_accepted_mappings')) is not int or data['new_accepted_mappings']!=0
+                    or type(data.get('known_lineage_http_attempts')) is not int
+                    or data['known_lineage_http_attempts']!=sum(p['calls'] for p in TRANSPORT_DIAGNOSTIC['parents'])
+                    or type(data.get('known_lineage_unknown')) is not int
+                    or data['known_lineage_unknown']!=sum(p['unknown'] for p in TRANSPORT_DIAGNOSTIC['parents'])
+                    or not isinstance(data.get('requests'),list) or len(data['requests'])!=data['known_lineage_http_attempts']):return False
         expected = {'match-retained-intake':'captured_and_projected_read_only',
                     'match-tourvisor-quota-policy':'quota_policy_applied_no_supplier_calls',
-                    'match-retained-readback':'saved_detail_inspected_read_only' if command['cohort']==NEXT_SCOPE['cohort'] else 'reconciled_read_only','match-retained-project':'reprojected_retained_read_only',
+                    'match-retained-readback':'retained_transport_inspected_read_only' if command['operation_id']==TRANSPORT_DIAGNOSTIC['operation_id'] else 'saved_detail_inspected_read_only' if command['cohort']==NEXT_SCOPE['cohort'] else 'reconciled_read_only','match-retained-project':'reprojected_retained_read_only',
                     'match-retained-current':'current_retained_read_only',
                     'match-retained-acquire':'acquired_retained_native_read_only',
                     'match-retained-anex-write':data.get('state'),'match-retained-anex-write-v2':data.get('state')}[command['mode']]
@@ -641,7 +767,7 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
-    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(NEXT_SCOPE)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(NEXT_SCOPE)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
     remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
