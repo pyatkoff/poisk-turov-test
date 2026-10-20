@@ -111,24 +111,6 @@ function query_string(array $params)
     return implode('&', $parts);
 }
 
-/** Fixed categories and numeric timings only; never paths, IDs or supplier text. */
-function tv_failure_diagnostics(string $path, int $errno, int $status, float $seconds): array
-{
-    $stage = 'other';
-    if ($path === '/tours/search') $stage = 'search_start';
-    elseif (preg_match('~\A/tours/search/[1-9][0-9]*/status\z~D', $path)) $stage = 'search_status';
-    elseif (preg_match('~\A/tours/search/[1-9][0-9]*/continue\z~D', $path)) $stage = 'search_continue';
-    elseif (preg_match('~\A/tours/search/[1-9][0-9]*\z~D', $path)) $stage = 'search_results';
-    elseif (preg_match('~\A/tours/[^/]+/flights\z~D', $path)) $stage = 'flights';
-    elseif (preg_match('~\A/tours/[^/]+\z~D', $path)) $stage = 'tour';
-    $facts = ['provider' => 'tourvisor', 'stage' => $stage,
-        'category' => $errno !== 0 ? ($errno === 28 ? 'timeout' : 'transport') : 'http'];
-    if ($status >= 0 && $status <= 599) $facts['httpStatus'] = $status;
-    if ($errno >= 0 && $errno <= 999) $facts['curlErrno'] = $errno;
-    if (is_finite($seconds) && $seconds >= 0 && $seconds <= 3600) $facts['elapsedMs'] = (int)round($seconds * 1000);
-    return $facts;
-}
-
 function tv_get(string $path, array $params = [])
 {
     $token = jwt();
@@ -148,18 +130,15 @@ function tv_get(string $path, array $params = [])
     $body = curl_exec($ch);
     $errno = curl_errno($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $seconds = (float)curl_getinfo($ch, CURLINFO_TOTAL_TIME);
     curl_close($ch);
 
-    if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error',
-        'diagnostics' => tv_failure_diagnostics($path, $errno, $code, $seconds)], 502);
+    if ($errno) out(['ok' => false, 'error' => 'Tourvisor connection error'], 502);
 
     // Error bodies are not part of the public response; do not decode them.
     // Large error JSON must not exhaust memory before the existing error output.
     if ($code < 200 || $code >= 300) {
         $status = ($code >= 400 && $code < 600) ? $code : 502;
-        out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code,
-            'diagnostics' => tv_failure_diagnostics($path, $errno, $code, $seconds)], $status);
+        out(['ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $code], $status);
     }
 
     $decoded = json_decode((string)$body, true);
