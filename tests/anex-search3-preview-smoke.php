@@ -394,19 +394,80 @@ $expiredFlights = $flightState;
 $expiredFlights['gateway']['saved_offers']['expires_at'] = $now;
 search3_check($follow($flightRequest, $expiredFlights)['status'] === 'expired', 'cached flight receipt outlived search');
 
-$unknownState = $groupState;
-$failedCalls = 0;
-$failedFactory = static function () use (&$failedCalls): AnyTourAnexClient {
-    return new AnyTourAnexClient('test-secret', static function () use (&$failedCalls): array {
-        ++$failedCalls;
-        throw new RuntimeException('SYNTHETIC_TRANSPORT_FAILURE');
-    });
-};
-$failed = false;
-try { $follow($expandRequest, $unknownState, $failedFactory, $checkpoint); } catch (RuntimeException $expected) { $failed = true; }
-search3_check($failed && $failedCalls === 1, 'synthetic failure not exercised');
-search3_check($follow($expandRequest, $unknownState)['status'] === 'expansion_unknown' && $failedCalls === 1
-    && $readFactoryCalls === 0, 'unknown expansion was replayed');
+foreach (['transport' => 'ANEX_TRANSPORT_ERROR', 'http' => 'ANEX_HTTP_ERROR',
+    'supplier' => 'ANEX_SUPPLIER_ERROR', 'invalid' => 'ANEX_INVALID_RESPONSE',
+    'projection' => 'ANEX_FILTER_UNSUPPORTED'] as $mode => $expectedCode) {
+    $unknownState = $groupState;
+    $failedCalls = 0;
+    $failureCheckpoints = [];
+    $persistFailure = static function (array &$pending) use (&$failureCheckpoints): void {
+        $failureCheckpoints[] = unserialize(serialize($pending));
+    };
+    $failedFactory = static function () use (&$failedCalls, &$failureCheckpoints, &$unknownState, $mode, $nativeRow): AnyTourAnexClient {
+        return new AnyTourAnexClient('test-secret', static function () use (&$failedCalls, &$failureCheckpoints, &$unknownState, $mode, $nativeRow): array {
+            ++$failedCalls;
+            search3_check(count($failureCheckpoints) === 1, 'expand_supplier_before_reservation');
+            if ($mode === 'transport') throw new RuntimeException('test-secret/private-url-or-body');
+            if ($mode === 'http') return ['status' => 502, 'body' => 'test-secret/private-body'];
+            if ($mode === 'supplier') return ['status' => 200, 'body' => '{"error":101,"message":"test-secret/private-body"}'];
+            if ($mode === 'invalid') return ['status' => 200, 'body' => 'test-secret/private-body'];
+            // Controlled application failure AFTER a valid concrete HTTP200 response.
+            $unknownState['params']['meal'] = '99';
+            return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['prices' => [
+                array_replace($nativeRow, ['id' => 'private-concrete-failure', 'grouped' => 0])]]])];
+        });
+    };
+    $failed = false;
+    try { $follow($expandRequest, $unknownState, $failedFactory, $persistFailure); }
+    catch (Throwable $error) { $failed = $error->getMessage() === $expectedCode; }
+    search3_check($failed && $failedCalls === 1, 'expand_failure_not_exercised_' . $mode);
+    $failure = $unknownState['expansions'][$groupTour['offer_ref']]['failure'] ?? [];
+    search3_check(($failure['X-AnyTour-Anex-Stage'] ?? null) === 'expand'
+        && ($failure['X-AnyTour-Anex-Phase'] ?? null) === ($mode === 'projection' ? 'projection' : 'gateway')
+        && ($failure['X-AnyTour-Anex-Failure'] ?? null) === ($mode === 'projection' ? 'ANEX_INTERNAL_ERROR' : $expectedCode), 'expand_failure_stage_' . $mode);
+    search3_check(($failure['X-AnyTour-Anex-Upstream-Status'] ?? null) === ($mode === 'transport' ? null : ($mode === 'http' ? '502' : '200')),
+        'expand_upstream_status_' . $mode);
+    search3_check(($failure['X-AnyTour-Anex-Supplier-Code'] ?? null) === ($mode === 'supplier' ? '101' : null)
+        && !isset($failure['X-AnyTour-Anex-Elapsed-Ms'])
+        && !str_contains(json_encode($failure), 'test-secret') && !str_contains(json_encode($failure), 'private-'), 'expand_failure_redaction_' . $mode);
+    search3_check(count($failureCheckpoints) === 2 && end($failureCheckpoints) === $unknownState, 'expand_failure_not_durable_' . $mode);
+    search3_check($unknownState['gateway']['saved_offers']['expires_at'] === $groupState['gateway']['saved_offers']['expires_at'], 'expand_failure_extended_expiry');
+    $unknownState = unserialize(serialize($unknownState));
+    $unknownState['params'] = $groupState['params'];
+    $againFailure = $follow($expandRequest, $unknownState);
+    search3_check($againFailure['status'] === 'expansion_unknown' && ($againFailure['diagnostics'] ?? null) === $failure && $failedCalls === 1
+        && $readFactoryCalls === 0, 'restored_expand_failure_replayed_' . $mode);
+}
+foreach (['expired', 'not_loaded'] as $terminal) {
+    $terminalState = $groupState; $completed = false; $terminalCalls = 0; $terminalCheckpoints = [];
+    $terminalFactory = static function () use (&$completed, &$terminalCalls, $nativeRow): AnyTourAnexClient {
+        return new AnyTourAnexClient('test-secret', static function () use (&$completed, &$terminalCalls, $nativeRow): array {
+            ++$terminalCalls; $completed = true;
+            return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['prices' => [
+                array_replace($nativeRow, ['id' => 'private-concrete-terminal', 'grouped' => 0])]]])];
+        });
+    };
+    $terminalClock = static function () use (&$completed, &$terminalState, $terminal, $now, $started): int {
+        if ($completed && $terminal === 'expired') return $started + 900;
+        if ($completed && $terminal === 'not_loaded') {
+            foreach ($terminalState['gateway']['saved_offers']['offers'] as $ref => $entry) {
+                if (($entry['offer']['kind'] ?? null) === 'concrete') unset($terminalState['gateway']['saved_offers']['offers'][$ref]);
+            }
+        }
+        return $now;
+    };
+    $persistTerminal = static function (array &$pending) use (&$terminalCheckpoints): void { $terminalCheckpoints[] = $pending; };
+    $terminalReply = anytour_anex_search3_followup($expandRequest, $terminalState, $resolver, $terminalFactory,
+        $metadataReader, $terminalClock, $persistTerminal);
+    search3_check($terminalReply['status'] === $terminal && $terminalCalls === 1
+        && ($terminalReply['diagnostics']['X-AnyTour-Anex-Upstream-Status'] ?? null) === '200'
+        && ($terminalReply['diagnostics']['X-AnyTour-Anex-Phase'] ?? null) === 'projection'
+        && count($terminalCheckpoints) === 2 && end($terminalCheckpoints) === $terminalState, 'expand_200_terminal_not_retained_' . $terminal);
+}
+$legacyUnknown = $groupState;
+$legacyUnknown['expansions'][$groupTour['offer_ref']] = ['status' => 'unknown'];
+search3_check($follow($expandRequest, $legacyUnknown)['status'] === 'expansion_unknown'
+    && !isset($legacyUnknown['expansions'][$groupTour['offer_ref']]['failure']), 'legacy_unknown_cause_invented');
 $unreserved = $groupState;
 $failed = false;
 try { $follow($expandRequest, $unreserved, $factory); } catch (RuntimeException $error) { $failed = $error->getMessage() === 'ANEX_RESERVATION_REQUIRED'; }
@@ -461,8 +522,13 @@ session_id('anex-test-' . bin2hex(random_bytes(8)));
 if (!session_start()) exit(11);
 $_SESSION['offer_context'] = ['generation' => 7, 'expansions' => ['fixture' => ['status' => 'unknown']]];
 $state =& $_SESSION['offer_context'];
+$state['expansions']['fixture']['failure'] = anytour_anex_search3_continue_failure(new RuntimeException('ANEX_HTTP_ERROR'),
+    ['action' => 'SearchTour_PRICES', 'http_status' => 502, 'elapsed_ms' => 19001], 'expand');
 anytour_anex_search3_checkpoint($state);
 if (session_status() !== PHP_SESSION_ACTIVE || $_SESSION['offer_context'] !== $state) exit(12);
+session_write_close();
+if (!session_start() || ($_SESSION['offer_context']['expansions']['fixture']['failure']['X-AnyTour-Anex-Elapsed-Ms'] ?? null) !== '19001') exit(16);
+$state =& $_SESSION['offer_context'];
 $state['expansions']['fixture']['status'] = 'complete';
 session_write_close();
 if (!session_start() || $_SESSION['offer_context']['expansions']['fixture']['status'] !== 'complete') exit(13);
