@@ -155,7 +155,7 @@ jobs:
       - name: Exact reviewed MATCH retained source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: ce8fb097c58f62060a9b0a49f5cf1fead55ef7c5
+          ref: d249b830d56a2197ab7f62f54313b30f5219ad85
           path: match-retained-source
           persist-credentials: false
       - name: MATCH retained intake and shared quota native acceptance
@@ -287,7 +287,7 @@ jobs:
           path: source
           persist-credentials: false
       - name: Recheck new MATCH source contract before its operation
-        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy' || steps.command.outputs.mode == 'match-retained-readback' || steps.command.outputs.mode == 'match-retained-project' || steps.command.outputs.mode == 'match-retained-current' || steps.command.outputs.mode == 'match-retained-acquire' || steps.command.outputs.mode == 'match-retained-anex-write'
+        if: steps.command.outputs.mode == 'match-retained-intake' || steps.command.outputs.mode == 'match-tourvisor-quota-policy' || steps.command.outputs.mode == 'match-retained-readback' || steps.command.outputs.mode == 'match-retained-project' || steps.command.outputs.mode == 'match-retained-current' || steps.command.outputs.mode == 'match-retained-acquire' || steps.command.outputs.mode == 'match-retained-anex-write' || steps.command.outputs.mode == 'match-retained-anex-write-v2'
         env:
           MATCH_RETAINED_SOURCE_ROOT: ${{ github.workspace }}/source
         run: python3 tests/int_server_executor_match_retained_test.py -q
