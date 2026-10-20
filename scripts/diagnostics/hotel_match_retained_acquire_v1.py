@@ -155,6 +155,8 @@ def select_scope_rows(scope, current, today=None):
     """Select a reviewed, immutable, never-selected roster; old105 is separate."""
     today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
     variation=scope.get('scope_kind')=='owner_date_variation'
+    fresh=scope.get('scope_kind')=='never_selected_bounded'
+    bounded=variation or fresh
     ids = scope.get('selected_tv_hotel_ids')
     prior = scope.get('prior_selected_hotel_ids')
     if (type(scope.get('schema_version')) is not int or scope['schema_version'] != 1
@@ -164,8 +166,12 @@ def select_scope_rows(scope, current, today=None):
             or type(scope.get('selected_count')) is not int or len(ids) != scope['selected_count']
             or not isinstance(prior, list) or any(type(v) is not int or v < 1 for v in prior)
             or prior != sorted(set(prior)) or (not variation and set(ids).intersection(prior))
-            or scope.get('supplier_http_maximum') != (30 if variation else 400)
+            or scope.get('supplier_http_maximum') != (30 if bounded else 400)
             or (variation and (len(ids)>25 or 8038 in ids or not set(ids).issubset(prior)))
+            or (fresh and (len(ids)>25 or scope.get('search_start_maximum')!=1
+                           or scope.get('http_timeout_seconds')!=60
+                           or scope.get('context_grouping')!='exact_date_nights'
+                           or scope.get('context_origin')!='saved_user_search_exact_date_nights'))
             or scope.get('safe_to_write_now') is not False
             or any(type(scope.get(k)) is not int or scope[k] != 0 for k in ('database_writes','mapping_writes'))):
         raise ValueError('continuation_scope_shape')
@@ -175,7 +181,7 @@ def select_scope_rows(scope, current, today=None):
     if (type(scope.get('children_count')) is not int or scope['children_count'] != 0 or scope.get('child_ages_signature') != ''
             or scope['adults'] > 6):
         raise ValueError('continuation_party')
-    identity_keys=('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')+(('scope_kind','wire_context','context_origin') if variation else ())
+    identity_keys=('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')+(('scope_kind','wire_context','context_origin') if bounded else ())
     identity = hashlib.sha256(canonical({k: scope[k] for k in identity_keys})).hexdigest()
     if scope.get('scope_id') != identity or scope.get('cohort') != 'anex-next-'+identity[:16]:
         raise ValueError('continuation_scope_digest')
@@ -207,7 +213,27 @@ def select_scope_rows(scope, current, today=None):
                 or ctx['departure_date'] < today):
             raise ValueError('continuation_row_binding')
         selected.append(row)
+    if fresh:
+        wire=scope.get('wire_context')
+        if any(r['future_context'].get('source')!='user_search' or wire!={
+                'date_from':r['future_context']['departure_date'],'date_to':r['future_context']['departure_date'],
+                'nights_from':r['future_context']['nights'],'nights_to':r['future_context']['nights']}
+               for r in selected):
+            raise ValueError('never_selected_exact_saved_context')
     return selected
+
+
+def configure_scope_budget(client, scope):
+    """Only reviewed bounded scopes lower the legacy client budget."""
+    if scope and scope.get('scope_kind') in ('owner_date_variation','never_selected_bounded'):
+        client.http_maximum=30;client.search_start_maximum=1
+
+
+def check_never_selected_requests(scope, previous):
+    """Hotel-only new intake must never overlap even an UNKNOWN old request."""
+    ids=set(scope['selected_tv_hotel_ids'])
+    if any(ids.intersection(record['params']['hotelIds']) for record in previous):
+        raise ValueError('selection_effective_request_consumed_no_replay')
 
 
 def reserve_selection(home, scope, operation):
@@ -440,10 +466,12 @@ if __name__=='__main__':
         selected=select_scope_rows(scope,data['current'])
         if scope.get('scope_kind')=='owner_date_variation':
             context_claim=reserve_contexts(Path.home(),scope,operation,data['prior_effective_requests'])
-        else:reserve_selection(Path.home(),scope,operation)
+        else:
+            if scope.get('scope_kind')=='never_selected_bounded':
+                check_never_selected_requests(scope,data['prior_effective_requests'])
+            selection_claim=reserve_selection(Path.home(),scope,operation)
     client=Client(Path.home(),root,directory,os.environ['MATCH_RETAINED_OPERATION'])
-    if scope and scope.get('scope_kind')=='owner_date_variation':
-        client.http_maximum=30;client.search_start_maximum=1
+    configure_scope_budget(client,scope)
     result=acquire(client,directory,selected,scope=scope)
     result['parent_evidence_sha256']=scope['parent_evidence_sha256'] if scope else PARENT_EVIDENCE
     result['selected_id_sha256']=shape.plan_id_digest([r['tv_hotel_id'] for r in selected])
@@ -451,4 +479,8 @@ if __name__=='__main__':
     if scope and scope.get('scope_kind')=='owner_date_variation':
         if hashlib.sha256((Path.home()/'.anytoour-match/retained-selection-claims.json').read_bytes()).hexdigest()!=context_claim['hotel_ledger_sha256']:raise SystemExit('hotel_ledger_changed_unknown_no_replay')
         result.update(context_claim,context_origin=scope['context_origin'],wire_context=scope['wire_context'])
+    if scope and scope.get('scope_kind')=='never_selected_bounded':
+        if hashlib.sha256((Path.home()/'.anytoour-match/retained-selection-claims.json').read_bytes()).hexdigest()!=selection_claim:
+            raise SystemExit('selection_ledger_changed_unknown_no_replay')
+        result.update(selection_reservation_sha256=selection_claim,context_origin=scope['context_origin'],wire_context=scope['wire_context'])
     print(json.dumps(result,sort_keys=True,separators=(',',':')))
