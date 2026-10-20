@@ -4,6 +4,21 @@
 
 Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, ORIGINAL NEXT; новый UI-кандидат не создаётся.
 
+Последний фактический checkpoint — PR4700, 20.10.2026.
+
+| Состояние | Точная основа и evidence |
+| --- | --- |
+| Текущий установленный продукт | source `a153d12e500a7855b0ca15b2dfa8743354e63db2`, appSHA256 `1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11`, published release `e8f359866b9b8eb6f98ed062b8234aa1f839cf34` |
+| Ремонт и штатная публикация | PR4700: all8 exact-source checks/all7 workflows SUCCESS; build39393809671/artifact12251475296; stock39397377588/terminal[6287458863](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863), predecessor1c7 retained |
+| Проверенное поведение | Canonical OR/subset сохраняется при обычном клике; сбой источников не выдаётся за отсутствие туров; country minimum не подставляется под selectedhotelIds. Source+compiled430/1280 error evidence и installediframe430/1280 filter positive-control разделены; [audit6286876103](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103). Без нового общего балла |
+| Разовые поиски | Прямое решение владельца «можешь не спрашивать разрешения на разовые поиски», [6286202365](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365): новый обоснованный обычный one-off/quote без повторного вопроса, в прежних лимитах/штатном UI. Не bulk/auto-drain/paid browser/repeatedANEX/реальная заявка/production и не изменение квот |
+| Точная зависимость | Один Rix Find07:55:55 завершён с ошибками обоих источников, quote0/submit0, CONSUMED. Retained-log diagnosis/recovery — [INT6286723845](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6286723845), без нового outage probe; actual installed failure/real submittedIDs/цена N |
+
+Новые факты4700 не переносят старые оценки на изменённый artifact. Site203 reference,
+Site204/PUBLIC project/history, production и соседние previews сохранены.
+
+История принятой версии1c7 до ремонта4700 — точные прежние scopes:
+
 | Состояние | Точная основа и evidence |
 | --- | --- |
 | Установленный продукт | source `1c7c3223190673726d5185c8946469f62e5294d3`, appSHA256 `68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`, published release `0576d6eb69cb31b80ca4d479e45a275f107a6e34` |
@@ -18,7 +33,7 @@ native/physical/real-supplier/real-delivery acceptance. Остальные gates
 
 ### Следующее действие
 
-Принятый UI exact1c7/app68843 сохранять (audit6282417033/6282656840). Продолжать с первого доступного, разрешённого существенного шага существующего плана в его ownership и exact gates: physical QA либо новый принятый INT/Rix/lead handoff; production — только по отдельному approval. iPhone/Safari требуется для physical scope и не является общим условием остальных работ. Сейчас доступный разрешённый шаг не установлен; пауза сохраняется. Новые факты сначала сверить с актуальной координацией; неизменённые UI/CI/deploy и consumed операции не повторять.
+Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.
 
 Единственная очередь и таблица внешних gates — верхний исполняемый раздел
 [product plan](search3-product-development-plan.md), синхронный с `current_task`.

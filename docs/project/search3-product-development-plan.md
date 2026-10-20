@@ -12,6 +12,21 @@ SEARCH-QUALITY-1 и существующие#4217/#1646/#1719; новый tracke
 
 Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, ORIGINAL NEXT; новый UI-кандидат не создаётся.
 
+Последний фактический checkpoint — PR4700, 20.10.2026.
+
+| Состояние | Точная основа и evidence |
+| --- | --- |
+| Текущий установленный продукт | source `a153d12e500a7855b0ca15b2dfa8743354e63db2`, appSHA256 `1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11`, published release `e8f359866b9b8eb6f98ed062b8234aa1f839cf34` |
+| Ремонт и штатная публикация | PR4700: all8 exact-source checks/all7 workflows SUCCESS; build39393809671/artifact12251475296; stock39397377588/terminal[6287458863](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863), predecessor1c7 retained |
+| Проверенное поведение | Canonical OR/subset сохраняется при обычном клике; сбой источников не выдаётся за отсутствие туров; country minimum не подставляется под selectedhotelIds. Source+compiled430/1280 error evidence и installediframe430/1280 filter positive-control разделены; [audit6286876103](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103). Без нового общего балла |
+| Разовые поиски | Прямое решение владельца «можешь не спрашивать разрешения на разовые поиски», [6286202365](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365): новый обоснованный обычный one-off/quote без повторного вопроса, в прежних лимитах/штатном UI. Не bulk/auto-drain/paid browser/repeatedANEX/реальная заявка/production и не изменение квот |
+| Точная зависимость | Один Rix Find07:55:55 завершён с ошибками обоих источников, quote0/submit0, CONSUMED. Retained-log diagnosis/recovery — [INT6286723845](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6286723845), без нового outage probe; actual installed failure/real submittedIDs/цена N |
+
+Новые факты4700 не переносят старые оценки на изменённый artifact. Site203 reference,
+Site204/PUBLIC project/history, production и соседние previews сохранены.
+
+История принятой версии1c7 до ремонта4700 — точные прежние scopes:
+
 | Состояние | Точная основа и evidence |
 | --- | --- |
 | Установленный продукт | source `1c7c3223190673726d5185c8946469f62e5294d3`, appSHA256 `68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`, published release `0576d6eb69cb31b80ca4d479e45a275f107a6e34` |
@@ -26,7 +41,7 @@ native/physical/real-supplier/real-delivery acceptance. Остальные gates
 
 ### Следующее действие
 
-Принятый UI exact1c7/app68843 сохранять (audit6282417033/6282656840). Продолжать с первого доступного, разрешённого существенного шага существующего плана в его ownership и exact gates: physical QA либо новый принятый INT/Rix/lead handoff; production — только по отдельному approval. iPhone/Safari требуется для physical scope и не является общим условием остальных работ. Сейчас доступный разрешённый шаг не установлен; пауза сохраняется. Новые факты сначала сверить с актуальной координацией; неизменённые UI/CI/deploy и consumed операции не повторять.
+Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.
 
 ### История предыдущего corpus3bdd — 20.10.2026
 
@@ -52,8 +67,8 @@ Back/Close/reset/sort/Continue принят отдельно; native430/physical
 отель/варианты → конкретный тур и итог за всю группу → необязательные рейсы →
 контакты → возврат с сохранением выбора и допустимого черновика.
 
-Observed ordinary430/mobile и1280/desktop, включая short1280×720, принят
-6282417033; конечный compiled360/390/768 остаток принят6282656840 по retained
+Исторический exact1c7 observed ordinary430/mobile и1280/desktop, включая
+short1280×720, принят6282417033; конечный compiled360/390/768 остаток принят6282656840 по retained
 exact1c7 кадрам/receipts без новых прогонов. Installed/native/physical этих размеров
 не принимаются автоматически; это не общая приёмка поиска.200% и Compare/shortlist deferred.
 Обязательные штатные final-source CI/workflows сохраняются; дополнительных
@@ -63,10 +78,10 @@ exact1c7 кадрам/receipts без новых прогонов. Installed/nat
 
 Target: [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/)
 на `release/search3-production-ready-v1`, repo `pyatkoff/poisk-turov-test`.
-Установленный продукт `1c7c3223190673726d5185c8946469f62e5294d3`,
-appSHA256 `68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`;
-[publication/readback6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588).
-Predecessor3bdd/readback6273604203 — сохранённая история/rollback, не новый deploy.
+Установленный продукт `a153d12e500a7855b0ca15b2dfa8743354e63db2`,
+appSHA256 `1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11`;
+[publication/readback6287458863](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863).
+Predecessor1c7/readback6282322588 сохранён для rollback;3bdd — более ранняя история.
 Source/CI/merge/publication/runtime — разные статусы.
 
 PUBLIC design-lab project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`,
@@ -102,16 +117,18 @@ Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f67
 Приёмка проходит обычными кликами/тапами через этот точный installed runtime.
 Смена ширины в рамке не перезагружает child; каждый новый полный reload/mode switch
 начинает новый просмотр. Уже проверенные действия не запускаются ради покрытия.
-Observed ordinary430/1280 UI-этап закрыт6282417033, retained360/390/768 закрыт6282656840;
+Исторический exact1c7 ordinary430/1280 UI-scope закрыт6282417033, retained360/390/768 —6282656840;
+currenta153 имеет отдельно compiled failed-source и installed healthy positive-control, без полной installed error-приёмки;
 завершённые действия не повторять. Код — только при существенном подтверждённом
-дефекте, которого в текущем наблюдавшемся корпусе нет. Iframe не означает native430/physicalSafari/safearea и не принимает
+дефекте; прежний1c7 corpus не принимает новыйa153 автоматически. Iframe не означает native430/physicalSafari/safearea и не принимает
 реальные supplier prices/lead delivery. При недоступности child не делать proxy,
 не менять security headers/carrier/server/browser install. Sourceprepared/CI/
 published/installed/physical/live остаются разными статусами.
 
-Новый supplier/live/paid/реальный lead всё ещё требует своего действующего exact
-допуска и применимых stock accounting/budget gates; consumed one-run исключение
-6280498998 не расширяется. Native/physical, canonicalRix и INT/production зависимости
+Для нового обоснованного ordinary supplier one-off/normalquote действует standing
+допуск владельца6286202365: повторного вопроса не нужно, прежние stock limits/accounting
+сохраняются. Bulk/auto-drain/paid browser/repeatedANEX/реальная заявка/production
+требуют своих exact gates; consumed one-run6280498998 и Rix6286499106 не повторяются. Native/physical, canonicalRix и INT/production зависимости
 не объединяются в круговой AND-gate. Не создавать ещё один admission для уже
 завершённой операции или повторять её под новым именем.
 
@@ -138,8 +155,8 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 | Область / состояние | Действующий ответственный | Следующее конкретное действие | Условие закрытия |
 | --- | --- | --- | --- |
 | Installed TV/manager-путь — COMPLETED/CONSUMED6280546977 | SEARCH, explicit owner allowance6280498998 | Сохранить exact RIXOStour99280056379835/268848RUB/2A и возврат; не повторять поиск/quote | Текущий TVoffer→managercontact/Back/Close/Continue PASS в native1363; не optionalpair/fullsource/430/realLead |
-| Installed iframe430/1280 — ordinary repair/path ACCEPTED6282417033; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | Принятый1c7 путь/retained360/390/768 не повторять; physicaliPhone/Safari430 проверять при доступном штатном маршруте, отдельно от независимых handoffs | Цельный observed ordinary430/1280 UI scope закрыт; physicalSafari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
-| Rix aliases / submitted exactIDs — отдельные N | Canonical данные у LOCAL; применение у SEARCH | Проверить доступность alias только штатным canonical read/handoff; submittedIDs включать лишь в подходящий отдельно допущенный поиск, не делать платный поиск ради ввода | Canonical alias факт и фактические OR exactIDs приняты в своих scopes. Неизвестный/отсутствующий alias не угадывается и не чинится новым matching в SEARCH |
+| Исторический exact1c7 installediframe430/1280 — ordinary path ACCEPTED6282417033; currenta153 — ограниченный positive-control; native/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | Принятый1c7 путь/retained360/390/768 не повторять; physicaliPhone/Safari430 проверять при доступном штатном маршруте, отдельно от независимых handoffs | Exact1c7 observed ordinary430/1280 UI scope закрыт; currenta153 failed-provider installed — N, source/compiled proof отдельно. PhysicalSafari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
+| Rix aliases / submitted exactIDs — отдельные N | Canonical данные у LOCAL; применение у SEARCH | Проверить доступность alias только штатным canonical read/handoff; submittedIDs включать в новый обоснованный ordinary поиск по standing6286202365 без повторного вопроса, не повторять consumed и не делать платный поиск ради ввода | Canonical alias факт и фактические OR exactIDs приняты в своих scopes. Неизвестный/отсутствующий alias не угадывается и не чинится новым matching в SEARCH |
 | ANEX repeated/allpair authority — отдельный INT handoff отсутствует в последнем чтении | Действующий INT#2506; SEARCH принимает | Прочитать новый конкретный handoff/contract и exact quote/receipt semantics при его появлении; принятую optional-one-pair authority не расширять | Реализованный принятый bounded контракт и exact операция/total; proposal caps3/8/9 не authority. Не блокирует независимо допущенный TV/manager-path |
 | Реальная доставка заявки / LeadC3 — N, preview delivery выключена | Owner-reviewed lead transport, затем SEARCH | После отдельного точного разрешения защищённого scope проверить штатные pending/error/retry/success; до него сохранять локальную проверку/контакты отдельно | Реальная доставка доказана своим receipt; preview validation/quote expiry её не заменяют. Не условие закрытого учебного UI corpus |
 | Production — отдельное approval | Владелец + штатный publisher | Предъявить конкретный готовый artifact после применимых gates; публиковать только по отдельному approval | Production artifact/receipt/runtime подтверждены; preview/source/план не являются допуском |
