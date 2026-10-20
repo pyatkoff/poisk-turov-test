@@ -991,7 +991,7 @@ function anytour_anex_search3_retryable_initial_price_502(Throwable $error, arra
 }
 
 /** Fixed failure codes only: no exception text, URLs, credentials or offer references. */
-function anytour_anex_search3_continue_failure(Throwable $error, array $last): array
+function anytour_anex_search3_continue_failure(Throwable $error, array $last, string $stage = 'continue'): array
 {
     $allowed = ['ANEX_HTTP_ERROR', 'ANEX_TRANSPORT_ERROR', 'ANEX_SUPPLIER_ERROR',
         'ANEX_INVALID_RESPONSE', 'ANEX_RESPONSE_TOO_LARGE', 'ANEX_INVALID_PRICES',
@@ -1003,10 +1003,30 @@ function anytour_anex_search3_continue_failure(Throwable $error, array $last): a
         : ($error instanceof PDOException ? 'ANEX_DATABASE_ERROR'
             : ($error instanceof TypeError ? 'ANEX_TYPE_ERROR' : 'ANEX_INTERNAL_ERROR'));
     $safe = ['X-AnyTour-Anex-Failure' => $code];
-    if (($last['action'] ?? null) === 'SearchTour_PRICES') {
-        foreach (['http_status' => ['X-AnyTour-Anex-Upstream-Status', 599],
+    $initialSearch = $stage === 'search';
+    $nativeAction = $last['action'] ?? null;
+    $knownAction = $initialSearch
+        ? in_array($nativeAction, ['SearchTour_TOWNFROMS', 'SearchTour_STATES', 'SearchTour_CURRENCIES', 'SearchTour_PRICES'], true)
+        : $nativeAction === 'SearchTour_PRICES';
+    if ($initialSearch) {
+        $safe['X-AnyTour-Anex-Stage'] = 'search';
+        $safe['X-AnyTour-Anex-Category'] = [
+            'ANEX_TRANSPORT_ERROR' => 'transport', 'ANEX_HTTP_ERROR' => 'http',
+            'ANEX_SUPPLIER_ERROR' => 'supplier', 'ANEX_DATABASE_ERROR' => 'database',
+            'ANEX_RATE_LIMIT' => 'limit', 'ANEX_REQUEST_LIMIT' => 'limit',
+            'ANEX_INVALID_RESPONSE' => 'response', 'ANEX_RESPONSE_TOO_LARGE' => 'response',
+            'ANEX_INVALID_PRICES' => 'response', 'ANEX_REPEATED_PRICE_PAGE' => 'response',
+            'ANEX_INVALID_PUBLIC_RESULT' => 'response',
+        ][$code] ?? 'application';
+        // This is the last attempted native action, never a supplier URL or request payload.
+        if ($knownAction) $safe['X-AnyTour-Anex-Native-Action'] = $nativeAction;
+    }
+    if ($knownAction) {
+        $numeric = ['http_status' => ['X-AnyTour-Anex-Upstream-Status', 599],
             'supplier_code' => ['X-AnyTour-Anex-Supplier-Code', 99999],
-            'curl_errno' => ['X-AnyTour-Anex-Transport-Code', 999]] as $key => [$header, $max]) {
+            'curl_errno' => ['X-AnyTour-Anex-Transport-Code', 999]];
+        if ($initialSearch) $numeric['elapsed_ms'] = ['X-AnyTour-Anex-Elapsed-Ms', 120000];
+        foreach ($numeric as $key => [$header, $max]) {
             if (is_int($last[$key] ?? null) && $last[$key] >= 0 && $last[$key] <= $max) {
                 $safe[$header] = (string) $last[$key];
             }
@@ -1214,8 +1234,8 @@ function anytour_anex_search3_http(): void
         session_write_close();
         $last = isset($additionalClient) ? $additionalClient->lastRequestDiagnostics()
             : (isset($client) ? $client->lastRequestDiagnostics() : []);
-        if (($action ?? null) === 'continue') {
-            foreach (anytour_anex_search3_continue_failure($error, $last) as $name => $value) {
+        if (in_array($action ?? null, ['search', 'continue'], true)) {
+            foreach (anytour_anex_search3_continue_failure($error, $last, $action) as $name => $value) {
                 header($name . ': ' . $value);
             }
         }
