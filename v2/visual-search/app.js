@@ -681,7 +681,7 @@ function searchDeliveryIncomplete(response){
  });
 }
 function emptyCalendarContext(){
- if(data.scenario!=='live'||searchDeliveryIncomplete(responseFor(state.search))||!data.observationScopeSupported(state.search,state.filters))return '';
+ if(data.scenario!=='live'||!data.observationScopeSupported(state.search,state.filters))return '';
  const from=state.selectedDate||state.search.from,to=state.selectedDate||state.search.to;
  const point=resultCalendar.observations.filter(p=>p.date>=from&&p.date<=to&&Number.isFinite(p.price)&&p.price>0).reduce((minimum,p)=>!minimum||p.price<minimum.price?p:minimum,null);
  if(!point)return '';
