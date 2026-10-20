@@ -93,11 +93,47 @@ function verifyInitialURL(value){
   return actual.href;
 }
 function calls(page){return page.evaluate(()=>structuredClone(window.__nativeFixture.calls));}
+function captureOptions(name){return name==='calendar-later'?{fullPage:false,animations:'allow',caret:'initial'}:{fullPage:true,animations:'disabled',caret:'hide'};}
 async function capture(page,row,name){
   await page.evaluate(()=>document.fonts.ready);
+  const calendar=name==='calendar-later';
+  const contact=['lead-preview','lead-return'].includes(name);
+  let before,contactBefore;
+  const contactFeedback=()=>page.evaluate(()=>{
+    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+    const form=root?.querySelector('[data-screen="lead"] [data-lead-form]'),status=form?.querySelector('[data-native-contact-status]');
+    if(!form)return{formPresent:false};
+    const value={formPresent:true,checked:form.dataset.checked||null,statusPresent:!!status};if(!status)return value;
+    const css=getComputedStyle(status),rect=status.getBoundingClientRect();
+    return{...value,text:status.textContent.trim(),role:status.getAttribute('role'),hidden:status.hidden,hiddenAncestor:!!status.closest('[hidden]'),
+      display:css.display,visibility:css.visibility,clientRects:status.getClientRects().length,
+      rect:{left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height}};
+  });
+  const calendarPosition=()=>page.evaluate(()=>{
+    const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+    const strip=root.querySelector('[data-native-calendar-strip]'),cell=strip.querySelector('[data-native-day="2026-10-25"]');
+    const rail=strip.getBoundingClientRect(),date=cell.getBoundingClientRect(),css=getComputedStyle(strip),cellCSS=getComputedStyle(cell);
+    return{date:'2026-10-25',page:strip.dataset.nativeCalendarStrip,left:strip.scrollLeft,client:strip.clientWidth,scroll:strip.scrollWidth,
+      rail:{left:rail.left,right:rail.right,top:rail.top,bottom:rail.bottom},cell:{left:date.left,right:date.right,top:date.top,bottom:date.bottom},
+      viewport:{width:innerWidth,height:innerHeight},css:{scrollSnapType:css.scrollSnapType,scrollBehavior:css.scrollBehavior,display:cellCSS.display,visibility:cellCSS.visibility,fontSize:cellCSS.fontSize},
+      withinStrip:date.width>0&&date.height>0&&date.left>=rail.left-1&&date.right<=rail.right+1&&date.top>=rail.top-1&&date.bottom<=rail.bottom+1,
+      withinViewport:date.width>0&&date.height>0&&date.left>=-1&&date.right<=innerWidth+1&&date.top>=-1&&date.bottom<=innerHeight+1};
+  });
+  if(calendar){
+    await page.evaluate(()=>new Promise((resolve,reject)=>{const deadline=setTimeout(()=>reject(new Error('Calendar paint did not settle within 6 seconds')),6000);requestAnimationFrame(()=>requestAnimationFrame(()=>{clearTimeout(deadline);resolve();}));}));
+    await page.evaluate(()=>window.scrollTo(0,0));
+    before=await calendarPosition();assert(before.withinStrip&&before.withinViewport,'Priced final date is visibly within the real strip and viewport before capture');
+  }
+  if(contact)contactBefore=await contactFeedback();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'No document horizontal overflow: '+name);
   const nameFile='installed-'+name+'-'+row.width+'-text100.png',file=path.join(out,nameFile);
-  await page.screenshot({path:file,fullPage:true,animations:'disabled'});
+  await page.screenshot({path:file,...captureOptions(name)});
+  if(calendar){
+    const after=await calendarPosition();row.proof.calendarCapture={options:captureOptions(name),before,after};
+    assert(after.withinStrip&&after.withinViewport,'Priced final date remains visibly within the real strip and viewport after capture');
+    assert(Math.abs(after.left-before.left)<=1,'Screenshot retains the actual date-strip position');
+  }
+  if(contact){row.proof.contactFeedback||={};row.proof.contactFeedback[name]={before:contactBefore,after:await contactFeedback()};}
   const bytes=fs.readFileSync(file);row.frames.push({file:nameFile,sha256:hash(bytes),bytes:bytes.length});
 }
 async function run(){
@@ -206,7 +242,7 @@ async function run(){
         assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1]);
         const finalCalls=await calls(page);assert.deepEqual(finalCalls,{init:finalCalls.init,search:1,quote:1,expand:0,flight:[0],preview:1,submit:0});assert(finalCalls.init>=1);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);await capture(page,row,'lead-return');
-        row.proof={passiveSearches:0,explicitFixtureSearches:1,localFilterExtraOperations:0,calendarFinalLoadedTotal:166400,passiveHotelQuotes:0,explicitFixtureQuotes:1,exactOffer:'fixture:offer:1',tourId:'fixture-tour:1',adults:2,ages:[],selectedFullTotal:112000,originalFlightChoiceIndex:0,previewCount:1,realLeadSubmissions:0,backForwardRetained:true,draftRetained:true,consentRetained:true,favorites:[1],calls:finalCalls};
+        row.proof={...row.proof,passiveSearches:0,explicitFixtureSearches:1,localFilterExtraOperations:0,calendarFinalLoadedTotal:166400,passiveHotelQuotes:0,explicitFixtureQuotes:1,exactOffer:'fixture:offer:1',tourId:'fixture-tour:1',adults:2,ages:[],selectedFullTotal:112000,originalFlightChoiceIndex:0,previewCount:1,realLeadSubmissions:0,backForwardRetained:true,draftRetained:true,consentRetained:true,favorites:[1],calls:finalCalls};
         assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
@@ -222,5 +258,6 @@ if(process.argv.includes('--policy-only')){
   assert(!drift.equals(rendered));assert.throws(()=>verifyEntry(drift,compiledManifest),/Exact installed entry DOM/,'Changed static body must fail despite its unchanged script graph');
   const canonical=TARGET+'?'+new URLSearchParams({...fixture.trip,ages:fixture.trip.ages.join(',')})+'#search';verifyInitialURL(canonical);
   assert.throws(()=>verifyInitialURL(canonical.replace('#search','&searched=1#search')));assert.throws(()=>verifyInitialURL(canonical.replace('country=4','country=1')));assert.throws(()=>verifyInitialURL(canonical.replace('#search','#results')));
+  assert.deepEqual(captureOptions('calendar-later'),{fullPage:false,animations:'allow',caret:'initial'});assert.deepEqual(captureOptions('results'),{fullPage:true,animations:'disabled',caret:'hide'});
   console.log('Installed native static policy PASS; no browser or network used.');
 }else run().then(()=>console.log('Installed native presentation acceptance PASS: 430/1280, controlled data only.')).catch(error=>{console.error(error.stack||error);process.exitCode=1;});
