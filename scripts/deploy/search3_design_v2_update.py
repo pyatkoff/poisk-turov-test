@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('db900a34232477c028b8e9f701a13d7d6b96e548', '2bd8c0b2007e5276331e91e67259406d0b81d796'),)
+    ('ad4d864be8ad42865aadc128988c346f6639a1b7', 'b01329c44d8d3858877a03dba9e140be97565667'),)
 NATIVE_RELEASE_PARENTS = (
-    ('ed6ba82601c6f51c4eb8b8edf11bfee08bbbaafd', '6cdf70663b4f085ec8ebea6bacf4c20c20f4a9d7'),
-    ('185739d46757bd34a05709e3656eab76d1003fa5', '34a4443806a2c4d3b29ea143e7577329ace2a751'),)
+    ('334c72540c08982b351f0771fb4db6d7f15f2e9e', '881e9c7f6aac7f202161a2cdc65b6656d58a47bb'),
+    ('84897fd5778debe040b74945212777aaf878d83e', 'e74588ce8ce883af1f0f8c755a3f34f74aa48879'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -215,9 +215,10 @@ def native_frame_inventory(width, percent):
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'results-partial-empty', 'results-partial', 'filter-empty-partial'))
-    if width in (360, 390, 430):
+    if width == 430:
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
-    if (width, percent) == (390, 100): frames.add('native-budget-progress-invalid-390-text100.png')
+        frames.add(f'native-calendar-single-range-{width}-text{percent}.png')
+        frames.add(f'native-budget-progress-invalid-{width}-text{percent}.png')
     frames.update(f'native-family-{state}-{width}-text{percent}.png'
                   for state in ('0', '1', '2', '3', 'applied', 'review'))
     if width == 1280:
@@ -299,10 +300,10 @@ def native_evidence(archive, request, native):
          and report.get('donorSource') == native['donorSource']
          and report.get('compiledNativeManifest') == native and report.get('failures') == []
          and report.get('status') == 'passed'
-         and report.get('requiredWidths') == [360, 390, 430, 768, 1280]
+         and report.get('requiredWidths') == [430, 1280]
          and report.get('requiredTextPercents') == [100]
          and report.get('expectedPairedScreens') == ['search', 'results', 'hotel', 'tour', 'lead'], 'native_rendered_identity')
-    matrix = {(width, percent) for width in (360, 390, 430, 768, 1280) for percent in (100,)}
+    matrix = {(width, 100) for width in (430, 1280)}
     cases = report.get('cases'); need(isinstance(cases, list) and len(cases) == len(matrix), 'native_rendered_matrix')
     seen = set(); frames = set()
     proof = {'passiveHydrationSearches': 0, 'formSubmitSearches': 1, 'localFilterExtraSearches': 0,
@@ -346,6 +347,18 @@ def native_evidence(archive, request, native):
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
         native_selected_journey(actual, key[0])
+        calendar = actual.get('calendarVisibleNavigation')
+        expected_calendar = {'lastPriceReachableByArrows': True,
+            'backwardDatesNotSkipped': True if key[0] == 430 else None,
+            'unselectedBackPositionVisible': True,
+            'mobileRemountPositionRetained': True if key[0] == 430 else None,
+            'selectedDateVisible': True, 'clearedDateVisible': True,
+            'backPositionVisible': True, 'implicitDayLocatorScroll': False}
+        need(isinstance(calendar, dict) and set(calendar) == set(expected_calendar)
+             and all(type(calendar.get(k)) is type(value) and calendar[k] == value
+                     for k, value in expected_calendar.items())
+             and actual.get('calendarSingleWeekNavigation') is True,
+             'native_calendar_visible_navigation_required')
         ages = actual.get('familyAges')
         need(isinstance(ages, list) and ages == [0, 7, 17]
              and all(type(age) is int for age in ages), 'native_family_age_identity_required')
@@ -354,7 +367,7 @@ def native_evidence(archive, request, native):
         need(all(type(value) in (int, float) and 0 < value < 10000 for value in (closed, expanded, saved))
              and saved > 44 and abs(expanded - closed - saved) < 0.5,
              'native_flight_disclosure_compactness_required')
-        if key == (390, 100):
+        if key == (430, 100):
             need(actual.get('progressiveDrawerRetainedDraftAndFocus') is True
                  and actual.get('budgetBreakpointDraftRetained') is True, 'native_budget_progressive_draft_required')
         required = native_frame_inventory(*key)
@@ -418,7 +431,7 @@ def native_evidence(archive, request, native):
                           else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
                           else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
-                                                            'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
+                                                            'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
                                                             'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
@@ -464,23 +477,41 @@ def native_evidence(archive, request, native):
                          and not (min(first['right'], second['right']) > max(first['left'], second['left']) + 1
                                   and min(first['bottom'], second['bottom']) > max(first['top'], second['top']) + 1),
                          'native_destination_action_overlap_required')
-                if name.startswith('native-calendar-later-'):
+                if name.startswith(('native-calendar-later-', 'native-calendar-single-range-')):
                     fit = frame.get('calendarFit')
                     need(isinstance(fit, dict) and fit.get('clipped') is False,
                          'native_calendar_fit_required')
+                    need(type(frame.get('viewportHeight')) is int and frame['viewportHeight'] == 900
+                         and len(value) >= 24 and value[8:16] == b'\x00\x00\x00\rIHDR'
+                         and struct.unpack('>II', value[16:24]) == (key[0], 900),
+                         'native_calendar_viewport_capture_required')
+                    strip = fit.get('strip')
+                    fields = {'left', 'right', 'scrollLeft', 'clientWidth', 'scrollWidth', 'dateLeft', 'dateRight'}
+                    need(isinstance(strip, dict) and set(strip) == fields
+                         and all(type(strip.get(k)) in (int, float) and -100000 < strip[k] < 100000 for k in fields)
+                         and strip['right'] > strip['left'] and strip['clientWidth'] > 0
+                         and strip['scrollWidth'] >= strip['clientWidth']
+                         and abs(strip['right'] - strip['left'] - strip['clientWidth']) <= 1
+                         and abs(strip['scrollLeft'] - (strip['scrollWidth'] - strip['clientWidth'])) <= 1
+                         and strip['left'] - 1 <= strip['dateLeft'] < strip['dateRight'] <= strip['right'] + 1,
+                         'native_calendar_last_date_visible_required')
                     left, right = fit.get('left'), fit.get('right')
                     client, scroll = fit.get('footClientWidth'), fit.get('footScrollWidth')
                     pager, page_buttons = fit.get('pager'), fit.get('buttons')
                     need(all(type(value) in (int, float) for value in (left, right, client, scroll))
-                         and left < right and client > 0 and scroll <= client + 1,
+                         and left < right and client > 0 and scroll <= client + 1
+                         and left - 1 <= strip['left'] < strip['right'] <= right + 1,
                          'native_calendar_footer_geometry_required')
                     need(isinstance(pager, dict)
                          and all(type(pager.get(field)) in (int, float)
                                  for field in ('left', 'right', 'top', 'bottom'))
                          and left - 1 <= pager['left'] < pager['right'] <= right + 1,
                          'native_calendar_pager_geometry_required')
-                    need(isinstance(page_buttons, list) and len(page_buttons) == 2,
+                    need(isinstance(page_buttons, list) and len(page_buttons) == 2
+                         and all(isinstance(button, dict) for button in page_buttons),
                          'native_calendar_page_controls_required')
+                    need(page_buttons[0].get('disabled') is False and page_buttons[1].get('disabled') is True,
+                         'native_calendar_end_controls_required')
                     for button in page_buttons:
                         need(isinstance(button, dict)
                              and all(type(button.get(field)) in (int, float)
@@ -627,9 +658,11 @@ def native_evidence(archive, request, native):
                     for card_id in card_ids:
                         template = RESULT_FIXTURE_FACTS[(card_id - 1000) % 4 if bounded else card_id - 1]
                         title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else template[0]
-                        operator = 'FIXTURE ANEX' if logical_name.startswith('native-terminal-') else 'FIXTURE TV'
+                        terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
+                        operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
                         expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
-                            '12 окт · 7 ночей', template[1], template[2], operator, 'за 2 взрослых')))
+                            '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей',
+                            template[1], template[2], operator, 'за 2 взрослых')))
                         for kind, value in expected.items():
                             rows = [row for row in result_rows if row['cardId'] == card_id and row['kind'] == kind]
                             need(len(rows) == 1 and rows[0]['text'].strip() == value,
@@ -723,7 +756,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 247, 'native_rendered_frame_count')
+    need(len(frames) == 103, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')

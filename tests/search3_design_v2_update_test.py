@@ -142,6 +142,7 @@ class UpdateContracts(unittest.TestCase):
             'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
             'calendarPages': 2, 'calendarLaterLoadedTotal': 166400,
             'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
+            'calendarSingleWeekNavigation': True,
             'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
             'boundedBackCards': 48, 'boundedExtraSearches': 0,
             'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0,
@@ -186,10 +187,10 @@ class UpdateContracts(unittest.TestCase):
                 'passiveExtraOperations': 0,
                 'managerBeforeList': {'before': True, 'visible': True, 'overflow': False}}}
         report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
-            'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [360,390,430,768,1280],
+            'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [430,1280],
             'requiredTextPercents': [100], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
             'cases': [], 'failures': []}
-        for width in (360,390,430,768,1280):
+        for width in (430,1280):
             for percent in (100,):
                 case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
                 case['proof']['manyFlightChoices'] = {**proof['manyFlightChoices'],
@@ -202,9 +203,16 @@ class UpdateContracts(unittest.TestCase):
                     'contactFit': {'width': 490 if width == 1280 else width - 60,
                         'titleWidth': 370 if width == 1280 else width - 140,
                         'titleLines': 2, 'titleFits': True, 'summaryFits': True, 'columns': width >= 768}}
+                case['proof']['calendarVisibleNavigation'] = {
+                    'lastPriceReachableByArrows': True,
+                    'backwardDatesNotSkipped': True if width == 430 else None,
+                    'unselectedBackPositionVisible': True,
+                    'mobileRemountPositionRetained': True if width == 430 else None,
+                    'selectedDateVisible': True, 'clearedDateVisible': True,
+                    'backPositionVisible': True, 'implicitDayLocatorScroll': False}
                 case['proof']['contactDisclosure'] = {'initiallyCollapsed': width <= 760,
                     'expandedFactsVisible': True, 'passiveExtraOperations': 0}
-                if (width, percent) == (390, 100):
+                if (width, percent) == (430, 100):
                     case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
                 for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
                     side = name.split('-')[0]
@@ -214,7 +222,7 @@ class UpdateContracts(unittest.TestCase):
                               else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
                               else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
                               else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
-                                                                 'native-calendar-later-', 'native-results-bounded-', 'native-initial-favorites-',
+                                                                 'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
                                                                  'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
@@ -224,12 +232,19 @@ class UpdateContracts(unittest.TestCase):
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     if short_desktop:
                         png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', 1280, 720) + b'fictional offline verifier fixture'
+                    if name.startswith(('native-calendar-later-', 'native-calendar-single-range-')):
+                        png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', width, 900) + b'fictional offline verifier fixture'
                     contents['evidence/' + name] = png
                     has_budget = screen == 'filters' or screen == 'results' and width >= 768
                     size = (16 if width <= 430 else 14) * percent / 100
                     calendar_fit = None
-                    if name.startswith('native-calendar-later-'):
+                    if name.startswith(('native-calendar-later-', 'native-calendar-single-range-')):
                         calendar_fit = {'left': 17, 'right': width - 17,
+                            'strip': {'left': 17, 'right': width - 17,
+                                'scrollLeft': 230 if width == 430 else 0,
+                                'clientWidth': width - 34,
+                                'scrollWidth': width - 34 + (230 if width == 430 else 0),
+                                'dateLeft': width - 102, 'dateRight': width - 18},
                             'footClientWidth': width - 34, 'footScrollWidth': width - 34,
                             'pager': {'left': width - 109, 'right': width - 17, 'top': 300, 'bottom': 344},
                             'buttons': [
@@ -284,9 +299,10 @@ class UpdateContracts(unittest.TestCase):
                             bounded = card_id >= 1000
                             hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
                             title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
-                            operator = 'FIXTURE ANEX' if logical_name.startswith('native-terminal-') else 'FIXTURE TV'
+                            terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
+                            operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
                             facts = {'result-title': title, 'result-location': 'Турция · Кемер',
-                                'result-date': '12 окт · 7 ночей', 'result-room': hotel[1],
+                                'result-date': '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей', 'result-room': hotel[1],
                                 'result-meal': hotel[2], 'result-operator': operator, 'result-party': 'за 2 взрослых'}
                             readable_text.extend({**readable_text[0], 'text': value, 'kind': kind, 'cardId': card_id}
                                                  for kind, value in facts.items())
@@ -404,8 +420,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39291592436)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '185739d46757bd34a05709e3656eab76d1003fa5')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39333812766)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -474,33 +490,33 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_ai_journey_requires_exact_247_frames_and_preserves_all_232_predecessor_frames(self):
+    def test_two_width_journey_requires_exact_103_frames_and_all_applicable_predecessor_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 247)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 247)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 103)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 103)
             ai_frames = ('native-ai-price-changed-', 'native-ai-hotel-checked-', 'native-ai-contact-')
             self.assertEqual(sum(frame['file'].startswith(ai_frames)
-                for case in report['cases'] for frame in case['frames']), 15)
+                for case in report['cases'] for frame in case['frames']), 6)
             for case in report['cases']:
                 case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(ai_frames)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 232)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 97)
             additions = ('native-tour-many-flights-', 'native-lead-manager-',
                          'native-hotel-selected-dearer-', 'native-lead-selected-dearer-')
             self.assertEqual(sum(frame['file'].startswith(additions)
-                for case in report['cases'] for frame in case['frames']), 20)
+                for case in report['cases'] for frame in case['frames']), 8)
             for case in report['cases']:
                 case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(additions)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 212)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 89)
             self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-'))
-                for case in report['cases'] for frame in case['frames']), 132)
-            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 167)
-            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 177)
-            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 187)
-            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 197)
+                for case in report['cases'] for frame in case['frames']), 54)
+            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 71)
+            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 75)
+            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 79)
+            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 83)
             self.assertEqual(sum(frame['file'].startswith('native-family-')
-                for case in report['cases'] for frame in case['frames']), 30)
+                for case in report['cases'] for frame in case['frames']), 12)
             self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
                 for case in report['cases'] for frame in case['frames']), 5)
         def frame(report, prefix, case=0):
@@ -569,8 +585,8 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-results-partial-empty-')['prices'].append({'text':'invented'}),
             lambda r: frame(r, 'native-filter-empty-')['prices'].append({'text':'invented'}),
             lambda r: frame(r, 'native-filters-active-')['prices'].clear(),
-            lambda r: r['cases'][1]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
-            lambda r: r['cases'][1]['proof'].pop('budgetBreakpointDraftRetained'),
+            lambda r: r['cases'][0]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
+            lambda r: r['cases'][0]['proof'].pop('budgetBreakpointDraftRetained'),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-hotel-return-')),
             lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-calendar-later-')),
             lambda r: frame(r, 'native-calendar-later-').update(calendarFit=None),
@@ -597,8 +613,8 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'][0].update(textWidth=201.1),
             lambda r: frame(r, 'native-budget-draft-', 0)['budgetInputs'][0].update(font='500 15px Aeroport, system-ui, sans-serif'),
-            lambda r: frame(r, 'native-budget-results-', 3)['budgetInputs'][0].update(font='500 13px Aeroport, system-ui, sans-serif'),
-            lambda r: frame(r, 'native-budget-results-', 4)['budgetInputs'][0].update(font='500 26px Aeroport, system-ui, sans-serif'),
+            lambda r: frame(r, 'native-budget-results-', 1)['budgetInputs'][0].update(font='500 13px Aeroport, system-ui, sans-serif'),
+            lambda r: frame(r, 'native-budget-results-', 1)['budgetInputs'][0].update(font='500 26px Aeroport, system-ui, sans-serif'),
             lambda r: frame(r, 'native-budget-draft-')['budgetInputs'].pop(),
             lambda r: frame(r, 'native-results-')['readableText'][0].update(clipped=True),
             lambda r: frame(r, 'native-search-')['readableText'][0].update(overlappingLines=True),
@@ -607,7 +623,7 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-tour-')['headerFit'].update(outside=True),
             lambda r: frame(r, 'native-lead-')['headerFit'].update(overlap=True),
             lambda r: frame(r, 'native-results-')['sortFit'].update(textWidth=202),
-            lambda r: frame(r, 'native-results-', 4).update(budgetColumns=1),
+            lambda r: frame(r, 'native-results-', 1).update(budgetColumns=1),
             lambda r: frame(r, 'native-budget-results-')['prices'].clear()]
         for i, change in enumerate(changes):
             def mutate(contents):
@@ -617,6 +633,54 @@ class UpdateContracts(unittest.TestCase):
                 self.read_review(self.review_archive(mutate), 'bad-visual-evidence-' + str(i))
         with self.assertRaisesRegex(ValueError, 'native_rendered_evidence_inventory'):
             self.read_review(self.review_archive(lambda c: c.update({'evidence/unknown.png': b'unknown'})), 'extra-visual-frame')
+
+    def test_calendar_navigation_requires_visible_dates_and_single_week_evidence(self):
+        changes = [lambda r: r.update(requiredWidths=[360, 390, 430, 768, 1280]),
+                   lambda r: r.update(requiredTextPercents=[100, 200])]
+        for case in range(2):
+            changes.extend((
+                lambda r, c=case: r['cases'][c]['proof'].pop('calendarVisibleNavigation'),
+                lambda r, c=case: r['cases'][c]['proof'].update(calendarSingleWeekNavigation=1),
+                lambda r, c=case: r['cases'][c]['proof'].pop('calendarSingleWeekNavigation')))
+            for key in ('lastPriceReachableByArrows', 'backwardDatesNotSkipped',
+                        'unselectedBackPositionVisible', 'mobileRemountPositionRetained',
+                        'selectedDateVisible', 'clearedDateVisible', 'backPositionVisible',
+                        'implicitDayLocatorScroll'):
+                changes.extend((
+                    lambda r, c=case, k=key: r['cases'][c]['proof']['calendarVisibleNavigation'].pop(k),
+                    lambda r, c=case, k=key: r['cases'][c]['proof']['calendarVisibleNavigation'].update({k: 1})))
+        def frame(report):
+            return next(row for row in report['cases'][0]['frames']
+                        if row['file'].startswith('native-calendar-single-range-'))
+        changes.extend((
+            lambda r: r['cases'][0]['frames'].remove(frame(r)),
+            lambda r: frame(r).update(screen='calendar'),
+            lambda r: frame(r).pop('viewportHeight'),
+            lambda r: frame(r).update(viewportHeight=720),
+            lambda r: frame(r).update(viewportHeight=900.0),
+            lambda r: frame(r).update(calendarFit=None),
+            lambda r: frame(r)['calendarFit'].update(clipped=True),
+            lambda r: frame(r)['calendarFit'].pop('strip'),
+            lambda r: frame(r)['calendarFit']['strip'].update(dateRight=999),
+            lambda r: frame(r)['calendarFit']['strip'].update(scrollLeft=148),
+            lambda r: frame(r)['calendarFit']['strip'].update(clientWidth=True),
+            lambda r: frame(r)['calendarFit']['buttons'][1].update(disabled=False),
+            lambda r: next(row for row in frame(r)['readableText']
+                           if row['kind'] == 'result-operator').update(text='FIXTURE TV')))
+        self.assert_evidence_rejected(changes)
+
+    def test_calendar_capture_requires_actual_viewport_png_dimensions(self):
+        for case, prefix in ((0, 'native-calendar-later-'), (1, 'native-calendar-later-'),
+                             (0, 'native-calendar-single-range-')):
+            def mutate(contents):
+                report = json.loads(contents['evidence/acceptance.json'])
+                frame = next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
+                name = 'evidence/' + frame['file']; png = contents[name]
+                contents[name] = png[:20] + struct.pack('>I', 720) + png[24:]
+                frame['sha256'] = remote.digest(contents[name])
+                contents['evidence/acceptance.json'] = remote.json_bytes(report)
+            with self.subTest(case=case, prefix=prefix), self.assertRaisesRegex(ValueError, 'native_calendar_viewport_capture_required'):
+                self.read_review(self.review_archive(mutate), f'bad-calendar-png-{case}-{prefix}')
 
     def test_complete_selected_journey_cannot_be_replaced_by_frame_count_only(self):
         mutations = [
@@ -652,14 +716,14 @@ class UpdateContracts(unittest.TestCase):
         for index, change in enumerate(mutations):
             def mutate(contents):
                 report = json.loads(contents['evidence/acceptance.json'])
-                change(report['cases'][index % 5]['proof'])
+                change(report['cases'][index % 2]['proof'])
                 contents['evidence/acceptance.json'] = remote.json_bytes(report)
             with self.subTest(index=index), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(mutate), 'bad-whole-journey-' + str(index))
 
     def test_tour_cost_label_evidence_is_required_for_each_tour_capture(self):
-        captures = [('native-tour-', 0), ('native-tour-alternatives-', 2),
-                    ('native-short-desktop-tour-', 4)]
+        captures = [('native-tour-', 0), ('native-tour-alternatives-', 0),
+                    ('native-short-desktop-tour-', 1)]
         for capture_index, (prefix, case_index) in enumerate(captures):
             for label_index, label in enumerate(('Туристы', 'Туроператор', 'Обязательные доплаты')):
                 for defect in ('missing', 'mislabelled', 'clipped', 'brokenWords', 'overlappingLines'):
@@ -682,8 +746,8 @@ class UpdateContracts(unittest.TestCase):
         def fact(report, kind, prefix='native-results-', case=0):
             return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == kind)
         changes = []
-        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 4),
-                             ('native-results-bounded-', 2)):
+        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 1),
+                             ('native-results-bounded-', 0)):
             for kind in ('result-title', 'result-location', 'result-date', 'result-room',
                          'result-meal', 'result-operator', 'result-party'):
                 changes.extend((
@@ -709,8 +773,8 @@ class UpdateContracts(unittest.TestCase):
             lambda r: fact(r, 'result-title').update(cardId=None),
             lambda r: fact(r, 'result-title').update(cardId=2),
             lambda r: frame(r)['readableText'].append(copy.deepcopy(fact(r, 'result-title'))),
-            lambda r: frame(r, 'native-results-bounded-', 2)['resultCardIds'].pop(),
-            lambda r: frame(r, 'native-results-bounded-', 2)['resultCardIds'].append(1024)))
+            lambda r: frame(r, 'native-results-bounded-', 0)['resultCardIds'].pop(),
+            lambda r: frame(r, 'native-results-bounded-', 0)['resultCardIds'].append(1024)))
         self.assert_evidence_rejected(changes)
 
     def test_shared_notice_requires_one_truthful_owner_and_correct_scope(self):
@@ -719,7 +783,7 @@ class UpdateContracts(unittest.TestCase):
         def note(report, prefix='native-results-', case=0):
             return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == 'result-notice')
         changes = []
-        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 4)):
+        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 1)):
             changes.extend((
                 lambda r, p=prefix, c=case: frame(r, p, c).pop('resultNotice'),
                 lambda r, p=prefix, c=case: frame(r, p, c).update(resultNotice=None),
@@ -744,7 +808,7 @@ class UpdateContracts(unittest.TestCase):
 
     def test_form_focus_proofs_are_required_in_every_case(self):
         changes = []
-        for case in range(5):
+        for case in range(2):
             for key in ('nightKeyboardFocusRetained', 'formCalendarPagingFocusRetained', 'familyInputFocusRetained', 'destinationKeyboardFocusRetained', 'formPopupSingleSubmitRetained'):
                 changes.extend((
                     lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
@@ -817,7 +881,7 @@ class UpdateContracts(unittest.TestCase):
             return next(row for row in report['cases'][case]['frames']
                         if row['file'].startswith('native-terminal-' + status + '-'))
         changes = []
-        for case in range(5):
+        for case in range(2):
             for key, wrong in (('latePresentationTerminalStatesRetained', 1),
                                ('latePresentationExtraSearches', False)):
                 changes.extend((lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
@@ -862,14 +926,14 @@ class UpdateContracts(unittest.TestCase):
             lambda r: frame(r, 'native-family-2-')['readableText'][1].update(clipped=True),
             lambda r: frame(r, 'native-family-0-')['prices'].append({'text': 'invented family price'}),
             lambda r: frame(r, 'native-family-2-').update(sha256='f' * 64),
-            lambda r: r['cases'][4]['frames'].remove(frame(r, 'native-short-desktop-tour-', 4)),
-            lambda r: frame(r, 'native-short-desktop-results-', 4).update(screen='short'),
-            lambda r: frame(r, 'native-short-desktop-search-', 4).pop('viewportHeight'),
-            lambda r: frame(r, 'native-short-desktop-search-', 4).update(viewportHeight=900),
-            lambda r: frame(r, 'native-short-desktop-search-', 4).update(viewportHeight=720.0),
-            lambda r: frame(r, 'native-short-desktop-hotel-', 4).update(sha256='f' * 64),
-            lambda r: frame(r, 'native-short-desktop-tour-', 4)['prices'][0].update(fragmented=True),
-            lambda r: frame(r, 'native-short-desktop-lead-', 4)['summaryFit'].clear()]
+            lambda r: r['cases'][1]['frames'].remove(frame(r, 'native-short-desktop-tour-', 1)),
+            lambda r: frame(r, 'native-short-desktop-results-', 1).update(screen='short'),
+            lambda r: frame(r, 'native-short-desktop-search-', 1).pop('viewportHeight'),
+            lambda r: frame(r, 'native-short-desktop-search-', 1).update(viewportHeight=900),
+            lambda r: frame(r, 'native-short-desktop-search-', 1).update(viewportHeight=720.0),
+            lambda r: frame(r, 'native-short-desktop-hotel-', 1).update(sha256='f' * 64),
+            lambda r: frame(r, 'native-short-desktop-tour-', 1)['prices'][0].update(fragmented=True),
+            lambda r: frame(r, 'native-short-desktop-lead-', 1)['summaryFit'].clear()]
         for i, change in enumerate(changes):
             def mutate(contents):
                 report = json.loads(contents['evidence/acceptance.json']); change(report)
@@ -881,7 +945,7 @@ class UpdateContracts(unittest.TestCase):
         for i, dimensions in enumerate(((1280, 900), (1279, 720))):
             def mutate(contents):
                 report = json.loads(contents['evidence/acceptance.json'])
-                frame = next(row for row in report['cases'][4]['frames']
+                frame = next(row for row in report['cases'][1]['frames']
                              if row['file'].startswith('native-short-desktop-search-'))
                 name = 'evidence/' + frame['file']; value = contents[name]
                 contents[name] = value[:16] + struct.pack('>II', *dimensions) + value[24:]
@@ -996,7 +1060,8 @@ class UpdateContracts(unittest.TestCase):
             '1959dcabac17335fd09763389231e67db9afde6b',
             'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
             '246670818bba433adc9b002e06b2d560f46eb6ac',
-            '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d'))
+            '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
+            '185739d46757bd34a05709e3656eab76d1003fa5'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1144,7 +1209,7 @@ class UpdateContracts(unittest.TestCase):
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
              38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885, 39291592436))
+             39278795885, 39291592436, 39333812766))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1206,15 +1271,13 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_four_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/tour.js',
-            'visual-search/native-v2/viewport.css',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
