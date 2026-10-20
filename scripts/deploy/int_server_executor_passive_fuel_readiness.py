@@ -438,6 +438,7 @@ def pp_snapshot():
     for p in PF_EXPECTED:
         if p.startswith('app/integrations/'):paths['helper:'+p]=runtime/p
     paths.update(proxy=runtime/'.andromeda-private.php',private_gateway=runtime/'api-v2.php',
+        private_db=runtime/'data/db-v1.php',
         backing_config=home/'.anytoour-andromeda/search3-preview.php')
     bodies={};records={};identities={}
     for key,path in paths.items():
@@ -453,6 +454,7 @@ def passive_fuel_activation_plan():
     digest=lambda name:None if before[name] is None else before[name]['sha256']
     proxy_ok=digest('proxy')==PP_PROXY and before['proxy']['mode']==0o600
     db_ok=digest('data/db-v1.php')==PP_DB
+    private_db_ok=digest('private_db')==PP_DB
     config_ok=digest('config.php')==PP_CONFIG
     api_ok=digest('api-v2.php')==PP_TARGETS['api-v2.php'][0]
     passive_ok=digest('helper:'+passive)==PP_OLD_PASSIVE
@@ -470,14 +472,15 @@ def passive_fuel_activation_plan():
         if catalog is None else 'config_binding_mismatch' if not binding else 'store_unavailable')
     _,after,after_identities,after_directories=pp_snapshot()
     if before!=after or identities!=after_identities or directories!=after_directories:fail('passive_plan_drift')
-    ready=all((api_ok,passive_ok,dependencies_ok,db_ok,config_ok,proxy_ok,store_ok,caller_state=='compatible_pr4732'))
+    ready=all((api_ok,passive_ok,dependencies_ok,db_ok,private_db_ok,config_ok,proxy_ok,store_ok,caller_state=='compatible_pr4732'))
     return {'status':'ready' if ready else 'hold','gateway_predecessor_matches':api_ok,
         'passive_predecessor_matches':passive_ok,'dependencies_exact':dependencies_ok,
-        'db_predecessor_matches':db_ok,'root_config_predecessor_matches':config_ok,
+        'db_predecessor_matches':db_ok,'private_db_dependency_matches':private_db_ok,'root_config_predecessor_matches':config_ok,
         'proxy_predecessor_matches':proxy_ok,'private_caller_state':caller_state,
         'store_state':store_state,'store_directory_mode':None if directories[1] is None else directories[1][1],
         'store_directory_owner_matches':False if directories[1] is None else directories[1][2],
         'backing_config_record':before['backing_config'],'private_gateway_record':before['private_gateway'],
+        'private_db_record':before['private_db'],
         'proxy_record':before['proxy'],'loaded_db_state':'not_executed','binding_identity_stable':True,
         'plan_files':{p:{'predecessor_sha256':v[0],'candidate_sha256':v[1]} for p,v in PP_TARGETS.items()},
         'protected_before':{p:before[p] for p in PF_PROTECTED},
@@ -564,10 +567,10 @@ def plan_completed(command, result):
     value=result.get('passive_fuel_activation_plan')
     counts={'supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls'}
     flags={'gateway_predecessor_matches','passive_predecessor_matches','dependencies_exact',
-           'db_predecessor_matches','root_config_predecessor_matches','proxy_predecessor_matches',
+           'db_predecessor_matches','private_db_dependency_matches','root_config_predecessor_matches','proxy_predecessor_matches',
            'store_directory_owner_matches','binding_identity_stable','protected_unchanged'}
     fields={'status','private_caller_state','store_state','store_directory_mode','backing_config_record',
-            'private_gateway_record','proxy_record','loaded_db_state','plan_files','protected_before','protected_after',
+            'private_gateway_record','private_db_record','proxy_record','loaded_db_state','plan_files','protected_before','protected_after',
             *flags,*counts}
     def record(row):
         return row is None or (isinstance(row,dict) and set(row)=={'sha256','bytes','mode'}
@@ -581,7 +584,7 @@ def plan_completed(command, result):
             or value['store_directory_mode'] is not None and (type(value['store_directory_mode']) is not int
                 or not 0<=value['store_directory_mode']<=0o7777)
             or value['loaded_db_state']!='not_executed'
-            or any(not record(value[k]) for k in ('backing_config_record','private_gateway_record','proxy_record'))):return False
+            or any(not record(value[k]) for k in ('backing_config_record','private_gateway_record','private_db_record','proxy_record'))):return False
     before=value['protected_before']
     if (not isinstance(before,dict) or set(before)!=set(PROTECTED) or not all(map(record,before.values()))
             or before!=value['protected_after'] or value['protected_unchanged'] is not True

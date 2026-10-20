@@ -1211,6 +1211,7 @@ class PassiveFuelActivationPlanTest(unittest.TestCase):
         ns['PP_TARGETS']['_preview/search3-anex-candidate/'+passive]=(expected[passive],self.p.PRIVATE_SOURCE_HASHES[passive])
         (project/'config.php').write_bytes(b'<?php /* isolated config, never executed */')
         ns['PP_CONFIG']=hashlib.sha256((project/'config.php').read_bytes()).hexdigest()
+        (runtime/'data').mkdir();(runtime/'data/db-v1.php').write_bytes((project/'data/db-v1.php').read_bytes())
         proxy=b"<?php\nreturn require dirname(__DIR__,4).'/.anytoour-andromeda/search3-preview.php';\n"
         (runtime/'.andromeda-private.php').write_bytes(proxy);(runtime/'.andromeda-private.php').chmod(0o600)
         private=home/'.anytoour-andromeda';private.mkdir(mode=0o700)
@@ -1294,6 +1295,16 @@ class PassiveFuelActivationPlanTest(unittest.TestCase):
             store.chmod(0o700)
             with patch.object(os,'getuid',return_value=-1):self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
             store.rmdir();self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status']);self.assertFalse(store.exists())
+
+    def test_private_caller_owned_db_dependency_must_be_proven_without_loading_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private=self.reader(directory);path=runtime/'data/db-v1.php'
+            path.unlink();result=ns['passive_fuel_activation_plan']()
+            self.assertEqual('compatible_pr4732',result['private_caller_state'])
+            self.assertFalse(result['private_db_dependency_matches']);self.assertEqual('hold',result['status'])
+            self.assertFalse(path.exists());self.assertEqual('not_executed',result['loaded_db_state'])
+            path.write_bytes(b'<?php /* unreviewed DB helper */')
+            self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
 
     def test_config_store_or_private_caller_drift_is_terminal(self):
         for case in ('config','store','caller'):
