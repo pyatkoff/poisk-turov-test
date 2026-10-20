@@ -41,6 +41,7 @@
       operators: [], flight: [], amenities: [], min: 0, max: null, rating: false,
       beach: false, family: false, spa: false});
     const dictionaries = () => ({origins: (data.catalog?.departures || []).map(row => data.text(row)),
+      mealGroups: root.AnyTourLocalDbProviderV1?.mealFilterGroups?.(data.catalog?.mealPlans || []) || [],
       countries: countries(), meals: (data.catalog?.mealPlans || []).map(plan => ({
         id: plan.id, nameRu: plan.nameRu, code: plan.code, nativeIds: plan.nativeIds
       }))});
@@ -54,7 +55,7 @@
       if (stars.some(value => !/^[1-5]$/.test(value))) throw new Error('Проверьте категории отелей в ссылке.');
       restored.stars = [...new Set(stars.map(Number))];
       restored.meals = [...new Set(list('meals'))];
-      if (restored.meals.some(value => !dictionaries().meals.some(plan => plan.nameRu === value))) throw new Error('Питание из ссылки не подтверждено каталогом.');
+      if (restored.meals.some(value => dictionaries().meals.filter(plan => plan.nameRu === value).length !== 1)) throw new Error('Питание из ссылки не подтверждено каталогом.');
       restored.resorts = [...new Set(list('resorts'))];
       if (restored.resorts.some(value => !value.trim() || value.length > 300)) throw new Error('Проверьте курорты в ссылке.');
       const ownIds = list('hotelIds');

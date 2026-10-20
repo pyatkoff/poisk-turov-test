@@ -281,8 +281,9 @@ test('rendered startup fixture joins catalogue readiness across responsive mount
   const start=browserSource.indexOf('function fixtureBridge('),end=browserSource.indexOf('function donorReferenceHTML()',start);
   assert(start>=0&&end>start);
   const dom=new JSDOM('',{url:'https://fixture.test/',runScripts:'outside-only'}),w=dom.window;
+  w.eval(fs.readFileSync(require.resolve('../v2/search3-local-db-provider-v1.js'),'utf8'));
   w.__nativeHoldInit=true;
-  w.eval(browserSource.slice(start,end)+';fixtureBridge({trip:'+JSON.stringify(trip)+',hotels:[]});');
+  w.eval(browserSource.slice(start,end)+';fixtureBridge({trip:'+JSON.stringify(trip)+',hotels:[],mealPlans:[]});');
   const api=w.AnyTourDesignV2Bridge.create(),first=api.init(),second=api.init();
   assert.strictEqual(first,second,'Pending responsive mounts join the same fixture catalogue');
   w.__nativeFixture.releaseInit();await first;

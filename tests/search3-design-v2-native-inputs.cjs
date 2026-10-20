@@ -4,9 +4,9 @@ const {JSDOM,VirtualConsole}=require('jsdom');
 const builder=require('../scripts/build/search3_design_v2_native.cjs');
 const source=path.resolve(__dirname,'../src/search3-design-v2');
 const trip={origin:'Москва',country:'4',from:'2026-10-25',to:'2026-10-31',minNights:7,maxNights:7,adults:2,ages:[]};
-const countries=[{id:'4',name:'Турция'},{id:'8',name:'Египет'}],dictionaries={origins:['Москва','Калининград'],countries,meals:[{nameRu:'Всё включено'}]};
+const countries=[{id:'4',name:'Турция'},{id:'8',name:'Египет'}],dictionaries={origins:['Москва','Калининград'],countries,meals:[{id:7,code:'all-inclusive',nameRu:'Всё включено'},{id:2,code:'breakfast',nameRu:'Завтраки'}]};
 const filters={hotelId:0,hotelIds:[],q:'',stars:[],meals:[],resorts:[],operators:[],flight:[],amenities:[],min:0,max:null,rating:false,beach:false,family:false,spa:false};
-const offer={key:'tourvisor:exact',hotelId:7,meal:'Всё включено',total:112000,day:'2026-10-25',nights:7,room:'Standard',operator:'Fixture operator',provider:'tourvisor',search:trip,adults:2,ages:[],raw:{receipt:'identity-only'}};
+const offer={key:'tourvisor:exact',hotelId:7,meal:'Всё включено',mealFacet:'Всё включено',mealPlanId:7,mealPlanCode:'all-inclusive',total:112000,day:'2026-10-25',nights:7,room:'Standard',operator:'Fixture operator',provider:'tourvisor',search:trip,adults:2,ages:[],raw:{receipt:'identity-only'}};
 const hotel={id:7,name:'Verified hotel',country:'4',location:'Турция · Кемер',region:'Кемер',stars:5,photos:[],offers:[offer],raw:{},legacyIds:['701']};
 let starts=0,lastIntent=null,lastFilters=null,lookups=0,regions=0;const originRequests=[];
 const bridge={async init(){return{search:{...trip,ages:[]},filters,dictionaries,status:'idle',requestedSearch:false};},async search(s,f,cb){starts++;lastIntent=s;lastFilters=f;const result={search:s,filters:f,hotels:[hotel],status:'complete',searchGeneration:starts};cb(result);return result;},async regions(country){regions++;return country==='4'?[{id:'41',name:'Кемер',country:'4',kind:'region',tourvisorIds:['19']},{id:'42',name:'Сиде',country:'4',kind:'region',tourvisorIds:['20']}]:[];},async lookupHotels(query,country,signal){lookups++;assert.equal(country,'4');assert(!signal.aborted);return query.toLowerCase().includes('verified')?[hotel]:[];},changeOrigin(origin){return new Promise(resolve=>originRequests.push({origin,resolve}));}};
@@ -17,11 +17,58 @@ const click=selector=>node(selector).click(),tick=()=>new Promise(resolve=>w.set
 function input(selector,value,type='input'){const target=node(selector);target.value=value;target.dispatchEvent(new w.Event(type,{bubbles:true}));return target;}
 function submit(){node('[data-search-form]').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}
 const pop=direction=>new Promise((resolve,reject)=>{const timeout=w.setTimeout(()=>reject(new Error('history '+direction+' did not complete')),1000);w.addEventListener('popstate',()=>{w.clearTimeout(timeout);resolve();},{once:true});w.history[direction]();});
+async function mealFamilyChecks(){
+ const plans=[{id:1,code:'no-meals',nameRu:'Без питания'},{id:2,code:'breakfast',nameRu:'Завтраки'},{id:7,code:'all-inclusive',nameRu:'Всё включено'},{id:8,code:'ultra-all-inclusive',nameRu:'Ультра всё включено'},{id:9,code:'soft-all-inclusive',nameRu:'Софт всё включено'},{id:10,code:'alcohol-free-all-inclusive',nameRu:'Всё включено без алкоголя'}];
+ for(const variant of ['st-mobile','st-desktop']){
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname+'?meals='+encodeURIComponent(plans[3].nameRu),runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
+  win.eval(fs.readFileSync(path.join(source,'../../v2/search3-local-db-provider-v1.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'bridge.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'tour.js'),'utf8'));win.eval(fs.readFileSync(path.join(source,'frontend.js'),'utf8'));
+  const data={catalog:{departures:[{name:'Москва'}],countries,mealPlans:plans},text:row=>row.name,async init(){return{origin:'Москва'};},params(){}},restored=await win.AnyTourDesignV2Bridge.create({data,location:{search:win.location.search}}).init();
+  assert.deepEqual(Array.from(restored.filters.meals),['Ультра всё включено'],'A legacy exact plan URL remains narrow');assert.equal(restored.dictionaries.mealGroups.length,3,'The real LOCAL helper produces compact families');
+  const make=(key,id,plan,total,day=trip.from)=>({...offer,key,hotelId:id,meal:'Exact '+plan.nameRu,mealFacet:plan.nameRu,mealPlanId:plan.id,mealPlanCode:plan.code,total,day,raw:{receipt:key}});
+  const exact=make('family:a:uai',7,plans[3],150000),loaded=[
+   {...hotel,offers:[make('family:a:ai',7,plans[2],120000),make('family:a:uai-eligible',7,plans[3],121000),exact,make('family:a:other-date',7,plans[2],80000,trip.to)]},
+   {...hotel,id:8,name:'Family B',offers:[make('family:b:uai',8,plans[3],100000)]},
+   {...hotel,id:9,name:'Family C',offers:[make('family:c:bb',9,plans[1],90000)]},
+   {...hotel,id:10,name:'Family D',offers:[make('family:d:alcohol-free',10,plans[5],110000)]},
+   {...hotel,id:11,name:'Family E',offers:[make('family:e:ai',11,plans[2],150000),make('family:e:bb',11,plans[1],90000)]}];
+  const state={screen:'results',search:trip,filters:{...restored.filters,max:125000},hotels:loaded,selected:exact,hotelId:7,selectedDate:trip.from,status:'complete',hasSearched:true,favorites:[7]},calls={search:0,quote:0,expand:0,preview:0};
+  const api={async init(){return{dictionaries:restored.dictionaries};},search(){calls.search++;throw Error('Local meal editing must not search');},quoteOffer(){calls.quote++;},expandOfferGroup(){calls.expand++;},previewContact(){calls.preview++;}};
+  let product=win.document.querySelector('[data-product]'),owner;product.classList.remove('st-mobile');product.classList.add(variant);
+  const el=s=>{const n=product.querySelector(s);assert(n,s);return n;},tap=s=>el(s).click(),change=(node,checked)=>{node.checked=checked;node.dispatchEvent(new win.Event('change',{bubbles:true}));};
+  const panel=()=>el(variant==='st-mobile'?'[data-filter-form]':'[data-filter-sidebar]'),group=()=>panel().querySelector('[data-native-meal-group-toggle="meal-family:all-inclusive"]');
+  const remount=async()=>{const retained=owner.getState();owner.destroy();const wrap=win.document.createElement('div');wrap.innerHTML=builder.extract().markup;win.document.body.replaceChildren(wrap);product=wrap.querySelector('[data-product]');product.classList.remove('st-mobile');product.classList.add(variant);owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:retained});await owner.ready;};
+  try{
+   owner=win.AnyTourDesignV2Native.mount({root:product,bridge:api,initialState:state});await owner.ready;
+   if(variant==='st-mobile')tap('[data-action="filters"]');
+   assert(group().indeterminate);assert.equal(group().getAttribute('aria-checked'),'mixed');assert.equal(group().checked,false);
+   assert.match(group().parentElement.textContent,/Все варианты \(4\)/);assert.equal(group().parentElement.querySelector('.st-filter-count').textContent,'3','Family count is a distinct hotel union under the same date and budget');
+   assert.equal([...panel().querySelectorAll('[data-native-meal-members] .st-filter-count')].reduce((sum,node)=>sum+Number(node.textContent),0),4,'Member counts overlap while the family counts each hotel once');
+   assert.equal(panel().querySelector('[data-native-meal-selection]').textContent,'Ультра всё включено');assert.equal(el('[data-hotel-card="8"] .st-price').textContent,'от100 000 ₽');
+   change(group(),true);if(variant==='st-mobile'){assert.deepEqual(Array.from(state.filters.meals),['Ультра всё включено'],'The drawer remains draft until Apply');assert.equal(el('[data-filter-apply]').textContent,'Показать 3 отеля');tap('[data-action="apply-filters"]');}
+   assert.deepEqual(new Set(Array.from(state.filters.meals)),new Set(plans.slice(2).map(plan=>plan.nameRu)));assert.deepEqual([...product.querySelectorAll('.st-hotel-card')].map(node=>Number(node.dataset.hotelCard)),[7,8,10]);
+   assert.equal(product.querySelectorAll('[data-active-chips] [data-native-remove-constraint="meals"]').length,0);assert.match(el('[data-native-remove-constraint="mealFamily"]').textContent,/все варианты/);tap('[data-native-remove-constraint="mealFamily"]');assert.equal(state.filters.meals.length,0,'One family chip removes exactly its canonical member set');assert.equal(state.filters.max,125000);assert.equal(state.selectedDate,trip.from);state.filters.meals=plans.slice(2).map(plan=>plan.nameRu);owner.render();
+   assert.equal(el('[data-hotel-card="7"] .st-price').textContent,'от120 000 ₽','The selected date/meal/budget must match a single exact offer');assert.strictEqual(state.selected,exact);assert.deepEqual(state.favorites,[7]);
+   const url=new URL(win.location.href);assert(!url.searchParams.get('meals').includes('meal-family:'));const roundtrip=await win.AnyTourDesignV2Bridge.create({data,location:{search:url.search}}).init();assert.deepEqual(Array.from(roundtrip.filters.meals),Array.from(state.filters.meals));
+   if(variant==='st-mobile')tap('[data-action="filters"]');panel().querySelector('[data-native-meal-expand="meal-family:all-inclusive"]').click();
+   change(panel().querySelector('[data-native-filter="meals"][value="Ультра всё включено"]'),false);assert(group().indeterminate);assert(!panel().querySelector('[data-native-meal-members]').hidden);await remount();assert(group().indeterminate);assert(!panel().querySelector('[data-native-meal-members]').hidden,'Exact children and draft selection survive remount');
+   if(variant==='st-mobile'){tap('[data-action="close-filters"]');assert(state.filters.meals.includes('Ультра всё включено'),'Cancel keeps applied family members');}
+   state.filters.meals=['Ультра всё включено'];owner.render();tap('[data-action="search"]');tap('[data-conditions-open="food"]');
+   const formGroup=el('[data-native-meal-group-toggle="meal-family:all-inclusive"][data-native-meal-context="form"]');assert(formGroup.indeterminate);assert.equal(el('[data-search-food-value]').textContent,'Ультра всё включено');change(formGroup,true);assert.match(el('[data-search-food-value]').textContent,/все варианты/);tap('[data-conditions-cancel="food"]');assert.equal(el('[data-search-food-value]').textContent,'Ультра всё включено','Cancel never widens a legacy exact plan');
+   tap('[data-conditions-open="food"]');change(el('[data-native-meal-group-toggle="meal-family:all-inclusive"][data-native-meal-context="form"]'),true);tap('[data-conditions-apply="food"]');assert.match(el('[data-search-food-value]').textContent,/все варианты/);assert.deepEqual(calls,{search:0,quote:0,expand:0,preview:0});
+   tap('[data-action="results"]');state.hotels=[{...loaded[0],offers:[{...exact,meal:'Unmapped Premium',mealPlanId:null,mealPlanCode:'',mealFacet:''}]}];state.filters.meals=['Ультра всё включено'];owner.render();assert.equal(state.filters.meals.length,0);assert(!product.querySelector('[data-filter-sidebar] [data-native-filter="meals"],[data-filter-sidebar] [data-native-meal-group-toggle]'));assert(!product.querySelector('input[value="Unmapped Premium"]'));
+   const duplicate={id:99,code:'other-accepted-plan',nameRu:plans[2].nameRu},ambiguous={...data,catalog:{...data.catalog,mealPlans:[...plans,duplicate]}};
+   await assert.rejects(()=>win.AnyTourDesignV2Bridge.create({data:ambiguous,location:{search:'?meals='+encodeURIComponent(plans[2].nameRu)}}).init(),/не подтверждено каталогом/,'A persisted label cannot represent two canonical IDs');
+   await assert.rejects(()=>win.AnyTourDesignV2Bridge.create({data,location:{search:'?meals=Unmapped%20Premium'}}).init(),/не подтверждено каталогом/);
+   restored.dictionaries.meals.push(duplicate);state.hotels=loaded;state.filters.meals=[];owner.render();tap('[data-action="search"]');tap('[data-conditions-open="food"]');assert(!product.querySelector('[data-native-form-meal="Всё включено"]'),'Ambiguous names are not selectable as an exact canonical plan');
+   assert.strictEqual(state.selected,exact);assert.deepEqual(state.favorites,[7]);assert.deepEqual(calls,{search:0,quote:0,expand:0,preview:0});
+  }finally{owner?.destroy();win.close();}
+ }
+}
 async function selectedJourneyChecks(){
  for(const variant of ['st-mobile','st-desktop']){
   const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{url:w.location.origin+w.location.pathname,runScripts:'outside-only',virtualConsole:new VirtualConsole()}),win=doc.window;
   let product=win.document.querySelector('[data-product]');product.classList.remove('st-mobile');product.classList.add(variant);
-  const dearer={...offer,key:'tourvisor:dearer',total:161000,room:'Family Suite',meal:'Завтраки',raw:{receipt:'exact-dearer'}};
+  const dearer={...offer,key:'tourvisor:dearer',total:161000,room:'Family Suite',meal:'Завтраки',mealFacet:'Завтраки',mealPlanId:2,mealPlanCode:'breakfast',raw:{receipt:'exact-dearer'}};
   const loaded={...hotel,offers:[offer,dearer]},state={screen:'results',search:trip,filters:{...filters},hotels:[loaded],status:'complete',searchGeneration:1,hasSearched:true,favorites:[]};
   let calls=0,top=0;Object.defineProperty(win,'scrollY',{get:()=>top});Object.defineProperty(win.document,'scrollingElement',{value:win.document.documentElement});
   win.document.documentElement.scrollTo=options=>{top=options.top;};win.HTMLElement.prototype.scrollIntoView=function(){top=0;};
@@ -369,6 +416,7 @@ async function localCalendarDayChecks(){
  }finally{owner.destroy();win.close();}
 }
 (async()=>{
+ await mealFamilyChecks();
  await selectedJourneyChecks();
  await returnedPriceStateChecks();
  await responsiveTourFocusChecks();

@@ -610,6 +610,22 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-offer-price-caption { margin-bottom: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
 #design-v2-native-root #b4 .st-native-offer-cost .st-offer-delta { line-height: 1.4; }
 #design-v2-native-root #b4 .st-native-facet-note { margin: 8px 0 0; line-height: 1.5; }
+/* LOCAL meal families keep the main choice short; exact conditions remain
+   available in the same control instead of becoming competing top-level rows. */
+#design-v2-native-root #b4 .st-native-meal-family { min-width: 0; }
+#design-v2-native-root #b4 .st-native-meal-heading { display: flex; align-items: center; gap: 6px; }
+#design-v2-native-root #b4 .st-native-meal-heading > label { flex: 1; min-width: 0; min-height: 44px; margin: 0; }
+#design-v2-native-root #b4 .st-native-meal-heading > label > span:not(.st-filter-count) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#design-v2-native-root #b4 .st-native-meal-refine { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 2px; border: 0; background: none; color: var(--blue); font: inherit; font-size: 12px; cursor: pointer; }
+#design-v2-native-root #b4 .st-native-meal-refine svg { width: 14px; height: 14px; flex: none; }
+#design-v2-native-root #b4 .st-native-meal-refine:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+#design-v2-native-root #b4 .st-native-meal-members { margin: 0 0 6px 9px; padding-left: 14px; border-left: 1px solid var(--line); }
+#design-v2-native-root #b4 .st-native-meal-members label { min-height: 44px; margin: 0; }
+#design-v2-native-root #b4 .st-native-meal-selection { margin: 0 0 5px 28px; color: var(--muted); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+#design-v2-native-root #b4 .st-native-meal-all { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; font-weight: 400; }
+#design-v2-native-root #b4 :is(.st-native-meal-members, .st-native-meal-selection)[hidden] { display: none; }
+#design-v2-native-root #b4 .st-condition-food-list { display: block; }
+#design-v2-native-root #b4 .st-condition-food-list > label { min-height: 44px; }
 /* A tablet comparison column still needs a full readable room title. Price
    and its action share the next row; the canonical three-column wide view
    and the mobile offer owner keep their existing composition. */
