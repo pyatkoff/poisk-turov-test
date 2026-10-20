@@ -357,6 +357,8 @@ class ProjectionTest(unittest.TestCase):
 class ContinuationTest(unittest.TestCase):
     def fixture(self):
         scope=json.loads((SOURCE/a.SCOPE_FILE).read_text())
+        scope.pop('scope_kind',None);scope.pop('wire_context',None)
+        scope['supplier_http_maximum']=400;scope['context_grouping']='exact_date_nights'
         rows=[]
         for hid in (101,102):
             ctx={'country_id':2,'departure_id':1,'adults':2,'children_count':0,
@@ -488,6 +490,7 @@ class ContinuationTest(unittest.TestCase):
     def test_existing_modes_admit_only_reviewed_continuation_not_renamed_frozen_scope(self):
         c=core();m.register_parser(c)
         for mode,op,parent in [('match-retained-acquire',m.NEXT_SCOPE['operation_id'],m.NEXT_SCOPE['parent_operation_id']),
+                               ('match-retained-readback',m.NEXT_SCOPE['readback_operation_id'],m.NEXT_SCOPE['saved_acquisition_operation_id']),
                                ('match-retained-anex-write-v2',m.NEXT_SCOPE['write_operation_id'],m.NEXT_SCOPE['operation_id'])]:
             c=core();m.register_parser(c)
             command=c.PREFIX+' '.join((SHA,mode,op,m.NEXT_SCOPE['cohort'],parent))
@@ -515,6 +518,94 @@ class ContinuationTest(unittest.TestCase):
 
 
 class AcquisitionTest(unittest.TestCase):
+    def date_scope(self):
+        scope,current=ContinuationTest().fixture()
+        peer={'tv_hotel_id':103,'target':{'country_id':2},'future_context':dict(current['rows'][0]['future_context'],hotel_id=103,departure_date='2099-02-01',nights=6)}
+        current['rows'].append(peer)
+        scope.update(scope_kind='owner_date_variation',context_origin='owner_20261020_1031_saved_peer_context',
+                     wire_context={'date_from':'2099-02-01','date_to':'2099-02-01','nights_from':6,'nights_to':6},
+                     prior_selected_hotel_ids=[101,102],context_peer_tv_hotel_id=103,
+                     context_peer_row_sha256=hashlib.sha256(a.canonical(peer)).hexdigest(),
+                     supplier_http_maximum=30,search_start_maximum=1,
+                     parent_evidence_sha256=hashlib.sha256(a.canonical(current)).hexdigest())
+        scope['scope_id']=hashlib.sha256(a.canonical({k:scope[k] for k in ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts','scope_kind','wire_context','context_origin')})).hexdigest()
+        scope['cohort']='anex-next-'+scope['scope_id'][:16]
+        return scope,current
+
+    def test_owner_date_context_preserves_original_observation_and_excludes_old_effective_ranges(self):
+        scope,current=self.date_scope();before=copy.deepcopy(current)
+        self.assertEqual(2,len(a.select_scope_rows(scope,current,'2026-10-20')));self.assertEqual(before,current)
+        old={'params':{'countryId':2,'departureId':1,'adults':2,'childs':[],'operatorIds':[13],
+                       'hotelIds':[101],'dateFrom':'2099-01-01','dateTo':'2099-01-31'}}
+        a.check_new_context(scope,[old])
+        for k,v in [('date_from','2099-01-31'),('date_to','2099-01-31')]:
+            bad=copy.deepcopy(scope);bad['wire_context'].update(date_from='2099-01-31',date_to='2099-01-31',nights_from=28,nights_to=28)
+            with self.assertRaisesRegex(ValueError,'effective_date_range_consumed'):a.check_new_context(bad,[old])
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);root=home/'.anytoour-match';root.mkdir();ledger=root/'retained-selection-claims.json'
+            original=a.canonical({'schema_version':1,'claims':{'TOURVISOR_ANEX_JWT:13:'+str(h):{'state':'UNKNOWN_consumed'} for h in [101,102]}})
+            ledger.write_bytes(original);a.reserve_contexts(home,scope,'new-date-context', [old]);self.assertEqual(original,ledger.read_bytes())
+            for changed in (scope,dict(scope,selected_tv_hotel_ids=[101])):
+                with self.assertRaisesRegex(ValueError,'context_consumed'):a.reserve_contexts(home,changed,'renamed-next-day',[old])
+            self.assertEqual(original,ledger.read_bytes())
+
+    def test_date_context_is_one_group_and_timeout_stops_without_new_country_or_retry(self):
+        scope,current=self.date_scope()
+        class C:
+            calls=reserved=tariff=unknown=0;counts=__import__('collections').Counter();before={}
+            params=None
+            def call(self,action,path,params):
+                self.calls+=1;self.reserved+=1;self.tariff+=1;self.unknown+=1;self.counts[action]+=1;self.params=params
+                raise TimeoutError()
+        with tempfile.TemporaryDirectory() as td:
+            client=C();result=a.acquire(client,Path(td),current['rows'][:2],sleep=lambda _:self.fail('no status after timeout'),scope=scope)
+        self.assertEqual(('partial_no_replay','TimeoutError',1,1),tuple(result[k] for k in ('acquisition_state','stop_reason','supplier_calls','unknown_http_calls')))
+        self.assertEqual(('2099-02-01','2099-02-01',6,6,[101,102]),tuple(client.params[k] for k in ('dateFrom','dateTo','nightsFrom','nightsTo','hotelIds')))
+        client=a.Client.__new__(a.Client);client.reserved=30;client.http_maximum=30;client.deadline=10**20
+        with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('tour_detail','/tours/1',{})
+        client.reserved=0;client.tariff=1;client.search_start_maximum=1
+        with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('search_start','/tours/search',{})
+
+    def test_saved_detail_inspection_never_exposes_url_path_or_query_values(self):
+        detail={'hotel':8038,'operator':13,'operatorLink':'https://anextour.ru/hotels/opaque-hotel-private?HOTELLIST=123&token=secret-value#opaque-fragment'}
+        result=a.inspect_saved_detail(detail,8038);serialized=json.dumps(result)
+        for token in ['opaque-hotel-private','secret-value','opaque-fragment','https://','123']:
+            self.assertNotIn(token,serialized)
+        self.assertEqual(['hotels','opaque:20'],result['path_shape']);self.assertEqual(['HOTELLIST','redacted'],result['query_key_shapes'])
+
+    def test_saved_readback_new_cohort_returns_before_any_child_or_supplier_collector(self):
+        with tempfile.TemporaryDirectory() as td:
+            project=Path(td);(project/'config.php').write_text('fixture');(project/'data').mkdir();(project/'data/db-v1.php').write_text('fixture')
+            def fail(reason):raise ValueError(reason)
+            space={'payload':{'cohort':m.NEXT_SCOPE['cohort'],'match_retained_control_sha':CONTROL},'mode':'match-retained-readback',
+                   'RETAINED_MODES':m.MODES,'NEXT_SCOPE':m.NEXT_SCOPE,'project':project,'safe_file':lambda p,b:p.is_file(),
+                   'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail,'operation':m.NEXT_SCOPE['readback_operation_id'],'source':SHA}
+            exec(m.REMOTE_HANDLER,space)
+            space['retained_saved_detail']=lambda stage:{'state':'saved_detail_inspected_read_only'}
+            with mock.patch('subprocess.run',side_effect=AssertionError('no child/HTTP')):
+                out=space['run_match_retained'](SOURCE)
+            self.assertEqual('saved_detail_inspected_read_only',out['data']['state']);self.assertEqual(0,out['data']['supplier_calls'])
+
+    def test_effective_contexts_come_from_actual_requests_including_unknown_not_plan(self):
+        with tempfile.TemporaryDirectory() as td:
+            private=Path(td);name='int-andromeda-match-retained-acquire-20261020-v2';target=private/name;target.mkdir()
+            data={'physical_http_reservations':3,'tariff_search_units':2,'unknown_http_calls':1,'actions':{'search_start':2}}
+            (target/'result.json').write_text(json.dumps({'match_retained':{'data':data}}))
+            base={'countryId':2,'departureId':1,'adults':2,'childs':[],'operatorIds':[13],'hotelIds':[101],
+                  'dateFrom':'2026-12-14','dateTo':'2027-01-03','nightsFrom':6,'nightsTo':9}
+            requests=[{'action':'search_start','path':'/tours/search','params':base},
+                      {'action':'search_status','path':'/tours/search/1/status','params':{}},
+                      {'action':'search_start','path':'/tours/search','params':dict(base,dateFrom='2026-10-20',dateTo='2026-11-08')}]
+            for n,value in enumerate(requests,1):(target/('request-%04d.json'%n)).write_bytes(a.canonical(value))
+            def fail(reason):raise ValueError(reason)
+            space={'private':private,'safe_json':lambda path,bound:json.loads(path.read_text()),'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail}
+            exec(m.REMOTE_HANDLER,space);space['retained_prior_selection']=lambda scope:None
+            out=space['retained_effective_requests']({'exclusion_history':[{'operation_id':name,'selected_tv_hotel_ids':[101]}]})
+            self.assertEqual([1,3],[x['request_number'] for x in out]);self.assertEqual('2026-11-08',out[1]['params']['dateTo'])
+            self.assertTrue(all(len(x['request_sha256'])==64 for x in out))
+            (target/'request-0003.json').unlink()
+            with self.assertRaises(FileNotFoundError):space['retained_effective_requests']({'exclusion_history':[{'operation_id':name,'selected_tv_hotel_ids':[101]}]})
+
     def test_exact_anex_namespace_identity_and_sensitive_link_holds(self):
         detail={'hotel':{'id':1546},'operator':{'id':13},'operatorLink':'https://agent.anextour.ru/search?HOTELLIST=5844'}
         value=a.native_pair(detail,1546)
