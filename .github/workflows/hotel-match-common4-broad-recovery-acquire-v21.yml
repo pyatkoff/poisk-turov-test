@@ -1,0 +1,124 @@
+name: MATCH COMMON4 broad recovery acquire v21
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php'
+      - 'tests/hotel_match_common4_broad_recovery_acquire_v21_test.php'
+      - '.github/workflows/hotel-match-common4-broad-recovery-acquire-v21.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-broad-recovery-acquire-1971-20260925-v21, cancel-in-progress: false}
+env:
+  OP: hotel-match-common4-broad-recovery-acquire-1971-20260925-v21
+  BASE: c3b28595541ecb85286227aa146d70329bf324f3
+  CLAIM: '5830396616'
+  POST_ARTIFACT: '10856651937'
+  POST_ARCHIVE_SHA: 3650be64ff4a38093b5f56cb4d8cb4ec1bf7c4a6edda557a796fc18dbc527235
+  POST_RESULT_SHA: d521c8313d6d30274ebe292672a90f59ed30f48b63ff474e866195c0d9b00792
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-broad-recovery-acquire-v21-20260925'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php
+      - run: php scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php --self-test
+      - run: php tests/hotel_match_common4_broad_recovery_acquire_v21_test.php
+      - run: |
+          ! grep -E 'INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/common4-broad-recovery-acquire-v21-20260925'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim Security postwrite and provider lane
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/post terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-common4-broad-recovery-acquire-v21.yml scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php tests/hotel_match_common4_broad_recovery_acquire_v21_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in [os.environ['OP'],'states3/5','2026-10-04..2026-10-24','10 nights and14 nights','operation HTTP cap2500','DB/mapping writes0']: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else:raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$POST_ARTIFACT/zip" -o input/post.zip
+          test "$(sha256sum input/post.zip|awk '{print $1}')" = "$POST_ARCHIVE_SHA"
+          unzip -q input/post.zip -d input/post
+          result="$(find input/post -type f -name result.json -print -quit)";receipt="$(find input/post -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt";cp "$result" input/post-result.json;cp "$receipt" input/post-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os,urllib.request
+          rp=pathlib.Path('input/post-result.json');r=json.load(open(rp));q=json.load(open('input/post-receipt.json'));h=hashlib.sha256(rp.read_bytes()).hexdigest()
+          assert h==os.environ['POST_RESULT_SHA']==q['result_sha256']
+          assert r['operation']=='hotel-match-samo-business-live30-common4-postwrite-1971-20260925-v18'
+          assert r['state']=='samo_business_live30_common4_plan_ready' and r['deduped_lane_state_conflicts']==0
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?status=in_progress&per_page=100'
+          req=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+          with urllib.request.urlopen(req,timeout=30) as f:active=json.load(f)['workflow_runs']
+          blockers=[x for x in active if x['id']!=int(os.environ['GITHUB_RUN_ID']) and (x['name']=='INT permanent server executor' or ('MATCH' in x['name'] and ('acquire' in x['name'].lower() or 'provider' in x['name'].lower())))]
+          assert not blockers,[(x['id'],x['name']) for x in blockers]
+          PY
+      - name: Execute broad CURRENT recovery acquisition v21
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          op=".anytoour-match/operations/$OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/reservation.json').write_text(json.dumps({'operation':os.environ['OP'],'state':'reserved_before_provider','postwrite_result_sha256':os.environ['POST_RESULT_SHA'],'provider':'andromeda','database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload/scripts/diagnostics\" \"\$HOME/$op/payload/app/integrations\""
+          scp "${opts[@]}" input/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" input/post-result.json "$remote:$op/payload/postwrite-result.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php "$remote:$op/payload/scripts/diagnostics/"
+          scp "${opts[@]}" app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$op/payload/app/integrations/"
+          set +e
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_POSTWRITE_RESULT=\"\$HOME/$op/payload/postwrite-result.json\" MATCH_POSTWRITE_SHA='$POST_RESULT_SHA' MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$op/payload/scripts/diagnostics/hotel_match_common4_broad_recovery_acquire_v21.php\" --execute" >terminal/remote.stdout 2>terminal/remote.stderr
+          status=$?
+          set -e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/$op\";tar -czf - reservation.json result.json receipt.json" >terminal/server.tgz
+          python3 - <<'PY'
+          import tarfile,pathlib,json,hashlib
+          with tarfile.open('terminal/server.tgz','r:gz') as t:
+              for m in t.getmembers():
+                  if m.isfile():pathlib.Path('terminal',m.name).write_bytes(t.extractfile(m).read())
+          r=json.load(open('terminal/result.json'));q=json.load(open('terminal/receipt.json'))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path('terminal/result.json').read_bytes()).hexdigest()
+          assert r['state'] in ('completed_read_only_broad_recovery','completed_read_only_broad_recovery_partial')
+          assert r['target_edge_count']==4902 and r['context_count']==16
+          assert r['target_counts_by_operator']=={'5':1562,'115':1320,'315':1336,'342':684} or r['target_counts_by_operator']=={5:1562,115:1320,315:1336,342:684}
+          assert r['database_writes']==r['mapping_writes']==0 and r['tourvisor_calls']==r['direct_anex_calls']==0
+          print(json.dumps({k:r[k] for k in ['state','target_edge_count','context_count','failed_state_operator_count','provider_http_calls','edge_state_counts','operator_state_counts','single_native_source_collision_count']},sort_keys=True))
+          PY
+          test "$status" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-common4-broad-recovery-acquire-v21-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
