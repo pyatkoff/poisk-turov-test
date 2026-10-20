@@ -10,7 +10,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const source=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
 const clone=x=>JSON.parse(JSON.stringify(x));
-function owner(source){const a=source.indexOf('function updateModalBack(){'),b=source.indexOf("$('#modal').addEventListener('cancel'",a);assert(a>=0&&b>a);return source.slice(a,b);}
+function owner(source){
+ const a=source.indexOf('function updateModalBack(){'),b=source.indexOf("$('#modal').addEventListener('cancel'",a),guard=source.indexOf('function terminalOfferQuote('),guardEnd=source.indexOf('function offerQuoteFailure(',guard);assert(a>=0&&b>a&&guard>=0&&guardEnd>guard);
+ // The modal corpus intercepts the provider-view collaborator separately.
+ // Load the actual guard with a read-only empty view for these original cases.
+ return 'const terminalOfferQuote=(()=>{const retainedProviderView=()=>null;'+source.slice(guard,guardEnd)+'return terminalOfferQuote;})();\n'+source.slice(a,b);
+}
 function observe(source,s){
  const trace=[],tasks=[],expiry=[],nodes=new Map(),savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx;
  const checkpoint=()=>({type:ctx.modalType,restoring:ctx.restoringModal,history:ctx.modalHistory.map(x=>x.type),selected:ctx.selectedOffer?.key,open:node('#modal').open,footer:node('#modal-footer').innerHTML});
@@ -168,7 +173,7 @@ for(const mode of ['current','retained','missing','foreign','loading','flights-l
  const raw={},offer={key:'exact-tv',raw},saved={...offer,variants:[{}]},route={type:'flights',key:'exact-tv',flightChoiceId:'0',view:{query:'AAA'},scroll:83},opened=[];
  if(mode==='foreign')saved.raw={};if(mode==='loading')saved.loading=true;if(mode==='flights-loading')saved.flightsLoading=true;if(mode==='empty')saved.variants=[];
  const ctx={hotels:[],selectedOffer:mode==='retained'?null:mode==='other'?{key:'other',raw:{},variants:[{}]}:saved,offerFromKey:key=>mode==='missing'?null:key===offer.key?offer:null,retainedProviderView:()=>mode==='retained'?{offer:saved}:null,needsRefresh:o=>{assert.strictEqual(o,saved);return mode==='expired';},openFlightPicker:value=>opened.push(value)};
- vm.createContext(ctx);vm.runInContext(source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
+ vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function terminalOfferQuote('),source.indexOf('function offerQuoteFailure('))+source.slice(routeStart,routeEnd),ctx);const valid=['current','retained'].includes(mode);assert.equal(ctx.reopenUIRoute(route),valid,mode+' history guard');assert.equal(opened.length,valid?1:0);if(valid){assert.strictEqual(opened[0],route);assert.strictEqual(ctx.selectedOffer,saved);}
 }
 console.log('PASS passive flight history: exact retained offer/raw inventory only; missing/foreign/loading/expired/empty/other rejected; supplier and lead HTTP0');
 

@@ -1181,11 +1181,14 @@ function reopenUIRoute(route){
  }
  case 'selected-tour':{
   if(!route.key||selectedOffer?.key!==route.key)return false;
+  if(terminalOfferQuote(selectedOffer)){renderRealOffer();break;}
   openLeadPreview();const review=$('.application-review');if(review&&typeof route.reviewOpen==='boolean')review.open=route.reviewOpen;if(Number.isFinite(route.scroll)&&route.scroll>=0)$('#modal-body').scrollTop=route.scroll;break;
  }
  case 'flights':{
   const o=offerFromKey(route.key),retained=selectedOffer?.key===route.key?selectedOffer:retainedProviderView(o)?.offer;
-  if(!o||!retained||retained.raw!==o.raw||retained.loading||retained.flightsLoading||needsRefresh(retained)||!retained.variants?.length)return false;
+  if(!o||!retained||retained.raw!==o.raw)return false;
+  if(terminalOfferQuote(retained)){selectedOffer=retained;renderRealOffer();break;}
+  if(retained.loading||retained.flightsLoading||needsRefresh(retained)||!retained.variants?.length)return false;
   selectedOffer=retained;openFlightPicker(route);break;
  }
  case 'favorites':openFavorites();break;
@@ -1198,7 +1201,7 @@ function reopenUIRoute(route){
  case 'gallery':if(!hotel)return false;openGallery(hotel.id,Number.isInteger(route.index)&&route.index>=0&&route.index<hotel.photos.length?route.index:0);break;
  case 'offer':{
   const o=offerFromKey(route.key);if(!o)return false;
-  const retained=selectedOffer?.key===route.key?selectedOffer:null;
+  const retained=selectedOffer?.key===route.key?selectedOffer:retainedProviderView(o)?.offer;
   selectedOffer=retained&&!retained.loading&&!retained.flightsLoading?retained:{...o,quoteError:needsRefresh(o)?'':'Проверьте актуальность тура, чтобы продолжить выбор.'};
   renderRealOffer();break;
  }
@@ -1276,6 +1279,9 @@ function modalBack(){
  let previous=modalHistory.pop();
  while(previous&&['andromeda-flights','anex-current'].includes(previous.type)&&retainedProviderView(previous.offer)?.type!==previous.type)previous=modalHistory.pop();
  if(!previous)return;
+ if(['selected-tour','flights'].includes(previous.type)&&terminalOfferQuote(previous.offer)){
+  selectedOffer=previous.offer;restoringModal=true;renderRealOffer();restoringModal=false;rememberUIRoute();return;
+ }
  restoringModal=true;showModal(previous.type,previous.title,previous.kicker,previous.body,previous.className==='wide-dialog');
  restoreModalStepSnapshot(previous);
  if(previous.type==='offer')renderRealOffer();
@@ -1709,7 +1715,17 @@ function flightSummaryHTML(o,editing=false){
 function isCurrentOfferRequest(run,key){
  return run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===key;
 }
+function terminalOfferQuote(o){
+ const terminal=value=>value?.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(value?.quoteErrorCode);
+ return terminal(o)||terminal(retainedProviderView(o)?.offer);
+}
+function offerQuoteFailure(o,error){
+ const terminal=error?.retryable===false;
+ return {...o,quoteError:error.message,quoteErrorCode:String(error?.code||''),quoteErrorTerminal:terminal,loading:false,
+  ...(terminal?{total:data.amount(o.quoteListingTotal)||o.total,tour:null,variants:[],flightChoiceId:null,pricePending:false,flightsLoading:false}: {})};
+}
 async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
+ if(terminalOfferQuote(initial))return;
  try{
   const tour=await data.quote(initial);
   if(!isCurrentOfferRequest(run,initial.key))return;
@@ -1724,7 +1740,7 @@ async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
   }else openLeadPreview(selectedOffer);
  }catch(error){
   if(isCurrentOfferRequest(run,initial.key)){
-   selectedOffer={...initial,quoteError:error.message,quoteErrorCode:String(error?.code||''),loading:false};
+   selectedOffer=offerQuoteFailure(initial,error);
    renderRealOffer();
   }
  }
@@ -1741,7 +1757,7 @@ async function openOffer(key,restored=null,chooseFlight=false){
  await quoteSelectedOffer(initial,run,{chooseFlight:true});
 }
 async function loadRealFlights(run=selectionGeneration,{chooseFlight=false}={}){
- const o=selectedOffer;if(!o?.tour)return;
+ const o=selectedOffer;if(!o?.tour||terminalOfferQuote(o))return;
  selectedOffer.flightsLoading=true;renderRealOffer();
  try{
   const variants=await data.flights(o.tour);
@@ -1753,19 +1769,19 @@ async function loadRealFlights(run=selectionGeneration,{chooseFlight=false}={}){
   if(chooseFlight&&variants.length)openFlightPicker();
  }catch(error){
   if(isCurrentOfferRequest(run,o.key)){
-   selectedOffer={...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};
+   selectedOffer=error?.retryable===false?offerQuoteFailure(selectedOffer,error):{...selectedOffer,flightsLoading:false,flightsError:'Не удалось загрузить рейсы. Попробуйте ещё раз.'};
    renderRealOffer();
   }
  }
 }
 function leadReadyOffer(o){
- const quoted=data.amount(o?.tour?.price);if(!o?.tour||!quoted)return null;
+ const quoted=data.amount(o?.tour?.price);if(!o?.tour||!quoted||terminalOfferQuote(o))return null;
  const pair=flightPairFor(o);
  if(pair&&!o.pricePending&&!o.flightsLoading&&!o.flightsError)return o;
  return {...o,total:quoted,pricePending:false,flightChoiceId:null,variants:[],flightsLoading:false,flightsError:'',savedFlightText:'Рейс уточнит менеджер',savedFlightLegs:[]};
 }
 async function openLeadWithQuote(key){
- const initial=selectedOffer?.key===key?selectedOffer:offerFromKey(key);if(!initial||needsRefresh(initial))return;
+ const initial=selectedOffer?.key===key?selectedOffer:offerFromKey(key);if(!initial||needsRefresh(initial)||terminalOfferQuote(initial))return;
  if(leadReadyOffer(initial)){openLeadPreview(initial);return;}
  const run=++selectionGeneration;selectedOffer={...initial,loading:true,quoteError:''};renderRealOffer();
  await quoteSelectedOffer(initial,run);
@@ -1848,6 +1864,7 @@ function providerApplicationBodyHTML(receipt,flights,hotelId){
 }
 function providerApplicationFooterHTML(receipt){return offerDetailFooterHTML({total:receipt.price},window.AnyTourPrototypeLead.action(),receipt.finalPriceVerified?'Подтверждённая цена выбранного тура':'Расчётная стоимость · требует подтверждения');}
 function renderRealOffer(){
+ const denied=retainedProviderView(selectedOffer)?.offer;if(denied?.quoteErrorTerminal===true)selectedOffer=denied;
  const o=selectedOffer,h=selectedTourHotel(o);if(!o||!h)return;
  window.AnyTourPrototypeLead.observeSelection?.(leadReadyOffer(o)||o);
  const m=$('#modal'),busy=o.loading||o.flightsLoading;
@@ -1857,9 +1874,9 @@ function renderRealOffer(){
  // Resume a disabled action only if focus stayed on its pending fallback.
  const resumeAction=returning&&!busy&&m.dataset.offerFocusKey===o.key&&document.activeElement===$('#modal-title');
  if(!busy)delete m.dataset.offerFocusKey;
- if(o.provider==='tourvisor'&&data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.loading&&!o.quoteError&&!o.flightsLoading)rememberProviderView(o,'tourvisor-selection');
+ if(o.provider==='tourvisor'&&!o.loading&&!o.flightsLoading&&(o.quoteErrorTerminal===true||data.amount(o.tour?.price)>0&&!needsRefresh(o)&&!o.quoteError))rememberProviderView(o,'tourvisor-selection');
  const unavailable=needsRefresh(o);
- const terminalQuoteError=o.quoteErrorTerminal===true||['offer_unavailable','offer_expired'].includes(o.quoteErrorCode);
+ const terminalQuoteError=terminalOfferQuote(o);
  const selectionHint=offerSelectionHint(o,terminalQuoteError);
  showModal('offer','Ваш тур в деталях',o.loading?'ПРОВЕРЯЕМ ПРЕДЛОЖЕНИЕ':'ПРОВЕРЬТЕ УСЛОВИЯ',offerDetailBodyHTML(o,h,unavailable,terminalQuoteError,selectionHint),true);
  $('#modal').classList.add('tour-dialog');
@@ -1870,7 +1887,7 @@ function renderRealOffer(){
  if(returning){const fuel=m.querySelector('.tour-fuel-disclosure');if(fuel)fuel.open=returning.fuelOpen;restoreFocus(resumeAction?null:returning.focus,returning.footer||resumeAction?$('#modal-footer .primary:not(:disabled)')||$('#modal-title'):$('#modal-title'),m);$('#modal-body').scrollTop=returning.scroll;}
 }
 function openFlightPicker(restore=null){
- if(!selectedOffer?.variants?.length)return;const saved=restore||selectedOffer.flightPickerState,id=restore?.flightChoiceId;
+ if(!selectedOffer?.variants?.length||terminalOfferQuote(selectedOffer))return;const saved=restore||selectedOffer.flightPickerState,id=restore?.flightChoiceId;
  flightDraft={base:selectedOffer,id:id!==null&&id!==undefined&&selectedOffer.variants[Number(id)]?String(id):selectedOffer.flightChoiceId,restore:saved};
  showModal('flights','Выберите перелёт','','<div class="empty" role="status">Загружаем варианты перелёта…</div>',true);
  $('#modal').classList.add('tour-dialog','tour-flight-editing');
@@ -1926,7 +1943,7 @@ function updateFlightPreview(){
 }
 
 function applyFlightPair(){
- if(!flightDraft)return;
+ if(!flightDraft||terminalOfferQuote(flightDraft.base))return;
  const applied=withFlightPair(flightDraft.base,flightDraft.id);if(!applied)return;
  const managerFallback=applied.pricePending;
  const quoted=data.amount(flightDraft.base.tour?.price)||data.amount(flightDraft.base.quoteListingTotal)||data.amount(flightDraft.base.total);
