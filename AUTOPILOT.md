@@ -41,43 +41,42 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-Owner20.10.2026 correction: finish the ordinary user journey in original NEXT
-at430/mobile and1280/desktop, including retained short1280x720. Use the current
-top product plan and AUTOPILOT_STATE.json.current_task. Main result is coherent
-product quality≥9.5 in the fully measured applicable scope, not separate test
-scores. Other widths/200%/Compare are deferred until the agreed UI milestone.
+Owner20Oct02:15: the observed ordinary current3bdd430/1280 UI corpus is closed,
+not the entire installed/real-data Search product. Terminal6280199658/audit6280193716
+records FIRST bounded compiled430 Mobile2/2/2/2/2=10/UI0; Desktop1280/short9.5,
+Selectedtour10/Calendar9.5 carry only their own exact scopes. Finite material-gap
+list empty; no cosmetic repair/repeat demo/score pass is justified. New installed
+desktop pointer filter→zero-match→explicit budget recovery→own-offer manager
+contact→Back/Close/reset/sort/Continue passed separately. Source3bdd/app7ae9ba
+and approved/transferred Site203/project/history/public unchanged.
 
-Site203 is approved/transferred; installed originalNEXT3bdd/app7ae9ba has
-publication/readback6273604203. Family4647/Calendar4649 and retained closeout
-6279680382/audit6279688566 are completed; no replay. Broad Calendar-inclusive
-compiled Desktop2/1.5/2/2/2=9.5 is a FIRST bounded baseline/UI delta0.
-Donor/compiled/native/physical/real-supplier evidence is never inherited.
+Same task S3_PRODUCT_CURRENT_ACCEPTANCE now has ONE concrete next result:
+a READY/BLOCKED admission packet in existing#4217 for the installed real
+offer/optional-one-pair/contact/return scenario. Read retained authoritative
+stock executor/profile, exact source/runtime, owner allowance, operation identity,
+budget/reservation and unconsumed limits first; no live/paid trial or invented
+caps. Proposed upper product scope: one explicit search/firstportion/week,
+own current whole-party offerprice→manager-flight contact→return, optional
+oneexactpair only under its own existing allowance. This is NOT supplier HTTPbudget
+or authorization; numerical limits come only from accepted executor/reservation.
+No valid exact gate → precise owner/missing-action BLOCKED, not a new QA/CI/deploy
+or unchanged demo loop. Full details are in the top product plan/current_task.
 
-Next: one ordinary mouse/tap whole-path assessment using retained exact3bdd
-evidence first → finite confirmed substantial product gaps → one connected
-repair packet if warranted → whole-path final acceptance/stop. Empty material
-gap list does not justify cosmetic code. Do not create a QA-only task for eachN,
-error state or criterion. Preserve manager-flight and optional exact-pair paths.
+Native430/physical, canonicalRix aliases/submittedIDs, INT repeated/allpair authority,
+real lead delivery and production retain individual owner/action/closure conditions.
+They are not a circular AND-gate and do not create tasks from everyN.
+Partial baseline does not imply globalDONE, full mobile9.5 or other-width unlock.
+Current widths430/1280; otherwidths/200%/Compare remain per owner/plan.
 
-Owner explicitly prohibits keyboard site walkthroughs/Tab cycles and separate
-A11y-only/keyboard/focus tasks. Do not start a focus-ring microtask from a keyboard
-test screenshot. Only a confirmed substantial ordinary-click/tap defect belongs
-in the coherent repair. Historical keyboard evidence stays history/no-replay;
-unmeasured/deferred keyboard scope is not an ordinary-UI blocker or fake score.
-
-One writer/integrator, independent read-only review; separate stock NEXT-only
-publisher for ready changed artifacts. Focused checks during repair, all applicable
-final-source CI once ready; no workflow/allowlist/draft/ready weakening.
-Physical/native430, Rix aliases/submittedIDs, INT authority, real lead delivery and
-production keep existing exact owners/gates and honestN. They do not create a
-circular technical-test queue or stop independent allowed ordinary UI work.
-No server/browserinstall/carrier workaround or consumed paid/live/deploy retry.
-
-Control-only correction: diff/JSON/current_task-only/protected/history equality,
-one independent review and applicable owner-policy/security CI; no UI/browser/build/
-deploy for docs. Runtime/protected contracts and all tasks/settings/schedules remain
-unchanged. Close this correction, then produce the ordinary product result; do
-not start another planning-only iteration without a new owner/material finding.
+Keyboard walkthroughs/Tab/A11y-only/focus microtasks are FORBIDDEN.
+Completed Site203/4647/4649/6279680382/6280199658 and oldlive/paid/deploy
+are no-replay. One writer/integrator, independent read-only review and separate
+stock NEXT-only publisher only for a ready changed artifact. Existing required
+CI/approval/price/lead/production/protected gates remain; no workflow/allowlist/
+draft-ready weakening, server/browserinstall/carrier workaround or foreignv2 work.
+This correction changes control only; diff/JSON/current_task-only/protected/history
+equality, independent review and applicable owner-policy/security CI suffice.
+No UI/browser/build/deploy or scheduler/settings/other-task change for documents.
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 
