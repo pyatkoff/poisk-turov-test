@@ -824,13 +824,15 @@ class TvDiagnosticInstall(unittest.TestCase):
   def api(path):
    if path=='/git/ref/heads/main':return {'object':{'sha':identity['control_source_sha']}}
    if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.TV_DIAGNOSTIC_RELEASE}}
-   if path=='/git/commits/'+identity['control_source_sha']:return {'parents':[{'sha':'a'*40},{'sha':'d'*40}],'tree':{'sha':'e'*40}}
+   if path=='/git/commits/'+identity['control_source_sha']:return {'sha':identity['control_source_sha'],'parents':[{'sha':'a'*40},{'sha':'d'*40}],'tree':{'sha':'e'*40}}
    if path=='/git/commits/'+('d'*40):return {'sha':'d'*40,'tree':{'sha':'e'*40}}
+   if path=='/git/commits/'+('a'*40):return {'sha':'a'*40,'tree':{'sha':'e'*40},'parents':[]}
    if '/check-runs?check_name=' in path:
     name=path.split('check_name=',1)[1].split('&',1)[0];head=path.split('/')[2]
     return {'total_count':1,'check_runs':[{'id':1,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
    if '/check-runs?' in path:return {'total_count':len(m.TV_DIAGNOSTIC_CHECK_IDS),'check_runs':[{'id':i,'head_sha':m.TV_DIAGNOSTIC_SOURCE,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in m.TV_DIAGNOSTIC_CHECK_IDS]}
-   if path.startswith('/contents/'):return {'sha':m.TV_DIAGNOSTIC_BLOB,'content':base64.b64encode(body).decode()}
+   if path.startswith('/contents/v2/api-v2.php?'):return {'sha':m.TV_DIAGNOSTIC_BLOB,'content':base64.b64encode(body).decode()}
+   if path.startswith('/contents/'):return {'type':'file','sha':'9'*40}
    if path.startswith('/issues/comments/'):return event['comment']
    return [{'id':987,'body':event['comment']['body']}]
   return api
@@ -858,6 +860,43 @@ class TvDiagnosticInstall(unittest.TestCase):
   m.TV_DIAGNOSTIC_RELEASE='PENDING_REVIEWED_RELEASE'
   with mock.patch.object(m,'checked_api') as network,self.assertRaisesRegex(RuntimeError,'diagnostic_pins_incomplete'):m.tv_diagnostic_admission(identity)
   network.assert_not_called()
+ def test_reviewed_control_survives_unrelated_merges_only_with_identical_owned_blobs(self):
+  m=self.module();current,accepted,unrelated,old,reviewed=('b'*40,'a'*40,'c'*40,'d'*40,'e'*40)
+  owned={path:str(index+1)*40 for index,path in enumerate(m.TV_DIAGNOSTIC_CONTROL_PATHS)}
+  commits={current:{'sha':current,'tree':{'sha':'9'*40},'parents':[{'sha':accepted},{'sha':unrelated}]},
+           unrelated:{'sha':unrelated,'tree':{'sha':'8'*40}},
+           accepted:{'sha':accepted,'tree':{'sha':'7'*40},'parents':[{'sha':old},{'sha':reviewed}]},
+           reviewed:{'sha':reviewed,'tree':{'sha':'7'*40}},old:{'sha':old,'tree':{'sha':'6'*40},'parents':[]}}
+  def api(path):
+   import copy
+   if path.startswith('/git/commits/'):return copy.deepcopy(commits[path.rsplit('/',1)[1]])
+   if path.startswith('/contents/'):
+    name=path[len('/contents/'):].split('?ref=',1)[0];return {'type':'file','sha':owned[name]}
+   name=path.split('check_name=',1)[1].split('&',1)[0];head=path.split('/')[2]
+   if head==unrelated and name=='contracts':return {'total_count':0,'check_runs':[]}
+   return {'total_count':1,'check_runs':[{'id':1,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
+  for same_tree in (False,True):
+   if same_tree:commits[unrelated]['tree']['sha']='9'*40
+   with self.subTest(same_tree=same_tree),mock.patch.object(m,'checked_api',side_effect=api):
+    proof=m.tv_diagnostic_reviewed_control(current)
+   self.assertEqual(proof,{'merge_sha':accepted,'source_sha':reviewed,'owned_blobs':owned})
+  for variant in ('changed_owned','incomplete_ancestry','truncated_checks','foreign_check_head'):
+   def bad(path):
+    value=api(path)
+    if variant=='changed_owned' and path.startswith('/contents/') and path.endswith('?ref='+reviewed):value['sha']='f'*40
+    if variant=='incomplete_ancestry' and path=='/git/commits/'+accepted:value.pop('parents')
+    if variant=='truncated_checks' and path.startswith('/commits/'+reviewed+'/'):value['total_count']=2
+    if variant=='foreign_check_head' and path.startswith('/commits/'+reviewed+'/'):value['check_runs'][0]['head_sha']=unrelated
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),self.assertRaises(RuntimeError):m.tv_diagnostic_reviewed_control(current)
+ def test_control_ancestry_has_a_hard_depth_bound(self):
+  m=self.module();heads=[f'{index+1:040x}' for index in range(17)];visited=[]
+  def api(path):
+   if path.startswith('/contents/'):return {'type':'file','sha':'f'*40}
+   head=path.rsplit('/',1)[1];visited.append(head);index=heads.index(head)
+   return {'sha':head,'tree':{'sha':'e'*40},'parents':[{'sha':heads[index+1]}]}
+  with mock.patch.object(m,'checked_api',side_effect=api),self.assertRaisesRegex(RuntimeError,'reviewed_control_missing'):m.tv_diagnostic_reviewed_control(heads[0])
+  self.assertEqual(visited,heads[:16])
  def test_shared_remote_updates_only_api_and_replay_preserves_first_receipt(self):
   m=self.module()
   with tempfile.TemporaryDirectory() as td:
