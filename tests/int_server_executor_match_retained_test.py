@@ -573,6 +573,21 @@ class AcquisitionTest(unittest.TestCase):
             self.assertNotIn(token,serialized)
         self.assertEqual(['hotels','opaque:20'],result['path_shape']);self.assertEqual(['HOTELLIST','redacted'],result['query_key_shapes'])
 
+    def test_saved_selector_structure_preserves_arrays_and_never_promotes_namespace(self):
+        for text,kind,tokens in [('[100000001]','json_positive_integer_array',[100000001]),
+                                 ('[5844,5844]','json_positive_integer_array',[5844,5844]),
+                                 ('[5844,7777]','json_positive_integer_array',[5844,7777]),
+                                 ('some hotel name','non_identifier_text',[])]:
+            link='https://agent.anextour.ru/search/tour?HOTELLIST='+__import__('urllib.parse',fromlist=['quote']).quote(text)
+            out=a.inspect_saved_detail({'hotel':8038,'operator':13,'operatorLink':link},8038)
+            item=out['selector_analysis'][0]
+            self.assertEqual((kind,tokens,False),(item['format'],item['positive_tokens'],item['native_namespace_authority']))
+            self.assertEqual('native_link_unresolved',out['proof']['state'])
+        c=core();m.register_parser(c)
+        command=c.PREFIX+SHA+' match-retained-readback int-andromeda-match-retained-readback-20261020-v4 '+m.NEXT_SCOPE['cohort']+' '+m.NEXT_SCOPE['saved_acquisition_operation_id']
+        self.assertEqual('int-andromeda-match-retained-readback-20261020-v4',c.parse_command(command)['operation_id'])
+        with self.assertRaises(ValueError):c.parse_command(command.replace('readback-20261020-v4','readback-20261020-v5'))
+
     def test_saved_readback_new_cohort_returns_before_any_child_or_supplier_collector(self):
         with tempfile.TemporaryDirectory() as td:
             project=Path(td);(project/'config.php').write_text('fixture');(project/'data').mkdir();(project/'data/db-v1.php').write_text('fixture')
