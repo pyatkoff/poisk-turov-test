@@ -1,0 +1,149 @@
+name: INT September transport surcharge readback v1
+on:
+  push:
+    branches: ['ops/int-september-original-transport-20260919-v1']
+    paths: ['.github/workflows/int-september-transport-surcharge-readback-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Test typed monetary readback and verify exact head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/read.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          function safe_text(string $s): string {
+              $s=preg_replace('~https?://[^\s<>]+~iu','[URL]',$s)??'';
+              $s=preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i','[EMAIL]',$s)??'';
+              $s=preg_replace('/\b(?:password|passwd|token|secret|sid|claiminc|catalogKey|uid)\s*[:=]\s*[^\s,;]+/i','[REDACTED]',$s)??'';
+              $s=preg_replace('/[A-Za-z0-9_-]{24,}/','[ID]',$s)??'';
+              $s=preg_replace('/[\x00-\x1f\x7f]/u',' ',$s)??'';
+              preg_match('/^.{0,350}/us',$s,$m);return $m[0]??'';
+          }
+          function money_field(string $key):bool {
+              return preg_match('/surcharge|markup|price|amount|currency|fuel|fee|tax|total|net$|cost|rate|included|perPerson|perPax|quantity|count|^unit$|^value$/i',$key)===1;
+          }
+          function typed_fact(mixed $v, int $depth=0):array {
+              if($depth>8)throw new RuntimeException('DEPTH');
+              if($v===null)return ['type'=>'null','value'=>null];
+              if(is_bool($v)||is_int($v)||is_float($v))return ['type'=>gettype($v),'value'=>$v];
+              if(is_string($v))return ['type'=>'string','value'=>safe_text($v)];
+              if(!is_array($v))return ['type'=>gettype($v)];
+              $out=[];$skipped=0;
+              foreach($v as$k=>$child){
+                  if(is_int($k)||(is_string($k)&&money_field($k)))$out[$k]=typed_fact($child,$depth+1);
+                  else ++$skipped;
+              }
+              return ['type'=>'array','value'=>$out,'omitted_nonmoney_fields'=>$skipped];
+          }
+          function transport_facts(array $root):array {
+              $out=[];$walk=null;$count=0;
+              $walk=static function(array $v,string $path,int $depth)use(&$walk,&$out,&$count):void{
+                  if($depth>32||++$count>10000)throw new RuntimeException('COMPLEXITY');
+                  foreach($v as$k=>$x){
+                      if(is_string($k)&&preg_match('/^(clients?|passengers?|people|persons?|tourists?|auth|credentials|sid|token|password)$/i',$k))continue;
+                      $p=$path.(is_int($k)?'['.$k.']':'.'.(preg_match('/^[A-Za-z_]{1,64}$/D',$k)?$k:'_'));
+                      if($k==='transport'&&is_array($x)){
+                          foreach(array_is_list($x)?$x:[$x]as$i=>$t){
+                              if(!is_array($t))continue;$tp=$p.'['.$i.']';$near=[];
+                              $dig=null;$dig=static function(array $a,string $at,int $d)use(&$dig,&$near):void{
+                                  if($d>12)throw new RuntimeException('MONEY_DEPTH');
+                                  foreach($a as$ak=>$av){
+                                      if(is_string($ak)&&preg_match('/uid|key$|clients?|passengers?|people|persons?|tourists?|auth|credential|sid|token|password/i',$ak))continue;
+                                      $ap=$at.(is_int($ak)?'['.$ak.']':'.'.(preg_match('/^[A-Za-z_]{1,64}$/D',$ak)?$ak:'_'));
+                                      if(is_string($ak)&&money_field($ak))$near[]=['path'=>$ap,'fact'=>typed_fact($av)];
+                                      elseif(is_array($av))$dig($av,$ap,$d+1);
+                                      elseif(is_string($av)&&in_array($ak,['note','name','title','description'],true)&&preg_match('/топлив|доплат|surcharge|\bfuel\b|(?:USD|EUR|RUB|₽|\$)\s*\d/iu',$av))
+                                          $near[]=['path'=>$ap,'commercial_text'=>safe_text($av)];
+                                  }
+                              };$dig($t,$tp,0);
+                              $meta=[];foreach(['type','datebeg','dateend','routeIndex','direction','selected','external']as$key)
+                                  if(array_key_exists($key,$t)&&!is_array($t[$key]))$meta[$key]=typed_fact($t[$key]);
+                              $out[]=['path'=>$tp,'scope'=>str_contains($tp,'.variants')?'alternative':(str_contains($tp,'.claimDocument')?'current':'unspecified'),
+                                  'meta'=>$meta,'surcharge'=>array_key_exists('surcharge',$t)?typed_fact($t['surcharge']):['state'=>'missing'],'nearby_money'=>$near];
+                          }
+                      }
+                      if(is_array($x))$walk($x,$p,$depth+1);
+                  }
+              };$walk($root,'$',0);return$out;
+          }
+          if(($argv[1]??'')==='--self-test'){
+              $n=0;$ok=static function(bool $v)use(&$n):void{++$n;if(!$v)throw new RuntimeException('TEST');};
+              foreach([true,false,0,17,'0','160 USD',null]as$v){$r=transport_facts(['claimDocument'=>[['transports'=>[['transport'=>[['surcharge'=>$v]]]]]]]);$ok($r[0]['surcharge']['value']===$v);}
+              $r=transport_facts(['variants'=>[['transport'=>[['surcharge'=>['amount'=>25,'currency'=>'USD','uid'=>'PRIVATE']]]]]]);
+              $ok($r[0]['scope']==='alternative');$ok($r[0]['surcharge']['value']['amount']['value']===25);$ok(!str_contains(json_encode($r),'PRIVATE'));
+              $r=transport_facts(['transport'=>[['order_info'=>['details'=>['fuelPrice'=>19,'currency'=>'RUB']]],['type'=>'ttAvia']]]);
+              $ok(count($r[0]['nearby_money'])===2);$ok($r[1]['surcharge']['state']==='missing');
+              $r=transport_facts(['clients'=>[['transport'=>[['surcharge'=>999]]]]]);$ok($r===[]);
+              foreach(['sid=abcdef','token=secret','test@example.com','https://example.com/?sid=123']as$s)$ok(!str_contains(safe_text($s),$s));
+              echo'SEPTEMBER_SURCHARGE_READBACK_OK checks='.$n.PHP_EOL;exit;
+          }
+          try{
+              $dir=rtrim((string)getenv('HOME'),'/').'/.anytour-ops/int-september-original-transport-1717-20260919-v1';
+              if(is_link($dir)||!is_dir($dir))throw new RuntimeException('DIRECTORY');
+              $read=static function(string $p):string{if(is_link($p)||!is_file($p)||filesize($p)>2097152)throw new RuntimeException('FILE');$s=file_get_contents($p);if(!is_string($s))throw new RuntimeException('READ');return$s;};
+              $bytes=$read($dir.'/result.json');$result=json_decode($bytes,true,64,JSON_THROW_ON_ERROR);
+              if(($result['status']??null)!=='completed_terminal'||($result['operation']??null)!==basename($dir))throw new RuntimeException('RESULT');
+              $wanted=[];foreach($result['specimens']as$s)if(($s['status']??null)==='captured')$wanted[$s['raw_body_sha256']][]=['context'=>$s['context'],'base_price'=>$s['base_price']];
+              $files=glob($dir.'/raw.*.broninit.json');if(!is_array($files)||count($files)!==12)throw new RuntimeException('COUNT');$rows=[];
+              foreach($files as$p){$raw=$read($p);$sha=hash('sha256',$raw);if(!isset($wanted[$sha]))continue;$body=json_decode($raw,true,64,JSON_THROW_ON_ERROR);
+                  if(!is_array($body)||isset($body['error']))throw new RuntimeException('BODY');
+                  $rows[]=['raw_sha256'=>$sha,'bound_contexts'=>$wanted[$sha],'transports'=>transport_facts($body)];}
+              if(count($rows)!==6)throw new RuntimeException('CAPTURE_COUNT');
+              echo json_encode(['readback'=>'september_transport_surcharge_v1','source_result_sha256'=>hash('sha256',$bytes),'inspected_successful_originals'=>6,'rows'=>$rows,
+                  'supplier_calls'=>0,'db_calls'=>0,'remote_writes'=>0,'arithmetic_applied'=>false,'finalPriceReady'=>false],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+          }catch(Throwable $e){fwrite(STDERR,"SURCHARGE_READBACK_FAILED\n");exit(2);}
+          PHP
+          php -l "$RUNNER_TEMP/read.php"
+          php "$RUNNER_TEMP/read.php" --self-test
+          for attempt in $(seq 1 12); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=pull_request&per_page=100" > "$RUNNER_TEMP/checks.json"
+            if python3 - <<'PY'
+          import json,os,sys
+          runs=json.load(open(os.environ['RUNNER_TEMP']+'/checks.json'))['workflow_runs']
+          sys.exit(0 if any(r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA'] and r['conclusion']=='success' for r in runs) else 1)
+          PY
+            then touch "$RUNNER_TEMP/security-ok"; break; fi
+            sleep 5
+          done
+          test -f "$RUNNER_TEMP/security-ok"
+      - name: Inspect typed surcharge from existing original bodies
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d zend.exception_ignore_args=1' < "$RUNNER_TEMP/read.php" > "$RUNNER_TEMP/result/readback.json"
+          python3 - <<'PY'
+          import json,os
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/readback.json'))
+          assert d['inspected_successful_originals']==6 and len(d['rows'])==6
+          assert d['supplier_calls']==d['db_calls']==d['remote_writes']==0
+          for r in d['rows']:print('SEPTEMBER_SURCHARGE '+json.dumps(r,ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-september-transport-surcharge-readback-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/readback.json
+          if-no-files-found: warn
+          retention-days: 30

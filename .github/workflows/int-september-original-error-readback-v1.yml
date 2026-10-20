@@ -1,0 +1,132 @@
+name: INT September original error readback v1
+on:
+  push:
+    branches: ['ops/int-september-original-transport-20260919-v1']
+    paths: ['.github/workflows/int-september-original-error-readback-v1.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: >-
+      github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' &&
+      github.triggering_actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Prepare and test sanitized read-only extraction
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/read.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          function clean_message(string $s):string {
+              $s=preg_replace('~https?://[^\s<>]+~iu','[URL]',$s)??'';
+              $s=preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i','[EMAIL]',$s)??'';
+              $s=preg_replace('/\b(?:password|passwd|token|secret|sid|claiminc|catalogKey|uid)\s*[:=]\s*[^\s,;]+/i','[REDACTED]',$s)??'';
+              $s=preg_replace('/[A-Za-z0-9_-]{24,}|\d{6,}/','[ID]',$s)??'';
+              $s=preg_replace('/[\x00-\x1f\x7f]/u',' ',$s)??'';
+              preg_match('/^.{0,600}/us',$s,$m);return $m[0]??'';
+          }
+          if(($argv[1]??'')==='--self-test'){
+              foreach(['sid=abcdef','token=secret','test@example.com','https://example.com/?sid=123','1234567890123456']as$s){
+                  if(str_contains(clean_message($s),$s))throw new RuntimeException('REDACTION_TEST');
+              }
+              if(clean_message('Не найдена обязательная услуга')!=='Не найдена обязательная услуга')throw new RuntimeException('MESSAGE_TEST');
+              echo "SEPTEMBER_ERROR_READBACK_TESTS_OK checks=6\n";exit;
+          }
+          try{
+              $dir=rtrim((string)getenv('HOME'),'/').'/.anytour-ops/int-september-original-transport-1717-20260919-v1';
+              if(is_link($dir)||!is_dir($dir))throw new RuntimeException('DIRECTORY');
+              $read=static function(string $p):string{
+                  if(is_link($p)||!is_file($p)||filesize($p)>2097152)throw new RuntimeException('FILE');
+                  $s=file_get_contents($p);if(!is_string($s))throw new RuntimeException('READ');return $s;
+              };
+              $result=json_decode($read($dir.'/result.json'),true,64,JSON_THROW_ON_ERROR);
+              if(($result['status']??null)!=='completed_terminal'||($result['operation']??null)!==basename($dir))throw new RuntimeException('RESULT');
+              $wanted=[];foreach($result['specimens']as$s)if(isset($s['raw_body_sha256']))$wanted[$s['raw_body_sha256']][]=$s['context'];
+              $files=glob($dir.'/raw.*.broninit.json');if(!is_array($files)||count($files)!==12)throw new RuntimeException('COUNT');
+              $rows=[];
+              foreach($files as$p){
+                  $bytes=$read($p);$sha=hash('sha256',$bytes);if(!isset($wanted[$sha]))throw new RuntimeException('BINDING');
+                  $body=json_decode($bytes,true,64,JSON_THROW_ON_ERROR);$error=$body['error']??null;$texts=[];$walk=null;
+                  $walk=static function(mixed $v,int $depth=0)use(&$walk,&$texts):void{
+                      if($depth>6)return;
+                      if(is_string($v)){if(!preg_match('/^\d+$/D',$v))$texts[]=clean_message($v);return;}
+                      if(!is_array($v))return;
+                      foreach($v as$k=>$x){
+                          if(is_string($k)&&preg_match('/password|token|secret|sid|claiminc|uid|passport|email|phone/i',$k))continue;
+                          $walk($x,$depth+1);
+                      }
+                  };
+                  if($error!==null)$walk($error);
+                  $sets=[];$shape=null;
+                  $shape=static function(array $v,int $depth=0)use(&$shape,&$sets):void{
+                      if($depth>32)return;
+                      foreach($v as$k=>$x){
+                          if(is_string($k)&&in_array(strtolower($k),['clients','passengers','people','auth','credentials','tourists'],true))continue;
+                          if($k==='transport'&&is_array($x))foreach(array_is_list($x)?$x:[$x]as$t){
+                              if(!is_array($t))continue;$keys=array_values(array_filter(array_keys($t),static fn($a)=>is_string($a)&&preg_match('/^[A-Za-z_]{1,64}$/D',$a)));sort($keys);
+                              $sets[implode(',',$keys)]=$keys;
+                          }
+                          if(is_array($x))$shape($x,$depth+1);
+                      }
+                  };
+                  $shape($body);
+                  $rows[]=['raw_sha256'=>$sha,'bound_contexts'=>$wanted[$sha],
+                      'supplier_code'=>is_array($error)&&is_scalar($error['code']??null)?(string)$error['code']:null,
+                      'redacted_messages'=>array_values(array_unique($texts)),'transport_field_sets'=>array_values($sets)];
+              }
+              echo json_encode(['operation'=>basename($dir),'readback'=>'september_error_messages_v1','files_read'=>13,'rows'=>$rows,'supplier_calls'=>0,'db_calls'=>0,'remote_writes'=>0],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL;
+          }catch(Throwable $e){fwrite(STDERR,"SEPTEMBER_ERROR_READBACK_FAILED\n");exit(2);}
+          PHP
+          php -l "$RUNNER_TEMP/read.php"
+          php "$RUNNER_TEMP/read.php" --self-test
+          for attempt in $(seq 1 12); do
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA&event=pull_request&per_page=100" > "$RUNNER_TEMP/checks.json"
+            if python3 - <<'PY'
+          import json,os,sys
+          r=json.load(open(os.environ['RUNNER_TEMP']+'/checks.json'))['workflow_runs']
+          sys.exit(0 if any(x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA'] and x['conclusion']=='success' for x in r) else 1)
+          PY
+            then touch "$RUNNER_TEMP/security-ok"; break; fi
+            sleep 5
+          done
+          test -f "$RUNNER_TEMP/security-ok"
+      - name: Read only the twelve already captured original bodies
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          REMOTE_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/result"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$RUNNER_TEMP/ssh/key"; fi
+          chmod 600 "$RUNNER_TEMP/ssh/key"; ssh-keygen -y -f "$RUNNER_TEMP/ssh/key" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$RUNNER_TEMP/ssh/known_hosts" 2>/dev/null
+          test "$(ssh-keygen -lf "$RUNNER_TEMP/ssh/known_hosts" -E sha256 | awk '{print $2}' | sort -u | wc -l)" = 1
+          ssh -T -i "$RUNNER_TEMP/ssh/key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$RUNNER_TEMP/ssh/known_hosts" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 "$REMOTE_USER@$HOST" 'php -d display_errors=0 -d zend.exception_ignore_args=1' < "$RUNNER_TEMP/read.php" > "$RUNNER_TEMP/result/readback.json"
+          python3 - <<'PY'
+          import json,os,collections
+          d=json.load(open(os.environ['RUNNER_TEMP']+'/result/readback.json'))
+          assert len(d['rows'])==12 and d['supplier_calls']==d['db_calls']==d['remote_writes']==0
+          errors={};fields=set()
+          for r in d['rows']:
+              if r['supplier_code']:
+                  key=(r['supplier_code'],tuple(r['redacted_messages']));errors[key]=errors.get(key,0)+1
+              for keys in r['transport_field_sets']:fields.add(tuple(keys))
+          print('CURRENT_SUPPLIER_ERRORS '+json.dumps([{'code':k[0],'messages':k[1],'response_count':v} for k,v in errors.items()],ensure_ascii=False))
+          print('CURRENT_TRANSPORT_FIELDS '+json.dumps(sorted(fields),ensure_ascii=False))
+          PY
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: int-september-original-error-readback-v1-${{ github.run_id }}
+          path: ${{ runner.temp }}/result/readback.json
+          if-no-files-found: warn
+          retention-days: 30
