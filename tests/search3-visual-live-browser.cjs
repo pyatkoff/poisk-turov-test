@@ -1384,7 +1384,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
    if(width===430){
     await openResultFilters(page,width);assert.equal(await page.locator('#max-price').inputValue(),'187000','reopening shows the applied recovery budget');
     assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');
-    await page.locator('#max-price').fill('185000');await page.locator('#filter-panel [data-action="reset"]').click();
+    await page.locator('#max-price').fill('185000');const reset=page.locator('#filter-panel [data-action="reset"]:visible');assert.equal(await reset.count(),1,'one reset action is visible in the mobile filter layout');await reset.click();
     assert.equal(await page.locator('#max-price').inputValue(),'','Reset must clear the retained budget editor before Apply');
     assert.equal(await page.locator('#hotel-query').inputValue(),'');
     assert.equal(await page.locator('#filters [data-filter="meals"][value="Всё включено"]').isChecked(),false);
