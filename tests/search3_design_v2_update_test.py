@@ -73,9 +73,9 @@ class UpdateContracts(unittest.TestCase):
         q = {**original_request(), 'source_sha': 'a' * 40, 'release_sha': 'c' * 40,
             'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
         # The predecessor is already a native 855-file publication, not a legacy
-        # 845-file fixture with a patched owner. Only the accepted canonical
-        # policy, reviewed native consumers and generated manifest change;
-        # every other canonical/brand byte stays identical.
+        # 845-file fixture with a patched owner. Only the reviewed native
+        # presentation owners and generated manifest change; every canonical,
+        # ledger, bridge and brand byte stays identical.
         pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
         for name in remote.NATIVE_SUCCESSOR_CHANGES:
             if name in (remote.NATIVE_MANIFEST, creator.LEDGER_PATH): continue
@@ -86,19 +86,20 @@ class UpdateContracts(unittest.TestCase):
             elif name == 'prototype-search/data.js':
                 path.write_bytes(path.read_bytes() + b'\n// accepted INT policy fixture\n')
             else: path.write_text('reviewed native successor:' + name)
-        # The existing source builder regenerates its ledger after canonical
-        # data.js changes. Model that compiled-source accounting in this fixture.
-        ledger_path = self.source / 'payload' / creator.LEDGER_PATH
-        ledger = json.loads(ledger_path.read_bytes())
-        data = (self.source / 'payload/prototype-search/data.js').read_bytes()
-        entry = next(f for f in ledger['files'] if f['target'] == 'prototype-search/data.js')
-        entry.update(sha256=remote.digest(data), served=len(data), gzip_after=pub.gzip_lengths([data])[0])
-        graphs = {**ledger['graphs'], 'complete_live': ledger['graphs']['live'] + ledger['graphs']['ondemand'],
-            'complete_offline': ledger['graphs']['offline'] + ledger['graphs']['ondemand']}
-        for name, graph in graphs.items():
-            for field in ('served', 'gzip_after'):
-                ledger['totals'][name][field] = sum(f[field] for f in ledger['files'] if f['src'] in graph)
-        ledger_path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + '\n')
+        # Canonical source changes would require regenerated size accounting.
+        # A native-only successor must not manufacture that extra payload delta.
+        if creator.LEDGER_PATH in remote.NATIVE_SUCCESSOR_CHANGES:
+            ledger_path = self.source / 'payload' / creator.LEDGER_PATH
+            ledger = json.loads(ledger_path.read_bytes())
+            data = (self.source / 'payload/prototype-search/data.js').read_bytes()
+            entry = next(f for f in ledger['files'] if f['target'] == 'prototype-search/data.js')
+            entry.update(sha256=remote.digest(data), served=len(data), gzip_after=pub.gzip_lengths([data])[0])
+            graphs = {**ledger['graphs'], 'complete_live': ledger['graphs']['live'] + ledger['graphs']['ondemand'],
+                'complete_offline': ledger['graphs']['offline'] + ledger['graphs']['ondemand']}
+            for name, graph in graphs.items():
+                for field in ('served', 'gzip_after'):
+                    ledger['totals'][name][field] = sum(f[field] for f in ledger['files'] if f['src'] in graph)
+            ledger_path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + '\n')
         native['entry']['html'] = remote.digest((self.source / 'payload/visual-search/index.html').read_bytes())
         self.native_pin['entry_html_sha256'] = native['entry']['html']
         native['files'] = {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes())
@@ -175,7 +176,10 @@ class UpdateContracts(unittest.TestCase):
             'familyAges': [0, 7, 17], 'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
             'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
             'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-            'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
+            'formPopupSingleSubmitRetained': True,
+            'formPopupApplyExtraSearches': 0, 'formPopupEnterExtraSearches': 0,
+            'formPopupFindSearches': 1, 'formPopupCancelRetainsDraftAndFocus': True,
+            'presearchNavigationTruthful': True,
             'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0,
             'contactExactItineraryRetained': True, 'contactDraftAndConsentRetained': True,
             'groupMinimumOpenedHotelWithoutQuote': True, 'groupPassiveExtraSearches': 0,
@@ -367,7 +371,9 @@ class UpdateContracts(unittest.TestCase):
                         readable_text.append({**readable_text[0], 'text': result_notice['text'], 'kind': 'result-notice'})
                     if side == 'native' and screen == 'tour':
                         readable_text.extend({**readable_text[0], 'text': text} for text in (
-                            'Туристы', 'Туроператор', 'Обязательные доплаты'))
+                            'Туристы', 'Туроператор'))
+                        readable_text.append({**readable_text[0],
+                            'text': pub.TOUR_CONDITION_BASE + '.', 'kind': 'tour-conditions-note'})
                     if name.startswith('native-family-'):
                         state = name[len('native-family-'):].split('-', 1)[0]
                         party = {'0': '1 взрослый', '1': '1 взрослый + 1 ребёнок',
@@ -408,8 +414,10 @@ class UpdateContracts(unittest.TestCase):
                         else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
                         else 'destination' if logical_name.startswith('native-destination-') else None)
                     popup_fit = {'editor': popup_editor, 'modal': True, 'outside': False,
-                        'panelOverflow': False, 'findVisible': True, 'findEnabled': True,
-                        'findHeight': 50, 'submitCount': 1} if popup_editor else None
+                        'panelOverflow': False, 'applyVisible': True,
+                        'applyEnabled': not name.startswith('native-destination-confirm-'),
+                        'applyHeight': 50, 'findOutsidePopup': True,
+                        'submitCount': 1} if popup_editor else None
                     terminal_state = None
                     if name.startswith('native-terminal-'):
                         status = name.split('-')[2]
@@ -485,8 +493,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '2344c8533a5175cbb9f6843f5324248dd9562784')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39390835598)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '48252b25d1e7bab4156d35eff260021f99029db2')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39423874280)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -831,7 +839,7 @@ class UpdateContracts(unittest.TestCase):
         captures = [('native-tour-', 0), ('native-tour-alternatives-', 0),
                     ('native-short-desktop-tour-', 1)]
         for capture_index, (prefix, case_index) in enumerate(captures):
-            for label_index, label in enumerate(('Туристы', 'Туроператор', 'Обязательные доплаты')):
+            for label_index, label in enumerate(('Туристы', 'Туроператор')):
                 for defect in ('missing', 'mislabelled', 'clipped', 'brokenWords', 'overlappingLines'):
                     def mutate(contents):
                         report = json.loads(contents['evidence/acceptance.json'])
@@ -845,6 +853,29 @@ class UpdateContracts(unittest.TestCase):
                     expected = 'native_tour_cost_labels_required' if defect in ('missing', 'mislabelled') else 'native_text_readability_required'
                     with self.subTest(capture=prefix, label=label, defect=defect), self.assertRaisesRegex(ValueError, expected):
                         self.read_review(self.review_archive(mutate), f'bad-cost-label-{capture_index}-{label_index}-{defect}')
+        def frame(report, prefix, case):
+            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
+        def note(report, prefix, case):
+            return next(row for row in frame(report, prefix, case)['readableText']
+                        if row.get('kind') == 'tour-conditions-note')
+        changes = []
+        for prefix, case in captures:
+            changes.extend((
+                lambda r, p=prefix, c=case: frame(r, p, c)['readableText'].remove(note(r, p, c)),
+                lambda r, p=prefix, c=case: frame(r, p, c)['readableText'].append(copy.deepcopy(note(r, p, c))),
+                lambda r, p=prefix, c=case: note(r, p, c).pop('cardId'),
+                lambda r, p=prefix, c=case: note(r, p, c).pop('clipped')))
+            for field, value in (('text', 'Все обязательные доплаты включены.'),
+                                 ('text', 'До оформления уточним: обязательные доплаты — 0.'),
+                                 ('text', 'До оформления уточним: наличие мест.'),
+                                 ('text', False), ('kind', 'other'), ('kind', True),
+                                 ('cardId', 1), ('cardId', False), ('clipped', True),
+                                 ('brokenWords', True), ('overlappingLines', True)):
+                changes.append(lambda r, p=prefix, c=case, f=field, v=value: note(r, p, c).update({f: v}))
+        for prefix in ('native-search-', 'native-results-', 'native-lead-'):
+            changes.append(lambda r, p=prefix: frame(r, p, 0)['readableText'].append(
+                copy.deepcopy(note(r, 'native-tour-', 0))))
+        self.assert_evidence_rejected(changes)
 
     def test_static_heading_focus_keeps_navigation_and_interactive_outline(self):
         for case_index in (0, 1):
@@ -952,22 +983,35 @@ class UpdateContracts(unittest.TestCase):
     def test_form_focus_proofs_are_required_in_every_case(self):
         changes = []
         for case in range(2):
-            for key in ('nightKeyboardFocusRetained', 'formCalendarPagingFocusRetained', 'familyInputFocusRetained', 'destinationKeyboardFocusRetained', 'formPopupSingleSubmitRetained'):
+            expected = {'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
+                'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
+                'formPopupSingleSubmitRetained': True, 'formPopupApplyExtraSearches': 0,
+                'formPopupEnterExtraSearches': 0, 'formPopupFindSearches': 1,
+                'formPopupCancelRetainsDraftAndFocus': True}
+            for key, value in expected.items():
+                wrong = (False, 1) if type(value) is bool else ((1, False) if value == 0 else (0, True))
                 changes.extend((
                     lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
-                    lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: False}),
-                    lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: 1})))
+                    lambda r, c=case, k=key, v=wrong[0]: r['cases'][c]['proof'].update({k: v}),
+                    lambda r, c=case, k=key, v=wrong[1]: r['cases'][c]['proof'].update({k: v})))
         self.assert_evidence_rejected(changes)
 
-    def test_popup_frames_and_one_visible_native_submit_are_required(self):
+    def test_popup_frames_require_one_apply_and_one_outside_find(self):
         def frame(report):
             return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-calendar-'))
         changes = [lambda r: frame(r).pop('popupFit'), lambda r: frame(r)['popupFit'].update(editor='nights'),
             lambda r: frame(r)['popupFit'].update(modal=1), lambda r: frame(r)['popupFit'].update(outside=True),
-            lambda r: frame(r)['popupFit'].update(panelOverflow=True), lambda r: frame(r)['popupFit'].update(findVisible=False),
-            lambda r: frame(r)['popupFit'].update(findEnabled=False), lambda r: frame(r)['popupFit'].update(findHeight=43),
-            lambda r: frame(r)['popupFit'].update(findHeight=True), lambda r: frame(r)['popupFit'].update(findHeight=float('nan')),
+            lambda r: frame(r)['popupFit'].update(panelOverflow=True), lambda r: frame(r)['popupFit'].update(applyVisible=False),
+            lambda r: frame(r)['popupFit'].update(applyEnabled=False), lambda r: frame(r)['popupFit'].update(applyHeight=43),
+            lambda r: frame(r)['popupFit'].update(applyHeight=True), lambda r: frame(r)['popupFit'].update(applyHeight=float('nan')),
+            lambda r: frame(r)['popupFit'].update(findOutsidePopup=False),
+            lambda r: frame(r)['popupFit'].update(findOutsidePopup=1),
+            lambda r: frame(r)['popupFit'].update(findVisible=True),
             lambda r: frame(r)['popupFit'].update(submitCount=True), lambda r: frame(r)['popupFit'].update(submitCount=2)]
+        def confirmation(report):
+            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-destination-confirm-'))
+        changes.extend((lambda r: confirmation(r)['popupFit'].update(applyEnabled=True),
+            lambda r: confirmation(r)['popupFit'].update(applyEnabled=0)))
         def nights(report):
             return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-nights-'))
         changes.extend((lambda r: nights(r)['readableText'].pop(),
@@ -1208,7 +1252,8 @@ class UpdateContracts(unittest.TestCase):
             '185739d46757bd34a05709e3656eab76d1003fa5',
             '84897fd5778debe040b74945212777aaf878d83e',
             '2dc409517e88493d9d24e46cafe95e462aa45819',
-            '2344c8533a5175cbb9f6843f5324248dd9562784'))
+            '2344c8533a5175cbb9f6843f5324248dd9562784',
+            '48252b25d1e7bab4156d35eff260021f99029db2'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1356,7 +1401,7 @@ class UpdateContracts(unittest.TestCase):
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
              38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885, 39291592436, 39333812766, 39346251452, 39354674302, 39390835598))
+             39278795885, 39291592436, 39333812766, 39346251452, 39354674302, 39390835598, 39423874280))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1425,20 +1470,19 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_five_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_four_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'prototype-search/data.js',
-            'visual-search/asset-size.json',
-            'visual-search/native-v2/bridge.js',
+            'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
             'visual-search/native-v2/tour.js',
+            'visual-search/native-v2/viewport.css',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/viewport.css',
-                     'visual-search/native-v2/frontend.js',
+        for name in ('visual-search/app.js', 'prototype-search/data.js',
+                     'visual-search/asset-size.json', 'visual-search/native-v2/bridge.js',
                      'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/donor.css',
                      'prototype-search/config.js', 'visual-search/native-v2/lucide.min.js'):
@@ -1458,8 +1502,8 @@ class UpdateContracts(unittest.TestCase):
     def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/viewport.css',
-                                  'visual-search/native-v2/frontend.js', 'visual-search/native-v2/bootstrap.js')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/hotel-details-v1.js',
+                                  'visual-search/native-v2/bridge.js', 'visual-search/native-v2/bootstrap.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')
