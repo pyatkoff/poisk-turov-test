@@ -153,7 +153,7 @@ def pf_snapshot():
 def pf_catalog_literal(text):
     literal=re.fullmatch(r'\s*<\?php\s*(?:declare\s*\(\s*strict_types\s*=\s*1\s*\)\s*;\s*)?return\s*(\[.*\])\s*;\s*',text,re.S)
     if literal is None:raise ValueError('literal')
-    pattern=re.compile(r"""\s*(=>|\[|\]|,|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|-?[0-9]+(?:\.[0-9]+)?|true|false|null)""")
+    pattern=re.compile(r"""\s*(=>|\[|\]|,|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|true|false|null)""")
     tokens=[];position=0;raw=literal[1]
     while position<len(raw):
         match=pattern.match(raw,position)
@@ -181,7 +181,7 @@ def pf_catalog_literal(text):
             if '\\' in result or (token[0]=='"' and '$' in result):raise ValueError('string')
             return result
         if token in ('true','false','null'):return {'true':True,'false':False,'null':None}[token]
-        if re.fullmatch(r'-?[0-9]+(?:\.[0-9]+)?',token):return float(token)
+        if re.fullmatch(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?',token):return float(token)
         raise ValueError('value')
     entries=value()
     if cursor!=len(tokens) or not isinstance(entries,list):raise ValueError('trailing')

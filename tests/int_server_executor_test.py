@@ -988,7 +988,9 @@ class PassiveFuelReadinessTest(unittest.TestCase):
             for body in ["<?php return ['other'=>['catalog_path'=>'"+catalog+"']];",
                          '<?php return ["other"=>"\'catalog_path\'=>\''+catalog+'\'"];',
                          "<?php return ['catalog_path'=>'"+catalog+"','catalog_path'=>'"+catalog+"'];",
-                         '<?php return ["catalog_path"=>"$HOME/private/catalog.json"];']:
+                         '<?php return ["catalog_path"=>"$HOME/private/catalog.json"];',
+                         "<?php return ['catalog_path'=>'"+catalog+"','unused'=>08];",
+                         "<?php return ['catalog_path'=>'"+catalog+"','unused'=>09];"]:
                 with self.subTest(body=body):
                     (project/'.andromeda-private.php').write_text(body)
                     self.assertEqual('not_ready',ns['passive_fuel_readiness']()['status'])
