@@ -1,0 +1,82 @@
+name: MATCH Biblio saved anchor evidence
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_biblio_anchor_evidence_v1.py
+      - .github/workflows/hotel-match-biblio-anchor-evidence-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-biblio-anchor-evidence-1971-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-biblio-anchor-evidence-1971-20260922-v1
+  BASE: 3fe25fe95621f56354ee6ffdd4d0f448d614b06e
+  SCRIPT: scripts/diagnostics/hotel_match_biblio_anchor_evidence_v1.py
+  SCRIPT_SHA: 3990cf6ffcf5896c3a4ba16ac9941cd6af3c5066280cd4705399bab09fe27ff5
+  CLAIM: '5772962934'
+jobs:
+  evidence:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-biblio-anchor-evidence-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate offline source and owner claim
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p input terminal
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE"..HEAD | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-biblio-anchor-evidence-v1.yml scripts/diagnostics/hotel_match_biblio_anchor_evidence_v1.py "
+          echo "$SCRIPT_SHA  $SCRIPT" | sha256sum -c -
+          python3 "$SCRIPT" --self-test
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" > input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'))
+          assert c['id']==int(os.environ['CLAIM']) and c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert c['issue_url'].endswith('/issues/2530')
+          for s in ['offline claim5772899247',os.environ['BASE'],os.environ['SCRIPT'],'no server secrets/SSH/supplier/DB clients']: assert s in c['body'],s
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          url='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(60):
+              req=urllib.request.Request(url,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+              with urllib.request.urlopen(req,timeout=20) as f:runs=json.load(f)['workflow_runs']
+              runs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['HEAD']]
+              if runs and max(runs,key=lambda r:r['id'])['status']=='completed':
+                  assert max(runs,key=lambda r:r['id'])['conclusion']=='success'; break
+              time.sleep(2)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Read retained GitHub artifacts only
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10680794954/zip" > input/match-bg-current-dossier-terminal.zip
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/10645399682/zip" > input/match-identities-retained-snapshot.zip
+      - name: Build all60 evidence dossiers without network or database
+        env: {HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          python3 "$SCRIPT" --input-dir input --output terminal/result.json > terminal/stdout.json
+          echo '8caa86888f1c1d2e0bc30ce3c4b2ee116dd768762e01f148d00679ec178e0483  terminal/result.json' | sha256sum -c -
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          p=pathlib.Path('terminal/result.json'); r=json.loads(p.read_bytes())
+          assert r['examined_hotels']==len(r['rows'])==60 and sum(r['counts'].values())==60
+          assert r['new_committed_mapping_rows']==r['mapping_writes']==r['supplier_http_requests']==r['database_writes']==0
+          assert all(x['safe_to_write_now'] is False for x in r['rows'])
+          q={'operation':os.environ['OP'],'state':'completed_offline_evidence','source_sha':os.environ['HEAD'],'script_sha256':os.environ['SCRIPT_SHA'],'result_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'supplier_http_requests':0,'database_writes':0,'mapping_writes':0,'safe_to_write_now':False,'no_supplier_replay':True}
+          pathlib.Path('terminal/receipt.json').write_text(json.dumps(q,sort_keys=True)+'\n')
+          pathlib.Path('terminal/summary.json').write_text(json.dumps({k:v for k,v in r.items() if k!='rows'},ensure_ascii=False,indent=2)+'\n')
+          print(r['counts'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-biblio-anchor-evidence-v1-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: warn}
