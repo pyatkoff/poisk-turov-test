@@ -135,7 +135,7 @@ registry/resolver coverage, не подтверждённая live30 availabilit
 Полные receipts/хеши/точныеIDs/исходный и конечный срезы — в
 [отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json).
 
-### Актуальный checkpoint и порядок продолжения — 20.10.2026, после acquire-v9
+### Актуальный checkpoint и порядок продолжения — 20.10.2026, после readback-v8
 
 Exact IDs/hashes/receipts — в
 [существующем отчёте](../../reports/hotel-match-retained-intake-execution-20261020.json)
@@ -170,6 +170,49 @@ Exact IDs/hashes/receipts — в
   draft вне каталога. Названия departure3/10/22 не угадывать.
 - MATCH Client.call60s уже подключён; старые30s UNKNOWN не переписываются,
   историческая причина и provider-wide recovery не установлены.
+
+#### Проверенные новые поля и исправление receipt — выполнено
+
+[Terminal readback-v8](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6296318031),
+run39460843892/execute118759596161: **0supplierHTTP/0DB/0mapping**.
+Это отдельные ранее не проверенные reference/yield поля, не новый intake,
+повтор native-link audit, CURRENT census или acquisition-v9.
+
+- В том же сохранённом остатке407 проверены787observation rows по285targets;
+  у122 нет matching observation **в этой capture**. Колонки
+  `tour_id/search_id/source` присутствуют, но `tour_id=NULL`787 и
+  `search_id=NULL`787; source —787opaque strings, не tourrefs.
+  Новых reference candidates0. Гипотеза пригодных tour/search refs закрыта
+  только для этого immutable capture и407roster; повторять её без новых входов нельзя.
+- Actual acquire-v9 response3 — распознанный пустой `[]` до всех hotel/operator/
+  tour-ID фильтров. Локальная потеря строк в этом теле не установлена; не менять
+  parser/transport и не повторять поиск ради этой гипотезы. Это не отсутствие
+  отелей/продаж у страны/ТО вообще и не provider-wide recovery.
+- PR4763/sourcea344d70b→main532b144a исправил наш receiver: завершение producer
+  записывает в `batches[].search_complete`, а не в отсутствующий top-level flag.
+  Будущий ложный sibling HOLD устранён через строгую одну завершённую bounded batch
+  и согласованные sent/returned/actions/HTTP/reservation/tariff/edge counts.
+  Actual v9 receipt regression и26negative mutations,72actual native/no skips+
+  stock/Security/exact review/merged bytes и live read-only reconciliation пройдены.
+  Старые receipts/reservations/UNKNOWN не изменены и не переиграны.
+- Все16protected inputs/3ledgers unchanged; private refs0600, native/account
+  authority=false. Новых unique acquisition targets/pairs/accepted/committed/
+  per-row post-COMMIT/gain0; writer/CURRENT NOT_RUN_ZERO_PROOF/ZERO_GAIN.
+  Own63HTTP/19starts/3UNKNOWN,206ever/407never и прежние7verified links сохранены.
+  ZIP/CRC/soleJSON/jobJSON/source/control/parent/counters/evidence verified.
+
+Readback использует тот же fixed-profile `match-retained-readback` и serial executor.
+В fresh wrapper109d820e этот0HTTP режим не входит в `SUPPLIER_SLOT_MODES`;
+acquisition slot guards, actor/source/manifest/no-replay/production и чужие claims
+не изменены. Это не новый mode/runner или способ запускать supplierHTTP во времяbusy.
+
+[Официальный Tourvisor OpenAPI v1.2.4](https://api.tourvisor.ru/search/docs)
+подтвердил текущую repeated-key serialization и optional `onlyDirect=false`.
+`operatorLink` документирован как string-ссылка на тур у оператора; native hotel ID
+или decoder/opaque-link гарантия не документированы. Спекулятивный transport/parser
+ремонт не обоснован. Нужен **НОВЫЙ** авторитетный native fact/namespace bridge или
+новый operator-specific offer/tourref с конкретным путём получить пригодный proof.
+Подготовленная Thailand8 не становится automatic next после этого нулевого исхода.
 
 #### Реализованный допуск партий
 
