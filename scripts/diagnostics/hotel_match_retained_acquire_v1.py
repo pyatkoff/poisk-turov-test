@@ -82,7 +82,11 @@ def reserve_selection(home, scope, operation):
     if not root.is_dir() or root.is_symlink() or root.resolve() != root:
         raise ValueError('selection_root')
     path = root/'retained-selection-claims.json'
-    fd = os.open(path, os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW, 0o600)
+    # A continuation after the bootstrap must retain the original durable ledger.
+    flags = os.O_RDWR|os.O_NOFOLLOW
+    if 'exclusion_history' not in scope:
+        flags |= os.O_CREAT
+    fd = os.open(path, flags, 0o600)
     with os.fdopen(fd,'r+b') as stream:
         fcntl.flock(stream,fcntl.LOCK_EX)
         if os.fstat(stream.fileno()).st_nlink != 1 or os.fstat(stream.fileno()).st_size > 8*1024*1024:
@@ -91,6 +95,9 @@ def reserve_selection(home, scope, operation):
         if data.get('schema_version') != 1 or not isinstance(data.get('claims'),dict):
             raise ValueError('selection_ledger_shape')
         claims = data['claims']
+        if 'exclusion_history' in scope and any('TOURVISOR_ANEX_JWT:13:'+str(hid) not in claims
+                                                for hid in scope['prior_selected_hotel_ids']):
+            raise ValueError('selection_prior_claim_missing')
         for hid in scope['selected_tv_hotel_ids']:
             if 'TOURVISOR_ANEX_JWT:13:'+str(hid) in claims:
                 raise ValueError('selection_consumed_no_replay')
@@ -217,7 +224,13 @@ def acquire(client, directory, selected, sleep=time.sleep, scope=None):
     planning=[{'tv_hotel_id':r['tv_hotel_id'],'country_id':country,'departure_id':departure,'adults':adults,
                'child_ages_signature':'','departure_date':r['future_context']['departure_date'],
                'nights':r['future_context']['nights'],'missing_operator_ids':[13]} for r in selected]
-    groups=shape.chunks(planning); edges=[]; batches=[]; binding=None; unbound_details=0
+    if scope and scope.get('context_grouping') == 'exact_date_nights':
+        contexts=collections.defaultdict(list)
+        for row in planning:contexts[(row['departure_date'],row['nights'])].append(row)
+        groups=[group for key in sorted(contexts) for group in shape.chunks(contexts[key])]
+    else:
+        groups=shape.chunks(planning)
+    edges=[]; batches=[]; binding=None; unbound_details=0
     save_json(directory/'acquisition-plan.json',{'groups':groups,'hotel_ids':[r['tv_hotel_id'] for r in selected]})
     stop=None
     try:
