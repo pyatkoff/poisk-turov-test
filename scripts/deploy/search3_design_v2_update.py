@@ -35,10 +35,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('ad4d864be8ad42865aadc128988c346f6639a1b7', 'b01329c44d8d3858877a03dba9e140be97565667'),)
+    ('17b8070a6b0294a31005d6c31f7af45c6cc2b735', 'a5895c68812189339a0b2e155adf5a9dc2203070'),)
 NATIVE_RELEASE_PARENTS = (
-    ('334c72540c08982b351f0771fb4db6d7f15f2e9e', '881e9c7f6aac7f202161a2cdc65b6656d58a47bb'),
-    ('84897fd5778debe040b74945212777aaf878d83e', 'e74588ce8ce883af1f0f8c755a3f34f74aa48879'),)
+    ('3fb17be94efd41032dde6c2ea8c6c07d7c364f18', 'e74588ce8ce883af1f0f8c755a3f34f74aa48879'),
+    ('2dc409517e88493d9d24e46cafe95e462aa45819', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -215,6 +215,8 @@ def native_frame_inventory(width, percent):
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'results-partial-empty', 'results-partial', 'filter-empty-partial'))
+    frames.update(f'native-content-{screen}-{width}-text{percent}.png' for screen in (
+        'results', 'gallery-error', 'gallery', 'contact-invalid', 'contact'))
     if width == 430:
         frames.update(f'native-budget-{screen}-{width}-text{percent}.png' for screen in ('invalid', 'draft'))
         frames.add(f'native-calendar-single-range-{width}-text{percent}.png')
@@ -347,6 +349,30 @@ def native_evidence(archive, request, native):
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
         native_selected_journey(actual, key[0])
+        retained = actual.get('retainedContent')
+        expected_retained = {
+            'hotelId': 3678, 'hotelName': 'RIA SUITES HOTEL',
+            'snapshotSHA256': '00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3',
+            'images': [
+                {'file': 'ria-suites-1.jpg',
+                 'sourceURL': 'https://static.tourvisor.ru/hotel_pics/main400/103994.jpg',
+                 'sha256': 'f259ca07c0edf996bf23e456b548990830e010538a465e86f952a399abb1c4d5'},
+                {'file': 'ria-suites-2.jpg',
+                 'sourceURL': 'https://static.tourvisor.ru/hotel_pics/verybig/4/103994-90635200.jpg',
+                 'sha256': '7a74632ddf255de435e4b7fec6c6c982d33681552fe3d94b8aa4b80bde853dab'}],
+            'cardErrorAndRetry': True, 'galleryFullImage': True,
+            'lateFailureIgnored': True, 'galleryErrorAndRetry': True,
+            'compactImageNoPlaceholder': True, 'compactErrorWithoutControls': True,
+            'passiveSupplierOperations': 0}
+        need(retained == expected_retained, 'native_retained_content_required')
+        validation = actual.get('contactValidation')
+        expected_validation = {'emptyPhone': True, 'invalidPhone': True,
+            'restoredInvalidDraft': True, 'whitespacePhone': True,
+            'missingConsent': True, 'correctedPreviewDelta': 1,
+            'invalidPreviewDelta': 0, 'exactContextRetained': True,
+            'backReopenRetained': True, 'extraSupplierOperations': 0,
+            'realSubmissions': 0}
+        need(validation == expected_validation, 'native_contact_validation_required')
         calendar = actual.get('calendarVisibleNavigation')
         expected_calendar = {'lastPriceReachableByArrows': True,
             'backwardDatesNotSkipped': True if key[0] == 430 else None,
@@ -430,13 +456,14 @@ def native_evidence(archive, request, native):
                           else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
                           else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                        'native-budget-progress-invalid-'))
-                          else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
+                          else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
                                                             'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
                                                             'native-filters-active-', 'native-filter-empty-',
                                                             'native-results-loading-', 'native-results-error-',
                                                             'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
                           else 'tour' if logical_name.startswith('native-ai-price-changed-')
-                          else 'lead' if logical_name.startswith('native-ai-contact-')
+                          else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
+                          else 'gallery' if logical_name.startswith('native-content-gallery-')
                           else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
                 need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
@@ -548,6 +575,24 @@ def native_evidence(archive, request, native):
                              'native_selected_hotel_summary_donor_composition_required')
                 else:
                     need(summaries == [], 'native_selected_hotel_summary_scope')
+                consent = frame.get('consentFit')
+                if name.startswith(('native-content-contact-', 'native-content-contact-invalid-')):
+                    need(isinstance(consent, dict) and set(consent) == {
+                         'label', 'checkbox', 'ownsCheckbox', 'required', 'contained', 'focusOutline'}
+                         and consent.get('ownsCheckbox') is True and consent.get('required') is True
+                         and consent.get('contained') is True and consent.get('focusOutline') is True,
+                         'native_contact_consent_required')
+                    for box in (consent.get('label'), consent.get('checkbox')):
+                        need(isinstance(box, dict) and set(box) == {
+                             'left', 'right', 'top', 'bottom', 'width', 'height'}
+                             and all(type(box.get(field)) in (int, float)
+                                     for field in ('left', 'right', 'top', 'bottom', 'width', 'height'))
+                             and box['width'] > 0 and box['height'] > 0
+                             and abs(box['right'] - box['left'] - box['width']) <= 1
+                             and abs(box['bottom'] - box['top'] - box['height']) <= 1,
+                             'native_contact_consent_geometry_required')
+                else:
+                    need(consent is None, 'native_contact_consent_scope')
                 offers = frame.get('offerActionFit')
                 if screen == 'hotel':
                     need(isinstance(offers, list) and len(offers) == 2,
@@ -642,10 +687,12 @@ def native_evidence(archive, request, native):
                 populated = screen == 'results' and not no_result_prices
                 if populated:
                     bounded = logical_name.startswith('native-results-bounded-')
-                    expected_count = (24 if bounded else 2 if logical_name.startswith(
-                        ('native-budget-results-', 'native-filters-active-')) else 4)
+                    retained_content = logical_name.startswith('native-content-results-')
+                    expected_count = (1 if retained_content else 24 if bounded else 2
+                        if logical_name.startswith(('native-budget-results-', 'native-filters-active-')) else 4)
                     need(len(card_ids) == expected_count
-                         and all(1000 <= card_id < 1024 if bounded else 1 <= card_id <= 4
+                         and all(card_id == 3678 if retained_content else
+                                 1000 <= card_id < 1024 if bounded else 1 <= card_id <= 4
                                  for card_id in card_ids), 'native_result_card_scope_required')
                     if logical_name == f'native-results-{key[0]}-text{key[1]}.png':
                         need(card_ids == [1, 2, 3, 4], 'native_result_standard_identity_required')
@@ -656,13 +703,19 @@ def native_evidence(archive, request, native):
                     need(len(result_rows) == len(card_ids) * len(RESULT_FACT_KINDS),
                          'native_result_fact_measurements_required')
                     for card_id in card_ids:
-                        template = RESULT_FIXTURE_FACTS[(card_id - 1000) % 4 if bounded else card_id - 1]
-                        title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else template[0]
-                        terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
-                        operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
-                        expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
-                            '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей',
-                            template[1], template[2], operator, 'за 2 взрослых')))
+                        if retained_content:
+                            need(card_id == 3678, 'native_retained_content_hotel_identity_required')
+                            expected = dict(zip(RESULT_FACT_KINDS, ('RIA SUITES HOTEL', 'Стамбул, Турция',
+                                '12 окт · 7 ночей', 'Стандартный номер', 'Ультра всё включено',
+                                'FIXTURE TV', 'за 2 взрослых')))
+                        else:
+                            template = RESULT_FIXTURE_FACTS[(card_id - 1000) % 4 if bounded else card_id - 1]
+                            title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else template[0]
+                            terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
+                            operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
+                            expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
+                                '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей',
+                                template[1], template[2], operator, 'за 2 взрослых')))
                         for kind, value in expected.items():
                             rows = [row for row in result_rows if row['cardId'] == card_id and row['kind'] == kind]
                             need(len(rows) == 1 and rows[0]['text'].strip() == value,
@@ -756,7 +809,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 103, 'native_rendered_frame_count')
+    need(len(frames) == 113, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
