@@ -1501,10 +1501,10 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "AVAILABLE_ORDINARY_UI_AND_RETAINED_ADAPTIVE_ACCEPTED_PHYSICAL_ROUTE_MISSING",
+        "status": "AVAILABLE_ORDINARY_UI_AND_RETAINED_ADAPTIVE_ACCEPTED_SCOPED_EXTERNAL_GATES_REMAIN",
         "checked_at": "2026-10-20",
         "scope": "Installediframe430/1280 accepted6282417033;currentcompiled360/390/768 accepted6282656840. Physical/native/live/lead/prodnotinherited;no newcarrier/paidprobe.",
-        "required_next": "Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.",
+        "required_next": "Действующее продолжение — current_task.next_action. Physical iPhone/Safari требуется только для physical QA; независимо принятый INT/Rix/lead handoff исполняется в собственном scope/ownership/exact gates. Это поле не создаёт отдельную очередь или новые допуски.",
         "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282656840"
       },
       "approved_site203": {
