@@ -16,8 +16,15 @@ import tarfile
 MODE = 'passive-fuel-readiness'
 SOURCE = '670245c83b8fd47429a51a5d079e5106125476f9'
 OPERATION = 'int-anex-passive-fuel-readiness-20261020-v1'
+# A distinct, previously uninspected file closure. The ROOT operation above stays sealed.
+PRIVATE_MODE = 'passive-fuel-private-readiness'
+PRIVATE_SOURCE = '266848221cc78b1299c675171d7fe53fbb7e0cce'
+PRIVATE_OPERATION = 'int-anex-passive-fuel-private-readiness-20261020-v1'
+MODES = (MODE, PRIVATE_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
+PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
+PRIVATE_CHECK_IDS = {118696895774, 118696894874, 118696893621, 118696893334, 118696892718}
 PROTECTED = ('api-v2.php','data/db-v1.php','data/collect-hotel-details-v1.php',
     'data/hotel-details-v1.php','data/local-tv-catalog-enabled.json','data/local-tv-catalog-v1.php',
     'data/price-observer-v1.php','data/tourvisor-client-v1.php','index.php','v2/index.php',
@@ -30,6 +37,8 @@ SOURCE_HASHES = {
     'app/integrations/operator-fuel-rule-evidence.php': 'cecd23217cc5e74b81f6c2ecd22db5813770edde3e861be888026393693ae1f2',
     'app/integrations/operator-fuel-rule-store.php': '774c5bc01e213c614644b269b111593967bd82dc2ea120a15175df846bcd386d',
 }
+PRIVATE_SOURCE_HASHES = {**SOURCE_HASHES,
+    'v2/api-v2.php': '04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15'}
 
 
 def need(value, reason):
@@ -38,20 +47,32 @@ def need(value, reason):
 
 
 def parse(parts):
-    need(parts == [SOURCE, MODE, OPERATION], 'passive_readiness_fixed_scope')
-    return dict(source_sha=SOURCE, mode=MODE, operation_id=OPERATION)
+    need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION]),
+         'passive_readiness_fixed_scope')
+    return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
 
-def admission(api_get, event, token, env, repo, issue, prefix):
+def policy(command=None):
+    command = parse([SOURCE, MODE, OPERATION]) if command is None else command
+    need(command == parse([command.get('source_sha'), command.get('mode'), command.get('operation_id')]),
+         'passive_readiness_fixed_scope')
+    return command
+
+
+def admission(api_get, event, token, env, repo, issue, prefix, command=None):
+    command = policy(command)
     need(event.get('action') == 'created' and event.get('repository', {}).get('full_name') == repo
          and env.get('GITHUB_EVENT_NAME') == 'issue_comment'
          and env.get('GITHUB_REPOSITORY') == repo and env.get('GITHUB_REF') == 'refs/heads/main'
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    checks = api_get('/commits/' + SOURCE_CHECK_COMMIT + '/check-runs?per_page=100', token)
-    need(checks.get('total_count') == len(CHECK_IDS)
-         and {c.get('id') for c in checks.get('check_runs', [])} == CHECK_IDS
+    private = command['mode'] == PRIVATE_MODE
+    check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
+    check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
+    checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
+    need(checks.get('total_count') == len(check_ids)
+         and {c.get('id') for c in checks.get('check_runs', [])} == check_ids
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
@@ -61,7 +82,7 @@ def admission(api_get, event, token, env, repo, issue, prefix):
         need(isinstance(comments, list), 'passive_readiness_comments')
         for item in comments:
             body = item.get('body', '')
-            if body.startswith(prefix) and MODE in body[len(prefix):].split()[1:2]:
+            if body.startswith(prefix) and command['mode'] in body[len(prefix):].split()[1:2]:
                 matched.append(item.get('id'))
         if len(comments) < 100:
             need(matched == [event['comment']['id']], 'passive_readiness_no_replay')
@@ -69,11 +90,13 @@ def admission(api_get, event, token, env, repo, issue, prefix):
     raise ValueError('passive_readiness_history_incomplete')
 
 
-def bundle_source(source_root):
+def bundle_source(source_root, command=None):
+    command = policy(command)
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] == PRIVATE_MODE else SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
-        for relative, expected in SOURCE_HASHES.items():
+        for relative, expected in hashes.items():
             path = root / relative
             need(path.resolve() == path and path.is_file() and not path.is_symlink(), 'passive_source_path')
             data = path.read_bytes()
@@ -82,11 +105,11 @@ def bundle_source(source_root):
             info = tarfile.TarInfo(relative)
             info.size = len(data); info.mode = 0o600; info.mtime = 0
             archive.addfile(info, io.BytesIO(data))
-        data = json.dumps({'schema_version': 1, 'files': SOURCE_HASHES}, sort_keys=True, separators=(',', ':')).encode()
+        data = json.dumps({'schema_version': 1, 'files': hashes}, sort_keys=True, separators=(',', ':')).encode()
         info = tarfile.TarInfo('manifest.json')
         info.size = len(data); info.mode = 0o600; info.mtime = 0
         archive.addfile(info, io.BytesIO(data))
-    return output.getvalue(), dict(SOURCE_HASHES)
+    return output.getvalue(), dict(hashes)
 
 
 REMOTE_READER = r'''
@@ -242,6 +265,69 @@ def passive_fuel_readiness():
         'booking_calls':0,'lead_calls':0,'protected_unchanged':True}
 '''.replace('__PF_EXPECTED__', repr(SOURCE_HASHES)).replace('__PF_PROTECTED__', repr(PROTECTED))
 
+
+# Reuse the already reviewed no-follow file reader and literal-only parser, not
+# the consumed ROOT/parent inventory. Only the fixed private INT closure is new.
+PRIVATE_REMOTE_READER = (REMOTE_READER[:REMOTE_READER.index('def pf_snapshot():')]
+    + REMOTE_READER[REMOTE_READER.index('def pf_catalog_literal('):REMOTE_READER.index('def passive_fuel_readiness():')]
+    + r'''
+def pf_identity(s):
+    return (s.st_dev,s.st_ino,s.st_mode,s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns,s.st_uid,s.st_gid)
+
+def pf_private_binding(body):
+    ok,state,identity=pf_binding(body)
+    if not ok:return False,state,identity,None,False
+    directory=pathlib.Path(pf_catalog_literal(body.decode('utf-8'))).parent/'searches'
+    current=directory.stat(follow_symlinks=False)
+    if pf_identity(current)!=identity:fail('passive_store_changed')
+    mode=pf_stat.S_IMODE(current.st_mode)
+    owner_matches=current.st_uid==os.getuid()
+    if not owner_matches or mode&0o002 or mode&0o300!=0o300:
+        return False,'store_unavailable',identity,mode,owner_matches
+    return True,state,identity,mode,owner_matches
+
+def pf_snapshot():
+    records={};bodies={}
+    for relative in PF_PROTECTED:
+        bodies[relative],records[relative]=pf_read(project/relative)
+    runtime=project/'_preview/search3-anex-candidate'
+    for relative in PF_EXPECTED:
+        if not relative.startswith('app/integrations/'):continue
+        key='private_int:'+relative
+        bodies[key],records[key]=pf_read(runtime/relative,limit=65536)
+    bodies['private_config'],records['private_config']=pf_read(runtime/'.andromeda-private.php',limit=65536)
+    return bodies,records
+
+def passive_fuel_readiness():
+    bodies,before=pf_snapshot()
+    if before['api-v2.php'] is None:fail('passive_gateway_missing')
+    binding=pf_private_binding(bodies['private_config'])
+    binding_ok,binding_state,_,store_mode,owner_matches=binding
+    helpers=[p for p in PF_EXPECTED if p.startswith('app/')]
+    rows={p:before['private_int:'+p] for p in helpers}
+    selected='private_int' if all(rows[p] is not None for p in helpers) else None
+    exact=selected is not None and all(rows[p]['sha256']==PF_EXPECTED[p] for p in helpers)
+    db=bodies['data/db-v1.php']
+    db_ok=before['data/db-v1.php'] is not None and before['data/db-v1.php']['sha256']==PF_DB
+    declarations=0 if db is None else sum(bool(re.search(rb'function\s+'+name+rb'\s*\(',db))
+        for name in (b'v2_data_db_config',b'v2_data_db',b'v2_data_normalize_text',b'v2_data_slug'))
+    _,after=pf_snapshot()
+    if before!=after:fail('passive_inventory_changed')
+    if binding!=pf_private_binding(bodies['private_config']):fail('passive_store_changed')
+    predecessor=before['api-v2.php']['sha256']==PF_PREDECESSOR
+    return {'status':'ready' if predecessor and binding_ok and exact and db_ok and declarations==4 else 'not_ready',
+        'gateway_predecessor_matches':predecessor,'helper_layouts':{'private_int':rows},'selected_layout':selected,
+        'helpers_exact':exact,'config_binding':binding_state,'store_directory_verified':binding_ok,
+        'db_helper_integrity':db_ok,'db_helper_declarations':declarations,'loaded_db_state':'not_executed',
+        'protected_before':{p:before[p] for p in PF_PROTECTED},
+        'protected_after':{p:after[p] for p in PF_PROTECTED},
+        'private_config_sha256':None if before['private_config'] is None else before['private_config']['sha256'],
+        'private_config_record':before['private_config'],'store_directory_mode':store_mode,
+        'store_directory_owner_matches':owner_matches,
+        'supplier_calls':0,'database_reads':0,'database_writes':0,'runtime_writes':0,
+        'booking_calls':0,'lead_calls':0,'protected_unchanged':True}
+''').replace('PF_EXPECTED='+repr(SOURCE_HASHES), 'PF_EXPECTED='+repr(PRIVATE_SOURCE_HASHES), 1)
+
 REMOTE_DISPATCH = r'''
     if mode=='passive-fuel-readiness':
         try:result['passive_fuel_readiness']=passive_fuel_readiness()
@@ -253,32 +339,39 @@ REMOTE_DISPATCH = r'''
 '''
 
 
-def remote_program(remote):
+def remote_program(remote, command=None):
+    command = policy(command)
+    mode = command['mode']
     marker = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
     exclusion = "    if mode not in ('reconcile',"
     size = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(marker) == remote.count(dispatch) == remote.count(size) == 1
          and remote.count(exclusion) == 2, 'passive_registration_drift')
-    remote = remote.replace(marker, REMOTE_READER + '\n' + marker, 1)
+    reader = PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
+    hashes = PRIVATE_SOURCE_HASHES if mode == PRIVATE_MODE else SOURCE_HASHES
+    remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
-    fixed = "    if mode=='passive-fuel-readiness' and (source!=" + repr(SOURCE) + " or operation!=" + repr(OPERATION) + "):fail('passive_fixed_scope')\n"
+    fixed = "    if mode==" + repr(mode) + " and (source!=" + repr(command['source_sha']) + " or operation!=" + repr(command['operation_id']) + "):fail('passive_fixed_scope')\n"
     remote = remote.replace(gate, fixed + gate, 1)
-    remote = remote.replace(dispatch, REMOTE_DISPATCH + dispatch, 1)
-    remote = remote.replace(exclusion, "    if mode not in ('passive-fuel-readiness','reconcile',")
-    remote = remote.replace(size, "if not isinstance(files,dict) or files!=" + repr(SOURCE_HASHES) + ": fail('passive_manifest')", 1)
+    remote = remote.replace(dispatch, REMOTE_DISPATCH.replace(repr(MODE), repr(mode), 1) + dispatch, 1)
+    remote = remote.replace(exclusion, "    if mode not in (" + repr(mode) + ",'reconcile',")
+    remote = remote.replace(size, "if not isinstance(files,dict) or files!=" + repr(hashes) + ": fail('passive_manifest')", 1)
     ast.parse(remote)
     return remote
 
 
 def completed(command, result):
+    command = policy(command)
+    private = command['mode'] == PRIVATE_MODE
     value = result.get('passive_fuel_readiness')
     counts = ('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
     fields = {'status','gateway_predecessor_matches','helper_layouts','selected_layout','helpers_exact',
               'config_binding','store_directory_verified','db_helper_integrity','db_helper_declarations',
               'loaded_db_state','protected_before','protected_after','private_config_sha256',
               'protected_unchanged',*counts}
+    if private:fields.update(('private_config_record','store_directory_mode','store_directory_owner_matches'))
     def digest(value):
         return isinstance(value,str) and re.fullmatch('[a-f0-9]{64}',value) is not None
     def record(value):
@@ -286,21 +379,24 @@ def completed(command, result):
             and digest(value['sha256']) and type(value['bytes']) is int and 0<value['bytes']<=2*1024*1024
             and type(value['mode']) is int and 0<=value['mode']<=0o7777)
     if not isinstance(value,dict) or set(value)!=fields:return False
+    if private and (not record(value['private_config_record'])
+            or value['store_directory_mode'] is not None and (type(value['store_directory_mode']) is not int
+                or not 0<=value['store_directory_mode']<=0o7777)
+            or type(value['store_directory_owner_matches']) is not bool):return False
     before=value['protected_before'];layouts=value['helper_layouts']
     if (not isinstance(before,dict) or set(before)!=set(PROTECTED) or not all(map(record,before.values()))
-            or not isinstance(layouts,dict) or set(layouts)!={'root','parent'}):return False
+            or not isinstance(layouts,dict) or set(layouts)!=({'private_int'} if private else {'root','parent'})):return False
     helpers={p for p in SOURCE_HASHES if p.startswith('app/')}
     if any(not isinstance(rows,dict) or set(rows)!=helpers or not all(map(record,rows.values()))
            for rows in layouts.values()):return False
     if (value['config_binding'] not in ('missing','unrecognized','outside_scope','store_unavailable','verified_literal')
-            or value['selected_layout'] not in (None,'root','parent')
+            or value['selected_layout'] not in ((None,'private_int') if private else (None,'root','parent'))
             or value['loaded_db_state']!='not_executed'
             or type(value['db_helper_declarations']) is not int or not 0<=value['db_helper_declarations']<=4
             or value['private_config_sha256'] is not None and not digest(value['private_config_sha256'])
             or any(type(value[key]) is not bool for key in ('gateway_predecessor_matches','helpers_exact',
                    'store_directory_verified','db_helper_integrity','protected_unchanged'))):return False
-    return (command == parse([SOURCE, MODE, OPERATION])
-            and all(result.get(k) == command[k] for k in command)
+    return (all(result.get(k) == command[k] for k in command)
             and result.get('status') == 'complete' and result.get('production_unchanged') is True
             and result.get('runtime_changed') is False
             and isinstance(value, dict) and value.get('status') in ('ready', 'not_ready')

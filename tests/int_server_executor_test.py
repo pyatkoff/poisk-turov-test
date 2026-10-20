@@ -1053,6 +1053,147 @@ class PassiveFuelReadinessTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'source_ci'):self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX)
 
 
+class PrivatePassiveFuelReadinessTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.PRIVATE_SOURCE,self.p.PRIVATE_MODE,self.p.PRIVATE_OPERATION])
+
+    def reader(self,directory):
+        fixture=PassiveFuelReadinessTest();fixture.setUp()
+        ns,home,project=fixture.reader(directory)
+        expected=ns['PF_EXPECTED'];predecessor=ns['PF_PREDECESSOR'];db=ns['PF_DB']
+        runtime=project/'_preview/search3-anex-candidate';runtime.mkdir(parents=True)
+        (project/'app').rename(runtime/'app')
+        (project/'.andromeda-private.php').rename(runtime/'.andromeda-private.php')
+        exec(self.p.PRIVATE_REMOTE_READER,ns)
+        ns.update(PF_EXPECTED=expected,PF_PREDECESSOR=predecessor,PF_DB=db)
+        return ns,home,project,runtime
+
+    def test_fixed_private_scope_does_not_reopen_root_operation(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.SOURCE,self.p.PRIVATE_MODE,self.p.PRIVATE_OPERATION],
+                      [self.p.PRIVATE_SOURCE,self.p.MODE,self.p.OPERATION],
+                      [self.p.PRIVATE_SOURCE,self.p.PRIVATE_MODE,self.p.OPERATION],
+                      [self.p.PRIVATE_SOURCE,self.p.PRIVATE_MODE,self.p.PRIVATE_OPERATION,'extra']):
+            with self.subTest(parts=parts),self.assertRaises(ValueError):self.p.parse(parts)
+        self.assertEqual(self.p.SOURCE,self.p.parse([self.p.SOURCE,self.p.MODE,self.p.OPERATION])['source_sha'])
+
+    def test_private_metadata_ready_without_secret_path_execution_or_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime=self.reader(directory)
+            # These old ROOT-layout paths must not be re-read or treated as authority.
+            (project/'app').symlink_to('/no-such-root-helper')
+            (project/'.andromeda-private.php').symlink_to('/no-such-root-config')
+            before={str(p):p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+            result=ns['passive_fuel_readiness']()
+            self.assertEqual('ready',result['status'])
+            self.assertEqual({'private_int'},set(result['helper_layouts']))
+            self.assertEqual('private_int',result['selected_layout'])
+            self.assertTrue(result['store_directory_owner_matches'])
+            self.assertEqual(result['private_config_sha256'],result['private_config_record']['sha256'])
+            self.assertNotIn(str(home),json.dumps(result));self.assertNotIn('SECRET_MUST_STAY_PRIVATE',json.dumps(result))
+            self.assertEqual(before,{str(p):p.read_bytes() for p in runtime.rglob('*') if p.is_file()})
+            self.assertEqual([],list((project/'.private-fuel/searches').iterdir()))
+
+    def test_missing_private_files_fail_closed_without_fallback_or_creation(self):
+        for relative in ('.andromeda-private.php','app/integrations/operator-fuel-rule-store.php'):
+            with self.subTest(relative=relative),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime=self.reader(directory)
+                path=runtime/relative;path.unlink()
+                value=ns['passive_fuel_readiness']()
+                self.assertEqual('not_ready',value['status']);self.assertFalse(path.exists())
+
+    def test_private_symlink_ancestors_leaf_config_and_hardlink_are_rejected(self):
+        for case in ('preview','runtime','app','leaf','config','hardlink'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime=self.reader(directory)
+                relative={'preview':'_preview','runtime':'_preview/search3-anex-candidate',
+                    'app':'_preview/search3-anex-candidate/app',
+                    'config':'_preview/search3-anex-candidate/.andromeda-private.php'}.get(case,
+                    '_preview/search3-anex-candidate/app/integrations/operator-fuel-rule-store.php')
+                path=project/relative;saved=project/'saved-entry'
+                if case=='hardlink':os.link(path,saved)
+                else:path.rename(saved);path.symlink_to(saved,target_is_directory=saved.is_dir())
+                with self.assertRaises((RuntimeError,OSError)):ns['passive_fuel_readiness']()
+
+    def test_store_owner_mode_and_identity_are_verified_without_listing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime=self.reader(directory)
+            store=project/'.private-fuel/searches'
+            for mode in (0o777,0o500,0o200):
+                store.chmod(mode)
+                self.assertEqual('not_ready',ns['passive_fuel_readiness']()['status'])
+            store.chmod(0o700)
+            with patch.object(os,'getuid',return_value=-1):
+                result=ns['passive_fuel_readiness']()
+                self.assertFalse(result['store_directory_owner_matches']);self.assertEqual('not_ready',result['status'])
+            original=ns['pf_snapshot'];count=0
+            def changed():
+                nonlocal count
+                count+=1
+                if count==2:store.rename(store.with_name('old-searches'));store.mkdir()
+                return original()
+            ns['pf_snapshot']=changed
+            with self.assertRaisesRegex(RuntimeError,'passive_store_changed'):ns['passive_fuel_readiness']()
+
+    def test_private_config_stays_literal_only_and_fail_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime=self.reader(directory)
+            catalog=str(project/'.private-fuel/catalog.json')
+            for body in ("<?php return ['catalog_path'=>getenv('TOKEN')];",
+                         "<?php return ['nested'=>['catalog_path'=>'"+catalog+"']];",
+                         "<?php return ['catalog_path'=>'/etc/catalog.json'];",
+                         "<?php return ['catalog_path'=>'"+catalog+"','catalog_path'=>'"+catalog+"'];"):
+                with self.subTest(body=body):
+                    (runtime/'.andromeda-private.php').write_text(body)
+                    self.assertEqual('not_ready',ns['passive_fuel_readiness']()['status'])
+
+    def test_private_remote_has_exact_manifest_scope_and_no_db_collectors(self):
+        import ast
+        value=self.p.remote_program(m.REMOTE,self.command);ast.parse(value)
+        self.assertEqual(2,value.count("if mode not in ('passive-fuel-private-readiness','reconcile',"))
+        self.assertIn('files!='+repr(self.p.PRIVATE_SOURCE_HASHES),value)
+        self.assertIn("runtime=project/'_preview/search3-anex-candidate'",value)
+        self.assertNotIn("('root',project)",self.p.PRIVATE_REMOTE_READER)
+        for forbidden in ('subprocess','glob(','iterdir(','.read_text(','.read_bytes('):
+            self.assertNotIn(forbidden,self.p.PRIVATE_REMOTE_READER)
+
+    def test_private_completion_rejects_shape_drift_and_nonzero_side_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime=self.reader(directory)
+            value=ns['passive_fuel_readiness']()
+            result={**self.command,'status':'complete','production_unchanged':True,'runtime_changed':False,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                'passive_fuel_readiness':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('runtime_writes',1),('private_config_record',{'raw':'SECRET'}),
+                            ('store_directory_owner_matches','yes'),('store_directory_mode','0700')]:
+                changed=copy.deepcopy(result);changed['passive_fuel_readiness'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed))
+            value['status']='not_ready';self.assertTrue(m.completed_result(self.command,result))
+
+    def test_private_admission_requires_own_source_ci_and_unique_private_command(self):
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+            'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        body=m.PREFIX+' '.join(self.command.values())
+        old=m.PREFIX+' '.join([self.p.SOURCE,self.p.MODE,self.p.OPERATION])
+        event={'action':'created','repository':{'full_name':m.REPO},'comment':{'id':123}}
+        checks={'total_count':5,'check_runs':[{'id':i,'status':'completed','conclusion':'success',
+            'app':{'slug':'github-actions'}} for i in self.p.PRIVATE_CHECK_IDS]}
+        def api(path,token):
+            if '/check-runs?' in path:
+                self.assertIn(self.p.PRIVATE_SOURCE_CHECK_COMMIT,path);return checks
+            return [{'id':122,'body':old},{'id':123,'body':body}]
+        self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        with self.assertRaisesRegex(ValueError,'no_replay'):
+            self.p.admission(lambda path,token:checks if '/check-runs?' in path else
+                [{'id':122,'body':body},{'id':123,'body':body}],event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        checks['check_runs'][0]['conclusion']='failure'
+        with self.assertRaisesRegex(ValueError,'source_ci'):
+            self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
