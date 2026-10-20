@@ -175,8 +175,19 @@ function records(source){return scenarios.map(s=>{const result=characterize(sour
   assert.deepEqual({...result.checkpoints[reset],name:'renderDateCalendar'},result.checkpoints[reset-1],'month reset preserves the exact draft/state');
   result.trace.splice(2,1);result.checkpoints.splice(reset,1);
  }
+
+ // Explicit drawer recovery now synchronizes the authoritative model into
+ // retained controls before painting. Assert exactly this new boundary, then
+ // keep the historical digest for all remaining actions/state/order.
+ if(s.name==='click:recover-filters'&&source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;")){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['syncBudgetControls',result.filterDraft.filters],['filterEdited',true],['focus','#apply-filters',{preventScroll:true}]],'recovery sync precedes the existing paint and Apply action');
+  assert.deepEqual({...result.checkpoints[0],name:'filterEdited'},result.checkpoints[1],'recovery synchronization preserves all unrelated state');
+  assert.deepEqual(result.dom[1],['#hotel-query',{value:result.filterDraft.filters.q,checked:false,hidden:false,textContent:'',scrollTop:37}],'explicit recovery writes the chosen query');
+  result.trace.splice(1,1);result.checkpoints.splice(0,1);result.dom.splice(1,1);
+ }
  delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');
+assert(source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;"),'explicit recovery synchronizes retained controls before Apply');
 const actual=records(source);
 const digest=crypto.createHash('sha256').update(JSON.stringify(actual)).digest('hex');
 const compareIndex=process.argv.indexOf('--compare');
