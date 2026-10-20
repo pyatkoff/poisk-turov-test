@@ -1125,4 +1125,275 @@ class NativeMySQLTest(unittest.TestCase):
             self.assertEqual(1,result['candidate_states']['needs_independent_namespace_bridge'])
 
 
+class CatalogueTest(unittest.TestCase):
+    """Exercise trusted catalogue through the same parser, carrier and receiver."""
+    def setUp(self):
+        self.saved_snapshot = m._CATALOGUE_SNAPSHOT
+        m._CATALOGUE_SNAPSHOT = None
+        self.raw = (ROOT/m.CATALOGUE_PATH).read_bytes()
+        self.catalogue = json.loads(self.raw)
+        self.members = self.catalogue['scopes']
+        self.policies = m.validate_catalogue(self.raw)
+
+    def tearDown(self):
+        m._CATALOGUE_SNAPSHOT = self.saved_snapshot
+
+    def parse(self, scope, mode='match-retained-acquire'):
+        c = core(); m.register_parser(c)
+        operation = scope['operation_id'] if mode == 'match-retained-acquire' else scope['write_operation_id']
+        target = scope['parent_operation_id'] if mode == 'match-retained-acquire' else scope['operation_id']
+        body = c.PREFIX+' '.join((SHA,mode,operation,scope['cohort'],target))
+        return c, c.parse_command(body), body
+
+    def remote_space(self, policy, command, private=None):
+        def fail(reason): raise ValueError(reason)
+        space = {'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail,
+                 'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and 0<path.stat().st_size<=bound,
+                 'safe_json':lambda path,bound:json.loads(path.read_bytes()),
+                 'NEXT_SCOPE':policy,'payload':command,'pathlib':__import__('pathlib'),'os':os,
+                 'operation':command['operation_id'],'private':private}
+        exec(m.REMOTE_HANDLER,space)
+        return space
+
+    def result(self, scope):
+        _, command, _ = self.parse(scope)
+        policy = self.policies[scope['cohort']]
+        data = dict(command,control_source_sha=CONTROL,state='acquired_retained_native_read_only',
+                    acquisition_state='completed',unknown_http_calls=0,supplier_calls=3,
+                    physical_http_reservations=3,tariff_search_units=1,database_writes=0,mapping_writes=0,
+                    no_replay=True,safe_to_write_now=False,continuation_scope_sha256=policy['sha256'],
+                    continuation_catalogue_sha256=policy['catalogue_sha256'],scope_id=scope['scope_id'],
+                    context_origin=scope['context_origin'],wire_context=copy.deepcopy(scope['wire_context']),
+                    selection_reservation_sha256='c'*64,catalogue_sibling_history_sha256='d'*64)
+        result = dict(command,status='complete',production_unchanged=True,supplier_calls=3,
+                      database_writes=0,mapping_writes=0,match_retained={'data':data})
+        self.seal(result)
+        return command,result
+
+    def seal(self,result):
+        result['match_retained']['evidence_sha256'] = hashlib.sha256(a.canonical(result['match_retained']['data'])).hexdigest()
+
+    def test_catalogue_baseline_bounds_party_and_distinct_operation_rejections(self):
+        self.assertEqual(2,len(self.policies))
+        self.assertEqual([2,8],[len(x['selected_tv_hotel_ids']) for x in self.members])
+        mutations = [('supplier_http_maximum',31),('search_start_maximum',2),('http_timeout_seconds',30),
+                     ('operator_id',18),('account','TOURVISOR_JWT'),('adults',7),('children_count',1),
+                     ('children_count',False),('safe_to_write_now',True),('selected_count',True),
+                     ('readback_operation_id','int-andromeda-match-retained-readback-20261020-v8'),
+                     ('operation_id',m.NEXT_NEVER9_SCOPE['operation_id'])]
+        for field,value in mutations:
+            with self.subTest(field=field):
+                bad=copy.deepcopy(self.catalogue);bad['scopes'][0][field]=value
+                with self.assertRaises(ValueError):m.validate_catalogue(a.canonical(bad))
+        for change in ('unknown','prior','parent','overlap','operation'):
+            bad=copy.deepcopy(self.catalogue)
+            if change=='unknown':bad['scopes'][0]['exclusion_history'][1]['unknown_http_calls']=0
+            elif change=='prior':bad['scopes'][0]['prior_selected_hotel_ids'].pop()
+            elif change=='parent':bad['scopes'][0]['parent_evidence_sha256']='0'*64
+            elif change=='overlap':bad['scopes'][1]['selected_tv_hotel_ids'][0]=bad['scopes'][0]['selected_tv_hotel_ids'][0]
+            else:bad['scopes'][1]['operation_id']=bad['scopes'][0]['operation_id']
+            with self.subTest(change=change),self.assertRaises(ValueError):m.validate_catalogue(a.canonical(bad))
+        with self.assertRaisesRegex(ValueError,'duplicate_key'):
+            m.validate_catalogue(b'{"schema_version":1,"schema_version":1,"kind":"retained_never_selected_catalogue","scopes":[]}')
+
+    def test_both_catalogue_members_round_trip_through_parser_bundle_remote_and_helper(self):
+        for scope in self.members:
+            with self.subTest(cohort=scope['cohort']),tempfile.TemporaryDirectory() as td:
+                c,command,body=self.parse(scope);policy=self.policies[scope['cohort']]
+                with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(command))
+                module=ast.parse(c.REMOTE)
+                injected={node.targets[0].id:ast.literal_eval(node.value) for node in module.body
+                          if isinstance(node,ast.Assign) and len(node.targets)==1 and isinstance(node.targets[0],ast.Name)
+                          and node.targets[0].id=='NEXT_SCOPE'}
+                self.assertEqual(policy,injected['NEXT_SCOPE'])
+                archive,hashes=c.bundle_source(SOURCE);stage=Path(td)
+                with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tar:tar.extractall(stage,filter='data')
+                manifest=json.loads((stage/'manifest.json').read_bytes())
+                self.assertEqual(hashes,manifest['files']);self.assertEqual(policy['catalogue_sha256'],hashes[m.CATALOGUE_PATH])
+                self.assertEqual(set(m.SOURCE_FILES)|{m.CATALOGUE_PATH},set(hashes))
+                loaded=self.remote_space(policy,command)['retained_next_scope'](stage)
+                received={'continuation_scope':loaded,'continuation_scope_path':m.CATALOGUE_PATH,
+                          'continuation_scope_sha256':policy['sha256'],'continuation_catalogue_sha256':policy['catalogue_sha256']}
+                self.assertEqual(scope,a.load_scope_file(stage,received))
+                for changed in (body.replace(scope['operation_id'],scope['operation_id']+'-renamed'),
+                                body.replace(scope['parent_operation_id'],'int-andromeda-match-retained-current-20261020-v1'),
+                                body.replace(scope['cohort'],self.members[1 if scope is self.members[0] else 0]['cohort'])):
+                    with self.assertRaises(ValueError):c.parse_command(changed)
+
+    def test_catalogue_receiver_rejects_wrong_path_digest_manifest_and_member_even_with_new_outer_hash(self):
+        scope=self.members[0];policy=self.policies[scope['cohort']]
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td);archive,_=m.bundle_source(SOURCE,catalogue=True)
+            with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as tar:tar.extractall(stage,filter='data')
+            data={'continuation_scope':copy.deepcopy(scope),'continuation_scope_path':m.CATALOGUE_PATH,
+                  'continuation_scope_sha256':policy['sha256'],'continuation_catalogue_sha256':policy['catalogue_sha256']}
+            self.assertEqual(scope,a.load_scope_file(stage,data))
+            for field,value in [('continuation_scope_path','../catalogue.json'),('continuation_scope_sha256','0'*64),
+                                ('continuation_catalogue_sha256','0'*64),('continuation_scope',self.members[1])]:
+                with self.subTest(field=field),self.assertRaises(ValueError):a.load_scope_file(stage,dict(data,**{field:value}))
+            path=stage/m.CATALOGUE_PATH;manifest_path=stage/'manifest.json';original_manifest=manifest_path.read_bytes()
+            bad=copy.deepcopy(self.catalogue);bad['scopes'][0]['context_reason']='tampered member'
+            changed=a.canonical(bad);path.write_bytes(changed);digest=hashlib.sha256(changed).hexdigest()
+            manifest=json.loads(original_manifest);manifest['files'][m.CATALOGUE_PATH]=digest;manifest_path.write_bytes(a.canonical(manifest))
+            with self.assertRaisesRegex(ValueError,'member_binding'):
+                a.load_scope_file(stage,dict(data,continuation_catalogue_sha256=digest))
+            path.write_bytes(self.raw);manifest_path.write_bytes(original_manifest)
+            manifest=json.loads(original_manifest);manifest['files'].pop(m.CATALOGUE_PATH);manifest_path.write_bytes(a.canonical(manifest))
+            with self.assertRaisesRegex(ValueError,'catalogue_binding'):a.load_scope_file(stage,data)
+            manifest_path.write_bytes(original_manifest);saved=stage/'catalogue-real.json';path.rename(saved);path.symlink_to(saved)
+            with self.assertRaisesRegex(ValueError,'catalogue_path'):a.load_scope_file(stage,data)
+
+    def test_remote_next_scope_rejects_changed_catalogue_and_wrong_selected_member_hash(self):
+        scope=self.members[0];policy=copy.deepcopy(self.policies[scope['cohort']]);_,command,_=self.parse(scope)
+        with tempfile.TemporaryDirectory() as td:
+            stage=Path(td);path=stage/m.CATALOGUE_PATH;path.parent.mkdir(parents=True);path.write_bytes(self.raw)
+            space=self.remote_space(policy,command)
+            self.assertEqual(scope,space['retained_next_scope'](stage))
+            path.write_bytes(self.raw+b'\n')
+            with self.assertRaisesRegex(ValueError,'stage_binding'):space['retained_next_scope'](stage)
+            path.write_bytes(self.raw);space['NEXT_SCOPE']=dict(policy,sha256='0'*64)
+            with self.assertRaisesRegex(ValueError,'stage_member'):space['retained_next_scope'](stage)
+            space['NEXT_SCOPE']=policy;space['payload']=dict(command,match_retained_catalogue_sha256='0'*64)
+            with self.assertRaisesRegex(ValueError,'stage_shape'):space['retained_next_scope'](stage)
+
+    def test_catalogue_parse_snapshot_cannot_drift_before_activation_or_weaken_by_returned_mutation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);modulepath=root/'scripts/deploy/control.py';modulepath.parent.mkdir(parents=True)
+            path=root/m.CATALOGUE_PATH;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(self.raw)
+            with mock.patch.object(m,'__file__',str(modulepath)),mock.patch.object(m,'_CATALOGUE_SNAPSHOT',None):
+                raw,policies=m.catalogue_snapshot();policies[self.members[0]['cohort']]['wire_context']['nights_from']=28
+                self.assertNotEqual(28,m.catalogue_snapshot()[1][self.members[0]['cohort']]['wire_context']['nights_from'])
+                c,command,_=self.parse(self.members[0]);remote_before=c.REMOTE
+                path.write_bytes(raw+b'\n')
+                with self.assertRaisesRegex(ValueError,'changed_after_parse'),mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):
+                    m.activate(c,dict(command))
+                self.assertEqual(remote_before,c.REMOTE)
+
+    def test_completion_binds_each_member_catalogue_and_real_bounded_counters(self):
+        for scope in self.members:
+            command,result=self.result(scope)
+            self.assertTrue(m.completed_result(command,result,CONTROL))
+            for field,value in [('continuation_catalogue_sha256','0'*64),('continuation_scope_sha256','0'*64),
+                                ('scope_id','0'*64),('supplier_calls',31),('physical_http_reservations',2),
+                                ('tariff_search_units',2),('selection_reservation_sha256',None),
+                                ('catalogue_sibling_history_sha256',None),
+                                ('wire_context',dict(scope['wire_context'],nights_to=28))]:
+                with self.subTest(cohort=scope['cohort'],field=field):
+                    bad=copy.deepcopy(result);bad['match_retained']['data'][field]=value
+                    if field=='supplier_calls':bad['supplier_calls']=value
+                    self.seal(bad);self.assertFalse(m.completed_result(command,bad,CONTROL))
+            bad_command=dict(command,match_retained_catalogue_sha256='0'*64)
+            self.assertFalse(m.completed_result(bad_command,result,CONTROL))
+
+    def test_durable_hotel_claims_allow_disjoint_siblings_but_preserve_all204_and_block_rename(self):
+        prior=self.members[0]['prior_selected_hotel_ids']
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);root=home/'.anytoour-match';root.mkdir();ledger=root/'retained-selection-claims.json'
+            old={'schema_version':1,'claims':{'TOURVISOR_ANEX_JWT:13:'+str(h):{'state':'prior_consumed','sentinel':h} for h in prior}}
+            ledger.write_bytes(a.canonical(old));context=root/'retained-context-claims.json';context.write_bytes(b'{"protected":"old-unknown-context"}')
+            protected_context=context.read_bytes()
+            for scope in self.members:
+                before=ledger.read_bytes();a.reserve_selection(home,scope,scope['operation_id'])
+                after=ledger.read_bytes();self.assertNotEqual(before,after)
+                snapshot=json.loads(after)
+                for key,value in old['claims'].items():self.assertEqual(value,snapshot['claims'][key])
+                self.assertEqual(protected_context,context.read_bytes())
+                with self.assertRaisesRegex(ValueError,'consumed_no_replay'):
+                    a.reserve_selection(home,scope,scope['operation_id']+'-renamed-next-day')
+                self.assertEqual(after,ledger.read_bytes())
+            self.assertEqual(204+10,len(json.loads(ledger.read_bytes())['claims']))
+
+    def test_sibling_reserved_without_receipt_or_partial_unknown_stops_before_history_or_supplier(self):
+        scope=self.members[1];policy=self.policies[scope['cohort']];_,command,_=self.parse(scope);sibling=self.members[0]
+        with tempfile.TemporaryDirectory() as td:
+            base=Path(td);private=base/'private';private.mkdir();home=base/'home';(home/'.anytoour-match').mkdir(parents=True)
+            ledger=home/'.anytoour-match/retained-selection-claims.json'
+            ledger.write_bytes(a.canonical({'schema_version':1,'claims':{'TOURVISOR_ANEX_JWT:13:'+str(h):{'state':'prior'} for h in scope['prior_selected_hotel_ids']}}))
+            stage=base/'stage';path=stage/m.CATALOGUE_PATH;path.parent.mkdir(parents=True);path.write_bytes(self.raw)
+            target=private/sibling['operation_id'];target.mkdir()
+            (target/'reservation.json').write_bytes(a.canonical({'operation_id':sibling['operation_id'],'source_sha':SHA}))
+            space=self.remote_space(policy,command,private)
+            space['retained_effective_requests']=mock.Mock(side_effect=AssertionError('must stop before historical reads'))
+            before={p:p.read_bytes() for p in target.iterdir()}
+            with mock.patch.dict(os.environ,{'HOME':str(home)}),self.assertRaisesRegex(ValueError,'sibling_unknown_no_replay'):
+                space['retained_catalogue_history'](scope,stage)
+            self.assertEqual(before,{p:p.read_bytes() for p in target.iterdir()})
+            old=target/'source'/m.CATALOGUE_PATH;old.parent.mkdir(parents=True);old.write_bytes(self.raw)
+            (target/'source/manifest.json').write_bytes(a.canonical({'schema_version':1,'files':{m.CATALOGUE_PATH:policy['catalogue_sha256']}}))
+            data={'acquisition_state':'partial_no_replay','unknown_http_calls':1}
+            (target/'result.json').write_bytes(a.canonical({'status':'complete','mode':'match-retained-acquire','match_retained':{'data':data}}))
+            with mock.patch.dict(os.environ,{'HOME':str(home)}),self.assertRaisesRegex(ValueError,'sibling_unknown_no_replay'):
+                space['retained_catalogue_history'](scope,stage)
+            space['retained_effective_requests'].assert_not_called()
+            ledger_state=json.loads(ledger.read_bytes());ledger_state['claims']['TOURVISOR_ANEX_JWT:13:999999999']={'state':'reserved'}
+            ledger.write_bytes(a.canonical(ledger_state))
+            with mock.patch.dict(os.environ,{'HOME':str(home)}),self.assertRaisesRegex(ValueError,'unreconciled_claim_no_replay'):
+                space['retained_catalogue_history'](scope,stage)
+
+    def test_completed_sibling_retained_old_catalogue_append_real_history_wire_and_snapshot_binding(self):
+        # Canonical sanitized data are retained public receipts, matched to all eight pinned evidence hashes.
+        # Request metadata below is a controlled UNIT fixture, not reconstructed historical supplier requests.
+        baseline_data = json.loads(r'''[{"acquisition_state":"completed","actions":{"search_results":10,"search_start":10,"search_status":10,"tour_detail":8},"batches":[{"batch":1,"returned_anex_hotels":0,"search_complete":true,"sent":30},{"batch":2,"returned_anex_hotels":2,"search_complete":true,"sent":29},{"batch":3,"returned_anex_hotels":2,"search_complete":true,"sent":23},{"batch":4,"returned_anex_hotels":0,"search_complete":true,"sent":9},{"batch":5,"returned_anex_hotels":0,"search_complete":true,"sent":5},{"batch":6,"returned_anex_hotels":1,"search_complete":true,"sent":3},{"batch":7,"returned_anex_hotels":1,"search_complete":true,"sent":2},{"batch":8,"returned_anex_hotels":1,"search_complete":true,"sent":2},{"batch":9,"returned_anex_hotels":1,"search_complete":true,"sent":1},{"batch":10,"returned_anex_hotels":0,"search_complete":true,"sent":1}],"cohort":"anex105-current","control_source_sha":"2b5dedca28d912ebcbc9ad1acf322f49ebabbf57","database_writes":0,"edge_states":{"native_link_unresolved":1,"verified_native_pair":7},"edges":[{"anex_hotel_id":"9384","batch":2,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":35297,"detail_operator_id":13,"detail_raw":{"raw_sha256":"16a379a69a3d21dc420388068ff3267d704b9e8fdc3cc17ba5846b23fbdbf157","response_number":7},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"066109b41e7a18b8f5b0b00e21de3184181842feecabd723f2dfda3452725681","search_id_sha256":"ac6b18f91dad56ecd53df63f4b8d9543c57cfe11ae7aafa917ce23d88ea747cf","state":"verified_native_pair","tour_id_sha256":"64adfca50f4b64fd96c8b97ddb95305d47ea54c765b4bbf3d4ed2edc7d53df0a","tv_hotel_id":35297},{"anex_hotel_id":"12901","batch":2,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":1474,"detail_operator_id":13,"detail_raw":{"raw_sha256":"ac10f71e19cd380168fb8c879ada7e51c99d85c74a7dd401808139e65859c326","response_number":8},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"8edcebaef9232ccee049632b59716f4412e302e29b5dfe29006394077a84a52a","search_id_sha256":"ac6b18f91dad56ecd53df63f4b8d9543c57cfe11ae7aafa917ce23d88ea747cf","state":"verified_native_pair","tour_id_sha256":"751759b64916cc8f74bcdeae4a8009847c0037e49e5614b3bc5cf52aa28e7025","tv_hotel_id":1474},{"batch":3,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":17603,"detail_operator_id":13,"detail_raw":{"raw_sha256":"da92ea7e50911b596dac625007091d9264f525e41e0f711b1d3577c99f160645","response_number":12},"link_state":"missing_native","operator_link_field":"str","search_id_sha256":"4956f15c23b8164fac9a78667f7f9e68d53ad327100bc6d9b73247e9c1a35c90","state":"native_link_unresolved","tour_id_sha256":"b4222d773463c2045312792fe35e867521aa202246bbd8e465d6e728ba450d62","tv_hotel_id":17603},{"anex_hotel_id":"8475","batch":3,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":1014,"detail_operator_id":13,"detail_raw":{"raw_sha256":"e4d97de7f061f33e286cada311d7207ee06fd70c84b10aab3065a73c442b94be","response_number":13},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"756f83bc93bc5203fcee26c313f27346ad0c458d7390feb6c841e4ae85d1762e","search_id_sha256":"4956f15c23b8164fac9a78667f7f9e68d53ad327100bc6d9b73247e9c1a35c90","state":"verified_native_pair","tour_id_sha256":"955f4e7a5343c5deb58de8ccdb010f17ad2e05901c17631ad59d6a627b5f90a2","tv_hotel_id":1014},{"anex_hotel_id":"8476","batch":6,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":1095,"detail_operator_id":13,"detail_raw":{"raw_sha256":"d0e16b529c87365130e2af6cfdc66392c321f68084c0ea43dcbf773ba4e9d4cb","response_number":23},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"9619d94cb74cb263bc4fbc00029e65f83794b594d3a1c3e3e2524c5da2aae374","search_id_sha256":"58850171742bd5dfd5a3f5090957c2633cea8356bdf52add148c04587ab94c30","state":"verified_native_pair","tour_id_sha256":"362bc7af6531df8198b8259631ac0940735afda98eb820b928795e16dd3f7777","tv_hotel_id":1095},{"anex_hotel_id":"14818","batch":7,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":1015,"detail_operator_id":13,"detail_raw":{"raw_sha256":"0702edaf81662711ee1c820d9d93ff082b6f6199ec9a8592e180c0a7e5d6d51b","response_number":27},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"7de6a79459ee28f2f7e676b8613ac7cfba2b4df3dc0d2e480379050ce9dde577","search_id_sha256":"6e627a14f0d0ebbe502426219e8bdd1621084eb634a5f41b57805a5ae4101d64","state":"verified_native_pair","tour_id_sha256":"0116aba77ab3089b6198c2f42074c2a7f0e306fda6ca81a99b635dc955e43c14","tv_hotel_id":1015},{"anex_hotel_id":"26591","batch":8,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":3418,"detail_operator_id":13,"detail_raw":{"raw_sha256":"86af6ed1b845cbc6dc657724915278e9a8fc25fa90660896435247ae5d44d3bd","response_number":31},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"cbb83ec95ff92a44d7e3d152d32149b9774881de27b721ff88e71d01ed4e20de","search_id_sha256":"8ecaee202ecdea3da4047d5e3dd1c375003d467e1bc86c7d3c2d411f2439d2b1","state":"verified_native_pair","tour_id_sha256":"9aebbd2598d3a7298987bda42f5597102605aa04380150df96c01272fe095693","tv_hotel_id":3418},{"anex_hotel_id":"19606","batch":9,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":57027,"detail_operator_id":13,"detail_raw":{"raw_sha256":"51db1443a805c0f3b92e40a8203be3fdf0aa5991ec2fce4217a750858ee695e4","response_number":35},"namespace":"anex_online","operator_id":13,"operator_link_field":"str","operator_link_host":"agent.anextour.ru","operator_link_sha256":"ece310fa94dcaed04827a64de8c3c0297df95ad7e30ef93e2ba472bc6c937939","search_id_sha256":"233b1a74ebb75a085903f508291f9a685cca2eb6fece0d1eb7d958c6c4f7278d","state":"verified_native_pair","tour_id_sha256":"ca86516d001852ab7ebc8785245d28cf842869c824d3bcf3aff08080cdeb1630","tv_hotel_id":57027}],"global_usage":"not_measured","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v1","operator_account_binding":{"account":"TOURVISOR_ANEX_JWT","detail_raw":{"raw_sha256":"16a379a69a3d21dc420388068ff3267d704b9e8fdc3cc17ba5846b23fbdbf157","response_number":7},"operator_id":13,"state":"verified_live_operator13_anextour_link","tv_hotel_id":35297},"parent_evidence_sha256":"c0d7c1f53cceea267f08a5b15d29d9f2bb314401b7de380e0fe40b59ad513046","parent_receipt_sha256":"65bc5fea35777627e13cd9143c2537288fc0af72ea0642323b3c457c6afe10fb","physical_http_reservations":38,"quota_before":{"physical_http_attempts":0,"provider_day":"2026-10-20","tariff_search_units":0},"safe_to_write_now":false,"selected_hotels":105,"selected_id_sha256":"4f8fa702fad1445d2a6bb5978bbdc1e60f30abd75b9328251f381a86f2b351d3","source_sha":"7e388eeacb1715ba7abe86b67b26576c4e110ee9","state":"acquired_retained_native_read_only","stop_reason":null,"supplier_calls":38,"target_operation_id":"int-andromeda-match-retained-current-20261020-v1","tariff_search_units":10,"unknown_http_calls":0},{"acquisition_state":"partial_no_replay","actions":{"search_results":2,"search_start":2,"search_status":2,"tour_detail":1},"batches":[{"batch":1,"returned_anex_hotels":1,"search_complete":true,"sent":29}],"cohort":"anex-next-e424c34b2b9d970f","continuation_scope_sha256":"c0b1651a689325017203ee9529a26c87a4154061675cf10fb72786864a84997e","control_source_sha":"abad0e7c70c60f7d693bebb236c9800dacb6a557","database_writes":0,"edge_states":{"native_link_unresolved":1},"edges":[{"batch":1,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":8038,"detail_operator_id":13,"detail_raw":{"raw_sha256":"b6bc670f30163350d5940b2f29bc79d35f4b74c0090f4d255daaef2b84889328","response_number":4},"link_state":"missing_native","operator_link_field":"str","search_id_sha256":"03f577be1ab04da0aacfc7010b184b59752415f945aea23b6047d921fcd1226f","state":"native_link_unresolved","tour_id_sha256":"4ed7c5013dc0b587b74001aae7bacb85aaa4fb1a36fd3e07c0f5774358f76bd5","tv_hotel_id":8038}],"global_usage":"not_measured","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v2","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":7,"quota_before":{"physical_http_attempts":38,"provider_day":"2026-10-20","tariff_search_units":10},"safe_to_write_now":false,"scope_id":"e424c34b2b9d970ff21026d97b1a4cf4bacc1e39f3023d0b01f8088cd9359525","selected_hotels":55,"selected_id_sha256":"04b7255c36d52f189dc2dd0e0b622806af8d7e9c898bbed9bce193d2fcfe22d4","source_sha":"d871c971f993534363be256977aaec2a52418eff","state":"acquired_retained_native_read_only","stop_reason":"TimeoutError","supplier_calls":7,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":2,"unknown_http_calls":1},{"acquisition_state":"partial_no_replay","actions":{"search_start":1},"batches":[],"cohort":"anex-next-d0017d8fffb4f69d","continuation_scope_sha256":"9e6d4c654ae791327b5288fc8d87593a8fc79dc93c84f253b2fe90ba5fef32ba","control_source_sha":"acd92b8ea6ec10e8f8f577587f377751699e0541","database_writes":0,"edge_states":{},"edges":[],"global_usage":"not_measured","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v3","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":1,"quota_before":{"physical_http_attempts":45,"provider_day":"2026-10-20","tariff_search_units":12},"safe_to_write_now":false,"scope_id":"d0017d8fffb4f69d4d0049c74d1c20fdc4bf35b678fcd7410637b5e7157e729c","selected_hotels":22,"selected_id_sha256":"dbde662384f375f401db02cb7a24db4f881ea177e165ed420a5f75542daeb148","source_sha":"d4c578bb5fe4d6f05441a928d720b0e805079561","state":"acquired_retained_native_read_only","stop_reason":"TimeoutError","supplier_calls":1,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":1},{"acquisition_state":"partial_no_replay","actions":{"search_start":1},"batches":[],"cohort":"anex-next-ee68d11668a22e84","context_origin":"owner_20261020_1031_saved_peer_context","context_reservation_sha256":"b4bae2f3d2c6c8f23661c130dda750a714d55ec7371051602f9d5dace26e16ea","continuation_scope_sha256":"458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31","control_source_sha":"9809907b2d2b30d51017de082505439ce6d12d3f","database_writes":0,"edge_states":{},"edges":[],"global_usage":"not_measured","hotel_ledger_sha256":"298b16959c85511bd2d5ccb261f44041b643cec266e509e1a1f628e427faacf5","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v4","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":1,"quota_before":{"physical_http_attempts":46,"provider_day":"2026-10-20","tariff_search_units":13},"safe_to_write_now":false,"scope_id":"ee68d11668a22e84934fa4acd94a779238491f8a0db822ee2f91dc2212456f04","selected_hotels":25,"selected_id_sha256":"8cbcf79c8a4b63a0b91cd14fe7ed197202d9f9651e6e7ac4f7e924ed7b17aa62","source_sha":"78f029da7522bc97051904770e7c077bbe1b985e","state":"acquired_retained_native_read_only","stop_reason":"TimeoutError","supplier_calls":1,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":1,"wire_context":{"date_from":"2026-11-15","date_to":"2026-11-15","nights_from":6,"nights_to":6}},{"acquisition_state":"completed","actions":{"search_results":1,"search_start":1,"search_status":1},"batches":[{"batch":1,"returned_anex_hotels":0,"search_complete":true,"sent":25}],"cohort":"anex-next-358bc9fca19be2f8","context_origin":"owner_20261020_1257_timeout60_new_window","context_reservation_sha256":"9c9c6549a9329ac5dcb1f8f02c328b12e35a5c25520800f6a8242232e7df69e1","continuation_scope_sha256":"266f0791573661882104a39ec1b4206940cec16eefef29de4d2e0a11f52ede07","control_source_sha":"09c08eb19a662b49413618eb15370eeb13fe2973","database_writes":0,"edge_states":{},"edges":[],"global_usage":"not_measured","hotel_ledger_sha256":"298b16959c85511bd2d5ccb261f44041b643cec266e509e1a1f628e427faacf5","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v5","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":3,"quota_before":{"physical_http_attempts":47,"provider_day":"2026-10-20","tariff_search_units":14},"safe_to_write_now":false,"scope_id":"358bc9fca19be2f882660a21d2c6b99ac1048bd4bb83a2d21327e6d1197cecaa","selected_hotels":25,"selected_id_sha256":"8cbcf79c8a4b63a0b91cd14fe7ed197202d9f9651e6e7ac4f7e924ed7b17aa62","source_sha":"fbe50829c646ea06b86637199231a91d68a5506d","state":"acquired_retained_native_read_only","stop_reason":null,"supplier_calls":3,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":0,"wire_context":{"date_from":"2027-02-07","date_to":"2027-02-07","nights_from":6,"nights_to":6}},{"acquisition_state":"completed","actions":{"search_results":1,"search_start":1,"search_status":1},"batches":[{"batch":1,"returned_anex_hotels":0,"search_complete":true,"sent":25}],"cohort":"anex-next-a286c36432d9174f","context_origin":"owner_20261020_1257_timeout60_new_window","context_reservation_sha256":"054f5977db0ba9810787ab8031b15a6c8005c6e52c3a1152c11cec0ceab2614a","continuation_scope_sha256":"c83d38a5726d71e955743e133dd815e9898a9a3067ba6048c5e1c31076ee6379","control_source_sha":"c480440232f8b08c662f79c3c037597aae062d4b","database_writes":0,"edge_states":{},"edges":[],"global_usage":"not_measured","hotel_ledger_sha256":"298b16959c85511bd2d5ccb261f44041b643cec266e509e1a1f628e427faacf5","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v6","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":3,"quota_before":{"physical_http_attempts":50,"provider_day":"2026-10-20","tariff_search_units":15},"safe_to_write_now":false,"scope_id":"a286c36432d9174f1989561ca4bfc4b05f98ecf1ea61ef2b48b68f4b771f73c3","selected_hotels":25,"selected_id_sha256":"8cbcf79c8a4b63a0b91cd14fe7ed197202d9f9651e6e7ac4f7e924ed7b17aa62","source_sha":"37df62279182b57494bc2447bb87f92597be91aa","state":"acquired_retained_native_read_only","stop_reason":null,"supplier_calls":3,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":0,"wire_context":{"date_from":"2027-02-14","date_to":"2027-02-20","nights_from":7,"nights_to":14}},{"acquisition_state":"completed","actions":{"search_results":1,"search_start":1,"search_status":1,"tour_detail":1},"batches":[{"batch":1,"returned_anex_hotels":1,"search_complete":true,"sent":13}],"cohort":"anex-next-e6f47f44a76c11fc","context_origin":"saved_user_search_exact_date_nights","continuation_scope_sha256":"6886821dd545f24e1a3f35db2c3f9b87ede3597df9e73fd6aaae190c0f99dce5","control_source_sha":"b8f293f2db08351204329bb194a04bacd4c8a787","database_writes":0,"edge_states":{"native_link_unresolved":1},"edges":[{"batch":1,"detail_fields":["adults","childs","currency","date","departure","flightNights","flightPlace","fuelCharge","hotel","hotelDescription","hotelPlace","id","isCharter","isPromo","meal","name","nights","operator","operatorLink","picture","placement","price","roomId","roomType"],"detail_hotel_id":616,"detail_operator_id":13,"detail_raw":{"raw_sha256":"ba75482de581f48d90aa2a14c5a61616438b1600a0dd9b30d5674dbea4c01752","response_number":4},"link_state":"missing_native","operator_link_field":"str","search_id_sha256":"fef43d3aa9ba63e7b4b11931fb793e9054e6579fab26652b54cd21b49f042e7c","state":"native_link_unresolved","tour_id_sha256":"9df5bb16d43332393f719cc97f4ddfe8b3bad73c8eba784be6693d9aa2434ea9","tv_hotel_id":616}],"global_usage":"not_measured","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v7","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":4,"quota_before":{"physical_http_attempts":53,"provider_day":"2026-10-20","tariff_search_units":16},"safe_to_write_now":false,"scope_id":"e6f47f44a76c11fc6725efc36143717964c2178a3007178e1df22170a38906c2","selected_hotels":13,"selected_id_sha256":"e2a8a350beafa3a543fbd1e41fc11fc5576d1465d6b1754647146c2561c0610d","selection_reservation_sha256":"60d411fe1d1079d5a718cabc27ca31cc973c55f6ec368eb2bd879803013c3ffa","source_sha":"45085a38b10edaecc6f1dcfef5d2e118dd753fda","state":"acquired_retained_native_read_only","stop_reason":null,"supplier_calls":4,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":0,"wire_context":{"date_from":"2026-11-11","date_to":"2026-11-11","nights_from":9,"nights_to":9}},{"acquisition_state":"completed","actions":{"search_results":1,"search_start":1,"search_status":1},"batches":[{"batch":1,"returned_anex_hotels":0,"search_complete":true,"sent":9}],"cohort":"anex-next-fcb0ccc19be1929c","context_origin":"saved_user_search_exact_date_nights","continuation_scope_sha256":"175e28a9cd21dc15ec9aed34d6acb0444370374116c3fbe38062715b519958b3","control_source_sha":"82e33153b0c9897afbd875bc21a3d4c3807e393b","database_writes":0,"edge_states":{},"edges":[],"global_usage":"not_measured","mapping_writes":0,"new_accepted_mappings":0,"no_replay":true,"operation_id":"int-andromeda-match-retained-acquire-20261020-v8","operator_account_binding":null,"parent_evidence_sha256":"fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57","parent_receipt_sha256":"627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9","physical_http_reservations":3,"quota_before":{"physical_http_attempts":57,"provider_day":"2026-10-20","tariff_search_units":17},"safe_to_write_now":false,"scope_id":"fcb0ccc19be1929cbed8608244f1b47d853525f73c215c5c4588f85b8d95529f","selected_hotels":9,"selected_id_sha256":"e5894225eb18e3e026c3cbd83bc77b200ca63680a738ca0e981387a7376e21ba","selection_reservation_sha256":"e027bb376d9f4cb29af50e7d35c040d751d53b3957bc8cfa96e85305f2780e35","source_sha":"df8183e5047f33f2495fe23a42bfd8fe7caa6567","state":"acquired_retained_native_read_only","stop_reason":null,"supplier_calls":3,"target_operation_id":"int-andromeda-match-retained-current-20261020-v2","tariff_search_units":1,"unknown_http_calls":0,"wire_context":{"date_from":"2026-10-21","date_to":"2026-10-21","nights_from":5,"nights_to":5}}]''')
+        baseline_by_op={x['operation_id']:x for x in baseline_data}
+        scope=self.members[1];sibling=self.members[0];policy=self.policies[scope['cohort']];_,command,_=self.parse(scope)
+        history=scope['exclusion_history']+scope['context_history']
+        self.assertEqual(3,sum(x['unknown_http_calls'] for x in baseline_data))
+        self.assertEqual(set(x['operation_id'] for x in history),set(baseline_by_op))
+        for entry in history:
+            self.assertEqual(entry['evidence_sha256'],hashlib.sha256(a.canonical(baseline_by_op[entry['operation_id']])).hexdigest())
+        with tempfile.TemporaryDirectory() as td:
+            base=Path(td);private=base/'private';private.mkdir();home=base/'home';(home/'.anytoour-match').mkdir(parents=True)
+            claims={'TOURVISOR_ANEX_JWT:13:'+str(h):{'state':'prior'} for h in scope['prior_selected_hotel_ids']}
+            claims.update({'TOURVISOR_ANEX_JWT:13:'+str(h):{'state':'reserved_before_http_no_replay','operation_id':sibling['operation_id']} for h in sibling['selected_tv_hotel_ids']})
+            (home/'.anytoour-match/retained-selection-claims.json').write_bytes(a.canonical({'schema_version':1,'claims':claims}))
+            stage=base/'stage';current_path=stage/m.CATALOGUE_PATH;current_path.parent.mkdir(parents=True);current_path.write_bytes(self.raw)
+            def fixture(name,data,ids,wire=None,country=1,departure=1,adults=2):
+                target=private/name;target.mkdir()
+                source=data['source_sha'];digest=hashlib.sha256(a.canonical(data)).hexdigest()
+                wrapper={'status':'complete','mode':'match-retained-acquire','production_unchanged':True,
+                         'operation_id':name,'source_sha':source,'database_writes':0,'mapping_writes':0,
+                         'match_retained':{'data':data,'evidence_sha256':digest}}
+                for filename,value in [('result.json',wrapper),('reservation.json',{'operation_id':name,'source_sha':source}),
+                                       ('acquisition-plan.json',{'hotel_ids':ids})]:
+                    (target/filename).write_bytes(a.canonical(value))
+                wire=wire or data.get('wire_context') or {'date_from':'2099-01-01','date_to':'2099-01-01','nights_from':7,'nights_to':7}
+                for number in range(1,data['physical_http_reservations']+1):
+                    params={'hotelIds':ids[:30],'operatorIds':[13],'countryId':country,'departureId':departure,'adults':adults,'childs':[],
+                            'dateFrom':wire['date_from'],'dateTo':wire['date_to'],'nightsFrom':wire['nights_from'],'nightsTo':wire['nights_to']}
+                    value={'action':'search_start' if number<=data['tariff_search_units'] else 'search_status','path':'/tours/search','params':params}
+                    (target/('request-%04d.json'%number)).write_bytes(a.canonical(value))
+                return target
+            for entry in history:
+                fixture(entry['operation_id'],baseline_by_op[entry['operation_id']],entry['selected_tv_hotel_ids'])
+            old_raw=json.dumps({'schema_version':1,'kind':'retained_never_selected_catalogue','scopes':[sibling]},indent=1).encode()+b'\n'
+            old_digest=hashlib.sha256(old_raw).hexdigest()
+            self.assertNotEqual(policy['catalogue_sha256'],old_digest)
+            member_digest=hashlib.sha256(a.canonical(sibling)).hexdigest()
+            sibling_data={'operation_id':sibling['operation_id'],'source_sha':SHA,'acquisition_state':'completed','unknown_http_calls':0,
+                          'scope_id':sibling['scope_id'],'continuation_scope_sha256':member_digest,'continuation_catalogue_sha256':old_digest,
+                          'cohort':sibling['cohort'],'target_operation_id':scope['parent_operation_id'],'parent_evidence_sha256':scope['parent_evidence_sha256'],
+                          'wire_context':sibling['wire_context'],'context_origin':sibling['context_origin'],'selected_hotels':sibling['selected_count'],
+                          'selected_id_sha256':hashlib.sha256(json.dumps(sibling['selected_tv_hotel_ids'],separators=(',',':')).encode()).hexdigest(),
+                          'supplier_calls':3,'physical_http_reservations':3,'tariff_search_units':1,'actions':{'search_start':1,'search_status':1,'search_results':1},
+                          'search_complete':True,'safe_to_write_now':False,'database_writes':0,'mapping_writes':0}
+            target=fixture(sibling['operation_id'],sibling_data,sibling['selected_tv_hotel_ids'],sibling['wire_context'],sibling['country_id'],sibling['departure_id'],sibling['adults'])
+            old_path=target/'source'/m.CATALOGUE_PATH;old_path.parent.mkdir(parents=True);old_path.write_bytes(old_raw)
+            (target/'source/manifest.json').write_bytes(a.canonical({'schema_version':1,'files':{m.CATALOGUE_PATH:old_digest}}))
+            space=self.remote_space(policy,command,private)
+            protected={p:p.read_bytes() for p in base.rglob('*.json')}
+            with mock.patch.dict(os.environ,{'HOME':str(home)}):
+                before,requests=space['retained_catalogue_history'](scope,stage)
+                after,rechecked=space['retained_catalogue_history'](scope,stage)
+            self.assertEqual(before,after);self.assertEqual(requests,rechecked)
+            self.assertEqual(19,len(requests));self.assertEqual(old_digest,before[sibling['operation_id']]['catalogue'])
+            self.assertEqual(protected,{p:p.read_bytes() for p in base.rglob('*.json')})
+            reservation=target/'reservation.json';reservation.write_bytes(reservation.read_bytes()+b'\n')
+            with mock.patch.dict(os.environ,{'HOME':str(home)}):changed,_=space['retained_catalogue_history'](scope,stage)
+            self.assertNotEqual(before,changed)  # The caller's post-child snapshot comparison must stop on this drift.
+            request_path=target/'request-0001.json';request=json.loads(request_path.read_bytes());request['params']['dateFrom']='2099-02-02'
+            request_path.write_bytes(a.canonical(request))
+            with mock.patch.dict(os.environ,{'HOME':str(home)}),self.assertRaisesRegex(ValueError,'catalogue_sibling_wire'):
+                space['retained_catalogue_history'](scope,stage)
+
 if __name__=='__main__':unittest.main()
+
