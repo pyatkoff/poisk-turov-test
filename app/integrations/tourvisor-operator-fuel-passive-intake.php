@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/tourvisor-operator-fuel-retained-intake.php';
 require_once __DIR__ . '/operator-fuel-rule-store.php';
-require_once dirname(__DIR__, 2) . '/v2/data/db-v1.php';
 
 /**
  * Response-transparent bridge for the already executed Search3 tour -> flights flow.

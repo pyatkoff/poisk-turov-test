@@ -225,8 +225,16 @@ function tourvisor_autosave_results(int $searchId, int $limit, array $response):
 /** Existing private Andromeda searches directory is the single INT evidence store. */
 function tourvisor_fuel_passive_runtime(): ?array
 {
-    if (!class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', false)
-        || !function_exists('v2_data_db')) return null;
+    if (!class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', false)) return null;
+    // The deployed gateway and private runtime can have different physical DB
+    // helpers. Reuse a complete loaded set; never redeclare or complete a partial set.
+    $helpers = ['v2_data_db_config', 'v2_data_db', 'v2_data_normalize_text', 'v2_data_slug'];
+    $loaded = count(array_filter($helpers, 'function_exists'));
+    if ($loaded === 0) {
+        require_once __DIR__ . '/data/db-v1.php';
+    } elseif ($loaded !== count($helpers)) {
+        return null;
+    }
     $private = __DIR__ . '/.andromeda-private.php';
     if (!is_file($private) || is_link($private)) return null;
     $config = require $private;

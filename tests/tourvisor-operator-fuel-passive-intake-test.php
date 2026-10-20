@@ -113,6 +113,47 @@ foreach (['tour','flights'] as $action) {
     tvpf_ok(strpos($body,'tv_get(')<strpos($body,'tourvisor_fuel_passive_')&&strpos($body,'tourvisor_fuel_passive_')<strpos($body,'out($data);'),$action.' response-transparent order');
 }
 
+// Exercise the actual helper include and gateway runtime in fresh PHP processes.
+// Two physical copies of the DB helper must not redeclare its global functions.
+$gatewayDirectory = $root.'/gateway';
+mkdir($gatewayDirectory.'/data',0700,true);
+$dbSource = __DIR__.'/../v2/data/db-v1.php';
+copy($dbSource,$gatewayDirectory.'/data/db-v1.php');
+$preloadedDb = $root.'/db-preloaded.php';
+copy($dbSource,$preloadedDb);
+$runtimeStart = strpos($api,'function tourvisor_fuel_passive_runtime(');
+$runtimeEnd = strpos($api,'function tourvisor_fuel_passive_tour(',$runtimeStart===false?0:$runtimeStart);
+tvpf_ok($runtimeStart!==false&&$runtimeEnd!==false&&$runtimeEnd>$runtimeStart,'runtime function bounds');
+$runtime = str_replace('__DIR__',var_export($gatewayDirectory,true),substr($api,$runtimeStart,$runtimeEnd-$runtimeStart));
+$passivePath = realpath(__DIR__.'/../app/integrations/tourvisor-operator-fuel-passive-intake.php');
+foreach (['absent','none','complete','partial'] as $case) {
+    $child = '$case='.var_export($case,true).';$preloaded='.var_export($preloadedDb,true).';'
+        .'$helper='.var_export($passivePath,true).';$runtime='.var_export($runtime,true).';'
+        . <<<'CHILD'
+$helpers=['v2_data_db_config','v2_data_db','v2_data_normalize_text','v2_data_slug'];
+if($case==='complete') require $preloaded;
+if($case==='partial') eval('function v2_data_db_config(): array { throw new RuntimeException("DB must not be called"); }');
+if($case!=='absent') require $helper;
+$before=count(array_filter($helpers,'function_exists'));
+if($before!==($case==='complete'?4:($case==='partial'?1:0))) throw new RuntimeException('Helper loaded DB globals');
+eval($runtime);
+if(tourvisor_fuel_passive_runtime()!==null) throw new RuntimeException('Unexpected configured runtime');
+$after=count(array_filter($helpers,'function_exists'));
+if($after!==($case==='none'||$case==='complete'?4:($case==='partial'?1:0))) throw new RuntimeException('Runtime helper readiness');
+if($case==='complete'&&(new ReflectionFunction('v2_data_db'))->getFileName()!==$preloaded) throw new RuntimeException('Loaded DB helper replaced');
+echo json_encode(['case'=>$case,'before'=>$before,'after'=>$after,'db_calls'=>0],JSON_THROW_ON_ERROR);
+CHILD;
+    $process = proc_open([PHP_BINARY,'-n','-d','allow_url_fopen=0','-r',$child],
+        [0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes);
+    tvpf_ok(is_resource($process),$case.' subprocess starts');
+    fclose($pipes[0]);$stdout=stream_get_contents($pipes[1]);$stderr=stream_get_contents($pipes[2]);
+    fclose($pipes[1]);fclose($pipes[2]);$status=proc_close($process);
+    tvpf_ok($status===0&&$stderr==='',$case.' include/runtime must be clean: '.$stderr);
+    $result=json_decode($stdout,true,8,JSON_THROW_ON_ERROR);
+    tvpf_ok(($result['case']??null)===$case&&($result['db_calls']??null)===0,$case.' no database access');
+}
+unlink($gatewayDirectory.'/data/db-v1.php');rmdir($gatewayDirectory.'/data');rmdir($gatewayDirectory);unlink($preloadedDb);
+
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4\n";
