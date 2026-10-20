@@ -674,6 +674,8 @@ TV_DIAGNOSTIC_EXPECTED={**CHECKED_EXPECTED,
  'api-v2.php':'2d92cba5cee08d4d112255ebcddf0cd0f4b023a5233761ace27453337385e3be',
  'data/local-tv-catalog-v1.php':'9dc60eb39100126d97307b83083d6a1b190cfdf8f684a18af47d8edd87b1c3b5'}
 TV_DIAGNOSTIC_PROTECTED=DEPENDENCY_PROTECTED
+TV_DIAGNOSTIC_CONTROL_PATHS=(CHECKED_WORKFLOW,'scripts/deploy/search3_root_gateway_install.py','tests/search3_root_gateway_install_test.py')
+TV_DIAGNOSTIC_CONTROL_DEPTH=16
 
 def tv_diagnostic_event(event,env):
  need(env.get('GITHUB_REPOSITORY')==REPO and event.get('repository',{}).get('full_name')==REPO,'repository')
@@ -689,15 +691,41 @@ def tv_diagnostic_event(event,env):
  need(comment.get('body')==f'{TV_DIAGNOSTIC_PREFIX} {control} {TV_DIAGNOSTIC_OPERATION}','command')
  return {'control_source_sha':control,'run_id':run_id,'command_comment_id':comment['id']}
 
+def tv_diagnostic_reviewed_control(control_sha):
+ def owned_blobs(head):
+  values={}
+  for path in TV_DIAGNOSTIC_CONTROL_PATHS:
+   item=checked_api('/contents/'+path+'?ref='+head);digest=item.get('sha')
+   need(item.get('type')=='file' and isinstance(digest,str) and re.fullmatch(r'[a-f0-9]{40}',digest) is not None,'control_owned_blob')
+   values[path]=digest
+  return values
+ current=owned_blobs(control_sha);head=control_sha;seen=set()
+ for _ in range(TV_DIAGNOSTIC_CONTROL_DEPTH):
+  need(isinstance(head,str) and re.fullmatch(r'[a-f0-9]{40}',head) is not None and head not in seen,'control_ancestry')
+  seen.add(head);commit=checked_api('/git/commits/'+head);parents=commit.get('parents');tree=commit.get('tree',{}).get('sha')
+  need(commit.get('sha')==head and isinstance(tree,str) and re.fullmatch(r'[a-f0-9]{40}',tree) is not None
+       and isinstance(parents,list) and len(parents)<=2
+       and all(isinstance(p,dict) and isinstance(p.get('sha'),str) and re.fullmatch(r'[a-f0-9]{40}',p['sha']) is not None for p in parents),'control_ancestry')
+  if len(parents)==2:
+   reviewed_sha=parents[1]['sha'];reviewed=checked_api('/git/commits/'+reviewed_sha)
+   need(reviewed.get('sha')==reviewed_sha and isinstance(reviewed.get('tree',{}).get('sha'),str)
+        and re.fullmatch(r'[a-f0-9]{40}',reviewed['tree']['sha']) is not None,'control_ancestry')
+   if reviewed['tree']['sha']==tree and owned_blobs(reviewed_sha)==current:
+    try:
+     for name in ('guard','contracts','tv-diagnostic-contracts'):dependency_green_check(reviewed_sha,name,'source_ci')
+    except RuntimeError as exc:
+     if str(exc)!='source_ci':raise
+    else:return {'merge_sha':head,'source_sha':reviewed_sha,'owned_blobs':current}
+  if not parents:break
+  head=parents[0]['sha']
+ raise RuntimeError('reviewed_control_missing')
+
 def tv_diagnostic_admission(identity):
  need(re.fullmatch(r'[a-f0-9]{40}',TV_DIAGNOSTIC_RELEASE) is not None and bool(TV_DIAGNOSTIC_CHECK_IDS),'diagnostic_pins_incomplete')
  need(checked_api('/git/ref/heads/main')['object']['sha']==identity['control_source_sha'],'main_moved')
  need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==TV_DIAGNOSTIC_RELEASE,'release_moved')
- control=checked_api('/git/commits/'+identity['control_source_sha']);need(len(control['parents'])==2,'reviewed_merge_required')
- reviewed=checked_api('/git/commits/'+control['parents'][1]['sha'])
- need(reviewed['tree']['sha']==control['tree']['sha'],'reviewed_tree')
- for head,names,reason in ((reviewed['sha'],('guard','contracts','tv-diagnostic-contracts'),'source_ci'),(identity['control_source_sha'],('guard',),'main_ci')):
-  for name in names:dependency_green_check(head,name,reason)
+ dependency_green_check(identity['control_source_sha'],'guard','main_ci')
+ tv_diagnostic_reviewed_control(identity['control_source_sha'])
  item=checked_api('/contents/v2/api-v2.php?ref='+TV_DIAGNOSTIC_SOURCE)
  candidate=base64.b64decode(item['content'],validate=False)
  need(item['sha']==TV_DIAGNOSTIC_BLOB and blob(candidate)==TV_DIAGNOSTIC_BLOB and sha(candidate)==TV_DIAGNOSTIC_HASH and len(candidate)==TV_DIAGNOSTIC_BYTES,'candidate_bytes')
