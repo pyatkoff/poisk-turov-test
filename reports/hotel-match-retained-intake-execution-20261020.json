@@ -815,7 +815,7 @@
   },
   "retained_intake_stage_new_accepted_mappings": 0,
   "aggregate_scope": "Historical committed7/readback/samecohort CURRENT + sealed55/22 partial acquisitions + owner-authorized newdate25 partialUNKNOWN; no newlinks after historical7",
-  "updated_at_utc": "2026-10-20T09:05:44.808074+00:00",
+  "updated_at_utc": "2026-10-20T09:53:24.000Z",
   "current_acquisition_acceptance": {
     "current_before": {
       "run_id": 39348390675,
@@ -4441,7 +4441,7 @@
   },
   "current_supplier_lane_hold": {
     "reason": "Three independent transport TimeoutError acquisitions: Thailand55 result, SriLanka22 start, owner-authorized Thailand25 new-date start; underlying cause not established",
-    "recovery_dependency": "INT retained log/recovery handoff or new explicit bounded context authority; owner20Oct10:31 single-newdate hypothesis now consumed",
+    "recovery_dependency": "Accepted INT/provider phase-resolved transport/recovery evidence;30s deadline-pressure hypothesis now supported by retained capture timings but root cause remains unestablished. Original single alternate-date hypothesis consumed.",
     "no_further_paid_attempts_this_pass": true,
     "all_match_paused": false,
     "automation_disabled": false,
@@ -4452,7 +4452,8 @@
       "Existing report receipt persistence; no zero-gain CURRENT reread",
       "Exact savedTV8038 structure and semantic projection completed with0supplierHTTP; no scalar/JSONnumeric selector identity, HOLD preserved",
       "Context-aware one-start30HTTP mechanism checked41tests incl3actualMySQL; original182hotelledger and allUNKNOWN preserved",
-      "One original newdate hypothesis actually attempted after protectedslot becamefree; firstTimeoutError stopped supplierphase, UNKNOWN charged"
+      "One original newdate hypothesis actually attempted after protectedslot becamefree; firstTimeoutError stopped supplierphase, UNKNOWN charged",
+      "Verified passive readback-v6 reconciled failed diagnostic-v5 without replay:47 metadata/44HTTP200/3UNKNOWN near30.2s; separate ANEXselector and absentexp; protected ledgers unchanged;0newHTTP/DB/mapping."
     ],
     "missing_common4_authority": "Only operator13/anextour live binding proven; other operator access/namespace bridges still require independent proof",
     "old_native_absent3": "Independent native/property+LOCAL/TV bridge/canonical anchor missing; no replay of saved proof passes"
@@ -4858,5 +4859,197 @@
     "no_replay": true,
     "remaining_hotel_only_ever_selected": 182,
     "remaining_never_selected_snapshot": 431
+  },
+  "passive_transport_diagnostic_20261020": {
+    "current_coordination_issue": 4709,
+    "journal_rollover": {
+      "old_issue": 4217,
+      "technical_failure": "GitHub comment cap2500/API403 before comment/event creation",
+      "pr": 4710,
+      "source_sha": "a256d21702a267aa7cd1378a03ba7ae34e582c51",
+      "merged_main_sha": "556e574ec760f4f3c92da356e8ac7c6164c4460a",
+      "verified_merge_tree": "5801c680d5b12f28f45b0601e10c3a602ca38c5c",
+      "security_run": 39402676132,
+      "native_ci_run": 39402676152,
+      "other_publishers_not_implicitly_migrated": true,
+      "old_claims_and_no_replay_preserved": true
+    },
+    "initial_diagnostic": {
+      "code_pr": 4708,
+      "command_comment_id": 6288139564,
+      "run_id": 39402993207,
+      "execute_job": 118562033055,
+      "artifact_id": 12256411557,
+      "zip_sha256": "ffe40adccd0b882948ec58b293b9158ea2d910c14f378f12b6d4214e8c776773",
+      "json_sha256": "fae60148e6fb4014252155a2fa8dbcb7f64660ebd6f0440884e0e2b2488bd903",
+      "canonical_private_receipt_sha256": "1f74aa9e3f900d06c2277fc95683893d13ad95e38de3c59121a547caf066e305",
+      "operation_id": "int-andromeda-match-retained-readback-20261020-v5",
+      "source_sha": "78f029da7522bc97051904770e7c077bbe1b985e",
+      "control_source_sha": "556e574ec760f4f3c92da356e8ac7c6164c4460a",
+      "status": "unknown_no_replay",
+      "reason": "name 'Path' is not defined",
+      "diagnostic_code_defect": "Fixture injected Path alias absent from stock remote globals",
+      "supplier_calls": 0,
+      "database_writes": 0,
+      "mapping_writes": 0,
+      "lead_calls": 0,
+      "booking_calls": 0,
+      "was_replayed": false
+    },
+    "repair": {
+      "pr": 4711,
+      "source_sha": "963cdc42fc1f45c8cea48cb77a2dedc851fbc66c",
+      "tree_sha": "35f8b2c19aad84310b335aec4754199ad6d59b1e",
+      "purpose": "Exact read-only reconciliation of failed diagnostic-v5, then passive retained metadata inspection; old failure preserved",
+      "supplier_calls": 0,
+      "database_writes": 0,
+      "mapping_writes": 0,
+      "merged_main_sha": "3f7500cd4a41e7493723b550a47dd296edfb9b46",
+      "security_run": 39403570996,
+      "native_ci_run": 39403571014,
+      "native_retained_tests": 45,
+      "native_skips": 0,
+      "concrete_self_review_comment": 6288256187,
+      "merge_tree_and_parents_verified": true
+    },
+    "status": "EXECUTED_VERIFIED_READ_ONLY_CAUSE_NOT_ESTABLISHED",
+    "actual_reconciliation": {
+      "operation_id": "int-andromeda-match-retained-readback-20261020-v6",
+      "target_operation_id": "int-andromeda-match-retained-readback-20261020-v5",
+      "cohort": "anex-next-ee68d11668a22e84",
+      "source_sha": "78f029da7522bc97051904770e7c077bbe1b985e",
+      "control_source_sha": "3f7500cd4a41e7493723b550a47dd296edfb9b46",
+      "command_comment_id": 6288257651,
+      "run_id": 39403842917,
+      "execute_job": 118564854472,
+      "artifact_id": 12255722420,
+      "zip_sha256": "6b5c479727d3770be2cb76c2868ff17d812353d07634c99286537e8a5c1d1502",
+      "json_sha256": "aa8cc012474b6bef43daa36bf74c5f30c77c2b2d19991a5dac0b96281ea84b6c",
+      "canonical_private_receipt_sha256": "0628c57aec3e015c11e96f2d89f9b66b1f932776944fbfec6fc44ade516338ec",
+      "evidence_sha256": "94df79e8b43b5cce7e02749377bcfff7ad05d22eba08b8c8d127297613bcf168",
+      "status": "complete",
+      "state": "retained_transport_inspected_read_only",
+      "production_unchanged": true,
+      "supplier_calls": 0,
+      "database_writes": 0,
+      "mapping_writes": 0,
+      "new_accepted_mappings": 0,
+      "failed_operation_status": "unknown_no_replay",
+      "failed_operation_receipt_sha256": "1f74aa9e3f900d06c2277fc95683893d13ad95e38de3c59121a547caf066e305",
+      "failed_operation_replayed": false,
+      "known_lineage_http_attempts": 47,
+      "known_lineage_unknown": 3,
+      "protected_inputs_unchanged": true,
+      "protected_ledger_sha256": {
+        "account_day": "a191fcffe92a598c8fbf4b93e361070a057e71df7056a4976d29d17a89806272",
+        "context_selection": "b4bae2f3d2c6c8f23661c130dda750a714d55ec7371051602f9d5dace26e16ea",
+        "hotel_selection": "298b16959c85511bd2d5ccb261f44041b643cec266e509e1a1f628e427faacf5"
+      },
+      "current_config_sha256": "121839ce1956ec7a48f0a94758e2c2359293ee01d601c69f720a294c4bda7def",
+      "current_config_file_mtime_utc": "2026-09-12T08:54:49.731288+00:00",
+      "current_account_metadata": {
+        "capture_epoch_seconds": 1792490004,
+        "configured": true,
+        "expired_at_capture": null,
+        "expiry_epoch_seconds": null,
+        "jwt_claims_parseable": true,
+        "matches_default_token": false
+      },
+      "metadata_signature_verified": false,
+      "config_metadata_is_current_not_historical": true,
+      "raw_response_bodies_read": false,
+      "http_status_counts": {
+        "200": 44,
+        "None": 3
+      },
+      "failure_timings": [
+        {
+          "action": "search_results",
+          "failure_phase": "not_recorded",
+          "http_status": null,
+          "operation_id": "int-andromeda-match-retained-acquire-20261020-v2",
+          "request_file_mtime_utc": "2026-10-20T08:01:56.502830+00:00",
+          "request_number": 7,
+          "request_sha256": "155f6e519b12290021c91b5104de2294daa4a62373bbf02c3a99cba828fa4658",
+          "request_to_terminal_file_ms": 30180.793,
+          "response_capture_lag_ms": null
+        },
+        {
+          "action": "search_start",
+          "failure_phase": "not_recorded",
+          "http_status": null,
+          "operation_id": "int-andromeda-match-retained-acquire-20261020-v3",
+          "request_file_mtime_utc": "2026-10-20T08:15:53.439218+00:00",
+          "request_number": 1,
+          "request_sha256": "95c9e796244e4b41833811a0b896a45ac60d0fbda427e81db9983ba17137c355",
+          "request_to_terminal_file_ms": 30160.8,
+          "response_capture_lag_ms": null
+        },
+        {
+          "action": "search_start",
+          "failure_phase": "not_recorded",
+          "http_status": null,
+          "operation_id": "int-andromeda-match-retained-acquire-20261020-v4",
+          "request_file_mtime_utc": "2026-10-20T09:03:04.318472+00:00",
+          "request_number": 1,
+          "request_sha256": "60229e281ae81dbbcfad47231fdf44046e18731f8af4e2eae34b0b828543e899",
+          "request_to_terminal_file_ms": 30218.803,
+          "response_capture_lag_ms": null
+        }
+      ],
+      "response_capture_lag_by_action": {
+        "search_start": {
+          "n": 12,
+          "min_ms": 162.999,
+          "median_ms": 179.999,
+          "max_ms": 29830.795
+        },
+        "search_status": {
+          "n": 12,
+          "min_ms": 147.999,
+          "median_ms": 160.499,
+          "max_ms": 10632.927
+        },
+        "search_results": {
+          "n": 11,
+          "min_ms": 154.999,
+          "median_ms": 163.999,
+          "max_ms": 25227.827
+        },
+        "tour_detail": {
+          "n": 9,
+          "min_ms": 175.999,
+          "median_ms": 181.999,
+          "max_ms": 8646.941
+        }
+      },
+      "timing_scope": "filesystem capture lag includes local work/fsync; terminal lag is not network latency",
+      "historical_network_phase_recorded": false,
+      "cause_established": false
+    },
+    "findings": {
+      "http_200_responses": 44,
+      "unknown_without_saved_response": 3,
+      "unknown_request_to_terminal_ms": [
+        30180.793,
+        30160.8,
+        30218.803
+      ],
+      "slow_successful_search_start_capture_ms": 29830.795,
+      "current_anex_selector_configured": true,
+      "current_selector_differs_from_default": true,
+      "jwt_payload_parseable": true,
+      "jwt_expiry_claim_absent": true,
+      "token_expired": "not_established",
+      "client_deadline_seconds": 30,
+      "comparison_saved_probe_deadline_seconds": 55,
+      "comparison_standard_php_deadline_seconds": 60,
+      "interpretation": "All three missing responses terminate near the configured30s deadline; one200 search_start took29.831s to capture. This supports a deadline-pressure hypothesis, not a proved network/provider root cause. Filesystem times include local capture/fsync; no DNS/connect/headers/body phase was recorded.",
+      "global_account_usage": "not_measured",
+      "new_paid_requests_authorized_by_this_readback": false
+    },
+    "next_missing_fact": "Phase-resolved transport observation or accepted INT/provider recovery diagnosis on the same ANEX selector; not another blind date/country probe or an assumption that the key expired. Existing30s timeout/auth/source contracts unchanged in this diagnostic packet.",
+    "canonical_receipt_comment": 6288301933,
+    "int_handoff_comment": 6288302299
   }
 }
