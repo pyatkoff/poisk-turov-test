@@ -758,6 +758,7 @@ class AcquisitionTest(unittest.TestCase):
                 self.assertEqual(raw,(directory/'response-0001.bin').read_bytes());raise ValueError('bad-json')
             with mock.patch.object(a.json,'loads',side_effect=parse):
                 with self.assertRaisesRegex(ValueError,'response_json_invalid'):client.call('search_results','/tours/search/123',{'limit':10000})
+            self.assertEqual(60,client.open.open.call_args.kwargs['timeout'])
             self.assertEqual(1,client.calls);self.assertEqual('reserve',events[0][0]);self.assertEqual('response_received',events[-1][1][-1])
             self.assertNotIn(client.token,(directory/'request-0001.json').read_text())
 
