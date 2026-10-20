@@ -41,6 +41,41 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def test_current_uses_complete_project_cohort_and_preserves_parent(self):
+        with tempfile.TemporaryDirectory() as td:
+            private=Path(td)/'private';name='int-andromeda-match-retained-project-20261020-v2'
+            target=private/name;target.mkdir(parents=True);child=private/'new-current';child.mkdir()
+            project=Path(td)/'project';project.mkdir();(project/'config.php').write_text('private config fixture')
+            projection={'state':'projected_read_only','cohort':'common4-retained','cohort_tv_hotel_ids':[100,200],
+                        'cohort_hotels':2,'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+            parent={'state':'reprojected_retained_read_only','operation_id':name,'source_sha':SHA,
+                    'projection':projection,'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+            prior={'status':'complete','mode':'match-retained-project','production_unchanged':True,
+                   'operation_id':name,'source_sha':SHA,'supplier_calls':0,'database_writes':0,'mapping_writes':0,
+                   'match_retained':{'data':parent,'evidence_sha256':hashlib.sha256(json.dumps(parent,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
+            (target/'result.json').write_text(json.dumps(prior));(target/'reservation.json').write_text(json.dumps({'operation_id':name,'source_sha':SHA}))
+            before={f.name:f.read_bytes() for f in target.iterdir()}
+            def fail(reason):raise ValueError(reason)
+            def run_current(*args,**kwargs):
+                scope=json.loads((child/'current-scope.json').read_text())
+                self.assertEqual([100,200],scope['tv_hotel_ids'])
+                value={'state':'current_retained_read_only','parent_receipt_sha256':scope['parent_receipt_sha256'],
+                       'cohort_hotels':2,'rows':[{'tv_hotel_id':100},{'tv_hotel_id':200}],
+                       'safe_to_write_now':False,'supplier_calls':0,'database_writes':0,'mapping_writes':0}
+                return subprocess.CompletedProcess(args,0,json.dumps(value),'')
+            space={'private':private,'project':project,'op':child,'operation':'int-andromeda-match-retained-current-20261020-v1',
+                   'source':SHA,'payload':{'target_operation_id':name,'cohort':'common4-retained','match_retained_control_sha':CONTROL},
+                   'result':{},'re':__import__('re'),'json':json,'hashlib':hashlib,'os':os,'subprocess':subprocess,'fail':fail,
+                   'safe_json':lambda path,bound:json.loads(path.read_text()),
+                   'safe_file':lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound}
+            exec(m.REMOTE_HANDLER,space)
+            with mock.patch.object(subprocess,'run',side_effect=run_current):
+                result=space['current_retained_target'](SOURCE)
+            self.assertEqual('current_retained_read_only',result['data']['state'])
+            self.assertEqual(before,{f.name:f.read_bytes() for f in target.iterdir()})
+            prior['status']='unknown_no_replay';(target/'result.json').write_text(json.dumps(prior))
+            with self.assertRaisesRegex(ValueError,'parent_not_complete'):space['current_retained_target'](SOURCE)
+
     def test_saved_projection_requires_complete_parent_and_preserves_its_files(self):
         with tempfile.TemporaryDirectory() as td:
             private=Path(td)/'private';target=private/OP;target.mkdir(parents=True)
@@ -97,8 +132,8 @@ class ContractTest(unittest.TestCase):
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP}[mode]
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode in ('match-retained-readback','match-retained-project') else '')
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1'}[mode]
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current') else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -120,11 +155,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP}[mode]
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+OP if mode in ('match-retained-readback','match-retained-project') else ''))
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1'}[mode]
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current') else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
@@ -293,6 +328,38 @@ class ProjectionTest(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL contract runs in stock CI')
 class NativeMySQLTest(unittest.TestCase):
+    def test_current_resolver_manual_exclusion_context_and_scope(self):
+        code=r'''define('MATCH_RETAINED_CURRENT_LIBRARY_ONLY',true);require $argv[1];
+        $db=new PDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+        $name='match_current_test_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+        try{
+          $db->exec('CREATE TABLE catalog_hotels(id INT PRIMARY KEY,name TEXT,country_id INT,country_name TEXT,region_id INT,region_name TEXT,subregion_id INT,subregion_name TEXT,category TEXT,latitude DECIMAL(10,7),longitude DECIMAL(10,7),is_active INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_hotel_search_mappings(anex_hotel_id INT,catalog_hotel_id INT,match_class TEXT,approval_policy TEXT,enabled INT,scope TEXT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_hotel_decisions(anex_hotel_id INT,decision_status TEXT,catalog_hotel_id INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_review_pair_exclusions(anex_hotel_id INT,catalog_hotel_id INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE andromeda_hotel_identities(supplier_namespace VARCHAR(80),external_hotel_id VARCHAR(80),local_hotel_id INT,decision_status VARCHAR(40),catalog_sha256 CHAR(64),evidence_sha256 CHAR(64),evidence_json TEXT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE tour_price_observations(hotel_id INT,departure_id INT,country_id INT,departure_date DATE,nights INT,adults INT,children_count INT,child_ages_signature TEXT,observed_at DATETIME,source TEXT) ENGINE=InnoDB');
+          $st=$db->prepare("INSERT INTO catalog_hotels VALUES(?,'Fixture',4,?,1,'Region',1,'Subregion','5',36,32,1)");
+          foreach([100,200,300,400,500,900] as $id)$st->execute([$id,$id===500?'Russia':'Turkey']);
+          $db->exec("INSERT INTO anex_hotel_search_mappings VALUES(1,100,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(2,200,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(3,400,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview')");
+          $db->exec("INSERT INTO anex_hotel_decisions VALUES(2,'rejected',NULL)");$db->exec('INSERT INTO anex_review_pair_exclusions VALUES(3,400)');
+          $st=$db->prepare("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog',?,?,'accepted',?,?,?)");
+          foreach([200,300,400] as $id)$st->execute([(string)$id,$id,str_repeat('a',64),hash('sha256','{}'),'{}']);
+          $db->exec("INSERT INTO tour_price_observations VALUES(200,1,4,'2026-11-02',7,2,0,'','2026-10-19','user_search'),(300,1,4,'2026-10-01',7,2,0,'','2026-10-19','user_search'),(400,1,4,'2026-11-03',7,2,0,'','2026-10-19','background'),(400,1,4,'2026-11-10',7,2,0,'','2026-10-18','user_search'),(900,1,4,'2026-11-02',7,2,0,'','2026-10-19','user_search')");
+          $result=MatchRetainedCurrentV1::run($db,['tv_hotel_ids'=>[100,200,300,400,500,999],'parent_receipt_sha256'=>str_repeat('b',64)],'2026-10-20');
+          echo json_encode($result,JSON_THROW_ON_ERROR);
+        }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
+        run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_current_v1.php')],capture_output=True,text=True,timeout=60)
+        self.assertEqual(0,run.returncode,run.stderr);data=json.loads(run.stdout)
+        self.assertEqual(1,data['direct_anex_global_effective_native_ids'])
+        self.assertEqual(1,data['direct_anex_effective_on_cohort']);self.assertEqual(2,data['acquisition_ready_count'])
+        rows={r['tv_hotel_id']:r for r in data['rows']}
+        self.assertNotIn(900,rows);self.assertEqual('future_context_missing',rows[300]['state'])
+        self.assertEqual('target_ineligible',rows[500]['state']);self.assertEqual('target_missing',rows[999]['state'])
+        self.assertEqual('2026-11-10',rows[400]['future_context']['departure_date'])
+        self.assertEqual([],rows[200]['direct_anex_native_ids']);self.assertEqual([],rows[400]['direct_anex_native_ids'])
+        self.assertFalse(data['safe_to_write_now'])
+
     def test_actual_read_only_snapshot_and_dml_rejection(self):
         code=r'''define('MATCH_RETAINED_LIBRARY_ONLY',true);require $argv[1];
         $db=new PDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);

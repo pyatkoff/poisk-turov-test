@@ -12,12 +12,17 @@ import tarfile
 MODES = {'match-retained-intake': 'common4-retained',
          'match-tourvisor-quota-policy': 'tourvisor-anex-5000',
          'match-retained-readback': 'common4-retained',
-         'match-retained-project': 'common4-retained'}
+         'match-retained-project': 'common4-retained',
+         'match-retained-current': 'common4-retained'}
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
                 'scripts/diagnostics/hotel_match_retained_projection_v1.py',
                 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py',
-                'v2/data/db-v1.php')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'}
+                'v2/data/db-v1.php',
+                'scripts/diagnostics/hotel_match_retained_current_v1.php',
+                'scripts/diagnostics/hotel_match_anex_effective_coverage.php',
+                'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php',
+                'app/integrations/anex-search-mapping-registry.php')
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'c71cc9e0121819903905066d164cba52df65ed47b4084e5fcf5a8b5a9b161881', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814'}
 
 
 def need(value, reason):
@@ -33,18 +38,18 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
-        target_mode = parts[1] in ('match-retained-readback','match-retained-project')
+        target_mode = parts[1] in ('match-retained-readback','match-retained-project','match-retained-current')
         need(len(parts) == (5 if target_mode else 4), 'retained_command_arity')
         source, mode, operation, cohort = parts[:4]
         need(core.SHA_RE.fullmatch(source) is not None, 'retained_source_sha')
-        prefix = 'retained-readback' if mode=='match-retained-readback' else 'retained-project' if mode=='match-retained-project' else 'retained' if mode == 'match-retained-intake' else 'quota5000'
+        prefix = 'retained-readback' if mode=='match-retained-readback' else 'retained-project' if mode=='match-retained-project' else 'retained-current' if mode=='match-retained-current' else 'retained' if mode == 'match-retained-intake' else 'quota5000'
         need(re.fullmatch(r'int-andromeda-match-' + prefix + r'-[0-9]{8}-v[1-9][0-9]*', operation) is not None,
              'retained_operation_scope')
         need(cohort == MODES[mode], 'retained_cohort')
         need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
         command = {'source_sha': source, 'mode': mode, 'operation_id': operation, 'cohort': cohort}
         if target_mode:
-            family='retained' if mode=='match-retained-project' else '(?:retained|quota5000)'
+            family='retained-project' if mode=='match-retained-current' else 'retained' if mode=='match-retained-project' else '(?:retained|quota5000)'
             need(re.fullmatch(r'int-andromeda-match-'+family+r'-[0-9]{8}-v[1-9][0-9]*', parts[4]) is not None,
                  'retained_readback_target')
             command['target_operation_id'] = parts[4]
@@ -78,6 +83,59 @@ def bundle_source(source_root):
 
 
 REMOTE_HANDLER = r'''
+def current_retained_target(stage):
+    name=payload.get('target_operation_id','')
+    if not re.fullmatch(r'int-andromeda-match-retained-project-[0-9]{8}-v[1-9][0-9]*',name):fail('current_parent_name')
+    target=private/name
+    if target.is_symlink() or target.resolve()!=target:fail('current_parent_path')
+    prior=safe_json(target/'result.json',32*1024*1024);reservation=safe_json(target/'reservation.json',65536)
+    parent=prior.get('match_retained',{}).get('data',{});projection=parent.get('projection',{})
+    if (prior.get('status')!='complete' or prior.get('mode')!='match-retained-project'
+            or parent.get('state')!='reprojected_retained_read_only'
+            or projection.get('state')!='projected_read_only' or projection.get('cohort')!='common4-retained'
+            or prior.get('production_unchanged') is not True
+            or any(x.get('operation_id')!=name for x in (prior,reservation,parent))
+            or prior.get('source_sha')!=reservation.get('source_sha') or parent.get('source_sha')!=prior.get('source_sha')
+            or hashlib.sha256(json.dumps(parent,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=prior.get('match_retained',{}).get('evidence_sha256')
+            or any(type(x.get(k)) is not int or x[k]!=0 for x in (prior,parent,projection) for k in ('supplier_calls','database_writes','mapping_writes'))):
+        fail('current_parent_not_complete')
+    ids=projection.get('cohort_tv_hotel_ids')
+    if (not isinstance(ids,list) or not 0<len(ids)<=10000 or any(type(v) is not int or v<1 for v in ids)
+            or ids!=sorted(set(ids)) or len(ids)!=projection.get('cohort_hotels')):fail('current_parent_cohort')
+    parent_hash=hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
+    scope={'tv_hotel_ids':ids,'parent_receipt_sha256':parent_hash}
+    fd=os.open(op/'current-scope.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(json.dumps(scope,sort_keys=True).encode());handle.flush();os.fsync(handle.fileno())
+    config=project/'config.php'
+    if not safe_file(config,1048576):fail('current_config_path')
+    before_hash=hashlib.sha256(config.read_bytes()).hexdigest()
+    env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
+    env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_SOURCE_ROOT=str(stage))
+    disabled='curl_exec,curl_multi_exec,fsockopen,pfsockopen,stream_socket_client,socket_create,socket_connect,exec,system,shell_exec,passthru,proc_open,popen'
+    run=subprocess.run(['php','-d','display_errors=0','-d','log_errors=0','-d','allow_url_fopen=0',
+        '-d','memory_limit=512M','-d','disable_functions='+disabled,
+        str(stage/'scripts/diagnostics/hotel_match_retained_current_v1.php')],cwd=project,env=env,capture_output=True,text=True,timeout=300)
+    if len(run.stdout.encode())>32*1024*1024:fail('current_output_bound')
+    fd=os.open(op/'current-raw.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(run.stdout.encode());handle.flush();os.fsync(handle.fileno())
+    if run.returncode or run.stderr.strip():
+        result['match_retained_child_failure']={'exit_code':run.returncode,'stdout_sha256':hashlib.sha256(run.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(run.stderr.encode()).hexdigest()}
+        fail('current_child_failed_no_replay')
+    data=json.loads(run.stdout)
+    if (data.get('state')!='current_retained_read_only' or data.get('parent_receipt_sha256')!=parent_hash
+            or data.get('cohort_hotels')!=len(ids) or [r.get('tv_hotel_id') for r in data.get('rows',[])]!=ids
+            or data.get('safe_to_write_now') is not False
+            or any(type(data.get(k)) is not int or data[k]!=0 for k in ('supplier_calls','database_writes','mapping_writes'))
+            or hashlib.sha256((target/'result.json').read_bytes()).hexdigest()!=parent_hash
+            or hashlib.sha256(config.read_bytes()).hexdigest()!=before_hash):fail('current_result_binding')
+    data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
+        cohort=payload['cohort'],target_operation_id=name,current_raw_sha256=hashlib.sha256(run.stdout.encode()).hexdigest(),
+        no_replay=True,new_database_reads=1)
+    raw_result=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
+    fd=os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle:handle.write(raw_result);handle.flush();os.fsync(handle.fileno())
+    return {'evidence_sha256':hashlib.sha256(raw_result).hexdigest(),'data':data}
+
 def project_retained_target(stage):
     target_name=payload.get('target_operation_id','')
     if not re.fullmatch(r'int-andromeda-match-retained-[0-9]{8}-v[1-9][0-9]*',target_name):fail('retained_projection_target')
@@ -157,6 +215,7 @@ def run_match_retained(stage):
             or not re.fullmatch(r'[a-f0-9]{40}',str(payload.get('match_retained_control_sha','')))):
         fail('retained_remote_scope')
     if mode=='match-retained-project':return project_retained_target(stage)
+    if mode=='match-retained-current':return current_retained_target(stage)
     config=project/'config.php';dbhelper=project/'data/db-v1.php'
     if not safe_file(config,1048576) or not safe_file(dbhelper,65536):fail('retained_config_paths')
     config_hash=hashlib.sha256(config.read_bytes()).hexdigest()
@@ -249,11 +308,12 @@ def completed_result(command, result, control_sha):
         for obj in (data, result):
             if any(type(obj.get(k)) is not int or obj[k] != 0 for k in ('supplier_calls','database_writes','mapping_writes')):
                 return False
-        if command['mode'] in ('match-retained-readback','match-retained-project') and data.get('target_operation_id')!=command.get('target_operation_id'):
+        if command['mode'] in ('match-retained-readback','match-retained-project','match-retained-current') and data.get('target_operation_id')!=command.get('target_operation_id'):
             return False
         expected = {'match-retained-intake':'captured_and_projected_read_only',
                     'match-tourvisor-quota-policy':'quota_policy_applied_no_supplier_calls',
-                    'match-retained-readback':'reconciled_read_only','match-retained-project':'reprojected_retained_read_only'}[command['mode']]
+                    'match-retained-readback':'reconciled_read_only','match-retained-project':'reprojected_retained_read_only',
+                    'match-retained-current':'current_retained_read_only'}[command['mode']]
         return (data.get('state')==expected and result['match_retained'].get('evidence_sha256')==
                 hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest())
     except (KeyError, TypeError, AttributeError):
@@ -263,7 +323,7 @@ def completed_result(command, result, control_sha):
 def activate(core, command):
     if command.get('mode') not in MODES:
         return
-    fields=('source_sha','mode','operation_id','cohort')+ (('target_operation_id',) if command.get('mode') in ('match-retained-readback','match-retained-project') else ())
+    fields=('source_sha','mode','operation_id','cohort')+ (('target_operation_id',) if command.get('mode') in ('match-retained-readback','match-retained-project','match-retained-current') else ())
     expected=core.parse_command(core.PREFIX+' '.join(str(command.get(k,'')) for k in fields))
     need(command==expected,'retained_command_shape')
     control=os.environ.get('GITHUB_SHA','')
@@ -278,7 +338,7 @@ def activate(core, command):
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
     remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
-    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','reconcile',")
+    remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','reconcile',")
     remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
     reservation='    op.mkdir(mode=0o700)\n'
     receipt="if 'op' in globals() and op.exists():"
