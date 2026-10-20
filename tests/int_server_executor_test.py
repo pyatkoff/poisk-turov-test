@@ -1805,6 +1805,192 @@ class PassiveFuelCurrentLayoutTest(unittest.TestCase):
                 if case=='substitution':self.assertEqual(b'foreign',foreign.read_bytes())
 
 
+class PublicationLockMetadataTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.LOCK_SOURCE,self.p.LOCK_MODE,self.p.LOCK_OPERATION])
+
+    def fixture(self,directory):
+        import pathlib
+        home=Path(directory);parent=home/'.anytoour-andromeda';parent.mkdir(mode=0o700)
+        leaf=parent/'grouped-search-update.lock';leaf.write_bytes(b'PRIVATE CONTENT MUST NOT BE READ')
+        leaf.chmod(0o600)
+        ns={'os':os,'home':home,'pathlib':pathlib};exec(self.p.LOCK_METADATA_REMOTE,ns)
+        return home,parent,leaf,ns['publication_lock_metadata']
+
+    def receipt(self,value):
+        before=dict.fromkeys(('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'),'a'*64)
+        return {**self.command,'status':'complete','runtime_changed':False,'production_unchanged':True,
+            'production_before':before,'production_after':before,
+            **dict.fromkeys(('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls'),0),
+            'publication_lock_metadata':value}
+
+    def test_existing_inode_metadata_without_data_open_read_write_or_lock(self):
+        import stat
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory)
+            before=leaf.lstat();original=os.open;flags=[]
+            def opened(path,value,*args,**kwargs):
+                flags.append(value)
+                self.assertTrue(value&os.O_PATH);self.assertTrue(value&os.O_NOFOLLOW)
+                self.assertFalse(value&(os.O_CREAT|os.O_TRUNC|os.O_WRONLY|os.O_RDWR))
+                return original(path,value,*args,**kwargs)
+            with (patch.object(os,'open',side_effect=opened),patch.object(os,'read',side_effect=AssertionError('data read')),
+                    patch.object(os,'write',side_effect=AssertionError('data write'))):
+                value=inspect()
+            self.assertEqual(3,len(flags));self.assertEqual('measured',value['status'])
+            self.assertEqual([],value['unsafe_predicates']);self.assertEqual(before,leaf.lstat())
+            self.assertEqual(stat.S_IMODE(before.st_mode),value['lock']['mode'])
+            self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+            text=json.dumps(value)
+            for forbidden in (str(home),'PRIVATE CONTENT','st_uid','st_ino','st_dev'):
+                self.assertNotIn(forbidden,text)
+
+    def test_each_actual_rejected_file_shape_is_reported_and_preserved(self):
+        for case,expected in (('mode','writable'),('hardlink','link_count'),('size','byte_size'),
+                              ('symlink','regular_type'),('fifo','regular_type'),('directory','regular_type')):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                home,parent,leaf,inspect=self.fixture(directory)
+                if case=='mode':leaf.chmod(0o666)
+                elif case=='hardlink':os.link(leaf,parent/'second')
+                elif case=='size':leaf.write_bytes(b'x'*65537)
+                else:
+                    leaf.unlink()
+                    if case=='symlink':leaf.symlink_to(parent/'not-to-be-opened')
+                    elif case=='fifo':os.mkfifo(leaf)
+                    else:leaf.mkdir()
+                before=leaf.lstat();value=inspect()
+                self.assertEqual('measured',value['status']);self.assertIn(expected,value['unsafe_predicates'])
+                self.assertEqual(before,leaf.lstat());self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_owner_and_parent_mode_are_facts_without_permission_repair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory);parent.chmod(0o777)
+            with patch.object(os,'getuid',return_value=os.getuid()+1):value=inspect()
+            self.assertEqual(['parent_owner','parent_writable','owner'],value['unsafe_predicates'])
+            self.assertEqual(0o777,parent.stat().st_mode&0o777)
+            self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_missing_or_symlink_parent_is_never_followed_or_created(self):
+        for case,reason in (('lock','lock_missing'),('parent','parent_missing'),('symlink','parent_not_directory')):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                home,parent,leaf,inspect=self.fixture(directory);leaf.unlink()
+                if case!='lock':
+                    parent.rmdir()
+                    if case=='symlink':parent.symlink_to(home/'elsewhere')
+                value=inspect()
+                self.assertEqual(('not_measured',reason),(value['status'],value['reason']))
+                self.assertIsNone(value['lock']);self.assertFalse(leaf.exists())
+                self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_missing_metadata_capability_is_not_measured_without_fallback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory)
+            with patch.dict(os.__dict__):
+                del os.O_PATH
+                with patch.object(os,'open',side_effect=AssertionError('fallback open')):
+                    value=inspect()
+            self.assertEqual(('not_measured','metadata_handle_unavailable'),(value['status'],value['reason']))
+            self.assertIsNone(value['parent']);self.assertIsNone(value['lock'])
+            self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_replaced_lock_entry_is_not_reported_as_stable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory);original=os.stat;changed=False
+            def stat(path,*args,**kwargs):
+                nonlocal changed
+                if path=='grouped-search-update.lock' and not changed:
+                    changed=True;leaf.rename(parent/'prior');leaf.write_bytes(b'foreign replacement')
+                return original(path,*args,**kwargs)
+            with patch.object(os,'stat',side_effect=stat):value=inspect()
+            self.assertEqual(('not_measured','metadata_changed'),(value['status'],value['reason']))
+            self.assertFalse(value['lock']['entry_identity_matches'])
+            self.assertIn('entry_identity',value['unsafe_predicates'])
+
+    def test_replaced_private_parent_is_not_reported_as_stable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory);original=os.stat;changed=False
+            def stat(path,*args,**kwargs):
+                nonlocal changed
+                if path=='.anytoour-andromeda' and not changed:
+                    changed=True;parent.rename(home/'prior');parent.mkdir(mode=0o700)
+                return original(path,*args,**kwargs)
+            with patch.object(os,'stat',side_effect=stat):value=inspect()
+            self.assertEqual(('not_measured','metadata_changed'),(value['status'],value['reason']))
+            self.assertFalse(value['parent_identity_matches'])
+
+    def test_completion_rejects_tampered_missing_mixed_or_write_receipts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory);value=inspect();result=self.receipt(value)
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in (('mode',0o666),('owner_matches',1),('entry_identity_matches',False),('bytes',-1)):
+                modified=copy.deepcopy(result);modified['publication_lock_metadata']['lock'][key]=bad
+                self.assertFalse(m.completed_result(self.command,modified))
+            for key,bad in (('runtime_writes',1),('supplier_calls',False),('private_path',str(home)),
+                            ('unsafe_predicates',[[]]),('parent_identity_matches',None)):
+                modified=copy.deepcopy(result);modified['publication_lock_metadata'][key]=bad
+                self.assertFalse(m.completed_result(self.command,modified))
+            modified=copy.deepcopy(result);modified['production_after']['index.php']='b'*64
+            modified['production_before']=dict.fromkeys(modified['production_before'],'a'*64)
+            self.assertFalse(m.completed_result(self.command,modified))
+
+    def test_scope_and_payload_are_fixed_and_do_not_reuse_activation(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.CURRENT_SOURCE,self.p.LOCK_MODE,self.p.LOCK_OPERATION],
+                      [self.p.LOCK_SOURCE,self.p.LOCK_MODE,self.p.CURRENT_OPERATION],
+                      [self.p.LOCK_SOURCE,self.p.LOCK_MODE,self.p.LOCK_OPERATION+'x'],
+                      [self.p.LOCK_SOURCE,self.p.LOCK_MODE,self.p.LOCK_OPERATION,'/tmp/other']):
+            with self.subTest(parts=parts),self.assertRaises(ValueError):self.p.parse(parts)
+        with tempfile.TemporaryDirectory() as directory:
+            archive,manifest=self.p.bundle_source(directory,self.command)
+            import tarfile
+            with tarfile.open(fileobj=io.BytesIO(archive),mode='r:gz') as package:
+                self.assertEqual(['manifest.json'],package.getnames())
+                self.assertEqual({},json.load(package.extractfile('manifest.json'))['files'])
+            self.assertEqual({},manifest)
+        generated=self.p.remote_program(m.REMOTE,self.command)
+        self.assertNotIn('def passive_fuel_activate(',generated)
+        self.assertIn("result['publication_lock_metadata']=publication_lock_metadata()",generated)
+        self.assertIn("if not isinstance(files,dict) or files!={}: fail('passive_manifest')",generated)
+        self.assertEqual(2,generated.count("if mode not in ('publication-lock-metadata','reconcile',"))
+
+    def test_unique_created_owner_attempt_and_existing_source_ci_gates_apply(self):
+        fixture=PassiveFuelActivationPlanTest();fixture.setUp();fixture.command=self.command
+        fixture.test_plan_admission_requires_own_unique_created_command_and_exact_candidate_ci()
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+            'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'2'}
+        event={'action':'created','repository':{'full_name':m.REPO},'comment':{'id':123}}
+        def no_api(path,token):raise AssertionError('repeated attempt reached API')
+        with self.assertRaisesRegex(ValueError,'passive_readiness_event'):
+            self.p.admission(no_api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+
+    def test_full_stock_remote_keeps_metadata_only_and_separate_private_receipt(self):
+        import contextlib
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,inspect=self.fixture(directory)
+            project=home/'www/anytoour.ru';runtime=project/'_preview/search3-anex-candidate'
+            runtime.mkdir(parents=True)
+            for relative in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+                path=project/relative;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'not executable')
+            before=leaf.lstat();data,manifest=self.p.bundle_source(home,self.command)
+            archive=home/'bundle.tar.gz';archive.write_bytes(data)
+            payload={**self.command,'archive':str(archive),'manifest_sha256':hashlib.sha256(b'{}').hexdigest()}
+            output=io.StringIO();program=self.p.remote_program(m.REMOTE,self.command)
+            with (patch.object(Path,'home',return_value=home),patch('sys.stdin',io.StringIO(json.dumps(payload))),
+                  patch.object(subprocess,'run',side_effect=AssertionError('external command')),
+                  contextlib.redirect_stdout(output)):
+                exec(program,{})
+            result=json.loads(output.getvalue())
+            self.assertTrue(m.completed_result(self.command,result),result)
+            self.assertEqual('measured',result['publication_lock_metadata']['status'])
+            self.assertEqual(before,leaf.lstat());self.assertFalse(result['runtime_changed'])
+            operation=home/'.anytoour-int-executor'/self.command['operation_id']
+            self.assertEqual({'reservation.json','installed-source.json','result.json','source'},
+                             {path.name for path in operation.iterdir()})
+            self.assertEqual({'manifest.json'},{path.name for path in (operation/'source').iterdir()})
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
@@ -1832,3 +2018,4 @@ class MatchContinuationResumeParseTest(unittest.TestCase):
         cmd=m.parse_command(f'/run-int-server-v1 {SHA} match-common4-continuation-remainder int-andromeda-match-common4-continuation-remainder-20260924-v1 300')
         self.assertEqual(cmd['mode'],'match-common4-continuation-remainder')
         self.assertEqual(cmd['limit'],300)
+
