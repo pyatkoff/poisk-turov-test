@@ -2026,7 +2026,6 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
- await chosenDepartureJourney(browser,origin,base,evidence);
  // Each journey owns its context, fictional transport and evidence names. Keep
  // both complete matrices; settle both before closing the shared browser.
  const isolated=await Promise.allSettled([
@@ -2034,8 +2033,16 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   verifiedPairJourney(browser,origin,base,evidence)
  ]),failures=isolated.filter(result=>result.status==='rejected');
  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
- await boundedRepriceJourney(browser,origin,base,evidence);
- await compactAnexJourney(browser,origin,base,evidence);
+ // The date journey and reprice/compact chain share only read-only assets.
+ // Settle both before expiry-session checks and the isolated loading benchmark.
+ const tail=await Promise.allSettled([
+  chosenDepartureJourney(browser,origin,base,evidence),
+  (async()=>{
+   await boundedRepriceJourney(browser,origin,base,evidence);
+   await compactAnexJourney(browser,origin,base,evidence);
+  })()
+ ]),tailFailures=tail.filter(result=>result.status==='rejected');
+ if(tailFailures.length)throw new AggregateError(tailFailures.map(result=>result.reason),'Independent date and reprice journeys failed');
  await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
