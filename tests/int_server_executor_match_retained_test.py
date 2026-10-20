@@ -44,6 +44,20 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def test_write_completion_requires_nonzero_per_row_commit_readback(self):
+        cmd={'mode':'match-retained-anex-write','source_sha':SHA,'operation_id':'int-andromeda-match-retained-anex-write-20261020-v1',
+             'cohort':'anex7-verified','target_operation_id':'int-andromeda-match-retained-acquire-20261020-v1'}
+        data={**cmd,'control_source_sha':CONTROL,'state':'committed_verified','no_replay':True,'safe_to_write_now':False,
+              'new_accepted_mappings':2,'rows':[{},{}],'database_writes':2,'mapping_writes':2,'supplier_calls':0,
+              'readback_verified':True,'resolver_readback_verified':True}
+        result={**cmd,'status':'complete','production_unchanged':True,'supplier_calls':0,'database_writes':2,'mapping_writes':2,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
+        self.assertTrue(m.completed_result(cmd,result,CONTROL))
+        for key,value in (('new_accepted_mappings',0),('readback_verified',False),('resolver_readback_verified',False),('mapping_writes',None)):
+            changed=copy.deepcopy(result);changed['match_retained']['data'][key]=value
+            changed['match_retained']['evidence_sha256']=hashlib.sha256(json.dumps(changed['match_retained']['data'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            self.assertFalse(m.completed_result(cmd,changed,CONTROL))
+
     def test_acquisition_completion_accounts_for_real_supplier_calls(self):
         cmd={'mode':'match-retained-acquire','source_sha':SHA,'operation_id':'int-andromeda-match-retained-acquire-20261020-v1',
              'cohort':'anex105-current','target_operation_id':'int-andromeda-match-retained-current-20261020-v1'}
@@ -146,8 +160,8 @@ class ContractTest(unittest.TestCase):
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1'}[mode]
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire') else '')
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1'}[mode]
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode=='match-retained-anex-write' else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write') else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -169,11 +183,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1'}[mode]
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire') else ''))
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1'}[mode]
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode=='match-retained-anex-write' else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write') else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
@@ -394,6 +408,52 @@ class AcquisitionTest(unittest.TestCase):
 
 @unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL contract runs in stock CI')
 class NativeMySQLTest(unittest.TestCase):
+    def test_guarded_writer_commit_holds_rollback_and_unknown_ack(self):
+        code=r'''define('MATCH_RETAINED_ANEX_WRITE_LIBRARY_ONLY',true);require $argv[1];
+        class FixtureWritePDO extends PDO{
+          public bool $failInsert=false;public bool $loseAck=false;
+          public function prepare(string $query,array $options=[]):PDOStatement|false{if($this->failInsert&&str_starts_with($query,'INSERT INTO anex_hotel_search_mappings'))throw new PDOException('fictional insert failure');return parent::prepare($query,$options);}
+          public function commit():bool{$v=parent::commit();if($this->loseAck)throw new PDOException('fictional lost commit acknowledgement');return $v;}
+        }
+        $db=new FixtureWritePDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+        $name='match_write_test_'.bin2hex(random_bytes(6));$db->exec('CREATE DATABASE '.$name);$db->exec('USE '.$name);
+        try{
+          $db->exec('CREATE TABLE catalog_hotels(id INT PRIMARY KEY,name TEXT,country_id INT,country_name TEXT,region_id INT,region_name TEXT,subregion_id INT,subregion_name TEXT,category TEXT,latitude DECIMAL(10,7),longitude DECIMAL(10,7),is_active INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_hotel_search_mappings(anex_hotel_id INT PRIMARY KEY,catalog_hotel_id INT,match_class TEXT,scope TEXT,approval_policy TEXT,source_row_digest CHAR(64),mapping_digest CHAR(64),enabled INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_hotel_decisions(anex_hotel_id INT PRIMARY KEY,decision_status TEXT,catalog_hotel_id INT) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_review_pair_exclusions(anex_hotel_id INT,catalog_hotel_id INT,PRIMARY KEY(anex_hotel_id,catalog_hotel_id)) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE anex_search_hotel_observations(anex_hotel_id INT PRIMARY KEY) ENGINE=InnoDB');
+          $db->exec('CREATE TABLE andromeda_hotel_identities(supplier_namespace VARCHAR(80),external_hotel_id VARCHAR(80),local_hotel_id INT,decision_status VARCHAR(40),catalog_sha256 CHAR(64),evidence_sha256 CHAR(64),evidence_json TEXT,PRIMARY KEY(supplier_namespace,external_hotel_id)) ENGINE=InnoDB');
+          $st=$db->prepare("INSERT INTO catalog_hotels VALUES(?,'Fictional hotel',4,'Turkey',1,'Region',1,'Subregion','5',36,32,?)");
+          foreach([100,200,300,400,500,600,700,800,900]as$id)$st->execute([$id,$id===700?0:1]);
+          $st=$db->prepare("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog',?,?,'accepted',?,?,?)");
+          foreach([100,200,300,400,500,600,700,800]as$id)$st->execute([(string)$id,$id,str_repeat('a',64),hash('sha256','{}'),'{}']);
+          $pairs=[];
+          foreach([111=>100,112=>200,113=>300,114=>400,115=>500,116=>600,117=>700,118=>800]as$native=>$tv){
+            $target=hmc4aw_query($db,'SELECT * FROM catalog_hotels WHERE id=?',[$tv])[0];
+            $anchor=hmc4a_anchor_state(hmc4aw_query($db,'SELECT * FROM andromeda_hotel_identities WHERE local_hotel_id=?',[$tv]));
+            $pairs[]=['edge'=>['state'=>'verified_native_pair','anex_hotel_id'=>(string)$native,'tv_hotel_id'=>$tv],
+              'snapshot'=>['tv_hotel_id'=>$tv,'target'=>$target,'anchors'=>$anchor['anchors'],'canonical_catalog_sha256'=>$anchor['catalog_sha256']]];
+          }
+          $last=array_pop($pairs);
+          $db->exec("INSERT INTO anex_hotel_decisions VALUES(113,'rejected',NULL)");$db->exec('INSERT INTO anex_review_pair_exclusions VALUES(114,400)');
+          $st=$db->prepare("INSERT INTO anex_hotel_search_mappings VALUES(115,900,'exact_operator_key','preview','owner_exact_operator_key_20260912_v2',?,?,1)");$st->execute([str_repeat('b',64),str_repeat('c',64)]);
+          $db->exec("UPDATE andromeda_hotel_identities SET evidence_json='changed' WHERE local_hotel_id=600");
+          $input=['operation_id'=>'int-andromeda-match-retained-anex-write-20261020-v1','acquisition_evidence_sha256'=>str_repeat('d',64),'pairs'=>$pairs];
+          $db->failInsert=true;$failed=MatchRetainedAnexWriteV1::run($db,$input,str_repeat('e',40));$db->failInsert=false;
+          if($failed['state']!=='rolled_back_no_write'||(int)$db->query('SELECT COUNT(*) FROM anex_hotel_search_mappings')->fetchColumn()!==1)throw new RuntimeException('rollback_contract');
+          $success=MatchRetainedAnexWriteV1::run($db,$input,str_repeat('e',40));
+          if($success['state']!=='committed_verified'||$success['new_accepted_mappings']!==2||count($success['held'])!==5)throw new RuntimeException('commit_or_holds_contract');
+          if((int)$db->query('SELECT COUNT(*) FROM anex_hotel_decisions')->fetchColumn()!==1||(int)$db->query('SELECT COUNT(*) FROM anex_review_pair_exclusions')->fetchColumn()!==1)throw new RuntimeException('protected_rows_changed');
+          $db->loseAck=true;$unknown=MatchRetainedAnexWriteV1::run($db,['operation_id'=>'int-andromeda-match-retained-anex-write-20261020-v2','acquisition_evidence_sha256'=>str_repeat('d',64),'pairs'=>[$last]],str_repeat('e',40));
+          if($unknown['state']!=='commit_unknown_no_replay'||$unknown['mapping_writes']!==null||(int)$db->query('SELECT COUNT(*) FROM anex_hotel_search_mappings WHERE anex_hotel_id=118')->fetchColumn()!==1)throw new RuntimeException('unknown_ack_contract');
+          echo json_encode(['committed'=>$success['new_accepted_mappings'],'held'=>count($success['held']),'readback'=>$success['resolver_readback_verified'],'rollback'=>$failed['state'],'unknown'=>$unknown['state']],JSON_THROW_ON_ERROR);
+        }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
+        run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_anex_write_v1.php')],capture_output=True,text=True,timeout=60)
+        self.assertEqual(0,run.returncode,run.stderr);data=json.loads(run.stdout)
+        self.assertEqual(2,data['committed']);self.assertEqual(5,data['held']);self.assertTrue(data['readback'])
+        self.assertEqual('rolled_back_no_write',data['rollback']);self.assertEqual('commit_unknown_no_replay',data['unknown'])
+
     def test_current_resolver_manual_exclusion_context_and_scope(self):
         code=r'''define('MATCH_RETAINED_CURRENT_LIBRARY_ONLY',true);require $argv[1];
         $db=new PDO(getenv('MATCH_RETAINED_TEST_DSN'),'root',getenv('MATCH_RETAINED_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
