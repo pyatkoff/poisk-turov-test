@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "INSTALLED_430_IFRAME_ORDINARY_CLOSEOUT",
+    "status": "ORDINARY_430_1280_ACCEPTED_FINITE_RESPONSIVE_REMAINDER",
     "issue": 1646,
     "coordinator_issue": 4217,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-20T00:54:18.197Z",
+    "updated_at": "2026-10-20T03:10:23Z",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа. 20.10.2026: «Запрет на проход клавиатурой» и повторное требование вернуться к основной поставке: обычный цельный путь мышью/тапами в NEXT; прекратить отдельные keyboard/A11y/focus микрозадачи и дробление на частные оценки. 20.10.2026 02:15: «исправил? …план оптимальный?» — записать завершённую демо-приёмку и один конкретный следующий admission-результат; для каждой внешней зависимости указать текущего ответственного, действие и условие закрытия, без круговых блокировок и повышения общей оценки. 20.10.2026 02:34: прямо разрешён один конкретный live поиск/TVquote без предварительного подтверждённого резерва, owner сообщил5000/сутки; этот допуск consumed6280546977. 02:43 «делай» — опубликовать просмотр установленного NEXT430 в том же Sitesproject и убрать устаревшее ожидание admission.",
-    "acceptance_status": "COMPILED_CORPUS_ACCEPTED_REAL_TV_MANAGER_PATH_CONSUMED_INSTALLED_IFRAME_430_SUBSET_ACCEPTED",
-    "last_fully_checked_release_sha": "9130a6aa28f4319fcab24c65a817a510fd677417",
-    "published_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
-    "planning_base_release_sha": "bd1c2cb7c200771700da952bc5707aa0ac038b81",
+    "acceptance_status": "INSTALLED_FAMILY_ORDINARY_REPAIR_ACCEPTED_COMPILED_SCOPES_REVIEWED_EXTERNAL_GATES_REMAIN",
+    "last_fully_checked_release_sha": "0576d6eb69cb31b80ca4d479e45a275f107a6e34",
+    "published_source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588",
+    "planning_base_release_sha": "0576d6eb69cb31b80ca4d479e45a275f107a6e34",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "Audit6280193716/terminal6280199658: completed observed current3bdd ordinary corpus430/1280; current compiled430 Mobile2/2/2/2/2=10 FIRST boundedbaseline/UI delta0, Desktop1280/short9.5, Selectedtour10/Calendar9.5 carried only exactscopes. No wholeSearch/mobile/installed/physical/real-supplier score inheritance; everyN is not a new task. Keyboard owner-forbidden/deferred."
+      "score_status": "Exact1c7 audit6282417033: installed430 bounded Filters2/2/1/2/2=9→2/2/2/2/2=10 delta+1 for matched recovery/reset. Currentcompiled430 family Mobile10 delta0 by9rasteridentity; Desktop1280/720 9.5 andSelectedtour10 freshframes/receipts reviewed; Calendar9.5 current8frames/finalgates. Whole ordinary installedfamily430/1280 path accepted; no wholeSearch/mobile/physical/real-supplier score inheritance. All externalN and forbiddenkeyboard remain separate."
     },
-    "next_action": "Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.",
+    "next_action": "Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.",
     "next_task": {
-      "scope": "Тот же конечный scope. Реальный TV/manager-путь6280546977 consumed; Site204 даёт actual installediframe430/1280. Завершить только отсутствующие существенные обычные430 действия и цельный UI-closeout, не новый admission/paid probe.",
+      "scope": "Тот же конечный scope. Цельный ordinary430/1280 observed UI после ремонта принят; прежние missing3bdd actions и publisher consumed. Вернуться к конечному адаптивному остатку360/390/768 по retained exact1c7 evidence, без новых прогонов ради покрытия/косметического кода.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён. Site204/source d71b84ca — только NEXT-viewer/общий width-controller, не новый productdesign; Site203 остаётся согласованным визуальным reference.",
-      "acceptance": "SEARCH-QUALITY-1 12/11/5 и прежние gates сохранены. Audit6280193716: current3bdd compiled430 Mobile2/2/2/2/2=10 FIRST boundedbaseline/UI0; Desktop9.5/Selectedtour10/Calendar9.5 carry exactscopes. Это не общая mobile/Search приёмка, native/physical/live/lead/production остаются отдельны. Admission6280546977 завершён/consumed; собственные source/runtime/profile/allowance/reservation/ownership gates нужны только будущей отдельно разрешённой live-операции. Partialbaseline не unlock иных размеров/globalDONE. Новое installediframe430contact/return/resize принято6280721648 отдельно без нового числового wholeUIscore; реальныйTVmanager268848RUB принят6280546977 отдельно. Iframe не native top-level/physical. Сохранять все exactscope/gates; не повторять завершённый admission.",
-      "execution": "Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.",
+      "acceptance": "SEARCH-QUALITY-1 12/11/5 unchanged. Audit6282417033 closes coherent observed ordinary430/1280 UI after materialrepair+allfinalgates+actualinstalledactions, not lonepartialbaseline and not wholeSearch9.5/globalDONE. Installed430Filters9→10(+1); compiledMobile10/Desktop9.5/Selectedtour10/Calendar9.5 only ownscopes/currentevidence. Physical/native430/RixrealIDs/INT repeatedallpair/realLeadC3/production retain exact gates. No repeatedlive/admission/keyboard/paidprobe;200%/Compare deferred.",
+      "execution": "Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. No supplierHTTP/real leads без отдельного exact допуска/reservation/budget/штатного executor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1359,15 +1359,15 @@
       "remaining": "One coherent remaining installed430 ordinarycloseout via actual Site204viewer; native top-level/physical,Rixalias/submittedIDs,INT repeatedallpair,reallead/production stay externalexactgates. RealTVmanager6280546977 consumed. No stale admission/paid/unchangeddemo/scoreloop.",
       "historical_pins": "dated_history/oldinstalls/existing drafts/scheduler_observation retain provenance and no-replay. Current checkedsource e8ba1e0e/integrated9130a6aa are not a new product publication; installed3bdd/readback6273604203 remains runtime authority. Fresh activeplan/state and later terminal govern execution.",
       "latest_next": {
-        "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
-        "release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
-        "build_run": 39294939406,
-        "artifact_id": 12206469035,
-        "publish_run": 39296816783,
-        "deployment_receipt_artifact": 12207723845,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
-        "compiled_app_sha256": "7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc",
-        "scope": "PR4646 installed Reset/focus repair; all5applicable sourceCI passed,43asset/9route readback, native1363×936 exact Reset retainedY339/focus#results. Command6273501393/run39296816783 consumed/no-replay; QA-only release22850 has unchanged UI bytes."
+        "source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
+        "release_sha": "0576d6eb69cb31b80ca4d479e45a275f107a6e34",
+        "build_run": 39359278069,
+        "artifact_id": 12236980500,
+        "publish_run": 39360500690,
+        "deployment_receipt_artifact": 12237760005,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588",
+        "compiled_app_sha256": "68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0",
+        "scope": "PR4685 filterrecovery/reset source/CI/merge/publication/readback+actualinstalled430/1280 accepted6282318764/coherent6282417033. Source1c7all5gatesPASS; publisherstock39360500690SUCCESS,843files/43assets/9routes,predecessor3bdd retained. Actualordinaryfamily2A+[0,8] own900001/managercontact186400→pair3/189000/contact/return/draft; no reallead/live/physicalinheritance."
       },
       "root_api_install": {
         "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
@@ -1422,6 +1422,45 @@
             "compiled_app_sha256": "049239db1c0a92b44e6bbd5edcde8a84c9156a4bf1828c5a76df952b0978809a",
             "scope": "PR4634 published/status-count-action repair; all exactheadCI/fiveordinarywidthframes and stock43asset/9route readback PASS; native1363x936 demo open/close retained selection. No NEWactualpartial/physical acceptance or scoreinheritance."
           }
+        },
+        "installed_before_filter_recovery_20261020": {
+          "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+          "release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
+          "status": "INSTALLED_430_IFRAME_ORDINARY_CLOSEOUT",
+          "next_action": "Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.",
+          "latest_next": {
+            "source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+            "release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
+            "build_run": 39294939406,
+            "artifact_id": 12206469035,
+            "publish_run": 39296816783,
+            "deployment_receipt_artifact": 12207723845,
+            "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203",
+            "compiled_app_sha256": "7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc",
+            "scope": "PR4646 installed Reset/focus repair; all5applicable sourceCI passed,43asset/9route readback, native1363×936 exact Reset retainedY339/focus#results. Command6273501393/run39296816783 consumed/no-replay; QA-only release22850 has unchanged UI bytes."
+          },
+          "supported_visual_qa": {
+            "status": "INSTALLED_NEXT_IFRAME_430_AVAILABLE_SUBSET_ACCEPTED",
+            "checked_at": "2026-10-20",
+            "scope": "Site204viewer installed3bdd actual430×932/1280×720 managercontact/resize/return/draft accepted6280721648; currentrealTVpath6280546977 consumed. Compiledcorpus6280199658 remains separate. Native top-level/physical remainN; no unchanged capability/paidprobe.",
+            "required_next": "Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.",
+            "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648"
+          },
+          "installed_next_viewer": {
+            "status": "PUBLISHED_INSTALLED_IFRAME_430_SUBSET_ACCEPTED",
+            "site_project_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+            "site_version": 204,
+            "source_sha": "d71b84cae73d947438b16407dfb527f6769843f9",
+            "saved_version_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_a6d4f56bc84881919b15e748a5b2596e",
+            "deployment_id": "appgdep_6ad6ba5442f48191be103403d20f90e2",
+            "url": "https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo",
+            "child_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
+            "child_app_sha256": "7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc",
+            "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648",
+            "scope": "Actual430×932/1280×720 child8scripts, defaultofflinefamily2A+[0,8]/186400 managercontact/resize/Back/Close/Continue/draft PASS. Only wrapper2paths; no NEXTsource/publish/newlive. ResultsJPEG browserinspected not main-synchronized; contact/returnJPEG+semanticreceipt synced. Not native top-level/physical or wholeUI9.5; remaining material ordinary form/calendar/filter/hotel/optional demo pair actions only.",
+            "semantic_receipt_sha256": "4799fdf6cb346dd00b96aefd36ead30a2fdaf09bcbcd3f742fcfc594c60e982b"
+          }
         }
       },
       "root_recovery": {
@@ -1456,11 +1495,11 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "INSTALLED_NEXT_IFRAME_430_AVAILABLE_SUBSET_ACCEPTED",
+        "status": "INSTALLED_430_1280_ORDINARY_REPAIR_ACCEPTED_RESPONSIVE_REMAINDER",
         "checked_at": "2026-10-20",
-        "scope": "Site204viewer installed3bdd actual430×932/1280×720 managercontact/resize/return/draft accepted6280721648; currentrealTVpath6280546977 consumed. Compiledcorpus6280199658 remains separate. Native top-level/physical remainN; no unchanged capability/paidprobe.",
-        "required_next": "Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.",
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648"
+        "scope": "SameSite204viewer actualchild430×932/1280×720 current1c7/app68843: repairedrecovery/reset + familywholeordinarypath/contact/pair/return/draft accepted. Compiledcurrentseparateaudit6282417033. Physical/native/real supplier remainseparate; no newcarrier/paidprobe.",
+        "required_next": "Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033"
       },
       "approved_site203": {
         "source_sha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
@@ -1530,44 +1569,75 @@
         "semantic_receipt_sha256": "1cce05b83f49c716f8710aee2fbbf0c44df517913d2697a983c7daf908cf964d"
       },
       "installed_next_viewer": {
-        "status": "PUBLISHED_INSTALLED_IFRAME_430_SUBSET_ACCEPTED",
+        "status": "PUBLISHED_VIEWER_CURRENT_CHILD_ORDINARY430_1280_ACCEPTED_BOUNDED",
         "site_project_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
         "site_version": 204,
         "source_sha": "d71b84cae73d947438b16407dfb527f6769843f9",
         "saved_version_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_a6d4f56bc84881919b15e748a5b2596e",
         "deployment_id": "appgdep_6ad6ba5442f48191be103403d20f90e2",
         "url": "https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo",
-        "child_source_sha": "3bdd75c40abc5c2d441e1edefcd494fcd9845336",
-        "child_app_sha256": "7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc",
-        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648",
-        "scope": "Actual430×932/1280×720 child8scripts, defaultofflinefamily2A+[0,8]/186400 managercontact/resize/Back/Close/Continue/draft PASS. Only wrapper2paths; no NEXTsource/publish/newlive. ResultsJPEG browserinspected not main-synchronized; contact/returnJPEG+semanticreceipt synced. Not native top-level/physical or wholeUI9.5; remaining material ordinary form/calendar/filter/hotel/optional demo pair actions only.",
-        "semantic_receipt_sha256": "4799fdf6cb346dd00b96aefd36ead30a2fdaf09bcbcd3f742fcfc594c60e982b"
+        "child_source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
+        "child_app_sha256": "68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033",
+        "scope": "WrapperSite204 unchanged. Currentchild1c7 accepted430×932/1280×720 familyrecovery/reset/params/calendar/hotel/manager-flight/optionalpair189000/contact/return/draft/resize. Notphysical/native/wholeSearch9.5.",
+        "semantic_receipt_sha256": "b98fe19810e11d3f37f6c8a790204fbbd5bad43decea1142d604c32221fa79ed"
+      },
+      "current_filter_recovery": {
+        "source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
+        "release_sha": "0576d6eb69cb31b80ca4d479e45a275f107a6e34",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588",
+        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033",
+        "status": "SOURCE_CI_MERGED_PUBLISHED_INSTALLED_ACCEPTED_TERMINAL_NO_REPLAY",
+        "scope": "PR4685 filterrecovery/reset source/CI/merge/publication/readback+actualinstalled430/1280 accepted6282318764/coherent6282417033. Source1c7all5gatesPASS; publisherstock39360500690SUCCESS,843files/43assets/9routes,predecessor3bdd retained. Actualordinaryfamily2A+[0,8] own900001/managercontact186400→pair3/189000/contact/return/draft; no reallead/live/physicalinheritance.",
+        "matched_installed_430_filters": {
+          "previous": [
+            2,
+            2,
+            1,
+            2,
+            2
+          ],
+          "current": [
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "delta": 1
+        },
+        "publisher_consumed": true,
+        "supplier_requests": 0,
+        "real_leads": 0
       }
     },
-    "published_release_sha": "52b3f3618f7b5eb6a8ee34c039974a193356064f",
+    "published_release_sha": "0576d6eb69cb31b80ca4d479e45a275f107a6e34",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
       "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
-      "priority": "Use available installediframe430 to finish only missing substantial ordinary user actions, then whole measured UIcloseout/finite materialrepair if needed. RealTVmanager and admission completed/consumed. No new live/keyboard/cosmetic/planloop.",
+      "priority": "Accepted ordinary430/1280 finite materialrepair+coherentobservedpath; next original finite responsive remainder360/390/768 uses alreadyretained exact1c7 CI evidence first. No new perN task/cosmetic code/planloop.",
       "parallelism": "One writer/shared owner and integrator; independent read-only plan/frame/behavior review in parallel; separate publisher only for ready changed artifact.",
       "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
       "blocker_scope": "Keyboard walkthroughs/Tab/A11y-only/focus tasks forbidden by owner20Oct; keep history/N/deferred without making them an ordinary-UI blocker or inventing scores. Native430/physical and external INT/data/delivery/production retain exact gates separately. Missing resize or everyN is not a new task; no cosmetic/coverage/paid retry loop.",
       "qa_only_authority": "Completed4647/4649/6279680382 consumed. Direct owner20Oct correction prioritizes coherent ordinary product completion, not another standalone QA-only packet perN/state/score. Necessary regression of a confirmed authorized defect follows ordinary gates. No new paid/supplier/real-lead/production authority.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
-      "verification_pin": "Site204wrapperd71b84ca/deploymentappgdep_6ad6ba5442f48191be103403d20f90e2/publiciframe430audit6280721648; unchanged3bdd/app7ae9ba. NewrealTVmanager6280546977/audit6280542177 consumed. Existingcompiled6280199658/4647/4649 remain exactscopes/noreplay.",
-      "closeout": "Finish one coherent measured ordinary installed430 UI scope using existing newviewer and retained1280; emptyconfirmedmaterialgaplist skips cosmeticcode. Keep externalexactgates separate, no overall9.5/globalDONE/otherwidth unlock from boundedsubset. No repeated admission/live/donor/CI/deploy.",
+      "verification_pin": "Product1c7c3223190673726d5185c8946469f62e5294d3/app68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0/release0576d6eb; stockpublish39360500690 terminal6282322588; installedactual430×932/1280×720 audit6282318764/addendum6282342152/coherent6282417033. Site204wrapperd71b84ca unchanged; realTV6280546977 consumed.",
+      "closeout": "Currentobserved ordinary430/1280 UI stage accepted after materialrepair/gates/installedwholepath; no confirmedremainingmaterialgap there. NotwholeSearch9.5/globalDONE. Continue previouslyagreed finite responsive remainder fromretainedexactCI, external gates separately; no unchanged430/1280/live/admission/donor/deploy replay.",
       "viewport_scope": {
         "owner_direction": "20.10.2026 00:52",
         "current_widths_px": [
+          360,
+          390,
           430,
+          768,
           1280
         ],
-        "other_widths": "deferred until coherent applicable UI reaches9.5, then responsive completion",
+        "other_widths": "Finite responsive remainder360/390/768 now follows coherentordinary430/1280 acceptance6282417033; retain430/1280 accepted evidence, no extra dimensions or paid/manualreruns forcoverage.",
         "heights": "reuse retained matching heights/short1280x720; no extra dimensions for coverage",
         "ci": "preserve existing required final-source CI/workflows even if broader; no additional manual/paid passes for deferred widths",
-        "score": "exact measured scope only; UI delta0 for this control change"
+        "score": "Exact measured scope only; responsive evidence not yet accepted fromCI automatically. No wholeSearch9.5/globalDONE."
       },
       "interaction_policy": {
         "ordinary_acceptance": "Mouse ondesktop and taps inmobile scope; meaningful full user journey",
@@ -1576,7 +1646,7 @@
         "existing_ci": "Preserve applicable existing mandatory workflows/gates; no additional keyboard QA run"
       }
     },
-    "last_fully_checked_source_sha": "e8ba1e0ea3801bd3c7dea9b42af7a3658235b738"
+    "last_fully_checked_source_sha": "1c7c3223190673726d5185c8946469f62e5294d3"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
