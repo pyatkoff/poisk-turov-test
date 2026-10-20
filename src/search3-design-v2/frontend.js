@@ -83,6 +83,7 @@
     }
     const state = initialState || {screen:'search',search:null,filters:null,hotels:[],status:'idle',message:'',sources:null,sort:'recommended',favorites:[],onlyFavorites:false,hotelId:null,selected:null,selectedDate:null,calendarOpen:false,calendarPage:0,calendarRange:null,calendarScroll:null,hasSearched:false};
     let dictionaries = state.dictionaries || null, draft = null, draftFilters = null, filterDraft = null, filterBudgetValues = null, photoIndex = 0, tourOwner = null;
+    const photoRequests = new Map();let photoRevision = 0;
     let destinationRows = [], destinationController = null, destinationEpoch = 0, destinationPending = null, destinationLoading = false, destinationError = '';
     let nightAnchor = null, nightError = '', calendarMonth = null, calendarBoundary = 'from', calendarError = '', agesReviewNeeded = false, editorOpener = null, originPending = false;
     const destinationHotels = new Map(), regionCache = new Map();
@@ -176,15 +177,49 @@
     }
     function photo(node, hotel, index = 0) {
       if (!node) return;
-      const source = hotel?.photos?.[index];
-      node.style.backgroundImage = source && /^(https?:\/\/|\/)/.test(source) ? 'url(' + JSON.stringify(source) + ')' : 'none';
-      node.style.backgroundPosition = 'center'; node.style.backgroundSize = 'cover';
-      node.classList.toggle('st-no-photo', !source); node.setAttribute('aria-label', source ? 'Фото отеля ' + hotel.name : 'Фото отеля пока нет');
-      if(node.hasAttribute('data-hotel-hero')){
-        node.classList.toggle('q8c5',!source);let empty=node.querySelector('.st-photo-empty-message');
-        if(!source&&!empty){empty=window.document.createElement('div');empty.className='st-photo-empty-message';empty.innerHTML=icon('image')+'<span>Фото пока нет</span>';node.prepend(empty);}
-        if(empty)empty.hidden=!!source;
+      const raw = hotel?.photos?.[index],source = typeof raw === 'string' && /^(https?:\/\/|\/)/.test(raw) ? raw : null;
+      const revision=String(++photoRevision);node.dataset.nativePhotoRevision=revision;
+      node.dataset.nativePhotoHotel=String(hotel?.id ?? '');node.dataset.nativePhotoIndex=String(index);
+      node.style.backgroundPosition='center';node.style.backgroundRepeat='no-repeat';
+      node.style.backgroundSize=node.hasAttribute('data-gallery-photo')?'contain':'cover';
+      const compact=node.matches('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]');
+      if(!source){
+        node.dataset.nativePhotoState='empty';node.style.backgroundImage='none';
+        node.classList.add('st-no-photo','q8c5');node.setAttribute('aria-label','Фото отеля пока нет');
+        if(compact)node.title='Фото отеля пока нет';
+        let message=node.querySelector('.st-photo-empty-message');
+        if(compact || node.hasAttribute('data-gallery-photo'))message?.remove();
+        else if(node.hasAttribute('data-hotel-hero') || message){
+          if(!message){message=window.document.createElement('div');message.className='st-photo-empty-message';node.prepend(message);}
+          message.hidden=false;message.style.cssText='';message.innerHTML=icon('image')+'<span>Фото пока нет</span>';
+        }
+        return;
       }
+      node.style.position='relative';
+      if(compact)node.querySelectorAll(':scope > svg,:scope > i[data-lucide]').forEach(icon=>icon.remove());
+      const paint=status=>{
+        if(!alive || node.dataset.nativePhotoRevision!==revision)return;
+        const ready=status==='loaded';node.dataset.nativePhotoState=status;
+        node.style.backgroundImage=ready?'url('+JSON.stringify(source)+')':'none';
+        node.classList.remove('st-no-photo','q8c5');
+        node.setAttribute('aria-label',ready?'Фото отеля '+hotel.name:status==='loading'?'Загружаем фото отеля '+hotel.name:status==='error'?'Не удалось загрузить фото отеля '+hotel.name:'Фото отеля пока нет');
+        let message=node.querySelector('.st-photo-empty-message');
+        if(!message){message=window.document.createElement('div');message.className='st-photo-empty-message';node.prepend(message);}
+        message.hidden=ready;
+        message.style.cssText='display:'+(ready?'none':'flex')+';position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:'+(compact?'0':'8px')+';padding:'+(compact?'2px':'16px')+';text-align:center;background:var(--paper);color:var(--muted);';
+        message.innerHTML=ready?'':icon('image')+(!compact?'<span>'+(status==='loading'?'Загружаем фото…':'Не удалось загрузить фото')+'</span>':'')+(status==='error'&&!compact?'<button type="button" class="st-secondary cursor-interaction" data-native-photo-retry>Повторить</button>':'');
+        if(compact)node.title=node.getAttribute('aria-label');
+      };
+      let request=photoRequests.get(source);
+      if(!request){
+        request={status:'loading'};request.promise=new Promise(resolve=>{
+          const image=new window.Image();
+          image.onload=()=>{request.status='loaded';resolve('loaded');};
+          image.onerror=()=>{request.status='error';resolve('error');};
+          image.src=source;
+        });photoRequests.set(source,request);
+      }
+      paint(request.status);if(request.status==='loading')request.promise.then(status=>{paint(status);if(alive && node.dataset.nativePhotoRevision===revision)redrawIcons();});
     }
     function routeURL(screen = state.screen) {
       const p = new URLSearchParams(window.location.search), s = state.search;
@@ -522,7 +557,7 @@
     function renderTour() {
       const o=state.selected,h=currentHotel();if(!o||!h){show('results',false);return;}
       if(groupMinimum(o)){openHotelVariants(o,false);return;}
-      if(!tourOwner)tourOwner=window.AnyTourDesignV2Tour.mount({root,bridge,initialState:state.tourState,onChanged(change){
+      if(!tourOwner)tourOwner=window.AnyTourDesignV2Tour.mount({root,bridge,renderPhoto:photo,initialState:state.tourState,onChanged(change){
         if(!alive)return;
         state.tourSelection=change.selection;
         if(change.navigate==='hotel'){show('hotel');return;}
@@ -722,6 +757,10 @@
       if(d.nativeExpandGroup){expandGroup(findOffer(d.nativeExpandGroup));return;}
       if(d.hotelSection){$('[data-about-hotel]').hidden=d.hotelSection!=='about';$('[data-hotel-offers-panel]').hidden=d.hotelSection==='about';$$('[data-hotel-section]').forEach(n=>n.setAttribute('aria-pressed',String(n===button)));return;}
       if(d.galleryHotel){state.hotelId=Number(d.galleryHotel);photoIndex=0;show('gallery');return;}
+      if(button.hasAttribute('data-native-photo-retry')){
+        const node=button.closest('[data-native-photo-hotel]'),hotel=state.hotels.find(h=>String(h.id)===node?.dataset.nativePhotoHotel),index=Number(node?.dataset.nativePhotoIndex);
+        if(hotel){photoRequests.delete(hotel.photos?.[index]);photo(node,hotel,index);}return;
+      }
       if(d.direction){const count=currentHotel()?.photos?.length||0;if(count){photoIndex=(photoIndex+Number(d.direction)+count)%count;renderGallery();}return;}
       if(button.hasAttribute('data-native-calendar')){state.calendarOpen=!state.calendarOpen;renderCalendar();redrawIcons();$('[data-native-calendar]')?.focus({preventScroll:true});return;}
       if(d.nativeCalendarPage){moveCalendar(d.nativeCalendarPage==='prev'?-1:1);return;}

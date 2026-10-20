@@ -32,6 +32,16 @@ for (const [name, sha] of Object.entries(manifest.files)) {
   assert.equal(hash(fs.readFileSync(path.join(assetRoot,'visual-search/native-v2',name))),sha,'Compiled native manifest: '+name);
 }
 fs.mkdirSync(evidence,{recursive:true});
+const mediaRoot=path.join(sourceRoot,'tests/fixtures/search3-design-v2-media');
+const retainedMedia=JSON.parse(fs.readFileSync(path.join(mediaRoot,'provenance.json')));
+assert.equal(hash(fs.readFileSync(path.join(sourceRoot,retainedMedia.snapshot))),retainedMedia.snapshotSHA256);
+const savedMediaHotel=JSON.parse(fs.readFileSync(path.join(sourceRoot,retainedMedia.snapshot))).hotels.find(h=>h.id===retainedMedia.hotel.id);
+assert.equal(savedMediaHotel.name,retainedMedia.hotel.name);
+const mediaByURL=new Map(retainedMedia.images.map(item=>{
+  assert(savedMediaHotel.photos.includes(item.sourceURL),'Every image belongs to this saved hotel');
+  const bytes=fs.readFileSync(path.join(mediaRoot,item.file));assert.equal(hash(bytes),item.sha256);assert.equal(bytes.length,item.bytes);
+  return[item.sourceURL,{...item,body:bytes}];
+}));
 
 const fixture = {
   label:'DETERMINISTIC FICTIONAL BROWSER FIXTURE; not availability or a live price',
@@ -45,6 +55,7 @@ const fixture = {
   ]
 };
 const fixtureNow = new Date('2026-10-12T08:00:00Z');
+fixture.retainedContent={...retainedMedia.hotel,photos:retainedMedia.images.map(item=>item.sourceURL),scope:retainedMedia.scope};
 fs.writeFileSync(path.join(evidence,'fixture.json'),JSON.stringify(fixture,null,2)+'\n');
 
 function fixtureBridge(fixture) {
@@ -80,6 +91,12 @@ function fixtureBridge(fixture) {
     const land={...sea,key:'fixture:ai:land',room:'standard room land view',total:137083,raw:{fixture:true,aiJourney:true}};
     const hotel={...rawHotels[0],id:902,name:'FIXTURE GRAND BARHAN HOTEL (EX. AS BLUE COAST)',offers:[land,sea]};
     rawHotels.push(hotel);control.ai={hotel,offer:sea};control.deliverHotels(rawHotels,{status:'complete',message:''});
+  };
+  control.installContent=()=>{
+    const saved=fixture.retainedContent;
+    const offer={...rawHotels[0].offers[0],key:'fixture:retained-media:'+saved.id,hotelId:saved.id,raw:{fixture:true,retainedMedia:true}};
+    const hotel={...saved,country:'4',region:saved.location.split(',')[0],amenities:[],raw:{description:saved.description},offers:[offer]};
+    rawHotels.push(hotel);control.content={hotel,offer};control.deliverHotels([hotel],{status:'complete',message:''});
   };
   let initResolve,initReject,initialization;
   control.releaseInit=()=>{window.__nativeHoldInit=false;initResolve?.();};control.rejectInit=()=>initReject?.(new Error('FICTIONAL controlled dictionary failure'));
@@ -537,9 +554,18 @@ async function referenceFrame(page,width,percent,screen,row) {
       page.setDefaultTimeout(6000);reference.setDefaultTimeout(6000);
       page.setDefaultNavigationTimeout(10000);reference.setDefaultNavigationTimeout(10000);
       page.on('pageerror',error=>row.errors.push(error.message));reference.on('pageerror',error=>row.errors.push('donor: '+error.message));
-      let terminalJourney=false;
+      let terminalJourney=false,failFirstMedia=true,holdSecondMedia=true,releaseSecondMedia=null;
       await context.route('**/*',async route=>{
         const request=route.request(),url=new URL(request.url());
+        const media=mediaByURL.get(url.href);
+        if(media && request.method()==='GET'){
+          if(url.href===retainedMedia.images[1].sourceURL && holdSecondMedia){
+            holdSecondMedia=false;await new Promise(resolve=>{releaseSecondMedia=resolve;});
+            await route.fulfill({status:503,headers:{'Cache-Control':'no-store'},body:'controlled failed photography load'});return;
+          }
+          if(url.href===retainedMedia.images[0].sourceURL && failFirstMedia){await route.fulfill({status:503,headers:{'Cache-Control':'no-store'},body:'controlled failed photography load'});return;}
+          await route.fulfill({status:200,contentType:'image/jpeg',headers:{'Cache-Control':'no-store'},body:media.body});return;
+        }
         if(url.origin!==origin||request.method()!=='GET'||/\/(?:api[^/]*|lead-(?:adapter|bridge|receiver)[^/]*)\.(?:php|json)(?:$|\?)/.test(url.pathname)){
           row.unexpectedRequests.push({method:request.method(),url:request.url()});await route.abort();return;
         }
@@ -1328,6 +1354,89 @@ async function referenceFrame(page,width,percent,screen,row) {
         assert.equal(await screen('lead').locator('[data-tour-price]').innerText(),'163 056 ₽');
         row.proof.aiPriceContact={searchPrice:138989,checkedFullTotal:163056,readableMeal:true,originalIndex:0,explicitAcceptance:true,comparableSearchPrices:true,selectedPackagePriceRetained:true,conditionsAgreement:true,backForwardExtraOperations:0,contactFit:aiFit};
 
+        // Genuine saved hotel identity/media, explicitly controlled fictional
+        // offers. These exact JPEG URLs are fulfilled from retained bytes above.
+        await page.goBack();await screen('tour').waitFor({state:'visible'});
+        await page.goBack();await screen('hotel').waitFor({state:'visible'});
+        await page.goBack();await screen('results').waitFor({state:'visible'});
+        const reset=product.locator('[data-action="reset-filters"]:visible').first();if(await reset.isVisible())await reset.click();
+        const onlyFavorite=product.locator('[data-action="favorites"][aria-pressed="true"]:visible').first();if(await onlyFavorite.isVisible())await onlyFavorite.click();
+        const mediaOps=await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit};});
+        await page.evaluate(()=>window.__nativeFixture.installContent());
+        const contentCard=product.locator('[data-hotel-card="'+retainedMedia.hotel.id+'"]'),cardPhoto=contentCard.locator('[data-card-photo]');
+        await contentCard.waitFor({state:'visible'});
+        await page.waitForFunction(id=>document.querySelector('[data-product]:not([hidden]) [data-card-photo="'+id+'"]')?.dataset.nativePhotoState==='error',retainedMedia.hotel.id);
+        assert.match(await cardPhoto.innerText(),/Не удалось загрузить фото/);
+        assert.equal(await cardPhoto.evaluate(node=>node.style.backgroundImage),'none');
+        failFirstMedia=false;await cardPhoto.locator('[data-native-photo-retry]').click();
+        await page.waitForFunction(id=>document.querySelector('[data-product]:not([hidden]) [data-card-photo="'+id+'"]')?.dataset.nativePhotoState==='loaded',retainedMedia.hotel.id);
+        assert((await cardPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[0].sourceURL));
+        await capture(page,'native',width,percent,'content-results',row);
+        await contentCard.locator('[data-hotel-open]').first().click();await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-hotel-name]').innerText(),retainedMedia.hotel.name);
+        assert.equal(await product.locator('[data-hotel-hero]').getAttribute('data-native-photo-state'),'loaded');
+        await screen('hotel').locator('[data-action="gallery"]').click();await screen('gallery').waitFor({state:'visible'});
+        const galleryPhoto=product.locator('[data-gallery-photo]');
+        assert.equal(await galleryPhoto.evaluate(node=>node.style.backgroundSize),'contain','Gallery shows the whole photograph instead of a card crop');
+        const secondRequest=page.waitForRequest(retainedMedia.images[1].sourceURL);
+        await screen('gallery').locator('[data-direction="1"]').click();await secondRequest;
+        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='loading');
+        assert(releaseSecondMedia,'The second original photograph is held, not replaced with another image');
+        await screen('gallery').locator('[data-direction="-1"]').click();
+        assert.equal(await product.locator('[data-gallery-counter]').innerText(),'1 / 2');
+        const failedSecond=page.waitForResponse(response=>response.url()===retainedMedia.images[1].sourceURL && response.status()===503);
+        releaseSecondMedia();releaseSecondMedia=null;await failedSecond;
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        assert.equal(await galleryPhoto.getAttribute('data-native-photo-state'),'loaded','Late failed image must not replace the current photograph');
+        assert((await galleryPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[0].sourceURL));
+        await screen('gallery').locator('[data-direction="1"]').click();
+        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='error');
+        assert.equal(await product.locator('[data-gallery-counter]').innerText(),'2 / 2');
+        await capture(page,'native',width,percent,'content-gallery-error',row);
+        await galleryPhoto.locator('[data-native-photo-retry]').click();
+        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-gallery-photo]')?.dataset.nativePhotoState==='loaded');
+        assert((await galleryPhoto.evaluate(node=>node.style.backgroundImage)).includes(retainedMedia.images[1].sourceURL));
+        await capture(page,'native',width,percent,'content-gallery',row);
+        await screen('gallery').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls;return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit};}),mediaOps,'Media load/retry/next/return creates no supplier/quote/preview operation');
+        await screen('hotel').locator('[data-offer="fixture:retained-media:'+retainedMedia.hotel.id+'"]').click();await screen('tour').waitFor({state:'visible'});
+        await product.locator('[data-native-tour-flight="0"]').click();
+        await product.locator('[data-action="accept-price"]:visible').first().click();
+        await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
+        const contentForm=product.locator('[data-lead-form]'),contactStatus=contentForm.locator('[data-native-contact-status]'),checkContact=contentForm.locator('button[type="submit"]');
+        const contactOps=await page.evaluate(()=>{const c=window.__nativeFixture.calls,s=window.__nativeFixture.getSelection();return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit,key:s.key,total:s.total,choice:s.flightChoiceId};});
+        await contentForm.locator('[name="name"]').fill('FICTIONAL QA');await contentForm.locator('[name="phone"]').fill('');await contentForm.locator('[name="consent"]').uncheck();
+        await checkContact.click();assert.match(await contactStatus.innerText(),/Укажите номер телефона/);
+        await contentForm.locator('[name="phone"]').fill('123');await contentForm.locator('[name="consent"]').check();
+        await checkContact.click();assert.match(await contactStatus.innerText(),/от 10 до 15 цифр/);
+        failFirstMedia=true;
+        await page.setViewportSize({width:width===430?1280:430,height:900});await screen('lead').waitFor({state:'visible'});
+        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-lead-thumb]')?.dataset.nativePhotoState==='error');
+        assert.equal(await product.locator('[data-tour-thumb],[data-quick-thumb],[data-lead-thumb]').evaluateAll(nodes=>nodes.length===3 && nodes.every(node=>!node.querySelector('button') && !node.querySelector('.st-photo-empty-message span'))),true,'Small thumbnails use a truthful icon without large photo error controls');
+        assert.equal(await contentForm.locator('[name="phone"]').inputValue(),'123');assert.equal(await contentForm.locator('[name="phone"]').evaluate(node=>node.validity.customError),true);
+        await checkContact.click();assert.match(await contactStatus.innerText(),/от 10 до 15 цифр/);
+        failFirstMedia=false;
+        await page.setViewportSize({width,height:900});await screen('lead').waitFor({state:'visible'});
+        await page.waitForFunction(()=>document.querySelector('[data-product]:not([hidden]) [data-lead-thumb]')?.dataset.nativePhotoState==='loaded');
+        await capture(page,'native',width,percent,'content-contact-invalid',row);
+        await contentForm.locator('[name="phone"]').fill('   ');await checkContact.click();assert.match(await contactStatus.innerText(),/Укажите номер телефона/);
+        await contentForm.locator('[name="phone"]').fill('+7 999 000 00 00');await contentForm.locator('[name="consent"]').uncheck();
+        await checkContact.click();assert.match(await contactStatus.innerText(),/Подтвердите согласие/);
+        assert.deepEqual(await page.evaluate(()=>{const c=window.__nativeFixture.calls,s=window.__nativeFixture.getSelection();return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit,key:s.key,total:s.total,choice:s.flightChoiceId};}),contactOps,'All invalid first-tap cases preserve context and construct zero previews');
+        await contentForm.locator('[name="consent"]').check();await checkContact.click();
+        assert.match(await contactStatus.innerText(),/Контакты и выбранные условия проверены/);assert.match(await contactStatus.innerText(),/Заявка не отправлена/);
+        const corrected=await page.evaluate(()=>{const c=window.__nativeFixture.calls,s=window.__nativeFixture.getSelection();return{search:c.search,quote:c.quote,flight:[...c.flight],preview:c.preview,submit:c.submit,key:s.key,total:s.total,choice:s.flightChoiceId};});
+        assert.deepEqual(corrected,{...contactOps,preview:contactOps.preview+1});
+        assert.equal(await product.locator('[data-lead-thumb]').getAttribute('data-native-photo-state'),'loaded');
+        assert.equal(await product.locator('[data-lead-thumb] > svg,[data-lead-thumb] > i').count(),0,'A loaded original image has no placeholder icon overlay');
+        await capture(page,'native',width,percent,'content-contact',row);
+        await page.goBack();await screen('tour').waitFor({state:'visible'});await page.goForward();await screen('lead').waitFor({state:'visible'});
+        assert.equal(await contentForm.locator('[name="phone"]').inputValue(),'+7 999 000 00 00');assert.equal(await contentForm.locator('[name="consent"]').isChecked(),true);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().key),contactOps.key);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.preview),contactOps.preview+1,'Back/reopen never rechecks or sends the contact');
+        row.proof.retainedContent={hotelId:retainedMedia.hotel.id,hotelName:retainedMedia.hotel.name,snapshotSHA256:retainedMedia.snapshotSHA256,images:retainedMedia.images.map(({file,sourceURL,sha256})=>({file,sourceURL,sha256})),cardErrorAndRetry:true,galleryFullImage:true,lateFailureIgnored:true,galleryErrorAndRetry:true,compactImageNoPlaceholder:true,compactErrorWithoutControls:true,passiveSupplierOperations:0};
+        row.proof.contactValidation={emptyPhone:true,invalidPhone:true,restoredInvalidDraft:true,whitespacePhone:true,missingConsent:true,correctedPreviewDelta:1,invalidPreviewDelta:0,exactContextRetained:true,backReopenRetained:true,extraSupplierOperations:0,realSubmissions:0};
+
         // Revisit the controlled native entry with its actual compiled bridge.
         // The previous 393 frames/proofs remain untouched by this extra journey.
         terminalJourney=true;
@@ -1378,6 +1487,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});
         try{await page.screenshot({path:path.join(evidence,'failure-'+width+'-text'+percent+'.png'),fullPage:true});}catch{}
       } finally {
+        releaseSecondMedia?.();
         if(row.errors.length)report.failures.push({width,percent,error:'Page errors',details:row.errors});
         if(row.unexpectedRequests.length)report.failures.push({width,percent,error:'Unexpected external/API/lead request',details:row.unexpectedRequests});
         await context.close();

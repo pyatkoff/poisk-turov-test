@@ -78,13 +78,14 @@
   }
   const conditionsHTML = conditions => '<strong data-native-conditions-title>'+esc(conditions.title)+'</strong><p>'+esc(conditions.note)+'</p>';
   const displayError = message => /Tourvisor request failed/i.test(message || '') ? 'Не удалось получить условия у поставщика. Выбранный номер сохранён. Повторите проверку позже.' : message;
-  function mount({root, bridge, onChanged = () => {}, initialState = null}) {
+  function mount({root, bridge, renderPhoto = null, onChanged = () => {}, initialState = null}) {
     if (!root || !bridge) throw new Error('Не удалось подключить условия тура.');
     const $ = selector => root.querySelector(selector), $$ = selector => [...root.querySelectorAll(selector)];
     const controller = new window.AbortController();
     const form = $('[data-lead-form]'), tourScreen = $('[data-screen="tour"]');
     let alive = true, context = null, selection = null, epoch = 0, pending = Promise.resolve(), busy = false, error = '', review = null, expiryTimer = null;
     let flightAlternativesOpen = false, contactDetailsOpen = initialState?.contactDetailsOpen === true;
+    let contactAttempted = false;
     const text = (selector, value) => $$(selector).forEach(node => { node.textContent = value; });
     const sameOffer = (value, offer = context?.offer) => Boolean(value && offer && (value.offer === offer || value.key === offer.key && value.raw === offer.raw));
     function current() {
@@ -109,6 +110,7 @@
     function photo(selector) {
       const hotel = context?.hotel, source = hotel?.photos?.[0];
       $$(selector).forEach(node => {
+        if(renderPhoto){renderPhoto(node,hotel);return;}
         node.style.backgroundImage = source && /^(https?:\/\/|\/)/.test(source) ? 'url(' + JSON.stringify(source) + ')' : 'none';
         node.classList.toggle('st-no-photo', !source);
         node.setAttribute('aria-label',source ? 'Фото отеля ' + hotel.name : 'Фото отеля пока нет');
@@ -184,6 +186,7 @@
       if (note) note.textContent='В этой версии можно проверить контакты и выбранный тур. Заявка не отправляется.';
       form.dataset.delivery='preview-disabled';
       for(const name of ['name','phone'])if(typeof initialState?.draft?.[name]==='string')form.elements[name].value=initialState.draft[name].slice(0,name==='name'?120:40);
+      window.V2LeadFormGuard?.validatePhone?.(form.elements.phone);
     }
     function legHTML(segments,label) {
       if (!Array.isArray(segments) || !segments.length) return '<div class="st-flight"><div class="st-flight-label"><span>' + esc(label) + '</span></div><p class="st-small st-muted">Расписание не предоставлено.</p></div>';
@@ -303,13 +306,24 @@
       setStatus(busy ? 'Проверяем точное предложение…' : displayError(failure), Boolean(failure));
       renderContact();scheduleExpiry();window.lucide?.createIcons({attrs:{width:18,height:18}});
     }
+    function contactError() {
+      const phone=form.elements.phone,consent=form.elements.consent;
+      if(!phone.value.trim())return{field:phone,message:'Укажите номер телефона.'};
+      if(window.V2LeadFormGuard?.validatePhone && !window.V2LeadFormGuard.validatePhone(phone))return{field:phone,message:phone.validationMessage || 'Укажите корректный телефон: от 10 до 15 цифр.'};
+      if(!consent.checked)return{field:consent,message:'Подтвердите согласие на обработку персональных данных для связи по заявке.'};
+      return null;
+    }
     function renderContact() {
       const ready=canContinue();
       for (const input of form.querySelectorAll('input,textarea')) input.disabled=!ready;
       const button=form.querySelector('button[type="submit"]');button.disabled=!ready;
       const message=form.querySelector('[data-native-contact-status]');
       if (!ready) {review=null;delete form.dataset.checked;const failure=error || current()?.quoteError || current()?.flightsError;message.textContent=displayError(failure) || 'Сначала проверьте тур, выберите перелёт или уточнение менеджером и подтвердите изменившуюся цену.';message.setAttribute('role',failure?'alert':'status');}
-      else if (!review) {message.textContent='';message.setAttribute('role','status');}
+      else if (!review) {
+        const invalid=contactAttempted?contactError():null;
+        message.textContent=invalid?.message || '';message.setAttribute('role',invalid?'alert':'status');
+        for(const input of [form.elements.phone,form.elements.consent])input.setAttribute('aria-invalid',String(invalid?.field===input));
+      }
     }
     function scheduleExpiry() {
       if(expiryTimer!==null)window.clearTimeout(expiryTimer);expiryTimer=null;
@@ -322,7 +336,7 @@
     }
     async function operation(action) {
       if(busy || !context?.offer)return;
-      const operationEpoch=epoch,offer=context.offer;busy=true;error='';review=null;form.elements.consent.checked=false;renderDetails();emit();
+      const operationEpoch=epoch,offer=context.offer;busy=true;error='';review=null;contactAttempted=false;form.elements.consent.checked=false;renderDetails();emit();
       pending=(async()=>{
         try {
           const result=await action(offer);
@@ -341,12 +355,12 @@
       context=next;
       if(replaced){
         flightAlternativesOpen=initialState?.flightAlternativesOffer===next.offer && initialState.flightAlternativesOpen===true;
-        ++epoch;selection=null;error='';review=null;busy=false;delete form.dataset.checked;form.elements.consent.checked=false;
+        ++epoch;selection=null;error='';review=null;contactAttempted=false;busy=false;delete form.dataset.checked;form.elements.consent.checked=false;
         const cached=current();
         if((cached?.loading || cached?.flightsLoading) && bridge.waitSelection)operation(()=>bridge.waitSelection());
         else if(initialState?.pendingOffer===next.offer && initialState.pendingPromise){const prior=initialState.pendingPromise;initialState={...initialState,pendingPromise:null};operation(()=>Promise.resolve(prior).then(()=>bridge.getSelection()));}
         else if(cached?.loading || cached?.flightsLoading)operation(offer=>bridge.quoteOffer(offer.key,{expectedOffer:offer}));
-        else if(cached){selection=cached;error=cached.quoteError || '';settlePrice();if(canContinue() && sameBinding(initialState?.draft?.binding,binding()))form.elements.consent.checked=initialState.draft.consent===true;}
+        else if(cached){selection=cached;error=cached.quoteError || '';settlePrice();if(canContinue() && sameBinding(initialState?.draft?.binding,binding())){form.elements.consent.checked=initialState.draft.consent===true;contactAttempted=initialState.draft.attempted===true;}}
         else if(next.offer.raw?.anexKind!=='group_minimum' && !next.offer.cached)operation(offer=>bridge.quoteOffer(offer.key,{expectedOffer:offer}));
       }
       renderDetails();
@@ -374,11 +388,18 @@
     },{capture:true,signal:controller.signal});
     form.addEventListener('input',()=>{review=null;delete form.dataset.checked;window.V2LeadFormGuard?.validatePhone(form.elements.phone);renderContact();},{signal:controller.signal});
     form.addEventListener('change',()=>{review=null;delete form.dataset.checked;renderContact();},{signal:controller.signal});
+    form.addEventListener('invalid',()=>{
+      if(!canContinue())return;
+      contactAttempted=true;review=null;delete form.dataset.checked;renderContact();
+    },{capture:true,signal:controller.signal});
     form.addEventListener('submit',event=>{
       event.preventDefault();if(!canContinue())return;
+      contactAttempted=true;review=null;delete form.dataset.checked;
       const phone=form.elements.phone;
       if(!window.V2LeadFormGuard?.validatePhone){const message=form.querySelector('[data-native-contact-status]');message.setAttribute('role','alert');message.textContent='Проверка контактов временно недоступна.';return;}
-      if(!window.V2LeadFormGuard.validatePhone(phone) || !form.reportValidity())return;
+      const phoneValid=window.V2LeadFormGuard.validatePhone(phone),formValid=form.reportValidity();
+      if(!phoneValid || !formValid){renderContact();return;}
+      renderContact();
       try {
         review=bridge.previewContact(new window.FormData(form));form.dataset.checked='1';
         const message=form.querySelector('[data-native-contact-status]');message.setAttribute('role','status');
@@ -387,7 +408,7 @@
       } catch(failure) {review=null;const message=form.querySelector('[data-native-contact-status]');message.setAttribute('role','alert');message.textContent=failure.message || 'Не удалось проверить выбранные условия.';}
     },{signal:controller.signal});
     prepare();renderContact();
-    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,contactDetailsOpen:root.classList.contains('st-mobile')?$('[data-native-contact-facts]').open:contactDetailsOpen,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
+    return Object.freeze({render,ready:()=>pending,getState:()=>({selection:current(),ready:canContinue(),pending:busy,pendingPromise:busy?pending:null,pendingOffer:busy?context?.offer:null,error,contactChecked:Boolean(review),flightAlternativesOpen,flightAlternativesOffer:context?.offer,contactDetailsOpen:root.classList.contains('st-mobile')?$('[data-native-contact-facts]').open:contactDetailsOpen,draft:{name:form.elements.name.value,phone:form.elements.phone.value,consent:canContinue()&&form.elements.consent.checked,attempted:contactAttempted,binding:binding()}}),destroy(){alive=false;++epoch;controller.abort();if(expiryTimer!==null)window.clearTimeout(expiryTimer);context=null;selection=null;review=null;}});
   }
   window.AnyTourDesignV2Tour=Object.freeze({mount,mealLabel,describePrice,describeConditions,conditionsHTML});
 })(window);
