@@ -76,7 +76,7 @@ class LocalContractTest(unittest.TestCase):
                     self.assertEqual(expected, new.parse_command(body))
 
     def event(self, body=COMMAND):
-        return {'issue': {'number': 4217}, 'comment': {
+        return {'issue': {'number': 4709}, 'comment': {
             'body': body, 'id': 1, 'user': {'id': 226193297}, 'author_association': 'OWNER'}}
 
     def test_fresh_release_required_with_unchanged_main_and_owner_guards(self):
@@ -199,7 +199,7 @@ class LocalContractTest(unittest.TestCase):
         self.assertEqual(2, flow.count('python3 tests/int_server_executor_local_profile_plan_test.py -v'))
         self.assertEqual(2, flow.count('php -l scripts/diagnostics/local_profile_plan_4191.php'))
         self.assertIn("group: anytoour-int-server-executor", flow)
-        self.assertIn('github.event.issue.number == 4217', flow)
+        self.assertIn('github.event.issue.number == 4709', flow)
         self.assertIn('github.event.comment.user.id == 226193297', flow)
         self.assertNotIn('local-profile-plan-4191', flow)  # Same entrypoint, no auto command/job.
 

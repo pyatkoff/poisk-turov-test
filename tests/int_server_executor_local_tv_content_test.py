@@ -45,7 +45,7 @@ class ContentControl(unittest.TestCase):
         self.assertIn("mode not in ('local-tv-content-v1','reconcile',",c.REMOTE)
     def test_current_release_and_owner_are_required(self):
         c=self.wrapper().core;sha='a'*40;control='b'*40;body=f'{c.PREFIX}{sha} {m.MODE} {next(iter(m.OPERATIONS))}'
-        event={'issue':{'number':4217},'comment':{'id':98,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        event={'issue':{'number':4709},'comment':{'id':98,'user':{'id':226193297},'author_association':'OWNER','body':body}}
         def api(path,token):
             if path=='/issues/comments/98':return {'body':body,'user':{'id':226193297}}
             if path=='/git/ref/heads/main':return {'object':{'sha':control}}
