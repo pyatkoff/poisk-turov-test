@@ -8,6 +8,27 @@ if (is_file($privateConfig)) require_once $privateConfig;
 require_once __DIR__ . '/catalog-cache-v1.php';
 require_once dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php';
 
+/** Optional passive evidence uses the existing INT helpers in either layout. */
+function tourvisor_fuel_passive_bootstrap(): void
+{
+    $classes = ['AnyTourTourvisorOperatorFuelPassiveIntakeV1',
+        'AnyTourTourvisorOperatorFuelRetainedIntakeV1',
+        'AnyTourOperatorFuelRuleStoreV1', 'AnyTourOperatorFuelRuleEvidenceV1'];
+    $loaded = count(array_filter($classes, static fn(string $class): bool => class_exists($class, false)));
+    if ($loaded !== 0) return;
+    $files = ['tourvisor-operator-fuel-passive-intake.php',
+        'tourvisor-operator-fuel-retained-intake.php',
+        'operator-fuel-rule-store.php', 'operator-fuel-rule-evidence.php'];
+    foreach ([__DIR__ . '/app/integrations', dirname(__DIR__) . '/app/integrations'] as $directory) {
+        foreach ($files as $file) {
+            if (!is_file($directory . '/' . $file) || is_link($directory . '/' . $file)) continue 2;
+        }
+        require_once $directory . '/tourvisor-operator-fuel-passive-intake.php';
+        break;
+    }
+}
+tourvisor_fuel_passive_bootstrap();
+
 function out($data, int $status = 200)
 {
     http_response_code($status);
@@ -239,6 +260,56 @@ function tourvisor_autosave_results(int $searchId, int $limit, array $response):
     }
 }
 
+/** Existing private Andromeda searches directory is the single INT evidence store. */
+function tourvisor_fuel_passive_runtime(): ?array
+{
+    if (!class_exists('AnyTourTourvisorOperatorFuelPassiveIntakeV1', false)) return null;
+    // Reuse complete gateway DB globals; never redeclare or complete a partial set.
+    $helpers = ['v2_data_db_config', 'v2_data_db', 'v2_data_normalize_text', 'v2_data_slug'];
+    $loaded = count(array_filter($helpers, 'function_exists'));
+    if ($loaded === 0) {
+        require_once __DIR__ . '/data/db-v1.php';
+    } elseif ($loaded !== count($helpers)) {
+        return null;
+    }
+    $private = __DIR__ . '/.andromeda-private.php';
+    if (!is_file($private) || is_link($private)) return null;
+    $config = require $private;
+    $catalog = is_array($config) ? ($config['catalog_path'] ?? null) : null;
+    if (!is_string($catalog) || $catalog === '') return null;
+    $directory = dirname($catalog) . '/searches';
+    if (!is_dir($directory) || is_link($directory)) return null;
+    return ['db' => v2_data_db(), 'directory' => $directory];
+}
+
+function tourvisor_fuel_passive_tour(string $tourId, array $response): void
+{
+    try {
+        $runtime = tourvisor_fuel_passive_runtime();
+        if ($runtime === null) return;
+        AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour(
+            $tourId, $response, $runtime['db'], $runtime['directory'],
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+        // Evidence intake cannot replace a successful supplier response.
+    }
+}
+
+function tourvisor_fuel_passive_flights(string $tourId, array $response): void
+{
+    try {
+        $runtime = tourvisor_fuel_passive_runtime();
+        if ($runtime === null) return;
+        AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights(
+            $tourId, $response, $runtime['directory'],
+            new DateTimeImmutable('now', new DateTimeZone('UTC'))
+        );
+    } catch (Throwable $ignored) {
+        // Evidence intake cannot replace a successful supplier response.
+    }
+}
+
 $action = short_text($_GET['action'] ?? $_POST['action'] ?? 'health', 60);
 
 switch ($action) {
@@ -376,12 +447,16 @@ switch ($action) {
     case 'tour':
         $id = short_text($_GET['tourId'] ?? '', 200);
         if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id), ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']));
+        $data = tv_get('/tours/' . rawurlencode($id), ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']);
+        tourvisor_fuel_passive_tour($id, $data);
+        out($data);
 
     case 'flights':
         $id = short_text($_GET['tourId'] ?? '', 200);
         if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id) . '/flights', ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']));
+        $data = tv_get('/tours/' . rawurlencode($id) . '/flights', ['currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB']);
+        tourvisor_fuel_passive_flights($id, $data);
+        out($data);
 
     case 'rooms':
         out(tv_get('/rooms', ['ids' => request_array('ids', 30)]));
