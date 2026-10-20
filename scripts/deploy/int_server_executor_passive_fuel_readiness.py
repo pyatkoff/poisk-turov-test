@@ -1,7 +1,8 @@
-"""Fixed, read-only passive-fuel inventory inside the permanent INT carrier.
+"""Fixed passive-fuel scopes inside the permanent INT carrier.
 
-No application/config execution, database connection, supplier request or install.
-Only the reviewed five-file release bundle and exact installed dependencies apply.
+Sealed inventories remain read-only. The separate activation transaction replaces
+exactly two reviewed files only after its complete dependency preflight is ready.
+No application/config execution, database connection or supplier request applies.
 """
 from __future__ import annotations
 
@@ -23,7 +24,10 @@ PRIVATE_OPERATION = 'int-anex-passive-fuel-private-readiness-20261020-v1'
 PLAN_MODE = 'passive-fuel-activation-plan'
 PLAN_SOURCE = '199a570adbaa8de4957bdd84b30648bfaaee5fb5'
 PLAN_OPERATION = 'int-anex-passive-fuel-activation-plan-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE)
+INSTALL_MODE = 'passive-fuel-activate'
+INSTALL_SOURCE = '0415fe57046a8929d1b857e13cd0d0d8824e904d'
+INSTALL_OPERATION = 'int-anex-passive-fuel-activate-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -51,7 +55,8 @@ def need(value, reason):
 
 def parse(parts):
     need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION],
-                  [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION]),
+                  [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION],
+                  [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -71,7 +76,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -96,7 +101,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 
 def bundle_source(source_root, command=None):
     command = policy(command)
-    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE) else SOURCE_HASHES
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE) else SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -447,8 +452,8 @@ def pp_snapshot():
     directories=(pp_directory(home/'.anytoour-andromeda'),pp_directory(home/'.anytoour-andromeda/searches'))
     return bodies,records,identities,directories
 
-def passive_fuel_activation_plan():
-    bodies,before,identities,directories=pp_snapshot()
+def passive_fuel_activation_plan(snapshot=None):
+    bodies,before,identities,directories=pp_snapshot() if snapshot is None else snapshot
     helpers=[p for p in PF_EXPECTED if p.startswith('app/')]
     passive='app/integrations/tourvisor-operator-fuel-passive-intake.php'
     digest=lambda name:None if before[name] is None else before[name]['sha256']
@@ -489,6 +494,183 @@ def passive_fuel_activation_plan():
 ''').replace('PF_EXPECTED='+repr(SOURCE_HASHES), 'PF_EXPECTED='+repr(PRIVATE_SOURCE_HASHES), 1)
 
 
+# This is a new installation transaction, not a replacement metadata operation.
+# The old three operation/source tuples above remain immutable and no-replay.
+INSTALL_REMOTE = PLAN_REMOTE_READER + r'''
+import fcntl as pi_fcntl
+
+def pi_parent(path):
+    parts=path.relative_to(home).parts
+    if not parts or '..' in parts:fail('activation_path')
+    descriptor=os.open(home,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:
+        for part in parts[:-1]:
+            child=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=descriptor)
+            os.close(descriptor);descriptor=child
+        if path.parent.resolve()!=path.parent:fail('activation_parent')
+        return descriptor
+    except Exception:
+        os.close(descriptor);raise
+
+def pi_parent_stable(descriptor,path):
+    a=os.fstat(descriptor);b=path.parent.lstat()
+    fields=lambda s:(s.st_dev,s.st_ino,s.st_mode,s.st_uid,s.st_gid)
+    if (fields(a)!=fields(b) or path.parent.resolve()!=path.parent or a.st_uid!=os.getuid()
+            or pf_stat.S_IMODE(a.st_mode)&0o022):fail('activation_parent')
+
+def pi_write(descriptor,name,data,mode):
+    fd=os.open(name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=descriptor)
+    with os.fdopen(fd,'wb') as stream:
+        stream.write(data);stream.flush();os.fchmod(stream.fileno(),mode);os.fsync(stream.fileno())
+        return pf_identity(os.fstat(stream.fileno()))
+
+def pi_private(path,data):
+    fd=pi_parent(path)
+    try:
+        pi_parent_stable(fd,path);pi_write(fd,path.name,data,0o600);os.fsync(fd)
+    finally:os.close(fd)
+
+def pi_lint(path):
+    # Syntax only: -n disables PHP configuration; no include or application run.
+    call=subprocess.run(['php','-n','-l',str(path)],stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,timeout=15,check=False,env={'PATH':'/usr/bin:/bin','HOME':str(home)})
+    if call.returncode:fail('activation_syntax')
+
+def passive_fuel_activate(stage,op,production_before):
+    out={'status':'blocked_no_replay','reason':'preflight_failed','preflight':None,
+        'publication_lock':'not_acquired','changed_files':[],'rollback_files':[],
+        'before_files':{},'after_files':{},'protected_after':{},'protected_unchanged_except_target':False,
+        'runtime_writes':0,'staging_file_writes':0,'backup_retained':False,
+        'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0}
+    lock=None;lock_parent=None;parents={};temps={};applied=[];initial=None;expected=None;expected_ids=None
+    root='api-v2.php'
+    passive='_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php'
+    order=(passive,root)  # Dependency first, ROOT gateway last; rollback reverses this order.
+    keys={root:root,passive:'helper:app/integrations/tourvisor-operator-fuel-passive-intake.php'}
+    source_paths={root:'v2/api-v2.php',passive:'app/integrations/tourvisor-operator-fuel-passive-intake.php'}
+    old={};candidates={};installed={}
+    def snapshot_matches():
+        current=pp_snapshot()
+        if (current[1]!=expected or current[2]!=expected_ids or current[3]!=initial[3]
+                or fingerprints()!=production_before):fail('activation_drift')
+        for rel,fd in parents.items():pi_parent_stable(fd,project/rel)
+        if lock is not None and pf_identity(os.fstat(lock))!=lock_identity:fail('activation_lock_changed')
+        if lock is not None and pf_identity(lock_path.lstat())!=lock_identity:fail('activation_lock_changed')
+        return current
+    def checkpoint(name):
+        pi_private(op/name,json.dumps({k:out[k] for k in ('status','runtime_writes','changed_files','rollback_files')},
+            sort_keys=True,separators=(',',':')).encode())
+    try:
+        out['preflight']=passive_fuel_activation_plan()
+        out.update(protected_after=out['preflight']['protected_after'],protected_unchanged_except_target=True)
+        if out['preflight']['status']!='ready':
+            out.update(status='hold',reason='preflight_hold',protected_after=out['preflight']['protected_after'],
+                protected_unchanged_except_target=True)
+            return out
+        lock_path=home/'.anytoour-andromeda/grouped-search-update.lock'
+        lock_parent=pi_parent(lock_path)
+        pi_parent_stable(lock_parent,lock_path)
+        try:lock=os.open(lock_path.name,os.O_RDWR|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=lock_parent)
+        except FileNotFoundError:
+            out.update(status='hold',reason='publication_lock_missing');return out
+        info=os.fstat(lock);lock_identity=pf_identity(info)
+        if (not pf_stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_uid!=os.getuid()
+                or pf_stat.S_IMODE(info.st_mode)&0o022 or info.st_size>65536
+                or pf_identity(lock_path.lstat())!=lock_identity):fail('activation_lock_unsafe')
+        try:pi_fcntl.flock(lock,pi_fcntl.LOCK_EX|pi_fcntl.LOCK_NB)
+        except BlockingIOError:
+            out.update(status='hold',reason='publication_busy');return out
+        out['publication_lock']='exclusive_existing'
+        # Revalidate everything under the publisher's existing lock.
+        initial=pp_snapshot()
+        out['preflight']=passive_fuel_activation_plan(initial)
+        out.update(protected_after=out['preflight']['protected_after'],protected_unchanged_except_target=True)
+        if out['preflight']['status']!='ready':
+            out.update(status='hold',reason='preflight_hold');return out
+        expected=dict(initial[1]);expected_ids=dict(initial[2])
+        for rel in order:
+            target=project/rel;key=keys[rel];record=initial[1][key];identity=initial[2][key]
+            if (record is None or record['sha256']!=PP_TARGETS[rel][0] or record['mode']!=0o644
+                    or identity[-2]!=os.getuid()):fail('activation_predecessor')
+            parents[rel]=pi_parent(target);pi_parent_stable(parents[rel],target)
+            if os.fstat(parents[rel]).st_dev!=op.stat().st_dev:fail('activation_filesystem')
+            old[rel]=initial[0][key]
+            data,record=pf_read(stage/source_paths[rel],optional=False,limit=65536)
+            if record['sha256']!=PP_TARGETS[rel][1]:fail('activation_candidate')
+            candidates[rel]=data;out['before_files'][rel]=initial[1][key]
+        snapshot_matches()
+        for index,rel in enumerate(order):
+            pi_private(op/('activation-backup-'+str(index)+'.php'),old[rel])
+        out['backup_retained']=True
+        for index,rel in enumerate(order):
+            name='.int-passive-fuel-'+operation+'-'+str(index)+'.tmp'
+            identity=pi_write(parents[rel],name,candidates[rel],0o644)
+            temps[rel]=(name,identity);out['staging_file_writes']+=1
+            pi_lint(project/rel);pi_lint((project/rel).parent/name)
+        snapshot_matches();out['status']='prepared';checkpoint('activation-prepared.json')
+        for index,rel in enumerate(order):
+            snapshot_matches();name,identity=temps[rel];fd=parents[rel]
+            if pf_identity(os.stat(name,dir_fd=fd,follow_symlinks=False))!=identity:fail('activation_candidate')
+            os.replace(name,(project/rel).name,src_dir_fd=fd,dst_dir_fd=fd)
+            # Record ownership immediately after atomic replacement, before fsync/readback/lint.
+            applied.append(rel);installed[rel]=identity
+            out['runtime_writes']+=1;out['changed_files'].append(rel);temps.pop(rel)
+            os.fsync(fd)
+            data,record=pf_read(project/rel,optional=False,limit=65536)
+            actual_id=pf_identity((project/rel).lstat())
+            # rename changes ctime, so bind the new inode plus the exact installed bytes/mode.
+            if (actual_id[:5]!=identity[:5] or record['sha256']!=PP_TARGETS[rel][1]
+                    or record['mode']!=0o644):fail('activation_readback')
+            installed[rel]=actual_id;expected[keys[rel]]=record;expected_ids[keys[rel]]=actual_id
+            pi_lint(project/rel);snapshot_matches();checkpoint('activation-applied-'+str(index)+'.json')
+        final=snapshot_matches()
+        out.update(status='installed_verified',reason=None,after_files={p:final[1][keys[p]] for p in order},
+            protected_after={p:final[1][p] for p in PF_PROTECTED},protected_unchanged_except_target=True)
+        checkpoint('activation-verified.json')
+    except Exception as exc:
+        allowed={'activation_path','activation_parent','activation_lock_changed','activation_lock_unsafe',
+            'activation_drift','activation_predecessor','activation_filesystem','activation_candidate',
+            'activation_syntax','activation_readback'}
+        out['reason']=str(exc) if isinstance(exc,RuntimeError) and str(exc) in allowed else 'activation_failed'
+        out['status']='blocked_no_replay' if not applied else 'unknown_no_replay'
+        if applied:
+            try:
+                for index,rel in enumerate(reversed(applied)):
+                    fd=parents[rel];target=project/rel;pi_parent_stable(fd,target)
+                    data,record=pf_read(target,optional=False,limit=65536)
+                    current=pf_identity(target.lstat());ours=installed[rel]
+                    # Never overwrite a subsequent writer's inode or changed bytes.
+                    if (current[:5]!=ours[:5] or current[5]!=ours[5]
+                            or current[7:]!=ours[7:] or record['sha256']!=PP_TARGETS[rel][1]):
+                        fail('activation_rollback_ownership')
+                    name='.int-passive-fuel-'+operation+'-rollback-'+str(index)+'.tmp'
+                    identity=pi_write(fd,name,old[rel],0o644);temps[rel]=(name,identity)
+                    if pf_identity(target.lstat())!=current:fail('activation_rollback_ownership')
+                    os.replace(name,target.name,src_dir_fd=fd,dst_dir_fd=fd);temps.pop(rel)
+                    out['runtime_writes']+=1;out['rollback_files'].append(rel);os.fsync(fd)
+                    _,restored=pf_read(target,optional=False,limit=65536)
+                    if restored!=out['before_files'][rel]:fail('activation_rollback_readback')
+                final=pp_snapshot()
+                if (final[1]!=initial[1] or final[3]!=initial[3] or fingerprints()!=production_before
+                        or any(final[2][k]!=initial[2][k] for k in initial[2] if k not in keys.values())):
+                    fail('activation_rollback_drift')
+                out.update(status='rolled_back_no_replay',after_files={p:final[1][keys[p]] for p in order},
+                    protected_after={p:final[1][p] for p in PF_PROTECTED},protected_unchanged_except_target=True)
+            except Exception:out['status']='rollback_failed_no_replay'
+    finally:
+        for rel,(name,identity) in temps.items():
+            try:
+                fd=parents[rel]
+                if pf_identity(os.stat(name,dir_fd=fd,follow_symlinks=False))==identity:os.unlink(name,dir_fd=fd);os.fsync(fd)
+                else:out['status']='unknown_no_replay'
+            except Exception:out['status']='unknown_no_replay'
+        for fd in parents.values():os.close(fd)
+        if lock is not None:os.close(lock)
+        if lock_parent is not None:os.close(lock_parent)
+    return out
+'''
+
+
 def remote_program(remote, command=None):
     command = policy(command)
     mode = command['mode']
@@ -498,8 +680,8 @@ def remote_program(remote, command=None):
     size = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(marker) == remote.count(dispatch) == remote.count(size) == 1
          and remote.count(exclusion) == 2, 'passive_registration_drift')
-    reader = PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
-    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE) else SOURCE_HASHES
+    reader = INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
+    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE) else SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -509,6 +691,15 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
+    if mode == INSTALL_MODE:
+        registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
+        activation=result['passive_fuel_activation']
+        result['production_after']=fingerprints()
+        result.update(status='complete' if activation['status'] in ('hold','installed_verified') else activation['status'],
+            supplier_calls=0,database_reads=0,database_writes=0,
+            runtime_changed=activation['status']=='installed_verified' or activation['status'] in ('unknown_no_replay','rollback_failed_no_replay'),
+            production_unchanged=result['production_after']==before)
+"""
     remote = remote.replace(dispatch, registration + dispatch, 1)
     remote = remote.replace(exclusion, "    if mode not in (" + repr(mode) + ",'reconcile',")
     remote = remote.replace(size, "if not isinstance(files,dict) or files!=" + repr(hashes) + ": fail('passive_manifest')", 1)
@@ -518,6 +709,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == INSTALL_MODE:return install_completed(command,result)
     if command['mode'] == PLAN_MODE:return plan_completed(command, result)
     private = command['mode'] == PRIVATE_MODE
     value = result.get('passive_fuel_readiness')
@@ -602,3 +794,50 @@ def plan_completed(command, result):
         and result.get('production_unchanged') is True and result.get('runtime_changed') is False
         and all(type(value[k]) is int and value[k]==0 for k in counts)
         and all(type(result.get(k)) is int and result[k]==0 for k in counts-{'runtime_writes'}))
+
+
+def install_completed(command,result):
+    value=result.get('passive_fuel_activation')
+    fields={'status','reason','preflight','publication_lock','changed_files','rollback_files',
+        'before_files','after_files','protected_after','protected_unchanged_except_target',
+        'runtime_writes','staging_file_writes','backup_retained',
+        'supplier_calls','database_reads','database_writes','booking_calls','lead_calls'}
+    if not isinstance(value,dict) or set(value)!=fields:return False
+    counts=('supplier_calls','database_reads','database_writes','booking_calls','lead_calls')
+    if (any(type(value[k]) is not int or value[k]!=0 or type(result.get(k)) is not int or result[k]!=0 for k in counts)
+            or result.get('status')!='complete' or result.get('production_unchanged') is not True
+            or result.get('production_before')!=result.get('production_after')
+            or not isinstance(result.get('production_before'),dict)
+            or set(result['production_before'])!={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+            or command!=parse([INSTALL_SOURCE,INSTALL_MODE,INSTALL_OPERATION])
+            or any(result.get(k)!=command[k] for k in command)
+            or value['protected_unchanged_except_target'] is not True):return False
+    plan_command=parse([PLAN_SOURCE,PLAN_MODE,PLAN_OPERATION])
+    if not plan_completed(plan_command,{**plan_command,'status':'complete','runtime_changed':False,
+            'production_unchanged':True,**dict.fromkeys(counts,0),'passive_fuel_activation_plan':value['preflight']}):return False
+    preflight=value['preflight']
+    if value['status']=='hold':
+        return (value['reason'] in ('preflight_hold','publication_lock_missing','publication_busy')
+            and (value['reason']!='preflight_hold' or preflight['status']=='hold')
+            and value['publication_lock'] in ('not_acquired','exclusive_existing')
+            and value['changed_files']==value['rollback_files']==[]
+            and value['before_files']==value['after_files']=={}
+            and type(value['runtime_writes']) is int and value['runtime_writes']==0
+            and type(value['staging_file_writes']) is int and value['staging_file_writes']==0
+            and value['backup_retained'] is False and result.get('runtime_changed') is False
+            and value['protected_after']==preflight['protected_before'])
+    root='api-v2.php'
+    passive='_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php'
+    before={root:{'sha256':'01ac5ed43961f73879cd36c2c1d387ac79fadaf53ad66d3c4aaebcc617464c61','bytes':16366,'mode':0o644},
+        passive:{'sha256':'be4380b64caf4c98fc572c8db526f079a89bd04c301db5eccea3c2f2f232cc22','bytes':13823,'mode':0o644}}
+    after={root:{'sha256':PRIVATE_SOURCE_HASHES['v2/api-v2.php'],'bytes':20233,'mode':0o644},
+        passive:{'sha256':PRIVATE_SOURCE_HASHES['app/integrations/tourvisor-operator-fuel-passive-intake.php'],'bytes':13766,'mode':0o644}}
+    expected_protected={**preflight['protected_before'],root:after[root]}
+    return (value['status']=='installed_verified' and value['reason'] is None and preflight['status']=='ready'
+        and value['publication_lock']=='exclusive_existing' and value['backup_retained'] is True
+        and value['changed_files']==[passive,root] and value['rollback_files']==[]
+        and value['before_files']==before and value['after_files']==after
+        and preflight['protected_before'][root]==before[root] and value['protected_after']==expected_protected
+        and type(value['runtime_writes']) is int and value['runtime_writes']==2
+        and type(value['staging_file_writes']) is int and value['staging_file_writes']==2
+        and result.get('runtime_changed') is True)

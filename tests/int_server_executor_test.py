@@ -1372,6 +1372,234 @@ class PassiveFuelActivationPlanTest(unittest.TestCase):
             self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
 
 
+class PassiveFuelActivationTransactionTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.INSTALL_SOURCE,self.p.INSTALL_MODE,self.p.INSTALL_OPERATION])
+
+    def fixture(self,directory):
+        fixture=PassiveFuelActivationPlanTest();fixture.setUp()
+        ns,home,project,runtime,private=fixture.reader(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_'))}
+        exec(self.p.INSTALL_REMOTE,ns);ns.update(constants)
+        ns['json']=json  # Same json global imported by the stock REMOTE.
+        ns['operation']=self.p.INSTALL_OPERATION
+        ns['fingerprints']=lambda:{p:hashlib.sha256((project/p).read_bytes()).hexdigest()
+            if (project/p).is_file() else None for p in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php')}
+        ns['pi_lint']=lambda path:None
+        op=home/'activation-test';op.mkdir(mode=0o700)
+        stage=op/'source';(stage/'v2').mkdir(parents=True);(stage/'app/integrations').mkdir(parents=True)
+        for rel,source in [('api-v2.php','v2/api-v2.php'),
+                ('_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php',
+                 'app/integrations/tourvisor-operator-fuel-passive-intake.php')]:
+            data=b'<?php /* candidate '+source.encode()+b' */'
+            (stage/source).write_bytes(data)
+            ns['PP_TARGETS'][rel]=(ns['PP_TARGETS'][rel][0],hashlib.sha256(data).hexdigest())
+        (private/'grouped-search-update.lock').touch(mode=0o600)
+        return ns,home,project,runtime,private,stage,op
+
+    def run_install(self,ns,stage,op):return ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+
+    def test_install_is_exactly_two_files_dependency_first_with_durable_backups(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            before=ns['pp_snapshot']();calls=[];replace=os.replace
+            def observed(src,dst,*args,**kwargs):
+                calls.append(dst)
+                if dst=='api-v2.php':
+                    self.assertEqual((stage/'app/integrations/tourvisor-operator-fuel-passive-intake.php').read_bytes(),
+                        (runtime/'app/integrations/tourvisor-operator-fuel-passive-intake.php').read_bytes())
+                return replace(src,dst,*args,**kwargs)
+            with patch.object(os,'replace',side_effect=observed):value=self.run_install(ns,stage,op)
+            self.assertEqual('installed_verified',value['status']);self.assertEqual(2,value['runtime_writes'])
+            self.assertEqual(['tourvisor-operator-fuel-passive-intake.php','api-v2.php'],calls)
+            after=ns['pp_snapshot']()
+            self.assertEqual({p for p in before[1] if before[1][p]!=after[1][p]},
+                {'api-v2.php','helper:app/integrations/tourvisor-operator-fuel-passive-intake.php'})
+            self.assertEqual(before[0]['api-v2.php'],(op/'activation-backup-1.php').read_bytes())
+            self.assertTrue((op/'activation-verified.json').is_file());self.assertFalse(list(project.rglob('*.tmp')))
+            self.assertNotIn('SECRET_NEVER_EXPORT',json.dumps(value));self.assertNotIn(str(home),json.dumps(value))
+            self.assertEqual([],list((private/'searches').iterdir()))
+
+    def test_missing_unknown_or_legacy_caller_is_hold_without_any_staging_or_write(self):
+        for case in ('missing','unknown','legacy','db','store'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                if case=='missing':(runtime/'api-v2.php').unlink()
+                elif case=='unknown':(runtime/'api-v2.php').write_bytes(b'unknown')
+                elif case=='legacy':ns['PP_LEGACY_CALLER']=ns['PP_CALLER'];ns['PP_CALLER']='0'*64
+                elif case=='db':(runtime/'data/db-v1.php').unlink()
+                else:(private/'searches').rmdir()
+                before={str(p):p.read_bytes() for p in home.rglob('*') if p.is_file()}
+                value=self.run_install(ns,stage,op)
+                self.assertEqual(('hold',0,0),(value['status'],value['runtime_writes'],value['staging_file_writes']))
+                self.assertEqual(before,{str(p):p.read_bytes() for p in home.rglob('*') if p.is_file()})
+
+    def test_stock_lock_missing_or_busy_never_created_or_bypassed(self):
+        import fcntl
+        for case in ('missing','busy'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                path=private/'grouped-search-update.lock';fd=None
+                if case=='missing':path.unlink()
+                else:fd=os.open(path,os.O_RDWR);fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                try:value=self.run_install(ns,stage,op)
+                finally:
+                    if fd is not None:os.close(fd)
+                self.assertEqual('hold',value['status']);self.assertEqual(0,value['runtime_writes'])
+                self.assertEqual(0,value['staging_file_writes']);self.assertFalse(value['backup_retained'])
+                self.assertEqual(case!='missing',path.exists())
+
+    def test_lock_symlink_hardlink_and_writable_shape_rejected(self):
+        for case in ('symlink','hardlink','mode'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                path=private/'grouped-search-update.lock'
+                if case=='mode':path.chmod(0o666)
+                elif case=='hardlink':os.link(path,private/'other-lock')
+                else:path.rename(private/'other-lock');path.symlink_to(private/'other-lock')
+                value=self.run_install(ns,stage,op)
+                self.assertEqual('blocked_no_replay',value['status']);self.assertEqual(0,value['runtime_writes'])
+
+    def test_failure_after_either_replace_rolls_back_in_reverse_order(self):
+        for fail_at in (5,6):
+            with self.subTest(fail_at=fail_at),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                before=ns['pp_snapshot']()[1];calls=0
+                def lint(path):
+                    nonlocal calls
+                    calls+=1
+                    if calls==fail_at:raise RuntimeError('activation_syntax')
+                ns['pi_lint']=lint;value=self.run_install(ns,stage,op)
+                self.assertEqual('rolled_back_no_replay',value['status'])
+                self.assertEqual(list(reversed(value['changed_files'])),value['rollback_files'])
+                self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+                self.assertEqual(2*(fail_at-4),value['runtime_writes'])
+
+    def test_failure_immediately_after_atomic_replace_can_restore_our_inode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            before=ns['pp_snapshot']()[1];fsync=os.fsync;failed=False
+            def fail_once(fd):
+                nonlocal failed
+                path=runtime/'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+                if not failed and hashlib.sha256(path.read_bytes()).hexdigest()==ns['PP_TARGETS'][str(path.relative_to(project))][1]:
+                    failed=True;raise OSError('isolated fsync failure')
+                return fsync(fd)
+            with patch.object(os,'fsync',side_effect=fail_once):value=self.run_install(ns,stage,op)
+            self.assertTrue(failed);self.assertEqual('rolled_back_no_replay',value['status'])
+            self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_rollback_does_not_overwrite_a_subsequent_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory);calls=0
+            path=runtime/'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+            def lint(target):
+                nonlocal calls
+                calls+=1
+                if calls==5:
+                    replacement=path.with_name('foreign.php');replacement.write_bytes(b'foreign-writer')
+                    os.replace(replacement,path);raise RuntimeError('activation_syntax')
+            ns['pi_lint']=lint;value=self.run_install(ns,stage,op)
+            self.assertEqual('rollback_failed_no_replay',value['status']);self.assertEqual(b'foreign-writer',path.read_bytes())
+            self.assertEqual([],value['rollback_files'])
+
+    def test_config_or_protected_drift_before_apply_prevents_install(self):
+        for case in ('config','protected','store','target_parent'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory);calls=0
+                def lint(path):
+                    nonlocal calls
+                    calls+=1
+                    if calls==4:
+                        if case=='config':(private/'search3-preview.php').write_bytes(b'changed')
+                        elif case=='protected':(project/'index.php').write_bytes(b'changed')
+                        elif case=='store':(private/'searches').rename(private/'old-searches');(private/'searches').mkdir()
+                        else:
+                            parent=runtime/'app/integrations';parent.rename(runtime/'app/old-integrations')
+                            parent.symlink_to(runtime/'app/old-integrations',target_is_directory=True)
+                ns['pi_lint']=lint;value=self.run_install(ns,stage,op)
+                self.assertEqual('blocked_no_replay',value['status']);self.assertEqual(0,value['runtime_writes'])
+                self.assertEqual([],value['changed_files'])
+
+    def test_registration_and_no_replay_admission_keep_old_operation_pins(self):
+        value=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,value.count("if mode not in ('passive-fuel-activate','reconcile',"))
+        self.assertIn("result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)",value)
+        self.assertEqual('199a570adbaa8de4957bdd84b30648bfaaee5fb5',self.p.PLAN_SOURCE)
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        with self.assertRaises(ValueError):self.p.parse([self.p.PLAN_SOURCE,self.p.INSTALL_MODE,self.p.INSTALL_OPERATION])
+        fixture=PassiveFuelActivationPlanTest();fixture.setUp();fixture.command=self.command
+        fixture.test_plan_admission_requires_own_unique_created_command_and_exact_candidate_ci()
+
+    def test_ready_snapshot_cannot_adopt_an_unverified_dependency_after_preflight(self):
+        for case in ('caller','private_db','config','protected'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                original=ns['passive_fuel_activation_plan'];calls=0
+                def preflight(*args):
+                    nonlocal calls
+                    calls+=1;value=original(*args)
+                    if calls==2:
+                        path={'caller':runtime/'api-v2.php','private_db':runtime/'data/db-v1.php',
+                            'config':private/'search3-preview.php','protected':project/'data/db-v1.php'}[case]
+                        path.write_bytes(b'unverified-after-ready')
+                    return value
+                ns['passive_fuel_activation_plan']=preflight;value=self.run_install(ns,stage,op)
+                self.assertEqual('blocked_no_replay',value['status']);self.assertEqual(0,value['runtime_writes'])
+                self.assertEqual(0,value['staging_file_writes']);self.assertEqual([],value['changed_files'])
+
+    def test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            production=ns['fingerprints']();value=self.run_install(ns,stage,op)
+            # Fixture bytes are deliberately not deployable. Validate the public
+            # receipt contract with its fixed canonical records separately.
+            canonical=self._canonical_targets()
+            value['preflight']['plan_files']={p:{'predecessor_sha256':v[0],'candidate_sha256':v[1]}
+                for p,v in canonical.items()}
+            for p,(old,new) in canonical.items():
+                root=p=='api-v2.php'
+                value['before_files'][p]={'sha256':old,'bytes':16366 if root else 13823,'mode':0o644}
+                value['after_files'][p]={'sha256':new,'bytes':20233 if root else 13766,'mode':0o644}
+            value['preflight']['protected_before']['api-v2.php']=value['before_files']['api-v2.php']
+            value['preflight']['protected_after']=copy.deepcopy(value['preflight']['protected_before'])
+            value['protected_after']={**value['preflight']['protected_before'],'api-v2.php':value['after_files']['api-v2.php']}
+            result={**self.command,'status':'complete','runtime_changed':True,'production_unchanged':True,
+                'production_before':production,'production_after':production,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                'passive_fuel_activation':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('runtime_writes',3),('staging_file_writes',3),('publication_lock','not_acquired'),
+                            ('before_files',{}),('after_files',{}),('changed_files',['api-v2.php'])]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed))
+            changed=copy.deepcopy(result);changed['passive_fuel_activation']['protected_after']['index.php']={}
+            self.assertFalse(m.completed_result(self.command,changed))
+
+    def test_completion_rejects_rollback_unknown_and_any_forged_extra_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            (runtime/'api-v2.php').unlink();value=self.run_install(ns,stage,op)
+            value['preflight']['plan_files']={p:{'predecessor_sha256':v[0],'candidate_sha256':v[1]}
+                for p,v in self._canonical_targets().items()}
+            production=ns['fingerprints']()
+            result={**self.command,'status':'complete','runtime_changed':False,'production_unchanged':True,
+                'production_before':production,'production_after':production,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                'passive_fuel_activation':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('runtime_writes',1),('changed_files',['third.php']),('status','rolled_back_no_replay'),
+                            ('status','unknown_no_replay'),('backup_retained',True),('supplier_calls',1)]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed))
+            changed=copy.deepcopy(result);changed['runtime_changed']=True
+            self.assertFalse(m.completed_result(self.command,changed))
+
+    def _canonical_targets(self):
+        ns={};exec(self.p.PLAN_REMOTE_READER,ns);return ns['PP_TARGETS']
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
