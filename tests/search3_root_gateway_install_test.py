@@ -784,6 +784,139 @@ class DependencyInstall(unittest.TestCase):
    self.assertTrue(m.dependency_completed(identity,result),result);self.assertEqual(len(calls),6)
    for path,body in actual.items():self.assertEqual((project/path).read_bytes(),body)
 
+class TvDiagnosticInstall(unittest.TestCase):
+ module=CheckedInstall.module
+ execute=CheckedInstall.execute
+ def event(self,m):
+  event,env=CheckedInstall.event(self,m);event['issue']={'number':4709}
+  event['comment']['body']=f'{m.TV_DIAGNOSTIC_PREFIX} '+env['GITHUB_SHA']+' '+m.TV_DIAGNOSTIC_OPERATION
+  return event,env
+ def fixture(self,m,home):
+  import base64
+  project=home/'www/anytoour.ru';expected={}
+  for path in m.TV_DIAGNOSTIC_EXPECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True)
+   p.write_bytes(b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","old"); ?>' if path=='api-v2.php' else b'fixture '+path.encode());p.chmod(0o644)
+   expected[path]=m.sha(p.read_bytes())
+  for path in m.TV_DIAGNOSTIC_PROTECTED:
+   p=project/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'public fixture '+path.encode());p.chmod(0o644)
+  candidate=b'<?php file_put_contents(__DIR__."/MUST_NOT_EXECUTE","new"); ?>'
+  m.TV_DIAGNOSTIC_EXPECTED=expected;m.TV_DIAGNOSTIC_HASH=m.sha(candidate);m.TV_DIAGNOSTIC_BLOB=m.blob(candidate);m.TV_DIAGNOSTIC_BYTES=len(candidate)
+  event,env=self.event(m);identity=m.tv_diagnostic_event(event,env)
+  return project,candidate,identity,{**identity,'candidate_b64':base64.b64encode(candidate).decode()},m.tv_diagnostic_remote()
+ def test_exact_new_event_does_not_reopen_historical_operations(self):
+  import copy
+  m=self.module();event,env=self.event(m);self.assertEqual(m.tv_diagnostic_event(event,env)['command_comment_id'],987)
+  self.assertEqual(m.CHECKED_OPERATION,'install-20261018-fcfe503e-v1');self.assertEqual(m.DEPENDENCY_OPERATION,'install-20261019-dependency-reuse-v1')
+  self.assertEqual(m.CHECKED_HASH,'ef60da2d948c42b7741771ef1e1a091280c14cd79eafea10d737cb7067e55463')
+  for number in (3419,4217,2530,996):
+   bad=copy.deepcopy(event);bad['issue']['number']=number
+   with self.assertRaises(RuntimeError):m.tv_diagnostic_event(bad,env)
+  for key,value in {'GITHUB_REF':'refs/heads/other','GITHUB_SHA':'c'*40,'GITHUB_RUN_ATTEMPT':'2','GITHUB_ACTOR':'other','GITHUB_TRIGGERING_ACTOR':'other','GITHUB_EVENT_NAME':'workflow_dispatch','GITHUB_WORKFLOW_REF':'other'}.items():
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.tv_diagnostic_event(event,{**env,key:value})
+  for value in (event['comment']['body']+' ',event['comment']['body'].replace(m.TV_DIAGNOSTIC_OPERATION,m.CHECKED_OPERATION),event['comment']['body'].replace(m.TV_DIAGNOSTIC_PREFIX,m.CHECKED_PREFIX)):
+   bad=copy.deepcopy(event);bad['comment']['body']=value
+   with self.assertRaises(RuntimeError):m.tv_diagnostic_event(bad,env)
+  bad=copy.deepcopy(event);bad['issue']['pull_request']={}
+  with self.assertRaises(RuntimeError):m.tv_diagnostic_event(bad,env)
+ def admission_api(self,m,event,identity,body):
+  import base64
+  def api(path):
+   if path=='/git/ref/heads/main':return {'object':{'sha':identity['control_source_sha']}}
+   if path.startswith('/git/ref/heads/release/'):return {'object':{'sha':m.TV_DIAGNOSTIC_RELEASE}}
+   if path=='/git/commits/'+identity['control_source_sha']:return {'parents':[{'sha':'a'*40},{'sha':'d'*40}],'tree':{'sha':'e'*40}}
+   if path=='/git/commits/'+('d'*40):return {'sha':'d'*40,'tree':{'sha':'e'*40}}
+   if '/check-runs?check_name=' in path:
+    name=path.split('check_name=',1)[1].split('&',1)[0];head=path.split('/')[2]
+    return {'total_count':1,'check_runs':[{'id':1,'name':name,'head_sha':head,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}}]}
+   if '/check-runs?' in path:return {'total_count':len(m.TV_DIAGNOSTIC_CHECK_IDS),'check_runs':[{'id':i,'head_sha':m.TV_DIAGNOSTIC_SOURCE,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in m.TV_DIAGNOSTIC_CHECK_IDS]}
+   if path.startswith('/contents/'):return {'sha':m.TV_DIAGNOSTIC_BLOB,'content':base64.b64encode(body).decode()}
+   if path.startswith('/issues/comments/'):return event['comment']
+   return [{'id':987,'body':event['comment']['body']}]
+  return api
+ def test_admission_requires_reviewed_source_release_checks_and_fresh_single_command(self):
+  import base64
+  m=self.module();event,env=self.event(m);identity=m.tv_diagnostic_event(event,env);body=b'<?php /* checked diagnostic fixture */ ?>'
+  m.TV_DIAGNOSTIC_RELEASE='f'*40;m.TV_DIAGNOSTIC_BLOB=m.blob(body);m.TV_DIAGNOSTIC_HASH=m.sha(body);m.TV_DIAGNOSTIC_BYTES=len(body)
+  api=self.admission_api(m,event,identity,body)
+  with mock.patch.object(m,'checked_api',side_effect=api):self.assertEqual(m.tv_diagnostic_admission(identity),body)
+  for variant in ('main','release','tree','source_bytes','source_check','main_check','duplicate','edited_command','incomplete'):
+   def bad(path):
+    value=api(path)
+    if variant=='main' and path=='/git/ref/heads/main':value['object']['sha']='c'*40
+    if variant=='release' and '/heads/release/' in path:value['object']['sha']='c'*40
+    if variant=='tree' and path=='/git/commits/'+('d'*40):value['tree']['sha']='c'*40
+    if variant=='source_bytes' and path.startswith('/contents/'):value['content']=base64.b64encode(b'wrong').decode()
+    if variant=='source_check' and '/check-runs?' in path and 'check_name=' not in path:value['check_runs'][0]['conclusion']='failure'
+    if variant=='main_check' and 'check_name=' in path:value['check_runs'][0]['conclusion']='skipped'
+    if variant=='edited_command' and path.startswith('/issues/comments/'):value={**value,'body':'changed'}
+    if path.startswith('/issues/4709/'):
+     if variant=='duplicate':value.append({'id':988,'body':event['comment']['body'].replace('b'*40,'c'*40)})
+     if variant=='incomplete':value=[{'id':i,'body':'ordinary'} for i in range(100)]
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),self.assertRaises(RuntimeError):m.tv_diagnostic_admission(identity)
+  m.TV_DIAGNOSTIC_RELEASE='PENDING_REVIEWED_RELEASE'
+  with mock.patch.object(m,'checked_api') as network,self.assertRaisesRegex(RuntimeError,'diagnostic_pins_incomplete'):m.tv_diagnostic_admission(identity)
+  network.assert_not_called()
+ def test_shared_remote_updates_only_api_and_replay_preserves_first_receipt(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   self.assertTrue(program.endswith(m.REMOTE_CHECKED_INSTALL));before={p:(project/p).read_bytes() for p in (*m.TV_DIAGNOSTIC_EXPECTED,*m.TV_DIAGNOSTIC_PROTECTED)}
+   first,calls=self.execute(m,home,payload,program);self.assertTrue(m.tv_diagnostic_safe_receipt(identity,first,complete=True),first)
+   self.assertEqual(len(calls),3);self.assertEqual((project/'api-v2.php').read_bytes(),candidate)
+   for path,body in before.items():
+    if path!='api-v2.php':self.assertEqual((project/path).read_bytes(),body)
+   self.assertFalse(list(home.rglob('MUST_NOT_EXECUTE')));self.assertNotIn('action=health',program)
+   saved={str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()}
+   second,calls=self.execute(m,home,payload,program);self.assertEqual(second['reason'],'operation_exists_no_replay');self.assertEqual(calls,[])
+   self.assertEqual(saved,{str(p.relative_to(home)):(p.read_bytes(),p.stat().st_mtime_ns) for p in home.rglob('*') if p.is_file()})
+ def test_drift_races_and_rollback_do_not_overwrite_foreign_bytes(self):
+  for variant in ('helper','pre_lint_race','post_lint_failure','foreign_after_replace'):
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    m=self.module();home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);old=(project/'api-v2.php').read_bytes()
+    if variant=='helper':(project/'data/db-v1.php').write_bytes(b'foreign helper')
+    def callback(args,count):
+     if variant=='pre_lint_race' and count==2:(project/'config.php').write_bytes(b'foreign public config')
+     if variant in ('post_lint_failure','foreign_after_replace') and count==3:
+      if variant=='foreign_after_replace':(project/'api-v2.php').write_bytes(b'foreign owner')
+      return mock.Mock(returncode=1)
+    result,calls=self.execute(m,home,payload,program,callback);self.assertFalse(m.tv_diagnostic_safe_receipt(identity,result,complete=True))
+    self.assertEqual((project/'api-v2.php').read_bytes(),b'foreign owner' if variant=='foreign_after_replace' else old)
+    self.assertEqual(result['root_write_attempts'],0 if variant in ('helper','pre_lint_race') else 1)
+    self.assertEqual(result['rollback_attempts'],1 if variant=='post_lint_failure' else 0)
+ def test_receipt_rejects_private_fields_wrong_identity_and_false_success(self):
+  import copy
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home);good,_=self.execute(m,home,payload,program)
+  for mutate in (lambda r:r.__setitem__('private','secret'),lambda r:r.__setitem__('source_sha','a'*40),lambda r:r.__setitem__('file_writes',True),lambda r:r.__setitem__('supplier_calls',1),lambda r:r['after_files'].pop('data/db-v1.php'),lambda r:r['production_after'].__setitem__('config.php','c'*64)):
+   bad=copy.deepcopy(good);mutate(bad);self.assertFalse(m.tv_diagnostic_safe_receipt(identity,bad,complete=True))
+ def test_runner_does_not_connect_on_admission_failure(self):
+  m=self.module();event,env=self.event(m)
+  with tempfile.TemporaryDirectory() as td:
+   root=pathlib.Path(td);path=root/'event.json';path.write_text(json.dumps(event))
+   with mock.patch.dict(os.environ,{**env,'RUNNER_TEMP':td,'GITHUB_EVENT_PATH':str(path)}),mock.patch.object(m,'tv_diagnostic_admission',side_effect=RuntimeError('PRIVATE_DETAIL')),mock.patch.object(m,'run') as network,contextlib.redirect_stdout(io.StringIO()) as out,self.assertRaisesRegex(RuntimeError,'install_not_verified'):m.tv_diagnostic_install()
+   network.assert_not_called();self.assertNotIn('PRIVATE_DETAIL',out.getvalue());self.assertFalse(list(root.rglob('key')))
+   evidence=json.loads((root/'search3-root-tv-diagnostics/evidence.json').read_text())
+   self.assertEqual(evidence['status'],'blocked_no_replay');self.assertEqual(evidence['failure_phase'],'admission');self.assertIs(evidence['ssh_started'],False)
+ def test_workflow_is_exact_and_artifact_excludes_keys(self):
+  m=self.module();workflow=(R/m.CHECKED_WORKFLOW).read_text();job=workflow.split('  tv-diagnostic-install:\n',1)[1].split('  dependency-install:\n',1)[0]
+  for guard in ('group: deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1','github.event.issue.number == 4709',"github.event.action == 'created'","github.actor == 'pyatkoff'","github.triggering_actor == 'pyatkoff'","github.event.comment.user.id == 226193297",m.TV_DIAGNOSTIC_OPERATION,'scripts/deploy/search3_root_gateway_install.py tv_diagnostic_install',"TV_DIAGNOSTIC_NATIVE_CI: '1'"):
+   self.assertIn(guard,job)
+  artifact=job.split('          path: |\n',1)[1].split('          if-no-files-found:',1)[0]
+  self.assertEqual(len(artifact.strip().splitlines()),3);self.assertNotIn('/key',artifact);self.assertNotIn('/known',artifact);self.assertNotIn('health',job)
+ @unittest.skipUnless(os.environ.get('TV_DIAGNOSTIC_NATIVE_CI')=='1','native reviewed diagnostic PHP CI required')
+ def test_native_actual_candidate_only_lints_and_changes_api(self):
+  m=self.module();body=(pathlib.Path(os.environ['TV_DIAGNOSTIC_PRODUCT_SOURCE_ROOT'])/'v2/api-v2.php').read_bytes()
+  self.assertEqual((m.blob(body),m.sha(body),len(body)),(m.TV_DIAGNOSTIC_BLOB,m.TV_DIAGNOSTIC_HASH,m.TV_DIAGNOSTIC_BYTES))
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   import base64
+   m.TV_DIAGNOSTIC_BLOB=m.blob(body);m.TV_DIAGNOSTIC_HASH=m.sha(body);m.TV_DIAGNOSTIC_BYTES=len(body);payload['candidate_b64']=base64.b64encode(body).decode()
+   result,calls=self.execute(m,home,payload,m.tv_diagnostic_remote(),native=True)
+   self.assertTrue(m.tv_diagnostic_safe_receipt(identity,result,complete=True),result);self.assertEqual(len(calls),3);self.assertEqual((project/'api-v2.php').read_bytes(),body)
+
 if __name__=='__main__':unittest.main()
 
 

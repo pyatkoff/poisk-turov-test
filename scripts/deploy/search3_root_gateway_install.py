@@ -660,5 +660,145 @@ def dependency_install():
   finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)
  print(json.dumps(evidence,sort_keys=True));need(completed,'install_not_verified')
 
+# New API-only diagnostic source. Historical operations and their policies above
+# stay sealed; this policy reuses only the existing API transaction algorithm.
+TV_DIAGNOSTIC_PREFIX='/install-search3-root-tv-diagnostics'
+TV_DIAGNOSTIC_OPERATION='install-20261020-tv-diagnostics-v1'
+TV_DIAGNOSTIC_SOURCE='19694ed619b57001f32b81c793d862a574a47e0e'
+TV_DIAGNOSTIC_RELEASE='6351e328588317b0538ff0c668c972ae955c7d4f'
+TV_DIAGNOSTIC_BLOB='8cce9fb633d0435fac1a22f6be24e38299c72ed4'
+TV_DIAGNOSTIC_HASH='01ac5ed43961f73879cd36c2c1d387ac79fadaf53ad66d3c4aaebcc617464c61'
+TV_DIAGNOSTIC_BYTES=16366
+TV_DIAGNOSTIC_CHECK_IDS={118605478927,118605478621,118605478375,118605478212}
+TV_DIAGNOSTIC_EXPECTED={**CHECKED_EXPECTED,
+ 'api-v2.php':'2d92cba5cee08d4d112255ebcddf0cd0f4b023a5233761ace27453337385e3be',
+ 'data/local-tv-catalog-v1.php':'9dc60eb39100126d97307b83083d6a1b190cfdf8f684a18af47d8edd87b1c3b5'}
+TV_DIAGNOSTIC_PROTECTED=DEPENDENCY_PROTECTED
+
+def tv_diagnostic_event(event,env):
+ need(env.get('GITHUB_REPOSITORY')==REPO and event.get('repository',{}).get('full_name')==REPO,'repository')
+ need(env.get('GITHUB_REF')=='refs/heads/main' and env.get('GITHUB_WORKFLOW_REF')==f'{REPO}/{CHECKED_WORKFLOW}@refs/heads/main','workflow')
+ need(env.get('GITHUB_ACTOR')==env.get('GITHUB_TRIGGERING_ACTOR')=='pyatkoff','actor')
+ need(env.get('GITHUB_EVENT_NAME')=='issue_comment' and event.get('action')=='created' and env.get('GITHUB_RUN_ATTEMPT')=='1','event')
+ issue,comment=event.get('issue',{}),event.get('comment',{})
+ need(issue.get('number')==4709 and 'pull_request' not in issue,'issue')
+ need(comment.get('user',{}).get('id')==226193297 and comment.get('author_association')=='OWNER','owner')
+ control,run_id=env.get('GITHUB_SHA',''),env.get('GITHUB_RUN_ID','')
+ need(re.fullmatch(r'[a-f0-9]{40}',control) is not None and re.fullmatch(r'[1-9][0-9]{0,19}',run_id) is not None,'identity')
+ need(type(comment.get('id')) is int and comment['id']>0,'comment_id')
+ need(comment.get('body')==f'{TV_DIAGNOSTIC_PREFIX} {control} {TV_DIAGNOSTIC_OPERATION}','command')
+ return {'control_source_sha':control,'run_id':run_id,'command_comment_id':comment['id']}
+
+def tv_diagnostic_admission(identity):
+ need(re.fullmatch(r'[a-f0-9]{40}',TV_DIAGNOSTIC_RELEASE) is not None and bool(TV_DIAGNOSTIC_CHECK_IDS),'diagnostic_pins_incomplete')
+ need(checked_api('/git/ref/heads/main')['object']['sha']==identity['control_source_sha'],'main_moved')
+ need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==TV_DIAGNOSTIC_RELEASE,'release_moved')
+ control=checked_api('/git/commits/'+identity['control_source_sha']);need(len(control['parents'])==2,'reviewed_merge_required')
+ reviewed=checked_api('/git/commits/'+control['parents'][1]['sha'])
+ need(reviewed['tree']['sha']==control['tree']['sha'],'reviewed_tree')
+ for head,names,reason in ((reviewed['sha'],('guard','contracts','tv-diagnostic-contracts'),'source_ci'),(identity['control_source_sha'],('guard',),'main_ci')):
+  for name in names:dependency_green_check(head,name,reason)
+ item=checked_api('/contents/v2/api-v2.php?ref='+TV_DIAGNOSTIC_SOURCE)
+ candidate=base64.b64decode(item['content'],validate=False)
+ need(item['sha']==TV_DIAGNOSTIC_BLOB and blob(candidate)==TV_DIAGNOSTIC_BLOB and sha(candidate)==TV_DIAGNOSTIC_HASH and len(candidate)==TV_DIAGNOSTIC_BYTES,'candidate_bytes')
+ need(checked_api('/contents/v2/api-v2.php?ref='+TV_DIAGNOSTIC_RELEASE)['sha']==TV_DIAGNOSTIC_BLOB,'release_candidate')
+ checks=checked_api('/commits/'+TV_DIAGNOSTIC_SOURCE+'/check-runs?per_page=100');rows=checks.get('check_runs')
+ need(type(checks.get('total_count')) is int and checks['total_count']==len(TV_DIAGNOSTIC_CHECK_IDS)
+      and isinstance(rows,list) and len(rows)==checks['total_count']
+      and {c.get('id') for c in rows}==TV_DIAGNOSTIC_CHECK_IDS,'source_checks')
+ need(all(c.get('head_sha')==TV_DIAGNOSTIC_SOURCE and c.get('status')=='completed' and c.get('conclusion')=='success'
+          and c.get('app',{}).get('slug')=='github-actions' for c in rows),'source_checks')
+ command=f'{TV_DIAGNOSTIC_PREFIX} '+identity['control_source_sha']+' '+TV_DIAGNOSTIC_OPERATION
+ fresh=checked_api('/issues/comments/'+str(identity['command_comment_id']))
+ need(fresh.get('body')==command and fresh.get('user',{}).get('id')==226193297 and fresh.get('author_association')=='OWNER','command_changed')
+ matched=[]
+ for page in range(1,31):
+  comments=checked_api(f'/issues/4709/comments?per_page=100&page={page}');need(isinstance(comments,list),'comments_shape')
+  matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(TV_DIAGNOSTIC_PREFIX+' '))
+  if len(comments)<100:
+   need(matched==[identity['command_comment_id']],'operation_already_reserved');return candidate
+ raise RuntimeError('comment_history_incomplete')
+
+def tv_diagnostic_remote():
+ import ast
+ body=pathlib.Path(__file__).with_name('int_server_executor_local_tv_capture.py').read_bytes()
+ need(sha(body)==CHECKED_READER_HASH,'reader_source_drift')
+ module=ast.parse(body)
+ remote=ast.literal_eval(next(n.value for n in module.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='REMOTE_REPAIR' for t in n.targets)))
+ reader=next(n for n in ast.parse(remote).body if isinstance(n,ast.FunctionDef) and n.name=='repair_read')
+ code=ast.get_source_segment(remote,reader);need(code is not None,'reader_missing')
+ policy={'operation':TV_DIAGNOSTIC_OPERATION,'source':TV_DIAGNOSTIC_SOURCE,'release':TV_DIAGNOSTIC_RELEASE,
+         'blob':TV_DIAGNOSTIC_BLOB,'sha256':TV_DIAGNOSTIC_HASH,'bytes':TV_DIAGNOSTIC_BYTES,
+         'expected':TV_DIAGNOSTIC_EXPECTED,'protected':TV_DIAGNOSTIC_PROTECTED}
+ return 'POLICY='+repr(policy)+'\n'+code+'\n'+REMOTE_CHECKED_INSTALL
+
+def tv_diagnostic_safe_receipt(identity,result,complete=False):
+ try:
+  counters=('supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls')
+  required={'schema_version','operation_id','source_sha','release_sha','source_blob','status',*counters,
+            'root_write_attempts','file_writes','rollback_attempts','written_files','before_files','after_files',
+            'syntax_previous','syntax_candidate','syntax_installed','backup_retained',*identity}
+  need(isinstance(result,dict) and required<=set(result)<=required|{'production_before','production_after','reason','error_type'},'receipt_fields')
+  need(type(result['schema_version']) is int and result['schema_version']==1,'receipt_schema')
+  for key,value in {'operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,**identity}.items():need(result[key]==value,'receipt_identity')
+  for key in counters:need(type(result[key]) is int and result[key]==0,'receipt_counters')
+  need(result['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','installed_verified'),'receipt_status')
+  for key in ('root_write_attempts','rollback_attempts'):need(type(result[key]) is int and result[key] in (0,1),'receipt_attempts')
+  need(type(result['file_writes']) is int and 0<=result['file_writes']<=2,'receipt_writes')
+  need(result['written_files'] in ([],['api-v2.php']) and type(result['backup_retained']) is bool,'receipt_scope')
+  need(all(result['syntax_'+p] in ('not_run','ok') for p in ('previous','candidate','installed')),'receipt_syntax')
+  for phase in ('before_files','after_files'):
+   values=result[phase];need(isinstance(values,dict) and set(values)<=set(TV_DIAGNOSTIC_EXPECTED),'receipt_inventory')
+   for record in values.values():
+    need(isinstance(record,dict) and set(record)=={'sha256','bytes','mode'} and isinstance(record['sha256'],str)
+         and re.fullmatch(r'[a-f0-9]{64}',record['sha256']) is not None,'receipt_record')
+    need(type(record['bytes']) is int and 0<record['bytes']<=2*1024*1024 and type(record['mode']) is int and 0<=record['mode']<=0o7777,'receipt_metadata')
+  for phase in ('production_before','production_after'):
+   if phase in result:
+    need(isinstance(result[phase],dict) and set(result[phase])==set(TV_DIAGNOSTIC_PROTECTED),'receipt_public')
+    need(all(v is None or isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) is not None for v in result[phase].values()),'receipt_public_hashes')
+  if 'reason' in result:need(result['reason'] in ('payload_limit','payload_fields','payload_identity','candidate_bytes','unsafe_private_parent','operation_exists_no_replay','predecessor_drift','different_filesystem','syntax_failed','file_changed','installed_readback','unsafe_parent','operation_failed','private_receipt_failed'),'receipt_reason')
+  if 'error_type' in result:need(result['error_type'] in ('RuntimeError','FileNotFoundError','PermissionError','OSError','TimeoutExpired','JSONDecodeError','Error','ValueError'),'receipt_error_type')
+  if complete:
+   need(result['status']=='installed_verified' and result['root_write_attempts']==result['file_writes']==1 and result['rollback_attempts']==0,'receipt_status')
+   need(result['written_files']==['api-v2.php'] and result['backup_retained'] and all(result['syntax_'+p]=='ok' for p in ('previous','candidate','installed')),'receipt_scope')
+   before,after=result['before_files'],result['after_files'];need(set(before)==set(after)==set(TV_DIAGNOSTIC_EXPECTED),'receipt_inventory')
+   need(all(before[p]['sha256']==h and before[p]['mode']==0o644 and after[p]['mode']==0o644 for p,h in TV_DIAGNOSTIC_EXPECTED.items()),'receipt_predecessor')
+   expected=dict(before);expected['api-v2.php']={'sha256':TV_DIAGNOSTIC_HASH,'bytes':TV_DIAGNOSTIC_BYTES,'mode':0o644};need(after==expected,'receipt_after')
+   need(result['production_before']==result['production_after'] and 'reason' not in result and 'error_type' not in result,'receipt_public')
+  return True
+ except (RuntimeError,AttributeError,KeyError,TypeError,ValueError):return False
+
+def tv_diagnostic_install():
+ import shlex
+ work=pathlib.Path(os.environ['RUNNER_TEMP'])/'search3-root-tv-diagnostics';work.mkdir()
+ evidence={'status':'blocked_no_replay','operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,'failure_phase':'identity','ssh_started':False}
+ key,known=work/'key',work/'known';completed=False
+ try:
+  identity=tv_diagnostic_event(json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+  evidence.update(identity);evidence['failure_phase']='admission';candidate=tv_diagnostic_admission(identity)
+  evidence['failure_phase']='prepare'
+  (work/'api-v2.php').write_bytes(candidate)
+  (work/'request.json').write_text(json.dumps({**identity,'operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,'candidate_sha256':TV_DIAGNOSTIC_HASH},sort_keys=True))
+  payload={**identity,'candidate_b64':base64.b64encode(candidate).decode()};program=tv_diagnostic_remote()
+  host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
+  need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]*',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
+  raw=os.environ['PREVIEW_KEY'].replace('\r','')
+  if 'PRIVATE KEY' not in raw:raw=base64.b64decode(raw,validate=True).decode()
+  key.write_text(raw.rstrip()+'\n');key.chmod(0o600)
+  known.write_bytes(run(['ssh-keyscan','-T','15','-t','ed25519',host]));known.chmod(0o600)
+  opts=['-i',str(key),'-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null','-o','BatchMode=yes','-o','ConnectTimeout=15']
+  evidence.update(status='unknown_no_replay',failure_phase='ssh',ssh_started=True)
+  response=run(['ssh',*opts,user+'@'+host,'python3 -c '+shlex.quote(program)],input=json.dumps(payload).encode(),timeout=90)
+  evidence['failure_phase']='readback'
+  need(len(response)<=16384,'receipt_limit');result=json.loads(response)
+  need(tv_diagnostic_safe_receipt(identity,result),'receipt_unsafe');evidence['remote']=result
+  completed=tv_diagnostic_safe_receipt(identity,result,complete=True);need(completed,'install_not_verified');evidence.update(status='installed_verified',failure_phase=None)
+ except Exception as exc:evidence['error_type']=type(exc).__name__
+ finally:
+  try:(work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True))
+  finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)
+ print(json.dumps(evidence,sort_keys=True));need(completed,'install_not_verified')
+
 if __name__=='__main__':
- need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install'),'usage');globals()[sys.argv[1]]()
+ need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install','tv_diagnostic_install'),'usage');globals()[sys.argv[1]]()
