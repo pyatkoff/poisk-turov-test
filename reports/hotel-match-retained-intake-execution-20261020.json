@@ -540,10 +540,274 @@
     "direct ANEX decisions are not the SAMO operator_5 registry",
     "URL-native namespaces need independent bridges before SAMO/direct acceptance",
     "CURRENT manual/exclusion/occupancy/geo guards remain mandatory",
-    "recognized native-ID fields/URL patterns are not an exhaustive operatorLink content audit",
     "direct ANEX effective coverage, live30 demand and SEARCH rendering not measured in this package",
     "existing accepted registry rows and 448 rechecked pairs are not new mapping gain",
-    "quota global_usage remains not_measured; 5000 is not verified free account balance"
+    "quota global_usage remains not_measured; 5000 is not verified free account balance",
+    "link completeness audit covers captured observation fields and literal nested operatorLink/operator_link JSON keys; embedded JSON strings and other handoffs are outside this result"
   ],
-  "next_result": "Verify retained operatorLink completeness/format and exact namespace proof for a useful common4 group; acquire only missing facts through Tourvisor ANEX JWT with shared quota, then CURRENT guards/write/readback for eligible pairs. Do not repeat unchanged census/intake or consumed operations."
+  "next_result": "For one useful candidate group, read scoped CURRENT direct ANEX effective/provider mappings and exclude existing links before acquisition. Confirm current Tourvisor account/operator binding and acquire only exact missing native/namespace facts through TOURVISOR_ANEX_JWT with shared quota, then CURRENT guards/write/readback for eligible pairs. Saved operator-link hypothesis is closed for this capture; do not repeat unchanged intake/parsing or consumed operations.139 additional IDs are not proven missing pairs.",
+  "retained_link_completeness_audit": {
+    "run_id": 39346987559,
+    "command_comment_id": 6280298241,
+    "artifact_id": 12231531549,
+    "zip_sha256": "4b1bf883fe9245cf3718c2b1e76061fcde3ce4c28ead335986662402021f8b67",
+    "operation_id": "int-andromeda-match-retained-project-20261020-v2",
+    "audit": {
+      "acceptance_rules_changed": false,
+      "legacy_operator_link_fields": {
+        "formats": {},
+        "states": {}
+      },
+      "legacy_source_invalid_json": 0,
+      "legacy_sources_scanned": 14687,
+      "observations_by_operator": {
+        "11": {
+          "native_field_states": {
+            "null": 1254
+          },
+          "observations": 1254,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1254
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "12": {
+          "native_field_states": {
+            "null": 1121
+          },
+          "observations": 1121,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1121
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "13": {
+          "native_field_states": {
+            "null": 1798
+          },
+          "observations": 1798,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1798
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "16": {
+          "native_field_states": {
+            "null": 1003
+          },
+          "observations": 1003,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1003
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "18": {
+          "native_field_states": {
+            "null": 2378
+          },
+          "observations": 2378,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 2378
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "23": {
+          "native_field_states": {
+            "null": 596
+          },
+          "observations": 596,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 596
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "25": {
+          "native_field_states": {
+            "null": 1279
+          },
+          "observations": 1279,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1279
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "27": {
+          "native_field_states": {
+            "null": 294
+          },
+          "observations": 294,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 294
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "31": {
+          "native_field_states": {
+            "null": 56
+          },
+          "observations": 56,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 56
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "43": {
+          "native_field_states": {
+            "null": 1462
+          },
+          "observations": 1462,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1462
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "59": {
+          "native_field_states": {
+            "null": 296
+          },
+          "observations": 296,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 296
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "66": {
+          "native_field_states": {
+            "null": 12
+          },
+          "observations": 12,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 12
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "89": {
+          "native_field_states": {
+            "null": 1347
+          },
+          "observations": 1347,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 1347
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "134": {
+          "native_field_states": {
+            "null": 164
+          },
+          "observations": 164,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 164
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "161": {
+          "native_field_states": {
+            "null": 172
+          },
+          "observations": 172,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 172
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "172": {
+          "native_field_states": {
+            "null": 354
+          },
+          "observations": 354,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 354
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        },
+        "197": {
+          "native_field_states": {
+            "null": 25
+          },
+          "observations": 25,
+          "operator_link": {
+            "formats": {},
+            "states": {
+              "null": 25
+            }
+          },
+          "unrecognized_nonempty_examples": []
+        }
+      },
+      "raw_urls_and_query_values_published": false,
+      "scope": "captured observation operator_link and literal operatorLink/operator_link JSON keys in retained source objects; embedded JSON strings not decoded"
+    },
+    "evidence_sha256": "a04d37ddcc753f05486b052b8c5e2a81da7b690823b0ab951b53963f8101e9e2",
+    "parent_receipt_sha256": "b610629916e80d706edb493da1fc02eb0bf38a00de64243a1973bb80155485d6",
+    "source_sha": "1c72a61646dd81cc6d93f4dce6cf80afe742a5f7",
+    "control_source_sha": "73a9aec0a5d3bc4e22e89ceda1f4c66a3015e9fa",
+    "observations": 13611,
+    "null_operator_links": 13611,
+    "null_native_id_values": 13611,
+    "prior_projection_unchanged_except_audit": true,
+    "new_database_reads": 0,
+    "supplier_http_calls": 0,
+    "mapping_writes": 0,
+    "new_accepted_mappings": 0,
+    "code_prs": [
+      4672,
+      4673
+    ],
+    "native_ci_run_id": 39346753081,
+    "native_tests": 20,
+    "security_runs": [
+      39346734598,
+      39346753057
+    ],
+    "hypothesis_status": "closed_no_operator_links_in_captured_fields"
+  }
 }
