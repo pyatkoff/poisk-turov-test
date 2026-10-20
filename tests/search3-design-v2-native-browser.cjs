@@ -165,7 +165,7 @@ function fixtureBridge(fixture) {
 // This separate journey loads the compiled native bridge, not fixtureBridge.
 // Only its canonical data dependency is replaced; all transport is forbidden.
 function terminalDataFixture(fixture) {
-  const calls={search:0,other:0},control=window.__nativeTerminalFixture={calls};
+  const calls={search:0,other:0,quote:0,flights:0},control=window.__nativeTerminalFixture={calls};
   let emit,hotels=[];
   const forbidden=()=>{calls.other++;throw new Error('Unexpected transport/quote/lead in terminal metadata fixture');};
   window.AnyTourPrototypeData={catalog:{departures:[{name:'Москва'}],countries:[{id:4,name:'Турция'}],mealPlans:[]},
@@ -178,7 +178,25 @@ function terminalDataFixture(fixture) {
           adults:search.adults,ages:[...search.ages],room:row.room,meal:row.meal,mealFacet:row.meal,
           operator:'FIXTURE ANEX',provider:'anex',total:row.total,search,raw:{fixture:true}}]}));
       callback({type:'results',hotels});callback({type:'complete'});
-    },quote:forbidden,flights:forbidden,leadSession:forbidden,regions:forbidden,lookupHotels:forbidden,calendarPrices:forbidden};
+    },
+    async quote(offer){
+      if(!offer.raw?.denialPhase)return forbidden();calls.quote++;
+      if(offer.raw.denialPhase==='quote')throw Object.assign(new Error('FICTIONAL permanent quote denial'),{retryable:false});
+      return{id:offer.key,price:offer.total,roomType:offer.room,meal:offer.meal,denialPhase:offer.raw.denialPhase};
+    },
+    async flights(tour){
+      if(!tour.denialPhase)return forbidden();calls.flights++;
+      if(tour.denialPhase==='flights')throw Object.assign(new Error('FICTIONAL permanent flight denial'),{retryable:false});
+      const leg={number:'FIXTURE 101',departure:{date:fixture.trip.from,time:'09:20',port:{name:'FIXTURE Moscow'}},arrival:{date:fixture.trip.from,time:'13:20',port:{name:'FIXTURE Antalya'}},baggage:20,carryOn:'5 кг'};
+      return[{price:tour.price+5000,forward:[leg],backward:[leg]}];
+    },variantPrice:(tour,variant)=>variant.price,
+    leadSession:forbidden,regions:forbidden,lookupHotels:forbidden,calendarPrices:forbidden};
+  control.installDenials=()=>{
+    const seed=hotels[0],offers=Object.fromEntries(['quote','flights','allowed'].map((phase,index)=>[phase,{...seed.offers[0],
+      key:'fixture:denial:'+phase,provider:'tourvisor',operator:'FIXTURE TV',total:seed.offers[0].total+1000*index,raw:{fixture:true,denialPhase:phase}}]));
+    hotels=[{...seed,name:'FICTIONAL Hotel With Explicit Quote Capability',offers:Object.values(offers)}];
+    control.denials={hotel:hotels[0],offers};emit({type:'results',hotels});emit({type:'complete'});
+  };
   control.terminal=(kind)=>emit(kind==='complete'?{type:'complete'}:kind==='partial'
     ?{type:'complete',partial:true,message:'API HTTP 403',sources:{tourvisor:{status:'error',hotels:0,offers:0},anex:{status:'complete',hotels:4,offers:4},andromeda:{status:'error',hotels:0,offers:0},database:{status:'skipped',hotels:0,offers:0}}}
     :{type:'error',message:'Не удалось завершить поиск. Полученные предложения сохранены.'});
@@ -454,7 +472,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   }
   row.frames.push({side,screen,textPercent:percent,file,sha256:hash(fs.readFileSync(path.join(evidence,file))),...measurements});
   const logicalScreen=screen.replace(/^short-desktop-/,'');
-  const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead'}[logicalScreen];
+  const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead','quote-unavailable':'tour','flights-unavailable':'tour'}[logicalScreen];
   assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
     if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
@@ -1498,6 +1516,53 @@ if(require.main===module)(async()=>{
           await capture(page,'native',width,percent,'terminal-'+kind,row);
         }
         row.proof.latePresentationTerminalStatesRetained=true;row.proof.latePresentationExtraSearches=0;
+        // The actual compiled bridge consumes the canonical non-retryable Error.
+        // These remain fictional operations with all HTTP and delivery forbidden.
+        await page.evaluate(()=>window.__nativeTerminalFixture.installDenials());
+        await actualProduct.locator('[data-hotel-open="1"]').first().click();
+        await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+        const denialProof={};
+        for(const phase of ['quote','flights']){
+          const before=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
+          await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:'+phase+'"]').click();
+          const deniedTour=actualProduct.locator('[data-screen="tour"]');await deniedTour.waitFor({state:'visible'});
+          await deniedTour.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          const read=()=>page.evaluate(phase=>{
+            const c=window.__nativeTerminalFixture,value=c.bridge.getSelection();
+            return{...c.calls,key:value.key,exactOffer:value.offer===c.denials.offers[phase],searchTotal:value.offer.total,
+              pricePending:value.pricePending,priceAccepted:value.priceAccepted,retryable:value[phase+'Failure']?.retryable};
+          },phase);
+          const denied=await read();
+          assert.equal(denied.exactOffer,true);assert.equal(denied.retryable,false);assert.equal(denied.pricePending,true);assert.equal(denied.priceAccepted,false);
+          assert.equal(denied.quote,before.quote+1);assert.equal(denied.flights,before.flights+(phase==='flights'?1:0));
+          assert.equal(await deniedTour.locator('[data-native-check-tour],[data-native-retry-flights],[data-native-defer-flight],[data-native-tour-flight]').count(),0);
+          assert.equal(await deniedTour.locator('[data-action="lead"]').evaluateAll(nodes=>nodes.every(node=>node.disabled)),true);
+          assert.match(await deniedTour.locator('[data-native-price-caption]').first().innerText(),/Цена из поиска/);
+          const fit=await deniedTour.locator('[data-native-other-offers]').evaluate(node=>{
+            const r=node.getBoundingClientRect();return{height:r.height,width:r.width,clipped:node.scrollWidth>node.clientWidth+1};
+          });assert(fit.height>=44&&fit.width>=44&&!fit.clipped);
+          await capture(page,'native',width,percent,phase+'-unavailable',row);
+          await page.setViewportSize({width:width<=760?1280:430,height:900});
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          await page.setViewportSize({width,height:900});
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          assert.deepEqual(await read(),denied,'Responsive remount keeps the exact terminal denial without more operations');
+          await actualProduct.locator('[data-native-other-offers]').click();await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+          await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:'+phase+'"]').click();
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          assert.deepEqual(await read(),denied,'Hotel return/reopen cannot turn the denial into another quote');
+          denialProof[phase]={exactOfferRetained:true,retryable:false,searchTotal:denied.searchTotal,contactBlocked:true,
+            retryAndManagerActionsAbsent:true,backAndResponsiveExtraOperations:0,actionFit:fit};
+          await actualProduct.locator('[data-native-other-offers]').click();await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+        }
+        await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:allowed"]').click();
+        await actualProduct.locator('[data-native-tour-flight="0"]').click();
+        await actualProduct.locator('[data-action="accept-price"]:visible').first().click();
+        const allowedContact=actualProduct.locator('[data-screen="tour"] [data-action="lead"]:visible').first();
+        await allowedContact.waitFor({state:'visible'});assert.equal(await allowedContact.isEnabled(),true);
+        const finalDenials=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
+        assert.deepEqual(finalDenials,{search:1,other:0,quote:3,flights:2});
+        row.proof.permanentDenials={...denialProof,differentAllowedOfferReady:true,canonicalBridgeSHA256:manifest.files['bridge.js'],calls:finalDenials};
         row.checks.push('passive init 0 searches','form submit exactly one search','favorite state and keyboard focus retained locally with 0 searches','loaded 14-day calendar pages locally with exact later total and retained history','local loaded meal filter 0 extra searches','hotel -> exact offer -> quote -> original flight index -> full price -> accepted contact preview','real leads 0','Back/Forward retained selection and 0 searches','controlled error retained rows and explicit retry','existing favorite storage retained');
       } catch(error) {
         row.mediaChanges=await page.evaluate(()=>window.__nativeMediaChanges).catch(()=>[]);row.error=error.stack||String(error);report.failures.push({width,percent,error:error.message});

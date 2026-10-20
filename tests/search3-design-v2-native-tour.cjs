@@ -129,8 +129,54 @@ const tick=()=>new Promise(resolve=>w.setTimeout(resolve,0));
   await manyFlightChoices();
   await familyCopyChecks();
   await checkedMealPresentationChecks();
+  await terminalDenialPresentationChecks();
   console.log('PASS native tour: quote/flight indices, full total, exact-selection acceptance, placeholder/missing facts, verified contact review without delivery, return draft, stale response and expiry; 24 family compositions use correct summary/price/contact cases');
 })().catch(error=>{console.error(error);owner.destroy();w.close();process.exitCode=1;});
+
+async function terminalDenialPresentationChecks(){
+  for(const template of ['st-mobile','st-desktop'])for(const phase of ['quote','flights']){
+    const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{runScripts:'outside-only'}),v=doc.window;
+    const r=v.document.querySelector('[data-product]');if(template==='st-desktop')r.classList.remove('st-mobile');
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../v2/lead-form-guard-v1.js'),'utf8'));
+    v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+    let quotes=0,previews=0,receipt={...offer,offer,total:112000,tour:phase==='flights'?tour:null,variants,
+      pricePending:true,priceAccepted:false,[phase+'Error']:'FICTIONAL permanent denial',
+      [phase+'Failure']:{retryable:false}};
+    const seam={getSelection:()=>receipt,quoteOffer(){quotes++;throw new Error('Terminal denial must not retry');},
+      previewContact(){previews++;return{price:receipt.total,delivery:'preview-disabled'};}};
+    let view=v.AnyTourDesignV2Tour.mount({root:r,bridge:seam});
+    view.render({offer,hotel,screen:'tour'});await view.ready();
+    const check=()=>{
+      assert.equal(view.getState().ready,false);assert.equal(quotes,0);
+      assert.equal(r.querySelector('[data-native-flight-status]').textContent,'Недоступно онлайн');
+      assert.equal(r.querySelectorAll('[data-native-check-tour],[data-native-retry-flights],[data-native-defer-flight],[data-native-tour-flight]').length,0);
+      const back=r.querySelector('[data-native-other-offers]');assert(back);assert.equal(back.dataset.action,'hotel');
+      assert.equal(back.textContent,'Выбрать другой тур');
+      assert.match(r.querySelector('[data-native-package-note]').textContent,/Онлайн-проверка этого тура недоступна/);
+      assert([...r.querySelectorAll('[data-native-price-caption]')].every(n=>n.textContent==='Цена из поиска за всех'));
+      assert.equal(r.querySelector('[data-tour-price]').textContent,'100 000 ₽');
+      assert([...r.querySelectorAll('[data-action="lead"]')].every(n=>n.disabled));
+    };
+    check();view.render({offer,hotel,screen:'lead'});check();
+    const contact=r.querySelector('[data-lead-form]');contact.elements.phone.value='+7 999 123-45-67';contact.elements.consent.checked=true;
+    contact.dispatchEvent(new v.Event('submit',{bubbles:true,cancelable:true}));assert.equal(previews,0);
+    const state=view.getState();view.destroy();view=v.AnyTourDesignV2Tour.mount({root:r,bridge:seam,initialState:state});
+    view.render({offer,hotel,screen:'tour'});await view.ready();check();
+    const next={...offer,key:'allowed:next',raw:{id:'allowed:next'}};
+    receipt={...next,offer:next,tour,variants,flightChoiceId:1,total:112000,pricePending:false,priceAccepted:true};
+    view.render({offer:next,hotel,screen:'tour'});await view.ready();
+    assert.equal(view.getState().ready,true,'Another confirmed offer is not blocked by the old denial');
+    assert.equal(r.querySelector('[data-native-other-offers]'),null);assert.equal(quotes,0);
+    view.destroy();v.close();
+  }
+  const doc=new JSDOM('<!doctype html><body>'+builder.extract().markup+'</body>',{runScripts:'outside-only'}),v=doc.window,r=v.document.querySelector('[data-product]');
+  v.eval(fs.readFileSync(path.resolve(__dirname,'../src/search3-design-v2/tour.js'),'utf8'));
+  let quotes=0,receipt={...offer,offer,quoteError:'Временный сбой',quoteFailure:{retryable:true},pricePending:true};
+  const view=v.AnyTourDesignV2Tour.mount({root:r,bridge:{getSelection:()=>receipt,async quoteOffer(){quotes++;return receipt={...offer,offer,tour,variants,pricePending:true};}}});
+  view.render({offer,hotel,screen:'tour'});await view.ready();
+  r.querySelector('[data-native-check-tour]').click();await view.ready();assert.equal(quotes,1,'Transient quote failure remains retryable');
+  view.destroy();v.close();
+}
 
 async function checkedMealPresentationChecks(){
   for(const [raw,label] of [['AI','Всё включено'],[{name:'BB'},'Завтраки'],[{fullName:'Питание от поставщика',name:'AI'},'Питание от поставщика'],['AI+','AI+']]){
