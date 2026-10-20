@@ -1350,6 +1350,36 @@ const server=http.createServer((req,res)=>{
  if(enableSamoFixture&&file.endsWith('/prototype-search/config.js'))body=body.toString()+"\nwindow.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';window.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';\n";
  res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':'application/octet-stream');res.end(body);
 });
+const terminalAnexExpansionJourney=async(browser,origin,base,evidence)=>{
+ const records=[];
+ for(const [width,height] of [[430,900],[1280,720]]){
+  const transport=fixture(),errors=[],forbidden=[],warnings=[],context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();transport.state.wideFacets=true;
+  transport.state.anexExpansionFailure={ok:false,error:'supplier_unavailable',retryable:false,diagnostics:{'X-AnyTour-Anex-Stage':'expand','X-AnyTour-Anex-Phase':'gateway','X-AnyTour-Anex-Failure':'ANEX_HTTP_ERROR','X-AnyTour-Anex-Category':'http','X-AnyTour-Anex-Native-Action':'SearchTour_PRICES','X-AnyTour-Anex-Upstream-Status':'502','X-AnyTour-Anex-Elapsed-Ms':'1450'}};
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('console',message=>{if(message.type()==='warning'&&message.text().startsWith('[AnyTour search] '))warnings.push(message.text());});
+  const expansions=()=>transport.calls.filter(c=>c.action==='expand').length;
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{const value=await transport.json(request.url(),{body:request.postData()});await route.fulfill({status:value.ok===false?502:200,contentType:'application/json',body:JSON.stringify(value)});}catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:''}));await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('#results-summary').textContent.includes('11 вариантов')&&document.querySelector('#search-status').hidden);
+   const open=async()=>{await page.locator('[data-action="all-offers"][data-id="501"]').first().click();await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();};
+   await open();await page.locator('[data-action="refresh-hotel"]').click();await page.locator('#modal-body .error-text').waitFor();
+   const assertDenied=async()=>{assert.match(await page.locator('#modal-footer').textContent(),/Выбрать другой тур/);assert.match(await page.locator('.footer-price-status').textContent(),/не подтверждена/);assert.equal(Number((await page.locator('#modal .footer-total>strong').textContent()).replace(/[^\d,.-]/g,'').replace(',','.')),121000);assert.doesNotMatch(await page.locator('#modal-body').textContent(),/ANEX_HTTP_ERROR|SearchTour_PRICES|502|Повторите проверку/);assert.equal(await page.locator('#modal [data-action="refresh-hotel"],#modal [data-action="select-anex-tour"],#modal [data-action="start-lead"],#prototype-lead-form').count(),0);};
+   await assertDenied();assert.equal(expansions(),1);
+   const geometry=await page.locator('#modal').evaluate(modal=>{const footer=document.querySelector('#modal-footer'),action=footer.querySelector('[data-action="all-offers"]'),r=action.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{overflow:document.documentElement.scrollWidth>innerWidth||modal.scrollWidth>modal.clientWidth+1,reachable:!!hit&&(hit===action||action.contains(hit)),action:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,height:r.height}};});
+   assert(!geometry.overflow&&geometry.reachable&&geometry.action.height>=44&&geometry.action.bottom<=height+1,'ordinary recovery action stays visible at '+width+'x'+height);await page.screenshot({path:path.join(evidence,'anex-expand-terminal-'+width+'x'+height+'.png')});
+   await page.locator('#modal-footer [data-action="all-offers"]').click();await page.locator('#modal-body [data-action="offer"][data-key^="anex%3A"]').click();await assertDenied();await page.locator('[data-action="close-modal"]').click();await page.waitForFunction(()=>!document.querySelector('#modal').open&&!history.state?.['anytour.prototype.v18.ui.v1']);await page.goForward();await page.locator('#modal-body .error-text').waitFor();await assertDenied();
+   await page.setViewportSize({width:width===430?1280:430,height});await assertDenied();assert.equal(expansions(),1,'ordinary reopen/Forward/resize cannot replay the sealed POST');
+   await page.locator('#modal-footer [data-action="all-offers"]').click();await page.locator('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]').click();await page.locator('[data-action="start-lead"]').click();await page.locator('#prototype-lead-form').waitFor();assert.equal(expansions(),1,'an independent offer remains available');
+   assert.equal(warnings.length,1);const diagnostic=JSON.parse(warnings[0].slice('[AnyTour search] '.length));assert.equal(diagnostic.backendStage,'expand');assert.equal(diagnostic.backendPhase,'gateway');assert.equal(diagnostic.upstreamStatus,502);assert.equal(diagnostic.elapsedMs,1450);assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);assert(!transport.calls.some(c=>/lead|payment/.test(c.url)));
+   records.push({width,height,producer_terminal_retained:true,listing_unconfirmed:121000,retry_after_return:0,expand_POSTs:1,independent_offer_contact:true,diagnostic,geometry,supplier_HTTP:0,real_leads:0,physicalSafari:false});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'anex-expand-terminal-journey.json'),JSON.stringify({source:'fictional installed-contract response on exact compiled UI',records},null,2));
+};
 const compactAnexJourney=async(browser,origin,base,evidence)=>{
  for(const [width,height] of [[360,900],[390,900],[430,900],[768,900],[1280,900],[1280,720]]){
   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height}}),page=await context.newPage();transport.state.anexPackageChoiceCount=40;page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
@@ -2073,6 +2103,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   (async()=>{
    await boundedRepriceJourney(browser,origin,base,evidence);
    await compactAnexJourney(browser,origin,base,evidence);
+   await terminalAnexExpansionJourney(browser,origin,base,evidence);
   })()
  ]),tailFailures=tail.filter(result=>result.status==='rejected');
  if(tailFailures.length)throw new AggregateError(tailFailures.map(result=>result.reason),'Independent date and reprice journeys failed');

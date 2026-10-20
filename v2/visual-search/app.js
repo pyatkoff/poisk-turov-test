@@ -1646,7 +1646,7 @@ function rememberAndromedaFlightChoice(input){
 function restoreProviderView(o){
  const view=retainedProviderView(o);if(!view)return false;
  selectedOffer=view.offer;
- if(view.type==='tourvisor-selection')renderRealOffer();
+ if(view.type==='tourvisor-selection'||view.type==='anex-selection')renderRealOffer();
  if(view.type==='andromeda-flights')openAndromedaFlightChoice(view.offer,view.result);
  if(view.type==='andromeda-verified')openAndromedaVerified(view.offer,view.result);
  if(view.type==='anex-current'){
@@ -2276,6 +2276,7 @@ async function applyAnexAdditionalPrices(){
 async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false}={}){
  const o=selectedOffer,h=selectedTourHotel(o);
  if(!o||o.hotelId!==id||!needsRefresh(o)||!h){toast('Не удалось определить варианты отеля. Повторите общий поиск.');return;}
+ if(terminalOfferQuote(o)){renderRealOffer();return;}
  if(restoreProviderView(o)){if(selectFlights&&['anex-current','anex-additional'].includes(modalType))await loadAnexPackageQuote();return;}
  if(o.provider==='anex'&&o.raw?.anexKind==='concrete'&&o.raw?.anexSessionCurrent===true){
   const run=++selectionGeneration;selectedOffer={...o,loading:true,quoteError:''};renderRealOffer();
@@ -2322,9 +2323,9 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
    else openAllOffers(id,{flight:'',room:'',meal:'',sort:'price'});
    toast('ANEX вернул конкретные варианты тура');
   }catch(error){
-   if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){
-    selectedOffer={...o,loading:false,quoteError:error.message};renderRealOffer();
-   }
+   const failed=offerQuoteFailure(o,error);
+   if(failed.quoteErrorTerminal)rememberProviderView(failed,'anex-selection');
+   if(run===selectionGeneration&&$('#modal').open&&modalType==='offer'&&selectedOffer?.key===o.key){selectedOffer=failed;renderRealOffer();}
   }
   return;
  }

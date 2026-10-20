@@ -215,6 +215,36 @@ async function quoteReturnRegressions(){
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
+async function terminalAnexExpansionRegressions(){
+ for(const width of [430,1280])for(const outcome of ['producer','legacy_unknown','projection']){
+  const t=fixture(),errors=[],warnings=[],console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));console.on('warn',line=>warnings.push(line));t.state.wideFacets=true;
+  t.state.anexExpansionFailure=body=>outcome==='producer'?{ok:false,error:'supplier_unavailable',retryable:false,diagnostics:{'X-AnyTour-Anex-Stage':'expand','X-AnyTour-Anex-Phase':'gateway','X-AnyTour-Anex-Failure':'ANEX_HTTP_ERROR','X-AnyTour-Anex-Category':'http','X-AnyTour-Anex-Native-Action':'SearchTour_PRICES','X-AnyTour-Anex-Upstream-Status':'502'}}
+   :{ok:true,data:{provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref,status:outcome==='legacy_unknown'?'expansion_unknown':'expanded',...(outcome==='legacy_unknown'?{retryable:false}:{}),hotels:[]}};
+  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const win=local.window,doc=win.document,get=s=>doc.querySelector(s),tap=s=>{assert(get(s),s);get(s).click();};
+  Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
+  win.matchMedia=()=>({matches:win.innerWidth<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  win.HTMLElement.prototype.scrollIntoView=function(){};win.HTMLElement.prototype.getClientRects=function(){return [{}];};win.scrollTo=()=>{};
+  win.HTMLDialogElement.prototype.showModal=function(){this.open=true};win.HTMLDialogElement.prototype.close=function(){this.open=false};
+  win.fetch=async(url,options={})=>{assert(!/lead|booking/.test(String(url)),'no real lead transport');const value=await t.json(url,options);return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});};
+  for(const file of scripts){let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__expansion=()=>({offer:selectedOffer,type:modalType});\n'+marker);}win.eval(code);}
+  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('ANEX expansion timeout '+outcome+'/'+width);};
+  let key;const open=()=>{tap('[data-action="all-offers"][data-id="501"]');const button=get('#modal-body [data-action="offer"][data-key^="anex%3A"]');assert(button);key=button.dataset.key;button.click();};
+  const expansions=()=>t.calls.filter(c=>c.action==='expand').length;
+  try{
+   await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]')&&get('#search-status').hidden);open();
+   const raw=win.__expansion().offer.raw;tap('[data-action="refresh-hotel"]');await until(()=>get('#modal-body .error-text'));
+   const assertDenied=()=>{const o=win.__expansion().offer;assert.equal(o.quoteErrorTerminal,true);assert.equal(o.total,121000,'listing stays unconfirmed');assert.equal(o.tour,null);assert.strictEqual(o.raw,raw);assert.match(get('#modal-footer').textContent,/Выбрать другой тур/);assert.match(get('.footer-price-status').textContent,/не подтверждена/);assert.doesNotMatch(get('#modal-body').textContent,/ANEX_HTTP_ERROR|SearchTour_PRICES|502|Повторите проверку/);for(const action of ['refresh-hotel','start-lead','select-anex-tour','choose-flight'])assert(!get('#modal-body [data-action="'+action+'"]')&&!get('#modal-footer [data-action="'+action+'"]'));};
+   assertDenied();assert.equal(expansions(),1);const diagnostic=warnings.filter(line=>String(line).startsWith('[AnyTour search] '));assert.equal(diagnostic.length,1);const fact=JSON.parse(diagnostic[0].slice('[AnyTour search] '.length));assert.equal(fact.stage,'expand');assert.equal(fact.code,outcome==='producer'?'supplier_unavailable':outcome==='legacy_unknown'?'expansion_unknown':'client_projection_unconfirmed');
+   tap('[data-action="all-offers"]');tap('#modal-body [data-action="offer"][data-key="'+key+'"]');assertDenied();
+   tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);win.history.forward();await until(()=>get('#modal').open&&win.__expansion().type==='offer');assertDenied();
+   win.innerWidth=width===430?1280:430;win.dispatchEvent(new win.Event('resize'));assertDenied();assert.equal(expansions(),1,'Close/reopen/Forward/resize retains terminal noReplay');
+   tap('[data-action="all-offers"]');tap('#modal-body [data-action="offer"][data-key="tourvisor%3Avisual-tv-101"]');tap('[data-action="start-lead"]');await until(()=>get('#prototype-lead-form'));assert.equal(expansions(),1,'independent offer stays usable');
+   tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);tap('#applied-search [data-action="edit-search"]');t.state.anexExpansionFailure=null;tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]')&&get('#search-status').hidden);open();assert.notStrictEqual(win.__expansion().offer.raw,raw);tap('[data-action="refresh-hotel"]');await until(()=>win.__expansion().offer?.raw?.anexKind==='concrete');assert.equal(expansions(),2,'a genuinely new search can expand its own group');assert(!win.__expansion().offer.quoteErrorTerminal);
+  }finally{local.window.close();assert.deepEqual(errors,[]);}
+ }
+ console.log('PASS ANEX expansion receiving:430/1280 producer/legacy UNKNOWN/local projection; one safe diagnostic, terminal listing-only view survives ordinary return/resize, independent offer and new search usable; fictional HTTP only');
+}
 async function terminalQuoteRegressions(){
  for(const width of [430,1280])for(const phase of ['quote','flights']){
   const t=fixture(),localErrors=[],console=new VirtualConsole();console.on('jsdomError',e=>localErrors.push(e.message));t.state.wideFacets=true;
@@ -405,6 +435,7 @@ async function pickerRetainedDraftRegressions(){
  const completed=await Promise.allSettled([
   pickerRetainedDraftRegressions(),
   (async()=>{
+ await terminalAnexExpansionRegressions();
  await terminalQuoteRegressions();
  await quoteReturnRegressions();
  await wait(()=>!q('.search-submit').disabled);
