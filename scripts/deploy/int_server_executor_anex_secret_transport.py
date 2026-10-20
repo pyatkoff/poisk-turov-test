@@ -135,7 +135,7 @@ match_retained.register_parser(core)
 DIRECT_ANEX_MODES = frozenset({'anex-demand', 'anex-range'})
 SUPPLIER_SLOT_MODES = frozenset({
     'anex-range', 'match-tv942', 'match-samo942', 'match-tv234-secondary',
-    'match-common4-acquire', 'match-common4-continuation-acquire',
+    'match-common4-acquire', 'match-common4-continuation-acquire', 'match-retained-acquire',
     'match-common4-continuation-resume-day', 'match-common4-continuation-remainder',
     'program-fuel-probe', 'andromeda-scope', 'andromeda-external-group',
     'andromeda-operator-scope',
