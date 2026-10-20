@@ -44,6 +44,94 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def _transport_fixture(self, td):
+        base=Path(td);private=base/'private';private.mkdir();project=base/'project';project.mkdir()
+        (project/'config.php').write_text('private-configuration-sentinel')
+        account_root=base/'.anytoour-match';(account_root/'provider-quotas').mkdir(parents=True)
+        ledger_paths=[account_root/'retained-selection-claims.json',account_root/'retained-context-claims.json',
+                      account_root/'provider-quotas/tourvisor-anex-2026-10-20.json']
+        for path in ledger_paths:path.write_text('{"preserved_private_ledger":true}')
+        profile=copy.deepcopy(m.TRANSPORT_DIAGNOSTIC);stamp=1792400000000000000
+        for pin in profile['parents']:
+            name='int-andromeda-match-retained-acquire-20261020-v'+str(pin['version']);target=private/name;target.mkdir()
+            data={'operation_id':name,'source_sha':SHA,'supplier_calls':pin['calls'],'physical_http_reservations':pin['calls'],
+                  'unknown_http_calls':pin['unknown'],'database_writes':0,'mapping_writes':0,'stop_reason':'TimeoutError' if pin['unknown'] else None,
+                  'acquisition_state':'partial_no_replay' if pin['unknown'] else 'completed','actions':{'search_start':pin['calls']}}
+            pin['evidence']=hashlib.sha256(a.canonical(data)).hexdigest()
+            wrapper={'operation_id':name,'source_sha':SHA,'status':'complete','mode':'match-retained-acquire','production_unchanged':True,
+                     'supplier_calls':pin['calls'],'database_writes':0,'mapping_writes':0,
+                     'match_retained':{'data':data,'evidence_sha256':pin['evidence']}}
+            (target/'result.json').write_text(json.dumps(wrapper));os.utime(target/'result.json',ns=(stamp+30_000_000_000,)*2)
+            (target/'reservation.json').write_text(json.dumps({'operation_id':name,'source_sha':SHA}))
+            for n in range(1,pin['calls']+1):
+                request=target/('request-%04d.json'%n)
+                request.write_text(json.dumps({'action':'search_start','path':'/tours/search','params':{'secret':'private-query-sentinel'}}))
+                os.utime(request,ns=(stamp,)*2)
+                if n<=pin['calls']-pin['unknown']:
+                    body=target/('response-%04d.bin'%n);body.write_bytes(b'private-raw-body-sentinel')
+                    meta=target/('response-%04d.json'%n)
+                    meta.write_text(json.dumps({'http_status':200,'raw_sha256':hashlib.sha256(body.read_bytes()).hexdigest()}))
+                    os.utime(meta,ns=(stamp+5_000_000_000,)*2)
+        def fail(reason):raise ValueError(reason)
+        space={'private':private,'project':project,'payload':{'cohort':m.NEXT_SCOPE['cohort'],
+               'target_operation_id':profile['target_operation_id']},'operation':profile['operation_id'],'TRANSPORT_DIAGNOSTIC':profile,
+               'NEXT_SCOPE':m.NEXT_SCOPE,'Path':Path,'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),
+               'subprocess':subprocess,'fail':fail,'safe_file':lambda p,b:p.is_file() and not p.is_symlink() and p.stat().st_size<=b}
+        exec(m.REMOTE_HANDLER,space)
+        space['retained_next_scope']=lambda stage:{'scope_id':m.NEXT_SCOPE['scope_id']}
+        space['retained_prior_selection']=lambda scope:None
+        return space,ledger_paths
+
+    def test_passive_transport_readback_binds_history_preserves_unknown_and_never_reads_raw_or_secrets(self):
+        with tempfile.TemporaryDirectory() as td:
+            space,ledgers=self._transport_fixture(td);before={p:p.read_bytes() for p in ledgers}
+            metadata={'configured':True,'matches_default_token':False,'jwt_claims_parseable':True,
+                      'expiry_epoch_seconds':1792500000,'expired_at_capture':False,'capture_epoch_seconds':1792400000}
+            original=Path.read_bytes
+            def guarded_read(path):
+                if path.suffix=='.bin':raise AssertionError('raw response body must not be read')
+                return original(path)
+            def metadata_only(args,**kwargs):
+                self.assertEqual('php',args[0]);self.assertIn('allow_url_fopen=0',args)
+                self.assertNotIn('TOURVISOR_ANEX_JWT',kwargs['env']);self.assertNotIn('TOURVISOR_JWT',kwargs['env'])
+                self.assertIn('disable_functions=',next(arg for arg in args if arg.startswith('disable_functions=')))
+                return subprocess.CompletedProcess(args,0,json.dumps(metadata),'')
+            with mock.patch.dict(os.environ,{'HOME':td,'TOURVISOR_ANEX_JWT':'private-ambient-sentinel'}), \
+                 mock.patch.object(Path,'read_bytes',guarded_read),mock.patch.object(subprocess,'run',side_effect=metadata_only) as child:
+                out=space['retained_transport_diagnostic'](SOURCE)
+            self.assertEqual(1,child.call_count);self.assertEqual((47,3),(out['known_lineage_http_attempts'],out['known_lineage_unknown']))
+            missing=[row for row in out['requests'] if row['http_status'] is None]
+            self.assertEqual(3,len(missing));self.assertTrue(all(row['request_to_terminal_file_ms']==30000 for row in missing))
+            self.assertEqual(before,{p:p.read_bytes() for p in ledgers});self.assertFalse(out['cause_established'])
+            serialized=json.dumps(out)
+            for token in ('private-raw-body-sentinel','private-query-sentinel','private-configuration-sentinel','private-ambient-sentinel','https://'):
+                self.assertNotIn(token,serialized)
+            first=space['private']/'int-andromeda-match-retained-acquire-20261020-v1/result.json'
+            broken=json.loads(first.read_text());broken['match_retained']['data']['unknown_http_calls']=1;first.write_text(json.dumps(broken))
+            with mock.patch.dict(os.environ,{'HOME':td}),mock.patch.object(subprocess,'run',side_effect=AssertionError('no child after drift')):
+                with self.assertRaisesRegex(ValueError,'transport_parent_binding'):space['retained_transport_diagnostic'](SOURCE)
+
+    @unittest.skipUnless(__import__('shutil').which('php'),'native PHP required')
+    def test_passive_config_metadata_uses_real_php_and_cannot_expose_jwt_claims(self):
+        with tempfile.TemporaryDirectory() as td:
+            space,ledgers=self._transport_fixture(td)
+            encoded=__import__('base64').urlsafe_b64encode(json.dumps({'exp':1,'sub':'private-subject-sentinel'}).encode()).decode().rstrip('=')
+            token='e30.'+encoded+'.private-signature-sentinel'
+            (space['project']/'config.php').write_text("<?php define('TOURVISOR_ANEX_JWT', '"+token+"');define('TOURVISOR_JWT','different-private-token');")
+            with mock.patch.dict(os.environ,{'HOME':td}):out=space['retained_transport_diagnostic'](SOURCE)
+            self.assertTrue(out['current_account_metadata']['configured']);self.assertTrue(out['current_account_metadata']['expired_at_capture'])
+            self.assertFalse(out['current_account_metadata']['matches_default_token']);self.assertFalse(out['metadata_signature_verified'])
+            for value in (token,encoded,'private-subject-sentinel','private-signature-sentinel'):self.assertNotIn(value,json.dumps(out))
+
+    def test_transport_readback_has_one_exact_admission_and_no_write_authority(self):
+        c=core();m.register_parser(c);p=m.TRANSPORT_DIAGNOSTIC
+        command=c.PREFIX+SHA+' match-retained-readback '+p['operation_id']+' '+m.NEXT_SCOPE['cohort']+' '+p['target_operation_id']
+        cmd=c.parse_command(command);self.assertEqual(p['target_operation_id'],cmd['target_operation_id'])
+        for text in (command.replace(p['target_operation_id'],m.NEXT_SCOPE['saved_acquisition_operation_id']),
+                     command.replace(m.NEXT_SCOPE['cohort'],'common4-retained'),command.replace('readback-20261020-v5','readback-20261020-v6')):
+            with self.assertRaises(ValueError):c.parse_command(text)
+        self.assertEqual((47,3),(sum(v['calls'] for v in p['parents']),sum(v['unknown'] for v in p['parents'])))
+
     def test_write_completion_requires_nonzero_per_row_commit_readback(self):
         cmd={'mode':'match-retained-anex-write','source_sha':SHA,'operation_id':'int-andromeda-match-retained-anex-write-20261020-v1',
              'cohort':'anex7-verified','target_operation_id':'int-andromeda-match-retained-acquire-20261020-v1'}
