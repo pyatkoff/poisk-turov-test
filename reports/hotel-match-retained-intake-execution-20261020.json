@@ -4,7 +4,7 @@
   "coordination_issue": 4217,
   "date_local": "2026-10-20",
   "timezone": "Europe/Kaliningrad",
-  "status": "committed7_verified_plus_bounded_catalogue_executed_egypt2_zero_new_pairs",
+  "status": "committed7_verified_plus_catalogue_receipt_fix_and_saved_proof_sources_inspected",
   "source_account_for_new_acquisition": "TOURVISOR_ANEX_JWT",
   "captured_at_utc": "2026-10-19T23:45:30Z",
   "capture": {
@@ -548,7 +548,7 @@
     "97targets not returned in selected contexts and1unresolved link remain distinct from global operator absence",
     "606ready missing targets include98already selected and508not yet selected; consumed105 queries must not be repeated unchanged"
   ],
-  "next_result": "Bounded trusted-main catalogue mechanism is CHECKED/MERGED/EXECUTED, not pending engineering. Acquire-v9/Egypt2 is COMPLETED/CONSUMED:3HTTP/UNKNOWN0/0returnedselectedANEXhotels/nativepairs/links/gain. No emptywriter/CURRENT/archive reread or replay. Lower-priorityThailand8 scope is config-checked/merged but UNEXECUTED; do not automatically run it after zero. Next prioritize NEW independent native proof/accepted handoff or concrete operator-specific yield/context evidence; ready proven pairs use current guarded writer without waiting for new catalogue work. Common4access/nativebridge and unsupportedfamilyparty stay separate; no repeated whole-frontier pass.206everselected/407neverselected(199selectedready+407=606) is sameCURRENT-v2 bookkeeping. Knownown63HTTP/19starts/3UNKNOWN, globalusage/remainingNOT_MEASURED; prior7verifiedlinks/SEARCHunknown preserved.",
+  "next_result": "Readback-v8 is COMPLETED/VERIFIED/SEALED:0supplierHTTP/DB/maps;787observations across285of407same-parenttargets have present but NULL tour_id/search_id,0referencecandidates;122targets have no observation inTHIScapture. Exactv9rawresponse3 is recognized_empty list[] beforelocalfilters. CataloguefalsefutureHOLD repaired4763/native72/no skips/merged532b/actualprivatev9receipt reconciled withoutreplay. Do NOT repeat this capture/response3/profile or automatically run Thailand8/another date/country. Next requires NEW authoritative native proof/namespace bridge or grounded new operator-specific offer/tourref/context with an actual proof path; ready independent proof follows existing CURRENT/guards/write/per-row resolver readback. No emptywriter/CURRENT.206ever/407never sameCURRENT-v2bookkeeping, prior7links and63HTTP/19starts/3UNKNOWN preserved; globalusage/remainingNOT_MEASURED/common4/family gaps retained.",
   "retained_link_completeness_audit": {
     "run_id": 39346987559,
     "command_comment_id": 6280298241,
@@ -815,7 +815,7 @@
   },
   "retained_intake_stage_new_accepted_mappings": 0,
   "aggregate_scope": "Historical committed7/readback/same-cohort CURRENT + sealed prior acquisitions/UNKNOWNs + completed 60s date contexts + new never-selected13 and Maldives9 exact saved-context acquisitions. Aggregate HTTP is known own lineage only, not global account usage.",
-  "updated_at_utc": "2026-10-20T16:07:12Z",
+  "updated_at_utc": "2026-10-20T16:56:15.627Z",
   "current_acquisition_acceptance": {
     "current_before": {
       "run_id": 39348390675,
@@ -4454,8 +4454,8 @@
     "supplier_paths_source_account": "TOURVISOR_ANEX_JWT"
   },
   "current_supplier_lane_hold": {
-    "reason": "Latest reviewed catalogue Egypt2 context completed0selectedANEXhotels/0pairs; exact operation consumed, no transport failure or global country/operator absence inferred.",
-    "recovery_dependency": "Proof/yield selection dependency: new independent operator-native fact or concrete re-evaluated missing-proof hypothesis. Do not rebuild implemented catalogue, blindly run Thailand8, replay consumed inputs or infer provider-wide recovery.",
+    "reason": "New proof-source inspection found0tour/searchreferencecandidates in787observations on285of407savedtargets; exactv9body is genuinelyempty beforefilters. This is a source-proof dependency, not a new transport/outage/country-absence diagnosis.",
+    "recovery_dependency": "NEW authoritative operator-native identity/namespace bridge, or NEW retained operator-specific offer/tour reference supporting a concrete expected proof path.",
     "no_further_paid_attempts_this_pass": true,
     "all_match_paused": false,
     "automation_disabled": false,
@@ -4473,7 +4473,8 @@
       "New never-selected13 real11Nov9n/departure22 scope reviewed/merged/native51 and executed39436985531:4HTTP/UNKNOWN0/TV616detail/nativeIDunresolved/0newlinks; no writer/CURRENT.",
       "DistinctNEWTV616raw inspection run39438255466 verified0HTTP/DB/mapping,1812bytes,ANEXhost/search-tour but both selectors non_identifier_text/nativeauthorityfalse; five targetfiles+three ledgers unchanged. Both newops sealed.",
       "New never-selectedMaldives9 exact21Oct5n/Moscow1 savedcontext reviewed/merged/native54+stock/Security and executed39444990095:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/newlinks. No emptywriter/CURRENT; prior195claims append9, alloldUNKNOWNsealed.",
-      "Implemented finite trusted-main catalogue and common parser/bundle/remote/helper/result binding; native63/no skips+stock, independent review, feature4756/main4758 merged. Prioritized two saved operator_5-related candidates and actually executed acquire-v9:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/links; no automatic next, no emptywriter/CURRENT."
+      "Implemented finite trusted-main catalogue and common parser/bundle/remote/helper/result binding; native63/no skips+stock, independent review, feature4756/main4758 merged. Prioritized two saved operator_5-related candidates and actually executed acquire-v9:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/links; no automatic next, no emptywriter/CURRENT.",
+      "PR4763 actual per-batch receipt repair/native72/no skips merged532b; fixed read-only-v8 executed39460843892:787NULLtour/searchrefs/285of407/0candidates, rawv9list[] beforefilters,16inputs+3ledgersunchanged/0supplierHTTP/DB/maps. Both new hypotheses nowsealed; no repeatedraw/census/paidprobe."
     ],
     "missing_common4_authority": "Only operator13/anextour live binding proven; other operator access/namespace bridges still require independent proof",
     "old_native_absent3": "Independent native/property+LOCAL/TV bridge/canonical anchor missing; no replay of saved proof passes",
@@ -6208,6 +6209,250 @@
       "automatic_next": false,
       "operator_specific_selling_hint": "not_found_in_saved_CURRENT_rows",
       "condition": "Re-evaluate specific missing proof and expected yield; fresh claim/source/slot required; no automatic next after zero or hour tick"
+    }
+  },
+  "proof_source_inspection_20261020": {
+    "status": "completed_verified_sealed_no_replay",
+    "purpose": "New optional observation-reference fields and raw zero-yield structure; not a repeated native-link audit, intake, CURRENT census or supplier acquisition.",
+    "engineering": {
+      "source_pr": 4763,
+      "source_sha": "a344d70b810d07c4aa9e99f75ea450a4e9b7c3d6",
+      "main_merge_sha": "532b144a434ee06924b9c2afa1d7b4012b996d2e",
+      "tree_sha": "f56d3784fe4aac00df84c7cfe6f25fec728a48af",
+      "parents": [
+        "0059b396ae239b58a2726ac504461d0144e9432f",
+        "a344d70b810d07c4aa9e99f75ea450a4e9b7c3d6"
+      ],
+      "files": [
+        {
+          "path": "scripts/deploy/int_server_executor_match_retained.py",
+          "blob": "73fe39365e731b2509cbcafc793686978345f639",
+          "sha256": "8c7017488c332ecabe2770a51ccbb81d8275237a1b0e6fd7f08a2eff42308fea",
+          "bytes": 122780
+        },
+        {
+          "path": "tests/int_server_executor_match_retained_test.py",
+          "blob": "08455a729c41c84cd92915f9b4c9c28b46fbc02f",
+          "sha256": "00f65bbdc53caf10f6f9b9ae924aea73e519721ef9df0d85355ed4070b081cc9",
+          "bytes": 181587
+        }
+      ],
+      "prepared": true,
+      "checked": true,
+      "merged": true,
+      "exact_merged_bytes_verified": true,
+      "executed": true,
+      "concrete_review_id": 5588358813,
+      "independent_source_review": "ACCEPT",
+      "native_ci_run": 39458808512,
+      "native_ci_job": 118752554702,
+      "actual_native_tests": 72,
+      "native_skips": 0,
+      "stock_contracts": "SUCCESS",
+      "security_run": 39458808642,
+      "security_job": 118752556222,
+      "local_tests": 72,
+      "local_native_only_skips": 4,
+      "compressed_stock_command_bytes": 56931,
+      "existing_carrier": true,
+      "new_execution_modes": 0,
+      "new_runners": 0,
+      "feature_bundle_changed": false,
+      "timeout_seconds": 60,
+      "preserved_frozen_profiles_and_writers": true,
+      "repaired_defect": "Receiver required nonexistent top-level search_complete; producer and immutable v9 receipt record completion only in batches[].search_complete. Reconcile exactly one completed bounded batch with strict consistent roster/action/HTTP/reservation/tariff/edge counts. This false future HOLD did not cause v9's empty result and does not authorize its replay.",
+      "actual_v9_fixture_canonical_hash_verified": true,
+      "negative_receipt_variants": 26,
+      "read_only_slot_policy": {
+        "wrapper_blob": "109d820e5ca047645321d377cb2d9cd22c74b304",
+        "mode": "match-retained-readback",
+        "supplier_slot_mode": false,
+        "serial_executor_concurrency_preserved": true,
+        "no_guard_bypass": true
+      }
+    },
+    "execution": {
+      "operation_id": "int-andromeda-match-retained-readback-20261020-v8",
+      "command_comment_id": 6296234048,
+      "run_id": 39460843892,
+      "execute_job_id": 118759596161,
+      "attempt": 1,
+      "conclusion": "SUCCESS",
+      "source_sha": "ba6ecf2ae842bea1424a585b5a2eb20907ffba9a",
+      "control_source_sha": "532b144a434ee06924b9c2afa1d7b4012b996d2e",
+      "target_operation_id": "int-andromeda-match-retained-20261020-v3",
+      "canonical_terminal_comment_id": 6296318031,
+      "artifact": {
+        "id": 12281899140,
+        "bytes": 1536,
+        "created_at_utc": "2026-10-20T16:50:44Z",
+        "zip_sha256": "941e3b750e278a1bda081b1f635e684e46d259bc2b8679d851dd177fc5ccfa56",
+        "json_sha256": "fd2eea6f54fba4df35cf05637564ba40e56b5b72efcbb0b39d98471370658f2b",
+        "canonical_private_receipt_sha256": "5aeaa58052cc7692b350b51c9b228b5844bafae3ae42dee660d0daf2bdeda065",
+        "evidence_sha256": "85128becab42e975396287da926c5441b2f14e7c10ca3403817fa99a31e42a21",
+        "binary_digest_verified": true,
+        "crc_verified": true,
+        "sole_json": true,
+        "exact_job_json_verified": true,
+        "source_control_parent_pins_counters_verified": true
+      },
+      "immutable_operation_consumed": true,
+      "private_reference_projection_sha256": "fce703fcf91363e6faf70ea0f17a1bfbee8a629ace42b2c3f79b240164adc5c4"
+    },
+    "actual_result": {
+      "acquisition_receipt_sha256": "1cf755d5aa043d92ee6780bf0d7b0117b330ab41beb6fff23ab5c3d0dd2c544a",
+      "acquisition_result_raw_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "capture_raw_sha256": "00c992ec930b0f0c8c9a8167bea93a1efebd8d34e1c19f1a01bf16e3ef77d834",
+      "capture_receipt_sha256": "b610629916e80d706edb493da1fc02eb0bf38a00de64243a1973bb80155485d6",
+      "cohort": "common4-retained",
+      "control_source_sha": "532b144a434ee06924b9c2afa1d7b4012b996d2e",
+      "current_evidence_sha256": "fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57",
+      "database_writes": 0,
+      "global_usage": "not_measured",
+      "mapping_writes": 0,
+      "native_authority": false,
+      "new_accepted_mappings": 0,
+      "no_replay": true,
+      "operation_id": "int-andromeda-match-retained-readback-20261020-v8",
+      "private_reference_projection_sha256": "fce703fcf91363e6faf70ea0f17a1bfbee8a629ace42b2c3f79b240164adc5c4",
+      "protected_inputs_count": 16,
+      "protected_inputs_unchanged": true,
+      "protected_ledger_sha256": {
+        "account_day": "1c276088746fbc42cc1bf2a9e9a20ab26abcec6fb7897fdb1f38d308c33e4b01",
+        "context_selection": "054f5977db0ba9810787ab8031b15a6c8005c6e52c3a1152c11cec0ceab2614a",
+        "hotel_selection": "d1a0e674c7110661071095cca50c6de5b95996c0a2bcb81d936f70dd6880caea"
+      },
+      "reference_projection": {
+        "account_binding_authority": false,
+        "candidate_tv_hotel_ids": [],
+        "counts": {
+          "remaining_observation_rows": 787
+        },
+        "field_states": {
+          "search_id": {
+            "null": 787
+          },
+          "source": {
+            "opaque_scalar": 787
+          },
+          "tour_id": {
+            "null": 787
+          }
+        },
+        "native_authority": false,
+        "remaining_targets_with_observations": 285,
+        "schema_fields_present": {
+          "search_id": true,
+          "source": true,
+          "tour_id": true
+        }
+      },
+      "remaining_id_sha256": "6f68c592411632a37e462be2dbaea20fc60e4badd7f25e76cf7a7f581e0989d1",
+      "result_structure": {
+        "counts": {},
+        "native_authority": false,
+        "operator_id_counts": {},
+        "root_keys": [],
+        "root_type": "list",
+        "selected_hotel_ids": [],
+        "shape_state": "recognized_empty",
+        "unwrapped_keys": [],
+        "unwrapped_type": "list"
+      },
+      "safe_to_write_now": false,
+      "same_parent_never_selected": 407,
+      "same_parent_ready": 606,
+      "same_parent_selected_ready": 199,
+      "source_sha": "ba6ecf2ae842bea1424a585b5a2eb20907ffba9a",
+      "state": "retained_proof_sources_inspected_read_only",
+      "supplier_calls": 0,
+      "target_operation_id": "int-andromeda-match-retained-20261020-v3"
+    },
+    "counts": {
+      "new_unique_acquisition_targets": 0,
+      "saved_parent_targets_in_reference_scope": 407,
+      "captured_observation_rows_in_scope": 787,
+      "targets_with_matching_captured_observation": 285,
+      "targets_without_matching_observation_in_this_capture": 122,
+      "tour_id_null_rows": 787,
+      "search_id_null_rows": 787,
+      "reference_candidate_targets": 0,
+      "raw_v9_returned_hotels": 0,
+      "raw_v9_returned_tours": 0,
+      "new_native_pairs": 0,
+      "new_accepted_mappings": 0,
+      "new_committed_mappings": 0,
+      "post_commit_readback_rows": 0,
+      "proved_coverage_gain": 0,
+      "new_supplier_http": 0,
+      "new_search_starts": 0,
+      "new_database_reads": 0,
+      "new_database_writes": 0,
+      "new_mapping_writes": 0
+    },
+    "interpretation": {
+      "optional_columns_present_not_missing": true,
+      "all_787_scoped_tour_search_refs_null": true,
+      "source_opaque_strings_are_not_tourrefs": true,
+      "reference_hypothesis_closed_only_for_this_capture_and407_roster": true,
+      "raw_v9_empty_before_local_filters": true,
+      "parser_row_loss_demonstrated": false,
+      "global_hotel_operator_country_absence_proven": false,
+      "operator_account_access_proven": false,
+      "native_bridge_proven": false,
+      "provider_wide_recovery_proven": false,
+      "fresh_current_census": false,
+      "independent_new_artifact_review": "ACCEPT"
+    },
+    "preserved": {
+      "protected_input_count": 16,
+      "protected_inputs_unchanged": true,
+      "protected_ledgers": {
+        "account_day": "1c276088746fbc42cc1bf2a9e9a20ab26abcec6fb7897fdb1f38d308c33e4b01",
+        "context_selection": "054f5977db0ba9810787ab8031b15a6c8005c6e52c3a1152c11cec0ceab2614a",
+        "hotel_selection": "d1a0e674c7110661071095cca50c6de5b95996c0a2bcb81d936f70dd6880caea"
+      },
+      "production_unchanged": true,
+      "old_7_committed_resolver_readback_links_unchanged": true,
+      "known_own_http": 63,
+      "known_own_search_starts": 19,
+      "known_own_unknown": 3,
+      "ever_selected_bookkeeping": 206,
+      "never_selected_bookkeeping": 407,
+      "global_usage": "not_measured",
+      "remaining_global_balance": "not_measured",
+      "search_effect": "not_measured"
+    },
+    "public_api_contract_reference": {
+      "url": "https://api.tourvisor.ru/search/docs",
+      "observed_date": "2026-10-20",
+      "version": "1.2.4",
+      "embedded_spec_sha256": "12226d69319c9417bbd9b574b48dbcb1bac627b9b606dd9f7fe99a9648d19723",
+      "embedded_spec_bytes": 98021,
+      "array_serialization_explode_true": true,
+      "onlyDirect_optional_default_false": true,
+      "operatorLink_type": "string",
+      "documented_native_hotel_id_or_decoder_guarantee": false,
+      "contract_research_not_supplier_identity_query": true
+    },
+    "next_dependency": {
+      "missing_fact": "NEW authoritative operator-native identity/namespace bridge, or NEW retained operator-specific offer/tour reference supporting a concrete expected proof path.",
+      "owner_dependency": "MATCH proof/namespace owner; INT/provider owner only for a new accepted source-format/access/transport handoff, not a blind probe.",
+      "unblock_condition": "Accepted new immutable proof or independently grounded reference/context; fresh applicable source/config review/CI/merged bytes/current owner and acquisition slot before any new supplier HTTP. Fully completed UNKNOWN0 proof still requires fresh CURRENT/manual/exclusions/ownership/geo/digest/native uniqueness then guarded transaction/per-row resolver readback.",
+      "do_not_repeat": [
+        "readback-v8",
+        "same capture tour/search-reference projection",
+        "v9 raw response3 structural inspection",
+        "v9 acquisition or old UNKNOWN",
+        "empty writer",
+        "zero-gain CURRENT census",
+        "automatic Thailand8/date/country series"
+      ],
+      "thailand8": "config_checked_merged_not_run_nonautomatic",
+      "four_thailand10n": "draft_outside_catalogue",
+      "common4_other_operator_access_and_bridge": "independent_new_evidence_required",
+      "unsupported_family": "preserved_not_invalid",
+      "all_match_paused": false
     }
   }
 }
