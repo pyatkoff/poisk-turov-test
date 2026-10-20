@@ -1383,10 +1383,22 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
    await page.screenshot({path:path.join(evidence,'filter-recovery-applied-'+width+'.png')});
    if(width===430){
     await openResultFilters(page,width);assert.equal(await page.locator('#max-price').inputValue(),'187000','reopening shows the applied recovery budget');
-    assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');await page.locator('.mobile-close[data-action="close-filters"]').click();
+    assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');
+    await page.locator('#max-price').fill('185000');await page.locator('#filter-panel [data-action="reset"]').click();
+    assert.equal(await page.locator('#max-price').inputValue(),'','Reset must clear the retained budget editor before Apply');
+    assert.equal(await page.locator('#hotel-query').inputValue(),'');
+    assert.equal(await page.locator('#filters [data-filter="meals"][value="Всё включено"]').isChecked(),false);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-reset-draft-430.png')});
+    await page.locator('#apply-filters').click();
+    await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open')&&document.querySelectorAll('.hotel-card').length===1);
+    assert.equal(await page.locator('#active-filters').textContent(),'');
+    assert.equal(await page.locator('#compact-search').textContent(),tripBefore);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-reset-applied-430.png')});
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:width===430,desktopImmediateRecovery:width===1280,tripPreserved:true,supplier_HTTP:0,real_leads:0});
+   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:width===430,desktopImmediateRecovery:width===1280,resetApplyClearsBudgetAndOtherFilters:width===430,tripPreserved:true,supplier_HTTP:0,real_leads:0});
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'filter-recovery-apply.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');

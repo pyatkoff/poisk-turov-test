@@ -179,11 +179,12 @@ function records(source){return scenarios.map(s=>{const result=characterize(sour
  // Explicit drawer recovery now synchronizes the authoritative model into
  // retained controls before painting. Assert exactly this new boundary, then
  // keep the historical digest for all remaining actions/state/order.
- if(s.name==='click:recover-filters'&&source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;")){
-  assert.deepEqual(result.trace,[['queueMicrotask'],['syncBudgetControls',result.filterDraft.filters],['filterEdited',true],['focus','#apply-filters',{preventScroll:true}]],'recovery sync precedes the existing paint and Apply action');
+ if(['click:recover-filters','filter panel reset'].includes(s.name)&&source.includes("syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;")){
+  assert.deepEqual(result.trace,[['queueMicrotask'],['syncBudgetControls',result.filterDraft.filters],['filterEdited',true],...(s.name==='click:recover-filters'?[['focus','#apply-filters',{preventScroll:true}]]:[])],'recovery/reset sync precedes the existing paint and Apply action');
   assert.deepEqual({...result.checkpoints[0],name:'filterEdited'},result.checkpoints[1],'recovery synchronization preserves all unrelated state');
-  assert.deepEqual(result.dom[1],['#hotel-query',{value:result.filterDraft.filters.q,checked:false,hidden:false,textContent:'',scrollTop:37}],'explicit recovery writes the chosen query');
-  result.trace.splice(1,1);result.checkpoints.splice(0,1);result.dom.splice(1,1);
+  const queryIndex=s.name==='filter panel reset'?2:1;
+  assert.deepEqual(result.dom[queryIndex],['#hotel-query',{value:result.filterDraft.filters.q,checked:false,hidden:false,textContent:'',scrollTop:37}],'explicit recovery writes the chosen query');
+  result.trace.splice(1,1);result.checkpoints.splice(0,1);result.dom.splice(queryIndex,1);
  }
  delete result.state.openHotel;for(const checkpoint of result.checkpoints)delete checkpoint.state.openHotel;return {name:s.name,result};});}
 assert(source.includes('renderDateCalendar();revealCalendarMonth();loadCalendarPrices();'),'explicit month actions reset the new view without a focus dependency');

@@ -355,25 +355,47 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
 
 // A normal mobile recovery click must replace the leased query/budget editor,
 // not just the preview model: Apply reads these actual controls again.
-for(const editor of ['#max-price','#hotel-query']){
+for(const action of ['recover-filters','reset'])for(const editor of ['#max-price','#hotel-query']){
  const c=environment('<aside id="filter-panel"><div class="filter-top"><h3>Фильтры</h3><button id="filter-detail-back"></button></div><select id="filter-section-jump"></select><div id="filters"></div><button id="apply-filters"></button></aside><span id="beach-chip"></span><span id="family-chip"></span>');
  const filters={q:'Azure',min:0,max:185000,stars:[],meals:['Всё включено'],resorts:[],operators:[],amenities:[],rating:false};
- const chosen={filters:{...filters,q:editor==='#hotel-query'?'':filters.q,max:187000},onlyFavorites:false,selectedDate:'2026-10-01'};
+ const reset=action==='reset',chosen={filters:reset?{...filters,q:'',max:null,meals:[]}: {...filters,q:editor==='#hotel-query'?'':filters.q,max:187000},onlyFavorites:false,selectedDate:reset?null:'2026-10-01'};
  Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:5}],filterDraft:{filters:{...filters},onlyFavorites:false,selectedDate:'2026-10-01'},innerWidth:430,filterBudgetEdit:null,
-  editingFilterModel:()=>c.filterDraft,readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),budgetLabel:f=>'До '+f.max,countMatchingHotels:m=>m.filters.max>=186400?1:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>200000,mealNames:{'Всё включено':1},ratingValue:()=>null,hotelPlaces:()=>[],operators:[],syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{},structuredClone,drawerSuggestions:[{model:chosen}],rememberUIRoute:()=>{},emptySuggestions:[]});
+  editingFilterModel:()=>c.filterDraft,readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),budgetLabel:f=>'До '+f.max,countMatchingHotels:m=>m.filters.max===null||m.filters.max>=186400?1:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>200000,mealNames:{'Всё включено':1},ratingValue:()=>null,hotelPlaces:()=>[],operators:[],syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{},structuredClone,defaultFilters:()=>({...filters,q:'',max:null,meals:[]}),drawerSuggestions:[{model:chosen}],rememberUIRoute:()=>{},emptySuggestions:[]});
  context(c);vm.runInContext(functions(appSource,['currentFilterBudgetEdit','syncBudgetControls','handleResultFilterAction']),c);vm.runInContext(panelSource,c);
  const panel=c.window.AnyTourFilterPanelV1.create({...c,getFilterDraft:()=>c.filterDraft,getHotels:()=>c.hotels,getViewportWidth:()=>430});
  c.filterEdited=()=>panel.renderFilters();panel.renderFilters();
  const leased=c.$(editor);leased.focus();c.$('#apply-filters').focus();
- c.handleResultFilterAction('recover-filters',{dataset:{source:'drawer',value:'0'}});
- assert.equal(c.$('#max-price').value,'187000','recovery budget must reach the real editor before Apply');
+ c.handleResultFilterAction(action,{dataset:{source:'drawer',value:'0'},closest:()=>c.$('#filter-panel')});
+ assert.equal(c.$('#max-price').value,reset?'':'187000','recovery budget must reach the real editor before Apply');
  assert.equal(c.$('#hotel-query').value,chosen.filters.q,'explicit recovery query must replace a leased previous query');
  assert.equal(c.$('#hotel-query').value===''||c.$('#hotel-query').value==='Azure',true);
  const appliedBudget=c.readBudgetFields(c.$('#min-price'),c.$('#max-price'));
- assert.equal(appliedBudget.max,187000,'Apply must not reinstate the pre-recovery budget');
+ assert.equal(appliedBudget.max,reset?null:187000,'Apply must not reinstate the pre-recovery budget');
  assert.equal(c.countMatchingHotels({...c.filterDraft,filters:{...c.filterDraft.filters,...appliedBudget}}),1,'the announced recovered hotel survives Apply');
- assert.equal(c.filterDraft.filters.meals[0],'Всё включено','unrelated meal filter survives recovery');
- assert.equal(c.filterDraft.selectedDate,'2026-10-01','selected date survives recovery');
+ assert.deepEqual(Array.from(c.filterDraft.filters.meals),reset?[]:['Всё включено'],'reset clears meals; targeted recovery retains them');
+ assert.equal(c.filterDraft.selectedDate,reset?null:'2026-10-01','reset clears date facet; targeted recovery retains it');
  c.dom.window.close();
 }
 console.log('PASS explicit mobile recovery: real retained filter owner/action synchronizes budget/query before Apply; meal/date preserved; supplier/lead HTTP0');
+
+// Blurring a budget editor emits change before the target receives click.
+// A repeated preview must keep unchanged recovery/chip buttons connected.
+{
+ const c=environment('<div id="drawer-context"></div><div id="drawer-selected"></div><div id="drawer-recovery"></div><div id="filter-preview-count"></div><input id="hotel-query" value="Azure"><input id="min-price"><input id="max-price" value="185000"><input id="price-range" type="range" max="200000"><button id="apply-filters"></button>');
+ const model={filters:{q:'Azure',min:0,max:185000,meals:['Всё включено']}};
+ Object.assign(c,{MutationObserver:c.dom.window.MutationObserver,generatedRootBindings:new WeakMap(),filterDraft:model,state:{search:{country:'4'},hasSearched:true,onlyFavorites:false},countryNames:{4:'Турция'},countMatchingHotels:m=>m.filters.max>=186400?1:0,filterChipData:()=>[{key:'price',value:'',label:'До 185 000 ₽'}],syncFilterResetState:()=>{},departureScopeText:()=> 'Москва',durationText:()=> '7 ночей',guestsText:()=> '2A+[0,8]',recoverySuggestions:()=>[{key:'budget',title:'Бюджет до 187 000 ₽',description:'Остальные условия сохранятся',count:1,model:{...model,filters:{...model.filters,max:187000}}}],responseFor:()=>({phase:'complete'}),readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),showFilterBudgetValidity:()=>{},searchEditSession:null,filterBudgetEdit:null,editingFilterModel:()=>c.filterDraft,budgetScale:()=>200000,budgetLabel:f=>'До '+f.max,searchKey:()=> 'scope',syncFilterSections:()=>{},rememberUIRoute:()=>{},structuredClone});
+ context(c);vm.runInContext(functions(appSource,['parseGeneratedRoot','paintGeneratedRoots','recoveryHTML','updateDrawerPreview','editFilterBudget','syncBudgetControls','handleResultFilterChange','handleResultFilterAction']),c);
+ c.updateDrawerPreview();const recovery=c.$('[data-action="recover-filters"]'),chip=c.$('[data-action="remove-draft-filter"]');
+ c.filterEdited=()=>c.updateDrawerPreview();
+ c.$('#max-price').addEventListener('change',()=>c.handleResultFilterChange(c.$('#max-price')));
+ c.$('#max-price').dispatchEvent(new c.dom.window.Event('change',{bubbles:true}));
+ assert.equal(c.$('[data-action="recover-filters"]'),recovery,'budget blur must not remove the ordinary recovery click target');
+ assert.equal(c.$('[data-action="remove-draft-filter"]'),chip,'budget blur must not remove an unchanged filter-chip click target');
+ c.document.addEventListener('click',e=>{const target=e.target.closest('[data-action]');if(target)c.handleResultFilterAction(target.dataset.action,target);});
+ recovery.dispatchEvent(new c.dom.window.MouseEvent('click',{bubbles:true}));
+ assert.equal(c.$('#max-price').value,'187000','the original connected button reaches recovery and its authoritative budget');
+ assert.equal(c.readBudgetFields(c.$('#min-price'),c.$('#max-price')).max,187000,'Apply reads the clicked recovered budget');
+ assert.equal(c.$('[data-action="recover-filters"]'),null,'changed model removes obsolete recovery actions');
+ c.dom.window.close();
+ console.log('PASS drawer preview change: unchanged ordinary click targets retained; obsolete recovery removed');
+}

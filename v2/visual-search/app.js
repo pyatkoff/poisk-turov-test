@@ -691,9 +691,9 @@ function updateDrawerPreview(knownCount){
  syncFilterResetState(filterDraft);
  $('#filter-preview-count').textContent=pristine?'Условия для следующего поиска':count?`${hotelCountText(count)} по выбранным условиям`:'По выбранным условиям туров нет';
  $('#drawer-context').textContent=`${esc(countryNames[state.search.country]||'')} · ${departureScopeText()} · ${durationText()} · ${guestsText()}`;
- $('#drawer-selected').innerHTML=chips.map(c=>`<button class="active-filter" data-action="remove-draft-filter" data-key="${c.key}" data-value="${esc(c.value)}" aria-label="Убрать: ${esc(c.label)}">${esc(c.label)}${icon('x')}</button>`).join('');
+ paintGeneratedRoots($('#drawer-selected'),chips.map(c=>({id:'',markup:`<button class="active-filter" data-action="remove-draft-filter" data-key="${c.key}" data-value="${esc(c.value)}" aria-label="Убрать: ${esc(c.label)}">${esc(c.label)}${icon('x')}</button>`})));
  drawerSuggestions=count||pristine?[]:recoverySuggestions(filterDraft);
- $('#drawer-recovery').innerHTML=count||pristine?'':`<p>Можно изменить одно из условий:</p>${recoveryHTML(drawerSuggestions.slice(0,2),'drawer')}`;
+ paintGeneratedRoots($('#drawer-recovery'),count||pristine?[]:[{id:'',markup:'<p>Можно изменить одно из условий:</p>'},{id:'',markup:recoveryHTML(drawerSuggestions.slice(0,2),'drawer')}]);
  if(!pristine&&responseFor(state.search).phase!=='complete'){$('#filter-preview-count').textContent=count?`${hotelCountText(count)} среди полученных предложений`:'Подходящих предложений пока нет';drawerSuggestions=[];$('#drawer-recovery').innerHTML=count?'':'<p>Поиск не завершён. Условия можно сохранить и дождаться остальных предложений или повторить поиск.</p>';}
  const canRecover=!count&&drawerSuggestions.length>0,button=$('#apply-filters');button.dataset.action=canRecover?'review-filter-recovery':'apply-filters';button.textContent=canRecover?'Как вернуть отели':pristine||!count?'Сохранить условия':`Показать отели (${count})`;button.setAttribute('aria-describedby','filter-preview-count');
  showFilterBudgetValidity(readBudgetFields($('#min-price'),$('#max-price')));
@@ -2643,7 +2643,7 @@ function handleResultFilterAction(action,b,id){
  case 'any-stars':state.filters.stars=[];syncFilters();break;
  case 'filters':if(!$('#search-form').hidden)openFormFilters();else openFilters();break;case 'close-filters':closeFilters();break;case 'apply-filters':closeFilters({apply:true});break;
  case 'review-filter-recovery':if(filterDraft)jumpToFilterSection('drawer-recovery');break;
- case 'reset':if(filterDraft&&b.closest('#filter-panel')){filterDraft={filters:defaultFilters(),onlyFavorites:false,selectedDate:null};filterEdited(true)}else resetFilters();break;
+ case 'reset':if(filterDraft&&b.closest('#filter-panel')){filterDraft={filters:defaultFilters(),onlyFavorites:false,selectedDate:null};syncBudgetControls(filterDraft.filters);$('#hotel-query').value=filterDraft.filters.q;filterEdited(true)}else resetFilters();break;
  case 'all-hotels':state.onlyFavorites=false;renderResults();break;
  case 'star':{const n=+b.dataset.value,a=(b.closest('#filter-panel')?editingFilterModel().filters:state.filters).stars,i=a.indexOf(n);if(n===0)a.length=0;else if(i<0)a.push(n);else a.splice(i,1);filterEdited(true);if(filterDraft)$(`#filter-panel [data-action="star"][data-value="${n}"]`)?.focus({preventScroll:true});break}
  case 'preset':state.filters[b.dataset.preset]=!state.filters[b.dataset.preset];syncFilters();break;
