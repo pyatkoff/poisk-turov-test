@@ -2,58 +2,31 @@
 
 ## Организация ближайшей поставки — поручение владельца 19.10.2026
 
-Тот же S3_PRODUCT_CURRENT_ACCEPTANCE, originalNEXT/release/search3-production-ready-v1.
-Верхний product plan и свежие terminal receipts являются единственной очередью.
+Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, ORIGINAL NEXT; новый UI-кандидат не создаётся.
 
-Опубликован и принят конечный ремонт ordinary430/1280: PR4685/source
-`1c7c3223190673726d5185c8946469f62e5294d3`, release
-`0576d6eb69cb31b80ca4d479e45a275f107a6e34`, appSHA256
-`68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`.
-Все5final-source gates успешны; штатный NEXTpublisher39360500690 succeeded,
-[terminal/RELEASE6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588).
-Публикация consumed; повторять команду нельзя. Main/production/Sites/соседние preview
-не менялись, predecessor3bdd retained. Source/CI/merge/publish/installed раздельно подтверждены.
+| Состояние | Точная основа и evidence |
+| --- | --- |
+| Установленный продукт | source `1c7c3223190673726d5185c8946469f62e5294d3`, appSHA256 `68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`, published release `0576d6eb69cb31b80ca4d479e45a275f107a6e34` |
+| Ремонт и публикация | PR4685; все5final-source gates SUCCESS; stock publisher39360500690/terminal[6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588) consumed; predecessor3bdd retained |
+| Ordinary430/1280 | [audit6282417033](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033): installediframe430×932/1280×720, параметры/фильтры→тур→manager-flight либо optionalpair3/189000 за семью→контакты→возврат/черновик; recovery185000→187000 иReset исправлены, boundedFilters9→10(+1) |
+| Retained360/390/768 | [audit6282656840](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282656840):39PNG+4receipts exact1c7, materialgaplist пуст; первый boundedMobile360/39010, intermediate7689.5, Calendar-range9.5; UI delta0 |
 
-[Итоговый audit6282417033](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033)
-принял цельный наблюдавшийся ordinary UI430/1280 после ремонта: фактический
-installediframe430×932/1280×720, семья2A+[0,8], параметры/фильтры→отель/тур→
-manager-flight либо optionalpair3/189000 за всех→контакты→возврат/черновик.
-Бюджет185000→187000 теперь сохраняется после Apply/reopen; Reset убирает старый
-editor. Matchedinstalled430 Filters9→10(+1). Новый exactcompiled corpus:
-430familyMobile10/1280incl720Desktop9.5/Selectedtour10/Calendar9.5 только в своих
-scopes;17familyfiles совпали поhash,10изменённых desktopкадров/3новыхreceipts и
-8calendarкадров проверены. Нет нового UI-кандидата/композиции или косметического ремонта.
-Первый locator-клик при автопрокрутке не подтвердил source-дефект: обычный клик
-по уже видимой подписи сразу включает facet; отдельная правка не нужна.
+Это принятые наблюдавшиеся UI-scopes, не wholeSearch9.5/globalDONE и не
+native/physical/real-supplier/real-delivery acceptance. Остальные gates остаются
+отдельными. Site203reference/Site204viewer, PUBLIC project/history и production
+не меняются. Повторять принятый UI/публикацию или создавать косметический пакет нельзя.
 
-Это закрытие цельного наблюдавшегося ordinary430/1280 UI-этапа, **не общая
-оценка всего поиска и не globalDONE**. Native/physicalSafari/safearea, Rixaliases/
-submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют
-отдельные exact gates/owners/N. Прежние live6280546977/quote и Site204publication
-consumed; reported5000/сутки не остаток/config/новый live-допуск. Site203reference,
-Site204viewer/d71b84ca, project/history/public сохранены.
+### Следующее действие
 
-Конечный retained адаптив360/390/768 также принят
-[audit6282656840](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282656840):
-тот же exact1c7/app68843, без нового продукта/прогона/публикации.39PNG+4receipts:
-семья3A+[0,12]/manager186400→optionalpair3/189000→контакты→возврат/черновик,
-основная форма/фильтры и mixed-calendar5–7Nov/160000–180000→Mountain167000.
-Root+independent hashes/actualframes review ACCEPT; materialgaplist пуст.
-First bounded Mobile360/39010, intermediate7689.5, Calendar-range9.5;
-Selectedtour10 сохранён только в exactfamily scope. UI delta0, не общая оценка поиска.
+Принятый UI exact1c7/app68843 сохранять (audit6282417033/6282656840). Продолжать с первого доступного, разрешённого существенного шага существующего плана в его ownership и exact gates: physical QA либо новый принятый INT/Rix/lead handoff; production — только по отдельному approval. iPhone/Safari требуется для physical scope и не является общим условием остальных работ. Сейчас доступный разрешённый шаг не установлен; пауза сохраняется. Новые факты сначала сверить с актуальной координацией; неизменённые UI/CI/deploy и consumed операции не повторять.
 
-Доступная independent UI-работа этого конечного корпуса завершена. Fresh INT#2506
-(latest6280407846) — прежняя TVоперация consumed, нового repeated/allpair handoff нет;
-LOCAL#2690(latest6263877414) — только завершённый roothelperrepair, нового alias/IDs
-handoff нет. Physical iPhone/Safari маршрут для exact1c7 отсутствует; cloud/iframe/CI
-не подменяют его. Остальные внешние realLeadC3/price/Rix/production gates/owners/N
-сохранены. Не начинать новый аудит неизменённого UI или косметический пакет.
-После terminal/RELEASE приостановить **только это задание** по правилу отсутствия
-безопасного независимого шага; сохранить его schedule/timezone и чужие задания.
-Это не globalDONE и не остановка из-за одного частного baseline.
+Единственная очередь и таблица внешних gates — верхний исполняемый раздел
+[product plan](search3-product-development-plan.md), синхронный с `current_task`.
+Клавиатурные проходы запрещены;200%/Compare deferred. Ownership, protected
+контракты и exact допуски сохранены. Этот control-only пакет не меняет
+опубликованный продукт, расписания или enabled/paused; UI delta0.
 
-Точное условие продолжения той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
-Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.
+### Сохранённые датированные receipts — история/no-replay
 
 Датированные факты прежнего3bdd до ремонта (история/no-replay):
 
@@ -61,18 +34,9 @@ Owner20Oct02:34 прямо разрешил один exact поиск/TVtour quo
 
 Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f6769843f9 добавил отдельную [рамку установленного NEXT](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo) в том же PUBLICproject/history. Deployment appgdep_6ad6ba5442f48191be103403d20f90e2 succeeded; saved appgver_a6d4f56bc84881919b15e748a5b2596e. Donor Site203/его UI и установленный3bdd/app7ae9ba не менялись. По умолчанию явное offlinefamily; liveFORM отдельно, без searched/autoFind; arbitraryURL/query не принимаются. PUBLICQA [audit6280721648](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648): child actual430×932/1280×720 + exact8script graph; managercontact186400/2A+[0,8], resize→Back/Close/Continue сохраняет выбор/черновик. Это новый installediframe scope, не native top-level/physical и не общая9,5. Нового live не было.
 
-Следующий конечный результат: Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.
-
 Observed compiled430/1280 corpus6280199658/audit6280193716 сохранён: FIRST bounded
 Mobile2/2/2/2/2=10/UI0, Desktop9.5/Selectedtour10/Calendar9.5 лишь свои scopes.
 Новые live/iframe receipts не переносят эти баллы на весь installed/mobile/Search.
-Один writer/integrator, независимый review, отдельный штатный publisher лишь при
-изменении готового NEXT artifact; для Sites использован штатный sameproject flow.
-Новый дизайн требует прежнего whole-version approval. Foreignv2 не трогать.
-Рубрика12/11/5/N и price/lead/production/CI/allowlist/draft-ready boundaries прежние;
-rootstate/history/scheduler/tasks/settings не меняются. Этот4path control diff имеет
-JSON/protected/history checks, independentreview и existing owner/security finalCI;
-не требует ещё одного runtime build/deploy. Результаты —#4217/#1646/#1719.
 
 ## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
 
