@@ -352,3 +352,28 @@ console.log('PASS filter root reconciliation: unchanged roots/descendants retain
  assert(!appSource.includes('function paintFilters(')&&!appSource.includes('function renderFilters('),'presentation has one owner');
  console.log('PASS real filter factory: replacement hotel/draft/viewport inputs, delegated facet query and applied-model restore; supplier/lead HTTP0');
 }
+
+// A normal mobile recovery click must replace the leased query/budget editor,
+// not just the preview model: Apply reads these actual controls again.
+for(const editor of ['#max-price','#hotel-query']){
+ const c=environment('<aside id="filter-panel"><div class="filter-top"><h3>Фильтры</h3><button id="filter-detail-back"></button></div><select id="filter-section-jump"></select><div id="filters"></div><button id="apply-filters"></button></aside><span id="beach-chip"></span><span id="family-chip"></span>');
+ const filters={q:'Azure',min:0,max:185000,stars:[],meals:['Всё включено'],resorts:[],operators:[],amenities:[],rating:false};
+ const chosen={filters:{...filters,q:editor==='#hotel-query'?'':filters.q,max:187000},onlyFavorites:false,selectedDate:'2026-10-01'};
+ Object.assign(c,{window:{},MutationObserver:c.dom.window.MutationObserver,state:{search:{country:'4'},hasSearched:true},data:{scenario:'fixture'},hotels:[{country:'4',stars:5}],filterDraft:{filters:{...filters},onlyFavorites:false,selectedDate:'2026-10-01'},innerWidth:430,filterBudgetEdit:null,
+  editingFilterModel:()=>c.filterDraft,readBudgetFields:(low,high)=>({valid:true,min:Number(low.value)||0,max:high.value===''?null:Number(high.value)}),budgetLabel:f=>'До '+f.max,countMatchingHotels:m=>m.filters.max>=186400?1:0,countFacetOptions:(model,group,values)=>new Map(values.map(value=>[value,1])),amenityNames:new Map(),searchKey:()=> 'scope',budgetScale:()=>200000,mealNames:{'Всё включено':1},ratingValue:()=>null,hotelPlaces:()=>[],operators:[],syncFilterResetState:()=>{},showFilterBudgetValidity:()=>{},structuredClone,drawerSuggestions:[{model:chosen}],rememberUIRoute:()=>{},emptySuggestions:[]});
+ context(c);vm.runInContext(functions(appSource,['currentFilterBudgetEdit','syncBudgetControls','handleResultFilterAction']),c);vm.runInContext(panelSource,c);
+ const panel=c.window.AnyTourFilterPanelV1.create({...c,getFilterDraft:()=>c.filterDraft,getHotels:()=>c.hotels,getViewportWidth:()=>430});
+ c.filterEdited=()=>panel.renderFilters();panel.renderFilters();
+ const leased=c.$(editor);leased.focus();c.$('#apply-filters').focus();
+ c.handleResultFilterAction('recover-filters',{dataset:{source:'drawer',value:'0'}});
+ assert.equal(c.$('#max-price').value,'187000','recovery budget must reach the real editor before Apply');
+ assert.equal(c.$('#hotel-query').value,chosen.filters.q,'explicit recovery query must replace a leased previous query');
+ assert.equal(c.$('#hotel-query').value===''||c.$('#hotel-query').value==='Azure',true);
+ const appliedBudget=c.readBudgetFields(c.$('#min-price'),c.$('#max-price'));
+ assert.equal(appliedBudget.max,187000,'Apply must not reinstate the pre-recovery budget');
+ assert.equal(c.countMatchingHotels({...c.filterDraft,filters:{...c.filterDraft.filters,...appliedBudget}}),1,'the announced recovered hotel survives Apply');
+ assert.equal(c.filterDraft.filters.meals[0],'Всё включено','unrelated meal filter survives recovery');
+ assert.equal(c.filterDraft.selectedDate,'2026-10-01','selected date survives recovery');
+ c.dom.window.close();
+}
+console.log('PASS explicit mobile recovery: real retained filter owner/action synchronizes budget/query before Apply; meal/date preserved; supplier/lead HTTP0');

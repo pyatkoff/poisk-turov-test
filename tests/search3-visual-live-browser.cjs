@@ -1341,10 +1341,62 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   }finally{release?.();await context.close();}
  }
 };
+
+const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
+ const records=[];
+ for(const width of [430,1280]){
+  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    if(request.resourceType()==='image'){await route.abort();return;}
+    forbidden.push(url.pathname);await route.abort();
+   });
+   await page.goto(origin+base+'visual-search/?scenario=family');
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1);
+   const tripBefore=await page.locator('#compact-search').textContent();
+   await openResultFilters(page,width);
+   await page.locator('#hotel-query').fill('Azure');
+   await page.locator('#filters [data-filter="meals"][value="Всё включено"]').check();
+   await page.locator('#max-price').fill('185000');
+   const recovery=page.locator(width===430?'#drawer-recovery [data-recovery-key="budget"]':'#cards [data-recovery-key="budget"]');
+   await recovery.waitFor();assert.match(await recovery.textContent(),/187\s*000/);
+   await recovery.click();
+   assert.equal(await page.locator('#max-price').inputValue(),'187000','explicit recovery replaces the previous retained budget editor');
+   assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');
+   assert.equal(await page.locator('#filters [data-filter="meals"][value="Всё включено"]').isChecked(),true);
+   if(width===430){
+    assert.match(await page.locator('#filter-preview-count').textContent(),/1 отель/);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-recovery-draft-430.png')});
+    await page.locator('#apply-filters').click();
+    await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open'));
+   }
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1);
+   assert.match(await page.locator('#active-filters').textContent(),/До 187\s*000/);
+   assert.match(await page.locator('#active-filters').textContent(),/Azure/);
+   assert.match(await page.locator('#active-filters').textContent(),/Всё включено/);
+   assert.equal(await page.locator('#compact-search').textContent(),tripBefore,'dates and family survive recovery and Apply');
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   await page.screenshot({path:path.join(evidence,'filter-recovery-applied-'+width+'.png')});
+   if(width===430){
+    await openResultFilters(page,width);assert.equal(await page.locator('#max-price').inputValue(),'187000','reopening shows the applied recovery budget');
+    assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');await page.locator('.mobile-close[data-action="close-filters"]').click();
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:true,tripPreserved:true,supplier_HTTP:0,real_leads:0});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'filter-recovery-apply.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');
+};
+
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
    await localCivilDateJourney(browser,origin,base,evidence);
+   await filterRecoveryApplyJourney(browser,origin,base,evidence);
   for(const width of [390,1280]){
    const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
