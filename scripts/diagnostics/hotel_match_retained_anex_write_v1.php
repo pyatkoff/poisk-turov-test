@@ -101,7 +101,16 @@ if(!defined('MATCH_RETAINED_ANEX_WRITE_LIBRARY_ONLY')){
     $input=json_decode((string)file_get_contents($dir.'/write-manifest.json'),true,64,JSON_THROW_ON_ERROR);
     $actual=[];foreach(($input['pairs']??[])as$p)$actual[]=[(string)($p['edge']['anex_hotel_id']??''),(int)($p['edge']['tv_hotel_id']??0)];sort($actual);
     $expected=[['9384',35297],['12901',1474],['8475',1014],['8476',1095],['14818',1015],['26591',3418],['19606',57027]];sort($expected);
-    if($actual!==$expected||($input['operation_id']??'')!=='int-andromeda-match-retained-anex-write-20261020-v2'
+    if(isset($input['continuation_scope_sha256'])){
+        $scopePath=$stage.'/scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json';
+        if(is_link($scopePath)||!is_file($scopePath)||hash_file('sha256',$scopePath)!==$input['continuation_scope_sha256'])exit(42);
+        $scope=json_decode((string)file_get_contents($scopePath),true,64,JSON_THROW_ON_ERROR);
+        if(($scope['schema_version']??null)!==1||($scope['account']??null)!=='TOURVISOR_ANEX_JWT'
+            ||($scope['operator_id']??null)!==13||($input['operation_id']??null)!==($scope['write_operation_id']??null)
+            ||($input['scope_id']??null)!==($scope['scope_id']??null)
+            ||preg_match('/^[0-9a-f]{64}$/D',(string)($input['acquisition_evidence_sha256']??''))!==1)exit(42);
+        foreach($actual as[$native,$tv])if(!in_array($tv,$scope['selected_tv_hotel_ids']??[],true))exit(42);
+    }elseif($actual!==$expected||($input['operation_id']??'')!=='int-andromeda-match-retained-anex-write-20261020-v2'
         ||($input['reconciled_write_evidence_sha256']??'')!=='21f9f77b14a51e6935c1be9d4b7af0458c4e1e4df5ecf240d94709cefa8b47c7'
         ||($input['acquisition_evidence_sha256']??'')!=='cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb')exit(42);
     $_SERVER['DOCUMENT_ROOT']=$root;require $root.'/config.php';require $stage.'/v2/data/db-v1.php';

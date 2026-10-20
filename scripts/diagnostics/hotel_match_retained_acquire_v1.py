@@ -1,6 +1,7 @@
 """Finite missing-ANEX acquisition; raw HTTP precedes parsing, no retries/writes."""
 from __future__ import annotations
 import collections
+import fcntl
 import datetime as dt
 import hashlib
 import json
@@ -19,6 +20,95 @@ PARENT_EVIDENCE = 'c0d7c1f53cceea267f08a5b15d29d9f2bb314401b7de380e0fe40b59ad513
 SELECTED_IDS_SHA256 = '4f8fa702fad1445d2a6bb5978bbdc1e60f30abd75b9328251f381a86f2b351d3'
 BASE = 'https://api.tourvisor.ru/search/api/v1'
 BODY_LIMIT = 16*1024*1024
+SCOPE_FILE = 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json'
+
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+
+
+def select_scope_rows(scope, current, today=None):
+    """Select a reviewed, immutable, never-selected roster; old105 is separate."""
+    today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
+    ids = scope.get('selected_tv_hotel_ids')
+    prior = scope.get('prior_selected_hotel_ids')
+    if (type(scope.get('schema_version')) is not int or scope['schema_version'] != 1
+            or scope.get('account') != 'TOURVISOR_ANEX_JWT' or scope.get('operator_id') != 13
+            or not isinstance(ids, list) or not 1 <= len(ids) <= 105
+            or any(type(v) is not int or v < 1 for v in ids) or ids != sorted(set(ids))
+            or type(scope.get('selected_count')) is not int or len(ids) != scope['selected_count']
+            or not isinstance(prior, list) or any(type(v) is not int or v < 1 for v in prior)
+            or prior != sorted(set(prior)) or set(ids).intersection(prior)
+            or scope.get('supplier_http_maximum') != 400
+            or scope.get('safe_to_write_now') is not False
+            or any(type(scope.get(k)) is not int or scope[k] != 0 for k in ('database_writes','mapping_writes'))):
+        raise ValueError('continuation_scope_shape')
+    for field in ('country_id','departure_id','adults'):
+        if type(scope.get(field)) is not int or scope[field] < 1:
+            raise ValueError('continuation_party')
+    if (type(scope.get('children_count')) is not int or scope['children_count'] != 0 or scope.get('child_ages_signature') != ''
+            or scope['adults'] > 6):
+        raise ValueError('continuation_party')
+    identity = hashlib.sha256(canonical({k: scope[k] for k in
+        ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')})).hexdigest()
+    if scope.get('scope_id') != identity or scope.get('cohort') != 'anex-next-'+identity[:16]:
+        raise ValueError('continuation_scope_digest')
+    if hashlib.sha256(canonical(current)).hexdigest() != scope.get('parent_evidence_sha256'):
+        raise ValueError('continuation_parent_evidence')
+    rows = {r['tv_hotel_id']: r for r in current['rows']}
+    selected = []
+    for hid in ids:
+        row = rows.get(hid); ctx = (row or {}).get('future_context') or {}; target = (row or {}).get('target') or {}
+        if (not row or row.get('acquisition_ready') is not True or row.get('direct_anex_native_ids')
+                or row.get('anchor_state') != 'canonical_anchor_ok'
+                or hashlib.sha256(canonical(row)).hexdigest() != scope.get('current_row_sha256',{}).get(str(hid))
+                or ctx != scope.get('future_contexts',{}).get(str(hid))
+                or ctx.get('hotel_id') != hid or target.get('country_id') != scope['country_id']
+                or any(type(ctx.get(k)) is not int or ctx[k] != scope[k] for k in
+                       ('country_id','departure_id','adults','children_count'))
+                or ctx.get('child_ages_signature') != scope['child_ages_signature']
+                or type(ctx.get('nights')) is not int or not 1 <= ctx['nights'] <= 28
+                or not isinstance(ctx.get('departure_date'),str)
+                or dt.date.fromisoformat(ctx['departure_date']).isoformat() != ctx['departure_date']
+                or ctx['departure_date'] < today):
+            raise ValueError('continuation_row_binding')
+        selected.append(row)
+    return selected
+
+
+def reserve_selection(home, scope, operation):
+    """Account/operator targets remain consumed across operation names and days."""
+    root = Path(home)/'.anytoour-match'
+    if not root.is_dir() or root.is_symlink() or root.resolve() != root:
+        raise ValueError('selection_root')
+    path = root/'retained-selection-claims.json'
+    fd = os.open(path, os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd,'r+b') as stream:
+        fcntl.flock(stream,fcntl.LOCK_EX)
+        if os.fstat(stream.fileno()).st_nlink != 1 or os.fstat(stream.fileno()).st_size > 8*1024*1024:
+            raise ValueError('selection_ledger_path')
+        raw = stream.read(); data = json.loads(raw) if raw else {'schema_version':1,'claims':{}}
+        if data.get('schema_version') != 1 or not isinstance(data.get('claims'),dict):
+            raise ValueError('selection_ledger_shape')
+        claims = data['claims']
+        for hid in scope['selected_tv_hotel_ids']:
+            if 'TOURVISOR_ANEX_JWT:13:'+str(hid) in claims:
+                raise ValueError('selection_consumed_no_replay')
+        for hid in scope['prior_selected_hotel_ids']:
+            claims.setdefault('TOURVISOR_ANEX_JWT:13:'+str(hid),
+                              {'operation_id':scope['prior_acquisition_operation_id'],'state':'prior_consumed'})
+        for hid in scope['selected_tv_hotel_ids']:
+            claims['TOURVISOR_ANEX_JWT:13:'+str(hid)] = {
+                'operation_id':operation,'scope_id':scope['scope_id'],'state':'reserved_before_http_no_replay'}
+        encoded = canonical(data)
+        stream.seek(0);stream.write(encoded);stream.truncate();stream.flush();os.fsync(stream.fileno())
+        stream.seek(0)
+        if stream.read() != encoded:
+            raise ValueError('selection_reservation_unknown_no_replay')
+        dirfd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+        try:os.fsync(dirfd)
+        finally:os.close(dirfd)
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def save_bytes(path, raw):
@@ -122,8 +212,9 @@ class Client:
         return code,value,{'response_number':index,'raw_sha256':raw_hash}
 
 
-def acquire(client, directory, selected, sleep=time.sleep):
-    planning=[{'tv_hotel_id':r['tv_hotel_id'],'country_id':4,'departure_id':1,'adults':2,
+def acquire(client, directory, selected, sleep=time.sleep, scope=None):
+    country,departure,adults=(scope[k] for k in ('country_id','departure_id','adults')) if scope else (4,1,2)
+    planning=[{'tv_hotel_id':r['tv_hotel_id'],'country_id':country,'departure_id':departure,'adults':adults,
                'child_ages_signature':'','departure_date':r['future_context']['departure_date'],
                'nights':r['future_context']['nights'],'missing_operator_ids':[13]} for r in selected]
     groups=shape.chunks(planning); edges=[]; batches=[]; binding=None; unbound_details=0
@@ -131,8 +222,8 @@ def acquire(client, directory, selected, sleep=time.sleep):
     stop=None
     try:
         for number,g in enumerate(groups,1):
-            params={'departureId':1,'countryId':4,'dateFrom':g['date_from'],'dateTo':g['date_to'],
-                    'nightsFrom':g['nights_from'],'nightsTo':g['nights_to'],'adults':2,'childs':[],
+            params={'departureId':departure,'countryId':country,'dateFrom':g['date_from'],'dateTo':g['date_to'],
+                    'nightsFrom':g['nights_from'],'nightsTo':g['nights_to'],'adults':adults,'childs':[],
                     'currency':'RUB','onlyCharter':False,'operatorIds':[13],'hotelIds':g['hotel_ids']}
             _,start,_=client.call('search_start','/tours/search',params); start=shape.unwrap(start)
             sid=shape.num(start.get('searchId')) or shape.num(start.get('id')) if isinstance(start,dict) else None
@@ -185,11 +276,22 @@ def acquire(client, directory, selected, sleep=time.sleep):
 if __name__=='__main__':
     directory=Path(os.environ['MATCH_RETAINED_DIR']);root=Path.home()/'www/anytoour.ru'
     data=json.loads((directory/'acquisition-input.json').read_text())
-    if data.get('parent_evidence_sha256')!=PARENT_EVIDENCE:raise SystemExit('acquisition_parent_binding')
-    selected=select_rows(data['current'])
-    if len(selected)!=105 or shape.plan_id_digest([r['tv_hotel_id'] for r in selected])!=SELECTED_IDS_SHA256:raise SystemExit('acquisition_cohort_binding')
+    operation=os.environ['MATCH_RETAINED_OPERATION'];scope=data.get('continuation_scope')
+    if scope is None:
+        if operation!='int-andromeda-match-retained-acquire-20261020-v1' or data.get('parent_evidence_sha256')!=PARENT_EVIDENCE:raise SystemExit('acquisition_parent_binding')
+        selected=select_rows(data['current'])
+        if len(selected)!=105 or shape.plan_id_digest([r['tv_hotel_id'] for r in selected])!=SELECTED_IDS_SHA256:raise SystemExit('acquisition_cohort_binding')
+    else:
+        scope_path=Path(__file__).resolve().parents[0]/'fixtures/hotel_match_retained_next_scope_20261020.json'
+        raw=scope_path.read_bytes()
+        if (scope_path.is_symlink() or hashlib.sha256(raw).hexdigest()!=data.get('continuation_scope_sha256')
+                or json.loads(raw)!=scope or operation!=scope.get('operation_id')
+                or data.get('parent_evidence_sha256')!=scope.get('parent_evidence_sha256')):raise SystemExit('continuation_scope_binding')
+        selected=select_scope_rows(scope,data['current'])
+        reserve_selection(Path.home(),scope,operation)
     client=Client(Path.home(),root,directory,os.environ['MATCH_RETAINED_OPERATION'])
-    result=acquire(client,directory,selected)
-    result['parent_evidence_sha256']=PARENT_EVIDENCE
-    result['selected_id_sha256']=SELECTED_IDS_SHA256
+    result=acquire(client,directory,selected,scope=scope)
+    result['parent_evidence_sha256']=scope['parent_evidence_sha256'] if scope else PARENT_EVIDENCE
+    result['selected_id_sha256']=shape.plan_id_digest([r['tv_hotel_id'] for r in selected])
+    if scope:result.update(continuation_scope_sha256=data['continuation_scope_sha256'],scope_id=scope['scope_id'])
     print(json.dumps(result,sort_keys=True,separators=(',',':')))
