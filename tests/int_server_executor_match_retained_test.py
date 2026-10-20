@@ -52,6 +52,13 @@ class ContractTest(unittest.TestCase):
                       account_root/'provider-quotas/tourvisor-anex-2026-10-20.json']
         for path in ledger_paths:path.write_text('{"preserved_private_ledger":true}')
         profile=copy.deepcopy(m.TRANSPORT_DIAGNOSTIC);stamp=1792400000000000000
+        failed=private/profile['target_operation_id'];failed.mkdir()
+        failed_result={'operation_id':profile['target_operation_id'],'source_sha':profile['failed_source_sha'],
+                       'mode':'match-retained-readback','status':'unknown_no_replay','reason':"name 'Path' is not defined",
+                       'supplier_calls':0,'database_writes':0,'mapping_writes':0,'lead_calls':0,'booking_calls':0}
+        failed_raw=a.canonical(failed_result);(failed/'result.json').write_bytes(failed_raw)
+        profile['failed_receipt_sha256']=hashlib.sha256(failed_raw).hexdigest()
+        (failed/'reservation.json').write_text(json.dumps({k:failed_result[k] for k in ('operation_id','source_sha','mode')}))
         for pin in profile['parents']:
             name='int-andromeda-match-retained-acquire-20261020-v'+str(pin['version']);target=private/name;target.mkdir()
             data={'operation_id':name,'source_sha':SHA,'supplier_calls':pin['calls'],'physical_http_reservations':pin['calls'],
@@ -75,7 +82,7 @@ class ContractTest(unittest.TestCase):
         def fail(reason):raise ValueError(reason)
         space={'private':private,'project':project,'payload':{'cohort':m.NEXT_SCOPE['cohort'],
                'target_operation_id':profile['target_operation_id']},'operation':profile['operation_id'],'TRANSPORT_DIAGNOSTIC':profile,
-               'NEXT_SCOPE':m.NEXT_SCOPE,'Path':Path,'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),
+               'NEXT_SCOPE':m.NEXT_SCOPE,'pathlib':__import__('pathlib'),'json':json,'hashlib':hashlib,'os':os,'re':__import__('re'),
                'subprocess':subprocess,'fail':fail,'safe_file':lambda p,b:p.is_file() and not p.is_symlink() and p.stat().st_size<=b}
         exec(m.REMOTE_HANDLER,space)
         space['retained_next_scope']=lambda stage:{'scope_id':m.NEXT_SCOPE['scope_id']}
@@ -85,6 +92,9 @@ class ContractTest(unittest.TestCase):
     def test_passive_transport_readback_binds_history_preserves_unknown_and_never_reads_raw_or_secrets(self):
         with tempfile.TemporaryDirectory() as td:
             space,ledgers=self._transport_fixture(td);before={p:p.read_bytes() for p in ledgers}
+            self.assertNotIn('Path',space)  # Stock REMOTE imports pathlib, not a Path alias.
+            failed=space['private']/space['TRANSPORT_DIAGNOSTIC']['target_operation_id']/'result.json'
+            failed_before=failed.read_bytes()
             metadata={'configured':True,'matches_default_token':False,'jwt_claims_parseable':True,
                       'expiry_epoch_seconds':1792500000,'expired_at_capture':False,'capture_epoch_seconds':1792400000}
             original=Path.read_bytes
@@ -103,6 +113,7 @@ class ContractTest(unittest.TestCase):
             missing=[row for row in out['requests'] if row['http_status'] is None]
             self.assertEqual(3,len(missing));self.assertTrue(all(row['request_to_terminal_file_ms']==30000 for row in missing))
             self.assertEqual(before,{p:p.read_bytes() for p in ledgers});self.assertFalse(out['cause_established'])
+            self.assertEqual(failed_before,failed.read_bytes());self.assertFalse(out['failed_operation_replayed'])
             serialized=json.dumps(out)
             for token in ('private-raw-body-sentinel','private-query-sentinel','private-configuration-sentinel','private-ambient-sentinel','https://'):
                 self.assertNotIn(token,serialized)
@@ -110,6 +121,14 @@ class ContractTest(unittest.TestCase):
             broken=json.loads(first.read_text());broken['match_retained']['data']['unknown_http_calls']=1;first.write_text(json.dumps(broken))
             with mock.patch.dict(os.environ,{'HOME':td}),mock.patch.object(subprocess,'run',side_effect=AssertionError('no child after drift')):
                 with self.assertRaisesRegex(ValueError,'transport_parent_binding'):space['retained_transport_diagnostic'](SOURCE)
+
+    def test_passive_recovery_requires_the_exact_failed_receipt_before_any_metadata_child(self):
+        with tempfile.TemporaryDirectory() as td:
+            space,_=self._transport_fixture(td)
+            failed=space['private']/space['TRANSPORT_DIAGNOSTIC']['target_operation_id']/'result.json'
+            failed.write_text('{}')
+            with mock.patch.object(subprocess,'run',side_effect=AssertionError('no child after changed failure')):
+                with self.assertRaisesRegex(ValueError,'transport_failed_binding'):space['retained_transport_diagnostic'](SOURCE)
 
     @unittest.skipUnless(__import__('shutil').which('php'),'native PHP required')
     def test_passive_config_metadata_uses_real_php_and_cannot_expose_jwt_claims(self):
@@ -128,7 +147,8 @@ class ContractTest(unittest.TestCase):
         command=c.PREFIX+SHA+' match-retained-readback '+p['operation_id']+' '+m.NEXT_SCOPE['cohort']+' '+p['target_operation_id']
         cmd=c.parse_command(command);self.assertEqual(p['target_operation_id'],cmd['target_operation_id'])
         for text in (command.replace(p['target_operation_id'],m.NEXT_SCOPE['saved_acquisition_operation_id']),
-                     command.replace(m.NEXT_SCOPE['cohort'],'common4-retained'),command.replace('readback-20261020-v5','readback-20261020-v6')):
+                     command.replace(m.NEXT_SCOPE['cohort'],'common4-retained'),command.replace(p['operation_id'],'int-andromeda-match-retained-readback-20261020-v5'),
+                     command.replace(p['operation_id'],'int-andromeda-match-retained-readback-20261020-v7')):
             with self.assertRaises(ValueError):c.parse_command(text)
         self.assertEqual((47,3),(sum(v['calls'] for v in p['parents']),sum(v['unknown'] for v in p['parents'])))
 
@@ -681,7 +701,7 @@ class AcquisitionTest(unittest.TestCase):
             project=Path(td);(project/'config.php').write_text('fixture');(project/'data').mkdir();(project/'data/db-v1.php').write_text('fixture')
             def fail(reason):raise ValueError(reason)
             space={'payload':{'cohort':m.NEXT_SCOPE['cohort'],'match_retained_control_sha':CONTROL},'mode':'match-retained-readback',
-                   'RETAINED_MODES':m.MODES,'NEXT_SCOPE':m.NEXT_SCOPE,'project':project,'safe_file':lambda p,b:p.is_file(),
+                   'RETAINED_MODES':m.MODES,'NEXT_SCOPE':m.NEXT_SCOPE,'TRANSPORT_DIAGNOSTIC':m.TRANSPORT_DIAGNOSTIC,'project':project,'safe_file':lambda p,b:p.is_file(),
                    'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail,'operation':m.NEXT_SCOPE['readback_operation_id'],'source':SHA}
             exec(m.REMOTE_HANDLER,space)
             space['retained_saved_detail']=lambda stage:{'state':'saved_detail_inspected_read_only'}
