@@ -1,7 +1,8 @@
 """Retain then independently rederive a bounded update of NEW design preview.
 
-No source runs with SSH credentials. All non-visual donor bytes must still match
-the original accepted artifact, including supplier, price, lead, logo and fonts.
+No source runs with SSH credentials. Canonical data.js carries only the accepted
+INT policy/diagnostic patch, pinned with its native graph. All other non-visual
+donor bytes, price/lead contracts, logo and fonts keep their accepted bytes.
 """
 from __future__ import annotations
 import copy
@@ -36,10 +37,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('c2c4ec807f13f78315bee52f08c8d23f2e155b54', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),)
+    ('23e9568eaf1eaf3b36baeec2df2f3205d720ef6c', 'beccdab92949ac17295c2ae46515d795eaa1f5a5'),)
 NATIVE_RELEASE_PARENTS = (
-    ('c2c4ec807f13f78315bee52f08c8d23f2e155b54', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),
-    ('2344c8533a5175cbb9f6843f5324248dd9562784', '71ccef94704b64946a45227a16a24aa9d7899457'),)
+    ('4536d0a977ded83aa8c8d8ce2681f530c571f09f', '30359166c31101fa3e04d63da017aaf7aaf57e46'),
+    ('48252b25d1e7bab4156d35eff260021f99029db2', 'c926d00c87d0bf411d2b577b08dc56f6394eae38'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -212,6 +213,8 @@ def native_frame_inventory(width, percent):
         'ai-price-changed', 'ai-hotel-checked', 'ai-contact'))
     frames.update(f'native-terminal-{state}-{width}-text{percent}.png'
                   for state in ('complete', 'partial', 'error'))
+    frames.update(f'native-{phase}-unavailable-{width}-text{percent}.png'
+                  for phase in ('quote', 'flights'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
@@ -235,6 +238,24 @@ def native_selected_journey(actual, width):
     def facts(value, expected, code):
         need(isinstance(value, dict) and set(value) == set(expected)
              and all(type(value.get(k)) is type(v) and value[k] == v for k, v in expected.items()), code)
+
+    denial = actual.get('permanentDenials')
+    need(isinstance(denial, dict) and set(denial) == {'quote', 'flights',
+         'differentAllowedOfferReady', 'canonicalBridgeSHA256', 'calls'}
+         and denial.get('differentAllowedOfferReady') is True, 'native_permanent_denial_required')
+    facts(denial['calls'], {'search': 1, 'other': 0, 'quote': 3, 'flights': 2},
+          'native_permanent_denial_operations')
+    for phase, total in (('quote', 156400), ('flights', 157400)):
+        value = denial.get(phase)
+        need(isinstance(value, dict) and 'actionFit' in value, 'native_permanent_denial_required')
+        facts({k: v for k, v in value.items() if k != 'actionFit'},
+              {'exactOfferRetained': True, 'retryable': False, 'searchTotal': total,
+               'contactBlocked': True, 'retryAndManagerActionsAbsent': True,
+               'backAndResponsiveExtraOperations': 0}, 'native_permanent_denial_authority')
+        fit = value['actionFit']
+        need(isinstance(fit, dict) and set(fit) == {'height', 'width', 'clipped'}
+             and all(type(fit.get(k)) in (int, float) and 44 <= fit[k] < 10000 for k in ('height', 'width'))
+             and fit.get('clipped') is False, 'native_permanent_denial_action')
 
     nav = actual.get('screenNavigation')
     need(isinstance(nav, dict) and set(nav) == {'deepScroll', 'hotelHeadingVisible',
@@ -349,6 +370,8 @@ def native_evidence(archive, request, native):
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
+        need(actual.get('permanentDenials', {}).get('canonicalBridgeSHA256') == native['files']['bridge.js'],
+             'native_permanent_denial_owner')
         heading = actual.get('staticHeadingFocus')
         need(isinstance(heading, dict) and set(heading) == {'results', 'control', 'loading', 'hotel'}
              and heading.get('loading') is True and heading.get('hotel') is True,
@@ -440,7 +463,7 @@ def native_evidence(archive, request, native):
                                                         'native-filters-active-', 'native-filter-empty-',
                                                         'native-results-loading-', 'native-results-error-',
                                                         'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                      else 'tour' if logical_name.startswith('native-ai-price-changed-')
+                      else 'tour' if logical_name.startswith(('native-ai-price-changed-', 'native-quote-unavailable-', 'native-flights-unavailable-'))
                       else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
                       else 'gallery' if logical_name.startswith('native-content-gallery-')
                       else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
@@ -826,7 +849,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 113, 'native_rendered_frame_count')
+    need(len(frames) == 117, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
