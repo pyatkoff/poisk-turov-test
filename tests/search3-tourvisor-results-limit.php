@@ -99,6 +99,7 @@ const CURLOPT_CONNECTTIMEOUT = 2;
 const CURLOPT_TIMEOUT = 3;
 const CURLOPT_HTTPHEADER = 4;
 const CURLINFO_HTTP_CODE = 5;
+const CURLINFO_TOTAL_TIME = 6;
 final class Probe
 {
     public static int $status = 200;
@@ -106,13 +107,14 @@ final class Probe
     public static string $body = '[]';
     public static int $calls = 0;
     public static int $decodes = 0;
+    public static float $seconds = 1.234;
 }
 function jwt() { return 'offline-fixture-token'; }
 function curl_init($url) { ++Probe::$calls; return (object)['url' => $url]; }
 function curl_setopt_array($handle, $options) { return true; }
 function curl_exec($handle) { return Probe::$body; }
 function curl_errno($handle) { return Probe::$errno; }
-function curl_getinfo($handle, $option) { return Probe::$status; }
+function curl_getinfo($handle, $option) { return $option === CURLINFO_TOTAL_TIME ? Probe::$seconds : Probe::$status; }
 function curl_close($handle) {}
 function json_decode($body, $assoc)
 {
@@ -125,7 +127,7 @@ function json_decode($body, $assoc)
 function out($data, $status = 200) { throw new \Search3GatewayOutput((array)$data, $status); }
 ERROR_FIXTURE);
 
-foreach (['query_string', 'short_text', 'tv_get'] as $function) {
+foreach (['query_string', 'short_text', 'tv_failure_diagnostics', 'tv_get'] as $function) {
     eval("namespace Search3GatewayErrorFixture;\n" . source_function($gateway, $function));
 }
 
@@ -144,6 +146,8 @@ foreach ([429, 500, 503, 404, 302, 0, 700] as $status) {
         $expected = ($status >= 400 && $status < 600) ? $status : 502;
         if ($error->httpStatus !== $expected || $error->payload !== [
             'ok' => false, 'error' => 'Tourvisor request failed', 'upstreamStatus' => $status,
+            'diagnostics' => array_merge(['provider' => 'tourvisor', 'stage' => 'other', 'category' => 'http'],
+                $status <= 599 ? ['httpStatus' => $status] : [], ['curlErrno' => 0, 'elapsedMs' => 1234]),
         ]) throw new RuntimeException('Existing upstream error contract changed');
     }
     if (\Search3GatewayErrorFixture\Probe::$decodes !== 0
@@ -162,10 +166,32 @@ try {
 } catch (Search3GatewayOutput $error) {
     if ($error->httpStatus !== 502 || $error->payload !== [
         'ok' => false, 'error' => 'Tourvisor connection error',
+        'diagnostics' => ['provider' => 'tourvisor', 'stage' => 'other', 'category' => 'timeout',
+            'httpStatus' => 0, 'curlErrno' => 28, 'elapsedMs' => 1234],
     ]) throw new RuntimeException('Existing connection error contract changed');
 }
 if (\Search3GatewayErrorFixture\Probe::$decodes !== 0) {
     throw new RuntimeException('Connection failure was decoded');
+}
+
+foreach (['/tours/search' => 'search_start', '/tours/search/123/status' => 'search_status',
+    '/tours/search/123' => 'search_results', '/tours/search/123/continue' => 'search_continue',
+    '/tours/exact-offer/flights' => 'flights', '/tours/exact-offer' => 'tour',
+    '/unknown/private-token' => 'other'] as $path => $stage) {
+    $facts = \Search3GatewayErrorFixture\tv_failure_diagnostics($path, 7, 0, 30.219);
+    if ($facts !== ['provider' => 'tourvisor', 'stage' => $stage, 'category' => 'transport',
+        'httpStatus' => 0, 'curlErrno' => 7, 'elapsedMs' => 30219]) {
+        throw new RuntimeException('Safe failure stage/timing was lost');
+    }
+    if (str_contains(json_encode($facts), 'private-token') || str_contains(json_encode($facts), '123')) {
+        throw new RuntimeException('Failure diagnostics disclosed path/identity');
+    }
+}
+foreach ([NAN, INF, -1.0, 3601.0] as $seconds) {
+    $facts = \Search3GatewayErrorFixture\tv_failure_diagnostics('/tours/search', 1000, 700, $seconds);
+    if ($facts !== ['provider' => 'tourvisor', 'stage' => 'search_start', 'category' => 'transport']) {
+        throw new RuntimeException('Invalid diagnostic numbers escaped bounds');
+    }
 }
 
 $successCases = 0;
