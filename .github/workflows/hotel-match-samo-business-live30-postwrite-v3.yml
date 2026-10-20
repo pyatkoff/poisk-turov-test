@@ -1,0 +1,119 @@
+name: MATCH SAMO business-live30 postwrite v3
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - 'scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php'
+      - 'tests/hotel_match_samo_business_live30_common4_postwrite_v3_test.php'
+      - '.github/workflows/hotel-match-samo-business-live30-postwrite-v3.yml'
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-business-live30-postwrite-1971-20260924-v3, cancel-in-progress: false}
+env:
+  CENSUS_OP: hotel-match-business-live30-census-1971-20260924-v3
+  COMMON4_OP: hotel-match-samo-business-live30-common4-postwrite-1971-20260924-v3
+  BASE: 48db6edecc206a5fe0937168288ff9a1af084d0f
+  CLAIM: '5819999655'
+  WRITER_ARTIFACT: '10827321039'
+  WRITER_ARCHIVE_SHA: 579c7136ace3ff98be09a9f9bd57dccc9dcb8da46815cbf250121032d264285f
+jobs:
+  focused:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-postwrite-v3-20260924'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - run: php -l scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php
+      - run: php scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php --self-test
+      - run: php tests/hotel_match_samo_business_live30_common4_postwrite_v3_test.php
+      - run: |
+          ! grep -E 'curl_|https?://|INSERT INTO|UPDATE .* SET|DELETE FROM|->commit\(' scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php
+  live:
+    needs: focused
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'match/samo-business-live30-postwrite-v3-20260924'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate writer receipt and Security
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input/writer terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          actual="$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')"
+          test "$actual" = ".github/workflows/hotel-match-samo-business-live30-postwrite-v3.yml scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php tests/hotel_match_samo_business_live30_common4_postwrite_v3_test.php "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('input/claim.json'));b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER' and c['issue_url'].endswith('/issues/3419')
+          for x in ['inserted=188/188','postwrite census','COMMON4 coverage',os.environ['CENSUS_OP']]: assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(120):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success',x['conclusion'];break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+          curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$WRITER_ARTIFACT/zip" -o input/writer.zip
+          test "$(sha256sum input/writer.zip|awk '{print $1}')" = "$WRITER_ARCHIVE_SHA"
+          unzip -q input/writer.zip -d input/writer
+          result="$(find input/writer -type f -name result.json -print -quit)";receipt="$(find input/writer -type f -name receipt.json -print -quit)"
+          test -n "$result";test -n "$receipt"
+          python3 - "$result" "$receipt" <<'PY'
+          import json,hashlib,pathlib,sys
+          r=json.load(open(sys.argv[1]));q=json.load(open(sys.argv[2]))
+          assert q['result_sha256']==hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest()
+          assert r['operation']=='hotel-match-samo-business-live30-common4-wave1-writer-1971-20260924-v8-w1'
+          assert r['state']=='committed_verified' and r['inserted']==188 and r['inserted_by_namespace']=={'operator_342':188}
+          assert r['readback_verified'] is True and r['database_writes']==188 and r['mapping_writes']==188
+          PY
+      - name: Run postwrite census and COMMON4 coverage
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          HEAD: '${{ github.event.pull_request.head.sha }}'
+        run: |
+          set -euo pipefail;umask 077
+          key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi
+          chmod 600 "$key";ssh-keygen -y -f "$key">/dev/null;ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          cdir=".anytoour-match/operations/$CENSUS_OP";mdir=".anytoour-match/operations/$COMMON4_OP"
+          python3 - <<'PY'
+          import json,os,pathlib
+          pathlib.Path('input/census-reservation.json').write_text(json.dumps({'operation':os.environ['CENSUS_OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          pathlib.Path('input/common4-reservation.json').write_text(json.dumps({'operation':os.environ['COMMON4_OP'],'state':'reserved_before_db_read','provider_http_calls':0,'database_writes':0,'mapping_writes':0},sort_keys=True)+'\n')
+          PY
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test ! -e \"\$HOME/$cdir\";test ! -e \"\$HOME/$mdir\";mkdir -p \"\$HOME/$cdir/payload/scripts/diagnostics\" \"\$HOME/$mdir/payload/scripts/diagnostics\""
+          scp "${opts[@]}" input/census-reservation.json "$remote:$cdir/reservation.json"
+          scp "${opts[@]}" input/common4-reservation.json "$remote:$mdir/reservation.json"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_business_live30_census_v3.php "$remote:$cdir/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_anex_effective_coverage.php "$remote:$cdir/payload/scripts/diagnostics/"
+          scp "${opts[@]}" scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php "$remote:$mdir/payload/scripts/diagnostics/"
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$cdir\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$cdir/payload/scripts/diagnostics/hotel_match_business_live30_census_v3.php\" --execute" >terminal/census.stdout 2>terminal/census.stderr
+          ssh "${opts[@]}" "$remote" "set -eu;cd \"\$HOME/www/anytoour.ru\";ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$mdir\" MATCH_SOURCE_SHA='$HEAD' php \"\$HOME/$mdir/payload/scripts/diagnostics/hotel_match_samo_business_live30_common4_postwrite_v3.php\" --execute" >terminal/common4.stdout 2>terminal/common4.stderr
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$cdir/result.json\"" >terminal/census-result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$cdir/receipt.json\"" >terminal/census-receipt.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$mdir/result.json\"" >terminal/common4-result.json
+          ssh "${opts[@]}" "$remote" "cat \"\$HOME/$mdir/receipt.json\"" >terminal/common4-receipt.json
+          python3 - <<'PY'
+          import json,hashlib,pathlib
+          c=json.load(open('terminal/census-result.json'));cq=json.load(open('terminal/census-receipt.json'))
+          m=json.load(open('terminal/common4-result.json'));mq=json.load(open('terminal/common4-receipt.json'))
+          assert cq['result_sha256']==hashlib.sha256(pathlib.Path('terminal/census-result.json').read_bytes()).hexdigest()
+          assert mq['result_sha256']==hashlib.sha256(pathlib.Path('terminal/common4-result.json').read_bytes()).hexdigest()
+          assert c['state']=='completed_read_only_business_live30_census' and c['provider_http_calls']==c['database_writes']==c['mapping_writes']==0
+          assert m['state']=='samo_business_live30_common4_plan_ready' and m['provider_http_calls']==m['database_writes']==m['mapping_writes']==0
+          print(json.dumps({'census':{'tv':c['tv_live30'],'samo':c['samo_live30'],'anex':c['anex_live30'],'strict':c['strict_live30_overlap'],'registry':c['current_registry']},'common4':{'catalog_live30_count':m['catalog_live30_count'],'mapped_source_count':m['mapped_source_count'],'mapped_unique_local_count':m['mapped_unique_local_count'],'unresolved_source_count':m['unresolved_source_count'],'common4_lanes_by_count_mapped':m['common4_lanes_by_count_mapped'],'missing_lane_counts':m['missing_lane_counts'],'acquisition_ready_count':m['acquisition_ready_count']}},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-business-live30-postwrite-v3-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
