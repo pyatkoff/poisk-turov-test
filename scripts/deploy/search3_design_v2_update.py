@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -35,10 +36,10 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('17b8070a6b0294a31005d6c31f7af45c6cc2b735', 'a5895c68812189339a0b2e155adf5a9dc2203070'),)
+    ('c2c4ec807f13f78315bee52f08c8d23f2e155b54', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),)
 NATIVE_RELEASE_PARENTS = (
-    ('3fb17be94efd41032dde6c2ea8c6c07d7c364f18', 'e74588ce8ce883af1f0f8c755a3f34f74aa48879'),
-    ('2dc409517e88493d9d24e46cafe95e462aa45819', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),)
+    ('c2c4ec807f13f78315bee52f08c8d23f2e155b54', 'ad71aef2f45a36fdd1f971467150aca268bc8a86'),
+    ('2344c8533a5175cbb9f6843f5324248dd9562784', '71ccef94704b64946a45227a16a24aa9d7899457'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -348,6 +349,21 @@ def native_evidence(archive, request, native):
              and case.get('errors') == [] and case.get('unexpectedRequests') == [], 'native_rendered_case')
         seen.add(key); actual = case.get('proof', {})
         need(all(type(actual.get(k)) is type(value) and actual.get(k) == value for k, value in proof.items()), 'native_rendered_journey')
+        heading = actual.get('staticHeadingFocus')
+        need(isinstance(heading, dict) and set(heading) == {'results', 'control', 'loading', 'hotel'}
+             and heading.get('loading') is True and heading.get('hotel') is True,
+             'native_static_heading_focus_required')
+        result = heading.get('results'); control = heading.get('control')
+        need(isinstance(result, dict) and set(result) == {'focused', 'tabIndex', 'outline'}
+             and result.get('focused') is True and type(result.get('tabIndex')) is int
+             and result['tabIndex'] == -1 and result.get('outline') == 'none',
+             'native_static_heading_focus_required')
+        need(isinstance(control, dict) and set(control) == {'focused', 'visible', 'outline', 'width'}
+             and control.get('focused') is True and control.get('visible') is True
+             and control.get('outline') in ('auto', 'solid', 'dotted', 'dashed', 'double', 'groove', 'ridge', 'inset', 'outset')
+             and type(control.get('width')) in (int, float)
+             and math.isfinite(control['width']) and control['width'] > 0,
+             'native_interactive_focus_required')
         native_selected_journey(actual, key[0])
         retained = actual.get('retainedContent')
         expected_retained = {
