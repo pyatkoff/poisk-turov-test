@@ -41,7 +41,13 @@ LOCK_OPERATION = 'int-anex-publication-lock-metadata-20261020-v1'
 LOCK_REPAIR_MODE = 'publication-lock-mode-repair'
 LOCK_REPAIR_SOURCE = LOCK_SOURCE
 LOCK_REPAIR_OPERATION = 'int-anex-publication-lock-mode-repair-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE)
+REPAIRED_MODE = 'passive-fuel-repaired-activate'
+REPAIRED_SOURCE = '61415e679957acac285bc0aa2f9c870f677618ea'
+REPAIRED_OPERATION = 'int-anex-passive-fuel-repaired-activate-20261021-v1'
+# The stock server persists compact JSON; the runner artifact is pretty JSON.
+REPAIR_RECEIPT_SHA256 = 'a1e608a8ad12c866169bbc4609365e1f6fbf901c86f59dd8e1e050973b6d7635'
+REPAIR_RECEIPT_BYTES = 2056
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -74,7 +80,8 @@ def parse(parts):
                   [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION],
                   [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION],
                   [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION],
-                  [LOCK_REPAIR_SOURCE, LOCK_REPAIR_MODE, LOCK_REPAIR_OPERATION]),
+                  [LOCK_REPAIR_SOURCE, LOCK_REPAIR_MODE, LOCK_REPAIR_OPERATION],
+                  [REPAIRED_SOURCE, REPAIRED_MODE, REPAIRED_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -94,7 +101,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -119,7 +126,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 
 def bundle_source(source_root, command=None):
     command = policy(command)
-    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
     root = Path(source_root).resolve()
     output = io.BytesIO()
@@ -832,6 +839,75 @@ def pi_current_stage_check(descriptor,op):
 '''
 
 
+REPAIR_PROOF_REMOTE = r'''
+PR_REPAIR_OPERATION=__PR_REPAIR_OPERATION__
+PR_REPAIR_SHA=__PR_REPAIR_SHA__
+PR_REPAIR_BYTES=__PR_REPAIR_BYTES__
+PR_PROOF_IDENTITY=None
+
+def pr_repair_proof():
+    # Read only the sealed stock correction receipt, never an arbitrary private
+    # path, config, observations or log. Keep its identity bound across writes.
+    global PR_PROOF_IDENTITY
+    descriptors=[]
+    directory_id=lambda s:(s.st_dev,s.st_ino,s.st_mode,s.st_uid,s.st_gid)
+    file_id=lambda s:directory_id(s)+(s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    try:
+        root=os.open(home,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);descriptors.append(root)
+        parent=root;directory_ids=[directory_id(os.fstat(root))]
+        for name in ('.anytoour-int-executor',PR_REPAIR_OPERATION):
+            child=os.open(name,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+            descriptors.append(child);info=os.fstat(child)
+            if info.st_uid!=os.getuid() or pf_stat.S_IMODE(info.st_mode)!=0o700:fail('activation_repair_proof')
+            directory_ids.append(directory_id(info));parent=child
+        leaf=os.open('result.json',os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=parent)
+        descriptors.append(leaf);before=os.fstat(leaf)
+        if (not pf_stat.S_ISREG(before.st_mode) or before.st_nlink!=1 or before.st_uid!=os.getuid()
+                or before.st_size!=PR_REPAIR_BYTES or pf_stat.S_IMODE(before.st_mode)!=0o600):fail('activation_repair_proof')
+        data=b''
+        while len(data)<=PR_REPAIR_BYTES:
+            part=os.read(leaf,PR_REPAIR_BYTES+1-len(data))
+            if not part:break
+            data+=part
+        after=os.fstat(leaf)
+        if (len(data)!=PR_REPAIR_BYTES or hashlib.sha256(data).hexdigest()!=PR_REPAIR_SHA
+                or file_id(before)!=file_id(after)
+                or file_id(after)!=file_id(os.stat('result.json',dir_fd=parent,follow_symlinks=False))
+                or directory_ids!=[directory_id(os.fstat(fd)) for fd in descriptors[:-1]]
+                or directory_ids[0]!=directory_id(home.lstat()) or home.resolve()!=home):fail('activation_repair_proof')
+        for index,name in enumerate(('.anytoour-int-executor',PR_REPAIR_OPERATION)):
+            if directory_ids[index+1]!=directory_id(os.stat(name,dir_fd=descriptors[index],follow_symlinks=False)):
+                fail('activation_repair_proof')
+        identity=(tuple(directory_ids),file_id(after))
+        if PR_PROOF_IDENTITY is not None and PR_PROOF_IDENTITY!=identity:fail('activation_repair_proof')
+        PR_PROOF_IDENTITY=identity
+        return {'status':'verified','operation_id':PR_REPAIR_OPERATION,'sha256':PR_REPAIR_SHA,
+                'bytes':PR_REPAIR_BYTES,'mode':0o600,'identity_stable':True}
+    except OSError:
+        fail('activation_repair_proof')
+    finally:
+        for descriptor in reversed(descriptors):os.close(descriptor)
+'''
+REPAIR_PROOF_REMOTE = REPAIR_PROOF_REMOTE.replace('__PR_REPAIR_OPERATION__',repr(LOCK_REPAIR_OPERATION)).replace(
+    '__PR_REPAIR_SHA__',repr(REPAIR_RECEIPT_SHA256)).replace('__PR_REPAIR_BYTES__',str(REPAIR_RECEIPT_BYTES))
+
+# Material post-repair profile: the old CURRENT program remains byte-identical.
+# This transaction additionally requires the accepted correction proof and the
+# exact corrected lock shape; the same existing two-file transaction is reused.
+REPAIRED_REMOTE = CURRENT_REMOTE + REPAIR_PROOF_REMOTE
+for _old,_new in (
+    ("'backup_retained':False,", "'backup_retained':False,'repair_proof':None,"),
+    ('    def snapshot_matches():\n', '    def snapshot_matches():\n        pr_repair_proof()\n'),
+    ("        out['preflight']=passive_fuel_activation_plan()\n",
+     "        out['repair_proof']=pr_repair_proof()\n        out['preflight']=passive_fuel_activation_plan()\n"),
+    ("'activation_syntax','activation_readback'", "'activation_syntax','activation_readback','activation_repair_proof'"),
+    ('or pf_stat.S_IMODE(info.st_mode)&0o022 or info.st_size>65536',
+     'or pf_stat.S_IMODE(info.st_mode)!=0o644 or info.st_size!=0'),
+):
+    need(REPAIRED_REMOTE.count(_old)==1,'repaired_profile_registration_drift')
+    REPAIRED_REMOTE=REPAIRED_REMOTE.replace(_old,_new,1)
+
+
 LOCK_METADATA_REMOTE = r'''
 import stat as lm_stat
 
@@ -996,6 +1072,7 @@ def remote_program(remote, command=None):
     hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
     if mode == LOCK_MODE: reader,hashes = LOCK_METADATA_REMOTE,{}
     if mode == LOCK_REPAIR_MODE: reader,hashes = LOCK_REPAIR_REMOTE,{}
+    if mode == REPAIRED_MODE: reader,hashes = REPAIRED_REMOTE,PRIVATE_SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -1023,7 +1100,7 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
-    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE):
+    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE):
         registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
         activation=result['passive_fuel_activation']
         result['production_after']=fingerprints()
@@ -1043,6 +1120,7 @@ def completed(command, result):
     command = policy(command)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
+    if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
     if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
@@ -1176,6 +1254,20 @@ def lock_mode_repair_completed(command,result):
         and before['lock']['mode']==0o664 and after['lock']['mode']==0o644
         and before['lock']['bytes']==after['lock']['bytes']==0
         and before['parent']['mode']==after['parent']['mode']==0o700)
+
+
+def repaired_completed(command,result):
+    if (command!=parse([REPAIRED_SOURCE,REPAIRED_MODE,REPAIRED_OPERATION])
+            or any(result.get(k)!=command[k] for k in command)):return False
+    activation=result.get('passive_fuel_activation')
+    if not isinstance(activation,dict):return False
+    normalized=dict(activation);proof=normalized.pop('repair_proof',None)
+    if (proof!={'status':'verified','operation_id':LOCK_REPAIR_OPERATION,
+            'sha256':REPAIR_RECEIPT_SHA256,'bytes':REPAIR_RECEIPT_BYTES,'mode':0o600,'identity_stable':True}
+            or not isinstance(proof,dict) or type(proof.get('bytes')) is not int
+            or type(proof.get('mode')) is not int or type(proof.get('identity_stable')) is not bool):return False
+    original=parse([CURRENT_SOURCE,CURRENT_MODE,CURRENT_OPERATION])
+    return current_completed(original,{**result,**original,'passive_fuel_activation':normalized})
 
 
 def plan_completed(command, result):
