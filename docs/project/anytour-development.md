@@ -1,14 +1,35 @@
 # AnyTour — единая организация разработки
 
-## Организация ближайшей поставки — поручение владельца 19.10.2026
+## Текущий проверенный checkpoint — 20.10.2026, ORIGINAL NEXT
+
+Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, очередь #1646; текущая координация [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
+Датированные версии и прежние следующие действия ниже сохранены как история/no-replay;
+их pins и оценки не заменяют этот checkpoint. Общие owner/protected ограничения действуют.
+
+| Состояние | Проверенный результат |
+| --- | --- |
+| Установленный продукт PR4729 | source `5e1b10ff420af5bc18b59761ceed2e966b4eb6f4`, release `27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b`; appSHA256 `b60417778442974b170416143ab6de946b5224af8c9b76de346998e933f625b7`, dataSHA256 `dc89305e513c876126615e12dd909b9124ebdcafe8ebc5b80c888c2555dd6223` |
+| Exact-source CI и публикация | CI SUCCESS: Build Search3 whole-site preview artifact:39420221567, Search3 full visual migration:39420221579, Security guard:39420221619, Validate V2 lead source contracts:39420221688. Build `39420221567` / artifact `12262518315`; stock `39422251546` / deployment artifact `12264591042`; [terminal/readback](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290872437). Predecessor a153 сохранён для rollback |
+| Исправление и его границы | Canonical INT4720 + diagnostics INT4730 + ORIGINAL4729: неповторяемый отказ больше не предлагает бесконечный retry/обход через рейсы или контакт; временный retry и другое предложение сохранены. JSDOM430/1280 и существующий compiled terminal corpus — контролируемая проверка; stock readback отдельно подтверждает установленные байты. Новый actual supplier denial, physical Safari и реальная доставка N |
+| Последний реальный путь — только predecessor a153 | [Egypt6290155004](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290155004): Москва→Египет,5–11Dec2026,7ночей,2взрослых,AI;68отелей/575вариантов в части Tourvisor, ANEXfailed. Свой FUN&SUN25277420880495/SunnyDays9–16Dec/UJ708–707:128362→124838₽ за2взрослых; интерфейс показал fuel0; контакт→Back/черновик сохранён, realLead0. CONSUMED/no-replay; результат не перенесён на новый source |
+| Диагностика и открытая зависимость | Безопасная initial-search диагностика установлена: [TV6290221240](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290221240), [ANEX6289994513](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6289994513). Историческая причина и восстановление ANEX не установлены |
+
+Следующий содержательный результат: INT принимает diagnosis/recovery свежей ошибки ANEX;
+отдельно новый оправданный Rix one-off/свой quote/отправленные IDs/итог за всю группу.
+[Standing allowance6286202365](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365) действует без повторного вопроса в прежних
+лимитах/штатном UI. Старые Find/quote/Continue/UNKNOWN, неизменённые UI/CI/deploy не повторять;
+не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Новых баллов нет;
+расписания, enabled/paused/timezone, Site203/204 и соседние проекты не меняются.
+
+## История организации поставки — поручение владельца 19.10.2026, до PR4729
 
 Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, ORIGINAL NEXT; новый UI-кандидат не создаётся.
 
-Последний фактический checkpoint — PR4700, 20.10.2026.
+Исторический checkpoint PR4700 — 20.10.2026, до следующей публикации PR4729.
 
 | Состояние | Точная основа и evidence |
 | --- | --- |
-| Текущий установленный продукт | source `a153d12e500a7855b0ca15b2dfa8743354e63db2`, appSHA256 `1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11`, published release `e8f359866b9b8eb6f98ed062b8234aa1f839cf34` |
+| Исторический установленный продукт PR4700 | source `a153d12e500a7855b0ca15b2dfa8743354e63db2`, appSHA256 `1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11`, published release `e8f359866b9b8eb6f98ed062b8234aa1f839cf34` |
 | Ремонт и штатная публикация | PR4700: all8 exact-source checks/all7 workflows SUCCESS; build39393809671/artifact12251475296; stock39397377588/terminal[6287458863](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863), predecessor1c7 retained |
 | Проверенное поведение | Canonical OR/subset сохраняется при обычном клике; сбой источников не выдаётся за отсутствие туров; country minimum не подставляется под selectedhotelIds. Source+compiled430/1280 error evidence и installediframe430/1280 filter positive-control разделены; [audit6286876103](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103). Без нового общего балла |
 | Разовые поиски | Прямое решение владельца «можешь не спрашивать разрешения на разовые поиски», [6286202365](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365): новый обоснованный обычный one-off/quote без повторного вопроса, в прежних лимитах/штатном UI. Не bulk/auto-drain/paid browser/repeatedANEX/реальная заявка/production и не изменение квот |
@@ -31,7 +52,7 @@ native/physical/real-supplier/real-delivery acceptance. Остальные gates
 отдельными. Site203reference/Site204viewer, PUBLIC project/history и production
 не меняются. Повторять принятый UI/публикацию или создавать косметический пакет нельзя.
 
-### Следующее действие
+### Историческое следующее действие PR4700 (заменено checkpoint PR4729)
 
 Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.
 

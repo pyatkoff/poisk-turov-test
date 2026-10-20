@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "RIX_COVERAGE_DELIVERY_REPAIR_PUBLISHED_EXTERNAL_RECOVERY_PENDING",
+    "status": "PERMANENT_QUOTE_DENIAL_REPAIR_PUBLISHED_ANEX_RECOVERY_PENDING",
     "issue": 1646,
-    "coordinator_issue": 4217,
+    "coordinator_issue": 4709,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-20T09:11:47.685Z",
+    "updated_at": "2026-10-20T12:30:11.840816+00:00",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа. 20.10.2026: «Запрет на проход клавиатурой» и повторное требование вернуться к основной поставке: обычный цельный путь мышью/тапами в NEXT; прекратить отдельные keyboard/A11y/focus микрозадачи и дробление на частные оценки. 20.10.2026 02:15: «исправил? …план оптимальный?» — записать завершённую демо-приёмку и один конкретный следующий admission-результат; для каждой внешней зависимости указать текущего ответственного, действие и условие закрытия, без круговых блокировок и повышения общей оценки. 20.10.2026 02:34: прямо разрешён один конкретный live поиск/TVquote без предварительного подтверждённого резерва, owner сообщил5000/сутки; этот допуск consumed6280546977. 02:43 «делай» — опубликовать просмотр установленного NEXT430 в том же Sitesproject и убрать устаревшее ожидание admission. 20.10.2026: «можешь не спрашивать разрешения на разовые поиски» — standing permission для нового обоснованного обычного one-off/quote в прежних лимитах/штатном UI; #4217/6286202365, без bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production или изменения квот.",
-    "acceptance_status": "CONNECTED_REPAIR_COMPILED_ACCEPTED_INSTALLED_POSITIVE_CONTROL_EXTERNAL_N",
-    "last_fully_checked_release_sha": "e8f359866b9b8eb6f98ed062b8234aa1f839cf34",
-    "published_source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863",
-    "planning_base_release_sha": "e8f359866b9b8eb6f98ed062b8234aa1f839cf34",
+    "acceptance_status": "SOURCE_COMPILED_ACCEPTED_INSTALLED_READBACK_ACTUAL_DENIAL_NOT_MEASURED",
+    "last_fully_checked_release_sha": "27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b",
+    "published_source_sha": "5e1b10ff420af5bc18b59761ceed2e966b4eb6f4",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290872437",
+    "planning_base_release_sha": "27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "PR4700/a153 error+OR+selectedhotel calendar repair: source/focused/compiled ACCEPT; installediframe430/1280 healthy filter positive-control ACCEPT, actual installedfailed-provider/currentprice/submittedIDs N. No complete new five-criterion row or numericgrowth/global9.5. Historical1c7 rubric evidence retained only at original artifact: Audit6282656840 retained exact1c7 responsive360/390/768: FIRST boundedMobile360/3902/2/2/2/2=10, FIRSTintermediate7682/1.5/2/2/2=9.5, FIRSTCalendar-range2/1.5/2/2/2=9.5;Selectedtourfamily10 carriedonlyexactscope/newreceipts, UI delta0. Installed430Filters9→10(+1) and430/1280 ordinaryacceptance6282417033 retainedseparately. No wholeSearch/mobile/physical/real-supplier scoreinheritance. All externalN/forbiddenkeyboard remainseparate."
+      "score_status": "PR4729 non-retryable quote consumer: exact-source/focused JSDOM430/1280 and existing compiled terminal corpus accepted; stock publication/readback are separate facts. No new overall score or live/physical/delivery acceptance. Historical a153/1c7 scores retain their exact artifacts/scopes and are archived in dated_history; real Egypt6290155004 measured only predecessor a153/TV."
     },
-    "next_action": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.",
+    "next_action": "Следующий содержательный результат — принятая INT diagnosis/recovery свежей ошибки ANEX в #2506/#4709; отдельно новый обоснованный Rix one-off/own-tour quote с проверкой отправленных IDs и итога за всю группу в штатном UI. Последний реальный Egypt-путь 6290155004 относится только к predecessor a153: TV дал выдачу/свой расчёт/рейсы/контакты, ANEX завершился ошибкой. Новая публикация4729 не доказывает восстановление ANEX, новый supplier denial или physical Safari/реальную доставку. Старые Egypt/Rix Find, quote/Continue/UNKNOWN и неизменённые UI/CI/deploy не повторять. Standing allowance 6286202365 разрешает другой новый оправданный ordinary one-off/normal quote без повторного вопроса в прежних лимитах/штатном UI; не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Расписания и enabled/paused/timezone не меняются.",
     "next_task": {
-      "scope": "Тот же конечный scope. Связный Rix coverage/delivery/observed-price ремонт4700 завершён source/CI/merge/stockpublication/readback; installedpositivecontrol430/1280 принят. Точный остаток этой реальной операции — diagnosis/recovery retainedlogs2506/6286723845 и затем новый обоснованный ordinary live result/ownTVprice/submittedIDs, без replay/outageprobe. Независимые physical/native/INTrepeated/realLead/production retainownergates.",
+      "scope": "Тот же ORIGINAL NEXT:4729 canonical permanent-denial consumer опубликован; следующий внешний результат — ANEX diagnosis/recovery и отдельный новый Rix путь в своих допусках.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён. Site204/source d71b84ca — только NEXT-viewer/общий width-controller, не новый productdesign; Site203 остаётся согласованным визуальным reference.",
-      "acceptance": "Audit6286876103: four compiledfailedsource frames+receipt430/1280, independent source/artifact review ACCEPT; stock39397377588/6287458863 exactreadback, installedfamily filter180000→187000/Apply430→resize1280x720→zero/recovery/Reset passed. Not installedfailed-provider/realprice/physical/fullsearch score. Historical6282417033/6282656840 retainexact1c7 scope; no automatic inheritance. Forbiddenkeyboard/200%/Compare unchanged.",
-      "execution": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.",
+      "acceptance": "JSDOM430/1280 non-retryable/transient/allowed-offer и существующий compiled terminal corpus приняты; stock readback подтверждает установку. Новый actual supplier denial/physical Safari/реальная доставка N. Реальный Egypt receipt6290155004 только predecessor a153; без автоматического переноса оценки.",
+      "execution": "Следующий содержательный результат — принятая INT diagnosis/recovery свежей ошибки ANEX в #2506/#4709; отдельно новый обоснованный Rix one-off/own-tour quote с проверкой отправленных IDs и итога за всю группу в штатном UI. Последний реальный Egypt-путь 6290155004 относится только к predecessor a153: TV дал выдачу/свой расчёт/рейсы/контакты, ANEX завершился ошибкой. Новая публикация4729 не доказывает восстановление ANEX, новый supplier denial или physical Safari/реальную доставку. Старые Egypt/Rix Find, quote/Continue/UNKNOWN и неизменённые UI/CI/deploy не повторять. Standing allowance 6286202365 разрешает другой новый оправданный ordinary one-off/normal quote без повторного вопроса в прежних лимитах/штатном UI; не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Расписания и enabled/paused/timezone не меняются.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. Owner6286202365 permits justified ordinary one-off searches/normalquotes within existinglimits/stockUI without repeatedpermission; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/prod expansion. Other protected operations still require their exact allowance/budget/stockexecutor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1356,19 +1356,31 @@
       "artifact_id": 11958778448,
       "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
       "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
-      "remaining": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.",
-      "historical_pins": "Flat legacy resume_evidence source/release/artifact and dated_history are history/no-replay, not a queue. Current published_source_sha/latest_next =a153/app1fece71fdc07/receipt6287458863. Old1c7 bounded evidence remains exact1c7 only. Fresh current_task/plan+latest terminal govern.",
+      "remaining": "Следующий содержательный результат — принятая INT diagnosis/recovery свежей ошибки ANEX в #2506/#4709; отдельно новый обоснованный Rix one-off/own-tour quote с проверкой отправленных IDs и итога за всю группу в штатном UI. Последний реальный Egypt-путь 6290155004 относится только к predecessor a153: TV дал выдачу/свой расчёт/рейсы/контакты, ANEX завершился ошибкой. Новая публикация4729 не доказывает восстановление ANEX, новый supplier denial или physical Safari/реальную доставку. Старые Egypt/Rix Find, quote/Continue/UNKNOWN и неизменённые UI/CI/deploy не повторять. Standing allowance 6286202365 разрешает другой новый оправданный ordinary one-off/normal quote без повторного вопроса в прежних лимитах/штатном UI; не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Расписания и enabled/paused/timezone не меняются.",
+      "historical_pins": "Flat legacy source/release/artifact and all dated_history are history/no-replay, not a queue. Current published_source_sha/latest_next identify PR4729 source 5e1b10ff420af5bc18b59761ceed2e966b4eb6f4. The last measured live Egypt6290155004 belongs only to predecessor a153; no new actual supplier denial/physical/real delivery follows from controlled corpus or stock readback.",
       "latest_next": {
-        "source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
-        "release_sha": "e8f359866b9b8eb6f98ed062b8234aa1f839cf34",
-        "build_run": 39393809671,
-        "artifact_id": 12251475296,
-        "publish_run": 39397377588,
-        "deployment_receipt_artifact": 12251947880,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863",
-        "compiled_app_sha256": "1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11",
-        "compiled_data_sha256": "758d25b2103d297c8080a9e3b1ee405256f60d2d2e3035dfa64ca21d7acf7d11",
-        "scope": "PR4700 canonical OR/subset coverage + truthful failed/incomplete zeroresults + selectedhotelIds broaderDBcalendar guard. All8checks/7workflows SUCCESS, visual39393809833 attempt2/indexfe66deb4f1b437085aaf95046668ed0d94fdb1d5dbaca18af51a1001569aac32;843payload exact, changed4files only. Stock39397377588 SUCCESS;9routes/43assets/production+sibling+rollback guards PASS. Installed app pin and healthy filterpositivecontrol430x932/1280x720 accepted; not actualfailedprovider/realprice/submittedIDs/physical/lead/globalDONE."
+        "source_pr": 4729,
+        "source_sha": "5e1b10ff420af5bc18b59761ceed2e966b4eb6f4",
+        "source_tree_sha": "7488291c59bc1d4de8a925646457270bc43b51f2",
+        "release_sha": "27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b",
+        "build_run": 39420221567,
+        "artifact_id": 12262518315,
+        "visual_run": 39420221579,
+        "source_ci_runs": {
+          "Build Search3 whole-site preview artifact": 39420221567,
+          "Search3 full visual migration": 39420221579,
+          "Security guard": 39420221619,
+          "Validate V2 lead source contracts": 39420221688
+        },
+        "publish_run": 39422251546,
+        "deployment_receipt_artifact": 12264591042,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290872437",
+        "compiled_app_sha256": "b60417778442974b170416143ab6de946b5224af8c9b76de346998e933f625b7",
+        "compiled_data_sha256": "dc89305e513c876126615e12dd909b9124ebdcafe8ebc5b80c888c2555dd6223",
+        "previous_source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
+        "status": "PUBLISHED_INSTALLED_READBACK_NO_REPLAY",
+        "rollback_retained": true,
+        "scope": "Canonical INT4720 + diagnostics INT4730 + ORIGINAL4729 non-retryable quote consumer. Same-offer retry/defer/contact bypass denied, transient recovery and another offer retained. JSDOM430/1280 and existing compiled terminal corpus are controlled evidence; stock activation/readback is installed-byte evidence. No new actual supplier denial, physical Safari, real delivery or score promotion."
       },
       "root_api_install": {
         "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
@@ -1514,6 +1526,70 @@
           "local_updated_at": "2026-10-19T09:19:01Z",
           "scope": "LatestINToneTVallowanceexplicitlyconsumed,no newacceptedrepeated/allpairhandoff;latestLOCALonlycompletedroothelperrepair,no alias/submittedIDs handoff. Knowncloudbrowser notphysical; currenttoolmetadata containsno physical/Safari/deviceQA route. No newbrowsercapability/liveprobe performed.",
           "next_condition": "SupportedphysicaliPhone/Safari route for exactinstalled1c7 ordinary430 offlinefamily, no supplier/paid/realSubmit."
+        },
+        "latest_next_before_permanent_denial_20261020": {
+          "source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
+          "release_sha": "e8f359866b9b8eb6f98ed062b8234aa1f839cf34",
+          "build_run": 39393809671,
+          "artifact_id": 12251475296,
+          "publish_run": 39397377588,
+          "deployment_receipt_artifact": 12251947880,
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6287458863",
+          "compiled_app_sha256": "1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11",
+          "compiled_data_sha256": "758d25b2103d297c8080a9e3b1ee405256f60d2d2e3035dfa64ca21d7acf7d11",
+          "scope": "PR4700 canonical OR/subset coverage + truthful failed/incomplete zeroresults + selectedhotelIds broaderDBcalendar guard. All8checks/7workflows SUCCESS, visual39393809833 attempt2/indexfe66deb4f1b437085aaf95046668ed0d94fdb1d5dbaca18af51a1001569aac32;843payload exact, changed4files only. Stock39397377588 SUCCESS;9routes/43assets/production+sibling+rollback guards PASS. Installed app pin and healthy filterpositivecontrol430x932/1280x720 accepted; not actualfailedprovider/realprice/submittedIDs/physical/lead/globalDONE."
+        },
+        "active_checkpoint_before_permanent_denial_20261020": {
+          "status": "RIX_COVERAGE_DELIVERY_REPAIR_PUBLISHED_EXTERNAL_RECOVERY_PENDING",
+          "acceptance_status": "CONNECTED_REPAIR_COMPILED_ACCEPTED_INSTALLED_POSITIVE_CONTROL_EXTERNAL_N",
+          "updated_at": "2026-10-20T09:11:47.685Z",
+          "next_action": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются."
+        },
+        "score_status_before_permanent_denial_20261020": "PR4700/a153 error+OR+selectedhotel calendar repair: source/focused/compiled ACCEPT; installediframe430/1280 healthy filter positive-control ACCEPT, actual installedfailed-provider/currentprice/submittedIDs N. No complete new five-criterion row or numericgrowth/global9.5. Historical1c7 rubric evidence retained only at original artifact: Audit6282656840 retained exact1c7 responsive360/390/768: FIRST boundedMobile360/3902/2/2/2/2=10, FIRSTintermediate7682/1.5/2/2/2=9.5, FIRSTCalendar-range2/1.5/2/2/2=9.5;Selectedtourfamily10 carriedonlyexactscope/newreceipts, UI delta0. Installed430Filters9→10(+1) and430/1280 ordinaryacceptance6282417033 retainedseparately. No wholeSearch/mobile/physical/real-supplier scoreinheritance. All externalN/forbiddenkeyboard remainseparate.",
+        "current_live_journey_before_egypt_20261020": {
+          "status": "TERMINAL_CONSUMED_PROVIDER_FAILURES_NO_REPLAY",
+          "operation": "next-live-rix-mobile-20261020-v1",
+          "source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286499106",
+          "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103",
+          "owner_allowance": "Standing permission6286202365 for justified ordinary oneoffs/quotes within currentlimits/stockUI without reasking; this failed operation consumed, not all future independent searches.",
+          "scope": "ActualSite204430 MoscowTurkey03–09Nov/7n/2A/nochildren/AI own4234OR684; oneFind07:55:55.084Z; by74s TV+ANEX failed/0returned;quote0/submit0; native submittedIDs/backendHTTP/balance/recovery UNKNOWN. Retainedlogs dependency2506/6286723845, no outageprobe/retry.",
+          "semantic_receipt_sha256": "460d02e09d187545ec44ce962c6abdc61d86e02443e151526f30c7fe0dfbf0ea"
+        },
+        "external_gate_observation_before_egypt_20261020": {
+          "checked_at": "2026-10-20T09:11:47.685Z",
+          "int_latest_comment": 6286723845,
+          "int_issue_comments": 328,
+          "int_updated_at": "2026-10-20T08:24:03Z",
+          "scope": "FreshINT2506 lastrecord is exactretained-log request6286723845; no newaccepted diagnosis/recovery/allpair/leadhandoff. Ordinary oneoffstandingpermission6286202365 active; no new outageprobe/replay. Physical remains itsown separategate.",
+          "next_condition": "INT accepted safe retained-log diagnosis/recovery for consumed07:55:55Rix operation6286499106; do not make physical QA a universal predecessor."
+        },
+        "supported_visual_qa_before_permanent_denial_20261020": {
+          "status": "REPAIR_COMPILED_AND_INSTALLED_POSITIVE_CONTROL_ACCEPTED_SCOPED_EXTERNAL_N",
+          "checked_at": "2026-10-20",
+          "scope": "Currenta153 compiledfailedzero+OR430/1280 and installediframe430/1280 healthyfilterpositivecontrol independentlyaccepted; actualinstalledfailedprovider/realprice/submittedIDs/native/physical/lead/prod notinherited. No newpaidcarrier/supplierprobe.",
+          "required_next": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.",
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103"
+        },
+        "installed_next_viewer_before_permanent_denial_20261020": {
+          "status": "PUBLISHED_VIEWER_CURRENT_CHILD_A153_FILTER_POSITIVE_CONTROL_ACCEPTED",
+          "site_project_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+          "site_version": 204,
+          "source_sha": "d71b84cae73d947438b16407dfb527f6769843f9",
+          "saved_version_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_a6d4f56bc84881919b15e748a5b2596e",
+          "deployment_id": "appgdep_6ad6ba5442f48191be103403d20f90e2",
+          "url": "https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo",
+          "child_source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
+          "child_app_sha256": "1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11",
+          "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103",
+          "scope": "SameSite204wrapper unchanged; currentchilda153 actual430x932→1280x720 familydemo180000zero→187000recovery/Apply/resize/Reset,1offer186400 retained,8script pin. No actualinstalledfailed-provider/realprice/physical/global9.5; fullpreviousordinary1c7 proof preserved dated_history.",
+          "semantic_receipt_sha256": "e5b677093be68963f110fcbb37e7ed5cff9abdf904c31b3b3ed509523d42083e"
+        },
+        "execution_policy_before_permanent_denial_20261020": {
+          "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
+          "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. Current4700 productrepair necessaryregression followed allgates; no newQA-only/score/cosmeticqueue. Ordinary justified oneoffs/quotes allowed6286202365 withinexistinglimits/stockUI, without repeatedpermission; no bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
+          "verification_pin": "Installeda153/app1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11/releasee8f359866b9b8eb6f98ed062b8234aa1f839cf34/stock39397377588/terminal6287458863. Source8checks/7workflows green; compiledfailedpath430/1280 distinct from installedhealthypositivecontrol. Historical1c7audits6282417033/6282656840 and realTV6280546977 remain exacthistory/no-replay;Site204d71b84ca unchanged.",
+          "closeout": "4700 repair complete through source/CI/merge/stockpublication/readback/installedhealthypositivecontrol; actualfailedsource/realprice/submittedIDs externalN. ExactINTretained-log request6286723845 pending; no duplicateFind/outageprobe/unchangedUI/CI/deploy. Standingordinaryoneoffpermission remains active for a justified new independent context; notwholeSearch9.5/globalDONE. Existingpausedautomation/schedule/timezone unchanged."
         }
       },
       "root_recovery": {
@@ -1554,10 +1630,10 @@
         "superseded_by": "approved_site203; historical source-only d827 status retained, no replay"
       },
       "supported_visual_qa": {
-        "status": "REPAIR_COMPILED_AND_INSTALLED_POSITIVE_CONTROL_ACCEPTED_SCOPED_EXTERNAL_N",
+        "status": "HISTORICAL_A153_COMPILED_AND_INSTALLED_POSITIVE_CONTROL_ACCEPTED_SCOPED",
         "checked_at": "2026-10-20",
-        "scope": "Currenta153 compiledfailedzero+OR430/1280 and installediframe430/1280 healthyfilterpositivecontrol independentlyaccepted; actualinstalledfailedprovider/realprice/submittedIDs/native/physical/lead/prod notinherited. No newpaidcarrier/supplierprobe.",
-        "required_next": "Пакет4700/sourcea153 установлен в ORIGINAL NEXT; stock39397377588/readback6287458863 и installed iframe430/1280 filter positive-control приняты. Failed-source/OR/country-price исправление доказано source+compiled, actual installed failed-provider branch/realprice остаются отдельным N. Операция next-live-rix-mobile-20261020-v1 CONSUMED: не повторять старый Find/retry/Continue/quote. Следующее конкретное условие — принятая INT diagnosis/recovery по retained logs07:55:55, #2506/6286723845; до неё не запускать платный outage probe. Другой новый обоснованный разовый поиск/обычная проверка цены разрешены владельцем6286202365 без повторного вопроса, в прежних лимитах и штатном UI; это не bulk/auto-drain/repeatedANEX/realLead/production authority. Независимый новый handoff допускается в своём ownership; physical QA не общий predecessor. Не повторять неизменённые UI/CI/deploy и не создавать косметическую очередь; paused/schedule/timezone не меняются.",
+        "scope": "Historicala153 compiled failed-zero/OR430/1280 and installediframe430/1280 healthy-filter positive-control independently accepted only for their original artifact. This retained proof does not establish new-source iframe430/1280, actual supplier denial, physical Safari, real delivery or a score promotion. Current publication/source evidence is in latest_next; old quality receipt remains historical/no-replay.",
+        "required_next": "Следующий содержательный результат — принятая INT diagnosis/recovery свежей ошибки ANEX в #2506/#4709; отдельно новый обоснованный Rix one-off/own-tour quote с проверкой отправленных IDs и итога за всю группу в штатном UI. Последний реальный Egypt-путь 6290155004 относится только к predecessor a153: TV дал выдачу/свой расчёт/рейсы/контакты, ANEX завершился ошибкой. Новая публикация4729 не доказывает восстановление ANEX, новый supplier denial или physical Safari/реальную доставку. Старые Egypt/Rix Find, quote/Continue/UNKNOWN и неизменённые UI/CI/deploy не повторять. Standing allowance 6286202365 разрешает другой новый оправданный ordinary one-off/normal quote без повторного вопроса в прежних лимитах/штатном UI; не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Расписания и enabled/paused/timezone не меняются.",
         "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103"
       },
       "approved_site203": {
@@ -1618,17 +1694,29 @@
         "remaining": "Exact installed real-scenario admission next; separate native430/physical, canonicalRix/submittedIDs, INT repeated/allpair, reallead/production gates. No score-driven task queue."
       },
       "current_live_journey": {
-        "status": "TERMINAL_CONSUMED_PROVIDER_FAILURES_NO_REPLAY",
-        "operation": "next-live-rix-mobile-20261020-v1",
-        "source_sha": "1c7c3223190673726d5185c8946469f62e5294d3",
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286499106",
-        "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103",
-        "owner_allowance": "Standing permission6286202365 for justified ordinary oneoffs/quotes within currentlimits/stockUI without reasking; this failed operation consumed, not all future independent searches.",
-        "scope": "ActualSite204430 MoscowTurkey03–09Nov/7n/2A/nochildren/AI own4234OR684; oneFind07:55:55.084Z; by74s TV+ANEX failed/0returned;quote0/submit0; native submittedIDs/backendHTTP/balance/recovery UNKNOWN. Retainedlogs dependency2506/6286723845, no outageprobe/retry.",
-        "semantic_receipt_sha256": "460d02e09d187545ec44ce962c6abdc61d86e02443e151526f30c7fe0dfbf0ea"
+        "status": "TERMINAL_CONSUMED_TV_PATH_ANEX_FAILURE_NO_REPLAY",
+        "source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290155004",
+        "search": "Москва→Египет,5–11Dec2026,7ночей,2взрослых,AI",
+        "returned_hotels": 68,
+        "returned_variants": 575,
+        "sources": "Observed Tourvisor portion; ANEX failed, absence of ANEX tours not established.",
+        "own_tour_id": "25277420880495",
+        "operator": "FUN&SUN",
+        "hotel": "Sunny Days",
+        "tour_dates": "9–16Dec2026",
+        "flight_pair": "UJ708/UJ707",
+        "party_adults": 2,
+        "observed_price_rub": 128362,
+        "selected_pair_total_rub": 124838,
+        "fuel_ui_amount_rub": 0,
+        "contact_return": "Contact step/Back/draft observed; real lead not submitted.",
+        "real_leads": 0,
+        "owner_allowance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365",
+        "scope": "Last actual live journey is predecessor a153 only. Controlled new-source denial tests and stock publication do not rerun or upgrade this result."
       },
       "installed_next_viewer": {
-        "status": "PUBLISHED_VIEWER_CURRENT_CHILD_A153_FILTER_POSITIVE_CONTROL_ACCEPTED",
+        "status": "PUBLISHED_SITE204_WRAPPER_HISTORICAL_A153_CHILD_MEASUREMENT",
         "site_project_id": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
         "site_version": 204,
         "source_sha": "d71b84cae73d947438b16407dfb527f6769843f9",
@@ -1638,7 +1726,7 @@
         "child_source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2",
         "child_app_sha256": "1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11",
         "quality_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6286876103",
-        "scope": "SameSite204wrapper unchanged; currentchilda153 actual430x932→1280x720 familydemo180000zero→187000recovery/Apply/resize/Reset,1offer186400 retained,8script pin. No actualinstalledfailed-provider/realprice/physical/global9.5; fullpreviousordinary1c7 proof preserved dated_history.",
+        "scope": "SameSite204 wrapper unchanged. child_source_sha/child_app_sha256 and quality_receipt identify only the historicala153 actual430x932→1280x720 family-demo180000zero→187000recovery/Apply/resize/Reset measurement,1offer186400 retained,8script pin. Current runtime identity is in latest_next; no new iframe430/1280 acceptance is promoted from stock readback. No new actual supplier denial, physical Safari, real delivery or global9.5; prior1c7 proof remains in dated_history.",
         "semantic_receipt_sha256": "e5b677093be68963f110fcbb37e7ed5cff9abdf904c31b3b3ed509523d42083e"
       },
       "current_filter_recovery": {
@@ -1688,28 +1776,33 @@
         "new_real_leads": 0
       },
       "external_gate_observation": {
-        "checked_at": "2026-10-20T09:11:47.685Z",
-        "int_latest_comment": 6286723845,
-        "int_issue_comments": 328,
-        "int_updated_at": "2026-10-20T08:24:03Z",
-        "scope": "FreshINT2506 lastrecord is exactretained-log request6286723845; no newaccepted diagnosis/recovery/allpair/leadhandoff. Ordinary oneoffstandingpermission6286202365 active; no new outageprobe/replay. Physical remains itsown separategate.",
-        "next_condition": "INT accepted safe retained-log diagnosis/recovery for consumed07:55:55Rix operation6286499106; do not make physical QA a universal predecessor."
+        "checked_at": "2026-10-20T12:30:11.840816+00:00",
+        "int_issue": 2506,
+        "coordinator_issue": 4709,
+        "scope": "TV/ANEX safe diagnostics installed6290221240/6289994513; last actual Egypt search6290155004 has TV own tour/flight/contact path and ANEX failure on a153. New-source actual denial/physical/real delivery N.",
+        "next_condition": "Accepted INT fresh ANEX failure diagnosis/recovery; separately a new justified Rix own-tour/IDs/whole-party price path within standing ordinary allowance."
+      },
+      "safe_initial_search_diagnostics": {
+        "tourvisor_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290221240",
+        "anex_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6289994513",
+        "status": "INSTALLED_READBACK_DIAGNOSTICS_ONLY",
+        "scope": "Safe initial-search diagnostics installed. Historical cause and ANEX recovery remain unestablished. No replay of old Find/UNKNOWN operations."
       }
     },
-    "published_release_sha": "e8f359866b9b8eb6f98ed062b8234aa1f839cf34",
+    "published_release_sha": "27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
       "plan_section": "docs/project/search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026",
       "priority": "Finish connected confirmed product defects and take the first available authorized material externalstep; ordinary oneoffs/normalquotes have standingpermission6286202365, no reasking or consumed-operation replay. Physicalonlyitsownscope; protected gates remain.",
       "parallelism": "One writer/shared owner and integrator; independent read-only plan/frame/behavior review in parallel; separate publisher only for ready changed artifact.",
-      "reporting": "One terminal/RELEASE/nextstep in4217; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
+      "reporting": "One terminal/RELEASE/nextstep in4709; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
       "blocker_scope": "Keyboard walkthroughs/Tab/A11y-only/focus tasks forbidden by owner20Oct; keep history/N/deferred without making them an ordinary-UI blocker or inventing scores. Native430/physical and external INT/data/delivery/production retain exact gates separately. Missing resize or everyN is not a new task; no cosmetic/coverage/paid retry loop.",
-      "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. Current4700 productrepair necessaryregression followed allgates; no newQA-only/score/cosmeticqueue. Ordinary justified oneoffs/quotes allowed6286202365 withinexistinglimits/stockUI, without repeatedpermission; no bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
+      "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. Current4729 productrepair necessaryregression followed allgates; no newQA-only/score/cosmeticqueue. Ordinary justified oneoffs/quotes allowed6286202365 withinexistinglimits/stockUI, without repeatedpermission; no bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
-      "verification_pin": "Installeda153/app1fece71fdc074ba152d62251bd942fbeb36df42fe775af85444e6611f173cc11/releasee8f359866b9b8eb6f98ed062b8234aa1f839cf34/stock39397377588/terminal6287458863. Source8checks/7workflows green; compiledfailedpath430/1280 distinct from installedhealthypositivecontrol. Historical1c7audits6282417033/6282656840 and realTV6280546977 remain exacthistory/no-replay;Site204d71b84ca unchanged.",
-      "closeout": "4700 repair complete through source/CI/merge/stockpublication/readback/installedhealthypositivecontrol; actualfailedsource/realprice/submittedIDs externalN. ExactINTretained-log request6286723845 pending; no duplicateFind/outageprobe/unchangedUI/CI/deploy. Standingordinaryoneoffpermission remains active for a justified new independent context; notwholeSearch9.5/globalDONE. Existingpausedautomation/schedule/timezone unchanged.",
+      "verification_pin": "Installed source5e1b10ff420af5bc18b59761ceed2e966b4eb6f4/appb60417778442974b170416143ab6de946b5224af8c9b76de346998e933f625b7/datadc89305e513c876126615e12dd909b9124ebdcafe8ebc5b80c888c2555dd6223/release27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b/stock39422251546/receipthttps://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290872437. Controlled non-retryable JSDOM430/1280+compiled terminal corpus distinct from stock installed-byte readback; actual Egypt6290155004 belongs only to predecessor a153.",
+      "closeout": "Следующий содержательный результат — принятая INT diagnosis/recovery свежей ошибки ANEX в #2506/#4709; отдельно новый обоснованный Rix one-off/own-tour quote с проверкой отправленных IDs и итога за всю группу в штатном UI. Последний реальный Egypt-путь 6290155004 относится только к predecessor a153: TV дал выдачу/свой расчёт/рейсы/контакты, ANEX завершился ошибкой. Новая публикация4729 не доказывает восстановление ANEX, новый supplier denial или physical Safari/реальную доставку. Старые Egypt/Rix Find, quote/Continue/UNKNOWN и неизменённые UI/CI/deploy не повторять. Standing allowance 6286202365 разрешает другой новый оправданный ordinary one-off/normal quote без повторного вопроса в прежних лимитах/штатном UI; не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Расписания и enabled/paused/timezone не меняются.",
       "viewport_scope": {
         "owner_direction": "20.10.2026 00:52",
         "current_widths_px": [
@@ -1732,7 +1825,7 @@
       },
       "autopilot_boundary": "Existing ownAutomation_395ea9035ab8819188dadef16b09085d remains paused per6282740056; this control clarification does not change enabled/schedule/timezone/prompt or other tasks. Physical QA and other external scopes are independent: an applicable authorized material step may proceed within its ownership/gates without waiting for an iPhone. Resume is not automatic from this documentation change and must not replay unchanged UI/consumed operations."
     },
-    "last_fully_checked_source_sha": "a153d12e500a7855b0ca15b2dfa8743354e63db2"
+    "last_fully_checked_source_sha": "5e1b10ff420af5bc18b59761ceed2e966b4eb6f4"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
