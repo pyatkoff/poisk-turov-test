@@ -547,6 +547,17 @@ class ContinuationTest(unittest.TestCase):
             before={p:p.read_bytes() for p in private.rglob('*.json')}
             self.assertEqual(2,len(space['retained_prior_selection'](scope)))
             self.assertEqual(before,{p:p.read_bytes() for p in private.rglob('*.json')})
+            name='int-andromeda-match-retained-acquire-20261020-v4';target=private/name;target.mkdir()
+            wrapper=json.loads((private/history[1]['operation_id']/'result.json').read_text())
+            wrapper['operation_id']=name;wrapper['match_retained']['data'].update(operation_id=name,selected_hotels=1)
+            digest=hashlib.sha256(a.canonical(wrapper['match_retained']['data'])).hexdigest();wrapper['match_retained']['evidence_sha256']=digest
+            for file,value in [('result.json',wrapper),('reservation.json',{'operation_id':name,'source_sha':SHA}),('acquisition-plan.json',{'hotel_ids':[12]})]:
+                (target/file).write_bytes(a.canonical(value))
+            variation=dict(scope,scope_kind='owner_date_variation',context_origin='owner_20261020_1257_timeout60_new_window',
+                           selected_tv_hotel_ids=[12],context_history=[dict(history[1],operation_id=name,selected_tv_hotel_ids=[12],evidence_sha256=digest)])
+            self.assertEqual(3,len(space['retained_prior_selection'](variation)))
+            variation['context_origin']='owner_20261020_1031_saved_peer_context'
+            with self.assertRaisesRegex(ValueError,'history_shape'):space['retained_prior_selection'](variation)
             for change in [('unknown',0),('state','completed'),('roster',[12])]:
                 bad=copy.deepcopy(scope)
                 if change[0]=='unknown':bad['exclusion_history'][1]['unknown_http_calls']=change[1]
@@ -624,6 +635,17 @@ class ContinuationTest(unittest.TestCase):
             bad['match_retained']['evidence_sha256']=hashlib.sha256(a.canonical(bad['match_retained']['data'])).hexdigest()
             self.assertFalse(m.completed_result(cmd,bad,CONTROL))
 
+    def test_new_owner60_policy_does_not_retarget_or_reopen_the_old_scope(self):
+        self.assertEqual('458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31',m.NEXT_SCOPE['sha256'])
+        c=core();m.register_parser(c);p=m.NEXT_60_SCOPE
+        command=c.PREFIX+' '.join((SHA,'match-retained-acquire',p['operation_id'],p['cohort'],p['parent_operation_id']))
+        parsed=c.parse_command(command)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+        self.assertIn('NEXT_SCOPE='+repr(p),c.REMOTE)
+        for bad in (command.replace(p['operation_id'],m.NEXT_SCOPE['operation_id']),
+                    command.replace(p['cohort'],m.NEXT_SCOPE['cohort']),command.replace('match-retained-acquire','match-retained-readback')):
+            with self.assertRaises(ValueError):c.parse_command(bad)
+
 
 class AcquisitionTest(unittest.TestCase):
     def date_scope(self):
@@ -673,6 +695,21 @@ class AcquisitionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('tour_detail','/tours/1',{})
         client.reserved=0;client.tariff=1;client.search_start_maximum=1
         with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('search_start','/tours/search',{})
+
+    def test_fresh_owner_window_is_not_claimed_as_a_saved_peer_date_and_still_blocks_unknown_ranges(self):
+        scope,current=self.date_scope();before=copy.deepcopy(current)
+        scope.update(context_origin='owner_20261020_1257_timeout60_new_window',owner_authorized_at='2026-10-20T12:57:13+02:00',http_timeout_seconds=60,
+                     wire_context={'date_from':'2099-02-08','date_to':'2099-02-08','nights_from':6,'nights_to':6})
+        scope['scope_id']=hashlib.sha256(a.canonical({k:scope[k] for k in ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts','scope_kind','wire_context','context_origin')})).hexdigest()
+        scope['cohort']='anex-next-'+scope['scope_id'][:16]
+        self.assertEqual(2,len(a.select_scope_rows(scope,current,'2026-10-20')));self.assertEqual(before,current)
+        previous={'params':{'countryId':2,'departureId':1,'adults':2,'childs':[],'operatorIds':[13],'hotelIds':[101],
+                            'dateFrom':'2099-02-01','dateTo':'2099-02-01'}}
+        a.check_new_context(scope,[previous])
+        previous['params']['dateTo']='2099-02-08'
+        with self.assertRaisesRegex(ValueError,'effective_date_range_consumed'):a.check_new_context(scope,[previous])
+        scope['owner_authorized_at']='2026-10-20T10:31:00+02:00'
+        with self.assertRaisesRegex(ValueError,'owner_authority'):a.check_new_context(scope,[])
 
     def test_saved_detail_inspection_never_exposes_url_path_or_query_values(self):
         detail={'hotel':8038,'operator':13,'operatorLink':'https://anextour.ru/hotels/opaque-hotel-private?HOTELLIST=123&token=secret-value#opaque-fragment'}
