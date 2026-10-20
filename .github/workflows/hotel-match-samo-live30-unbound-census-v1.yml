@@ -1,0 +1,168 @@
+name: MATCH SAMO live30 unbound native census v1
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: ['.github/workflows/hotel-match-samo-live30-unbound-census-v1.yml']
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-samo-live30-unbound-census-1971-20260924-v1, cancel-in-progress: false}
+env:
+  OP: hotel-match-samo-live30-unbound-census-1971-20260924-v1
+  BASE: cec00232604d5a60c4705f299f53cef7ffd0bb64
+  CLAIM: '5804736790'
+  V1_OP: hotel-match-samo-live30-common4-acquire-1971-20260924-v1
+  V2_OP: hotel-match-samo-live30-common4-retry-1971-20260924-v2
+jobs:
+  census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate authority and exact scope
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail; umask 077; mkdir -p terminal
+          test "$(git merge-base HEAD "$BASE")" = "$BASE"
+          test "$(git diff --name-only "$BASE..HEAD" | sort | tr '\n' ' ')" = ".github/workflows/hotel-match-samo-live30-unbound-census-v1.yml "
+          gh api "repos/$GITHUB_REPOSITORY/issues/comments/$CLAIM" >terminal/claim.json
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          c=json.load(open('terminal/claim.json')); b=c['body']
+          assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          for x in [os.environ['OP'],os.environ['V1_OP'],os.environ['V2_OP'],'unbound_operator_native','No provider HTTP','DB0','mapping writes0']:
+              assert x in b,x
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['HEAD']+'&per_page=100'
+          for _ in range(100):
+              q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(q,timeout=30) as f: runs=json.load(f)['workflow_runs']
+              xs=[x for x in runs if x['name']=='Security guard' and x['head_sha']==os.environ['HEAD']]
+              if xs:
+                  x=max(xs,key=lambda y:y['id'])
+                  if x['status']=='completed':
+                      assert x['conclusion']=='success'; break
+              time.sleep(3)
+          else: raise SystemExit('security_not_green')
+          PY
+      - name: Read retained private evidence only
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; trap 'rm -f "$key" "$known"' EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY"|tr -d '\r'>"$key"; else printf '%s' "$KEY"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST"; opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" python3 - "$V1_OP" "$V2_OP" "$OP" <<'PY' >terminal/result.json
+          import sys,json,hashlib,pathlib,re,collections
+          v1op,v2op,outop=sys.argv[1:4]
+          root=pathlib.Path.home()/'.anytoour-match'/'operations'
+          def raw_json(path):
+              assert path.is_file() and not path.is_symlink(), str(path)
+              raw=path.read_bytes(); return raw,json.loads(raw)
+          def terminal(op):
+              d=root/op; assert d.is_dir() and not d.is_symlink(),op
+              rr,r=raw_json(d/'result.json'); qr,q=raw_json(d/'receipt.json')
+              assert q.get('result_sha256')==hashlib.sha256(rr).hexdigest(),op+'_receipt_hash'
+              return d,rr,r,q
+          v1d,v1raw,v1,v1q=terminal(v1op); v2d,v2raw,v2,v2q=terminal(v2op)
+          assert v1.get('operation')==v1op and v1.get('state')=='completed_read_only_partial'
+          assert v1.get('queried_edge_count')==1084 and v1.get('planned_batch_count')==40 and v1.get('batch_error_count')==21 and v1.get('samo_http_calls')==32
+          assert v2.get('operation')==v2op and v2.get('state')=='completed_read_only'
+          assert v2.get('queried_edge_count')==630 and v2.get('retry_subbatch_count')==63 and v2.get('batch_error_count')==0 and v2.get('samo_http_calls')==93
+          for r in (v1,v2):
+              assert r.get('tourvisor_calls')==0 and r.get('direct_anex_calls')==0 and r.get('database_writes')==0 and r.get('mapping_writes')==0 and r.get('safe_to_write_now') is False
+          opns={5:'operator_5',115:'operator_115',315:'operator_315',342:'operator_342'}
+          groups=collections.defaultdict(set)
+          for e in v1.get('edges',[]):
+              cid=str(e.get('catalog_id','')); st=int(e.get('stateinc',0)); op=int(e.get('operator_id',0))
+              assert cid.isdigit() and int(cid)>0 and st>0 and op in opns
+              groups[(st,op)].add(cid)
+          vg=[]
+          for (st,op),ids in groups.items():
+              ids=sorted(ids,key=lambda x:int(x))
+              for i in range(0,len(ids),30): vg.append({'stateinc':st,'operator_id':op,'hotel_ids':ids[i:i+30]})
+          vg.sort(key=lambda g:(g['stateinc'],g['operator_id'],int(g['hotel_ids'][0])))
+          assert len(vg)==40
+          v1b=sorted(v1.get('batches',[]),key=lambda b:int(b['batch'])); assert len(v1b)==40
+          failed=[]; candidates=[]; evidence=[]
+          byop=collections.Counter(); evidence_batches=collections.Counter(); v1_native_total=0
+          for b,g in zip(v1b,vg):
+              assert int(b['batch'])>=1 and int(b['stateinc'])==g['stateinc'] and int(b['operator_id'])==g['operator_id'] and int(b['hotel_count'])==len(g['hotel_ids'])
+              if b.get('state')=='supplier_error':
+                  failed.append({'v1_batch':int(b['batch']),**g}); continue
+              assert b.get('state')=='complete'
+              n=int(b.get('unbound_operator_native_count',0)); assert n>=0
+              if n:
+                  v1_native_total+=n; evidence_batches[g['operator_id']]+=1
+                  evidence.append({'phase':'v1','batch':int(b['batch']),'operator_id':g['operator_id'],'stateinc':g['stateinc'],'candidate_count':len(g['hotel_ids']),'unbound_native_unique_count':n})
+                  for cid in g['hotel_ids']:
+                      candidates.append({'catalog_id':cid,'stateinc':g['stateinc'],'operator_id':g['operator_id'],'namespace':opns[g['operator_id']],'source_phase':'v1','source_batch':int(b['batch'])})
+          assert len(failed)==21
+          retry=[]
+          for f in failed:
+              ids=f['hotel_ids']
+              for i in range(0,len(ids),12):
+                  part=ids[i:i+12]; assert len(part)<=12 and len(','.join(part))<=300
+                  retry.append({'v1_batch':f['v1_batch'],'stateinc':f['stateinc'],'operator_id':f['operator_id'],'hotel_ids':part})
+          retry.sort(key=lambda g:(g['v1_batch'],int(g['hotel_ids'][0])))
+          assert len(retry)==63
+          v2b=sorted(v2.get('batches',[]),key=lambda b:int(b['batch'])); assert len(v2b)==63
+          v2_native_sum=0; cross=collections.defaultdict(list)
+          for b,g in zip(v2b,retry):
+              bi=int(b['batch']); op=g['operator_id']
+              assert int(b['v1_batch'])==g['v1_batch'] and int(b['stateinc'])==g['stateinc'] and int(b['operator_id'])==op and int(b['hotel_count'])==len(g['hotel_ids']) and b.get('state')=='complete'
+              pages=int(b.get('pages_drained',0)); hashes=list(b.get('response_sha256s',[])); assert pages==len(hashes)
+              natives=set(); native_rows=0
+              for page in range(1,pages+1):
+                  p=v2d/'evidence-private'/f'batch-{bi:03d}-page-{page}.json'
+                  raw,reply=raw_json(p); assert hashlib.sha256(raw.rstrip(b'\n')).hexdigest()==hashes[page-1] or hashlib.sha256(raw).hexdigest()==hashes[page-1]
+                  for row in reply.get('PRICES',[]):
+                      if not isinstance(row,dict) or int(row.get('operatorKey',0))!=op: continue
+                      flag=str(row.get('isOperatorHotelKey',''))
+                      hid=str(row.get('hotelKey','')).strip()
+                      if flag=='1' and re.fullmatch(r'[1-9][0-9]{0,21}',hid): native_rows+=1; natives.add(hid)
+              if natives:
+                  v2_native_sum+=len(natives); evidence_batches[op]+=1
+                  nh=hashlib.sha256(('\n'.join(sorted(natives,key=lambda x:int(x)))+'\n').encode()).hexdigest()
+                  evidence.append({'phase':'v2','batch':bi,'v1_batch':g['v1_batch'],'operator_id':op,'stateinc':g['stateinc'],'candidate_count':len(g['hotel_ids']),'unbound_native_row_count':native_rows,'unbound_native_unique_count':len(natives),'unbound_native_sha256':nh})
+                  for n in natives: cross[(op,n)].append(bi)
+                  for cid in g['hotel_ids']:
+                      candidates.append({'catalog_id':cid,'stateinc':g['stateinc'],'operator_id':op,'namespace':opns[op],'source_phase':'v2','source_batch':bi,'source_v1_batch':g['v1_batch']})
+          uniq={}
+          for c in candidates:
+              key=(c['operator_id'],c['catalog_id']); assert key not in uniq or uniq[key]==c, 'candidate_overlap'; uniq[key]=c
+          candidates=sorted(uniq.values(),key=lambda c:(c['operator_id'],int(c['catalog_id'])))
+          for c in candidates: byop[c['operator_id']]+=1
+          canon=json.dumps(candidates,sort_keys=True,separators=(',',':')).encode()+b'\n'
+          out={
+            'operation':outop,'state':'completed_read_only_unbound_census',
+            'v1_operation':v1op,'v1_result_sha256':hashlib.sha256(v1raw).hexdigest(),
+            'v2_operation':v2op,'v2_result_sha256':hashlib.sha256(v2raw).hexdigest(),
+            'v1_success_unbound_native_unique_sum':v1_native_total,
+            'v2_unbound_native_unique_sum':v2_native_sum,
+            'evidence_batch_count':len(evidence),
+            'evidence_batch_counts_by_operator':{opns[k]:v for k,v in sorted(evidence_batches.items())},
+            'cross_batch_native_collision_count':sum(1 for xs in cross.values() if len(set(xs))>1),
+            'safe_recovery_edge_count':len(candidates),
+            'safe_recovery_unique_catalog_count':len({c['catalog_id'] for c in candidates}),
+            'safe_recovery_counts_by_operator':{opns[k]:v for k,v in sorted(byop.items())},
+            'safe_recovery_sha256':hashlib.sha256(canon).hexdigest(),
+            'evidence_batches':evidence,'safe_recovery_rows':candidates,
+            'provider_http_calls':0,'tourvisor_calls':0,'samo_calls':0,'anex_calls':0,'database_writes':0,'mapping_writes':0,'safe_to_write_now':False
+          }
+          print(json.dumps(out,ensure_ascii=False,sort_keys=True,separators=(',',':')))
+          PY
+          python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/result.json'))
+          assert r['state']=='completed_read_only_unbound_census'
+          assert r['provider_http_calls']==r['tourvisor_calls']==r['samo_calls']==r['anex_calls']==r['database_writes']==r['mapping_writes']==0
+          assert r['safe_to_write_now'] is False
+          print(json.dumps({k:r[k] for k in ['state','v1_success_unbound_native_unique_sum','v2_unbound_native_unique_sum','evidence_batch_count','evidence_batch_counts_by_operator','cross_batch_native_collision_count','safe_recovery_edge_count','safe_recovery_unique_catalog_count','safe_recovery_counts_by_operator','safe_recovery_sha256']},sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-samo-live30-unbound-census-${{ github.run_id }}', path: terminal/result.json, retention-days: 90, if-no-files-found: error}
