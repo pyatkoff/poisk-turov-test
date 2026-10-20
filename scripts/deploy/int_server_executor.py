@@ -5,6 +5,7 @@ import argparse
 import base64
 import hashlib
 import io
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -15,6 +16,14 @@ import tarfile
 import time
 import urllib.request
 import zlib
+
+_passive_spec = importlib.util.spec_from_file_location(
+    'int_server_executor_passive_fuel_readiness',
+    Path(__file__).with_name('int_server_executor_passive_fuel_readiness.py'))
+if _passive_spec is None or _passive_spec.loader is None:
+    raise RuntimeError('passive_readiness_import')
+passive_fuel_readiness = importlib.util.module_from_spec(_passive_spec)
+_passive_spec.loader.exec_module(passive_fuel_readiness)
 
 REPO = 'pyatkoff/poisk-turov-test'
 FEATURE = 'feature/anex-search-adapter-20260907'
@@ -294,6 +303,8 @@ def parse_command(body: str) -> dict:
     source, mode, operation = parts[:3]
     need(SHA_RE.fullmatch(source) is not None, 'source_sha')
     need(OP_RE.fullmatch(operation) is not None, 'operation_id')
+    if mode == passive_fuel_readiness.MODE:
+        return passive_fuel_readiness.parse(parts)
     if mode == 'install-runtime':
         need(len(parts) == 3, 'command_shape')
         return {'source_sha': source, 'mode': mode, 'operation_id': operation}
@@ -652,9 +663,11 @@ def checked_event(token: str, event: dict, control_sha: str) -> dict:
     command = parse_command(body)
     main = api_get('/git/ref/heads/main', token)['object']['sha']
     need(main == control_sha, 'main_changed')
-    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1','local-tv-content-v1','local-tv-capture-v1') else FEATURE
+    source_branch = LOCAL_PROFILE_SOURCE if command['mode'] in ('local-profile-plan-4191','local-profile-apply-4191','local-profile-acquire-4191','local-profile-acquire-readback-4191','local-profile-acquire-salvage-4191','local-profile-apply-source320-4191','local-tv-schema-v1','local-tv-seed-v1','local-tv-content-v1','local-tv-capture-v1',passive_fuel_readiness.MODE) else FEATURE
     feature = api_get('/git/ref/heads/' + source_branch, token)['object']['sha']
     need(feature == command['source_sha'], 'local_profile_release_changed' if source_branch == LOCAL_PROFILE_SOURCE else 'feature_changed')
+    if command['mode'] == passive_fuel_readiness.MODE:
+        passive_fuel_readiness.admission(api_get, event, token, os.environ, REPO, ISSUE, PREFIX)
     return command
 
 def ensure_supplier_slot(token: str) -> None:
@@ -3054,7 +3067,8 @@ def execute(command: dict, source_root: Path) -> dict:
     need(bool(host and user and raw_key), 'ssh_config')
     need(not host.startswith('-') and not user.startswith('-')
          and not any(c.isspace() for c in host + user), 'ssh_identity')
-    bundle, manifest = bundle_source(source_root)
+    bundle, manifest = (passive_fuel_readiness.bundle_source(source_root)
+                        if command['mode'] == passive_fuel_readiness.MODE else bundle_source(source_root))
     output = Path(os.environ['RUNNER_TEMP']) / 'int-server-executor'
     output.mkdir(mode=0o700, exist_ok=True)
     key, known, archive = output/'key', output/'known_hosts', output/'source.tar.gz'
@@ -3258,7 +3272,8 @@ def execute(command: dict, source_root: Path) -> dict:
                            stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=30)
             key.unlink(missing_ok=True);known.unlink(missing_ok=True)
 
-    compressed = zlib.compress(REMOTE.encode(), 9)
+    remote = passive_fuel_readiness.remote_program(REMOTE) if command['mode'] == passive_fuel_readiness.MODE else REMOTE
+    compressed = zlib.compress(remote.encode(), 9)
     encoded = base64.b64encode(compressed).decode()
     remote_command = (
         "python3 -c 'import base64,zlib;exec(zlib.decompress(base64.b64decode(\"" + encoded + "\")))'"
@@ -3288,6 +3303,8 @@ def execute(command: dict, source_root: Path) -> dict:
         key.unlink(missing_ok=True); known.unlink(missing_ok=True)
 
 def completed_result(command: dict, result: dict) -> bool:
+    if command.get('mode') == passive_fuel_readiness.MODE:
+        return passive_fuel_readiness.completed(command, result)
     if result.get('status') in ('complete', 'reconciled_read_only', 'installed'):
         return True
     if (command.get('mode') != 'andromeda-operator-preflight'

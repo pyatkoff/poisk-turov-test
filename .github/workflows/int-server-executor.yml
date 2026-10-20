@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/int-server-executor.yml'
       - 'scripts/deploy/int_server_executor.py'
+      - 'scripts/deploy/int_server_executor_passive_fuel_readiness.py'
       - 'scripts/deploy/int_server_executor_anex_secret_transport.py'
       - 'scripts/deploy/int_server_executor_firstpage_readback.py'
       - 'scripts/deploy/int_server_executor_match_primary.py'
