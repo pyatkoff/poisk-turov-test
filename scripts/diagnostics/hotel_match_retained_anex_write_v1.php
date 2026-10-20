@@ -45,7 +45,15 @@ final class MatchRetainedAnexWriteV1
                 $reason=$current['writer_ready']?null:($current['status']==='current_missing_exact_key'?$current['anchor_state']:$current['status']);
                 if($reason===null&&self::target($catalog[$tv])!==self::target($snapshot['target']))$reason='target_facts_drift';
                 if($reason===null){
-                    try{hmc4aw_validate_anchors(['catalog_hotel_id'=>$tv,'unanimous_catalog_sha256'=>$snapshot['canonical_catalog_sha256'],'anchors'=>$snapshot['anchors']],$anchors[$tv]??[]);}
+                    try{
+                        $expectedKeys=['supplier_namespace','external_hotel_id','local_hotel_id','decision_status','catalog_sha256','evidence_sha256'];sort($expectedKeys);
+                        foreach($snapshot['anchors']as$a){$keys=array_keys($a);sort($keys);hmc4aw_need($keys===$expectedKeys,'anchor_snapshot_fields');}
+                        // JSON object order carries no identity meaning. Rebuild
+                        // the legacy validator's exact projection, retaining all
+                        // six values and their original types, before ===.
+                        $ordered=hmc4aw_anchor_list($snapshot['anchors']);
+                        hmc4aw_validate_anchors(['catalog_hotel_id'=>$tv,'unanimous_catalog_sha256'=>$snapshot['canonical_catalog_sha256'],'anchors'=>$ordered],$anchors[$tv]??[]);
+                    }
                     catch(Throwable){$reason='canonical_anchor_drift';}
                 }
                 if($reason!==null){$held[]=['anex_hotel_id'=>$native,'tv_hotel_id'=>$tv,'reason'=>$reason];continue;}
@@ -93,7 +101,8 @@ if(!defined('MATCH_RETAINED_ANEX_WRITE_LIBRARY_ONLY')){
     $input=json_decode((string)file_get_contents($dir.'/write-manifest.json'),true,64,JSON_THROW_ON_ERROR);
     $actual=[];foreach(($input['pairs']??[])as$p)$actual[]=[(string)($p['edge']['anex_hotel_id']??''),(int)($p['edge']['tv_hotel_id']??0)];sort($actual);
     $expected=[['9384',35297],['12901',1474],['8475',1014],['8476',1095],['14818',1015],['26591',3418],['19606',57027]];sort($expected);
-    if($actual!==$expected||($input['operation_id']??'')!=='int-andromeda-match-retained-anex-write-20261020-v1'
+    if($actual!==$expected||($input['operation_id']??'')!=='int-andromeda-match-retained-anex-write-20261020-v2'
+        ||($input['reconciled_write_evidence_sha256']??'')!=='21f9f77b14a51e6935c1be9d4b7af0458c4e1e4df5ecf240d94709cefa8b47c7'
         ||($input['acquisition_evidence_sha256']??'')!=='cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb')exit(42);
     $_SERVER['DOCUMENT_ROOT']=$root;require $root.'/config.php';require $stage.'/v2/data/db-v1.php';
     $result=MatchRetainedAnexWriteV1::run(v2_data_db(),$input,(string)getenv('MATCH_RETAINED_SOURCE_SHA'),$dir);
