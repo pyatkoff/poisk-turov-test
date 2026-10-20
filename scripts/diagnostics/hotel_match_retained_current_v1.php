@@ -40,14 +40,15 @@ final class MatchRetainedCurrentV1
                 $contextRows+=count($rows);
                 foreach($rows as $r)if(!isset($contexts[(int)$r['hotel_id']]))$contexts[(int)$r['hotel_id']]=$r;
             }
-            $rows=[];$states=[];$ready=0;$covered=0;$byNamespace=[];
+            $rows=[];$states=[];$ready=0;$covered=0;$eligibleCovered=0;$byNamespace=[];
             foreach($ids as $id){
                 $h=$targets[$id]??null;$native=array_map('intval',array_keys($direct['by_local'][$id]??[]));
+                if($native)$covered++;
                 $anchor=hmc4a_anchor_state($anchors[$id]??[]);$ctx=$contexts[$id]??null;
                 $state='missing_direct_anex';
                 if($h===null)$state='target_missing';
                 elseif((int)$h['is_active']!==1||hmc4a_excluded((string)$h['country_name']))$state='target_ineligible';
-                elseif($native){$state='already_effectively_linked';$covered++;}
+                elseif($native){$state='already_effectively_linked';$eligibleCovered++;}
                 elseif($anchor['state']!=='canonical_anchor_ok')$state=$anchor['state'];
                 elseif($ctx===null)$state='future_context_missing';
                 elseif((int)$ctx['country_id']!==(int)$h['country_id']||(int)$ctx['departure_id']<1
@@ -66,7 +67,7 @@ final class MatchRetainedCurrentV1
                 'cohort_hotels'=>count($ids),'current_target_rows'=>count($targets),
                 'direct_anex_global_effective_native_ids'=>$direct['native_count'],
                 'direct_anex_global_effective_local_hotels'=>$direct['local_count'],
-                'direct_anex_effective_on_cohort'=>$covered,'candidate_state_counts'=>$states,
+                'direct_anex_effective_on_cohort'=>$covered,'direct_anex_effective_on_eligible_cohort'=>$eligibleCovered,'candidate_state_counts'=>$states,
                 'accepted_provider_unique_hotels_on_cohort'=>array_map('count',$byNamespace),
                 'future_context_rows'=>$contextRows,'acquisition_ready_count'=>$ready,'rows'=>$rows,
                 'supplier_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false];
