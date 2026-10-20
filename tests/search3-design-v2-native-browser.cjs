@@ -539,7 +539,10 @@ async function referenceFrame(page,width,percent,screen,row) {
   await capture(page,'donor',width,percent,screen,row);
 }
 
-(async()=>{
+// The bounded installed-UI check reuses this exact controlled data boundary.
+// Importing it never launches the compiled browser matrix or local HTTP server.
+module.exports={fixture,fixtureBridge,manifest,sourceSHA,hash,base,retainedMedia,mediaByURL};
+if(require.main===module)(async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const origin='http://127.0.0.1:'+server.address().port;
   const browser=await chromium.launch({headless:true});

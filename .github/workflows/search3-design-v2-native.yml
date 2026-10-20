@@ -71,9 +71,10 @@ jobs:
           find src/search3-design-v2 -maxdepth 1 -name '*.js' -print0 | xargs -0 -r -n 1 node --check
           node --check scripts/build/search3_design_v2_native.cjs
           node --check tests/search3-design-v2-native-browser.cjs
+          node --check tests/search3-design-v2-native-installed.cjs
           node scripts/build/search3-js/lead-runtime.cjs v2
           for test_file in tests/search3-design-v2-native-*.cjs; do
-            if [ "$test_file" != tests/search3-design-v2-native-browser.cjs ]; then node "$test_file"; fi
+            if [ "$test_file" != tests/search3-design-v2-native-browser.cjs ] && [ "$test_file" != tests/search3-design-v2-native-installed.cjs ]; then node "$test_file"; fi
           done
           node tests/search3-prototype-inventory-lifecycle.cjs
           node tests/search3-prototype-search-lifecycle-v1.cjs
@@ -161,6 +162,29 @@ jobs:
           node tests/search3-design-v2-native-browser.cjs
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Accept the fixed published native UI with controlled data
+        # Finite closeout of publish39390835598, not a new live supplier mode
+        # or a publication prerequisite for future, not-yet-installed sources.
+        if: github.head_ref == 'test/design-v2-installed-acceptance-2344'
+        shell: bash
+        env:
+          SEARCH3_NATIVE_ASSET_ROOT: ${{ runner.temp }}/search3-design-v2-native/payload
+          SEARCH3_NATIVE_EVIDENCE: ${{ runner.temp }}/search3-design-v2-native/evidence
+          SEARCH3_NATIVE_INSTALLED_EVIDENCE: ${{ runner.temp }}/search3-design-v2-installed-evidence
+        run: |
+          set -euo pipefail
+          export NODE_PATH="$RUNNER_TEMP/native-tools/node_modules"
+          node tests/search3-design-v2-native-installed.cjs
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+      - name: Retain the new installed-UI evidence separately
+        if: always() && github.head_ref == 'test/design-v2-installed-acceptance-2344'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: search3-design-v2-installed-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/search3-design-v2-installed-evidence/
+          if-no-files-found: error
+          retention-days: 14
       - name: Retain exact-head native review artifact and rendered evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
