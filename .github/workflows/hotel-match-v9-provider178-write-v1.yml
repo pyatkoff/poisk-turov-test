@@ -1,0 +1,71 @@
+name: MATCH provider178 offline hash contract
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_v9_provider178_write_v1.php
+      - tests/hotel_match_precommit_anchor_contract.php
+      - .github/workflows/hotel-match-v9-provider178-write-v1.yml
+permissions: {contents: read, actions: read}
+concurrency:
+  group: match-provider178-offline-contract-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+# The previous live operation is terminal. This workflow cannot access AnyTour.
+jobs:
+  regression:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.event.pull_request.number == 3340 && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: '${{ github.event.pull_request.head.sha }}'
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Lint and self-test without database access
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_v9_provider178_write_v1.php
+          php -l tests/hotel_match_precommit_anchor_contract.php
+          php scripts/diagnostics/hotel_match_v9_provider178_write_v1.php --self-test
+      - name: Materialize pinned historical fixture bytes
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          mkdir -p input terminal
+          python3 - <<'PY'
+          import hashlib,io,os,pathlib,subprocess,zipfile
+          specs=[
+            ('10635515907','ecb6c14ecfcb97c7a8c6b10076d1ecbc5e91c191578d4d9c54111a7f3f0b6fb9',{'result.json':('precommit178.json','8cb977214acf20bd93226103d752119d0615bb49692aa95191ede30bec4a0d1d')}),
+            ('10645399682','bf216bbe9159c4243c3884a055316cdc61f601aede30d931de48e0c60e629e1d',{
+              'andromeda_hotel_identities.json':('identities.json','2135ee882e58ad2524075897239556c683860bfef8cc5d7fe4db496a50244a1d'),
+              'catalog_hotels.json':('hotels.json','70d5c41ba73979080723017759bd95a903667c67f8ffa571497560e93af9a011'),
+              'anex_hotel_decisions.json':('manual.json','7feabb1cb259bd9dc52180cdbdf4b0a85033de0c25293419b771e4f57c9ea056')}),
+            ('10649746132','313c19db6ef1cebb04162195eed9b8d108510ccb5efbfe81a8648b5a018355f3',{'result.json':('catalog-tail.json','4918cfb628799f11c2f0a22d7be2d38f695653877c183b01c6dd1df17f16b903')})
+          ]
+          for aid,zsha,files in specs:
+              data=subprocess.check_output(['gh','api','repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/artifacts/'+aid+'/zip'])
+              assert hashlib.sha256(data).hexdigest()==zsha,(aid,'zip_hash')
+              with zipfile.ZipFile(io.BytesIO(data)) as z:
+                  for member,(name,fsha) in files.items():
+                      assert z.namelist().count(member)==1
+                      body=z.read(member); assert hashlib.sha256(body).hexdigest()==fsha,(aid,member)
+                      pathlib.Path('input',name).write_bytes(body)
+          PY
+      - name: Reproduce old failure and verify actual corrected predicate
+        run: |
+          set -euo pipefail
+          legacy="$RUNNER_TEMP/provider178-legacy.php"
+          git show 00983e2908135662b8abbca8e4b3f06cc7effbb6:scripts/diagnostics/hotel_match_v9_provider178_write_v1.php > "$legacy"
+          test "$(git hash-object "$legacy")" = 048aa8ba322af31bcc1103a255b9e38046385cab
+          MATCH_TEST_WRITER="$legacy" php tests/hotel_match_precommit_anchor_contract.php --legacy > terminal/legacy.json
+          php tests/hotel_match_precommit_anchor_contract.php > terminal/corrected.json
+          cat terminal/legacy.json terminal/corrected.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: match-provider178-offline-contract-${{ github.run_id }}
+          path: terminal/
+          retention-days: 90
+          if-no-files-found: error
