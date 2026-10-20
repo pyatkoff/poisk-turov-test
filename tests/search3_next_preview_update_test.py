@@ -1,5 +1,5 @@
 """Fixed next-preview update and cross-target isolation; no network or server access."""
-import copy, os, tempfile, unittest
+import copy, os, re, tempfile, unittest
 from pathlib import Path
 import search3_local_preview_update_test as local_tests
 from search3_local_preview_update_test import request, PREVIOUS
@@ -15,6 +15,7 @@ class NextUpdateContracts(local_tests.UpdateContracts):
         self.q, self.archive = target.derive(self.source, self.root/'next-derived',
             {**request(), 'preview_target':'next'}, 'd'*64)
         self.event['comment']['body'] = self.event['comment']['body'].replace(pub.PREFIX, pub.NEXT_PREFIX)
+        self.event['issue']['number'] = 4709
         root = self.site.root
         (root/'_preview/search3-next-candidate').mkdir()
         (root/'_preview/search3-next-candidate/old.txt').write_text('published predecessor')
@@ -42,7 +43,48 @@ class NextUpdateContracts(local_tests.UpdateContracts):
         self.assertEqual(pub.target_functions(q)[0],target.derive)
         local = copy.deepcopy(self.event)
         local['comment']['body'] = local['comment']['body'].replace(pub.NEXT_PREFIX,pub.PREFIX)
+        local['issue']['number'] = 4217
         self.assertNotIn('preview_target',pub.checked_request(local,self.env))
+
+    def test_journal_cutover_is_only_for_next_updates(self):
+        for prefix, accepted in ((pub.NEXT_PREFIX, 4709), (pub.PREFIX, 4217)):
+            for number in (4709, 4217, 4708, 3419, 2530, 996, 1646):
+                event = copy.deepcopy(self.event)
+                event['comment']['body'] = event['comment']['body'].replace(pub.NEXT_PREFIX, prefix)
+                event['issue']['number'] = number
+                with self.subTest(prefix=prefix, issue=number):
+                    if number == accepted:
+                        self.assertEqual(pub.checked_request(event, self.env)['previous_source_sha'], PREVIOUS)
+                    else:
+                        with self.assertRaisesRegex(ValueError, 'coordination_only'):
+                            pub.checked_request(event, self.env)
+
+    def test_next_cutover_preserves_event_identity_and_no_replay_guards(self):
+        for key, value in (('GITHUB_REPOSITORY', 'other/repo'), ('GITHUB_REF', 'refs/heads/feature'),
+                           ('GITHUB_ACTOR', 'other'), ('GITHUB_TRIGGERING_ACTOR', 'other'),
+                           ('GITHUB_ACTOR_ID', '1'), ('GITHUB_RUN_ATTEMPT', '2'),
+                           ('GITHUB_EVENT_NAME', 'workflow_dispatch')):
+            with self.subTest(env=key), self.assertRaises(ValueError):
+                pub.checked_request(self.event, {**self.env, key: value})
+        for field, value in (('action', 'edited'), ('action', 'deleted'),
+                             ('repository.id', 1), ('repository.full_name', 'other/repo'),
+                             ('sender.id', 1), ('sender.login', 'other'),
+                             ('issue.pull_request', {'url': 'x'}), ('comment.user.id', 1),
+                             ('comment.author_association', 'COLLABORATOR')):
+            event = copy.deepcopy(self.event)
+            parent = event
+            parts = field.split('.')
+            for part in parts[:-1]:
+                parent = parent[part]
+            parent[parts[-1]] = value
+            with self.subTest(event=field, value=value), self.assertRaises(ValueError):
+                pub.checked_request(event, self.env)
+
+    def test_workflow_keeps_next_and_local_journals_bound_to_their_commands(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/update-search3-local-preview.yml').read_text()
+        for issue, prefix in ((4217, pub.PREFIX), (4709, pub.NEXT_PREFIX)):
+            self.assertRegex(workflow, r'\(github\.event\.issue\.number == ' + str(issue)
+                             + r" && startsWith\(github\.event\.comment\.body, '" + re.escape(prefix) + r"'\)\)")
 
     def test_command_rejects_create_replay_path_and_bad_pins(self):
         good = self.event['comment']['body']
