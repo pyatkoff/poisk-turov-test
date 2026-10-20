@@ -167,7 +167,7 @@ jobs:
       - name: Accept the fixed published native UI with controlled data
         # Finite installed-UI closeouts, not a new live supplier mode
         # or a publication prerequisite for future, not-yet-installed sources.
-        if: (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825')
+        if: (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020')
         shell: bash
         env:
           SEARCH3_NATIVE_ASSET_ROOT: ${{ runner.temp }}/search3-design-v2-native/payload
@@ -180,7 +180,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
       - name: Retain the new installed-UI evidence separately
-        if: always() && (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825')
+        if: always() && (github.head_ref == 'test/design-v2-installed-acceptance-2344' || github.head_ref == 'test/design-v2-installed-acceptance-denials-4825' || github.head_ref == 'test/design-v2-installed-clarity-20261020')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: search3-design-v2-installed-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}

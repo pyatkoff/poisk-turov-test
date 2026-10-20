@@ -7,7 +7,7 @@ const path=require('node:path');
 const {chromium,request:playwrightRequest}=require('playwright');
 const {fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest:compiledManifest,sourceSHA,hash,base,retainedMedia,mediaByURL}=require('./search3-design-v2-native-browser.cjs');
 const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/';
-const INSTALLED=Object.freeze({source:'48252b25d1e7bab4156d35eff260021f99029db2',release:'1b5fcbbfa71cf08bef82624d73be4a1d4c7e1a82',publishRun:39423874280,manifestSHA256:'da40c9448b3a856c5c28ec4fbe5f8eb512f4a0c80487afbe80a74b7f2a82f26b'});
+const INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
 assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
@@ -203,10 +203,25 @@ async function run(){
         await capture(page,row,'search');
         await product.locator('[data-search-nights-toggle]').click();await product.locator('[data-native-night="10"]').click();
         await product.locator('[data-search-editor-cancel="nights"]').click();assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей');
+        assert.equal(await product.locator('[data-search-nights-toggle]').evaluate(node=>document.activeElement===node),true);
         await product.locator('[data-search-travelers-toggle]').click();await product.locator('[data-search-adult="-1"]').click();
         await product.locator('[data-search-editor-cancel="travelers"]').click();assert.equal(await product.locator('[data-search-travelers-value]').innerText(),'2 взрослых');
         await product.locator('[data-search-date-toggle]').click();await capture(page,row,'popup-calendar');
-        await product.locator('[data-search-calendar-close]').click();assert.equal((await calls(page)).search,0);
+        const popup=product.locator('[data-native-form-popup]');
+        const applyFit=await popup.evaluate(node=>{
+          const apply=node.querySelector('.st-popup-actions [data-calendar-done]'),box=apply.getBoundingClientRect();
+          const find=node.closest('[data-search-form]').querySelector('[type="submit"]');
+          return{modal:node.matches(':modal'),applyCount:node.querySelectorAll('[data-calendar-done]').length,
+            applyHeight:box.height,applyEnabled:!apply.disabled,findInside:node.contains(find),
+            submitCount:node.closest('[data-search-form]').querySelectorAll('[type="submit"]').length};
+        });
+        assert(applyFit.modal&&applyFit.applyCount===1&&applyFit.applyHeight>=44&&applyFit.applyEnabled&&!applyFit.findInside&&applyFit.submitCount===1,'Installed popup has one readable Apply and the only Find outside');
+        await popup.locator('[data-calendar-done]').click();await popup.waitFor({state:'hidden'});
+        assert.equal((await calls(page)).search,0,'Applying installed dates is local');
+        await product.locator('[data-conditions-open="budget"]').click();
+        await product.locator('[data-search-budget="min"]').fill('0');await product.locator('[data-search-budget="min"]').press('Enter');
+        await popup.waitFor({state:'hidden'});assert.equal((await calls(page)).search,0,'Enter applies installed input without a search');
+        row.proof.fieldApply={...applyFit,applyExtraSearches:0,enterExtraSearches:0,cancelRetainsDraftAndFocus:true};
         await screen('search').locator('button[type="submit"]').click();await screen('results').waitFor({state:'visible'});
         assert.equal(await product.locator('.st-hotel-card').count(),4);assert.equal((await calls(page)).search,1);
         assert.deepEqual(await product.locator('[data-result-count]').evaluate(node=>({focused:document.activeElement===node,outline:getComputedStyle(node).outlineStyle})),{focused:true,outline:'none'});
@@ -228,12 +243,24 @@ async function run(){
         await product.locator('[data-active-chips] [data-native-remove-constraint="meals"]').click();assert.equal(await product.locator('.st-hotel-card').count(),4);
         await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
         assert.equal((await calls(page)).quote,0,'Opening the installed hotel is passive');
+        assert.equal(await product.locator('[data-action="best-tour"]:visible').count(),0,'No unselected minimum-tour action competes with explicit variant choice');
         assert.equal(await product.locator('[data-hotel-name]').evaluate(node=>getComputedStyle(node).outlineStyle),'none');
         await capture(page,row,'hotel');
         await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();await screen('tour').waitFor({state:'visible'});
         await product.locator('[data-native-tour-flight="0"]').click();await product.locator('[data-action="accept-price"]:visible').first().click();
         assert.deepEqual(await page.evaluate(()=>({exact:window.__nativeFixture.getSelection().offer===window.__nativeFixture.hotels[0].offers[0],total:window.__nativeFixture.getSelection().total,choice:window.__nativeFixture.getSelection().flightChoiceId})),{exact:true,total:112000,choice:0});
         assert.match(await screen('tour').innerText(),/112\s*000/);assert.match(await screen('tour').innerText(),/09:20/);await capture(page,row,'tour');
+        assert.match(await screen('tour').locator('[data-native-price-caption]:visible').first().innerText(),/Цена с выбранным перелётом за всех/);
+        assert(await screen('tour').locator('[data-native-package-note]').isVisible(),'Installed package conditions are visible');
+        const conditionsFit=await screen('tour').evaluate(node=>{
+          const note=node.querySelector('[data-native-package-note]'),total=note.closest('.st-total'),amount=total.querySelector('[data-tour-price]'),action=total.querySelector('[data-action="lead"]');
+          return{count:node.querySelectorAll('[data-native-package-note]').length,text:note.innerText,
+            afterAmount:Boolean(amount.compareDocumentPosition(note)&Node.DOCUMENT_POSITION_FOLLOWING),
+            beforeAction:Boolean(note.compareDocumentPosition(action)&Node.DOCUMENT_POSITION_FOLLOWING)};
+        });
+        assert.equal(conditionsFit.count,1);assert.match(conditionsFit.text,/обязательные доплаты/);assert(conditionsFit.afterAmount&&conditionsFit.beforeAction,'Installed conditions stay between full amount and contact action');
+        if(width===430){assert(await screen('tour').locator('.st-quick-price-note').isVisible(),'Mobile price caveat is visible');assert.match(await screen('tour').locator('.st-quick-price-note').innerText(),/Доплаты и наличие уточняются до оформления/);}
+        row.proof.priceClarity={caption:'Цена с выбранным перелётом за всех',conditionsCount:1,unknownExtrasVisible:true,conditionsAfterAmount:true,conditionsBeforeAction:true,unselectedHotelActionAbsent:true};
         await product.locator('[data-action="lead"]:visible').first().click();await screen('lead').waitFor({state:'visible'});
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         for(const value of ['FX 101','FX 102','09:20','13:20','13:00','17:00'])assert((await product.locator('[data-native-contact-facts]').innerText()).includes(value));
