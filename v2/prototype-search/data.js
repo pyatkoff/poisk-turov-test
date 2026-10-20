@@ -313,8 +313,10 @@
     const chosenMealIds=selectedPlans.length?[...selectedPlans[0].nativeIds]:[];
     const stars=(filters.stars||[]).filter(x=>Number.isInteger(x)&&x>=1&&x<=5);
     const resorts=[...new Set((filters.resorts||[]).map(value=>String(value||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
-    const exactHotel=Number(filters.hotelId),supplierHotels=[...new Set((hotelIds||[]).map(String).filter(Boolean))].sort();
-    const hotel=Number.isSafeInteger(exactHotel)&&exactHotel>0?'local:'+exactHotel:supplierHotels.length?'supplier:'+supplierHotels.join(','):'';
+    // Keep the same canonical OR identity at request time and passive inspection;
+    // native IDs remain only the supplier request projection, never local IDs.
+    const localHotels=[...new Set((filters.hotelIds?.length?filters.hotelIds:[filters.hotelId]).map(Number).filter(id=>Number.isSafeInteger(id)&&id>0))].sort((a,b)=>a-b),supplierHotels=[...new Set((hotelIds||[]).map(String).filter(Boolean))].sort();
+    const hotel=localHotels.length?'local:'+localHotels.join(','):supplierHotels.length?'supplier:'+supplierHotels.join(','):'';
     const priceFrom=filters.min>0?String(filters.min):'',hasMax=filters.max!==null&&filters.max!==undefined&&filters.max!=='',priceTo=hasMax?String(filters.max):'';
     return Object.freeze({
       hotel,
@@ -335,7 +337,10 @@
     if(!previous||!next||!Array.isArray(previous.resorts)||!Array.isArray(next.resorts)
       ||!Number.isFinite(previous.min)||!Number.isFinite(next.min)
       ||previous.max!==null&&!Number.isFinite(previous.max)||next.max!==null&&!Number.isFinite(next.max))return false;
-    if(previous.hotel&&previous.hotel!==next.hotel)return false;
+    if(previous.hotel){
+      const before=/^(local|supplier):(.+)$/.exec(previous.hotel),after=/^(local|supplier):(.+)$/.exec(next.hotel);
+      if(!before||!after||before[1]!==after[1]||!after[2].split(',').every(id=>before[2].split(',').includes(id)))return false;
+    }
     if(previous.resorts.length&&(!next.resorts.length||!next.resorts.every(value=>previous.resorts.includes(value))))return false;
     if(previous.hotelCategory&&previous.hotelCategory!==next.hotelCategory)return false;
     if(previous.meal&&previous.meal!==next.meal)return false;
@@ -1151,7 +1156,7 @@
     // Party and canonical region OR are exact first-class observation scopes.
     // The observation reader has no exact subregion dimension yet: suppress it
     // instead of presenting a broader parent-region minimum as exact.
-    if(filters.hotelId||filters.q||observationBudget(filters)===null
+    if(filters.hotelId||filters.hotelIds?.length||filters.q||observationBudget(filters)===null
       ||['stars','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
     try{if(destinationScope(s,filters).subregionIds.length)return false;}catch{return false;}

@@ -1296,6 +1296,39 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
   fs.writeFileSync(path.join(evidence,'search-delivery-journey.json'),JSON.stringify({phases:['pending-unknown-count','healthy-bounded-first-page','explicit-continuation-failure-retains-offers','tour-return-retained-not-user-stopped'],anexCalls,TVstarts:1,TVcontinuations:1,details_and_focus_preserved:true,text200:'deferred',samples,supplier_HTTP:0,real_leads:0,physicalSafari:false},null,2));
   console.log('PASS compiled search delivery: pending unknown count, healthy native first page, colocated explicit continuation/retained offers, passive disclosure/focus and five ordinary widths; text200 deferred, supplier HTTP0');
  }finally{releaseAnex();await context.close();}
+
+ // New real-browser regression for the observed one-off Rix failure. The same
+ // canonical data/lifecycle and existing error/drawer renderers use fake HTTP.
+ const failureRecords=[];
+ for(const width of [430,1280]){
+  const t=fixture(),faults=[],unexpected=[],starts=[],anexStarts=[],ctx=await browser.newContext({viewport:{width,height:width===1280?720:932}}),p=await ctx.newPage();t.state.hotelCatalogue=hotelCatalogue();p.setDefaultTimeout(10000);p.on('pageerror',e=>faults.push(e.message));
+  try{
+   await p.route('**/*',async route=>{
+    const request=route.request(),u=new URL(request.url()),body=JSON.parse(request.postData()||'{}');
+    if(u.origin===origin&&u.pathname.startsWith(base)&&!u.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     if(u.pathname==='/api-v2.php'&&u.searchParams.get('action')==='search_start'){starts.push(u.searchParams.getAll('hotelIds[]'));await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'FIXTURE_SEARCH_FAILED'})});return;}
+     if(u.pathname.endsWith('/api-anex-search3-preview.php')&&body.action==='search'){anexStarts.push(body.action);await route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({ok:false,error:'FIXTURE_SEARCH_FAILED'})});return;}
+     const value=await t.json(request.url(),{body:request.postData()});await route.fulfill({contentType:'application/json',body:JSON.stringify(value)});
+    }catch(error){unexpected.push(error.message);await route.abort();}
+   });
+   await p.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',hotels:'2001|2002'}));
+   await p.locator('.search-submit:not(:disabled)').waitFor();await p.waitForFunction(()=>document.querySelector('#destination-detail')?.textContent.includes('Rixos Fictional Belek 02'));
+   await p.locator('.search-submit').click();await p.waitForFunction(()=>document.querySelector('#search-status h3')?.textContent.includes('Туры не загрузились')&&[...document.querySelectorAll('[data-search-source]')].filter(n=>n.textContent.includes('Предложения не загрузились')).length===2);
+   const notice=p.locator('#search-status'),criteria=new URL(p.url()).searchParams.get('hotels');
+   assert.equal(criteria,'2001|2002');assert.deepEqual(starts,[['7001','7002']],'actual native request stays the ordered accepted projection');assert.deepEqual(anexStarts,['search']);assert(!t.calls.some(c=>c.action==='price_calendar'),'selected OR hotels cannot use a broader country observation calendar');
+   assert.match(await notice.textContent(),/Даты, туристы и фильтры сохранены/);assert.doesNotMatch(await p.locator('#cards').textContent(),/Попробуйте другие даты|Выбрать другие даты|Предложений по ней в текущем поиске нет/);
+   await notice.scrollIntoViewIfNeeded();await p.screenshot({path:path.join(evidence,'search-failed-zero-'+width+'.png')});
+   await p.locator('[data-action="about"]').click();await p.locator('#modal[open]').waitFor();await p.locator('[data-action="close-modal"]').click();await p.waitForFunction(()=>!document.querySelector('#modal').open);
+   assert.doesNotMatch(await notice.textContent(),/Условия стали шире поиска/,'unrelated ordinary click cannot widen the unchanged canonical OR set');
+   await openResultFilters(p,width);if(width===430)assert.doesNotMatch(await p.locator('#filter-preview-count').textContent(),/туров нет/);else assert(await p.locator('#filter-panel').isVisible(),'desktop keeps the existing visible sidebar');assert.equal(await p.locator('[data-action="recover-filters"]').count(),0,'failed data does not justify changed conditions');
+   assert.equal(new URL(p.url()).searchParams.get('hotels'),criteria);assert.equal(starts.length,1);assert.equal(anexStarts.length,1,'ordinary About/drawer clicks are passive');
+   await p.locator(width===430?'#filter-preview-count':'#search-status').scrollIntoViewIfNeeded();await p.screenshot({path:path.join(evidence,'search-failed-retained-'+width+'.png')});
+   failureRecords.push({width,height:width===1280?720:932,ownHotels:criteria,nativeHotels:starts[0],TVstarts:starts.length,ANEXstarts:anexStarts.length,criteriaPreserved:true,falseCoverageGap:false,falseEmptyRecovery:false});
+   assert.deepEqual(faults,[]);assert.deepEqual(unexpected,[]);
+  }finally{await ctx.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'search-failed-zero-journey.json'),JSON.stringify({records:failureRecords,source:'fictional intercepted HTTP on compiled current product',supplier_HTTP:0,quotes:0,real_leads:0,physicalSafari:false},null,2));
 };
 // Off for the real-default regression below. Retained SAMO integration journeys
 // explicitly enable only this local fictional transport after that check passes.
