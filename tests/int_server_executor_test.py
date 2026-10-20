@@ -1119,8 +1119,10 @@ class PrivatePassiveFuelReadinessTest(unittest.TestCase):
     def test_store_owner_mode_and_identity_are_verified_without_listing(self):
         with tempfile.TemporaryDirectory() as directory:
             ns,home,project,runtime=self.reader(directory)
-            store=project/'.private-fuel/searches';store.chmod(0o777)
-            self.assertEqual('not_ready',ns['passive_fuel_readiness']()['status'])
+            store=project/'.private-fuel/searches'
+            for mode in (0o777,0o500,0o200):
+                store.chmod(mode)
+                self.assertEqual('not_ready',ns['passive_fuel_readiness']()['status'])
             store.chmod(0o700)
             with patch.object(os,'getuid',return_value=-1):
                 result=ns['passive_fuel_readiness']()

@@ -282,7 +282,8 @@ def pf_private_binding(body):
     if pf_identity(current)!=identity:fail('passive_store_changed')
     mode=pf_stat.S_IMODE(current.st_mode)
     owner_matches=current.st_uid==os.getuid()
-    if not owner_matches or mode&0o002:return False,'store_unavailable',identity,mode,owner_matches
+    if not owner_matches or mode&0o002 or mode&0o300!=0o300:
+        return False,'store_unavailable',identity,mode,owner_matches
     return True,state,identity,mode,owner_matches
 
 def pf_snapshot():
