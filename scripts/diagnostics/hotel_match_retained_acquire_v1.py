@@ -309,7 +309,7 @@ class Client:
         self.calls+=1; self.tariff+=int(action=='search_start'); self.counts[action]+=1
         try:
             try:
-                response=self.open.open(req,timeout=30)
+                response=self.open.open(req,timeout=60)
             except urllib.error.HTTPError as error:
                 response=error
             with response:
