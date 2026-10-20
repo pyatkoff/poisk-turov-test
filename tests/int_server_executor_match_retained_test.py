@@ -655,6 +655,33 @@ class ContinuationTest(unittest.TestCase):
 
 
 class AcquisitionTest(unittest.TestCase):
+    def test_never9_scope_extends_consumed195_without_retargeting_old_manifests(self):
+        p=m.NEXT_NEVER9_SCOPE;scope=json.loads((SOURCE/p['path']).read_text())
+        self.assertEqual(p['sha256'],hashlib.sha256((SOURCE/p['path']).read_bytes()).hexdigest())
+        self.assertEqual((9,195,7,3),(len(scope['selected_tv_hotel_ids']),len(scope['prior_selected_hotel_ids']),
+            len(scope['exclusion_history'])+len(scope['context_history']),sum(x['unknown_http_calls'] for x in scope['exclusion_history']+scope['context_history'])))
+        self.assertFalse(set(scope['selected_tv_hotel_ids'])&set(scope['prior_selected_hotel_ids']))
+        self.assertEqual({('2026-10-21',5,8,1,'user_search')},{(x['departure_date'],x['nights'],x['country_id'],x['departure_id'],x['source']) for x in scope['future_contexts'].values()})
+        for old in (m.NEXT_SCOPE,m.NEXT_60_SCOPE,m.NEXT_WIDE_SCOPE,m.NEXT_NEVER13_SCOPE):
+            self.assertEqual(old['sha256'],hashlib.sha256((SOURCE/old['path']).read_bytes()).hexdigest())
+        c=core();m.register_parser(c);body=c.PREFIX+' '.join((SHA,'match-retained-acquire',p['operation_id'],p['cohort'],p['parent_operation_id']))
+        parsed=c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+        ast.parse(c.REMOTE);self.assertIn('NEXT_SCOPE='+repr(p),c.REMOTE)
+        with self.assertRaises(ValueError):c.parse_command(body.replace(p['operation_id'],m.NEXT_NEVER13_SCOPE['operation_id']))
+        data={**parsed,'control_source_sha':CONTROL,'state':'acquired_retained_native_read_only','supplier_calls':3,
+              'physical_http_reservations':3,'tariff_search_units':1,'database_writes':0,'mapping_writes':0,
+              'no_replay':True,'safe_to_write_now':False,'continuation_scope_sha256':p['sha256'],'scope_id':p['scope_id'],
+              'context_origin':p['context_origin'],'wire_context':p['wire_context'],'selection_reservation_sha256':'c'*64}
+        result={**parsed,'status':'complete','production_unchanged':True,'supplier_calls':3,'database_writes':0,'mapping_writes':0,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(a.canonical(data)).hexdigest()}}
+        self.assertTrue(m.completed_result(parsed,result,CONTROL))
+        for key,value in [('supplier_calls',31),('tariff_search_units',2),('physical_http_reservations',2),('selection_reservation_sha256',None)]:
+            bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+            if key=='supplier_calls':bad['supplier_calls']=value
+            bad['match_retained']['evidence_sha256']=hashlib.sha256(a.canonical(bad['match_retained']['data'])).hexdigest()
+            self.assertFalse(m.completed_result(parsed,bad,CONTROL))
+
     def bounded_fresh_scope(self):
         scope,current=ContinuationTest().fixture()
         scope.update(scope_kind='never_selected_bounded',context_origin='saved_user_search_exact_date_nights',
