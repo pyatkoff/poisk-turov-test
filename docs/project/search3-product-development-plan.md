@@ -11,15 +11,23 @@
 | Установленный продукт PR4729 | source `5e1b10ff420af5bc18b59761ceed2e966b4eb6f4`, release `27dc8a8f166aa50e80c05d6d035d98b4b6f3f04b`; appSHA256 `b60417778442974b170416143ab6de946b5224af8c9b76de346998e933f625b7`, dataSHA256 `dc89305e513c876126615e12dd909b9124ebdcafe8ebc5b80c888c2555dd6223` |
 | Exact-source CI и публикация | CI SUCCESS: Build Search3 whole-site preview artifact:39420221567, Search3 full visual migration:39420221579, Security guard:39420221619, Validate V2 lead source contracts:39420221688. Build `39420221567` / artifact `12262518315`; stock `39422251546` / deployment artifact `12264591042`; [terminal/readback](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290872437). Predecessor a153 сохранён для rollback |
 | Исправление и его границы | Canonical INT4720 + diagnostics INT4730 + ORIGINAL4729: неповторяемый отказ больше не предлагает бесконечный retry/обход через рейсы или контакт; временный retry и другое предложение сохранены. JSDOM430/1280 и существующий compiled terminal corpus — контролируемая проверка; stock readback отдельно подтверждает установленные байты. Новый actual supplier denial, physical Safari и реальная доставка N |
-| Последний реальный путь — только predecessor a153 | [Egypt6290155004](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290155004): Москва→Египет,5–11Dec2026,7ночей,2взрослых,AI;68отелей/575вариантов в части Tourvisor, ANEXfailed. Свой FUN&SUN25277420880495/SunnyDays9–16Dec/UJ708–707:128362→124838₽ за2взрослых; интерфейс показал fuel0; контакт→Back/черновик сохранён, realLead0. CONSUMED/no-replay; результат не перенесён на новый source |
+| Реальный current5e1 Rix2A manager-path | [terminal6293507531](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6293507531), [audit6293495176](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6293495176): Belek684/ownTV43292257689309/Интурист06–13Nov/7n/AI;401021₽ за2A, fuel19974₽ включён; контакт с рейсом через менеджера→Back/Close/Continue/черновик, iframe430×932→1280×720. Точная пара не выбиралась; CONSUMED/no-replay |
+| Реальный current5e1 семейный exact-pair блок | [audit6294247011](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6294247011), [claim6294003240](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6294003240): Москва→Турция03–09Nov/7n/2A+[8]/AI/Belek684→328вариантов. OwnTV43296101711379/Интурист06–13Nov/deluxe room garden view; Southwind2S002/2S011,438472₽ за всю семью, fuel29961₽ включён. PairApply→контакты→Back/Close/Continue и тот же430×932→1280×720 сохраняют выбор/черновик; realLead0.6кадров/27observations, independent review ACCEPT; Selectedtour/ordinaryreturn2/2/2/2/2=10 FIRST bounded baseline/UI0, не wholeSearch9.5 |
+| Исторический predecessor a153 — отдельный scope | [Egypt6290155004](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290155004): Москва→Египет,5–11Dec2026,7ночей,2взрослых,AI;68отелей/575вариантов в части Tourvisor, ANEXfailed. Свой FUN&SUN25277420880495/SunnyDays9–16Dec/UJ708–707:128362→124838₽ за2взрослых; интерфейс показал fuel0; контакт→Back/черновик сохранён, realLead0. CONSUMED/no-replay; результат не перенесён на новый source |
 | Диагностика и открытая зависимость | Безопасная initial-search диагностика установлена: [TV6290221240](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6290221240), [ANEX6289994513](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6289994513). Историческая причина и восстановление ANEX не установлены |
 
-Следующий содержательный результат: INT принимает diagnosis/recovery свежей ошибки ANEX;
-отдельно новый оправданный Rix one-off/свой quote/отправленные IDs/итог за всю группу.
-[Standing allowance6286202365](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6286202365) действует без повторного вопроса в прежних
-лимитах/штатном UI. Старые Find/quote/Continue/UNKNOWN, неизменённые UI/CI/deploy не повторять;
-не bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production. Новых баллов нет;
-расписания, enabled/paused/timezone, Site203/204 и соседние проекты не меняются.
+Следующий связный блок: принятая INT diagnosis/recovery ANEX и необходимый точный
+price/fuel handoff в #2506/#4709, затем только затронутый ORIGINAL NEXT сценарий.
+Rix2A и семейный Find/quote/pairApply/возврат завершены: не запускать их снова из
+исторического next_action. Owner20Oct17:01 «давай большими блоками»: один связный
+пользовательский результат, подтверждённые существенные исправления одним пакетом
+и одна итоговая приёмка; не новая per-N/keyboard/device/cosmetic очередь.
+Standing allowance6286202365 и прежние protected gates сохраняются. Actual wire-ID
+provenance/HTTP/quota remaining/ANEX recovery/physical/real delivery и wholeSearch9.5
+этим блоком не доказаны; полная lead-validation строка N. Own task verified enabled
+[6292922298](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6292922298);
+старые paused-заметки — история, iPhone/Safari deferred и не условие остановки.
+Документы не меняют runtime, публикацию, расписания/timezone/prompt/чужие задачи; UI delta0.
 
 ## Исполняемый порядок — решение владельца 19.10.2026
 
