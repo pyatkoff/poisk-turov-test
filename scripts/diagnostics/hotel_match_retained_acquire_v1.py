@@ -21,6 +21,7 @@ SELECTED_IDS_SHA256 = '4f8fa702fad1445d2a6bb5978bbdc1e60f30abd75b9328251f381a86f
 BASE = 'https://api.tourvisor.ru/search/api/v1'
 BODY_LIMIT = 16*1024*1024
 SCOPE_FILE = 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json'
+TIMEOUT60_SCOPE_FILE = 'scripts/diagnostics/fixtures/hotel_match_retained_timeout60_scope_20261020.json'
 
 
 def canonical(value):
@@ -35,7 +36,7 @@ def context_identity(scope, hotel):
 
 def check_new_context(scope, previous):
     wire=scope.get('wire_context',{})
-    if (scope.get('scope_kind')!='owner_date_variation' or scope.get('context_origin')!='owner_20261020_1031_saved_peer_context'
+    if (scope.get('scope_kind')!='owner_date_variation' or scope.get('context_origin') not in ('owner_20261020_1031_saved_peer_context','owner_20261020_1257_timeout60_new_window')
             or set(wire)!=set(('date_from','date_to','nights_from','nights_to'))
             or any(not isinstance(wire.get(k),str) or dt.date.fromisoformat(wire[k]).isoformat()!=wire[k] for k in ('date_from','date_to'))
             or not dt.datetime.now(dt.timezone.utc).date().isoformat()<=wire['date_from']<=wire['date_to']
@@ -44,6 +45,9 @@ def check_new_context(scope, previous):
             or not 1<=wire['nights_from']<=wire['nights_to']<=28
             or scope.get('search_start_maximum')!=1 or scope.get('supplier_http_maximum')!=30):
         raise ValueError('date_context_policy')
+    if (scope['context_origin']=='owner_20261020_1257_timeout60_new_window'
+            and (scope.get('owner_authorized_at')!='2026-10-20T12:57:13+02:00' or scope.get('http_timeout_seconds')!=60)):
+        raise ValueError('date_context_owner_authority')
     ids=set(scope['selected_tv_hotel_ids'])
     for record in previous:
         p=record['params']
@@ -161,14 +165,14 @@ def select_scope_rows(scope, current, today=None):
     if hashlib.sha256(canonical(current)).hexdigest() != scope.get('parent_evidence_sha256'):
         raise ValueError('continuation_parent_evidence')
     rows = {r['tv_hotel_id']: r for r in current['rows']}
-    if variation:
+    if variation and scope.get('context_origin')=='owner_20261020_1031_saved_peer_context':
         peer=rows.get(scope.get('context_peer_tv_hotel_id'),{})
         ctx=peer.get('future_context',{})
         if (hashlib.sha256(canonical(peer)).hexdigest()!=scope.get('context_peer_row_sha256')
                 or ctx.get('source')!='user_search' or any(ctx.get(k)!=scope[k] for k in ('country_id','departure_id','adults','children_count'))
                 or ctx.get('child_ages_signature')!='' or scope['wire_context']!={'date_from':ctx.get('departure_date'),'date_to':ctx.get('departure_date'),'nights_from':ctx.get('nights'),'nights_to':ctx.get('nights')}):
             raise ValueError('date_context_peer_provenance')
-        check_new_context(scope,[])
+    if variation:check_new_context(scope,[])
     selected = []
     for hid in ids:
         row = rows.get(hid); ctx = (row or {}).get('future_context') or {}; target = (row or {}).get('target') or {}
@@ -414,7 +418,8 @@ if __name__=='__main__':
         selected=select_rows(data['current'])
         if len(selected)!=105 or shape.plan_id_digest([r['tv_hotel_id'] for r in selected])!=SELECTED_IDS_SHA256:raise SystemExit('acquisition_cohort_binding')
     else:
-        scope_path=Path(__file__).resolve().parents[0]/'fixtures/hotel_match_retained_next_scope_20261020.json'
+        scope_file=TIMEOUT60_SCOPE_FILE if scope.get('context_origin')=='owner_20261020_1257_timeout60_new_window' else SCOPE_FILE
+        scope_path=Path(__file__).resolve().parents[2]/scope_file
         raw=scope_path.read_bytes()
         if (scope_path.is_symlink() or hashlib.sha256(raw).hexdigest()!=data.get('continuation_scope_sha256')
                 or json.loads(raw)!=scope or operation!=scope.get('operation_id')
