@@ -1341,10 +1341,74 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   }finally{release?.();await context.close();}
  }
 };
+
+const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
+ const records=[];
+ for(const width of [430,1280]){
+  const context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage(),errors=[],forbidden=[];
+  page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    if(request.resourceType()==='image'){await route.abort();return;}
+    forbidden.push(url.pathname);await route.abort();
+   });
+   await page.goto(origin+base+'visual-search/?scenario=family');
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1);
+   const tripBefore=await page.locator('#compact-search').textContent();
+   await openResultFilters(page,width);
+   await page.locator('#hotel-query').fill('Azure');
+   await page.locator('#filters [data-filter="meals"][value="Всё включено"]').check();
+   await page.locator('#max-price').fill('185000');
+   const recovery=page.locator(width===430?'#drawer-recovery [data-recovery-key="budget"]':'#cards [data-recovery-key="budget"]');
+   await recovery.waitFor();assert.match(await recovery.textContent(),/187\s*000/);
+   await recovery.click();
+   assert.equal(await page.locator('#max-price').inputValue(),'187000','explicit recovery replaces the previous retained budget editor');
+   assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');
+   assert.equal(await page.locator('#filters [data-filter="meals"][value="Всё включено"]').isChecked(),true);
+   if(width===430){
+    assert.match(await page.locator('#filter-preview-count').textContent(),/1 отель/);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-recovery-draft-430.png')});
+    await page.locator('#apply-filters').click();
+    await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open'));
+   }
+   await page.waitForFunction(()=>document.querySelectorAll('.hotel-card').length===1);
+   assert.match(await page.locator('#active-filters').textContent(),/До 187\s*000/);
+   assert.match(await page.locator('#active-filters').textContent(),/Azure/);
+   assert.match(await page.locator('#active-filters').textContent(),/Всё включено/);
+   assert.equal(await page.locator('#compact-search').textContent(),tripBefore,'dates and family survive recovery and Apply');
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   await page.screenshot({path:path.join(evidence,'filter-recovery-applied-'+width+'.png')});
+   if(width===430){
+    await openResultFilters(page,width);assert.equal(await page.locator('#max-price').inputValue(),'187000','reopening shows the applied recovery budget');
+    assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');
+    await page.locator('#max-price').fill('185000');const reset=page.locator('#filter-panel [data-action="reset"]:visible');assert.equal(await reset.count(),1,'one reset action is visible in the mobile filter layout');await reset.click();
+    assert.equal(await page.locator('#max-price').inputValue(),'','Reset must clear the retained budget editor before Apply');
+    assert.equal(await page.locator('#hotel-query').inputValue(),'');
+    assert.equal(await page.locator('#filters [data-filter="meals"][value="Всё включено"]').isChecked(),false);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-reset-draft-430.png')});
+    await page.locator('#apply-filters').click();
+    await page.waitForFunction(()=>!document.querySelector('#filter-panel').classList.contains('open')&&document.querySelectorAll('.hotel-card').length===1);
+    assert.equal(await page.locator('#active-filters').textContent(),'');
+    assert.equal(await page.locator('#compact-search').textContent(),tripBefore);
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await page.screenshot({path:path.join(evidence,'filter-reset-applied-430.png')});
+   }
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:width===430,desktopImmediateRecovery:width===1280,resetApplyClearsBudgetAndOtherFilters:width===430,tripPreserved:true,supplier_HTTP:0,real_leads:0});
+  }finally{await context.close();}
+ }
+ fs.writeFileSync(path.join(evidence,'filter-recovery-apply.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');
+};
+
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
    await localCivilDateJourney(browser,origin,base,evidence);
+   await filterRecoveryApplyJourney(browser,origin,base,evidence);
   for(const width of [390,1280]){
    const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
@@ -1962,7 +2026,6 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
   receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
  }
- await chosenDepartureJourney(browser,origin,base,evidence);
  // Each journey owns its context, fictional transport and evidence names. Keep
  // both complete matrices; settle both before closing the shared browser.
  const isolated=await Promise.allSettled([
@@ -1970,8 +2033,16 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
   verifiedPairJourney(browser,origin,base,evidence)
  ]),failures=isolated.filter(result=>result.status==='rejected');
  if(failures.length)throw new AggregateError(failures.map(result=>result.reason),'Independent compiled journeys failed');
- await boundedRepriceJourney(browser,origin,base,evidence);
- await compactAnexJourney(browser,origin,base,evidence);
+ // The date journey and reprice/compact chain share only read-only assets.
+ // Settle both before expiry-session checks and the isolated loading benchmark.
+ const tail=await Promise.allSettled([
+  chosenDepartureJourney(browser,origin,base,evidence),
+  (async()=>{
+   await boundedRepriceJourney(browser,origin,base,evidence);
+   await compactAnexJourney(browser,origin,base,evidence);
+  })()
+ ]),tailFailures=tail.filter(result=>result.status==='rejected');
+ if(tailFailures.length)throw new AggregateError(tailFailures.map(result=>result.reason),'Independent date and reprice journeys failed');
  await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
