@@ -1,0 +1,106 @@
+name: MATCH refresh82 detail-only v2
+on:
+  push:
+    branches: [ops/match-refresh82-detail-only-1971-20260919-v2]
+    paths:
+      - scripts/diagnostics/hotel_match_refresh82_detail_only_v2.py
+      - .github/workflows/hotel-match-refresh82-detail-only-v2.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-refresh82-detail-only-1971-20260919-v2, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-refresh82-detail-only-1971-20260919-v2
+  BASE_SHA: 93915088f169716d89e2e6426d6d8700dbcf0416
+  CLAIM: '5744786216'
+jobs:
+  details:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate claim source and router input
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;mkdir -p input reservation result
+          test "$(git merge-base HEAD "$BASE_SHA")" = "$BASE_SHA";test "$(git diff --name-only "$BASE_SHA..HEAD" | wc -l)" -eq 2
+          python3 -m py_compile scripts/diagnostics/hotel_match_refresh82_detail_only_v2.py
+          python3 scripts/diagnostics/hotel_match_refresh82_detail_only_v2.py --self-test
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM" >input/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('input/claim.json'));b=c['body'];assert c['user']['id']==226193297 and c['author_association']=='OWNER'
+          assert os.environ['OPERATION_ID'] in b and '10590289815' in b and '3b189d1b7313eb85743a6d22be48aa7323725fe6fb57e8d47b6e5ea220b1cb8f' in b
+          assert 'operation cap82' in b and 'no search/status/results/dates/continue' in b
+          PY
+          gh api repos/pyatkoff/poisk-turov-test/actions/artifacts/10590289815/zip >input/router.zip
+          python3 - <<'PY'
+          import hashlib,zipfile,pathlib
+          p=pathlib.Path('input/router.zip');assert hashlib.sha256(p.read_bytes()).hexdigest()=='bfab7db29e01671632e5a907f7bc22f0e545a07a9e19196723939e6d0070832e'
+          with zipfile.ZipFile(p) as z:
+           hits=[z.read(i) for i in z.infolist() if not i.is_dir() and i.file_size<8_000_000 and hashlib.sha256(z.read(i)).hexdigest()=='3b189d1b7313eb85743a6d22be48aa7323725fe6fb57e8d47b6e5ea220b1cb8f']
+          assert len(hits)==1;pathlib.Path('input/router.json').write_bytes(hits[0])
+          PY
+      - name: Reserve before provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,datetime,pathlib
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'router_artifact':10590289815,'router_result_sha256':'3b189d1b7313eb85743a6d22be48aa7323725fe6fb57e8d47b6e5ea220b1cb8f','input_count':82,'provider_day':'2026-09-19','known_daily_floor':1180,'daily_limit':3000,'operation_cap':82,'search_calls':0,'continue_calls':0,'samo_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True}
+          with open('reservation/reservation.json','x') as f:json.dump(r,f,sort_keys=True);f.write('\n');f.flush();os.fsync(f.fileno())
+          PY
+      - name: Require exact-head Security
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+           q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN']})
+           with urllib.request.urlopen(q) as f:r=json.load(f)['workflow_runs']
+           xs=[x for x in r if x['name']=='Security guard' and x['head_sha']==os.environ['GITHUB_SHA']]
+           if xs and max(xs,key=lambda z:z['id'])['status']=='completed':assert max(xs,key=lambda z:z['id'])['conclusion']=='success';break
+           time.sleep(5)
+          else:raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'refresh82-detail-reservation-${{ github.run_id }}', path: reservation/reservation.json, retention-days: 90, if-no-files-found: error}
+      - name: Execute exactly one retained detail per edge
+        env:
+          KEY: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail;umask 077;key="$RUNNER_TEMP/key";known="$RUNNER_TEMP/known";if [[ "$KEY" == *"PRIVATE KEY"* ]];then printf '%s\n' "$KEY"|tr -d '\r'>"$key";else printf '%s' "$KEY"|base64 --decode>"$key";fi;chmod 600 "$key";ssh-keyscan -T 15 -t ed25519 "$HOST">"$known" 2>/dev/null
+          remote="$USER@$HOST";op=".anytoour-match/operations/$OPERATION_ID";opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o ConnectTimeout=15)
+          ssh "${opts[@]}" "$remote" "set -eu;test ! -e \"\$HOME/$op\";mkdir -p \"\$HOME/$op/payload\""
+          scp "${opts[@]}" reservation/reservation.json input/router.json scripts/diagnostics/hotel_match_refresh82_detail_only_v2.py "$remote:$op/payload/"
+          ssh "${opts[@]}" "$remote" "mv \"\$HOME/$op/payload/reservation.json\" \"\$HOME/$op/reservation.json\""
+          set +e
+          ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_INPUT_PATH=\"\$HOME/$op/payload/router.json\" python3 \"\$HOME/$op/payload/hotel_match_refresh82_detail_only_v2.py\" --execute" >result/remote.stdout 2>result/remote.stderr
+          rc=$?;printf '%s\n' "$rc">result/remote-exit.txt
+          scp -r "${opts[@]}" "$remote:$op/." result/server/ >result/readback.stdout 2>result/readback.stderr
+          trc=$?;printf '%s\n' "$trc">result/readback-exit.txt;set -e;test "$trc" -eq 0
+          python3 - <<'PY'
+          import json,hashlib,pathlib,os
+          p=pathlib.Path('result/server');r=json.loads((p/'result.json').read_bytes());q=json.loads((p/'receipt.json').read_bytes())
+          assert r['operation']==q['operation']==os.environ['OPERATION_ID'] and q['result_sha256']==hashlib.sha256((p/'result.json').read_bytes()).hexdigest()
+          assert r['provider_calls']==len(list(p.glob('request-*.json')))<=82 and r['provider_calls']==r['attempted']
+          assert r['search_calls']==r['status_calls']==r['results_calls']==r['dates_calls']==r['continue_calls']==r['samo_calls']==0
+          assert r['database_writes']==r['mapping_writes']==0 and all(x['safe_to_write_now'] is False for x in r['edges'])
+          assert r['state']=='completed_read_only'
+          pathlib.Path('result/verified-summary.json').write_text(json.dumps({k:r.get(k) for k in ['state','attempted','provider_calls','daily_accounted_after','state_counts','link_state_counts']},ensure_ascii=False,indent=2)+'\n')
+          print(pathlib.Path('result/verified-summary.json').read_text())
+          PY
+          test "$rc" -eq 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-refresh82-detail-${{ github.run_id }}', path: result/, retention-days: 90, if-no-files-found: error}
+      - name: Remove credential files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/key" "$RUNNER_TEMP/known"
