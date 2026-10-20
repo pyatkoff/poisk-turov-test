@@ -1,0 +1,182 @@
+<?php
+declare(strict_types=1);
+
+const OP='hotel-match-v9-single-native-samo-chunk4-1971-20260921-v1';
+const V9_SHA='0995ccbd0c14639a335a644748d6dc5af6b359345328698ea3c0fc1300d88814';
+const CH1_SHA='488b3b9c28cb6f6fd429a6a1925e86217b90022d9372b142ba6e3981c77bc351';
+const CH2_SHA='3e5893d0e8580f3060cd1e8d947b1fa10e99d1e1f6a2398a6dc8617121ac1ba2';
+const CH3_SHA='26c42c8910a396deb1359cd29998a827d165fb7c16329e862edbfcd6bad8cf44';
+const NS=[25=>'operator_315',43=>'operator_342'];
+
+function need(bool $v,string $m):void { if(!$v) throw new RuntimeException($m); }
+function q(PDO $db,string $sql,array $params=[]):array {
+    $st=$db->prepare($sql); $st->execute(array_values($params));
+    return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+function obj(mixed $v):array {
+    if(is_array($v)) return $v;
+    if(!is_string($v) || trim($v)==='') return [];
+    try { $x=json_decode($v,true,128,JSON_THROW_ON_ERROR); return is_array($x)?$x:[]; }
+    catch(Throwable) { return []; }
+}
+function num(mixed $v):?string {
+    $s=trim((string)$v);
+    return preg_match('/^[1-9][0-9]{0,18}$/D',$s) ? $s : null;
+}
+function bridges(array $e):array {
+    $out=[];
+    foreach((array)($e['provider_bridges']??[]) as $b){
+        if(!is_array($b)) continue;
+        $id=num($b['andromeda_hotel_id']??null);
+        if($id!==null) $out[$id]=true;
+    }
+    return array_map('strval',array_keys($out));
+}
+function wr(string $path,array $v):string {
+    $body=json_encode($v,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n";
+    $f=fopen($path,'xb'); need(is_resource($f),'open');
+    need(fwrite($f,$body)===strlen($body),'write'); fflush($f); if(function_exists('fsync')) fsync($f); fclose($f);
+    return hash('sha256',$body);
+}
+function providerClass(array $rows,int $tv):string {
+    if(!$rows) return 'provider_missing';
+    if(count($rows)>1) return 'provider_multiple';
+    $r=$rows[0]; $status=(string)$r['decision_status'];
+    $local=$r['local_hotel_id']===null?null:(int)$r['local_hotel_id'];
+    if($status==='accepted') return $local===$tv?'provider_accepted_same_target':'provider_accepted_other_target';
+    if($status==='pending') return ($local===null||$local===$tv)?'provider_pending_same_or_unassigned':'provider_pending_other_target';
+    return 'provider_'.$status;
+}
+function bridgeClass(array $bridgeIds,array $anchorRows,int $tv):string {
+    if(!$bridgeIds) return 'no_saved_provider_bridge';
+    if(count($bridgeIds)>1) return 'multiple_saved_provider_bridges';
+    if(!$anchorRows) return 'bridge_unanchored';
+    if(count($anchorRows)>1) return 'bridge_multiple_current_rows';
+    $a=$anchorRows[0];
+    if((string)$a['decision_status']==='accepted'){
+        return (int)$a['local_hotel_id']===$tv?'bridge_accepted_same_target':'bridge_accepted_other_target';
+    }
+    return 'bridge_'.(string)$a['decision_status'];
+}
+
+if(($argv[1]??'')==='--self-test'){
+    need(num('123')==='123' && num('0')===null,'num');
+    need(bridges(['provider_bridges'=>[['andromeda_hotel_id'=>'7'],['andromeda_hotel_id'=>'7']]])===['7'],'bridges');
+    need(bridgeClass(['7'],[['decision_status'=>'accepted','local_hotel_id'=>9]],9)==='bridge_accepted_same_target','bridge_same');
+    need(bridgeClass([],[],9)==='no_saved_provider_bridge','bridge_none');
+    echo "V9_SAMO_CHUNK4_V1_SELFTEST_OK\n"; exit;
+}
+
+need(PHP_SAPI==='cli' && ($argv[1]??'')==='--execute','disabled');
+$root=realpath((string)getenv('ANYTOUR_ROOT'));
+$vp=realpath((string)getenv('MATCH_V9_PATH'));
+$p1=realpath((string)getenv('MATCH_CHUNK1_PATH'));
+$p2=realpath((string)getenv('MATCH_CHUNK2_PATH'));
+$p3=realpath((string)getenv('MATCH_CHUNK3_PATH'));
+$dir=(string)getenv('MATCH_OPERATION_DIR');
+need(is_string($root)&&basename($root)==='anytoour.ru','root');
+foreach([[$vp,V9_SHA],[$p1,CH1_SHA],[$p2,CH2_SHA],[$p3,CH3_SHA]] as [$p,$sha]){
+    need(is_string($p)&&is_file($p)&&hash_file('sha256',$p)===$sha,'input_hash');
+}
+need(is_dir($dir)&&basename($dir)===OP,'dir');
+$v=json_decode((string)file_get_contents($vp),true,512,JSON_THROW_ON_ERROR);
+$c1=json_decode((string)file_get_contents($p1),true,256,JSON_THROW_ON_ERROR);
+$c2=json_decode((string)file_get_contents($p2),true,256,JSON_THROW_ON_ERROR);
+$c3=json_decode((string)file_get_contents($p3),true,256,JSON_THROW_ON_ERROR);
+need(($v['operation']??'')==='hotel-match-v9-reconcile-1971-20260921-v1' && ($v['state']??'')==='completed_read_only_reconciliation','v9');
+need(($c1['operation']??'')==='hotel-match-v9-single-native-samo-chunk1-1971-20260921-v1','chunk1');
+need(($c2['operation']??'')==='hotel-match-v9-single-native-samo-chunk2-1971-20260921-v1','chunk2');
+need(($c3['operation']??'')==='hotel-match-v9-single-native-samo-chunk3-1971-20260921-v2' && ($c3['state']??'')==='completed_read_only','chunk3');
+
+$skip=[];
+foreach(array_merge($c1['selected_hotel_ids']??[],$c2['selected_hotel_ids']??[],$c3['selected_hotel_ids']??[]) as $id) $skip[(int)$id]=true;
+need(count($skip)===215,'skip215');
+$country=[];
+foreach($v['attempted_batches']??[] as $b) foreach($b['hotel_ids']??[] as $id) $country[(int)$id]=(int)$b['country_id'];
+$all=[];
+foreach($v['source_result']['edges']??[] as $e){
+    $op=(int)($e['operator_id']??0);
+    if(($e['link_state']??'')!=='captured_single_native' || !isset(NS[$op])) continue;
+    $tv=(int)$e['tv_hotel_id']; $cand=$e['positive_native_candidates']??[];
+    need(count($cand)===1 && num($cand[0])!==null && isset($country[$tv]),'edge');
+    $all[]=[
+        'tv_hotel_id'=>$tv,'country_id'=>$country[$tv],'operator_id'=>$op,'supplier_namespace'=>NS[$op],
+        'native_hotel_id'=>num($cand[0]),'batch'=>(int)$e['batch'],'tour_id'=>(string)$e['tour_id'],
+        'operator_link_sha256'=>(string)($e['operator_link_sha256']??'')
+    ];
+}
+need(count($all)===532,'all532');
+$remaining=array_values(array_filter($all,fn($e)=>!isset($skip[$e['tv_hotel_id']])));
+$countries=[]; foreach($remaining as $e) $countries[$e['country_id']]=true; ksort($countries,SORT_NUMERIC);
+need((int)array_key_first($countries)===9,'next_country9');
+$hotelSet=[]; foreach($remaining as $e) if($e['country_id']===9) $hotelSet[$e['tv_hotel_id']]=true;
+$countryIds=array_keys($hotelSet); sort($countryIds,SORT_NUMERIC); need(count($countryIds)===113,'remaining_country9_113');
+$ids=array_slice($countryIds,0,90); need(count($ids)===90,'selected90');
+$selectedSet=array_fill_keys($ids,true);
+$edges=array_values(array_filter($remaining,fn($e)=>$e['country_id']===9 && isset($selectedSet[$e['tv_hotel_id']])));
+
+require_once $root.(is_file($root.'/data/db-v1.php')?'/data/db-v1.php':'/v2/data/db-v1.php');
+$db=v2_data_db(); $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
+$db->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+$db->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
+try {
+    $providerRows=[];
+    foreach($edges as $e){
+        $key=$e['supplier_namespace'].'|'.$e['native_hotel_id'];
+        if(!isset($providerRows[$key])){
+            $providerRows[$key]=q($db,'SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status,evidence_json,evidence_sha256,catalog_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace=? AND external_hotel_id=?',[$e['supplier_namespace'],$e['native_hotel_id']]);
+        }
+    }
+    $bridgeIds=[];
+    foreach($providerRows as $rows) foreach($rows as $r) foreach(bridges(obj($r['evidence_json']??null)) as $id) $bridgeIds[$id]=true;
+    $anchors=[];
+    foreach(array_chunk(array_keys($bridgeIds),400) as $chunk){
+        if(!$chunk) continue;
+        $ph=implode(',',array_fill(0,count($chunk),'?'));
+        foreach(q($db,"SELECT external_hotel_id,local_hotel_id,decision_status,evidence_sha256,catalog_sha256 FROM andromeda_hotel_identities WHERE supplier_namespace='andromeda_catalog' AND external_hotel_id IN ($ph)",$chunk) as $r){
+            $anchors[(string)$r['external_hotel_id']][]=$r;
+        }
+    }
+    $targets=[]; $occupants=[];
+    $ph=implode(',',array_fill(0,count($ids),'?'));
+    foreach(q($db,"SELECT id,name,country_name,region_name,subregion_name,category,is_active FROM catalog_hotels WHERE id IN ($ph)",$ids) as $r) $targets[(int)$r['id']]=$r;
+    foreach(q($db,"SELECT supplier_namespace,external_hotel_id,local_hotel_id,decision_status FROM andromeda_hotel_identities WHERE decision_status='accepted' AND local_hotel_id IN ($ph) ORDER BY local_hotel_id,supplier_namespace,external_hotel_id",$ids) as $r) $occupants[(int)$r['local_hotel_id']][]=$r;
+    $db->rollBack();
+
+    $rows=[]; $providerCounts=[]; $bridgeCounts=[];
+    foreach($edges as $e){
+        $key=$e['supplier_namespace'].'|'.$e['native_hotel_id'];
+        $prs=$providerRows[$key]??[];
+        $pc=providerClass($prs,$e['tv_hotel_id']); $providerCounts[$pc]=($providerCounts[$pc]??0)+1;
+        $bset=[]; foreach($prs as $pr) foreach(bridges(obj($pr['evidence_json']??null)) as $id) $bset[$id]=true;
+        $bids=array_keys($bset); $arows=[];
+        foreach($bids as $id) foreach($anchors[$id]??[] as $a) $arows[]=$a;
+        $bc=bridgeClass($bids,$arows,$e['tv_hotel_id']); $bridgeCounts[$bc]=($bridgeCounts[$bc]??0)+1;
+        $rows[]=$e+[
+            'target'=>$targets[$e['tv_hotel_id']]??null,
+            'target_occupants'=>$occupants[$e['tv_hotel_id']]??[],
+            'provider_classification'=>$pc,
+            'saved_bridge_ids'=>$bids,
+            'bridge_classification'=>$bc,
+            'safe_to_write_now'=>false
+        ];
+    }
+    ksort($providerCounts); ksort($bridgeCounts);
+    $result=[
+        'operation'=>OP,'state'=>'completed_read_only','source_single_native_edges'=>532,
+        'prior_selected_unique_hotels'=>215,'selected_country_id'=>9,'country9_available_unique_hotels'=>count($countryIds),
+        'selected_unique_hotels'=>count($ids),'selected_edges'=>count($edges),'selected_hotel_ids'=>$ids,
+        'provider_classification_counts'=>$providerCounts,'bridge_classification_counts'=>$bridgeCounts,'rows'=>$rows,
+        'provider_calls'=>0,'tourvisor_calls'=>0,'samo_calls'=>0,'andromeda_calls'=>0,
+        'database_writes'=>0,'mapping_writes'=>0,'safe_to_write_now'=>false
+    ];
+    $sha=wr($dir.'/result.json',$result);
+    wr($dir.'/receipt.json',[
+        'operation'=>OP,'state'=>'completed_read_only','result_sha256'=>$sha,'selected_unique_hotels'=>count($ids),
+        'selected_edges'=>count($edges),'provider_calls'=>0,'database_writes'=>0,'mapping_writes'=>0,'no_replay'=>true
+    ]);
+    echo json_encode(['hotels'=>count($ids),'edges'=>count($edges),'provider'=>$providerCounts,'bridge'=>$bridgeCounts,'result_sha256'=>$sha],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n";
+} catch(Throwable $e){
+    if($db->inTransaction()) $db->rollBack();
+    throw $e;
+}
