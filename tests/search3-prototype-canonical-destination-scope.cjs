@@ -103,4 +103,32 @@ test('missing accepted bridge fails closed instead of broadening search',async()
   assert.throws(()=>h.data.params(search,[],{resorts:[],stars:[],meals:[],min:0,max:null}),/нет подтверждённого соответствия Tourvisor/);
 });
 
+test('canonical OR hotel coverage survives passive inspection, reordering and narrowing',()=>{
+  const {data,fetchCalls}=harness(),filters={hotelId:0,hotelIds:[4234,684],resorts:[],stars:[],meals:[],min:0,max:null};
+  const initial=data.supplierScope(filters,['tv-4234','tv-684']);
+  assert.equal(data.supplierScopeCovered(initial,data.supplierScope(filters)),true,'the ordinary click inspector has no native projection but the same exact local OR selection');
+  assert.equal(data.supplierScopeCovered(initial,data.supplierScope({...filters,hotelIds:[684,4234,684]})),true,'OR order/duplicates are not a wider search');
+  assert.equal(data.supplierScopeCovered(initial,data.supplierScope({...filters,hotelIds:[684]})),true,'keeping one selected hotel narrows the requested OR set');
+  assert.equal(data.supplierScopeCovered(initial,data.supplierScope({...filters,hotelIds:[],hotelId:684})),true,'compatible single-hotel state keeps the same canonical identity');
+  for(const wider of [{hotelIds:[684,4234,687]},{hotelIds:[687]},{hotelIds:[],hotelId:0}])assert.equal(data.supplierScopeCovered(initial,data.supplierScope({...filters,...wider})),false,'adding/replacing/clearing hotels requires an explicit wider search');
+  const single=data.supplierScope({...filters,hotelIds:[],hotelId:684});
+  assert.equal(data.supplierScopeCovered(single,data.supplierScope({...filters,hotelIds:[684]})),true);
+  assert.equal(data.supplierScopeCovered(single,initial),false,'single to multi is widening');
+  assert.equal(data.supplierScopeCovered(data.supplierScope(),initial),true,'unrestricted coverage includes a selected OR set');
+  assert(Object.isFrozen(initial),'stored coverage remains immutable');assert.equal(fetchCalls.length,0,'passive coverage starts no supplier or catalogue calls');
+});
+
+test('native-only coverage is a separate set and the accepted supplier request is unchanged',async()=>{
+  const {data}=harness();await data.countries('Москва');
+  const filters={hotelId:0,hotelIds:[4234,684],resorts:[],stars:[],meals:[],min:0,max:null},native=['tv-4234','tv-684'];
+  const search={origin:'Москва',country:'101',from:'2026-11-03',to:'2026-11-09',minNights:7,maxNights:7,adults:2,ages:[]};
+  const request=JSON.parse(JSON.stringify(data.params(search,native,filters)));
+  assert.deepEqual(request,{departureId:'1',countryId:'4',dateFrom:'2026-11-03',dateTo:'2026-11-09',nightsFrom:7,nightsTo:7,adults:2,childs:[],meal:'',hotelCategory:'',hotelRating:'',hotelTypes:[],hotelIds:native,hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:'',priceTo:'',currency:'RUB',onlyCharter:false,onlyDirect:false},'local coverage must never replace the original ordered native payload');
+  const previous=data.supplierScope({},native),subset=data.supplierScope({},['tv-684']);
+  assert.equal(data.supplierScopeCovered(previous,subset),true,'native-only callers also narrow without guessing a local mapping');
+  assert.equal(data.supplierScopeCovered(previous,data.supplierScope()),false,'clearing a native restriction is wider');
+  assert.equal(data.supplierScopeCovered(previous,data.supplierScope(filters)),false,'native and local IDs cannot be equated');
+  assert.equal(data.supplierScopeCovered(data.supplierScope(filters),previous),false,'identity namespaces remain fail-closed');
+});
+
 console.log('SEARCH3_CANONICAL_DESTINATION_SCOPE_OK');
