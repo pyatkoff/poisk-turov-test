@@ -174,7 +174,7 @@ $conflicting = json_decode((string)$beforeConflictReads,true,64,JSON_THROW_ON_ER
 foreach ($stored['observations'] as $original) {
     tvpf_ok(in_array($original,$conflicting['observations'],true),'conflict retains each original adult observation');
 }
-$changedRows = array_values(array_filter($conflicting['observations'],static fn(array $row): bool => $row['amount']==='35000.00'));
+$changedRows = array_values(array_filter($conflicting['observations'],static fn(array $row): bool => $row['amount']==='35000'));
 tvpf_ok(count($changedRows)===1,'new changed amount retained alongside original evidence');
 tvpf_ok(AnyTourOperatorFuelRuleStoreV1::inputForTarget($directory,$target,$now->getTimestamp()+60)===null,'conflicting fresh fuel unavailable for target');
 tvpf_ok(AnyTourOperatorFuelRuleStoreV1::inputForTarget($directory,$target,$now->getTimestamp()+60)===null,'repeated resolution cannot revive conflicting rule');
