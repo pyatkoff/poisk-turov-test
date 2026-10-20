@@ -1762,6 +1762,48 @@ class PassiveFuelCurrentLayoutTest(unittest.TestCase):
         self.assertEqual('0415fe57046a8929d1b857e13cd0d0d8824e904d',self.p.STOCK_SOURCE)
         with self.assertRaises(ValueError):self.p.parse([self.p.STOCK_SOURCE,self.p.CURRENT_MODE,self.p.CURRENT_OPERATION])
 
+    def test_candidate_and_rollback_temps_are_never_created_under_public_project(self):
+        for fail_at in (None,6):
+            with self.subTest(fail_at=fail_at),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                before=ns['pp_snapshot']()[1];original=os.open;parents=[];calls=0
+                def opened(path,flags,*args,**kwargs):
+                    if flags&os.O_CREAT and str(path).startswith('.int-passive-fuel-'):
+                        self.assertIn('dir_fd',kwargs)
+                        parents.append(os.fstat(kwargs['dir_fd']).st_ino)
+                        self.assertEqual(op.lstat().st_ino,parents[-1])
+                    return original(path,flags,*args,**kwargs)
+                def lint(path):
+                    nonlocal calls
+                    calls+=1;self.assertFalse(list(project.rglob('.int-passive-fuel-*.tmp')))
+                    if path.name.endswith('.tmp'):self.assertEqual(op,path.parent)
+                    if calls==fail_at:raise RuntimeError('activation_syntax')
+                ns['pi_lint']=lint
+                with patch.object(os,'open',side_effect=opened):
+                    result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual('installed_verified' if fail_at is None else 'rolled_back_no_replay',result['status'])
+                self.assertEqual(2 if fail_at is None else 4,len(parents))
+                self.assertFalse(list(project.rglob('*.tmp')));self.assertFalse(list(op.glob('*.tmp')))
+                if fail_at is not None:self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_private_staging_directory_mode_or_substitution_cannot_redirect_writes(self):
+        for case in ('mode','substitution'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                before=ns['pp_snapshot']()[1];calls=0;foreign=op/'.int-passive-fuel-foreign.tmp'
+                def lint(path):
+                    nonlocal calls
+                    calls+=1
+                    if calls==4:
+                        if case=='mode':op.chmod(0o755)
+                        else:
+                            op.rename(home/'old-operation');op.mkdir(mode=0o700);foreign.write_bytes(b'foreign')
+                ns['pi_lint']=lint
+                result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual('unknown_no_replay',result['status']);self.assertEqual(0,result['runtime_writes'])
+                self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+                if case=='substitution':self.assertEqual(b'foreign',foreign.read_bytes())
+
 
 if __name__=='__main__':unittest.main(verbosity=2)
 

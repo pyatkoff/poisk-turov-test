@@ -781,6 +781,45 @@ CURRENT_REMOTE = (STOCK_REMOTE
     + '\nPS_MANIFEST_PIN='+repr(CURRENT_MANIFEST_SHA256)+'\nPS_MANIFEST_BYTES='+repr(CURRENT_MANIFEST_BYTES)
     + '\nPS_EMPTY_PATHS='+repr(CURRENT_EMPTY_PATHS)+'\nPS_EMPTY_SHA='+repr(hashlib.sha256(b'').hexdigest())+'\n')
 
+# CURRENT-only: never expose candidate or rollback PHP as a readable .tmp in
+# the web root. Retain the sealed remote programs and their old receipts.
+for _old, _new, _count in (
+    ('old={};candidates={};installed={}', 'old={};candidates={};installed={};stage_parent=None', 1),
+    ("        snapshot_matches()\n        for index,rel in enumerate(order):\n            pi_private(",
+     "        stage_parent=pi_parent(op/'activation-private-stage.php')\n"
+     "        pi_current_stage_check(stage_parent,op)\n"
+     "        snapshot_matches()\n        for index,rel in enumerate(order):\n            pi_private(", 1),
+    ("        if lock is not None and pf_identity(os.fstat(lock))",
+     "        if stage_parent is not None:\n"
+     "            pi_current_stage_check(stage_parent,op)\n"
+     "        if lock is not None and pf_identity(os.fstat(lock))", 1),
+    ('identity=pi_write(parents[rel],name,candidates[rel],0o644)',
+     'pi_current_stage_check(stage_parent,op);identity=pi_write(stage_parent,name,candidates[rel],0o644)', 1),
+    ('pi_lint((project/rel).parent/name)', 'pi_lint(op/name)', 1),
+    ('os.stat(name,dir_fd=fd,follow_symlinks=False)', 'os.stat(name,dir_fd=stage_parent,follow_symlinks=False)', 2),
+    ('src_dir_fd=fd,dst_dir_fd=fd', 'src_dir_fd=stage_parent,dst_dir_fd=fd', 2),
+    ('identity=pi_write(fd,name,old[rel],0o644)',
+     'pi_current_stage_check(stage_parent,op);identity=pi_write(stage_parent,name,old[rel],0o644)', 1),
+    ("                fd=parents[rel]\n", "                pi_current_stage_check(stage_parent,op);fd=stage_parent\n", 1),
+    ('        for fd in parents.values():os.close(fd)',
+     '        for fd in parents.values():os.close(fd)\n        if stage_parent is not None:os.close(stage_parent)', 1),
+    ('            os.fsync(fd)\n            data,record=pf_read',
+     '            os.fsync(fd);os.fsync(stage_parent)\n            data,record=pf_read', 1),
+    ("out['rollback_files'].append(rel);os.fsync(fd)",
+     "out['rollback_files'].append(rel);os.fsync(fd);os.fsync(stage_parent)", 1),
+    ("        snapshot_matches();out['status']='prepared';checkpoint(",
+     "        os.fsync(stage_parent);snapshot_matches();out['status']='prepared';checkpoint(", 1),
+):
+    need(CURRENT_REMOTE.count(_old)==_count,'current_private_staging_registration_drift')
+    CURRENT_REMOTE=CURRENT_REMOTE.replace(_old,_new,_count)
+del _old, _new, _count
+CURRENT_REMOTE += r'''
+def pi_current_stage_check(descriptor,op):
+    pi_parent_stable(descriptor,op/'activation-private-stage.php')
+    info=os.fstat(descriptor)
+    if pf_stat.S_IMODE(info.st_mode)!=0o700 or info.st_dev!=project.lstat().st_dev:fail('activation_parent')
+'''
+
 
 def remote_program(remote, command=None):
     command = policy(command)
