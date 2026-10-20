@@ -4,7 +4,7 @@
   "coordination_issue": 4217,
   "date_local": "2026-10-20",
   "timezone": "Europe/Kaliningrad",
-  "status": "historical_committed7_verified_plus_owner_date25_terminal_partial_unknown",
+  "status": "committed7_verified_plus_completed_owner_wide_window_zero_new_pairs",
   "source_account_for_new_acquisition": "TOURVISOR_ANEX_JWT",
   "captured_at_utc": "2026-10-19T23:45:30Z",
   "capture": {
@@ -548,7 +548,7 @@
     "97targets not returned in selected contexts and1unresolved link remain distinct from global operator absence",
     "606ready missing targets include98already selected and508not yet selected; consumed105 queries must not be repeated unchanged"
   ],
-  "next_result": "Execute the already reviewed but UNSPENT owner1316 Thailand14–20Feb2027/7–14night/25hotel context acquire-v6 through ordinary stock carrier admission after supplier_slot_busy clears. This is not a provider timeout: pre-server run39415096942 used0HTTP/0starts/0UNKNOWN/0writes and created no reservation. Preserve all prior consumed contexts and shared5000 quota semantics. New native facts or independently justified nonoverlapping contexts remain valid subsequent work.",
+  "next_result": "Acquire-v6 wideThailand scope is now COMPLETED/CONSUMED, not pending. New mappings/gain0; no writer/CURRENT recount. Continue with genuinely new retained native proof or an independently justified never-attempted compatible scope under the same reviewed carrier/owner/account/quota/manual/uniqueness/geo protections; do not repeat this25hotel/date/night context or other sealed/UNKNOWN requests.",
   "retained_link_completeness_audit": {
     "run_id": 39346987559,
     "command_comment_id": 6280298241,
@@ -815,7 +815,7 @@
   },
   "retained_intake_stage_new_accepted_mappings": 0,
   "aggregate_scope": "Historical committed7/readback/samecohort CURRENT + sealed55/22 partial acquisitions + owner-authorized newdate25 partialUNKNOWN; no newlinks after historical7 + owner1257 new7Feb/25context completed with3HTTP/UNKNOWN0/0pairs",
-  "updated_at_utc": "2026-10-20T11:35:27Z",
+  "updated_at_utc": "2026-10-20T13:00:19Z",
   "current_acquisition_acceptance": {
     "current_before": {
       "run_id": 39348390675,
@@ -3773,8 +3773,8 @@
   },
   "known_acquisition_lineage_accounting": {
     "account": "TOURVISOR_ANEX_JWT",
-    "physical_http_calls": 50,
-    "search_starts": 15,
+    "physical_http_calls": 53,
+    "search_starts": 16,
     "unknown_http_calls": 3,
     "provider_day": "2026-10-20",
     "global_account_usage": "not_measured",
@@ -4405,7 +4405,8 @@
     "writer_status": "NOT_RUN_ZERO_PAIRS",
     "new_current_recount_status": "NOT_RUN_ZERO_GAIN",
     "not_returned_is_not_global_absence": true,
-    "context": "2027-02-07/6nights/Moscow1/Thailand2/ANEX13"
+    "context": "2027-02-14..2027-02-20/7..14nights/Moscow1/Thailand2/ANEX13",
+    "run_id": 39426607776
   },
   "continuation_engineering": {
     "source_prs": [
@@ -4444,7 +4445,7 @@
   },
   "current_supplier_lane_hold": {
     "reason": "Three independent transport TimeoutError acquisitions: Thailand55 result, SriLanka22 start, owner-authorized Thailand25 new-date start; underlying cause not established",
-    "recovery_dependency": "Historical timeout cause remains unestablished; the completed7Feb/6night context was successful with0selectedANEXhotels. Next14–20Feb/7–14night context is reviewed but not started because ordinary supplier-slot admission failed before server access. Wait for slot release and fresh-source admission of the same unspent context; no guard bypass or old UNKNOWN replay.",
+    "recovery_dependency": "Historical timeout cause remains unestablished. Two subsequent distinct 60s Thailand contexts completed without timeout (7Feb/6n and14–20Feb/7–14n) but returned0selectedANEXhotels. No provider-wide recovery/absence inference. All consumed contexts remain sealed; choose a genuinely new evidence-backed scope or incoming native proof through existing reviewed admission.",
     "no_further_paid_attempts_this_pass": true,
     "all_match_paused": false,
     "automation_disabled": false,
@@ -4457,12 +4458,13 @@
       "Context-aware one-start30HTTP mechanism checked41tests incl3actualMySQL; original182hotelledger and allUNKNOWN preserved",
       "One original newdate hypothesis actually attempted after protectedslot becamefree; firstTimeoutError stopped supplierphase, UNKNOWN charged",
       "Verified passive readback-v6 reconciled failed diagnostic-v5 without replay:47 metadata/44HTTP200/3UNKNOWN near30.2s; separate ANEXselector and absentexp; protected ledgers unchanged;0newHTTP/DB/mapping.",
-      "Owner1257 new7Feb2027/6night/25hotel context executed with60s:3HTTP/start1/UNKNOWN0, completed0selectedANEXhotels/0pairs/0writes; old hotelledger unchanged, all context/UNKNOWN reservations retained."
+      "Owner1257 new7Feb2027/6night/25hotel context executed with60s:3HTTP/start1/UNKNOWN0, completed0selectedANEXhotels/0pairs/0writes; old hotelledger unchanged, all context/UNKNOWN reservations retained.",
+      "Owner1316 wide14–20Feb2027/7–14night/25hotel scope actually executed after ordinary slot release and exact15-file current-source compatibility:3HTTP/start1/UNKNOWN0/completed0selectedANEXhotels/0pairs/0writes, context consumed; oldhotelledger unchanged."
     ],
     "missing_common4_authority": "Only operator13/anextour live binding proven; other operator access/namespace bridges still require independent proof",
     "old_native_absent3": "Independent native/property+LOCAL/TV bridge/canonical anchor missing; no replay of saved proof passes",
     "latest_observed_context_completed_without_timeout": true,
-    "latest_observation_run": 39412659568,
+    "latest_observation_run": 39426607776,
     "provider_wide_recovery_established": false,
     "latest_pre_server_admission": {
       "run_id": 39415096942,
@@ -4470,7 +4472,8 @@
       "supplier_http": 0,
       "search_starts": 0,
       "unknown": 0,
-      "context_unspent": true
+      "context_unspent": false,
+      "context_consumed_by_subsequent_run": 39426607776
     }
   },
   "owner_date_variation_20261020": {
@@ -5220,7 +5223,7 @@
   },
   "owner_wide_window_20261020": {
     "owner_direction_local": "2026-10-20T13:16:48+02:00",
-    "status": "ADMITTED_WAITING_SUPPLIER_SLOT_NOT_STARTED",
+    "status": "EXECUTED_COMPLETED_ZERO_SELECTED_ANEX_RESULTS_NO_NEW_PAIRS",
     "scope_kind": "owner_date_variation",
     "context_origin": "owner_20261020_1257_timeout60_new_window",
     "context_reason": "Owner1257 ongoing continuation confirmed13:16; broader future date/night hypothesis after completed empty7Feb/6night context, not a stored user_search or provider-wide recovery claim",
@@ -5326,22 +5329,130 @@
       "run_status": "in_progress",
       "all_three_jobs_completed_skipped": true,
       "another_visual_run": 39414312664,
-      "another_visual_run_terminal": "cancelled"
+      "another_visual_run_terminal": "cancelled",
+      "is_historical_pre_server_snapshot": true
     },
-    "new_returned_anex_hotels": null,
-    "new_native_pairs": null,
+    "new_returned_anex_hotels": 0,
+    "new_native_pairs": 0,
     "new_committed_mappings": 0,
     "new_proved_coverage_gain": 0,
-    "writer_status": "NOT_RUN_ACQUISITION_NOT_STARTED",
+    "writer_status": "NOT_RUN_ZERO_PAIRS",
     "current_recount_status": "NOT_RUN_ZERO_GAIN",
-    "context_unspent": true,
+    "context_unspent": false,
     "no_supplier_unknown_created": true,
-    "own_lineage_unchanged": {
+    "next_step": "This exact context/operation is terminal and consumed; never replay. Reuse only genuinely new native evidence or a new independently justified nonoverlapping scope under current owner authority and reviewed immutable admission. No empty writer or unchanged CURRENT census.",
+    "pre_server_own_lineage_unchanged": {
       "physical_http_calls": 50,
       "search_starts": 15,
       "unknown_http_calls": 3,
       "global_account_usage": "not_measured"
     },
-    "next_step": "Wait for actual ordinary supplier-slot release; then verify fresh main/feature authority and identical reviewed bundle and admit this SAME unspent operation/context through the stock carrier. Do not rerun workflow attempt2, rename operation, alter guards, cancel another lane, or treat this pre-server failure as a consumed supplier search. Once acquisition actually runs, first transport UNKNOWN stops it and consumes its reservations; only completed/UNKNOWN0/proven pairs may enter existing guarded writer and per-row resolver readback."
+    "execution": {
+      "runtime_claim_comment_id": 6291407167,
+      "command_comment_id": 6291409028,
+      "canonical_receipt_comment_id": 6291466574,
+      "run_id": 39426607776,
+      "execute_job_id": 118640656718,
+      "workflow_attempt": 1,
+      "source_sha": "37df62279182b57494bc2447bb87f92597be91aa",
+      "control_source_sha": "c480440232f8b08c662f79c3c037597aae062d4b",
+      "artifact_id": 12266481144,
+      "artifact_created_at_utc": "2026-10-20T13:00:18Z",
+      "zip_bytes": 1361,
+      "zip_sha256": "f376eef6476d538823b9cc197f569fca674d4dcb8a307b364a96c085d40fb177",
+      "json_sha256": "fb5d60e84b9b4737ac3eabe2e73d0a9ec8e570bc5c7e4d5656d61a02e8fb7950",
+      "canonical_private_receipt_sha256": "fa135cf535f15976286262eb32891fa8e6ed6c65822760db1c1928bcdb29670b",
+      "evidence_sha256": "10c61d5363b809a00a04d4dd056edef06555c059299d7fe1f07eabe335554bd2",
+      "artifact_crc_and_single_member_verified": true,
+      "artifact_equals_job_json": true,
+      "actual_result": {
+        "acquisition_state": "completed",
+        "actions": {
+          "search_results": 1,
+          "search_start": 1,
+          "search_status": 1
+        },
+        "batches": [
+          {
+            "batch": 1,
+            "returned_anex_hotels": 0,
+            "search_complete": true,
+            "sent": 25
+          }
+        ],
+        "cohort": "anex-next-a286c36432d9174f",
+        "context_origin": "owner_20261020_1257_timeout60_new_window",
+        "context_reservation_sha256": "054f5977db0ba9810787ab8031b15a6c8005c6e52c3a1152c11cec0ceab2614a",
+        "continuation_scope_sha256": "c83d38a5726d71e955743e133dd815e9898a9a3067ba6048c5e1c31076ee6379",
+        "control_source_sha": "c480440232f8b08c662f79c3c037597aae062d4b",
+        "database_writes": 0,
+        "edge_states": {},
+        "edges": [],
+        "global_usage": "not_measured",
+        "hotel_ledger_sha256": "298b16959c85511bd2d5ccb261f44041b643cec266e509e1a1f628e427faacf5",
+        "mapping_writes": 0,
+        "new_accepted_mappings": 0,
+        "no_replay": true,
+        "operation_id": "int-andromeda-match-retained-acquire-20261020-v6",
+        "operator_account_binding": null,
+        "parent_evidence_sha256": "fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57",
+        "parent_receipt_sha256": "627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9",
+        "physical_http_reservations": 3,
+        "quota_before": {
+          "physical_http_attempts": 50,
+          "provider_day": "2026-10-20",
+          "tariff_search_units": 15
+        },
+        "safe_to_write_now": false,
+        "scope_id": "a286c36432d9174f1989561ca4bfc4b05f98ecf1ea61ef2b48b68f4b771f73c3",
+        "selected_hotels": 25,
+        "selected_id_sha256": "8cbcf79c8a4b63a0b91cd14fe7ed197202d9f9651e6e7ac4f7e924ed7b17aa62",
+        "source_sha": "37df62279182b57494bc2447bb87f92597be91aa",
+        "state": "acquired_retained_native_read_only",
+        "stop_reason": null,
+        "supplier_calls": 3,
+        "target_operation_id": "int-andromeda-match-retained-current-20261020-v2",
+        "tariff_search_units": 1,
+        "unknown_http_calls": 0,
+        "wire_context": {
+          "date_from": "2027-02-14",
+          "date_to": "2027-02-20",
+          "nights_from": 7,
+          "nights_to": 14
+        }
+      },
+      "production_unchanged": true,
+      "fresh_source_compatibility": {
+        "from_reviewed_source": "09733ba6010d6d833b5da4a001b613249c8539c9",
+        "to_feature": "37df62279182b57494bc2447bb87f92597be91aa",
+        "all_15_execution_bundle_pinned_sha256_exact": true,
+        "bundle_sha256": "420b054809de133add1d6d53f162d522562afbdb39cb8a68ee602d7ad8b14a82",
+        "changed_paths_outside_bundle": [
+          "app/integrations/tourvisor-operator-fuel-passive-intake.php",
+          "docs/project/search3-production-import.json",
+          "tests/anex-search3-continue-failure-test.php",
+          "tests/tourvisor-operator-fuel-passive-intake-test.php",
+          "v2/api-anex-search3-preview.php",
+          "v2/api-v2.php"
+        ]
+      },
+      "ordinary_slot_release_observed": {
+        "run_id": 39425759209,
+        "terminal": "success",
+        "updated_at_utc": "2026-10-20T12:56:00Z",
+        "in_progress_runs_before_claim": 0,
+        "no_foreign_cancellation": true,
+        "no_slot_bypass": true
+      }
+    },
+    "context_reservation_consumed": true,
+    "context_reservation_sha256": "054f5977db0ba9810787ab8031b15a6c8005c6e52c3a1152c11cec0ceab2614a",
+    "no_replay": true,
+    "own_lineage_after": {
+      "physical_http_calls": 53,
+      "search_starts": 16,
+      "unknown_http_calls": 3,
+      "global_account_usage": "not_measured"
+    }
   }
 }
