@@ -70,6 +70,30 @@ foreach (['SearchTour_PRICES private-fixture', "SearchTour_PRICES\r\nX-Leak: yes
     cf_check($initial === ['X-AnyTour-Anex-Failure' => 'ANEX_DATABASE_ERROR',
         'X-AnyTour-Anex-Stage' => 'search', 'X-AnyTour-Anex-Category' => 'database'], 'initial_unknown_action_masked');
 }
+foreach (['ANEX_HTTP_ERROR', 'ANEX_SUPPLIER_ERROR', 'ANEX_TRANSPORT_ERROR', 'ANEX_INVALID_RESPONSE'] as $code) {
+    $safe = anytour_anex_search3_continue_failure(new RuntimeException($code), [
+        'action' => 'SearchTour_PRICES', 'http_status' => 200, 'supplier_code' => 101,
+        'curl_errno' => 28, 'elapsed_ms' => 19001, 'url' => 'private-fixture-token', 'body' => 'private-fixture-body',
+    ], 'expand');
+    cf_check($safe['X-AnyTour-Anex-Stage'] === 'expand'
+        && $safe['X-AnyTour-Anex-Elapsed-Ms'] === '19001'
+        && $safe['X-AnyTour-Anex-Failure'] === $code
+        && $safe['X-AnyTour-Anex-Supplier-Code'] === '101'
+        && !str_contains(json_encode($safe), 'private-fixture'), 'expand_safe_' . $code);
+}
+$missing = anytour_anex_search3_continue_failure(new RuntimeException('ANEX_TRANSPORT_ERROR'), [], 'expand');
+cf_check(!isset($missing['X-AnyTour-Anex-Elapsed-Ms'], $missing['X-AnyTour-Anex-Upstream-Status']), 'missing_is_not_zero');
+$stored = anytour_anex_search3_retained_expand_failure(['failure' => [
+    'X-AnyTour-Anex-Stage' => 'expand', 'X-AnyTour-Anex-Failure' => "private-fixture\r\nX-Leak: yes",
+    'X-AnyTour-Anex-Phase' => "private-fixture", 'X-AnyTour-Anex-Native-Action' => 'SearchTour_PRICES',
+    'X-AnyTour-Anex-Upstream-Status' => '502', 'X-AnyTour-Anex-Elapsed-Ms' => '120001', 'body' => 'private-fixture',
+]]);
+cf_check($stored['X-AnyTour-Anex-Failure'] === 'ANEX_INTERNAL_ERROR'
+    && $stored['X-AnyTour-Anex-Upstream-Status'] === '502'
+    && !isset($stored['X-AnyTour-Anex-Elapsed-Ms'])
+    && !str_contains(json_encode($stored), 'private-fixture'), 'stored_expand_resanitized');
+cf_check(anytour_anex_search3_retained_expand_failure(['status' => 'unknown']) === [], 'legacy_unknown_no_diagnosis');
 $source = file_get_contents(__DIR__ . '/../v2/api-anex-search3-preview.php');
-cf_check(str_contains($source, "if (in_array(\$action ?? null, ['search', 'continue'], true)) {\n            foreach (anytour_anex_search3_continue_failure(\$error, \$last, \$action)"), 'search_and_continue_diagnostics');
+cf_check(str_contains($source, "if (in_array(\$action ?? null, ['search', 'continue', 'expand'], true)"), 'search_continue_expand_diagnostics');
+cf_check(str_contains($source, "\$extra['diagnostics'] = \$safe;"), 'same_post_failure_body_retains_safe_diagnostics');
 echo "ANEX_CONTINUE_FAILURE_CLASSIFICATION_OK supplier0/DB0/lead0\n";

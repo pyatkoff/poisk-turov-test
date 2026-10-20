@@ -867,8 +867,12 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         return array_replace($reply, ['status' => 'additional_prices',
             'additional_prices' => anytour_anex_search3_additional_application($evidence, $offer)]);
     }
+    $lastClient = null;
+    $trackedFactory = static function () use ($clientFactory, &$lastClient) {
+        return $lastClient = $clientFactory();
+    };
     $gateway = new AnyTourAnexPreviewGateway(
-        $clientFactory, $resolver, [], $clock, $enforceGatewayRateLimit
+        $trackedFactory, $resolver, [], $clock, $enforceGatewayRateLimit
     );
     if ($request['action'] === 'flights') {
         if (($offer['kind'] ?? null) !== 'concrete') return array_replace($reply, ['status' => 'not_concrete']);
@@ -932,31 +936,68 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     if ($offer['kind'] !== 'group_minimum') return array_replace($reply, ['status' => 'not_grouped']);
     $attempt = $state['expansions'][$key] ?? null;
     if ($attempt !== null && ($attempt['status'] ?? null) !== 'complete') {
-        return array_replace($reply, ['status' => 'expansion_unknown']);
+        $failure = anytour_anex_search3_retained_expand_failure($attempt);
+        return array_replace($reply, ['status' => 'expansion_unknown'], $failure === [] ? [] : ['diagnostics' => $failure]);
     }
-    if ($attempt === null) {
+    $newExpansion = $attempt === null;
+    if ($newExpansion) {
         if ($checkpoint === null) throw new RuntimeException('ANEX_RESERVATION_REQUIRED');
         $state['expansions'][$key] = ['status' => 'unknown'];
         $checkpoint($state);
         if (!anytour_anex_search3_current($state, $clock())) return $reply;
-        $expanded = $gateway->handle(['action' => 'expand', 'offer_key' => $key], $state['gateway']);
-        $state['expansions'][$key] = ['status' => 'complete', 'keys' => array_column($expanded['offers'], 'offer_key'),
-            'external_search_pending' => $expanded['external_search_pending']];
-        $attempt = $state['expansions'][$key];
     }
-    if (!anytour_anex_search3_current($state, $clock())) return $reply;
-    $offers = [];
-    $known = array_column($state['gateway']['search']['offers'] ?? [], null, 'offer_key');
-    foreach ($attempt['keys'] as $expandedKey) {
-        $entry = $state['gateway']['saved_offers']['offers'][$expandedKey]['offer'] ?? null;
-        if (!is_array($entry) || !isset($known[$expandedKey])) return array_replace($reply, ['status' => 'not_loaded']);
-        if ($entry['kind'] !== 'concrete' || $entry['hotel']['external_id'] !== $offer['hotel']['external_id']
-            || $entry['hotel']['local_id'] !== $local) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
-        $offers[] = $entry;
+    $phase = 'gateway';
+    try {
+        if ($newExpansion) {
+            $expanded = $gateway->handle(['action' => 'expand', 'offer_key' => $key], $state['gateway']);
+            $state['expansions'][$key] = ['status' => 'complete', 'keys' => array_column($expanded['offers'], 'offer_key'),
+                'external_search_pending' => $expanded['external_search_pending']];
+            $attempt = $state['expansions'][$key];
+        }
+        $phase = 'projection';
+        $result = $reply;
+        $offers = [];
+        $known = array_column($state['gateway']['search']['offers'] ?? [], null, 'offer_key');
+        if (anytour_anex_search3_current($state, $clock())) {
+            foreach ($attempt['keys'] as $expandedKey) {
+                $entry = $state['gateway']['saved_offers']['offers'][$expandedKey]['offer'] ?? null;
+                if (!is_array($entry) || !isset($known[$expandedKey])) {
+                    $result['status'] = 'not_loaded';
+                    break;
+                }
+                if ($entry['kind'] !== 'concrete' || $entry['hotel']['external_id'] !== $offer['hotel']['external_id']
+                    || $entry['hotel']['local_id'] !== $local) throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+                $offers[] = $entry;
+            }
+            if ($result['status'] !== 'not_loaded') {
+                $result = array_replace($reply, ['status' => 'expanded', 'hotels' => anytour_anex_search3_project(
+                    $offers, $metadata, $state['params'], $request['search_ref']),
+                    'external_search_pending' => $attempt['external_search_pending'], 'first_page_only' => true]);
+            }
+        }
+    } catch (Throwable $error) {
+        // Keep the existing no-replay reservation. Never retain exception text,
+        // client objects, request URLs or supplier response bodies in the session.
+        if ($newExpansion && isset($state['expansions'][$key])) {
+            $last = $lastClient instanceof AnyTourAnexClient ? $lastClient->lastRequestDiagnostics() : [];
+            $state['expansions'][$key]['status'] = 'unknown';
+            $state['expansions'][$key]['failure'] = anytour_anex_search3_continue_failure($error, $last, 'expand');
+            $state['expansions'][$key]['failure']['X-AnyTour-Anex-Phase'] = $phase;
+            $checkpoint($state);
+        }
+        throw $error;
     }
-    return array_replace($reply, ['status' => 'expanded', 'hotels' => anytour_anex_search3_project(
-        $offers, $metadata, $state['params'], $request['search_ref']),
-        'external_search_pending' => $attempt['external_search_pending'], 'first_page_only' => true]);
+    if ($newExpansion && $result['status'] !== 'expanded') {
+        $last = $lastClient instanceof AnyTourAnexClient ? $lastClient->lastRequestDiagnostics() : [];
+        $code = $result['status'] === 'expired' ? 'ANEX_SESSION_EXPIRED' : 'ANEX_EXPANSION_NOT_LOADED';
+        $state['expansions'][$key]['status'] = 'unknown';
+        $failure = anytour_anex_search3_continue_failure(new RuntimeException($code), $last, 'expand');
+        $failure['X-AnyTour-Anex-Phase'] = $phase;
+        $state['expansions'][$key]['failure'] = $failure;
+        $checkpoint($state);
+        $result['diagnostics'] = $failure;
+    }
+    return $result;
 }
 
 function anytour_anex_search3_checkpoint(array &$state): void
@@ -998,18 +1039,20 @@ function anytour_anex_search3_continue_failure(Throwable $error, array $last, st
         'ANEX_REPEATED_PRICE_PAGE', 'ANEX_INVALID_PUBLIC_RESULT', 'ANEX_REQUEST_LIMIT',
         'ANEX_SESSION_UNAVAILABLE', 'ANEX_SESSION_EXPIRED', 'ANEX_CLOCK_ERROR',
         'ANEX_RESERVATION_REQUIRED', 'ANEX_RATE_LIMIT', 'ANEX_CLIENT_UNAVAILABLE',
-        'ANEX_INVALID_PARAMS', 'ANEX_SESSION_OFFER_LIMIT', 'ANEX_SEARCH_NOT_STARTED'];
+        'ANEX_INVALID_PARAMS', 'ANEX_SESSION_OFFER_LIMIT', 'ANEX_SEARCH_NOT_STARTED', 'ANEX_EXPANSION_NOT_LOADED',
+        'ANEX_DATABASE_ERROR', 'ANEX_TYPE_ERROR', 'ANEX_INTERNAL_ERROR'];
     $code = in_array($error->getMessage(), $allowed, true) ? $error->getMessage()
         : ($error instanceof PDOException ? 'ANEX_DATABASE_ERROR'
             : ($error instanceof TypeError ? 'ANEX_TYPE_ERROR' : 'ANEX_INTERNAL_ERROR'));
     $safe = ['X-AnyTour-Anex-Failure' => $code];
     $initialSearch = $stage === 'search';
+    $detailed = $initialSearch || $stage === 'expand';
     $nativeAction = $last['action'] ?? null;
     $knownAction = $initialSearch
         ? in_array($nativeAction, ['SearchTour_TOWNFROMS', 'SearchTour_STATES', 'SearchTour_CURRENCIES', 'SearchTour_PRICES'], true)
         : $nativeAction === 'SearchTour_PRICES';
-    if ($initialSearch) {
-        $safe['X-AnyTour-Anex-Stage'] = 'search';
+    if ($detailed) {
+        $safe['X-AnyTour-Anex-Stage'] = $stage;
         $safe['X-AnyTour-Anex-Category'] = [
             'ANEX_TRANSPORT_ERROR' => 'transport', 'ANEX_HTTP_ERROR' => 'http',
             'ANEX_SUPPLIER_ERROR' => 'supplier', 'ANEX_DATABASE_ERROR' => 'database',
@@ -1025,13 +1068,31 @@ function anytour_anex_search3_continue_failure(Throwable $error, array $last, st
         $numeric = ['http_status' => ['X-AnyTour-Anex-Upstream-Status', 599],
             'supplier_code' => ['X-AnyTour-Anex-Supplier-Code', 99999],
             'curl_errno' => ['X-AnyTour-Anex-Transport-Code', 999]];
-        if ($initialSearch) $numeric['elapsed_ms'] = ['X-AnyTour-Anex-Elapsed-Ms', 120000];
+        if ($detailed) $numeric['elapsed_ms'] = ['X-AnyTour-Anex-Elapsed-Ms', 120000];
         foreach ($numeric as $key => [$header, $max]) {
             if (is_int($last[$key] ?? null) && $last[$key] >= 0 && $last[$key] <= $max) {
                 $safe[$header] = (string) $last[$key];
             }
         }
     }
+    return $safe;
+}
+
+/** Re-sanitize our existing attempt when an ordinary POST reads its no-replay status. */
+function anytour_anex_search3_retained_expand_failure(array $attempt): array
+{
+    $failure = $attempt['failure'] ?? null;
+    if (!is_array($failure) || ($failure['X-AnyTour-Anex-Stage'] ?? null) !== 'expand') return [];
+    $last = ['action' => $failure['X-AnyTour-Anex-Native-Action'] ?? null];
+    foreach (['http_status' => 'X-AnyTour-Anex-Upstream-Status', 'supplier_code' => 'X-AnyTour-Anex-Supplier-Code',
+        'curl_errno' => 'X-AnyTour-Anex-Transport-Code', 'elapsed_ms' => 'X-AnyTour-Anex-Elapsed-Ms'] as $key => $header) {
+        $value = $failure[$header] ?? null;
+        if (is_string($value) && preg_match('/\A(?:0|[1-9][0-9]{0,5})\z/D', $value)) $last[$key] = (int) $value;
+    }
+    $code = is_string($failure['X-AnyTour-Anex-Failure'] ?? null) ? $failure['X-AnyTour-Anex-Failure'] : '';
+    $safe = anytour_anex_search3_continue_failure(new RuntimeException($code), $last, 'expand');
+    $phase = $failure['X-AnyTour-Anex-Phase'] ?? null;
+    if (in_array($phase, ['gateway', 'projection'], true)) $safe['X-AnyTour-Anex-Phase'] = $phase;
     return $safe;
 }
 
@@ -1226,29 +1287,39 @@ function anytour_anex_search3_http(): void
         }
         session_write_close();
         anytour_anex_search3_out(['ok' => true, 'data' => $data], 200);
-    } catch (InvalidArgumentException $error) {
-        session_write_close();
-        $unsupported = in_array($error->getMessage(), ['ANEX_FILTER_UNSUPPORTED', 'ANEX_DESTINATION_UNSUPPORTED'], true);
-        anytour_anex_search3_out(['ok' => false, 'error' => $unsupported ? 'search_not_supported' : 'invalid_request'], $unsupported ? 422 : 400);
     } catch (Throwable $error) {
-        session_write_close();
         $last = isset($additionalClient) ? $additionalClient->lastRequestDiagnostics()
             : (isset($client) ? $client->lastRequestDiagnostics() : []);
-        if (in_array($action ?? null, ['search', 'continue'], true)) {
-            foreach (anytour_anex_search3_continue_failure($error, $last, $action) as $name => $value) {
+        $extra = [];
+        if (in_array($action ?? null, ['search', 'continue', 'expand'], true)
+            && (!($error instanceof InvalidArgumentException) || $action === 'expand')) {
+            $safe = anytour_anex_search3_continue_failure($error, $last, $action);
+            if ($action === 'expand') {
+                $ref = $request['offer_ref'] ?? null;
+                $phase = is_string($ref)
+                    ? ($_SESSION['offer_context']['expansions'][$ref]['failure']['X-AnyTour-Anex-Phase'] ?? null) : null;
+                if (in_array($phase, ['gateway', 'projection'], true)) $safe['X-AnyTour-Anex-Phase'] = $phase;
+                $extra['diagnostics'] = $safe;
+            }
+            foreach ($safe as $name => $value) {
                 header($name . ': ' . $value);
             }
         }
+        session_write_close();
+        if ($error instanceof InvalidArgumentException) {
+            $unsupported = in_array($error->getMessage(), ['ANEX_FILTER_UNSUPPORTED', 'ANEX_DESTINATION_UNSUPPORTED'], true);
+            anytour_anex_search3_out(['ok' => false, 'error' => $unsupported ? 'search_not_supported' : 'invalid_request'] + $extra, $unsupported ? 422 : 400);
+        }
         if ($error->getMessage() === 'ANEX_RATE_LIMIT' || ($last['http_status'] ?? null) === 429) {
             header('Retry-After: 60');
-            anytour_anex_search3_out(['ok' => false, 'error' => 'rate_limited'], 429);
+            anytour_anex_search3_out(['ok' => false, 'error' => 'rate_limited'] + $extra, 429);
         }
         if (in_array($error->getMessage(), ['ANEX_CLIENT_UNAVAILABLE', 'ANEX_ADDITIONAL_CLIENT_UNAVAILABLE'], true)) {
-            anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
+            anytour_anex_search3_out(['ok' => false, 'error' => 'temporarily_unavailable'] + $extra, 503);
         }
         $code = ($last['supplier_code'] ?? null) === 101 ? 'supplier_conditions_rejected'
             : (($last['curl_errno'] ?? null) === 28 ? 'supplier_timeout' : 'supplier_unavailable');
-        anytour_anex_search3_out(['ok' => false, 'error' => $code], $code === 'supplier_conditions_rejected' ? 422 : 502);
+        anytour_anex_search3_out(['ok' => false, 'error' => $code] + $extra, $code === 'supplier_conditions_rejected' ? 422 : 502);
     }
 }
 
