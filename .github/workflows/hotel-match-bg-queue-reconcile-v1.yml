@@ -1,0 +1,85 @@
+name: MATCH BG supplier queue prerequisite reconciliation
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths: [.github/workflows/hotel-match-bg-queue-reconcile-v1.yml]
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: match-bg-queue-reconcile-v1, cancel-in-progress: false}
+jobs:
+  evidence:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-bg-queue-reconcile-1971-20260922-v1' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Collect immutable prerequisites without supplier access
+        env: {GH_TOKEN: '${{ github.token }}', HEAD: '${{ github.event.pull_request.head.sha }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git diff --name-only 3fe25fe95621f56354ee6ffdd4d0f448d614b06e..HEAD)" = '.github/workflows/hotel-match-bg-queue-reconcile-v1.yml'
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, subprocess, urllib.request, urllib.error, time
+          ROOT = 'https://api.github.com/repos/pyatkoff/poisk-turov-test/'
+          OUT = pathlib.Path('terminal'); OUT.mkdir(exist_ok=True)
+          def gh(path):
+              return json.loads(subprocess.check_output(['gh','api',path],timeout=40))
+          def save(name, value):
+              (OUT / name).write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n')
+          def sha(b):return hashlib.sha256(b).hexdigest()
+          head=os.environ['HEAD']; repo=os.environ['GITHUB_REPOSITORY']
+          assert repo=='pyatkoff/poisk-turov-test'
+          assert subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()==head
+          claim=gh('repos/'+repo+'/issues/comments/5773681932')
+          assert claim['user']['id']==226193297 and claim['author_association']=='OWNER'
+          assert 'hotel-match-bg-queue-reconcile-1971-20260922-v1' in claim['body']
+          assert 'никаких supplier GET' in claim['body']
+          for _ in range(60):
+              checks=gh('repos/'+repo+'/actions/runs?head_sha='+head+'&per_page=100')['workflow_runs']
+              checks=[x for x in checks if x['name']=='Security guard' and x['head_sha']==head]
+              if checks and checks[0]['status']=='completed':
+                  assert checks[0]['conclusion']=='success'; break
+              time.sleep(3)
+          else:raise RuntimeError('security_not_green')
+          rows=[]; sources={}
+          for status in ['queued','in_progress']:
+              data=gh('repos/'+repo+'/actions/runs?status='+status+'&per_page=100')
+              assert data['total_count']<=100,'pagination_required'
+              for r in data['workflow_runs']:
+                  if r['id']==int(os.environ['GITHUB_RUN_ID']):continue
+                  txt=' '.join(str(r.get(x,'')) for x in ['name','path','head_branch']).lower()
+                  if not any(x in txt for x in ['andromeda','anex','tourvisor','hotel-match','match-biblio']):continue
+                  s={k:r.get(k) for k in ['id','name','path','head_sha','status','conclusion','run_attempt','event','created_at']}
+                  jobs=gh('repos/'+repo+'/actions/runs/'+str(r['id'])+'/jobs?per_page=100')
+                  s['jobs_count']=jobs['total_count'];s['jobs']=[{k:j.get(k) for k in ['id','name','status','conclusion']} for j in jobs['jobs']]
+                  ref=r['head_sha']; p=r['path'].split('@')[0];assert re.fullmatch('[a-f0-9]{40}',ref)
+                  assert p.startswith('.github/workflows/') and '..' not in p
+                  c=gh('repos/'+repo+'/contents/'+p+'?ref='+ref)
+                  b=base64.b64decode(c['content']);assert len(b)<256000
+                  text=b.decode(); s['workflow_blob']=c['sha'];s['workflow_sha256']=sha(b)
+                  sources[ref+':'+p]=text
+                  refs=set(re.findall(r'[a-f0-9]{40}',text));refs.add(ref)
+                  paths=set(re.findall(r'(?:scripts|tests)/[A-Za-z0-9_./-]+\.(?:py|php|sh)',text))
+                  for dep in sorted(paths):
+                      for commit in sorted(refs):
+                          try:
+                              raw=subprocess.check_output(['git','show',commit+':'+dep],stderr=subprocess.DEVNULL,timeout=10)
+                          except subprocess.CalledProcessError:continue
+                          assert len(raw)<256000
+                          sources[commit+':'+dep]=raw.decode()
+                  s['artifact_prerequisites']=[]
+                  for aid in sorted(set(re.findall(r'actions/artifacts/(\d+)',text))):
+                      a=gh('repos/'+repo+'/actions/artifacts/'+aid)
+                      s['artifact_prerequisites'].append({k:a.get(k) for k in ['id','name','expired','expires_at','digest']})
+                  rows.append(s)
+          assert sum(len(v.encode()) for v in sources.values())<4000000,'source_cap'
+          save('queue.json',rows);save('immutable-sources.json',sources)
+          summary={'operation':'hotel-match-bg-queue-reconcile-1971-20260922-v1','source_sha':head,'state':'completed_github_read_only','supplier_http_requests':0,'database_writes':0,'mapping_writes':0,'cancel_delete_rerun':0,'runs':len(rows),'source_files':len(sources),'claim_sha256':sha(claim['body'].encode()),'queue_sha256':sha((OUT/'queue.json').read_bytes()),'sources_sha256':sha((OUT/'immutable-sources.json').read_bytes()),'no_replay':True}
+          save('receipt.json',summary)
+          print(json.dumps(summary));print(json.dumps([{k:r[k] for k in ['id','name','path','head_sha','status','jobs_count','artifact_prerequisites']} for r in rows],ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-bg-queue-prerequisites-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: warn}
