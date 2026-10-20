@@ -80,14 +80,48 @@
     try{const url=new URL(value,root.location.href);return url.origin===root.location.origin&&url.pathname===expectedPath&&!url.search&&!url.hash?url:null;}catch{return null;}
   }
   const anexSearchFailureCodes=new Set(['not_found','forbidden','temporarily_unavailable','method_not_allowed','invalid_request','search_not_supported','rate_limited','supplier_conditions_rejected','supplier_timeout','supplier_unavailable','unknown']);
+  const anexSearchDiagnosticEnums=Object.freeze({
+    backendFailure:new Set(['ANEX_HTTP_ERROR','ANEX_TRANSPORT_ERROR','ANEX_SUPPLIER_ERROR','ANEX_INVALID_RESPONSE',
+      'ANEX_RESPONSE_TOO_LARGE','ANEX_INVALID_PRICES','ANEX_REPEATED_PRICE_PAGE','ANEX_INVALID_PUBLIC_RESULT',
+      'ANEX_REQUEST_LIMIT','ANEX_SESSION_UNAVAILABLE','ANEX_SESSION_EXPIRED','ANEX_CLOCK_ERROR',
+      'ANEX_RESERVATION_REQUIRED','ANEX_RATE_LIMIT','ANEX_CLIENT_UNAVAILABLE','ANEX_INVALID_PARAMS',
+      'ANEX_SESSION_OFFER_LIMIT','ANEX_SEARCH_NOT_STARTED','ANEX_DATABASE_ERROR','ANEX_TYPE_ERROR','ANEX_INTERNAL_ERROR']),
+    backendStage:new Set(['search']),backendCategory:new Set(['transport','http','supplier','database','limit','response','application']),
+    nativeAction:new Set(['SearchTour_TOWNFROMS','SearchTour_STATES','SearchTour_CURRENCIES','SearchTour_PRICES'])
+  });
+  const anexSearchDiagnosticBounds=Object.freeze({upstreamStatus:599,supplierCode:99999,transportCode:999,elapsedMs:120000});
+  function cleanAnexSearchDiagnostics(value){
+    const result={};if(!value||typeof value!=='object'||Array.isArray(value))return result;
+    for(const [key,allowed] of Object.entries(anexSearchDiagnosticEnums))if(allowed.has(value[key]))result[key]=value[key];
+    for(const [key,max] of Object.entries(anexSearchDiagnosticBounds))if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)result[key]=value[key];
+    return result;
+  }
+  function anexSearchDiagnostics(response){
+    const values={},headers={backendFailure:'Failure',backendStage:'Stage',backendCategory:'Category',nativeAction:'Native-Action',
+      upstreamStatus:'Upstream-Status',supplierCode:'Supplier-Code',transportCode:'Transport-Code',elapsedMs:'Elapsed-Ms'};
+    for(const [key,suffix] of Object.entries(headers)){
+      let value;try{value=response?.headers?.get?.('X-AnyTour-Anex-'+suffix);}catch{continue;}
+      if(typeof value!=='string')continue;
+      if(Object.hasOwn(anexSearchDiagnosticBounds,key)){
+        if(!/^(?:0|[1-9][0-9]{0,5})$/.test(value))continue;
+        value=Number(value);
+      }
+      values[key]=value;
+    }
+    return cleanAnexSearchDiagnostics(values);
+  }
   function anexSearchError(response,payload,stage){
     const failure={stage,code:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
     if(Number.isInteger(response?.status)&&response.status>=100&&response.status<=599)failure.httpStatus=response.status;
+    Object.assign(failure,anexSearchDiagnostics(response));
+    // Public enums and bounded numeric facts only; never response text or identities.
+    try{root.console?.warn?.('[AnyTour search] '+JSON.stringify({provider:'anex',...failure}));}catch{}
     return Object.assign(new Error(stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
   }
   function anexSearchFailure(error,stage){
     const value=error?.searchFailure,result={stage,code:anexSearchFailureCodes.has(value?.code)?value.code:'unknown'};
     if(Number.isInteger(value?.httpStatus)&&value.httpStatus>=100&&value.httpStatus<=599)result.httpStatus=value.httpStatus;
+    Object.assign(result,cleanAnexSearchDiagnostics(value));
     return result;
   }
   const text = value => typeof value === 'object' && value ? String(value.russianName || value.name || '') : String(value ?? '');
