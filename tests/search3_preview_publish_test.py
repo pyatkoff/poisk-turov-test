@@ -114,11 +114,13 @@ class Authorization(unittest.TestCase):
         for name, count in (('deploy-search3-whole-site-preview.yml', 2),
                             ('create-search3-local-preview.yml', 1),
                             ('create-search3-v17-preview.yml', 1),
-                            ('update-search3-local-preview.yml', 1),
                             ('inspect-search3-local-preview.yml', 1)):
             with self.subTest(workflow=name):
                 guards = re.findall(r'github\.event\.issue\.number == (\d+)', (root / name).read_text())
                 self.assertEqual(guards, [str(publish.COORDINATION_ISSUE)] * count)
+        update_guards = re.findall(r'github\.event\.issue\.number == (\d+)',
+                                  (root / 'update-search3-local-preview.yml').read_text())
+        self.assertEqual(update_guards, ['4217', '4709'])
         self.assertEqual(publish.COORDINATION_ISSUE, 4217)
 
     def test_manual(self):
