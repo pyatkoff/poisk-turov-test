@@ -5,7 +5,95 @@ Execution remains in [INT #2506](https://github.com/pyatkoff/poisk-turov-test/is
 and coordination [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
 This document records one concrete delivery boundary, not a second queue.
 
-## Current checked boundary — 20.10.2026, 15:01 UTC
+## Current checked boundary — 20.10.2026, after CURRENT activation
+
+The two-file activation is **SOURCE/CI ACCEPTED, NOT INSTALLED**. The current
+blocker is the existing publication lock's rejected safety predicate, not missing
+private configuration, store or API. The historical preflight instructions below
+are superseded by these actual receipts; they provide no retry authority.
+
+| Stage | Actual evidence |
+| --- | --- |
+| Source |[PR4762](https://github.com/pyatkoff/poisk-turov-test/pull/4762), final `fd78d4b478bd1e42997f9791be55048503e8efff`, main `0059b396ae239b58a2726ac504461d0144e9432f`; only existing readiness module and test changed |
+| Exact-source CI/review |Native [39457927779](https://github.com/pyatkoff/poisk-turov-test/actions/runs/39457927779), job118749561235 SUCCESS:109core tests plus20existing suites; Security39457927770/job118749560805 SUCCESS; independent [FINAL ACCEPT6295891765](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295891765) |
+| Stock execution |Command6295904549, [run39458452075](https://github.com/pyatkoff/poisk-turov-test/actions/runs/39458452075)/job118751338139/attempt1 FAILED, sanitized `blocked_no_replay / activation_lock_unsafe`; [terminal6295995951](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295995951) |
+| Preflight |READY: exact retained manifest117364B/SHA256 `b16a2b0fa7939b4f73f7c09a37fea2b15d22058f4bbe7559901011019a530223`, publisher source `786514ccbb4047868a89f00bb2d06dfe5157ffb8`,818rows,8source anchors and only2named empty JS rows; DB/config/proxy/store and predecessor/dependency predicates true |
+| Installation |Existing lock opened but rejected before flock; no publication lock acquired, backups, candidate staging or target writes. ROOT API remains01ac; private passive helper remainsbe4380. All supplier/DB read/DB write/booking/lead counters0; runtime_changed=false, production_unchanged=true |
+
+Artifact12281708061,2236B: ZIP SHA256
+`00ecdb2a954f7173b8eed68358c14ccd64c623b13c19549c4fb73b2ddba28f0f`;
+sole result.json SHA256
+`1280afe28422fd47944a271661d1f20656e3c75fc94afeea9f8b19271390fc24`.
+Download, CRC and exact job-JSON equality verified; independent receiving review
+[6295993035](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295993035)
+separately confirmed preflight and unchanged protected files.
+
+Both private API candidates are absent **by stock publisher design**: its export
+excludes api-v2.php and binds the existing ROOT gateway. Source786's exact public
+manifest and bounded publisher source establish this; do not add a third API or
+use the old private-caller-presence requirement. The fixed CURRENT profile keeps
+all predecessor, source/CI, account, lock, protected-file and rollback guards.
+Its candidates and rollback staging use the existing private0700 operation directory,
+held nofollow directory descriptors and identity/device/mode checks, never public
+temporary PHP files. The earlier historical-source profile remains unchanged.
+
+Previous activation results are also terminal/consumed/no-replay:
+
+- PR4751 plan command6294721853/run39450060352 failed `local_profile_release_changed`
+  before SSH. It did not inspect or change the server.
+- PR4755 two-file command6295109271/run39452806897 completed HOLD because the
+  private caller API was absent; [terminal6295173975](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295173975).
+- PR4759 stock command6295452168/run39455181703 completed HOLD because the
+  retained publisher was786 rather than historical7d; [terminal6295540457](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295540457).
+
+Neither HOLD acquired the publication lock or wrote application targets. They
+and CURRENT operation `int-anex-passive-fuel-current-activate-20261020-v1` must
+not be rerun, refreshed, renamed or treated as install evidence.
+
+### One next handoff: establish the rejected lock fact
+
+The emitted generic reason does **not** identify its failing subpredicate. The
+current check rejects nonregular type, link count other than1, owner different
+from the executing UID, group/other write bits, size greater than65536, or
+descriptor/path-entry identity drift. Each actual property remains NOT_MEASURED;
+do not infer mode0666, wrong owner, symlink, busy publisher or a repair from it.
+
+Independent source audit found that historical projection/runtime publishers use
+`fopen(..., 'c')` and flock without a fixed umask/chmod/owner contract. The detail
+publisher sets umask0077 before opening, which preserves an existing inode's mode.
+The stock flight-selection publisher pinned at23dd08a9 likewise has no explicit
+mode/UID contract. Source alone cannot establish or correct current metadata.
+
+The existing protected stock owner/carrier must supply a separately reviewed,
+strictly bounded receipt of only the existing lock's regular-file/type predicate,
+link count, byte size, mode, owner-match boolean, fstat/path-entry identity and
+private parent owner/mode/identity. No file contents, directory listing, arbitrary
+path, PHP/config execution, credentials, logs, catalog/observations, supplier or
+DB access. This is an evidence contract, **not a new reader, transport, command,
+server permission or automatic repair**. Preserve current guards and no-replay.
+
+Do not chmod/chown, unlink, recreate, truncate or reset the lock, or weaken its
+safety predicate. Replacing its inode can split existing flock coordination.
+Any future correction requires the exact observed cause and its own reviewed
+existing-owner package; this document authorizes neither correction nor another
+activation. Keep the accepted two-file candidate and all DB/config/store bytes.
+
+### Independent live boundary
+
+Ordinary infant operation `int-live-infant-turkey-20261125-20261020-v1` is closed
+in [receipt6296149749](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6296149749):
+ONE Find, Moscow→Turkey departure25Nov–1Dec/7n/2adults+age0/AI, on installed
+ROOT01ac/NEXTb604, independently of the uninstalled fuel candidate. Own returned
+TV offer18296145392433 explicitly named Библио-Глобус, KAILA CITY HOTEL,
+30Nov–7Dec/7n/standard room/DBL+1CHD/AI. Detail preserved age under1 and
+109038RUB for all tourists, but explicitly marked listing price requiring check
+and fuel unknown. Automatic approval review rejected the flight/price click
+before execution because it interpreted the stay dates as a mismatch with the
+departure window. No retry/workaround/second offer or quote dispatch established.
+This proves party propagation into detail only, not final price, infant charge,
+fuel0, flights, persistence or ANEX recovery. HTTP/global balance NOT_MEASURED.
+
+## Historical checked boundary — 20.10.2026, 15:01 UTC
 
 Gateway binding is corrected in [PR4745](https://github.com/pyatkoff/poisk-turov-test/pull/4745),
 source65a802303afc3bedd6a8b674b9f5a9579ab4a38a/release266848221cc78b1299c675171d7fe53fbb7e0cce.
