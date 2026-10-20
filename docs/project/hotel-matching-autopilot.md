@@ -99,13 +99,22 @@ registry и live30/SEARCH эффект в этом пакете не измер�
 ID наблюдений. Это не139 новых отелей или доказанных missing-provider связей.
 6917 наблюдений отнесены к common4 по retained ID hints13/18/25/43; остальные6694
 сохранены как other/unbound. Hints не доказывают доступ текущей учётки или namespace
-bridge. В поддержанных URL/native fields этих6917 новые native IDs не распознаны;
-полнота/формат всего raw operatorLink ещё не установлены.
+bridge. Завершённый saved-link audit run39346987559 установил: во всех13611
+observations поля operator_link и native_id_value равны NULL; все14687 source JSON
+разобраны, буквальных operatorLink/operator_link ключей во вложенных объектах нет.
+Это проверка полей этой выгрузки, не других передач или JSON внутри строк.
+Гипотеза нераспознанного формата этих сохранённых ссылок закрыта: повторять этот
+parsing/intake без новых данных нельзя. Raw/parent receipt неизменны, все прежние
+projection fields совпали; новых accepted0/HTTP0/DBreads0/mappingwrites0.
+Исправление источника #4672/control #4673 проверено native20tests и штатным
+contract39346753081/Security39346734598+39346753057 SUCCESS.
 
-**Следующий data-результат:** проверить полноту/формат сохранённых operatorLink и
-независимый native namespace proof для полезной группы из этой же выгрузки.
-Только недостающие факты получать адресно через `TOURVISOR_ANEX_JWT` с общим
-quota helper; до массового acquisition подтвердить operator/account binding.
+**Следующий data-результат:** для одной полезной группы проверить scoped CURRENT
+прямые ANEX effective mappings и уже принятые provider-связи, исключить имеющиеся
+пары и явно выделить отсутствующий native/namespace proof.139 дополнительных IDs
+не являются готовой missing-очередью. Только недостающие факты получать адресно
+через `TOURVISOR_ANEX_JWT` с общим quota helper; до массового acquisition подтвердить
+operator/account binding. Повторно искать ссылки в неизменённой выгрузке не нужно.
 Пригодные независимые пары проходят штатные CURRENT/manual/exclusion/occupancy/geo
 guards, acceptance/readback/resolver; извлечение ID или CI не считаются gain.
 Старые fixed modes не ретаргетируются. Failed intakev1/v2 reconciled/no-replay;
@@ -202,11 +211,12 @@ MATCH автоматически. Это не требует включать pr
 При отсутствии всех доступных действий сохранить конечный checkpoint и точное
 условие продолжения, без неизменённых нулевых прогонов/новых имён старых операций.
 
-**Ближайший конечный пакет:** независимое native/namespace доказательство для
-полезной retained группы → CURRENT → пригодная acceptance/readback. Пакетные
-intake и quota helper уже реализованы и не образуют новую подготовительную очередь.
-Повторный parsing выполняется над COMPLETE saved raw; неизменённую перепись/HTTP
-не повторять. Новые запросы направлять на конкретный пробел и считать принятые
+**Ближайший конечный пакет:** scoped CURRENT существующих provider-связей,
+включая direct ANEX, для выбранной полезной группы → адресное недостающее
+native/namespace доказательство → CURRENT → пригодная acceptance/readback.
+Intake, quota helper и проверка полноты retained operatorLink завершены; они не
+образуют новую подготовительную очередь. Saved-link audit39346987559 consumed:
+неизменённый parsing, перепись и HTTP не повторять. Новые запросы направлять на конкретный пробел и считать принятые
 связи/HTTP/время;5000 запросов не означают5000 новых отелей. Расписания и enabled/paused
 состояния этим пакетом не менялись; текущие operational states читать из receipts.
 
