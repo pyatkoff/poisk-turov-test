@@ -110,7 +110,7 @@ class UpdateContracts(unittest.TestCase):
             'GITHUB_ACTOR': 'pyatkoff', 'GITHUB_TRIGGERING_ACTOR': 'pyatkoff', 'GITHUB_ACTOR_ID': '226193297',
             'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_EVENT_NAME': 'issue_comment', 'GITHUB_RUN_ID': '789'}
         self.event = {'repository': {'full_name': pub.REPO, 'id': 1345518271},
-            'sender': {'login': 'pyatkoff', 'id': 226193297}, 'action': 'created', 'issue': {'number': 4217},
+            'sender': {'login': 'pyatkoff', 'id': 226193297}, 'action': 'created', 'issue': {'number': 4709},
             'comment': {'user': {'id': 226193297}, 'author_association': 'OWNER',
                 'body': pub.PREFIX + 'a' * 40 + ' ' + 'c' * 40 + ' 123 456'}}
 
@@ -1097,8 +1097,9 @@ class UpdateContracts(unittest.TestCase):
             ('GITHUB_TRIGGERING_ACTOR', 'other'), ('GITHUB_ACTOR_ID', '0'), ('GITHUB_RUN_ATTEMPT', '2'),
             ('GITHUB_EVENT_NAME', 'workflow_dispatch'), ('GITHUB_REPOSITORY', 'other/repo')]:
             with self.subTest(key=key), self.assertRaises(ValueError): pub.checked_request(self.event, {**self.env, key: value})
-        for key, field, value in [('issue', 'number', 3419), ('issue', 'number', 2530),
-            ('issue', 'number', 996), ('issue', 'pull_request', {}), ('sender', 'id', 1),
+        for key, field, value in [('issue', 'number', 4217), ('issue', 'number', 3419),
+            ('issue', 'number', 2530), ('issue', 'number', 996), ('issue', 'number', 4708),
+            ('issue', 'pull_request', {}), ('sender', 'id', 1),
             ('comment', 'author_association', 'MEMBER'), ('comment', 'user', {'id': 1}), ('repository', 'id', 1)]:
             event = copy.deepcopy(self.event); event[key][field] = value
             with self.subTest(key=key, field=field), self.assertRaises(ValueError): pub.checked_request(event, self.env)
