@@ -2,56 +2,52 @@
 
 ## Организация ближайшей поставки — поручение владельца 19.10.2026
 
-Owner20.10.2026: закончить обычный поиск в ORIGINAL NEXT на430/1280 до
-применимого UI≥9,5; прекратить дробление на технические проверки/частные баллы.
-Клавиатурные проходы запрещены. Единственная очередь — верхний
-[product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026)
-и та же задача AUTOPILOT_STATE.json.current_task. Исторические разделы ниже
-не возобновляют завершённую работу.
+Owner20Oct02:15: закрыть завершённый демо-объём и выбрать конкретный следующий
+результат. Единственная очередь — верхний [product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026)
+и та же AUTOPILOT_STATE.json.current_task/S3_PRODUCT_CURRENT_ACCEPTANCE.
+Исторические очереди не возобновляют завершённое.
 
-Site203 согласован6270421744 и перенесён. Установленный продукт3bdd/app7ae9ba
-имеет publication/readback6273604203. Family4647/Calendar4649 приняты,
-843product payload hashes сохранены. Итоговый retainedreview6279680382 /
-[audit6279688566](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6279688566)
-закрыл shortDesktop:2/1.5/2/2/2=9.5 FIRST bounded compiled baseline/UI delta0.
-Дополнительный донорский и клавиатурный проходы завершены/no-replay; не заменяют
-обычную целостную приёмку NEXT.
+Observed current3bdd ordinary430/1280 corpus закрыт terminal6280199658 /
+[audit6280193716](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280193716).
+FIRST bounded compiled430 Mobile2/2/2/2/2=10/UI0; Desktop1280/short9.5 и
+Selectedtour10/Calendar9.5 сохраняются в своих scopes. Это не общая оценка
+mobile/Search и не installed430/physical/live/доставка. Подтверждённых существенных
+дефектов в просмотренном пути нет; косметический ремонт или новый демо-проход
+не требуется. Новый installed desktop pointer filter→zero-match→явное восстановление
+бюджета→свой тур/manager-contact→Back/Close/reset/sort/Continue принят отдельно.
+Source3bdd/app7ae9ba и согласованный/перенесённый Site203/history/public прежние.
 
-Один продуктовый результат: обычный путь мышью/тапами параметры→выдача/фильтры→
-отель/варианты→точный тур/итог за группу→необязательные рейсы→контакты→возврат.
-Сначала готовое exact evidence, затем только действительно недостающие существенные
-обычные действия. Выход — конечный связный список подтверждённых продуктовых
-недостатков, один пакет исправления при необходимости, одна итоговая приёмка и
-завершение текущего UI-этапа. Не открывать отдельный пакет на каждыйN/error/балл;
-при отсутствии существенного дефекта косметическую очередь не создавать.
+Следующий результат SEARCH — один READY/BLOCKED admission в существующем#4217:
+exact installed artifact/runtime, действующий stock executor/profile/operation,
+отдельное owner allowance, budget/reservation и непотреблённые лимиты для
+одного реального offer/optional-one-pair/contact/return сценария. Подготовка
+read-only, без пробного paid/live. Предлагаемый один Find/первая порция/неделя
+и максимум одна отдельно допущенная pair — не числовой supplierbudget и не
+разрешение. Лимиты только из принятого профиля/reservation; без фактических pins
+записать точного ответственного/недостающее действие BLOCKED. Не повторять
+consumed05c live, изменяя имя операции, и не создавать QA/CI/deploy цикл.
 
-Рабочие ширины430/mobile и1280/desktop, retained short1280x720; прочие размеры
-после текущего UI-milestone.200%/Compare deferred. Клавиатурные пользовательские
-маршруты/Tab-циклы/A11y-only/keyboard/focus задачи исключены. Рамки тестового
-клавиатурного кадра не основание новой правки; лишь подтверждённое существенное
-неудобство обычного клика/тапа входит в связный пакет.
+В product plan каждой оставшейся зависимости назначены текущий владелец,
+конкретное действие и условие закрытия: native430/physical; canonicalRix/realIDs;
+INT repeated/allpair; реальная доставка; production. Они не круговой AND-gate:
+недоступный native430 не запрещает отдельно допущенную desktop операцию,
+а отсутствие live allowance не отменяет разрешённый canonical read.
+Partialbaseline не снимает обязательные gates/globalDONE и не unlock иных ширин.
 
-Рубрика SEARCH-QUALITY-1 остаётся12/11/5; N без суммы, стадии отдельно.
-Запрещённый/deferred keyboard scope не даёт баллов и не блокирует обычную UI-поставку.
-Native430/physical, Rix aliases/submittedIDs, INT price authority, отключённая
-реальная доставка и production сохраняют свои точные внешние условия. Нельзя
-выдать compiled за installed/physical или частный9.5 за весь поиск.
+Рабочая матрица430/1280,200%/Compare/прочие размеры deferred по решению владельца.
+Keyboard/Tab/A11y-only/focus микрозадачи запрещены. Один writer/integrator,
+независимый read-only review, отдельный штатный NEXT-only publisher только
+готового изменённого продукта. Новый дизайн требует whole-version approval
+в том же PUBLICprojectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public.
+Foreign design-v2/его claims/publisher/автоматизации не трогать.
 
-Один writer/интегратор; независимый read-only review; отдельный штатный NEXT-only
-publisher готового изменённого продукта. Новая композиция согласуется в том же
-PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public.
-Foreign design-v2 и его claims остаются у другого исполнителя.
-
-Во время ремонта focused checks, на готовом source все применимые CI, затем
-разрешённый release merge/publisher/readback/установленный затронутый путь.
-Обязательные workflows/allowlists/draft/ready не ослаблять. Для этой правки
-управления — diff/JSON/current_task-only/protected/history equality, один review,
-applicable owner-policy/security; UI/browser/build/deploy ради документов не нужны.
-Новых supplier/paid/live/reallead разрешений нет. Исторические receipts, модели,
-настройки, расписания/enabled/paused и другие задания сохраняются.
-Claims/terminal/RELEASE и результат — существующие#4217/#1646/#1719.
-После этой коррекции следующая работа продуктовая; план менять лишь по новому
-существенному факту или прямому решению владельца.
+Рубрика12/11/5/N, source/compiled/installed/physical/live separation и прежние
+price/lead/production/CI/allowlist/draft-ready boundaries сохранены. Этот control-only
+diff проверяется по JSON/current_task-only/protected/history equality, независимому
+review и applicable owner-policy/security. UI/browser/build/deploy/live для
+документов не нужны. Tasks/settings/schedules/enabled/paused не меняются.
+Результат/RELEASE —#4217, оценка—#1646, стадия—#1719. Новое переписывание плана
+без существенного факта/прямого решения владельца не является следующим шагом.
 
 ## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
 
