@@ -1,8 +1,9 @@
 """Retain then independently rederive a bounded update of NEW design preview.
 
-No source runs with SSH credentials. Canonical data.js carries only the accepted
-INT policy/diagnostic patch, pinned with its native graph. All other non-visual
-donor bytes, price/lead contracts, logo and fonts keep their accepted bytes.
+No source runs with SSH credentials. Canonical data.js retains the accepted INT
+policy/diagnostic patch; the LOCAL provider adds only its pure meal-grouping
+presentation helper. Both are pinned with the native graph. Price/lead contracts,
+all other non-visual donor bytes, logo and fonts keep their accepted bytes.
 """
 from __future__ import annotations
 import copy
@@ -34,13 +35,16 @@ from search3_design_v2_preview_remote import SOURCE_TREE as ORIGINAL_TREE
 
 PREFIX = '/update-search3-design-v2-preview '
 REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
+# Actual immutable4442 source ledger; installed bytes are independently derived
+# by the existing route/accounting transform, never compared to this source hash.
+NATIVE_SOURCE_LEDGER_SHA256 = '5a11add708bd563b42543f7b6d66e717ceeda01cc8b14f2fa2fd9be375e2a9c7'
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('1fdb4de08b5ccb1826c27d72b3725e1f1e529a93', '353cf936af2c84a93944ef66a08c981bfd1c0ab6'),)
+    ('31e24467d51818b9b90ffe66964acf133061a4e8', 'a14ce02e0130050df4e35e8ebc575889f34428d5'),)
 NATIVE_RELEASE_PARENTS = (
-    ('1fdb4de08b5ccb1826c27d72b3725e1f1e529a93', '353cf936af2c84a93944ef66a08c981bfd1c0ab6'),
-    ('09f5e18d5eb40f4f62bb723a9fd9e4092f784060', '8c7f95f2425736f6a8947e257573d0dfddf9cbf4'),)
+    ('c7dc712231cdb895f43b9c5604a2d8cddbf2148f', '96618721f3ac4c45c1340f69c71b858d8243498f'),
+    ('4442cec9921d0888b43cc7a7137385f1e6223c48', '9dd324cfe2106a52f4d8685cdf8774a9da14e7c6'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
@@ -61,6 +65,13 @@ RESULT_FIXTURE_FACTS = (
     ('FIXTURE Seaside Garden Hotel & Residence', 'Стандартный номер', 'Завтраки'),
     ('FIXTURE Laguna Collection Premium Resort & Private Villas',
      'Вилла с двумя спальнями · свой бассейн', 'Ультра всё включено'))
+MEAL_RESULT_FIXTURE_FACTS = {
+    911: ('FICTIONAL Same Hotel, Different Meal Plans', 'Всё включено'),
+    912: ('FICTIONAL Ultra Meal Hotel', 'Ультра всё включено'),
+    913: ('FICTIONAL Breakfast Hotel', 'Завтраки'),
+    914: ('FICTIONAL Alcohol Free Hotel', 'Всё включено без алкоголя'),
+    915: ('FICTIONAL Same Offer AND Test', 'Завтраки'),
+}
 
 
 def checked_request(event, env):
@@ -153,6 +164,10 @@ def native_provenance(api, q, control_sha):
     return pin['source_tree'], pin['source_ZIP_sha256']
 
 
+def native_source_ledger(content):
+    need(digest(content) == NATIVE_SOURCE_LEDGER_SHA256, 'native_source_ledger_pin')
+
+
 def prepare_native_zip(content, request, source_tree, expected_digest, directory):
     """Read retained review bytes only; never run artifact code in a secret job."""
     pin = accepted_native(request, ('source_sha', 'build_run', 'artifact_id'))
@@ -172,7 +187,9 @@ def prepare_native_zip(content, request, source_tree, expected_digest, directory
             if not row.is_dir():
                 need(name.startswith('payload/') or name.startswith('evidence/')
                      or name in ('control/inventory.json', 'control/native-build.json'), 'native_ZIP_scope')
-        need({'control/inventory.json', 'control/native-build.json', 'evidence/acceptance.json', 'evidence/fixture.json'} <= names, 'native_ZIP_control')
+        need({'control/inventory.json', 'control/native-build.json', 'evidence/acceptance.json',
+              'evidence/fixture.json', 'payload/' + LEDGER_PATH} <= names, 'native_ZIP_control')
+        native_source_ledger(archive.read('payload/' + LEDGER_PATH))
         meta = json.loads(archive.read('control/inventory.json'))
         need(meta.get('schema') == 1 and meta.get('source_sha') == request['source_sha']
              and meta.get('source_tree_sha') == source_tree and str(meta.get('run_id')) == str(request['build_run'])
@@ -229,6 +246,8 @@ def native_frame_inventory(width, percent):
         'filters-active', 'filter-empty', 'results-loading', 'results-error'))
     frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
         'results-partial-empty', 'results-partial', 'filter-empty-partial'))
+    frames.update(f'native-{screen}-{width}-text{percent}.png' for screen in (
+        'meal-families', 'meal-family-details', 'popup-food-families'))
     frames.update(f'native-content-{screen}-{width}-text{percent}.png' for screen in (
         'results', 'gallery-error', 'gallery', 'contact-invalid', 'contact'))
     if width == 430:
@@ -241,6 +260,35 @@ def native_frame_inventory(width, percent):
         frames.update(f'native-short-desktop-{screen}-{width}-text{percent}.png'
                       for screen in ('search', 'results', 'hotel', 'tour', 'lead'))
     return frames
+
+
+def native_meal_families(actual, native):
+    """Exact LOCAL grouping consumer proof; no meal aliases or supplier authority."""
+    meals = actual.get('mealFamilies')
+    expected = {'familyHotelCount': 3, 'memberHotelCountSum': 4, 'partialHotelCount': 2,
+        'memberPlans': ['Всё включено', 'Ультра всё включено',
+                        'Софт всё включено', 'Всё включено без алкоголя'],
+        'distinctHotelUnion': True, 'sameOfferDateMealBudget': True,
+        'matchingDisplayedMinimum': 120000, 'canonicalLabelsOnlyURL': True,
+        'oneFamilyChip': True, 'partialExactSelection': True,
+        'formCancelAndResponsiveRetained': True, 'extraOperations': 0,
+        'selectedReceiptRetained': True}
+    need(isinstance(meals, dict) and set(meals) == set(expected) | {'localHelperSHA256', 'fit'}
+         and all(type(meals.get(k)) is type(value) and meals.get(k) == value
+                 for k, value in expected.items()), 'native_meal_family_consumer_required')
+    helper = [row for row in native['graph']['scripts']
+              if row.get('path') == 'search3-local-db-provider-v1.js']
+    need(len(helper) == 1 and meals.get('localHelperSHA256') == helper[0]['sha256'],
+         'native_meal_family_LOCAL_owner_required')
+    fit = meals.get('fit')
+    need(isinstance(fit, dict) and set(fit) == {'overflow', 'targets'}
+         and fit.get('overflow') is False and isinstance(fit.get('targets'), list)
+         and len(fit['targets']) == 6
+         and all(isinstance(target, dict) and set(target) == {'height', 'overflow'}
+                 and type(target.get('height')) in (int, float)
+                 and math.isfinite(target['height']) and target['height'] >= 44
+                 and target.get('overflow') is False for target in fit['targets']),
+         'native_meal_family_target_fit_required')
 
 
 def native_selected_journey(actual, width):
@@ -401,6 +449,7 @@ def native_evidence(archive, request, native):
              and math.isfinite(control['width']) and control['width'] > 0,
              'native_interactive_focus_required')
         native_selected_journey(actual, key[0])
+        native_meal_families(actual, native)
         retained = actual.get('retainedContent')
         expected_retained = {
             'hotelId': 3678, 'hotelName': 'RIA SUITES HOTEL',
@@ -469,6 +518,7 @@ def native_evidence(archive, request, native):
                      'native_short_desktop_png_dimensions_required')
             screen = ('startup' if logical_name.startswith('native-startup-')
                       else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
+                      else ('filters' if key[0] == 430 else 'results') if logical_name.startswith(('native-meal-families-', 'native-meal-family-details-'))
                       else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
                                                    'native-budget-progress-invalid-'))
                       else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
@@ -524,6 +574,7 @@ def native_evidence(archive, request, native):
                 else: need(terminal_state is None, 'native_terminal_measurement_scope')
                 popup_editor = ('dates' if logical_name.startswith('native-popup-calendar-')
                     else 'nights' if logical_name.startswith('native-popup-nights-')
+                    else 'food' if logical_name.startswith('native-popup-food-families-')
                     else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
                     else 'destination' if logical_name.startswith('native-destination-') else None)
                 popup = frame.get('popupFit')
@@ -748,12 +799,16 @@ def native_evidence(archive, request, native):
                 if populated:
                     bounded = logical_name.startswith('native-results-bounded-')
                     retained_content = logical_name.startswith('native-content-results-')
-                    expected_count = (1 if retained_content else 24 if bounded else 2
+                    meal_family = logical_name.startswith('native-meal-families-')
+                    meal_details = logical_name.startswith('native-meal-family-details-')
+                    meal_fixture = meal_family or meal_details
+                    meal_ids = [911, 912, 913, 914, 915] if meal_family else [911, 914]
+                    expected_count = (len(meal_ids) if meal_fixture else 1 if retained_content else 24 if bounded else 2
                         if logical_name.startswith(('native-budget-results-', 'native-filters-active-')) else 4)
                     need(len(card_ids) == expected_count
-                         and all(card_id == 3678 if retained_content else
+                         and (card_ids == meal_ids if meal_fixture else all(card_id == 3678 if retained_content else
                                  1000 <= card_id < 1024 if bounded else 1 <= card_id <= 4
-                                 for card_id in card_ids), 'native_result_card_scope_required')
+                                 for card_id in card_ids)), 'native_result_card_scope_required')
                     if logical_name == f'native-results-{key[0]}-text{key[1]}.png':
                         need(card_ids == [1, 2, 3, 4], 'native_result_standard_identity_required')
                     need(notice == {'visibleCount': 1, 'afterBatch': True,
@@ -763,7 +818,12 @@ def native_evidence(archive, request, native):
                     need(len(result_rows) == len(card_ids) * len(RESULT_FACT_KINDS),
                          'native_result_fact_measurements_required')
                     for card_id in card_ids:
-                        if retained_content:
+                        if meal_fixture:
+                            title, meal = MEAL_RESULT_FIXTURE_FACTS[card_id]
+                            expected = dict(zip(RESULT_FACT_KINDS, (title, 'Турция · Кемер',
+                                '12 окт · 7 ночей', 'Стандартный номер', meal,
+                                'FIXTURE TV', 'за 2 взрослых')))
+                        elif retained_content:
                             need(card_id == 3678, 'native_retained_content_hotel_identity_required')
                             expected = dict(zip(RESULT_FACT_KINDS, ('RIA SUITES HOTEL', 'Стамбул, Турция',
                                 '12 окт · 7 ночей', 'Стандартный номер', 'Ультра всё включено',
@@ -812,6 +872,9 @@ def native_evidence(archive, request, native):
                          'controls', 'outside', 'overlap'} and isinstance(count.get('text'), str)
                          and bool(count['text'].strip()) and count.get('outside') is False
                          and count.get('overlap') is False, 'native_count_readability_required')
+                    if logical_name.startswith(('native-meal-families-', 'native-meal-family-details-')):
+                        need(count['text'] == ('5 отелей' if logical_name.startswith('native-meal-families-') else '2 отеля'),
+                             'native_meal_result_count_copy_required')
                     toolbar = count.get('toolbar')
                     need(isinstance(toolbar, dict) and set(toolbar) == {'left', 'right'}
                          and all(type(toolbar.get(k)) in (int, float) and -100000 < toolbar[k] < 100000
@@ -875,7 +938,7 @@ def native_evidence(archive, request, native):
                          and frame['budgetColumns'] == (2 if key[1] == 100 else 1), 'native_budget_donor_columns_required')
         need(case_seen == required, 'native_rendered_required_frames')
     need(seen == matrix, 'native_rendered_matrix')
-    need(len(frames) == 117, 'native_rendered_frame_count')
+    need(len(frames) == 123, 'native_rendered_frame_count')
     evidence_files = {row.filename[len('evidence/'):] for row in archive.infolist()
                       if row.filename.startswith('evidence/') and not row.is_dir()}
     need(evidence_files == frames | {'acceptance.json', 'fixture.json'}, 'native_rendered_evidence_inventory')
@@ -1001,6 +1064,7 @@ def derive(source, baseline, output, request, zip_digest):
     need(not output.exists(), 'derived_output_exists')
     original = inventory(baseline / 'payload'); current = inventory(source / 'payload')
     accepted_native(request, ('source_sha', 'build_run', 'artifact_id'))
+    native_source_ledger((source / 'payload' / LEDGER_PATH).read_bytes())
     need(len(original) == 845 and set(current) == set(original) | set(NATIVE_ADDED)
          and not set(original) & set(NATIVE_ADDED), 'source_inventory_drift')
     changes = sorted(n for n in current if n not in original or current[n] != original[n])
