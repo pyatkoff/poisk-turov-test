@@ -29,6 +29,47 @@ $other = anytour_anex_search3_continue_failure(new RuntimeException('ANEX_HTTP_E
     'action' => 'SearchTour_CURRENCIES', 'http_status' => 502, 'supplier_code' => 3,
 ]);
 cf_check(count($other) === 1, 'wrong_request_diagnostics');
+$continued = anytour_anex_search3_continue_failure(new RuntimeException('ANEX_HTTP_ERROR'), [
+    'action' => 'SearchTour_PRICES', 'http_status' => 502, 'elapsed_ms' => 19001,
+], 'continue');
+cf_check($continued === $http, 'explicit_continue_keeps_original_headers');
+foreach (['SearchTour_TOWNFROMS', 'SearchTour_STATES', 'SearchTour_CURRENCIES', 'SearchTour_PRICES'] as $action) {
+    $initial = anytour_anex_search3_continue_failure(new RuntimeException('ANEX_TRANSPORT_ERROR'), [
+        'action' => $action, 'http_status' => 0, 'curl_errno' => 28, 'elapsed_ms' => 20001,
+        'url' => 'private-fixture-token', 'body' => 'private-fixture-body',
+        'request_id' => 'private-fixture-request', 'response_bytes' => 123,
+    ], 'search');
+    cf_check($initial === ['X-AnyTour-Anex-Failure' => 'ANEX_TRANSPORT_ERROR',
+        'X-AnyTour-Anex-Stage' => 'search', 'X-AnyTour-Anex-Category' => 'transport',
+        'X-AnyTour-Anex-Native-Action' => $action, 'X-AnyTour-Anex-Upstream-Status' => '0',
+        'X-AnyTour-Anex-Transport-Code' => '28', 'X-AnyTour-Anex-Elapsed-Ms' => '20001'],
+        'initial_search_' . $action);
+}
+foreach (['ANEX_HTTP_ERROR' => 'http', 'ANEX_SUPPLIER_ERROR' => 'supplier',
+    'ANEX_INVALID_RESPONSE' => 'response', 'ANEX_RATE_LIMIT' => 'limit'] as $code => $category) {
+    $initial = anytour_anex_search3_continue_failure(new RuntimeException($code), [
+        'action' => 'SearchTour_PRICES', 'http_status' => 200, 'supplier_code' => 101, 'elapsed_ms' => 0,
+    ], 'search');
+    cf_check($initial['X-AnyTour-Anex-Category'] === $category
+        && $initial['X-AnyTour-Anex-Supplier-Code'] === '101'
+        && $initial['X-AnyTour-Anex-Elapsed-Ms'] === '0', 'initial_category_' . $category);
+}
+foreach ([['http_status' => '502', 'supplier_code' => ['private-fixture'], 'curl_errno' => false, 'elapsed_ms' => 1.5],
+    ['http_status' => -1, 'supplier_code' => 100000, 'curl_errno' => 1000, 'elapsed_ms' => 120001],
+    ['http_status' => 600, 'supplier_code' => -1, 'curl_errno' => -1, 'elapsed_ms' => -1]] as $bad) {
+    $initial = anytour_anex_search3_continue_failure(new RuntimeException("private-fixture\r\nX-Leak: yes"),
+        ['action' => 'SearchTour_PRICES'] + $bad, 'search');
+    cf_check($initial === ['X-AnyTour-Anex-Failure' => 'ANEX_INTERNAL_ERROR',
+        'X-AnyTour-Anex-Stage' => 'search', 'X-AnyTour-Anex-Category' => 'application',
+        'X-AnyTour-Anex-Native-Action' => 'SearchTour_PRICES'], 'initial_unsafe_numeric_metadata');
+}
+foreach (['SearchTour_PRICES private-fixture', "SearchTour_PRICES\r\nX-Leak: yes", 'Booking_BOOK', null, ['SearchTour_PRICES']] as $action) {
+    $initial = anytour_anex_search3_continue_failure(new PDOException('private-fixture'), [
+        'action' => $action, 'http_status' => 502, 'supplier_code' => 3, 'curl_errno' => 28, 'elapsed_ms' => 20001,
+    ], 'search');
+    cf_check($initial === ['X-AnyTour-Anex-Failure' => 'ANEX_DATABASE_ERROR',
+        'X-AnyTour-Anex-Stage' => 'search', 'X-AnyTour-Anex-Category' => 'database'], 'initial_unknown_action_masked');
+}
 $source = file_get_contents(__DIR__ . '/../v2/api-anex-search3-preview.php');
-cf_check(str_contains($source, "if ((\$action ?? null) === 'continue') {\n            foreach (anytour_anex_search3_continue_failure"), 'continue_only');
+cf_check(str_contains($source, "if (in_array(\$action ?? null, ['search', 'continue'], true)) {\n            foreach (anytour_anex_search3_continue_failure(\$error, \$last, \$action)"), 'search_and_continue_diagnostics');
 echo "ANEX_CONTINUE_FAILURE_CLASSIFICATION_OK supplier0/DB0/lead0\n";
