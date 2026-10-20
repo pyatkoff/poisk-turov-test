@@ -1991,6 +1991,153 @@ class PublicationLockMetadataTest(unittest.TestCase):
             self.assertEqual({'manifest.json'},{path.name for path in (operation/'source').iterdir()})
 
 
+class PublicationLockModeRepairTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.LOCK_REPAIR_SOURCE,self.p.LOCK_REPAIR_MODE,self.p.LOCK_REPAIR_OPERATION])
+
+    def fixture(self,directory):
+        metadata=PublicationLockMetadataTest();metadata.setUp()
+        home,parent,leaf,inspect=metadata.fixture(directory)
+        leaf.write_bytes(b'');leaf.chmod(0o664)
+        ns={'home':home,'os':os};exec(self.p.LOCK_REPAIR_REMOTE,ns)
+        return home,parent,leaf,ns
+
+    def receipt(self,value):
+        fixture=PublicationLockMetadataTest();fixture.setUp();result=fixture.receipt(value['before'])
+        result.pop('publication_lock_metadata')
+        return {**result,**self.command,'publication_lock_mode_repair':value,
+                'permission_writes':value['permission_writes'],
+                'permission_write_attempted':value['permission_write_attempted'],
+                'publication_lock_mode_changed':None if value['permission_writes']=='unknown' else value['permission_writes']==1}
+
+    def test_only_group_write_bit_removed_under_existing_exclusive_lock_on_same_inode(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);initial=leaf.stat();chmod=os.fchmod;flock=fcntl.flock;held=False
+            def locked(fd,flags):
+                nonlocal held
+                self.assertEqual(fcntl.LOCK_EX|fcntl.LOCK_NB,flags);flock(fd,flags);held=True
+            def changed(fd,mode):
+                self.assertTrue(held);self.assertEqual(0o644,mode);self.assertEqual(initial.st_ino,os.fstat(fd).st_ino)
+                chmod(fd,mode)
+            with patch.object(fcntl,'flock',side_effect=locked),patch.object(os,'fchmod',side_effect=changed):
+                value=ns['publication_lock_mode_repair']()
+            self.assertEqual('repaired_verified',value['status']);self.assertEqual(1,value['permission_writes'])
+            self.assertEqual(initial.st_ino,leaf.stat().st_ino);self.assertEqual(0o644,leaf.stat().st_mode&0o777)
+            self.assertEqual(initial.st_size,leaf.stat().st_size);self.assertEqual(0o700,parent.stat().st_mode&0o777)
+            self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_changed_mode_shape_parent_or_owner_holds_without_repair(self):
+        for case in ('already644','other666','nonempty','hardlink','symlink','parent','owner'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                home,parent,leaf,ns=self.fixture(directory)
+                if case=='already644':leaf.chmod(0o644)
+                elif case=='other666':leaf.chmod(0o666)
+                elif case=='nonempty':leaf.write_bytes(b'other publisher data')
+                elif case=='hardlink':os.link(leaf,parent/'other')
+                elif case=='symlink':leaf.rename(parent/'other');leaf.symlink_to(parent/'other')
+                elif case=='parent':parent.chmod(0o755)
+                with (patch.object(os,'fchmod',side_effect=AssertionError('unpermitted chmod')),
+                      patch.object(os,'getuid',return_value=os.getuid()+1 if case=='owner' else os.getuid())):
+                    value=ns['publication_lock_mode_repair']()
+                self.assertEqual(('hold',0),(value['status'],value['permission_writes']))
+                self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+
+    def test_busy_lock_is_not_unlocked_replaced_or_repaired(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);fd=os.open(leaf,os.O_RDONLY)
+            try:
+                fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                with patch.object(os,'fchmod',side_effect=AssertionError('busy chmod')):
+                    value=ns['publication_lock_mode_repair']()
+                self.assertEqual(('hold','publication_busy',0),(value['status'],value['reason'],value['permission_writes']))
+                self.assertEqual(0o664,leaf.stat().st_mode&0o777)
+                self.assertTrue(m.completed_result(self.command,self.receipt(value)))
+            finally:os.close(fd)
+
+    def test_replaced_entry_after_lock_acquisition_is_not_modified(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);flock=fcntl.flock
+            def changed(fd,flags):
+                flock(fd,flags);leaf.rename(parent/'prior');leaf.write_bytes(b'foreign');leaf.chmod(0o664)
+            with patch.object(fcntl,'flock',side_effect=changed),patch.object(os,'fchmod',side_effect=AssertionError('drift chmod')):
+                value=ns['publication_lock_mode_repair']()
+            self.assertEqual(('hold','state_changed',0),(value['status'],value['reason'],value['permission_writes']))
+            self.assertEqual(b'foreign',leaf.read_bytes());self.assertEqual(0o664,leaf.stat().st_mode&0o777)
+
+    def test_failure_after_mode_change_is_unknown_and_never_reopens_group_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory)
+            with patch.object(os,'fsync',side_effect=OSError('fixture failure')):
+                value=ns['publication_lock_mode_repair']()
+            self.assertEqual(('unknown_no_replay',1),(value['status'],value['permission_writes']))
+            self.assertEqual(0o644,leaf.stat().st_mode&0o777)
+            result=self.receipt(value);result['status']='unknown_no_replay'
+            self.assertFalse(m.completed_result(self.command,result))
+
+    def test_syscall_effect_followed_by_error_is_unknown_never_hold_zero_or_unverified_changed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);chmod=os.fchmod
+            def changed_then_failed(fd,mode):
+                chmod(fd,mode);raise OSError('failure after actual permission change')
+            with patch.object(os,'fchmod',side_effect=changed_then_failed):
+                value=ns['publication_lock_mode_repair']()
+            self.assertEqual(('unknown_no_replay','unknown'),(value['status'],value['permission_writes']))
+            self.assertTrue(value['permission_write_attempted']);self.assertIsNone(value['mode_after'])
+            self.assertEqual(0o644,leaf.stat().st_mode&0o777)
+            result=self.receipt(value);result['status']='unknown_no_replay'
+            self.assertIsNone(result['publication_lock_mode_changed'])
+            self.assertFalse(m.completed_result(self.command,result))
+
+    def test_strict_completion_rejects_forged_modes_identity_writes_or_missing_readback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);result=self.receipt(ns['publication_lock_mode_repair']())
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in (('same_inode',False),('exclusive_existing_lock',False),('permission_writes',2),
+                            ('mode_after',0o666),('runtime_writes',1),('after',None),('raw_private_path',str(home))):
+                row=copy.deepcopy(result);row['publication_lock_mode_repair'][key]=bad
+                self.assertFalse(m.completed_result(self.command,row))
+            row=copy.deepcopy(result);row['publication_lock_mode_changed']=False
+            self.assertFalse(m.completed_result(self.command,row))
+
+    def test_fixed_new_scope_existing_gates_and_no_activation_dispatch(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.LOCK_SOURCE,self.p.LOCK_REPAIR_MODE,self.p.LOCK_OPERATION],
+                      [self.p.CURRENT_SOURCE,self.p.LOCK_REPAIR_MODE,self.p.LOCK_REPAIR_OPERATION],
+                      [self.p.LOCK_SOURCE,self.p.LOCK_REPAIR_MODE,self.p.LOCK_REPAIR_OPERATION,'0666']):
+            with self.assertRaises(ValueError):self.p.parse(parts)
+        fixture=PassiveFuelActivationPlanTest();fixture.setUp();fixture.command=self.command
+        fixture.test_plan_admission_requires_own_unique_created_command_and_exact_candidate_ci()
+        program=self.p.remote_program(m.REMOTE,self.command)
+        self.assertNotIn('def passive_fuel_activate(',program)
+        self.assertIn("result['publication_lock_mode_repair']=publication_lock_mode_repair()",program)
+        self.assertEqual(2,program.count("if mode not in ('publication-lock-mode-repair','reconcile',"))
+
+    def test_full_generated_stock_program_has_one_permission_write_and_no_application_operation(self):
+        import contextlib
+        with tempfile.TemporaryDirectory() as directory:
+            home,parent,leaf,ns=self.fixture(directory);initial=leaf.stat()
+            project=home/'www/anytoour.ru';(project/'_preview/search3-anex-candidate').mkdir(parents=True)
+            for relative in ('index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'):
+                path=project/relative;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'not executable')
+            data,manifest=self.p.bundle_source(home,self.command)
+            archive=home/'bundle.tar.gz';archive.write_bytes(data)
+            payload={**self.command,'archive':str(archive),'manifest_sha256':hashlib.sha256(b'{}').hexdigest()}
+            output=io.StringIO();program=self.p.remote_program(m.REMOTE,self.command)
+            with (patch.object(Path,'home',return_value=home),patch('sys.stdin',io.StringIO(json.dumps(payload))),
+                  patch.object(subprocess,'run',side_effect=AssertionError('external command')),
+                  contextlib.redirect_stdout(output)):
+                exec(program,{})
+            result=json.loads(output.getvalue())
+            self.assertTrue(m.completed_result(self.command,result),result)
+            self.assertEqual((1,True,False),(result['permission_writes'],result['publication_lock_mode_changed'],result['runtime_changed']))
+            self.assertEqual(initial.st_ino,leaf.stat().st_ino)
+            self.assertEqual(result['production_before'],result['production_after'])
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 

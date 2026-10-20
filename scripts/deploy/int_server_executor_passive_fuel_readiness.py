@@ -37,7 +37,11 @@ CURRENT_OPERATION = 'int-anex-passive-fuel-current-activate-20261020-v1'
 LOCK_MODE = 'publication-lock-metadata'
 LOCK_SOURCE = '61415e679957acac285bc0aa2f9c870f677618ea'
 LOCK_OPERATION = 'int-anex-publication-lock-metadata-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE)
+# SOURCE-ONLY proposal: this exact permission change still needs owner approval.
+LOCK_REPAIR_MODE = 'publication-lock-mode-repair'
+LOCK_REPAIR_SOURCE = LOCK_SOURCE
+LOCK_REPAIR_OPERATION = 'int-anex-publication-lock-mode-repair-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -69,7 +73,8 @@ def parse(parts):
                   [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION],
                   [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION],
                   [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION],
-                  [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION]),
+                  [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION],
+                  [LOCK_REPAIR_SOURCE, LOCK_REPAIR_MODE, LOCK_REPAIR_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -89,7 +94,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -115,7 +120,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 def bundle_source(source_root, command=None):
     command = policy(command)
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
-    if command['mode'] == LOCK_MODE: hashes = {}
+    if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -902,6 +907,82 @@ def publication_lock_metadata():
 '''
 
 
+LOCK_REPAIR_REMOTE = LOCK_METADATA_REMOTE + r'''
+import fcntl as lm_fcntl
+
+def publication_lock_mode_repair():
+    before=publication_lock_metadata()
+    out={'status':'hold','reason':'precondition_changed','before':before,'after':None,
+         'mode_before':None,'mode_after':None,'permission_writes':0,
+         'permission_write_attempted':False,
+         'same_inode':False,'exclusive_existing_lock':False,
+         'supplier_calls':0,'database_reads':0,'database_writes':0,
+         'runtime_writes':0,'booking_calls':0,'lead_calls':0}
+    if (before['status']!='measured' or before['unsafe_predicates']!=['writable']
+            or before['lock']['mode']!=0o664 or before['lock']['bytes']!=0
+            or before['parent']['mode']!=0o700):return out
+    descriptors=[]
+    def identity(s):return (s.st_dev,s.st_ino,s.st_mode,s.st_uid,s.st_gid)
+    def full(s):return identity(s)+(s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    try:
+        root=os.open(home,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);descriptors.append(root)
+        root_initial=os.fstat(root)
+        parent=os.open('.anytoour-andromeda',os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=root)
+        descriptors.append(parent);parent_initial=os.fstat(parent)
+        if parent_initial.st_uid!=os.getuid() or lm_stat.S_IMODE(parent_initial.st_mode)!=0o700:
+            return out
+        leaf=os.open('grouped-search-update.lock',os.O_RDWR|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=parent)
+        descriptors.append(leaf);initial=os.fstat(leaf)
+        def stable():
+            return (identity(root_initial)==identity(os.fstat(root))==identity(home.lstat())
+                and home.resolve()==home
+                and identity(parent_initial)==identity(os.fstat(parent))
+                    ==identity(os.stat('.anytoour-andromeda',dir_fd=root,follow_symlinks=False))
+                and full(initial)==full(os.fstat(leaf))
+                    ==full(os.stat('grouped-search-update.lock',dir_fd=parent,follow_symlinks=False)))
+        if (not lm_stat.S_ISREG(initial.st_mode) or initial.st_nlink!=1 or initial.st_size!=0
+                or initial.st_uid!=os.getuid() or lm_stat.S_IMODE(initial.st_mode)!=0o664 or not stable()):return out
+        out['mode_before']=0o664
+        try:lm_fcntl.flock(leaf,lm_fcntl.LOCK_EX|lm_fcntl.LOCK_NB)
+        except BlockingIOError:
+            out['reason']='publication_busy';return out
+        out['exclusive_existing_lock']=True
+        if not stable():
+            out['reason']='state_changed';return out
+        # Remove ONLY group-write from the held existing inode. Never replace,
+        # truncate, chown or release another publisher's lock.
+        # A syscall may take effect before an interruption is reported. Seal the
+        # uncertainty boundary first; never publish HOLD/0 after a write attempt.
+        out.update(permission_write_attempted=True,permission_writes='unknown',
+                   status='unknown_no_replay',reason='repair_unavailable')
+        os.fchmod(leaf,0o644);out['permission_writes']=1
+        changed=os.fstat(leaf)
+        out['mode_after']=lm_stat.S_IMODE(changed.st_mode)
+        out['same_inode']=(initial.st_dev,initial.st_ino)==(changed.st_dev,changed.st_ino)
+        unchanged=lambda s:(s.st_dev,s.st_ino,lm_stat.S_IFMT(s.st_mode),s.st_uid,s.st_gid,s.st_nlink,s.st_size,s.st_mtime_ns)
+        if (not out['same_inode'] or unchanged(initial)!=unchanged(changed) or out['mode_after']!=0o644):
+            out.update(status='unknown_no_replay',reason='readback_failed');return out
+        os.fsync(leaf)
+        out['after']=publication_lock_metadata()
+        if (out['after']['status']!='measured' or out['after']['unsafe_predicates']!=[]
+                or out['after']['lock']['mode']!=0o644 or out['after']['lock']['bytes']!=0
+                or out['after']['parent']['mode']!=0o700
+                or full(changed)!=full(os.fstat(leaf))
+                or full(changed)!=full(os.stat('grouped-search-update.lock',dir_fd=parent,follow_symlinks=False))
+                or identity(root_initial)!=identity(os.fstat(root))
+                or identity(root_initial)!=identity(home.lstat()) or home.resolve()!=home
+                or identity(parent_initial)!=identity(os.fstat(parent))
+                or identity(parent_initial)!=identity(os.stat('.anytoour-andromeda',dir_fd=root,follow_symlinks=False))):
+            out.update(status='unknown_no_replay',reason='readback_failed');return out
+        out.update(status='repaired_verified',reason=None);return out
+    except OSError:
+        out.update(status='unknown_no_replay' if out['permission_write_attempted'] else 'hold',reason='repair_unavailable')
+        return out
+    finally:
+        for descriptor in reversed(descriptors):os.close(descriptor)
+'''
+
+
 def remote_program(remote, command=None):
     command = policy(command)
     mode = command['mode']
@@ -914,6 +995,7 @@ def remote_program(remote, command=None):
     reader = CURRENT_REMOTE if mode == CURRENT_MODE else STOCK_REMOTE if mode == STOCK_MODE else INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
     hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
     if mode == LOCK_MODE: reader,hashes = LOCK_METADATA_REMOTE,{}
+    if mode == LOCK_REPAIR_MODE: reader,hashes = LOCK_REPAIR_REMOTE,{}
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -925,6 +1007,17 @@ def remote_program(remote, command=None):
         result['production_after']=fingerprints()
         result.update(status='complete',supplier_calls=0,database_reads=0,database_writes=0,
             runtime_writes=0,booking_calls=0,lead_calls=0,runtime_changed=False,
+            production_unchanged=result['production_after']==before)
+"""
+    if mode == LOCK_REPAIR_MODE:
+        registration = "    if mode==" + repr(mode) + ":\n" + """        result['publication_lock_mode_repair']=publication_lock_mode_repair()
+        repair=result['publication_lock_mode_repair']
+        result['production_after']=fingerprints()
+        result.update(status='complete' if repair['status'] in ('hold','repaired_verified') else repair['status'],
+            supplier_calls=0,database_reads=0,database_writes=0,runtime_writes=0,booking_calls=0,lead_calls=0,
+            permission_writes=repair['permission_writes'],runtime_changed=False,
+            permission_write_attempted=repair['permission_write_attempted'],
+            publication_lock_mode_changed=None if repair['permission_writes']=='unknown' else repair['permission_writes']==1,
             production_unchanged=result['production_after']==before)
 """
     if mode == PLAN_MODE:
@@ -949,6 +1042,7 @@ def remote_program(remote, command=None):
 def completed(command, result):
     command = policy(command)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
+    if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
@@ -1044,6 +1138,44 @@ def lock_metadata_completed(command,result):
         and isinstance(before,dict) and set(before)=={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
         and before==result.get('production_after')
         and all(type(value[k]) is int and value[k]==0 and type(result.get(k)) is int and result[k]==0 for k in counts))
+
+
+def lock_mode_repair_completed(command,result):
+    value=result.get('publication_lock_mode_repair')
+    counts={'supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls'}
+    fields={'status','reason','before','after','mode_before','mode_after','permission_writes',
+            'permission_write_attempted','same_inode','exclusive_existing_lock',*counts}
+    if not isinstance(value,dict) or set(value)!=fields:return False
+    if (type(value['permission_writes']) is not int or value['permission_writes'] not in (0,1)
+            or type(value['same_inode']) is not bool or type(value['exclusive_existing_lock']) is not bool
+            or type(value['permission_write_attempted']) is not bool
+            or result.get('permission_write_attempted') is not value['permission_write_attempted']
+            or any(type(value[k]) is not int or value[k]!=0 for k in counts)
+            or type(result.get('permission_writes')) is not int
+            or result['permission_writes']!=value['permission_writes']
+            or result.get('publication_lock_mode_changed') is not (value['permission_writes']==1)
+            or any(result.get(k)!=command[k] for k in command)):return False
+    inspection=parse([LOCK_SOURCE,LOCK_MODE,LOCK_OPERATION])
+    def metadata_valid(row):
+        return lock_metadata_completed(inspection,{**result,**inspection,'publication_lock_metadata':row})
+    if not metadata_valid(value['before']):return False
+    if value['status']=='hold':
+        return (value['reason'] in ('precondition_changed','publication_busy','state_changed','repair_unavailable')
+            and value['permission_writes']==0 and value['after'] is None and value['mode_after'] is None
+            and value['permission_write_attempted'] is False
+            and (value['mode_before'] is None or type(value['mode_before']) is int and value['mode_before']==0o664)
+            and value['same_inode'] is False)
+    if value['status']!='repaired_verified' or value['reason'] is not None or not metadata_valid(value['after']):return False
+    before,after=value['before'],value['after']
+    return (value['permission_writes']==1 and value['exclusive_existing_lock'] is True and value['same_inode'] is True
+        and value['permission_write_attempted'] is True
+        and type(value['mode_before']) is int and value['mode_before']==0o664
+        and type(value['mode_after']) is int and value['mode_after']==0o644
+        and before['status']==after['status']=='measured'
+        and before['unsafe_predicates']==['writable'] and after['unsafe_predicates']==[]
+        and before['lock']['mode']==0o664 and after['lock']['mode']==0o644
+        and before['lock']['bytes']==after['lock']['bytes']==0
+        and before['parent']['mode']==after['parent']['mode']==0o700)
 
 
 def plan_completed(command, result):
