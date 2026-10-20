@@ -415,6 +415,39 @@ def native_evidence(archive, request, native):
                 need(len(value) >= 24 and value[8:16] == b'\x00\x00\x00\rIHDR'
                      and struct.unpack('>II', value[16:24]) == (1280, 720),
                      'native_short_desktop_png_dimensions_required')
+            screen = ('startup' if logical_name.startswith('native-startup-')
+                      else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
+                      else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
+                                                   'native-budget-progress-invalid-'))
+                      else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
+                                                        'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
+                                                        'native-filters-active-', 'native-filter-empty-',
+                                                        'native-results-loading-', 'native-results-error-',
+                                                        'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
+                      else 'tour' if logical_name.startswith('native-ai-price-changed-')
+                      else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
+                      else 'gallery' if logical_name.startswith('native-content-gallery-')
+                      else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
+            need(frame.get('screen') == screen, 'native_rendered_screen_identity')
+            consent = frame.get('consentFit')
+            if screen == 'lead':
+                need(isinstance(consent, dict) and set(consent) == {
+                     'label', 'checkbox', 'ownsCheckbox', 'required', 'contained', 'focusOutline'}
+                     and consent.get('ownsCheckbox') is True and consent.get('required') is True
+                     and consent.get('contained') is True
+                     and consent.get('focusOutline') is (frame.get('side') == 'native'),
+                     'native_contact_consent_required')
+                for box in (consent.get('label'), consent.get('checkbox')):
+                    need(isinstance(box, dict) and set(box) == {
+                         'left', 'right', 'top', 'bottom', 'width', 'height'}
+                         and all(type(box.get(field)) in (int, float)
+                                 for field in ('left', 'right', 'top', 'bottom', 'width', 'height'))
+                         and box['width'] > 0 and box['height'] > 0
+                         and abs(box['right'] - box['left'] - box['width']) <= 1
+                         and abs(box['bottom'] - box['top'] - box['height']) <= 1,
+                         'native_contact_consent_geometry_required')
+            else:
+                need(consent is None, 'native_contact_consent_scope')
             if frame['side'] == 'native':
                 terminal_state = frame.get('terminalState')
                 if name.startswith('native-terminal-'):
@@ -452,20 +485,6 @@ def native_evidence(archive, request, native):
                          and type(popup.get('submitCount')) is int and popup['submitCount'] == 1,
                          'native_popup_choice_and_single_submit_required')
                 else: need(popup is None, 'native_popup_measurement_scope')
-                screen = ('startup' if logical_name.startswith('native-startup-')
-                          else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
-                          else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-',
-                                                       'native-budget-progress-invalid-'))
-                          else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
-                                                            'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
-                                                            'native-filters-active-', 'native-filter-empty-',
-                                                            'native-results-loading-', 'native-results-error-',
-                                                            'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                          else 'tour' if logical_name.startswith('native-ai-price-changed-')
-                          else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
-                          else 'gallery' if logical_name.startswith('native-content-gallery-')
-                          else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
-                need(frame.get('screen') == screen, 'native_rendered_screen_identity')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
                 if name.startswith(('native-destination-choice-', 'native-destination-confirm-')):
@@ -575,25 +594,6 @@ def native_evidence(archive, request, native):
                              'native_selected_hotel_summary_donor_composition_required')
                 else:
                     need(summaries == [], 'native_selected_hotel_summary_scope')
-                consent = frame.get('consentFit')
-                if screen == 'lead':
-                    need(isinstance(consent, dict) and set(consent) == {
-                         'label', 'checkbox', 'ownsCheckbox', 'required', 'contained', 'focusOutline'}
-                         and consent.get('ownsCheckbox') is True and consent.get('required') is True
-                         and consent.get('contained') is True
-                         and consent.get('focusOutline') is (frame.get('side') == 'native'),
-                         'native_contact_consent_required')
-                    for box in (consent.get('label'), consent.get('checkbox')):
-                        need(isinstance(box, dict) and set(box) == {
-                             'left', 'right', 'top', 'bottom', 'width', 'height'}
-                             and all(type(box.get(field)) in (int, float)
-                                     for field in ('left', 'right', 'top', 'bottom', 'width', 'height'))
-                             and box['width'] > 0 and box['height'] > 0
-                             and abs(box['right'] - box['left'] - box['width']) <= 1
-                             and abs(box['bottom'] - box['top'] - box['height']) <= 1,
-                             'native_contact_consent_geometry_required')
-                else:
-                    need(consent is None, 'native_contact_consent_scope')
                 offers = frame.get('offerActionFit')
                 if screen == 'hotel':
                     need(isinstance(offers, list) and len(offers) == 2,

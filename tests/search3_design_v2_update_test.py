@@ -1,1496 +1,15 @@
-"""Bounded source proof, exact published predecessor and interrupted updates."""
-import copy
-import io
-import json
-import os
-from pathlib import Path
-import shutil
-import struct
-import sys
-import tempfile
-import unittest
-import zipfile
-from unittest.mock import patch, Mock
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/deploy'))
-import search3_design_v2_preview as creator
-import search3_design_v2_preview_remote as create_remote
-import search3_design_v2_update as pub
-import search3_design_v2_update_remote as remote
-from search3_design_v2_preview_test import fixture, request as original_request
-
-
-class UpdateContracts(unittest.TestCase):
-    def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory(); self.root = Path(self.tmp.name)
-        self.baseline = self.root / 'baseline'; fixture(self.baseline)
-        paths = [p for p in remote.SOURCE_CHANGES if p != creator.LEDGER_PATH]
-        for i, name in enumerate(paths):
-            (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(self.baseline / 'payload' / name)
-        for i, name in enumerate(('visual-search/preview-lead.js', 'prototype-search/lead.js',
-                'tour-controller-v4.js', 'visual-search/assets/anytour-logo.svg',
-                'visual-search/fonts/Aeroport.woff2'), start=len(paths)):
-            target = self.baseline / 'payload' / name; target.parent.mkdir(parents=True, exist_ok=True)
-            (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
-        import posixpath
-        for i, src in enumerate(remote.NATIVE_SCRIPTS, start=50):
-            name = posixpath.normpath(posixpath.join('visual-search', src)); target = self.baseline / 'payload' / name
-            if target.exists() or name in remote.NATIVE_ASSETS: continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            (self.baseline / 'payload' / f'visual-search/fixture-{i}.js').rename(target)
-        self.original_pin = patch.object(creator, 'SOURCE_LEDGER_SHA256', remote.digest((self.baseline / 'payload' / creator.LEDGER_PATH).read_bytes()))
-        self.original_pin.start(); self.addCleanup(self.original_pin.stop)
-        self.source = self.root / 'source'; shutil.copytree(self.baseline, self.source)
-        (self.source / 'payload/visual-search/app.js').write_text('previous published polish')
-        for name in remote.NATIVE_ASSETS:
-            path = self.source / 'payload' / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('native fixture:' + name)
-        html = '<!doctype html><meta name="robots" content="noindex,nofollow,noarchive"><main id="design-v2-native-root"></main>\n'
-        html += '\n'.join('<link rel="stylesheet" href="' + src + '">' for src in remote.NATIVE_STYLES) + '\n'
-        html += '\n'.join('<script src="' + src + '" defer></script>' for src in remote.NATIVE_SCRIPTS) + '\n'
-        (self.source / 'payload/visual-search/index.html').write_text(html)
-        (self.source / 'payload/visual-search/index.php').write_text("<?php $entry = '/_preview/search3-design-v2-candidate/visual-search/';\nif ($script !== $entry . 'index.php') { exit; }")
-        def row(src):
-            name = posixpath.normpath(posixpath.join('visual-search', src)); content = (self.source / 'payload' / name).read_bytes()
-            return {'src': src, 'path': name, 'sha256': remote.digest(content), 'bytes': len(content)}
-        native = {'schema': 2, 'donorSource': '00fe6734c08acf234756bb59e5b61dbfecf41941', 'donor': remote.NATIVE_DONOR,
-            'status': 'native-source-candidate-not-published', 'legacyPresentationLoaded': False, 'mockSimulatorLoaded': False,
-            'isolatedOverlay': True, 'canonicalDependenciesRewritten': False,
-            'entry': {'html': remote.digest(html.encode()), 'php': remote.digest((self.source / 'payload/visual-search/index.php').read_bytes())},
-            'graph': {'scripts': [row(src) for src in remote.NATIVE_SCRIPTS], 'styles': [row(src) for src in remote.NATIVE_STYLES]},
-            'files': {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes()) for name in remote.NATIVE_ASSETS}}
-        (self.source / 'payload' / remote.NATIVE_MANIFEST).write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
-        self.native = native
-        self.native_pin = {'source_sha': 'a' * 40, 'source_tree': 'd' * 40,
-            'release_sha': 'c' * 40, 'release_tree': 'd' * 40,
-            'build_run': 123, 'artifact_id': 456,
-            'source_ZIP_sha256': 'e' * 64, 'entry_html_sha256': native['entry']['html'], 'entry_php_sha256': native['entry']['php'],
-            'source_manifest_sha256': remote.digest((self.source / 'payload' / remote.NATIVE_MANIFEST).read_bytes())}
-        for change in (patch.object(remote, 'NATIVE_ACCEPTANCE', self.native_pin),
-                       patch.object(remote, 'NATIVE_BRAND', {name: native['files'][name] for name in remote.NATIVE_BRAND})):
-            change.start(); self.addCleanup(change.stop)
-        m = json.loads((self.source / 'control/manifest.json').read_bytes())
-        m.update(source_sha='a' * 40, source_tree_sha='d' * 40)
-        (self.source / 'control/manifest.json').write_bytes(remote.json_bytes(m))
-        q = {**original_request(), 'source_sha': 'a' * 40, 'release_sha': 'c' * 40,
-            'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
-        # The predecessor is already a native 855-file publication, not a legacy
-        # 845-file fixture with a patched owner. Its canonical and brand bytes
-        # stay identical while only reviewed native owners and generated manifest
-        # change for this package.
-        pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
-        for name in remote.NATIVE_SUCCESSOR_CHANGES:
-            if name == remote.NATIVE_MANIFEST: continue
-            path = self.source / 'payload' / name
-            if name == 'visual-search/index.html':
-                path.write_text(path.read_text().replace('<main id="design-v2-native-root"></main>',
-                    '<main id="design-v2-native-root"><div role="status">Native startup fixture</div></main>'))
-            else: path.write_text('reviewed native successor:' + name)
-        native['entry']['html'] = remote.digest((self.source / 'payload/visual-search/index.html').read_bytes())
-        self.native_pin['entry_html_sha256'] = native['entry']['html']
-        native['files'] = {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes())
-                           for name in remote.NATIVE_ASSETS}
-        native['graph'] = {'scripts': [row(src) for src in remote.NATIVE_SCRIPTS],
-                           'styles': [row(src) for src in remote.NATIVE_STYLES]}
-        (self.source / 'payload' / remote.NATIVE_MANIFEST).write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
-        self.native_pin['source_manifest_sha256'] = remote.digest((self.source / 'payload' / remote.NATIVE_MANIFEST).read_bytes())
-        self.q, self.archive = pub.derive(self.source, self.baseline, self.root / 'derived', q, 'e' * 64)
-        site_root = self.root / 'anytoour.ru'; parent = site_root / '_preview'; parent.mkdir(parents=True)
-        for name in create_remote.REQUIRED:
-            p = site_root / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('protected:' + name)
-        for name in ('search3-site-candidate', 'search3-local-candidate', 'search3-v17-candidate',
-                     'search3-v18-candidate', 'search3-next-candidate', 'search3-anex-candidate'):
-            (parent / name).mkdir(); (parent / name / 'keep.txt').write_text('old unchanged:' + name)
-        shutil.copytree(self.root / 'installed/payload', parent / 'search3-design-v2-candidate')
-        self.digest = remote.digest(remote.json_bytes(remote.inventory(parent / 'search3-design-v2-candidate')))
-        self.owner = {**remote.PREDECESSOR_OWNER, 'digest': self.digest}
-        self.pins = [patch.object(remote, 'PREDECESSOR_DIGEST', self.digest), patch.object(remote, 'PREDECESSOR_OWNER', self.owner)]
-        for pin in self.pins: pin.start(); self.addCleanup(pin.stop)
-        self.site = remote.Site(site_root); self.site.owner.write_bytes(remote.json_bytes(self.owner))
-        self.uploads = []
-        self.env = {'GITHUB_REPOSITORY': pub.REPO, 'GITHUB_REF': 'refs/heads/main',
-            'GITHUB_ACTOR': 'pyatkoff', 'GITHUB_TRIGGERING_ACTOR': 'pyatkoff', 'GITHUB_ACTOR_ID': '226193297',
-            'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_EVENT_NAME': 'issue_comment', 'GITHUB_RUN_ID': '789'}
-        self.event = {'repository': {'full_name': pub.REPO, 'id': 1345518271},
-            'sender': {'login': 'pyatkoff', 'id': 226193297}, 'action': 'created', 'issue': {'number': 4217},
-            'comment': {'user': {'id': 226193297}, 'author_association': 'OWNER',
-                'body': pub.PREFIX + 'a' * 40 + ' ' + 'c' * 40 + ' 123 456'}}
-
-    def tearDown(self):
-        for p in self.uploads: p.unlink(missing_ok=True)
-        self.tmp.cleanup()
-
-    def staged(self, run=789):
-        fd, name = tempfile.mkstemp(prefix='search3-design-v2-update.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
-        p = Path(name); p.write_bytes(self.archive); self.uploads.append(p)
-        return {**self.q, 'deploy_run': run, 'archive': name, 'before': self.site.snapshot()}
-
-    def review_archive(self, mutate=None):
-        contents = {('payload/' + name): (self.source / 'payload' / name).read_bytes()
-                    for name in remote.inventory(self.source / 'payload')}
-        meta = {'schema': 1, 'source_sha': 'a' * 40, 'source_tree_sha': 'd' * 40, 'base_sha': 'b' * 40,
-            'run_id': '123', 'run_attempt': '1', 'donor_source_sha': self.native['donorSource'],
-            'intended_route': remote.ROUTE + 'visual-search/', 'status': 'review-artifact-not-published',
-            'publication_authority': False, 'canonical_route_rewrites_applied': False,
-            'file_count': 855, 'files': [{'path': name, 'sha256': remote.digest(value), 'bytes': len(value)}
-                                      for name, value in sorted((name[len('payload/'):], value) for name, value in contents.items())]}
-        contents['control/inventory.json'] = remote.json_bytes(meta)
-        contents['control/native-build.json'] = remote.json_bytes(self.native)
-        proof = {'passiveHydrationSearches': 0, 'formSubmitSearches': 1, 'localFilterExtraSearches': 0,
-            'exactLoadedOfferRetained': True, 'flightChoiceIndex': 0, 'selectedFullTotal': 112000,
-            'contactPayloadFullTotal': 112000, 'contactPayloadFlightChoiceIndex': 0,
-            'contactPreviewCount': 1, 'realLeadSubmissions': 0, 'backForwardRetainedSelection': True,
-            'backForwardExtraSearches': 0, 'errorRetainedRows': 4, 'explicitSearchRetryCount': 1,
-            'retryRows': 4, 'favoriteStoragePreserved': True, 'budgetLoadedCount': 2, 'budgetExtraSearches': 0,
-            'calendarPages': 2, 'calendarLaterLoadedTotal': 166400,
-            'calendarPagingExtraSearches': 0, 'calendarHistoryPageRetained': True,
-            'calendarSingleWeekNavigation': True,
-            'boundedInitialCards': 24, 'boundedLoadedHotels': 55,
-            'boundedBackCards': 48, 'boundedExtraSearches': 0,
-            'startupPendingFormHidden': True, 'startupErrorSearches': 0, 'startupRetrySearches': 0,
-            'activeConstraintsVisible': True, 'recoveryLoadedHotels': 2,
-            'recoveryPreservedMeal': True, 'recoveryExtraSearches': 0,
-            'loadingInitialCountNeutral': True, 'loadingEmptyActionHidden': True, 'loadingExtraSearches': 0,
-            'failedInitialCountNeutral': True, 'failedInitialFriendlyCopy': True, 'failedInitialExtraSearches': 0,
-            'filteredCalendarTruthful': True,
-            'partialEmptyNeutralCount': True, 'partialSavedSearchRetained': True,
-            'partialLoadedHotels': 4, 'partialExtraSearches': 0,
-            'partialFilteredRecoveryLoadedHotels': 2,
-            'flightAlternativesExtraQuotes': 0, 'flightAlternativeOriginalIndices': [0, 1, 0],
-            'flightAlternativesClosedHeight': 500, 'flightAlternativesExpandedHeight': 800,
-            'flightAlternativesSavedHeight': 300,
-            'familyAges': [0, 7, 17], 'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
-            'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
-            'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-            'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
-            'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0,
-            'contactExactItineraryRetained': True, 'contactDraftAndConsentRetained': True,
-            'groupMinimumOpenedHotelWithoutQuote': True, 'groupPassiveExtraSearches': 0,
-            'groupPassiveExpansions': 0, 'groupExplicitExpandCount': 1,
-            'groupExpansionExactReferences': True, 'groupPendingRemountRetained': True,
-            'groupPendingStatusFocusRetained': True, 'groupConcreteQuoteCount': 1,
-            'groupConcreteFocusRetained': True, 'groupBackRemountExtraOperations': 0,
-            'groupVisibleConcreteMinimum': 161400, 'groupVisibleConcreteDelta': 9000,
-            'groupDirectConcreteReopen': True,
-            'retainedContent': {
-                'hotelId': 3678, 'hotelName': 'RIA SUITES HOTEL',
-                'snapshotSHA256': '00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3',
-                'images': [
-                    {'file': 'ria-suites-1.jpg',
-                     'sourceURL': 'https://static.tourvisor.ru/hotel_pics/main400/103994.jpg',
-                     'sha256': 'f259ca07c0edf996bf23e456b548990830e010538a465e86f952a399abb1c4d5'},
-                    {'file': 'ria-suites-2.jpg',
-                     'sourceURL': 'https://static.tourvisor.ru/hotel_pics/verybig/4/103994-90635200.jpg',
-                     'sha256': '7a74632ddf255de435e4b7fec6c6c982d33681552fe3d94b8aa4b80bde853dab'}],
-                'cardErrorAndRetry': True, 'galleryFullImage': True,
-                'lateFailureIgnored': True, 'galleryErrorAndRetry': True,
-                'compactImageNoPlaceholder': True, 'compactErrorWithoutControls': True,
-                'passiveSupplierOperations': 0},
-            'contactValidation': {'emptyPhone': True, 'invalidPhone': True,
-                'restoredInvalidDraft': True, 'whitespacePhone': True,
-                'missingConsent': True, 'correctedPreviewDelta': 1,
-                'invalidPreviewDelta': 0, 'exactContextRetained': True,
-                'backReopenRetained': True, 'extraSupplierOperations': 0,
-                'realSubmissions': 0},
-            'screenNavigation': {'deepScroll': 1200, 'hotelHeadingVisible': True,
-                'resultFocusRestored': True, 'resultAnchorDelta': 0, 'extraSearches': 0,
-                'responsiveHiddenFocusFallback': True, 'responsiveRemountExtraOperations': 0},
-            'managerContact': {'total': 110000, 'flightChoiceId': None,
-                'oldPairRemoved': True, 'consentRevoked': True},
-            'nonMinimumJourney': {'exactOfferIndex': 1, 'total': 170400,
-                'summaryAndContinueRetained': True, 'contactItineraryRetained': True,
-                'backReopenExtraOperations': 0},
-            'contactPriceBlockFit': {'captionCount': 1, 'amountCount': 1,
-                'readableCaptionWeight': True, 'readableCaptionSpacing': True,
-                'captionInsidePrice': True, 'amountInsidePrice': True,
-                'captionAboveAmount': True, 'overflow': False},
-            'manyFlightChoices': {'total': 40, 'initiallyVisible': 3, 'collapsed': 37,
-                'selectedCanonicalIndex': 39, 'selectedTotal': 151000,
-                'passiveExtraOperations': 0,
-                'managerBeforeList': {'before': True, 'visible': True, 'overflow': False}}}
-        report = {'schema': 1, 'sourceSHA': 'a' * 40, 'donorSource': self.native['donorSource'],
-            'compiledNativeManifest': self.native, 'status': 'passed', 'requiredWidths': [430,1280],
-            'requiredTextPercents': [100], 'expectedPairedScreens': ['search','results','hotel','tour','lead'],
-            'cases': [], 'failures': []}
-        for width in (430,1280):
-            for percent in (100,):
-                case = {'width': width, 'textPercent': percent, 'proof': dict(proof), 'errors': [], 'unexpectedRequests': [], 'frames': []}
-                case['proof']['manyFlightChoices'] = {**proof['manyFlightChoices'],
-                    'pairLayout': {'columns': 2 if width == 1280 else 1,
-                        'paired': width == 1280, 'stacked': width != 1280}}
-                case['proof']['aiPriceContact'] = {'searchPrice': 138989, 'checkedFullTotal': 163056,
-                    'readableMeal': True, 'originalIndex': 0, 'explicitAcceptance': True,
-                    'comparableSearchPrices': True, 'selectedPackagePriceRetained': True,
-                    'conditionsAgreement': True, 'backForwardExtraOperations': 0,
-                    'contactFit': {'width': 490 if width == 1280 else width - 60,
-                        'titleWidth': 370 if width == 1280 else width - 140,
-                        'titleLines': 2, 'titleFits': True, 'summaryFits': True, 'columns': width >= 768}}
-                case['proof']['calendarVisibleNavigation'] = {
-                    'lastPriceReachableByArrows': True,
-                    'backwardDatesNotSkipped': True if width == 430 else None,
-                    'unselectedBackPositionVisible': True,
-                    'mobileRemountPositionRetained': True if width == 430 else None,
-                    'selectedDateVisible': True, 'clearedDateVisible': True,
-                    'backPositionVisible': True, 'implicitDayLocatorScroll': False}
-                case['proof']['contactDisclosure'] = {'initiallyCollapsed': width <= 760,
-                    'expandedFactsVisible': True, 'passiveExtraOperations': 0}
-                if (width, percent) == (430, 100):
-                    case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
-                for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
-                    side = name.split('-')[0]
-                    short_desktop = name.startswith('native-short-desktop-')
-                    logical_name = name.replace('native-short-desktop-', 'native-', 1) if short_desktop else name
-                    screen = ('startup' if logical_name.startswith('native-startup-')
-                              else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
-                              else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
-                              else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
-                                                                 'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
-                                                                 'native-filters-active-', 'native-filter-empty-',
-                                                                 'native-results-loading-', 'native-results-error-',
-                                                                 'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                              else 'tour' if logical_name.startswith('native-ai-price-changed-')
-                              else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
-                              else 'gallery' if logical_name.startswith('native-content-gallery-')
-                              else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
-                    png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
-                    if short_desktop:
-                        png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', 1280, 720) + b'fictional offline verifier fixture'
-                    if name.startswith(('native-calendar-later-', 'native-calendar-single-range-')):
-                        png = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' + struct.pack('>II', width, 900) + b'fictional offline verifier fixture'
-                    contents['evidence/' + name] = png
-                    has_budget = screen == 'filters' or screen == 'results' and width >= 768
-                    size = (16 if width <= 430 else 14) * percent / 100
-                    calendar_fit = None
-                    if name.startswith(('native-calendar-later-', 'native-calendar-single-range-')):
-                        calendar_fit = {'left': 17, 'right': width - 17,
-                            'strip': {'left': 17, 'right': width - 17,
-                                'scrollLeft': 230 if width == 430 else 0,
-                                'clientWidth': width - 34,
-                                'scrollWidth': width - 34 + (230 if width == 430 else 0),
-                                'dateLeft': width - 102, 'dateRight': width - 18},
-                            'footClientWidth': width - 34, 'footScrollWidth': width - 34,
-                            'pager': {'left': width - 109, 'right': width - 17, 'top': 300, 'bottom': 344},
-                            'buttons': [
-                                {'disabled': False, 'left': width - 109, 'right': width - 65,
-                                 'top': 300, 'bottom': 344, 'width': 44, 'height': 44},
-                                {'disabled': True, 'left': width - 61, 'right': width - 17,
-                                 'top': 300, 'bottom': 344, 'width': 44, 'height': 44}],
-                            'clipped': False}
-                    summary_fit = []
-                    if side == 'native' and screen in ('tour', 'lead'):
-                        summary_width = (300 if width <= 430 else 434 if screen == 'lead' else 670)
-                        summary_font = 14 * percent / 100
-                        narrow = summary_width <= summary_font * 18 + 1
-                        summary_fit = [{'className': 'st-quick-context' if width <= 430 and screen == 'tour' else 'st-tour-hotel',
-                            'width': summary_width, 'fontSize': summary_font,
-                            'imageWidth': summary_width if narrow else 82,
-                            'copyWidth': summary_width if narrow else summary_width * .7,
-                            'copyWidthRatio': 1 if narrow else .7,
-                            'stacked': narrow, 'queryNarrow': narrow}]
-                    offer_action_fit = []
-                    if side == 'native' and screen == 'hotel':
-                        offer_width = width - 36 if width <= 430 else 650
-                        offer_font = 14 * percent / 100
-                        offer_narrow = offer_width <= offer_font * 22 + 1
-                        offer_action_fit = [{'text': text, 'width': offer_width,
-                            'availableWidth': offer_width, 'containerWidth': offer_width,
-                            'fontSize': offer_font,
-                            'actionWidth': offer_width if offer_narrow else 110,
-                            'actionWidthRatio': 1 if offer_narrow else 110 / offer_width,
-                            'queryNarrow': offer_narrow, 'actionOnOwnRow': offer_narrow,
-                            'outside': False} for text in ('Ğ’Ñ‹Ğ±Ñ€Ğ°Ñ‚ÑŒ Ñ‚ÑƒÑ€', 'Ğ’Ñ‹Ğ±Ñ€Ğ°Ğ½ Ñ‚ÑƒÑ€')]
-                    readable_text = [{'text': 'Fixture condition', 'clipped': False,
-                        'brokenWords': False, 'overlappingLines': False, 'kind': 'other', 'cardId': None}]
-                    if name.startswith('native-popup-nights-'):
-                        readable_text.extend({**readable_text[0], 'text': text, 'kind': 'night-preset'}
-                                             for text in ('7 Ğ½Ğ¾Ñ‡ĞµĞ¹', '10 Ğ½Ğ¾Ñ‡ĞµĞ¹', '14 Ğ½Ğ¾Ñ‡ĞµĞ¹', '21 Ğ½Ğ¾Ñ‡ÑŒ'))
-                    result_card_ids = []
-                    result_notice = {'visibleCount': 0, 'afterBatch': False, 'cardNoticeCount': 0, 'text': ''}
-                    if side == 'native' and screen == 'results' and not name.startswith((
-                            'native-filter-empty-', 'native-results-loading-', 'native-results-error-',
-                            'native-results-partial-empty-', 'native-initial-favorites-')):
-                        result_card_ids = ([3678] if logical_name.startswith('native-content-results-')
-                            else list(range(1000, 1024)) if logical_name.startswith('native-results-bounded-')
-                            else [2, 3] if logical_name.startswith('native-budget-results-')
-                            else [1, 4] if logical_name.startswith('native-filters-active-') else [1, 2, 3, 4])
-                        fixture_hotels = [
-                            ('FIXTURE Laguna Beach Resort', 'Ğ¡Ñ‚Ğ°Ğ½Ğ´Ğ°Ñ€Ñ‚Ğ½Ñ‹Ğ¹ Ğ½Ğ¾Ğ¼ĞµÑ€', 'Ğ£Ğ»ÑŒÑ‚Ñ€Ğ° Ğ²ÑÑ‘ Ğ²ĞºĞ»ÑÑ‡ĞµĞ½Ğ¾'),
-                            ('FIXTURE Marina Bay Hotel', 'Ğ¡Ñ‚Ğ°Ğ½Ğ´Ğ°Ñ€Ñ‚Ğ½Ñ‹Ğ¹ Ğ½Ğ¾Ğ¼ĞµÑ€', 'Ğ—Ğ°Ğ²Ñ‚Ñ€Ğ°ĞºĞ¸ Ğ¸ ÑƒĞ¶Ğ¸Ğ½Ñ‹'),
-                            ('FIXTURE Seaside Garden Hotel & Residence', 'Ğ¡Ñ‚Ğ°Ğ½Ğ´Ğ°Ñ€Ñ‚Ğ½Ñ‹Ğ¹ Ğ½Ğ¾Ğ¼ĞµÑ€', 'Ğ—Ğ°Ğ²Ñ‚Ñ€Ğ°ĞºĞ¸'),
-                            ('FIXTURE Laguna Collection Premium Resort & Private Villas',
-                             'Ğ’Ğ¸Ğ»Ğ»Ğ° Ñ Ğ´Ğ²ÑƒĞ¼Ñ ÑĞ¿Ğ°Ğ»ÑŒĞ½ÑĞ¼Ğ¸ Â· ÑĞ²Ğ¾Ğ¹ Ğ±Ğ°ÑÑĞµĞ¹Ğ½', 'Ğ£Ğ»ÑŒÑ‚Ñ€Ğ° Ğ²ÑÑ‘ Ğ²ĞºĞ»ÑÑ‡ĞµĞ½Ğ¾')]
-                        for card_id in result_card_ids:
-                            if logical_name.startswith('native-content-results-'):
-                                facts = {'result-title': 'RIA SUITES HOTEL', 'result-location': 'Ğ¡Ñ‚Ğ°Ğ¼Ğ±ÑƒĞ», Ğ¢ÑƒÑ€Ñ†Ğ¸Ñ',
-                                    'result-date': '12 Ğ¾ĞºÑ‚ Â· 7 Ğ½Ğ¾Ñ‡ĞµĞ¹', 'result-room': 'Ğ¡Ñ‚Ğ°Ğ½Ğ´Ğ°Ñ€Ñ‚Ğ½Ñ‹Ğ¹ Ğ½Ğ¾Ğ¼ĞµÑ€',
-                                    'result-meal': 'Ğ£Ğ»ÑŒÑ‚Ñ€Ğ° Ğ²ÑÑ‘ Ğ²ĞºĞ»ÑÑ‡ĞµĞ½Ğ¾', 'result-operator': 'FIXTURE TV',
-                                    'result-party': 'Ğ·Ğ° 2 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ñ…'}
-                            else:
-                                bounded = card_id >= 1000
-                                hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
-                                title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
-                                terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
-                                operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
-                                facts = {'result-title': title, 'result-location': 'Ğ¢ÑƒÑ€Ñ†Ğ¸Ñ Â· ĞšĞµĞ¼ĞµÑ€',
-                                    'result-date': '19 Ğ¾ĞºÑ‚ Â· 7 Ğ½Ğ¾Ñ‡ĞµĞ¹' if terminal else '12 Ğ¾ĞºÑ‚ Â· 7 Ğ½Ğ¾Ñ‡ĞµĞ¹', 'result-room': hotel[1],
-                                    'result-meal': hotel[2], 'result-operator': operator, 'result-party': 'Ğ·Ğ° 2 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ñ…'}
-                            readable_text.extend({**readable_text[0], 'text': value, 'kind': kind, 'cardId': card_id}
-                                                 for kind, value in facts.items())
-                        result_notice = {'visibleCount': 1, 'afterBatch': True, 'cardNoticeCount': 0,
-                            'text': 'Ğ¦ĞµĞ½Ñ‹ Ğ¸Ğ· Ğ¿Ğ¾Ğ¸ÑĞºĞ° â€” Ğ·Ğ° Ğ²ĞµÑÑŒ Ñ‚ÑƒÑ€ Ğ¸ Ğ²ÑĞµÑ… Ñ‚ÑƒÑ€Ğ¸ÑÑ‚Ğ¾Ğ². ĞŸĞµÑ€ĞµĞ´ Ğ·Ğ°ÑĞ²ĞºĞ¾Ğ¹ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€Ğ¸Ğ¼ Ñ†ĞµĞ½Ñƒ, Ğ½Ğ°Ğ»Ğ¸Ñ‡Ğ¸Ğµ Ğ¸ ÑĞ¾ÑÑ‚Ğ°Ğ² Ğ¿Ğ°ĞºĞµÑ‚Ğ°, Ğ²ĞºĞ»ÑÑ‡Ğ°Ñ Ğ¾Ğ±ÑĞ·Ğ°Ñ‚ĞµĞ»ÑŒĞ½Ñ‹Ğµ Ğ´Ğ¾Ğ¿Ğ»Ğ°Ñ‚Ñ‹.'}
-                        readable_text.append({**readable_text[0], 'text': result_notice['text'], 'kind': 'result-notice'})
-                    if side == 'native' and screen == 'tour':
-                        readable_text.extend({**readable_text[0], 'text': text} for text in (
-                            'Ğ¢ÑƒÑ€Ğ¸ÑÑ‚Ñ‹', 'Ğ¢ÑƒÑ€Ğ¾Ğ¿ĞµÑ€Ğ°Ñ‚Ğ¾Ñ€', 'ĞĞ±ÑĞ·Ğ°Ñ‚ĞµĞ»ÑŒĞ½Ñ‹Ğµ Ğ´Ğ¾Ğ¿Ğ»Ğ°Ñ‚Ñ‹'))
-                    if name.startswith('native-family-'):
-                        state = name[len('native-family-'):].split('-', 1)[0]
-                        party = {'0': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹', '1': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹ + 1 Ñ€ĞµĞ±Ñ‘Ğ½Ğ¾Ğº',
-                            '2': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹ + 2 Ñ€ĞµĞ±Ñ‘Ğ½ĞºĞ°', '3': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹ + 3 Ñ€ĞµĞ±Ñ‘Ğ½ĞºĞ°',
-                            'applied': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹ + 3 Ñ€ĞµĞ±Ñ‘Ğ½ĞºĞ°', 'review': '1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ğ¹ + 3 Ñ€ĞµĞ±Ñ‘Ğ½ĞºĞ°'}[state]
-                        readable_text.append({**readable_text[0], 'text': party})
-                        if state == 'review':
-                            readable_text.extend({**readable_text[0], 'text': text} for text in (
-                                'ĞŸÑ€Ğ¾Ğ²ĞµÑ€ÑŒÑ‚Ğµ Ğ²Ğ¾Ğ·Ñ€Ğ°ÑÑ‚Ğ° Ğ´ĞµÑ‚ĞµĞ¹ Ğ½Ğ° Ğ´Ğ°Ñ‚Ñƒ Ğ²Ğ¾Ğ·Ğ²Ñ€Ğ°Ñ‰ĞµĞ½Ğ¸Ñ',
-                                'ĞŸĞ¾Ğ´Ñ‚Ğ²ĞµÑ€Ğ´Ğ¸Ñ‚Ğµ Ğ²Ğ¾Ğ·Ñ€Ğ°ÑÑ‚Ğ° Ğ´ĞµÑ‚ĞµĞ¹ Ğ½Ğ° Ğ´Ğ°Ñ‚Ñƒ Ğ²Ğ¾Ğ·Ğ²Ñ€Ğ°Ñ‰ĞµĞ½Ğ¸Ñ.'))
-                    if name.startswith('native-initial-favorites-'):
-                        readable_text = [{**readable_text[0], 'text': text} for text in (
-                            'ĞŸĞ¾Ğ¸ÑĞº ĞµÑ‰Ñ‘ Ğ½Ğµ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ°Ğ»Ğ¸', 'ĞĞ°Ñ‡Ğ½Ğ¸Ñ‚Ğµ Ñ Ğ¿Ğ¾Ğ¸ÑĞºĞ°',
-                            'Ğ’Ñ‹Ğ±ĞµÑ€Ğ¸Ñ‚Ğµ ÑƒÑĞ»Ğ¾Ğ²Ğ¸Ñ Ğ¿Ğ¾ĞµĞ·Ğ´ĞºĞ¸ Ğ¸ Ğ½Ğ°Ğ¶Ğ¼Ğ¸Ñ‚Ğµ Â«ĞĞ°Ğ¹Ñ‚Ğ¸ Ñ‚ÑƒÑ€Ñ‹Â».')]
-                    count_fit = {'text': 'ĞŸĞ¾Ğ¸ÑĞº ĞµÑ‰Ñ‘ Ğ½Ğµ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ°Ğ»Ğ¸' if name.startswith('native-initial-favorites-') else '4 Ğ¾Ñ‚ĞµĞ»Ñ',
-                        'toolbar': {'left': 10, 'right': width - 10},
-                        'textRects': [{'left': 10, 'right': 100, 'top': 10, 'bottom': 40}],
-                        'controls': [{'text': 'Ğ¤Ğ¸Ğ»ÑŒÑ‚Ñ€Ñ‹', 'left': width - 100, 'right': width - 10,
-                                      'top': 10, 'bottom': 54}],
-                        'outside': False, 'overlap': False} if side == 'native' and screen == 'results' else None
-                    destination_fit = None
-                    if name.startswith(('native-destination-choice-', 'native-destination-confirm-')):
-                        readable_text.append({**readable_text[0], 'text': 'ĞÑ‚Ğ¼ĞµĞ½Ğ°'})
-                    if name.startswith('native-destination-confirm-'):
-                        narrow = percent == 200 and width in (360, 390, 430)
-                        font = 13 * percent / 100
-                        available = 270 if width < 760 else 800
-                        destination_fit = {'available': available, 'fontSize': font, 'queryNarrow': narrow,
-                            'stacked': narrow, 'outside': False, 'overlap': False,
-                            'actions': [{'text': text, 'left': 0 if narrow else index * 135,
-                                'right': 270 if narrow else index * 135 + 125,
-                                'top': index * 52 if narrow else 0, 'bottom': index * 52 + 44 if narrow else 44,
-                                'width': 270 if narrow else 125, 'height': 44, 'disabled': False}
-                                for index, text in enumerate(('ĞÑÑ‚Ğ°Ğ²Ğ¸Ñ‚ÑŒ', 'Ğ—Ğ°Ğ¼ĞµĞ½Ğ¸Ñ‚ÑŒ'))]}
-                        readable_text.extend({**readable_text[0], 'text': text} for text in ('ĞÑÑ‚Ğ°Ğ²Ğ¸Ñ‚ÑŒ', 'Ğ—Ğ°Ğ¼ĞµĞ½Ğ¸Ñ‚ÑŒ'))
-                    popup_editor = ('dates' if logical_name.startswith('native-popup-calendar-')
-                        else 'nights' if logical_name.startswith('native-popup-nights-')
-                        else 'travelers' if logical_name.startswith('native-family-') and not logical_name.startswith('native-family-applied-')
-                        else 'destination' if logical_name.startswith('native-destination-') else None)
-                    popup_fit = {'editor': popup_editor, 'modal': True, 'outside': False,
-                        'panelOverflow': False, 'findVisible': True, 'findEnabled': True,
-                        'findHeight': 50, 'submitCount': 1} if popup_editor else None
-                    terminal_state = None
-                    if name.startswith('native-terminal-'):
-                        status = name.split('-')[2]
-                        message = ('' if status == 'complete' else 'API HTTP 403'
-                                   if status == 'partial' else
-                                   'ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ·Ğ°Ğ²ĞµÑ€ÑˆĞ¸Ñ‚ÑŒ Ğ¿Ğ¾Ğ¸ÑĞº. ĞŸĞ¾Ğ»ÑƒÑ‡ĞµĞ½Ğ½Ñ‹Ğµ Ğ¿Ñ€ĞµĞ´Ğ»Ğ¾Ğ¶ĞµĞ½Ğ¸Ñ ÑĞ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ñ‹.')
-                        alert = ('ĞŸĞ¾Ğ¸ÑĞº Ğ·Ğ°Ğ²ĞµÑ€ÑˆÑ‘Ğ½ Ğ½Ğµ Ğ¿Ğ¾Ğ»Ğ½Ğ¾ÑÑ‚ÑŒÑ'
-                                 'ĞŸĞ¾ĞºĞ°Ğ·Ğ°Ğ½Ñ‹ Ğ¿Ñ€ĞµĞ´Ğ»Ğ¾Ğ¶ĞµĞ½Ğ¸Ñ: ANEX. ĞĞµ Ğ²ÑĞµ Ğ¸ÑÑ‚Ğ¾Ñ‡Ğ½Ğ¸ĞºĞ¸ Ğ·Ğ°Ğ²ĞµÑ€ÑˆĞ¸Ğ»Ğ¸ Ğ¿Ğ¾Ğ¸ÑĞº: '
-                                 'Tourvisor Ğ¸ Andromeda.' if status == 'partial' else
-                                 'ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ·Ğ°Ğ²ĞµÑ€ÑˆĞ¸Ñ‚ÑŒ Ğ¿Ğ¾Ğ¸ÑĞº'
-                                 'ĞŸĞ¾Ğ»ÑƒÑ‡ĞµĞ½Ğ½Ñ‹Ğµ Ğ¿Ñ€ĞµĞ´Ğ»Ğ¾Ğ¶ĞµĞ½Ğ¸Ñ ÑĞ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ñ‹. Ğ˜Ğ·Ğ¼ĞµĞ½Ğ¸Ñ‚Ğµ ÑƒÑĞ»Ğ¾Ğ²Ğ¸Ñ Ğ¸Ğ»Ğ¸ Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚Ğµ Ğ¿Ğ¾Ğ¸ÑĞº.'
-                                 'Ğ˜Ğ·Ğ¼ĞµĞ½Ğ¸Ñ‚ÑŒ Ğ¸ Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚ÑŒ' if status == 'error' else '')
-                        terminal_state = {'status': status, 'message': message, 'searchGeneration': 1,
-                            'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
-                            'alertText': alert,
-                            'ownerSHA256': self.native['files']['bridge.js']}
-                    consent_fit = None
-                    if screen == 'lead':
-                        consent_fit = {'label': {'left': 18, 'right': width - 18, 'top': 440, 'bottom': 496,
-                                                   'width': width - 36, 'height': 56},
-                            'checkbox': {'left': 29, 'right': 49, 'top': 450, 'bottom': 470,
-                                         'width': 20, 'height': 20},
-                            'ownsCheckbox': True, 'required': True, 'contained': True,
-                            'focusOutline': side == 'native'}
-                    case['frames'].append({'terminalState': terminal_state, 'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
-                        'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
-                        'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit,
-                        'summaryFit': summary_fit, 'consentFit': consent_fit,
-                        'offerActionFit': offer_action_fit,
-                        'resultCardIds': result_card_ids, 'resultNotice': result_notice,
-                        'buttons': [{'text': 'Ğš Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ°Ğ¼ Ğ¿Ğ¾Ğ¸ÑĞºĞ°', 'clipped': False}] if name.startswith('native-initial-favorites-') else [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
-                        'readableText': readable_text,
-                        'headerFit': {'outside': False, 'overlap': False}, 'countFit': count_fit,
-                        'sortFit': {'text': 'Fixture sort', 'available': 200, 'textWidth': 80} if screen == 'results' else None,
-                        'budgetInputs': [{'text': text, 'available': 200, 'textWidth': 80, 'clipped': False,
-                            'appearance': 'textfield', 'font': f'500 {size:g}px Aeroport, system-ui, sans-serif'}
-                                         for text in ('0', '150000')] if has_budget else [],
-                        'budgetColumns': (2 if percent == 100 else 1) if screen == 'results' and width >= 768 else None,
-                        'prices': [] if screen == 'startup' or name.startswith(('native-family-', 'native-filter-empty-', 'native-results-loading-', 'native-results-error-', 'native-results-partial-empty-', 'native-initial-favorites-', 'native-initial-search-return-')) else [{'overflow': False, 'fragmented': False, 'textScaleVerified': True,
-                                    'fontSize': 29 * percent / 100, 'baselineFontSize': 29}]})
-                report['cases'].append(case)
-        contents['evidence/acceptance.json'] = remote.json_bytes(report)
-        contents['evidence/fixture.json'] = b'{"scope":"fictional offline verifier fixture"}\n'
-        if mutate: mutate(contents)
-        output = io.BytesIO()
-        with zipfile.ZipFile(output, 'w') as archive:
-            for name, value in contents.items(): archive.writestr(name, value)
-        return output.getvalue()
-
-    def read_review(self, content, target='review'):
-        pin = {**self.native_pin, 'source_ZIP_sha256': remote.digest(content)}
-        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin):
-            return pub.prepare_native_zip(content, self.q, 'd' * 40, pin['source_ZIP_sha256'], self.root / target)
-
-    def assert_evidence_rejected(self, changes):
-        # Exercise rendered proof tampering without repeatedly extracting 855
-        # already-verified payload files; complete ZIP tests retain that boundary.
-        with zipfile.ZipFile(io.BytesIO(self.review_archive())) as archive:
-            original = json.loads(archive.read('evidence/acceptance.json'))
-            class ChangedEvidence:
-                def __init__(self, report): self.report = remote.json_bytes(report)
-                def read(self, name):
-                    return self.report if name == 'evidence/acceptance.json' else archive.read(name)
-                def infolist(self): return archive.infolist()
-            for index, change in enumerate(changes):
-                report = copy.deepcopy(original); change(report)
-                with self.subTest(index=index), self.assertRaises(ValueError):
-                    pub.native_evidence(ChangedEvidence(report), self.q, self.native)
-
-    def test_owner_command_has_no_target_or_predecessor_argument(self):
-        q = pub.checked_request(self.event, self.env)
-        self.assertEqual(q['source_sha'], 'a' * 40)
-        self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
-        self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '84897fd5778debe040b74945212777aaf878d83e')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39346251452)
-        self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
-
-    def test_preparation_has_no_publication_authority_without_real_pins(self):
-        with patch.object(remote, 'NATIVE_ACCEPTANCE', None):
-            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'): pub.checked_request(self.event, self.env)
-            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'): remote.validate(self.q)
-            with self.assertRaisesRegex(ValueError, 'native_acceptance_not_pinned'):
-                pub.derive(self.source, self.baseline, self.root / 'unpinned', self.q, 'e' * 64)
-        self.assertFalse((self.root / 'unpinned').exists())
-
-    def test_complete_review_zip_preserves_exact_native_payload(self):
-        files = self.read_review(self.review_archive())
-        self.assertEqual(files, remote.inventory(self.source / 'payload'))
-        self.assertEqual(remote.inventory(self.root / 'review/release/payload'), files)
-
-    def test_command_request_propagates_verified_tree_through_prepare_inputs(self):
-        import search3_preview_publish as shared
-        content = self.review_archive()
-        pin = {**self.native_pin, 'source_ZIP_sha256': remote.digest(content)}
-        q = pub.checked_request(self.event, self.env)
-        self.assertNotIn('source_tree', q)  # This is the actual authorized command shape.
-        api = Mock(); api.download.side_effect = lambda artifact: content if artifact == 456 else b'baseline fixture'
-        def baseline(content, request, tree, zip_hash, directory):
-            self.assertEqual(request['artifact_id'], remote.ORIGINAL_ARTIFACT)
-            shutil.copytree(self.baseline, directory / 'release')
-        work = self.root / 'prepare-inputs'; work.mkdir()
-        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin), patch.object(shared, 'prepare_zip', baseline):
-            ready, archive = pub.prepare_inputs(api, q, 'd' * 40, pin['source_ZIP_sha256'], work)
-            self.assertEqual(remote.verify(work / 'derived', ready), remote.inventory(work / 'derived/payload'))
-        self.assertEqual(ready['source_tree'], 'd' * 40)
-        self.assertNotIn('source_tree', q)
-        self.assertEqual(ready['archive_sha256'], remote.digest(archive))
-        self.assertEqual(api.download.call_args_list[0].args, (456,))
-
-    def test_review_zip_rejects_identity_scope_and_byte_drift(self):
-        def meta_change(contents, key, value):
-            meta = json.loads(contents['control/inventory.json']); meta[key] = value
-            contents['control/inventory.json'] = remote.json_bytes(meta)
-        mutations = [lambda c: meta_change(c, 'source_sha', 'f' * 40),
-            lambda c: meta_change(c, 'publication_authority', True),
-            lambda c: meta_change(c, 'run_attempt', '2'),
-            lambda c: c.update({'payload/prototype-search/data.js': b'foreign provider byte'}),
-            lambda c: c.update({'payload/visual-search/native-v2/unknown.js': b'unapproved'}),
-            lambda c: c.update({'control/unknown.py': b'unapproved'}),
-            lambda c: c.update({'../escape': b'unapproved'})]
-        for i, mutate in enumerate(mutations):
-            with self.subTest(index=i), self.assertRaises(ValueError): self.read_review(self.review_archive(mutate), 'bad-zip-' + str(i))
-
-    def test_rendered_evidence_requires_full_matrix_factual_journey_and_hashes(self):
-        def report_change(contents, modify):
-            report = json.loads(contents['evidence/acceptance.json']); modify(report)
-            contents['evidence/acceptance.json'] = remote.json_bytes(report)
-        modifications = [lambda r: r.update({'sourceSHA': 'f' * 40}), lambda r: r['cases'].pop(),
-            lambda r: r['cases'][0]['proof'].update({'selectedFullTotal': 1000}),
-            lambda r: r['cases'][0]['proof']['retainedContent'].update({'hotelId': 1}),
-            lambda r: r['cases'][0]['proof']['retainedContent'].update({'passiveSupplierOperations': 1}),
-            lambda r: r['cases'][0]['proof']['contactValidation'].update({'invalidPreviewDelta': 1}),
-            lambda r: r['cases'][0]['proof']['contactValidation'].update({'realSubmissions': 1}),
-            lambda r: r['cases'][0]['proof'].update({'realLeadSubmissions': 1}),
-            lambda r: r['cases'][0]['proof'].update({'localFilterExtraSearches': 1}),
-            lambda r: r['cases'][0]['frames'][0].update({'overflow': True}),
-            lambda r: r['cases'][0]['frames'][0]['buttons'][0].update({'clipped': True}),
-            lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'fragmented': True}),
-            lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'textScaleVerified': False}),
-            lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'fontSize': 30}),
-            lambda r: r['cases'][0]['frames'][0].update({'sha256': 'f' * 64}),
-            lambda r: next(frame for frame in r['cases'][0]['frames']
-                           if frame['file'].startswith('native-content-contact-'))
-                           ['consentFit'].update({'contained': False}),
-            lambda r: r['cases'][0]['unexpectedRequests'].append('https://external.invalid/api'),
-            lambda r: r.update({'failures': ['confirmed failure']})]
-        for i, modify in enumerate(modifications):
-            with self.subTest(index=i), self.assertRaises(ValueError):
-                self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
-
-    def test_two_width_journey_requires_exact_113_frames_and_all_applicable_predecessor_frames(self):
-        content = self.review_archive()
-        with zipfile.ZipFile(io.BytesIO(content)) as archive:
-            report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 113)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 113)
-            ai_frames = ('native-ai-price-changed-', 'native-ai-hotel-checked-', 'native-ai-contact-')
-            self.assertEqual(sum(frame['file'].startswith(ai_frames)
-                for case in report['cases'] for frame in case['frames']), 6)
-            for case in report['cases']:
-                case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(ai_frames)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 107)
-            additions = ('native-tour-many-flights-', 'native-lead-manager-',
-                         'native-hotel-selected-dearer-', 'native-lead-selected-dearer-')
-            self.assertEqual(sum(frame['file'].startswith(additions)
-                for case in report['cases'] for frame in case['frames']), 8)
-            for case in report['cases']:
-                case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(additions)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 99)
-            self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-'))
-                for case in report['cases'] for frame in case['frames']), 64)
-            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 81)
-            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 85)
-            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 89)
-            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 93)
-            self.assertEqual(sum(frame['file'].startswith('native-family-')
-                for case in report['cases'] for frame in case['frames']), 12)
-            self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
-                for case in report['cases'] for frame in case['frames']), 5)
-        def frame(report, prefix, case=0):
-            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-        changes = [lambda r: r['cases'][0]['proof'].pop('contactDisclosure'),
-            lambda r: r['cases'][0]['proof']['contactDisclosure'].update(initiallyCollapsed=False),
-            lambda r: r['cases'][0]['proof']['contactDisclosure'].update(passiveExtraOperations=1),
-            lambda r: r['cases'][0]['proof'].pop('aiPriceContact'),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(checkedFullTotal=138989),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(originalIndex=1),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(explicitAcceptance=False),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(comparableSearchPrices=False),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(selectedPackagePriceRetained=False),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(conditionsAgreement=False),
-            lambda r: r['cases'][0]['proof']['aiPriceContact'].update(backForwardExtraOperations=1),
-            lambda r: r['cases'][0]['proof']['aiPriceContact']['contactFit'].update(titleFits=False),
-            lambda r: r['cases'][-1]['proof']['aiPriceContact']['contactFit'].update(width=300),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-ai-contact-')),
-            lambda r: frame(r, 'native-ai-price-changed-').update(screen='hotel'),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativesExtraQuotes=1),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativeOriginalIndices=[0, 0, 1]),
-            lambda r: r['cases'][0]['proof'].pop('flightAlternativeOriginalIndices'),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativesSavedHeight=40),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativesClosedHeight=float('nan')),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativesExpandedHeight=True),
-            lambda r: r['cases'][0]['proof'].update(flightAlternativesSavedHeight=500),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-tour-alternatives-')),
-            lambda r: frame(r, 'native-tour-alternatives-').update(screen='hotel'),
-            lambda r: r['cases'][0]['proof'].update(budgetLoadedCount=3),
-            lambda r: r['cases'][0]['proof'].update(budgetExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(calendarPages=1),
-            lambda r: r['cases'][0]['proof'].update(calendarLaterLoadedTotal=0),
-            lambda r: r['cases'][0]['proof'].update(calendarPagingExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(calendarHistoryPageRetained=False),
-            lambda r: r['cases'][0]['proof'].update(boundedInitialCards=55),
-            lambda r: r['cases'][0]['proof'].update(boundedLoadedHotels=24),
-            lambda r: r['cases'][0]['proof'].update(boundedBackCards=24),
-            lambda r: r['cases'][0]['proof'].update(boundedExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].pop('boundedBackCards'),
-            lambda r: r['cases'][0]['proof'].update(recoveryExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(recoveryPreservedMeal=False),
-            lambda r: r['cases'][0]['proof'].update(recoveryLoadedHotels=0),
-            lambda r: r['cases'][0]['proof'].pop('activeConstraintsVisible'),
-            lambda r: r['cases'][0]['proof'].update(loadingInitialCountNeutral=False),
-            lambda r: r['cases'][0]['proof'].update(loadingEmptyActionHidden=False),
-            lambda r: r['cases'][0]['proof'].update(loadingExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(failedInitialCountNeutral=False),
-            lambda r: r['cases'][0]['proof'].update(failedInitialFriendlyCopy=False),
-            lambda r: r['cases'][0]['proof'].update(failedInitialExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(filteredCalendarTruthful=False),
-            lambda r: r['cases'][0]['proof'].update(partialEmptyNeutralCount=False),
-            lambda r: r['cases'][0]['proof'].update(partialSavedSearchRetained=False),
-            lambda r: r['cases'][0]['proof'].update(partialLoadedHotels=0),
-            lambda r: r['cases'][0]['proof'].update(partialExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].update(partialFilteredRecoveryLoadedHotels=0),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filters-active-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filter-empty-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-loading-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-error-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-partial-empty-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-partial-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-filter-empty-partial-')),
-            lambda r: frame(r, 'native-results-loading-')['buttons'].append({'text':'Change search','clipped':False}),
-            lambda r: frame(r, 'native-results-error-')['buttons'].clear(),
-            lambda r: frame(r, 'native-results-partial-empty-')['buttons'].clear(),
-            lambda r: frame(r, 'native-results-partial-empty-')['prices'].append({'text':'invented'}),
-            lambda r: frame(r, 'native-filter-empty-')['prices'].append({'text':'invented'}),
-            lambda r: frame(r, 'native-filters-active-')['prices'].clear(),
-            lambda r: r['cases'][0]['proof'].update(progressiveDrawerRetainedDraftAndFocus=False),
-            lambda r: r['cases'][0]['proof'].pop('budgetBreakpointDraftRetained'),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-hotel-return-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-calendar-later-')),
-            lambda r: frame(r, 'native-calendar-later-').update(calendarFit=None),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit'].update(clipped=True),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit'].update(footScrollWidth=999),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit']['pager'].update(right=999),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'].pop(),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'][0].update(width=43),
-            lambda r: frame(r, 'native-calendar-later-')['calendarFit']['buttons'][1].update(right=999),
-            lambda r: frame(r, 'native-tour-').update(summaryFit=None),
-            lambda r: frame(r, 'native-lead-')['summaryFit'].clear(),
-            lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(stacked=True),
-            lambda r: frame(r, 'native-tour-')['summaryFit'][0].update(queryNarrow=True),
-            lambda r: frame(r, 'native-results-').update(summaryFit=[{'className':'st-tour-hotel'}]),
-            lambda r: frame(r, 'native-hotel-').update(offerActionFit=None),
-            lambda r: frame(r, 'native-hotel-')['offerActionFit'].pop(),
-            lambda r: frame(r, 'native-hotel-', 0)['offerActionFit'][0].update(outside=True),
-            lambda r: frame(r, 'native-hotel-')['offerActionFit'][0].update(actionOnOwnRow=True),
-            lambda r: frame(r, 'native-hotel-')['offerActionFit'][0].update(queryNarrow=True),
-            lambda r: frame(r, 'native-results-').update(offerActionFit=[{'text':'Ğ’Ñ‹Ğ±Ñ€Ğ°Ñ‚ÑŒ Ñ‚ÑƒÑ€'}]),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-results-bounded-')),
-            lambda r: frame(r, 'native-results-bounded-').update(screen='hotel'),
-            lambda r: frame(r, 'native-budget-results-').update(file='native-unapproved-360-text100.png'),
-            lambda r: frame(r, 'native-budget-invalid-')['budgetInputs'][0].update(clipped=True),
-            lambda r: frame(r, 'native-budget-draft-')['budgetInputs'][0].update(textWidth=201.1),
-            lambda r: frame(r, 'native-budget-draft-', 0)['budgetInputs'][0].update(font='500 15px Aeroport, system-ui, sans-serif'),
-            lambda r: frame(r, 'native-budget-results-', 1)['budgetInputs'][0].update(font='500 13px Aeroport, system-ui, sans-serif'),
-            lambda r: frame(r, 'native-budget-results-', 1)['budgetInputs'][0].update(font='500 26px Aeroport, system-ui, sans-serif'),
-            lambda r: frame(r, 'native-budget-draft-')['budgetInputs'].pop(),
-            lambda r: frame(r, 'native-results-')['readableText'][0].update(clipped=True),
-            lambda r: frame(r, 'native-search-')['readableText'][0].update(overlappingLines=True),
-            lambda r: frame(r, 'native-search-')['readableText'][0].pop('overlappingLines'),
-            lambda r: frame(r, 'native-hotel-return-')['readableText'][0].update(brokenWords=True),
-            lambda r: frame(r, 'native-tour-')['headerFit'].update(outside=True),
-            lambda r: frame(r, 'native-lead-')['headerFit'].update(overlap=True),
-            lambda r: frame(r, 'native-results-')['sortFit'].update(textWidth=202),
-            lambda r: frame(r, 'native-results-', 1).update(budgetColumns=1),
-            lambda r: frame(r, 'native-budget-results-')['prices'].clear()]
-        for i, change in enumerate(changes):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json']); change(report)
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(index=i), self.assertRaises(ValueError):
-                self.read_review(self.review_archive(mutate), 'bad-visual-evidence-' + str(i))
-        with self.assertRaisesRegex(ValueError, 'native_rendered_evidence_inventory'):
-            self.read_review(self.review_archive(lambda c: c.update({'evidence/unknown.png': b'unknown'})), 'extra-visual-frame')
-
-    def test_calendar_navigation_requires_visible_dates_and_single_week_evidence(self):
-        changes = [lambda r: r.update(requiredWidths=[360, 390, 430, 768, 1280]),
-                   lambda r: r.update(requiredTextPercents=[100, 200])]
-        for case in range(2):
-            changes.extend((
-                lambda r, c=case: r['cases'][c]['proof'].pop('calendarVisibleNavigation'),
-                lambda r, c=case: r['cases'][c]['proof'].update(calendarSingleWeekNavigation=1),
-                lambda r, c=case: r['cases'][c]['proof'].pop('calendarSingleWeekNavigation')))
-            for key in ('lastPriceReachableByArrows', 'backwardDatesNotSkipped',
-                        'unselectedBackPositionVisible', 'mobileRemountPositionRetained',
-                        'selectedDateVisible', 'clearedDateVisible', 'backPositionVisible',
-                        'implicitDayLocatorScroll'):
-                changes.extend((
-                    lambda r, c=case, k=key: r['cases'][c]['proof']['calendarVisibleNavigation'].pop(k),
-                    lambda r, c=case, k=key: r['cases'][c]['proof']['calendarVisibleNavigation'].update({k: 1})))
-        def frame(report):
-            return next(row for row in report['cases'][0]['frames']
-                        if row['file'].startswith('native-calendar-single-range-'))
-        changes.extend((
-            lambda r: r['cases'][0]['frames'].remove(frame(r)),
-            lambda r: frame(r).update(screen='calendar'),
-            lambda r: frame(r).pop('viewportHeight'),
-            lambda r: frame(r).update(viewportHeight=720),
-            lambda r: frame(r).update(viewportHeight=900.0),
-            lambda r: frame(r).update(calendarFit=None),
-            lambda r: frame(r)['calendarFit'].update(clipped=True),
-            lambda r: frame(r)['calendarFit'].pop('strip'),
-            lambda r: frame(r)['calendarFit']['strip'].update(dateRight=999),
-            lambda r: frame(r)['calendarFit']['strip'].update(scrollLeft=148),
-            lambda r: frame(r)['calendarFit']['strip'].update(clientWidth=True),
-            lambda r: frame(r)['calendarFit']['buttons'][1].update(disabled=False),
-            lambda r: next(row for row in frame(r)['readableText']
-                           if row['kind'] == 'result-operator').update(text='FIXTURE TV')))
-        self.assert_evidence_rejected(changes)
-
-    def test_calendar_capture_requires_actual_viewport_png_dimensions(self):
-        for case, prefix in ((0, 'native-calendar-later-'), (1, 'native-calendar-later-'),
-                             (0, 'native-calendar-single-range-')):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json'])
-                frame = next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-                name = 'evidence/' + frame['file']; png = contents[name]
-                contents[name] = png[:20] + struct.pack('>I', 720) + png[24:]
-                frame['sha256'] = remote.digest(contents[name])
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(case=case, prefix=prefix), self.assertRaisesRegex(ValueError, 'native_calendar_viewport_capture_required'):
-                self.read_review(self.review_archive(mutate), f'bad-calendar-png-{case}-{prefix}')
-
-    def test_complete_selected_journey_cannot_be_replaced_by_frame_count_only(self):
-        mutations = [
-            lambda p: p.pop('screenNavigation'),
-            lambda p: p['screenNavigation'].update(deepScroll=0),
-            lambda p: p['screenNavigation'].update(resultAnchorDelta=200),
-            lambda p: p['screenNavigation'].update(resultFocusRestored=False),
-            lambda p: p['screenNavigation'].update(extraSearches=True),
-            lambda p: p['screenNavigation'].pop('responsiveHiddenFocusFallback'),
-            lambda p: p['screenNavigation'].update(responsiveHiddenFocusFallback=False),
-            lambda p: p['screenNavigation'].update(responsiveRemountExtraOperations=True),
-            lambda p: p['screenNavigation'].update(responsiveRemountExtraOperations=1),
-            lambda p: p['managerContact'].update(flightChoiceId=0),
-            lambda p: p['managerContact'].update(oldPairRemoved=False),
-            lambda p: p['managerContact'].update(consentRevoked=False),
-            lambda p: p['managerContact'].update(total=170400),
-            lambda p: p['nonMinimumJourney'].update(exactOfferIndex=0),
-            lambda p: p['nonMinimumJourney'].update(summaryAndContinueRetained=False),
-            lambda p: p['nonMinimumJourney'].update(backReopenExtraOperations=1),
-            lambda p: p['contactPriceBlockFit'].update(overflow=True),
-            lambda p: p['contactPriceBlockFit'].update(captionCount=True),
-            lambda p: p['manyFlightChoices'].update(initiallyVisible=40),
-            lambda p: p['manyFlightChoices'].update(selectedCanonicalIndex=3),
-            lambda p: p['manyFlightChoices'].update(selectedTotal=112000),
-            lambda p: p['manyFlightChoices'].update(passiveExtraOperations=1),
-            lambda p: p['manyFlightChoices']['managerBeforeList'].update(before=False),
-            lambda p: p['manyFlightChoices']['pairLayout'].update(columns=7),
-            lambda p: p.pop('groupMinimumOpenedHotelWithoutQuote'),
-            lambda p: p.update(groupExplicitExpandCount=2),
-            lambda p: p.update(contactExactItineraryRetained=False),
-            lambda p: p.update(contactDraftAndConsentRetained=False),
-        ]
-        for index, change in enumerate(mutations):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json'])
-                change(report['cases'][index % 2]['proof'])
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(index=index), self.assertRaises(ValueError):
-                self.read_review(self.review_archive(mutate), 'bad-whole-journey-' + str(index))
-
-    def test_tour_cost_label_evidence_is_required_for_each_tour_capture(self):
-        captures = [('native-tour-', 0), ('native-tour-alternatives-', 0),
-                    ('native-short-desktop-tour-', 1)]
-        for capture_index, (prefix, case_index) in enumerate(captures):
-            for label_index, label in enumerate(('Ğ¢ÑƒÑ€Ğ¸ÑÑ‚Ñ‹', 'Ğ¢ÑƒÑ€Ğ¾Ğ¿ĞµÑ€Ğ°Ñ‚Ğ¾Ñ€', 'ĞĞ±ÑĞ·Ğ°Ñ‚ĞµĞ»ÑŒĞ½Ñ‹Ğµ Ğ´Ğ¾Ğ¿Ğ»Ğ°Ñ‚Ñ‹')):
-                for defect in ('missing', 'mislabelled', 'clipped', 'brokenWords', 'overlappingLines'):
-                    def mutate(contents):
-                        report = json.loads(contents['evidence/acceptance.json'])
-                        frame = next(row for row in report['cases'][case_index]['frames']
-                                     if row['file'].startswith(prefix))
-                        text = next(row for row in frame['readableText'] if row['text'] == label)
-                        if defect == 'missing': frame['readableText'].remove(text)
-                        elif defect == 'mislabelled': text['text'] = 'unmeasured label'
-                        else: text[defect] = True
-                        contents['evidence/acceptance.json'] = remote.json_bytes(report)
-                    expected = 'native_tour_cost_labels_required' if defect in ('missing', 'mislabelled') else 'native_text_readability_required'
-                    with self.subTest(capture=prefix, label=label, defect=defect), self.assertRaisesRegex(ValueError, expected):
-                        self.read_review(self.review_archive(mutate), f'bad-cost-label-{capture_index}-{label_index}-{defect}')
-
-    def test_result_facts_require_complete_identity_copy_and_readability(self):
-        def frame(report, prefix='native-results-', case=0):
-            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-        def fact(report, kind, prefix='native-results-', case=0):
-            return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == kind)
-        changes = []
-        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 1),
-                             ('native-results-bounded-', 0)):
-            for kind in ('result-title', 'result-location', 'result-date', 'result-room',
-                         'result-meal', 'result-operator', 'result-party'):
-                changes.extend((
-                    lambda r, p=prefix, c=case, k=kind: frame(r, p, c)['readableText'].remove(fact(r, k, p, c)),
-                    lambda r, p=prefix, c=case, k=kind: fact(r, k, p, c).update(kind='other'),
-                    lambda r, p=prefix, c=case, k=kind: fact(r, k, p, c).update(text='Lost factual copy')))
-            for field in ('clipped', 'brokenWords', 'overlappingLines'):
-                changes.append(lambda r, p=prefix, c=case, f=field: fact(r, 'result-title', p, c).update({f: True}))
-        changes.extend((
-            lambda r: frame(r).pop('resultCardIds'),
-            lambda r: frame(r).update(resultCardIds=None),
-            lambda r: frame(r).update(resultCardIds=[True, 2, 3, 4]),
-            lambda r: frame(r).update(resultCardIds=[1.0, 2, 3, 4]),
-            lambda r: frame(r).update(resultCardIds=[1, 2, 3, 3]),
-            lambda r: frame(r).update(resultCardIds=[2, 1, 3, 4]),
-            lambda r: frame(r).update(resultCardIds=[1, 2, 3, 5]),
-            lambda r: frame(r).update(resultCardIds=[]),
-            lambda r: fact(r, 'result-title').pop('kind'),
-            lambda r: fact(r, 'result-title').pop('cardId'),
-            lambda r: fact(r, 'result-title').update(kind='unreviewed-role'),
-            lambda r: fact(r, 'result-title').update(cardId=True),
-            lambda r: fact(r, 'result-title').update(cardId=1.0),
-            lambda r: fact(r, 'result-title').update(cardId=None),
-            lambda r: fact(r, 'result-title').update(cardId=2),
-            lambda r: frame(r)['readableText'].append(copy.deepcopy(fact(r, 'result-title'))),
-            lambda r: frame(r, 'native-results-bounded-', 0)['resultCardIds'].pop(),
-            lambda r: frame(r, 'native-results-bounded-', 0)['resultCardIds'].append(1024)))
-        self.assert_evidence_rejected(changes)
-
-    def test_shared_notice_requires_one_truthful_owner_and_correct_scope(self):
-        def frame(report, prefix='native-results-', case=0):
-            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-        def note(report, prefix='native-results-', case=0):
-            return next(row for row in frame(report, prefix, case)['readableText'] if row['kind'] == 'result-notice')
-        changes = []
-        for prefix, case in (('native-results-', 0), ('native-short-desktop-results-', 1)):
-            changes.extend((
-                lambda r, p=prefix, c=case: frame(r, p, c).pop('resultNotice'),
-                lambda r, p=prefix, c=case: frame(r, p, c).update(resultNotice=None),
-                lambda r, p=prefix, c=case: frame(r, p, c)['resultNotice'].update(extra=True),
-                lambda r, p=prefix, c=case: frame(r, p, c)['readableText'].remove(note(r, p, c)),
-                lambda r, p=prefix, c=case: note(r, p, c).update(kind='other'),
-                lambda r, p=prefix, c=case: note(r, p, c).update(cardId=1),
-                lambda r, p=prefix, c=case: note(r, p, c).update(text='Ğ¦ĞµĞ½Ğ° ÑƒĞ¶Ğµ Ğ¿Ğ¾Ğ´Ñ‚Ğ²ĞµÑ€Ğ¶Ğ´ĞµĞ½Ğ°')))
-            for field, value in (('visibleCount', 0), ('visibleCount', 2), ('visibleCount', True),
-                                 ('visibleCount', 1.0), ('afterBatch', False), ('afterBatch', 1),
-                                 ('cardNoticeCount', 1), ('cardNoticeCount', False),
-                                 ('text', 'Ğ¦ĞµĞ½Ğ° Ğ¿Ğ¾Ğ´Ñ‚Ğ²ĞµÑ€Ğ¶Ğ´ĞµĞ½Ğ°'), ('text', 'Ğ—Ğ° Ğ¾Ğ´Ğ½Ğ¾Ğ³Ğ¾ Ñ‚ÑƒÑ€Ğ¸ÑÑ‚Ğ°')):
-                changes.append(lambda r, p=prefix, c=case, f=field, v=value: frame(r, p, c)['resultNotice'].update({f: v}))
-            for field in ('clipped', 'brokenWords', 'overlappingLines'):
-                changes.append(lambda r, p=prefix, c=case, f=field: note(r, p, c).update({f: True}))
-        for prefix in ('native-results-loading-', 'native-results-partial-empty-', 'native-filter-empty-', 'native-lead-'):
-            changes.extend((
-                lambda r, p=prefix: frame(r, p).update(resultCardIds=[1]),
-                lambda r, p=prefix: frame(r, p)['resultNotice'].update(visibleCount=1, afterBatch=True, text='Unexpected price notice'),
-                lambda r, p=prefix: frame(r, p)['readableText'].append(copy.deepcopy(note(r)))))
-        self.assert_evidence_rejected(changes)
-
-    def test_form_focus_proofs_are_required_in_every_case(self):
-        changes = []
-        for case in range(2):
-            for key in ('nightKeyboardFocusRetained', 'formCalendarPagingFocusRetained', 'familyInputFocusRetained', 'destinationKeyboardFocusRetained', 'formPopupSingleSubmitRetained'):
-                changes.extend((
-                    lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
-                    lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: False}),
-                    lambda r, c=case, k=key: r['cases'][c]['proof'].update({k: 1})))
-        self.assert_evidence_rejected(changes)
-
-    def test_popup_frames_and_one_visible_native_submit_are_required(self):
-        def frame(report):
-            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-calendar-'))
-        changes = [lambda r: frame(r).pop('popupFit'), lambda r: frame(r)['popupFit'].update(editor='nights'),
-            lambda r: frame(r)['popupFit'].update(modal=1), lambda r: frame(r)['popupFit'].update(outside=True),
-            lambda r: frame(r)['popupFit'].update(panelOverflow=True), lambda r: frame(r)['popupFit'].update(findVisible=False),
-            lambda r: frame(r)['popupFit'].update(findEnabled=False), lambda r: frame(r)['popupFit'].update(findHeight=43),
-            lambda r: frame(r)['popupFit'].update(findHeight=True), lambda r: frame(r)['popupFit'].update(findHeight=float('nan')),
-            lambda r: frame(r)['popupFit'].update(submitCount=True), lambda r: frame(r)['popupFit'].update(submitCount=2)]
-        def nights(report):
-            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith('native-popup-nights-'))
-        changes.extend((lambda r: nights(r)['readableText'].pop(),
-            lambda r: nights(r)['readableText'][-1].update(kind='other'),
-            lambda r: nights(r)['readableText'][-1].update(text='21 Ğ½Ğ¾Ñ‡ĞµĞ¹'),
-            lambda r: nights(r)['readableText'][-1].update(clipped=True)))
-        self.assert_evidence_rejected(changes)
-
-    def test_destination_frames_decisions_and_readable_actions_are_required(self):
-        def frame(report, case=0):
-            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith('native-destination-confirm-'))
-        changes = [lambda r: frame(r).pop('destinationFit'),
-            lambda r: r['cases'][0]['frames'].remove(frame(r)),
-            lambda r: frame(r)['destinationFit'].update(outside=True),
-            lambda r: frame(r)['destinationFit'].update(overlap=True),
-            lambda r: frame(r)['destinationFit'].update(fontSize=True),
-            lambda r: frame(r)['destinationFit'].update(queryNarrow=True),
-            lambda r: frame(r)['destinationFit']['actions'].pop(),
-            lambda r: frame(r)['destinationFit']['actions'][0].update(height=43),
-            lambda r: frame(r)['destinationFit']['actions'][0].update(width=True),
-            lambda r: frame(r)['destinationFit']['actions'][0].update(disabled=True),
-            lambda r: frame(r)['destinationFit']['actions'][0].update(text='ĞĞµ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞµĞ½Ğ¾'),
-            lambda r: frame(r)['destinationFit']['actions'][1].update(left=0),
-            lambda r: frame(r)['readableText'].pop(),
-            lambda r: frame(r)['readableText'][-1].update(brokenWords=True),
-            lambda r: frame(r)['readableText'][-3].update(text='ĞÑ‚Ğ¼ĞµĞ½')]
-        self.assert_evidence_rejected(changes)
-
-    def test_unstarted_proof_copy_and_recomputed_toolbar_geometry_are_required(self):
-        def frame(report):
-            return next(row for row in report['cases'][0]['frames']
-                        if row['file'].startswith('native-initial-favorites-'))
-        changes = [lambda r: r['cases'][0]['proof'].pop('presearchNavigationTruthful'),
-            lambda r: r['cases'][0]['proof'].update(presearchNavigationTruthful=1),
-            lambda r: r['cases'][0]['frames'].remove(frame(r)),
-            lambda r: frame(r).update(screen='search'),
-            lambda r: frame(r)['prices'].append({'text': 'invented availability'}),
-            lambda r: frame(r)['readableText'][1].update(text='ĞĞµÑ‚ Ğ¿Ğ¾Ğ´Ñ…Ğ¾Ğ´ÑÑ‰Ğ¸Ñ… Ñ‚ÑƒÑ€Ğ¾Ğ²'),
-            lambda r: frame(r)['buttons'][0].update(text='Ğ˜Ğ·Ğ¼ĞµĞ½Ğ¸Ñ‚ÑŒ Ğ´Ğ°Ñ‚Ñ‹'),
-            lambda r: frame(r).pop('countFit'),
-            lambda r: frame(r)['countFit'].update(text='0 Ğ¾Ñ‚ĞµĞ»ĞµĞ¹'),
-            lambda r: frame(r)['countFit'].update(textRects=[]),
-            lambda r: frame(r)['countFit'].update(controls=[]),
-            lambda r: frame(r)['countFit']['toolbar'].update(right=True),
-            lambda r: frame(r)['countFit']['textRects'][0].update(right=500),
-            lambda r: frame(r)['countFit']['textRects'][0].update(left=True),
-            # False summary flags cannot hide actual overlapping rectangles.
-            lambda r: frame(r)['countFit']['controls'][0].update(left=20, right=90),
-            lambda r: frame(r)['countFit'].update(overlap=True)]
-        self.assert_evidence_rejected(changes)
-
-    def test_terminal_status_owner_and_zero_extra_searches_are_required_in_every_case(self):
-        def frame(report, case, status):
-            return next(row for row in report['cases'][case]['frames']
-                        if row['file'].startswith('native-terminal-' + status + '-'))
-        changes = []
-        for case in range(2):
-            for key, wrong in (('latePresentationTerminalStatesRetained', 1),
-                               ('latePresentationExtraSearches', False)):
-                changes.extend((lambda r, c=case, k=key: r['cases'][c]['proof'].pop(k),
-                    lambda r, c=case, k=key, v=wrong: r['cases'][c]['proof'].update({k: v})))
-            for status in ('complete', 'partial', 'error'):
-                changes.extend((
-                    lambda r, c=case, s=status: r['cases'][c]['frames'].remove(frame(r, c, s)),
-                    lambda r, c=case, s=status: frame(r, c, s).update(screen='search'),
-                    lambda r, c=case, s=status: frame(r, c, s).pop('terminalState')))
-                for key, wrong in (('status', 'loading'), ('message', 'changed'),
-                    ('searchGeneration', True), ('searchStarts', 2), ('otherCalls', 1),
-                    ('alertVisible', status == 'complete'),
-                    ('alertText', 'unexpected' if status == 'complete' else ''),
-                    ('ownerSHA256', 'f' * 64)):
-                    changes.append(lambda r, c=case, s=status, k=key, v=wrong:
-                                   frame(r, c, s)['terminalState'].update({k: v}))
-                changes.extend((
-                    lambda r, c=case, s=status: frame(r, c, s)['terminalState'].update(otherCalls=False),
-                    lambda r, c=case, s=status: frame(r, c, s)['terminalState'].update(extra=True),
-                    lambda r, c=case, s=status: frame(r, c, s)['headerFit'].update(outside=True),
-                    lambda r, c=case, s=status: frame(r, c, s)['resultCardIds'].pop(),
-                    lambda r, c=case, s=status: frame(r, c, s)['prices'].clear()))
-        self.assert_evidence_rejected(changes)
-
-    def test_family_and_short_desktop_proof_cannot_be_missing_or_mislabelled(self):
-        def frame(report, prefix, case=0):
-            return next(row for row in report['cases'][case]['frames'] if row['file'].startswith(prefix))
-        changes = [lambda r: r['cases'][0]['proof'].pop('familyAges'),
-            lambda r: r['cases'][0]['proof'].update(familyAges=[0, 7, 16]),
-            lambda r: r['cases'][0]['proof'].update(familyAges=[False, 7, 17]),
-            lambda r: r['cases'][0]['proof'].update(familyAges=[0.0, 7, 17]),
-            lambda r: r['cases'][0]['proof'].update(familyExtraSearches=1),
-            lambda r: r['cases'][0]['proof'].pop('familyAgeReviewRetained'),
-            lambda r: r['cases'][0]['proof'].update(familyAgeReviewRetained=False),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-family-0-')),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-family-review-')),
-            lambda r: frame(r, 'native-family-3-').update(screen='results'),
-            lambda r: frame(r, 'native-family-1-')['readableText'][1].update(text='1 Ğ²Ğ·Ñ€Ğ¾ÑĞ»Ñ‹Ñ… + 1 Ğ´ĞµÑ‚ĞµĞ¹'),
-            lambda r: frame(r, 'native-family-applied-')['readableText'].pop(),
-            lambda r: frame(r, 'native-family-review-')['readableText'].pop(),
-            lambda r: frame(r, 'native-family-review-')['readableText'][2].update(text='Ğ¡Ğ¾Ñ…Ñ€Ğ°Ğ½Ñ‘Ğ½Ğ½Ñ‹Ğµ Ğ²Ğ¾Ğ·Ñ€Ğ°ÑÑ‚Ğ°'),
-            lambda r: frame(r, 'native-family-2-')['readableText'][1].update(clipped=True),
-            lambda r: frame(r, 'native-family-0-')['prices'].append({'text': 'invented family price'}),
-            lambda r: frame(r, 'native-family-2-').update(sha256='f' * 64),
-            lambda r: r['cases'][1]['frames'].remove(frame(r, 'native-short-desktop-tour-', 1)),
-            lambda r: frame(r, 'native-short-desktop-results-', 1).update(screen='short'),
-            lambda r: frame(r, 'native-short-desktop-search-', 1).pop('viewportHeight'),
-            lambda r: frame(r, 'native-short-desktop-search-', 1).update(viewportHeight=900),
-            lambda r: frame(r, 'native-short-desktop-search-', 1).update(viewportHeight=720.0),
-            lambda r: frame(r, 'native-short-desktop-hotel-', 1).update(sha256='f' * 64),
-            lambda r: frame(r, 'native-short-desktop-tour-', 1)['prices'][0].update(fragmented=True),
-            lambda r: frame(r, 'native-short-desktop-lead-', 1)['summaryFit'].clear()]
-        for i, change in enumerate(changes):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json']); change(report)
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(index=i), self.assertRaises(ValueError):
-                self.read_review(self.review_archive(mutate), 'bad-family-short-evidence-' + str(i))
-
-    def test_short_desktop_png_dimensions_are_checked_even_with_matching_hash(self):
-        for i, dimensions in enumerate(((1280, 900), (1279, 720))):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json'])
-                frame = next(row for row in report['cases'][1]['frames']
-                             if row['file'].startswith('native-short-desktop-search-'))
-                name = 'evidence/' + frame['file']; value = contents[name]
-                contents[name] = value[:16] + struct.pack('>II', *dimensions) + value[24:]
-                frame['sha256'] = remote.digest(contents[name])
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(dimensions=dimensions), self.assertRaisesRegex(ValueError, 'native_short_desktop_png_dimensions_required'):
-                self.read_review(self.review_archive(mutate), 'bad-short-png-' + str(i))
-
-    def test_startup_proof_requires_exact_ten_ordinary_frames_no_prices_and_readable_retry(self):
-        def frame(report, name):
-            return next(row for row in report['cases'][0]['frames'] if row['file'].startswith(name))
-        changes = [lambda r: r['cases'][0]['proof'].update(startupPendingFormHidden=False),
-            lambda r: r['cases'][0]['proof'].update(startupErrorSearches=1),
-            lambda r: r['cases'][0]['proof'].pop('startupRetrySearches'),
-            lambda r: r['cases'][0]['frames'].remove(frame(r, 'native-startup-pending-')),
-            lambda r: frame(r, 'native-startup-error-').update(file='native-startup-unapproved-360-text100.png'),
-            lambda r: frame(r, 'native-startup-pending-').update(stageHidden=True),
-            lambda r: frame(r, 'native-startup-pending-').update(screen='results'),
-            lambda r: frame(r, 'native-startup-pending-')['prices'].append({'fontSize': 29}),
-            lambda r: frame(r, 'native-startup-error-')['buttons'].clear(),
-            lambda r: frame(r, 'native-startup-error-')['buttons'][0].update(clipped=True),
-            lambda r: frame(r, 'native-startup-pending-')['readableText'][0].update(clipped=True),
-            lambda r: frame(r, 'native-startup-pending-')['readableText'][0].update(overlappingLines=True),
-            lambda r: frame(r, 'native-startup-error-')['readableText'][0].pop('overlappingLines'),
-            lambda r: frame(r, 'native-startup-error-')['headerFit'].update(overlap=True)]
-        for i, change in enumerate(changes):
-            def mutate(contents):
-                report = json.loads(contents['evidence/acceptance.json']); change(report)
-                contents['evidence/acceptance.json'] = remote.json_bytes(report)
-            with self.subTest(index=i), self.assertRaises(ValueError):
-                self.read_review(self.review_archive(mutate), 'bad-startup-evidence-' + str(i))
-
-    def test_native_inventory_cannot_accept_extra_or_missing_asset(self):
-        path = self.source / 'payload/visual-search/native-v2/not-reviewed.js'; path.write_text('foreign')
-        with self.assertRaisesRegex(ValueError, 'source_inventory_drift'):
-            pub.derive(self.source, self.baseline, self.root / 'extra-native', self.q, 'e' * 64)
-        path.unlink(); (self.source / 'payload' / remote.NATIVE_ASSETS[0]).unlink()
-        with self.assertRaisesRegex(ValueError, 'source_inventory_drift'):
-            pub.derive(self.source, self.baseline, self.root / 'missing-native', self.q, 'e' * 64)
-
-    def test_native_entry_rejects_legacy_renderer_even_after_manifest_rehash(self):
-        payload = self.source / 'payload'; path = payload / 'visual-search/index.html'
-        path.write_text(path.read_text() + '<script src="./app.js" defer></script>')
-        manifest_path = payload / remote.NATIVE_MANIFEST; native = json.loads(manifest_path.read_bytes())
-        native['entry']['html'] = remote.digest(path.read_bytes()); manifest_path.write_text(json.dumps(native, indent=2) + '\n')
-        pin = {**self.native_pin, 'entry_html_sha256': native['entry']['html'], 'source_manifest_sha256': remote.digest(manifest_path.read_bytes())}
-        with patch.object(remote, 'NATIVE_ACCEPTANCE', pin), self.assertRaisesRegex(ValueError, 'native_exact_entry_graph'):
-            remote.native_graph(payload)
-
-    def test_native_checksum_and_route_reversal_protect_original_owner(self):
-        manifest = self.root / 'derived/payload' / remote.NATIVE_MANIFEST; native = json.loads(manifest.read_bytes())
-        native['graph']['scripts'][0]['sha256'] = 'f' * 64; manifest.write_text(json.dumps(native, indent=2) + '\n')
-        with self.assertRaisesRegex(ValueError, 'native_graph_checksum'): remote.native_graph(self.root / 'derived/payload', rewritten=True)
-
-    def test_owner_main_event_and_attempt_guards(self):
-        for key, value in [('GITHUB_REF', 'refs/heads/work'), ('GITHUB_ACTOR', 'other'),
-            ('GITHUB_TRIGGERING_ACTOR', 'other'), ('GITHUB_ACTOR_ID', '0'), ('GITHUB_RUN_ATTEMPT', '2'),
-            ('GITHUB_EVENT_NAME', 'workflow_dispatch'), ('GITHUB_REPOSITORY', 'other/repo')]:
-            with self.subTest(key=key), self.assertRaises(ValueError): pub.checked_request(self.event, {**self.env, key: value})
-        for key, field, value in [('issue', 'number', 3419), ('issue', 'number', 2530),
-            ('issue', 'number', 996), ('issue', 'pull_request', {}), ('sender', 'id', 1),
-            ('comment', 'author_association', 'MEMBER'), ('comment', 'user', {'id': 1}), ('repository', 'id', 1)]:
-            event = copy.deepcopy(self.event); event[key][field] = value
-            with self.subTest(key=key, field=field), self.assertRaises(ValueError): pub.checked_request(event, self.env)
-
-    def test_bad_syntax_and_old_source_rejected(self):
-        good = self.event['comment']['body']
-        for body in [good + '\n', good + ';id', good + ' /_preview/search3-next-candidate/',
-            good.replace(pub.PREFIX, creator.PREFIX), good.replace(' 123 ', '  123 '),
-            good.replace('a' * 40, remote.PREDECESSOR_SOURCE),
-            good.replace('a' * 40, remote.ORIGINAL_SOURCE), good.replace(' 123 ', ' 0 ')]:
-            event = copy.deepcopy(self.event); event['comment']['body'] = body
-            with self.subTest(body=body), self.assertRaises(ValueError): pub.checked_request(event, self.env)
-
-    def test_all_completed_sources_rejected_by_both_owners(self):
-        self.assertEqual(remote.COMPLETED_SOURCES, (remote.ORIGINAL_SOURCE,
-            '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
-            '634d1c97fd7bf499107d82036588f4bd77176d93',
-            '2eb237639c6c53c38f27d71684de43384842daf7',
-            'a0e5f1e7c0083b45678df5837c7faf1cad8751f6',
-            '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
-            'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
-            '4955ee078aa0827f745d737681b4ed9187a274bd',
-            '0674fa6cc7744ee21cb073b284f089c20171f38e',
-            '8c2d0308eb29e26d2819342d10501db1ed82e3db',
-            '9fec34cfeb5a7c97659b16188404ae02c166c770',
-            '20c6488c01d764ce9bdc19c7eb71f01108efbda5',
-            '9de4cdb3d044b060b039abc096f9351466147d86',
-            '5a84a0d66394116f9845de3565563ce1d025b6bc',
-            '75e52f2597172469fbcb6f742dc8c7b5934cd173',
-            '660a760d9d0a0c0121d05d53bdc0895689600bc8',
-            '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026',
-            'a3b0fa5125adb1a90b32a49d5f27a6b8852f5510',
-            'd341f7648749f2f8a3272a1e51e2d923c1db80a6',
-            '002dc0d636c5ad6e5597d37259baba574fe9ed88',
-            'f4b343ecce2411899ce2f2138c8fc5f64ea27eb5',
-            '67468aa3ba24526ee7c32d3e57bf2d7a28bd9190',
-            'e42e2a19c134a79127cb22a6dd26fc1abcd19e41',
-            '2da88e41fb436acefd293066bcc98db013e07ee0',
-            'fbbd23e39c4fa71f8ba9500048ef4f2a3c2f1735',
-            '740ed0b20596f901a1d6c15d238cec527633ce80',
-            'b8b14e89931fbaab363895065d53ed7063339eb3',
-            'af7ec8fd2a8af89efdf0253619ae9bd63ac756ba',
-            '41dd5a9c013b9431f68e38b85de5b7a72ae6848d',
-            'b7cbb1e372cd083d8402a970ec7d16bf720c2a34',
-            'ecdb5a7768366a80732f5788ea2446ebd3bcc51e',
-            '54b66f34d9dc2fdb1d84e4b7a6e62fc644974241',
-            '8d3d66eeb95ac69534ec7557c7c0926cf201543c',
-            '04667912bb1f3fb81c89edaf43b1a40b7d5f6e1b',
-            '0fc16325635d113fafa96081f295a1a5696359c3',
-            'f99306ffe3725f2badc70096d801608fc5393009',
-            '1959dcabac17335fd09763389231e67db9afde6b',
-            'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
-            '246670818bba433adc9b002e06b2d560f46eb6ac',
-            '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
-            '185739d46757bd34a05709e3656eab76d1003fa5',
-            '84897fd5778debe040b74945212777aaf878d83e'))
-        with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
-            self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
-            self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
-            self.assertIn('4955ee078aa0827f745d737681b4ed9187a274bd', remote.COMPLETED_SOURCES)
-            self.assertIn('0674fa6cc7744ee21cb073b284f089c20171f38e', remote.COMPLETED_SOURCES)
-            self.assertIn('8c2d0308eb29e26d2819342d10501db1ed82e3db', remote.COMPLETED_SOURCES)
-        for source in remote.COMPLETED_SOURCES:
-            event = copy.deepcopy(self.event); event['comment']['body'] = event['comment']['body'].replace('a' * 40, source)
-            with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
-                pub.checked_request(event, self.env)
-            with self.subTest(source=source), self.assertRaisesRegex(ValueError, 'new_source_required'):
-                remote.validate({**self.q, 'source_sha': source})
-
-    def test_exact_source_native_ci_checks_required(self):
-        checks = [{'name': n, 'head_sha': self.q['source_sha'], 'status': 'completed', 'conclusion': 'success',
-            'app': {'slug': 'github-actions'}, 'started_at': '2026-10-11T21:30:00Z'} for n in pub.REQUIRED_CHECKS]
-        class API:
-            def get(self, path): return {'total_count': len(checks), 'check_runs': checks}
-        pub.strict_checks(API(), self.q['source_sha'])
-        for key, value in [('conclusion', 'skipped'), ('head_sha', 'f' * 40), ('status', 'in_progress'), ('app', {'slug': 'other'})]:
-            previous = checks[0][key]; checks[0][key] = value
-            with self.subTest(key=key), self.assertRaises(ValueError): pub.strict_checks(API(), self.q['source_sha'])
-            checks[0][key] = previous
-        checks.pop()
-        with self.assertRaisesRegex(ValueError, 'required_visual_checks_missing'): pub.strict_checks(API(), self.q['source_sha'])
-
-    def test_native_provenance_requires_exact_reviewed_merge_commits_and_relation(self):
-        source_parents = (('1' * 40, '3' * 40), ('2' * 40, '4' * 40))
-        release_parents = (('2' * 40, '4' * 40), ('a' * 40, 'd' * 40))
-        source_pin = patch.object(pub, 'NATIVE_SOURCE_PARENTS', source_parents)
-        release_pin = patch.object(pub, 'NATIVE_RELEASE_PARENTS', release_parents)
-        source_pin.start(); release_pin.start()
-        self.addCleanup(source_pin.stop); self.addCleanup(release_pin.stop)
-        checks = [{'name': n, 'head_sha': 'a' * 40, 'status': 'completed', 'conclusion': 'success',
-            'app': {'slug': 'github-actions'}, 'started_at': '2026-10-12T15:00:00Z'}
-            for n in pub.REQUIRED_CHECKS]
-        values = {
-            '/git/ref/heads/main': {'object': {'sha': 'f' * 40}},
-            '/git/ref/heads/' + pub.RELEASE: {'object': {'sha': 'c' * 40}},
-            '/git/commits/' + 'a' * 40: {'tree': {'sha': 'd' * 40},
-                'parents': [{'sha': sha} for sha, _ in source_parents]},
-            '/git/commits/' + 'c' * 40: {'tree': {'sha': 'd' * 40},
-                'parents': [{'sha': sha} for sha, _ in release_parents]},
-            '/git/commits/' + '1' * 40: {'tree': {'sha': '3' * 40}},
-            '/git/commits/' + '2' * 40: {'tree': {'sha': '4' * 40}},
-            '/compare/' + 'a' * 40 + '...' + 'c' * 40: {'status': 'ahead', 'behind_by': 0, 'ahead_by': 1,
-                'merge_base_commit': {'sha': 'a' * 40}},
-            '/actions/runs/123': {'head_sha': 'a' * 40, 'path': remote.NATIVE_BUILD_WORKFLOW,
-                'event': 'pull_request', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1,
-                'repository': {'full_name': pub.REPO}, 'head_repository': {'full_name': pub.REPO}},
-            '/commits/' + 'a' * 40 + '/check-runs?per_page=100': {'total_count': len(checks), 'check_runs': checks},
-            '/actions/artifacts/456': {'expired': False, 'workflow_run': {'id': 123, 'head_sha': 'a' * 40},
-                'name': 'search3-design-v2-native-' + 'a' * 40 + '-123', 'digest': 'sha256:' + 'e' * 64},
-        }
-        class API:
-            def __init__(self, rows): self.rows = rows
-            def get(self, path): return self.rows[path]
-        q = {'source_sha': 'a' * 40, 'release_sha': 'c' * 40, 'build_run': 123, 'artifact_id': 456}
-        self.assertEqual(pub.native_provenance(API(values), q, 'f' * 40), ('d' * 40, 'e' * 64))
-        mutations = (
-            ('native_source_parent_pin', '/git/commits/' + 'a' * 40, lambda row: row.update(parents=[])),
-            ('native_source_parent_pin', '/git/commits/' + 'a' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
-            ('native_source_parent_pin', '/git/commits/' + 'a' * 40,
-             lambda row: row['parents'].append({'sha': '0' * 40})),
-            ('native_source_parent_pin', '/git/commits/' + 'a' * 40,
-             lambda row: row.update(parents=list(reversed(row['parents'])))),
-            ('native_source_parent_tree_pin', '/git/commits/' + '1' * 40,
-             lambda row: row['tree'].update(sha='0' * 40)),
-            ('native_release_tree_pin', '/git/commits/' + 'c' * 40, lambda row: row['tree'].update(sha='0' * 40)),
-            ('native_release_parent_pin', '/git/commits/' + 'c' * 40, lambda row: row.update(parents=[{'sha': '0' * 40}])),
-            ('native_release_parent_pin', '/git/commits/' + 'c' * 40,
-             lambda row: row.update(parents=list(reversed(row['parents'])))),
-            ('native_source_parent_tree_pin', '/git/commits/' + '2' * 40,
-             lambda row: row['tree'].update(sha='0' * 40)),
-            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(status='diverged')),
-            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(behind_by=1)),
-            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row.update(ahead_by=2)),
-            ('native_exact_merge_relation', '/compare/' + 'a' * 40 + '...' + 'c' * 40,
-             lambda row: row['merge_base_commit'].update(sha='0' * 40)),
-        )
-        for i, (message, path, mutate) in enumerate(mutations):
-            rows = copy.deepcopy(values); mutate(rows[path])
-            with self.subTest(index=i), self.assertRaisesRegex(ValueError, message):
-                pub.native_provenance(API(rows), q, 'f' * 40)
-        rows = copy.deepcopy(values)
-        rows['/git/commits/' + 'a' * 40]['parents'] = [{'sha': '0' * 40}]
-        with self.assertRaisesRegex(ValueError, 'native_source_parent_pin'):
-            pub.native_provenance(API(rows), {**q, 'source_parent': '0' * 40, 'source_commit_count': 1}, 'f' * 40)
-
-    def test_only_eight_reviewed_presentation_paths_can_differ(self):
-        self.assertEqual(set(remote.SOURCE_CHANGES), {
-            'visual-search/app.js', 'visual-search/asset-size.json',
-            'visual-search/hotel-details-v1.js', 'visual-search/offer-list-v1.js',
-            'visual-search/index.html', 'visual-search/migration-manifest.json',
-            'visual-search/mobile-controls-v1.css', 'visual-search/styles.css'})
-        before = remote.inventory(self.source / 'payload'); after = remote.inventory(self.root / 'derived/payload')
-        self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 855)
-        self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
-        m = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
-        self.assertEqual(m['derived_from']['changed_source_payload_files'], sorted(['visual-search/app.js', *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
-        q2, a2 = pub.derive(self.source, self.baseline, self.root / 'again', {k: self.q[k] for k in original_request()}, 'e' * 64)
-        self.assertEqual(q2, self.q); self.assertEqual(a2, self.archive)
-
-    def test_hotel_and_offer_presentation_files_retain_every_other_payload_byte(self):
-        for i, name in enumerate(('visual-search/hotel-details-v1.js', 'visual-search/offer-list-v1.js')):
-            source_path = self.source / 'payload' / name; original = source_path.read_bytes()
-            source_path.write_bytes(b'reviewed final Sites presentation')
-            output = self.root / ('hotel-presentation-' + str(i))
-            try:
-                q, _ = pub.derive(self.source, self.baseline, output, self.q, 'e' * 64)
-                remote.verify(output, q)
-                manifest = json.loads((output / 'control/manifest.json').read_bytes())
-                self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
-                    sorted(['visual-search/app.js', name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
-                before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
-                self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
-                self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
-            finally:
-                source_path.write_bytes(original)
-
-    def test_original_baseline_remains_independent_of_installed_predecessor(self):
-        manifest = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
-        self.assertEqual(manifest['derived_from']['baseline'], {
-            'source_sha': creator.SOURCE_SHA, 'build_run': creator.BUILD_RUN,
-            'artifact_id': creator.ARTIFACT_ID, 'ZIP_sha256': creator.SOURCE_ZIP_SHA256})
-        self.assertNotEqual(remote.ORIGINAL_SOURCE, remote.PREDECESSOR_SOURCE)
-        with patch('search3_preview_publish.prepare_zip') as prepare_zip, patch.object(pub, 'prepare_native_zip'):
-            class API:
-                def download(self, artifact_id): return b'synthetic ZIP'
-            with patch.object(pub, 'derive', return_value=(self.q, self.archive)):
-                pub.prepare_inputs(API(), self.q, 'd' * 40, 'e' * 64, self.root / 'inputs')
-        baseline_request = prepare_zip.call_args_list[0].args[1]
-        self.assertEqual(baseline_request['source_sha'], remote.ORIGINAL_SOURCE)
-        self.assertEqual(baseline_request['release_sha'], remote.ORIGINAL_SOURCE)
-
-    def test_all_completed_publish_runs_cannot_replay(self):
-        self.assertEqual(remote.COMPLETED_PUBLISH_RUNS,
-            (remote.ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
-                38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
-             38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
-             38320934646, 38331033682, 38336349915, 38354248961, 38363323689, 38388948150, 38404222823,
-             38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
-             38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
-             38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885, 39291592436, 39333812766, 39346251452))
-        with patch.object(remote, 'PREDECESSOR_RUN', 999):
-            self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
-            self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
-            self.assertIn(38238503101, remote.COMPLETED_PUBLISH_RUNS)
-            self.assertIn(38255222254, remote.COMPLETED_PUBLISH_RUNS)
-            self.assertIn(38269206819, remote.COMPLETED_PUBLISH_RUNS)
-            self.assertIn(38276638172, remote.COMPLETED_PUBLISH_RUNS)
-        for deploy_run in remote.COMPLETED_PUBLISH_RUNS:
-            with self.subTest(deploy_run=deploy_run), self.assertRaisesRegex(ValueError, 'no_replay'):
-                remote.validate({**self.q, 'deploy_run': deploy_run})
-
-    def test_historical_creation_cannot_replace_current_predecessor(self):
-        before = {'target': 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef',
-            'owner': {'run': remote.ORIGINAL_PUBLISH_RUN, 'source': remote.ORIGINAL_SOURCE,
-                'digest': 'f8e4742f6964dd1237dc86ba27c0d3379a53b57ca4f45d6c16e713f392b43aef',
-                'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_polish_owner_cannot_claim_current_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38180461319,
-            'source': '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_restoration_owner_cannot_claim_current_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38191104207,
-            'source': '634d1c97fd7bf499107d82036588f4bd77176d93',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_meal_search_owner_cannot_claim_current_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38197437835,
-            'source': '2eb237639c6c53c38f27d71684de43384842daf7',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_meal_reconciliation_owner_cannot_claim_native_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38207863194,
-            'source': '16196410a8cb90b10e8d06b7ac8b38d4ce7d235d',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_first_native_owner_cannot_claim_current_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38238503101,
-            'source': 'b53d5ca0bf541e66b684018fb7db332de8fefaf3',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_consumed_cost_label_predecessor_cannot_claim_current_inventory(self):
-        before = {'target': self.digest, 'owner': {'run': 38363323689,
-            'source': '08a99f2dfe2f420c9c03a6eb451d00e9a04e5026',
-            'digest': self.digest, 'status': 'published'}}
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
-            remote.predecessor(before)
-
-    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
-        before = remote.inventory(self.site.target)
-        after = remote.inventory(self.root / 'derived/payload')
-        self.assertEqual(len(before), 855)
-        self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
-            'visual-search/native-v2/frontend.js',
-            'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/tour.js',
-        ))
-        self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
-                     'visual-search/native-v2/bootstrap.js',
-                     'visual-search/native-v2/donor.css',
-                     'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
-            bad = {**after, name: 'f' * 64}
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
-                remote.predecessor_delta(before, bad)
-        missing = dict(after); missing.pop(remote.NATIVE_SUCCESSOR_CHANGES[0])
-        substituted = {**missing, 'visual-search/native-v2/unknown.js': 'f' * 64}
-        for bad in (missing, substituted, {**after, 'unknown.js': 'f' * 64}):
-            with self.assertRaisesRegex(ValueError, 'successor_inventory_drift'):
-                remote.predecessor_delta(before, bad)
-        for name in remote.NATIVE_SUCCESSOR_CHANGES:
-            incomplete = {**after, name: before[name]}
-            with self.subTest(missing_change=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
-                remote.predecessor_delta(before, incomplete)
-
-    def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
-        manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
-        manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/bridge.js')):
-            path = self.source / 'payload' / name; original = path.read_bytes()
-            try:
-                path.write_bytes(original + b' extra change outside successor scope')
-                native = copy.deepcopy(self.native)
-                if name in remote.NATIVE_ASSETS:
-                    native['files'][Path(name).name] = remote.digest(path.read_bytes())
-                    for rows in native['graph'].values():
-                        for row in rows:
-                            if row['path'] == name:
-                                row.update(sha256=remote.digest(path.read_bytes()), bytes=path.stat().st_size)
-                    manifest_path.write_text(json.dumps(native, ensure_ascii=False, indent=2) + '\n')
-                with patch.dict(self.native_pin, {'source_manifest_sha256': remote.digest(manifest_path.read_bytes())}):
-                    q, archive = pub.derive(self.source, self.baseline, self.root / ('extra-delta-' + str(i)), self.q, 'e' * 64)
-                    fd, upload_name = tempfile.mkstemp(prefix='search3-design-v2-update.', suffix='.tar.gz', dir='/tmp'); os.close(fd)
-                    upload = Path(upload_name); upload.write_bytes(archive); self.uploads.append(upload)
-                    q.update(deploy_run=791 + i, archive=upload_name, before=self.site.snapshot())
-                    with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
-                        self.site.activate(q)
-                    self.assertEqual(self.site.snapshot(), q['before'])
-                    self.assertFalse((self.site.receipt(q) / 'predecessor').exists())
-                    self.assertEqual(self.site.finish(q, True)['status'], 'not_activated')
-            finally:
-                path.write_bytes(original); manifest_path.write_bytes(manifest_original)
-
-    def test_supplier_price_lead_logo_font_and_unknown_payload_changes_denied(self):
-        for name in ['prototype-search/data.js', 'search-page-v2.php', 'site-path-v1.php',
-                'visual-search/preview-lead.js', 'prototype-search/lead.js', 'tour-controller-v4.js',
-                'visual-search/assets/anytour-logo.svg', 'visual-search/fonts/Aeroport.woff2']:
-            p = self.source / 'payload' / name; original = p.read_bytes(); p.write_bytes(original + b' unreviewed')
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_source_delta'):
-                pub.derive(self.source, self.baseline, self.root / 'rejected', self.q, 'e' * 64)
-            p.write_bytes(original)
-        (self.source / 'payload/new-asset.js').write_text('unknown')
-        with self.assertRaisesRegex(ValueError, 'source_inventory_drift'): pub.derive(self.source, self.baseline, self.root / 'rejected', self.q, 'e' * 64)
-
-    def test_corrupt_source_ledger_denied(self):
-        p = self.source / 'payload' / creator.LEDGER_PATH; ledger = json.loads(p.read_bytes())
-        ledger['files'][0]['sha256'] = 'f' * 64; p.write_text(json.dumps(ledger))
-        with self.assertRaisesRegex(ValueError, 'source_ledger_accounting'): pub.derive(self.source, self.baseline, self.root / 'rejected', self.q, 'e' * 64)
-
-    def test_exact_predecessor_owner_and_inventory_required(self):
-        q = self.staged()
-        for field, value in [('source', 'f' * 40), ('run', 123), ('status', 'activated'), ('digest', 'f' * 64)]:
-            bad = copy.deepcopy(q); bad['before']['owner'][field] = value
-            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'): self.site.activate(bad)
-        (self.site.target / 'visual-search/app.js').write_text('different installed preview')
-        with self.assertRaisesRegex(ValueError, 'predecessor_changed'): self.site.activate(q)
-
-    def test_absent_unknown_or_symlinked_target_denied(self):
-        for before in [{'target': None, 'owner': None}, {'target': self.digest, 'owner': None}]:
-            with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'): remote.predecessor(before)
-        self.site.target.rename(self.site.parent / 'untrusted'); self.site.target.symlink_to(self.site.parent / 'untrusted')
-        with self.assertRaisesRegex(ValueError, 'target_or_owner_link'): remote.Site(self.site.root)
-
-    def test_activate_and_publish_preserve_production_all_old_previews(self):
-        q = self.staged(); old = self.site.protected()
-        before_files = remote.inventory(self.site.target)
-        activation = self.site.activate(q)
-        self.assertEqual(activation['status'], 'activated')
-        self.assertEqual(activation['changed_payload_files'], list(remote.NATIVE_SUCCESSOR_CHANGES))
-        self.assertEqual(activation['files'], 855)
-        self.assertEqual(self.site.finish(q)['status'], 'published')
-        self.assertEqual(self.site.protected(), old)
-        self.assertEqual(remote.digest(remote.json_bytes(remote.inventory(self.site.target))), self.q['target_digest'])
-        self.assertEqual(remote.digest(remote.json_bytes(remote.inventory(self.site.receipt(q) / 'predecessor'))), self.digest)
-        self.assertEqual(remote.inventory(self.site.receipt(q) / 'predecessor'), before_files)
-        self.assertEqual(json.loads(self.site.owner.read_bytes())['status'], 'published')
-        with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'): self.site.activate(self.staged(run=790))
-
-    def test_rollback_restores_exact_target_owner_and_old_previews(self):
-        before_files = remote.inventory(self.site.target)
-        q = self.staged(); self.site.activate(q)
-        self.assertEqual(self.site.finish(q, True)['status'], 'rolled_back_to_exact_predecessor')
-        self.assertEqual(self.site.snapshot(), q['before'])
-        self.assertEqual((self.site.target / 'visual-search/app.js').read_text(), 'previous published polish')
-        self.assertEqual(remote.inventory(self.site.target), before_files)
-        self.assertEqual(len(before_files), 855)
-        self.assertEqual((self.site.target / 'visual-search/native-v2/bootstrap.js').read_text(),
-                         'native fixture:visual-search/native-v2/bootstrap.js')
-
-    def test_completed_publish_or_rollback_cannot_replay(self):
-        q = self.staged(); self.site.activate(q); self.site.finish(q)
-        for rollback in (False, True):
-            with self.subTest(rollback=rollback), self.assertRaisesRegex(ValueError, 'transaction_already_finished'): self.site.finish(q, rollback)
-        self.assertEqual(json.loads(self.site.owner.read_bytes())['status'], 'published')
-
-    def test_interruption_after_old_move_restores_without_guessing(self):
-        q = self.staged(); real = Path.rename
-        def fail_new_move(path, target):
-            if path.name == 'payload' and Path(target) == self.site.target: raise RuntimeError('interrupted install')
-            return real(path, target)
-        with patch.object(Path, 'rename', fail_new_move), self.assertRaisesRegex(RuntimeError, 'interrupted install'): self.site.activate(q)
-        self.assertFalse(self.site.target.exists())
-        self.assertEqual(self.site.finish(q, True)['status'], 'rolled_back_to_exact_predecessor')
-        self.assertEqual(self.site.snapshot(), q['before'])
-
-    def test_interruption_before_owner_commit_restores_checked_new_payload(self):
-        q = self.staged()
-        with (patch.object(self.site, 'write_owner', side_effect=RuntimeError('owner interruption')),
-             self.assertRaisesRegex(RuntimeError, 'owner interruption')):
-            self.site.activate(q)
-        self.assertEqual(json.loads(self.site.owner.read_bytes()), self.owner)
-        self.assertEqual(self.site.finish(q, True)['status'], 'rolled_back_to_exact_predecessor')
-        self.assertEqual(self.site.snapshot(), q['before'])
-
-    def test_validation_failure_before_activation_has_terminal_receipt(self):
-        q = self.staged()
-        with patch.object(remote, 'verify', side_effect=ValueError('invalid artifact')), self.assertRaisesRegex(ValueError, 'invalid artifact'): self.site.activate(q)
-        self.assertEqual(self.site.finish(q, True)['status'], 'not_activated')
-        with self.assertRaisesRegex(ValueError, 'transaction_already_finished'): self.site.finish(q, True)
-        with self.assertRaisesRegex(ValueError, 'previous_outcome_unknown'): self.site.activate(self.staged())
-
-    def test_modified_new_target_backup_or_owner_stops_rollback(self):
-        q = self.staged(); self.site.activate(q)
-        (self.site.target / 'visual-search/app.js').write_text('another writer')
-        with self.assertRaisesRegex(ValueError, 'modified_target'): self.site.finish(q, True)
-        self.assertTrue((self.site.receipt(q) / 'predecessor').is_dir())
-        self.assertFalse((self.site.receipt(q) / 'result.json').exists())
-
-    def test_request_or_backup_drift_stops_transaction(self):
-        q = self.staged(); self.site.activate(q)
-        with self.assertRaisesRegex(ValueError, 'accepted_native_source_only'): self.site.finish({**q, 'artifact_id': 999}, True)
-        (self.site.receipt(q) / 'predecessor/visual-search/app.js').write_text('modified backup')
-        for rollback in (False, True):
-            with self.subTest(rollback=rollback), self.assertRaisesRegex(ValueError, 'backup_changed'): self.site.finish(q, rollback)
-
-    def test_existing_preview_locks_refuse_update(self):
-        q = self.staged()
-        for name in ('.search3-site-lock', '.search3-local-lock', '.search3-v17-lock', '.search3-v18-lock', '.search3-next-lock'):
-            p = self.site.parent / name; p.mkdir()
-            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'existing_preview_busy'): self.site.activate(q)
-            p.rmdir()
-
-    def test_request_target_digest_cannot_be_changed(self):
-        with self.assertRaisesRegex(ValueError, 'payload_hashes'): remote.verify(self.root / 'derived', {**self.q, 'target_digest': 'f' * 64})
-        with self.assertRaisesRegex(ValueError, 'control_hash'): remote.verify(self.root / 'derived', {**self.q, 'manifest_sha256': 'f' * 64})
-
-    def test_trusted_remote_module_bootstrap_is_portable(self):
-        code = pub.remote_source()
-        self.assertNotIn(b'prototype-search', code.split(b'exec(compile', 1)[0])
-        # Compile only, then import both modules without their CLI entry point.
-        compile(code, '<trusted-remote>', 'exec')
-        namespace = {'__name__': 'portable_test'}; exec(code, namespace)
-        self.assertIn('Site', namespace); self.assertEqual(namespace['ROUTE'], remote.ROUTE)
-
-
-if __name__ == '__main__': unittest.main()
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíßÏxİ:-jZ.¶›­–)Ş³R""$&÷VæFVB6÷W&6R&ööbÂW†7BV&Æ—6†VB&VFV6W76÷"æB–çFW''WFVBWFFW2â"" ¦–×÷'B6÷¦–×÷'B–ğ¦–×÷'B§6öà¦–×÷'B÷0¦g&öÒF†Æ–"–×÷'BF€¦–×÷'B6‡WF–À¦–×÷'B7G'V7@¦–×÷'B7—0¦–×÷'BFV×f–ÆP¦–×÷'BVæ—GFW7@¦–×÷'B¦—f–ÆP¦g&öÒVæ—GFW7BæÖö6²–×÷'BF6‚ÂÖö6°§7—2çF‚æ–ç6W'BƒÂ7G"…F‚…õöf–ÆUõò’ç&W6öÇfR‚’ç&VçG5³Òòw67&—G2öFWÆ÷’r’¦–×÷'B6V&6ƒ5öFW6–vå÷c%÷&Wf–Wr27&VF÷ ¦–×÷'B6V&6ƒ5öFW6–vå÷c%÷&Wf–Wu÷&VÖ÷FR27&VFU÷&VÖ÷FP¦–×÷'B6V&6ƒ5öFW6–vå÷c%÷WFFR2V ¦–×÷'B6V&6ƒ5öFW6–vå÷c%÷WFFU÷&VÖ÷FR2&VÖ÷FP¦g&öÒ6V&6ƒ5öFW6–vå÷c%÷&Wf–Wu÷FW7B–×÷'Bf—‡GW&RÂ&WVW7B2÷&–v–æÅ÷&WVW7@  ¦6Æ72WFFT6öçG&7G2‡Væ—GFW7BåFW7D66R“ ¢FVb6WEW‡6VÆb“ ¢6VÆbçF×ÒFV×f–ÆRåFV×÷&'”F—&V7F÷'’‚“²6VÆbç&ö÷BÒF‚‡6VÆbçF×ææÖR¢6VÆbæ&6VÆ–æRÒ6VÆbç&ö÷Bòv&6VÆ–æRs²f—‡GW&R‡6VÆbæ&6VÆ–æR¢F‡2Ò·f÷"–â&VÖ÷FRå4õU$4Uô4„ätU2–bÒ7&VF÷"äÄTDtU%õD…Ğ¢f÷"’ÂæÖR–âVçVÖW&FR‡F‡2“ ¢‡6VÆbæ&6VÆ–æRòw–ÆöBròbwf—7VÂ×6V&6‚öf—‡GW&R×¶—Òæ§2r’ç&VæÖR‡6VÆbæ&6VÆ–æRòw–ÆöBròæÖR¢f÷"’ÂæÖR–âVçVÖW&FR‚‚wf—7VÂ×6V&6‚÷&Wf–WrÖÆVBæ§2rÂw&÷F÷G—R×6V&6‚öÆVBæ§2rÀ¢wF÷W"Ö6öçG&öÆÆW"×cBæ§2rÂwf—7VÂ×6V&6‚ö76WG2öç—F÷W"ÖÆövòç7frrÀ¢wf—7VÂ×6V&6‚öföçG2ôW&÷÷'Bçvöfc"r’Â7F'CÖÆVâ‡F‡2’“ ¢F&vWBÒ6VÆbæ&6VÆ–æRòw–ÆöBròæÖS²F&vWBç&VçBæÖ¶F—"‡&VçG3ÕG'VRÂW†—7Eöö³ÕG'VR¢‡6VÆbæ&6VÆ–æRòw–ÆöBròbwf—7VÂ×6V&6‚öf—‡GW&R×¶—Òæ§2r’ç&VæÖR‡F&vWB¢–×÷'B÷6—‡F€¢f÷"’Â7&2–âVçVÖW&FR‡&VÖ÷FRääD•dUõ45$•E2Â7F'CÓS“ ¢æÖRÒ÷6—‡F‚ææ÷&×F‚‡÷6—‡F‚æ¦ö–â‚wf—7VÂ×6V&6‚rÂ7&2’“²F&vWBÒ6VÆbæ&6VÆ–æRòw–ÆöBròæÖP¢–bF&vWBæW†—7G2‚’÷"æÖR–â&VÖ÷FRääD•dUô54UE3¢6öçF–çVP¢F&vWBç&VçBæÖ¶F—"‡&VçG3ÕG'VRÂW†—7Eöö³ÕG'VR¢‡6VÆbæ&6VÆ–æRòw–ÆöBròbwf—7VÂ×6V&6‚öf—‡GW&R×¶—Òæ§2r’ç&VæÖR‡F&vWB¢6VÆbæ÷&–v–æÅ÷–âÒF6‚æö&¦V7B†7&VF÷"Âu4õU$4UôÄTDtU%õ4„#SbrÂ&VÖ÷FRæF–vW7B‚‡6VÆbæ&6VÆ–æRòw–ÆöBrò7&VF÷"äÄTDtU%õD‚’ç&VEö'—FW2‚’’¢6VÆbæ÷&–v–æÅ÷–âç7F'B‚“²6VÆbæFD6ÆVçW‡6VÆbæ÷&–v–æÅ÷–âç7F÷¢6VÆbç6÷W&6RÒ6VÆbç&ö÷Bòw6÷W&6Rs²6‡WF–Âæ6÷—G&VR‡6VÆbæ&6VÆ–æRÂ6VÆbç6÷W&6R¢‡6VÆbç6÷W&6Ròw–ÆöB÷f—7VÂ×6V&6‚öæ§2r’çw&—FU÷FW‡B‚w&Wf–÷W2V&Æ—6†VBöÆ—6‚r¢f÷"æÖR–â&VÖ÷FRääD•dUô54UE3 ¢F‚Ò6VÆbç6÷W&6Ròw–ÆöBròæÖS²F‚ç&VçBæÖ¶F—"‡&VçG3ÕG'VRÂW†—7Eöö³ÕG'VR“²F‚çw&—FU÷FW‡B‚væF—fRf—‡GW&S¢r²æÖR¢‡FÖÂÒsÂFö7G—R‡FÖÃãÆÖWFæÖSÒ'&ö&÷G2"6öçFVçCÒ&æö–æFW‚ÆæöföÆÆ÷rÆæö&6†—fR#ãÆÖ–â–CÒ&FW6–vâ×c"ÖæF—fR×&ö÷B#ãÂöÖ–ãåÆâp¢‡FÖÂ³ÒuÆâræ¦ö–â‚sÆÆ–æ²&VÃÒ'7G–ÆW6†VWB"‡&VcÒ"r²7&2²r#ârf÷"7&2–â&VÖ÷FRääD•dUõ5E”ÄU2’²uÆâp¢‡FÖÂ³ÒuÆâræ¦ö–â‚sÇ67&—B7&3Ò"r²7&2²r"FVfW#ãÂ÷67&—Cârf÷"7&2–â&VÖ÷FRääD•dUõ45$•E2’²uÆâp¢‡6VÆbç6÷W&6Ròw–ÆöB÷f—7VÂ×6V&6‚ö–æFW‚æ‡FÖÂr’çw&—FU÷FW‡B†‡FÖÂ¢‡6VÆbç6÷W&6Ròw–ÆöB÷f—7VÂ×6V&6‚ö–æFW‚ç‡r’çw&—FU÷FW‡B‚#Ã÷‡FVçG'’Òrõ÷&Wf–Wr÷6V&6ƒ2ÖFW6–vâ×c"Ö6æF–FFR÷f—7VÂ×6V&6‚òsµÆæ–b‚G67&—BÓÒFVçG'’âv–æFW‚ç‡r’²W†—C²Ò"¢FVb&÷r‡7&2“ ¢æÖRÒ÷6—‡F‚ææ÷&×F‚‡÷6—‡F‚æ¦ö–â‚wf—7VÂ×6V&6‚rÂ7&2’“²6öçFVçBÒ‡6VÆbç6÷W&6Ròw–ÆöBròæÖR’ç&VEö'—FW2‚¢&WGW&â²w7&2s¢7&2ÂwF‚s¢æÖRÂw6†#Sbs¢&VÖ÷FRæF–vW7B†6öçFVçB’Âv'—FW2s¢ÆVâ†6öçFVçB—Ğ¢æF—fRÒ²w66†VÖs¢"ÂvFöæ÷%6÷W&6Rs¢sfScs3F3†6c#3CsSf&#S–SV#cF&fV6cC“CrÂvFöæ÷"s¢&VÖ÷FRääD•dUôDôäõ"À¢w7FGW2s¢væF—fR×6÷W&6RÖ6æF–FFRÖæ÷B×V&Æ—6†VBrÂvÆVv7•&W6VçFF–öäÆöFVBs¢fÇ6RÂvÖö6µ6–×VÆF÷$ÆöFVBs¢fÇ6RÀ¢v—6öÆFVD÷fW&Æ’s¢G'VRÂv6æöæ–6ÄFWVæFVæ6–W5&Ww&—GFVâs¢fÇ6RÀ¢vVçG'’s¢²v‡FÖÂs¢&VÖ÷FRæF–vW7B†‡FÖÂæVæ6öFR‚’’Âw‡s¢&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöB÷f—7VÂ×6V&6‚ö–æFW‚ç‡r’ç&VEö'—FW2‚’—ÒÀ¢vw&‚s¢²w67&—G2s¢·&÷r‡7&2’f÷"7&2–â&VÖ÷FRääD•dUõ45$•E5ÒÂw7G–ÆW2s¢·&÷r‡7&2’f÷"7&2–â&VÖ÷FRääD•dUõ5E”ÄU5×ÒÀ¢vf–ÆW2s¢µF‚†æÖR’ææÖS¢&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöBròæÖR’ç&VEö'—FW2‚’’f÷"æÖR–â&VÖ÷FRääD•dUô54UE7×Ğ¢‡6VÆbç6÷W&6Ròw–ÆöBrò&VÖ÷FRääD•dUôÔä”dU5B’çw&—FU÷FW‡B†§6öâæGV×2†æF—fRÂVç7W&Uö66–“ÔfÇ6RÂ–æFVçCÓ"’²uÆâr¢6VÆbææF—fRÒæF—fP¢6VÆbææF—fU÷–âÒ²w6÷W&6U÷6†s¢vr¢CÂw6÷W&6U÷G&VRs¢vBr¢CÀ¢w&VÆV6U÷6†s¢v2r¢CÂw&VÆV6U÷G&VRs¢vBr¢CÀ¢v'V–ÆE÷'Vâs¢#2Âv'F–f7Eö–Bs¢CSbÀ¢w6÷W&6Uõ¤•÷6†#Sbs¢vRr¢cBÂvVçG'•ö‡FÖÅ÷6†#Sbs¢æF—fU²vVçG'’uÕ²v‡FÖÂuÒÂvVçG'•÷‡÷6†#Sbs¢æF—fU²vVçG'’uÕ²w‡uÒÀ¢w6÷W&6UöÖæ–fW7E÷6†#Sbs¢&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöBrò&VÖ÷FRääD•dUôÔä”dU5B’ç&VEö'—FW2‚’—Ğ¢f÷"6†ævR–â‡F6‚æö&¦V7B‡&VÖ÷FRÂtäD•dUô44UDä4RrÂ6VÆbææF—fU÷–â’À¢F6‚æö&¦V7B‡&VÖ÷FRÂtäD•dUô%$äBrÂ¶æÖS¢æF—fU²vf–ÆW2uÕ¶æÖUÒf÷"æÖR–â&VÖ÷FRääD•dUô%$äGÒ’“ ¢6†ævRç7F'B‚“²6VÆbæFD6ÆVçW†6†ævRç7F÷¢ÒÒ§6öâæÆöG2‚‡6VÆbç6÷W&6Ròv6öçG&öÂöÖæ–fW7Bæ§6öâr’ç&VEö'—FW2‚’¢ÒçWFFR‡6÷W&6U÷6†Òvr¢CÂ6÷W&6U÷G&VU÷6†ÒvBr¢C¢‡6VÆbç6÷W&6Ròv6öçG&öÂöÖæ–fW7Bæ§6öâr’çw&—FUö'—FW2‡&VÖ÷FRæ§6öåö'—FW2†Ò’¢Ò²¢¦÷&–v–æÅ÷&WVW7B‚’Âw6÷W&6U÷6†s¢vr¢CÂw&VÆV6U÷6†s¢v2r¢CÀ¢w6÷W&6U÷G&VRs¢vBr¢CÂv'V–ÆE÷'Vâs¢#2Âv'F–f7Eö–Bs¢CSbÂvFWÆ÷•÷'Vâs¢sƒ—Ğ¢2F†R&VFV6W76÷"—2Ç&VG’æF—fRƒSRÖf–ÆRV&Æ–6F–öâÂæ÷BÆVv7¢2ƒCRÖf–ÆRf—‡GW&Rv—F‚F6†VB÷væW"â—G26æöæ–6ÂæB'&æB'—FW0¢27F’–FVçF–6Âv†–ÆRöæÇ’&Wf–WvVBæF—fR÷væW'2æBvVæW&FVBÖæ–fW7@¢26†ævRf÷"F†—26¶vRà¢V"æFW&—fR‡6VÆbç6÷W&6RÂ6VÆbæ&6VÆ–æRÂ6VÆbç&ö÷Bòv–ç7FÆÆVBrÂÂvRr¢cB¢f÷"æÖR–â&VÖ÷FRääD•dUõ5T44U54õ%ô4„ätU3 ¢–bæÖRÓÒ&VÖ÷FRääD•dUôÔä”dU5C¢6öçF–çVP¢F‚Ò6VÆbç6÷W&6Ròw–ÆöBròæÖP¢–bæÖRÓÒwf—7VÂ×6V&6‚ö–æFW‚æ‡FÖÂs ¢F‚çw&—FU÷FW‡B‡F‚ç&VE÷FW‡B‚’ç&WÆ6R‚sÆÖ–â–CÒ&FW6–vâ×c"ÖæF—fR×&ö÷B#ãÂöÖ–ãârÀ¢sÆÖ–â–CÒ&FW6–vâ×c"ÖæF—fR×&ö÷B#ãÆF—b&öÆSÒ'7FGW2#äæF—fR7F'GWf—‡GW&SÂöF—cãÂöÖ–ãâr’¢VÇ6S¢F‚çw&—FU÷FW‡B‚w&Wf–WvVBæF—fR7V66W76÷#¢r²æÖR¢æF—fU²vVçG'’uÕ²v‡FÖÂuÒÒ&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöB÷f—7VÂ×6V&6‚ö–æFW‚æ‡FÖÂr’ç&VEö'—FW2‚’¢6VÆbææF—fU÷–å²vVçG'•ö‡FÖÅ÷6†#SbuÒÒæF—fU²vVçG'’uÕ²v‡FÖÂuĞ¢æF—fU²vf–ÆW2uÒÒµF‚†æÖR’ææÖS¢&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöBròæÖR’ç&VEö'—FW2‚’¢f÷"æÖR–â&VÖ÷FRääD•dUô54UE7Ğ¢æF—fU²vw&‚uÒÒ²w67&—G2s¢·&÷r‡7&2’f÷"7&2–â&VÖ÷FRääD•dUõ45$•E5ÒÀ¢w7G–ÆW2s¢·&÷r‡7&2’f÷"7&2–â&VÖ÷FRääD•dUõ5E”ÄU5×Ğ¢‡6VÆbç6÷W&6Ròw–ÆöBrò&VÖ÷FRääD•dUôÔä”dU5B’çw&—FU÷FW‡B†§6öâæGV×2†æF—fRÂVç7W&Uö66–“ÔfÇ6RÂ–æFVçCÓ"’²uÆâr¢6VÆbææF—fU÷–å²w6÷W&6UöÖæ–fW7E÷6†#SbuÒÒ&VÖ÷FRæF–vW7B‚‡6VÆbç6÷W&6Ròw–ÆöBrò&VÖ÷FRääD•dUôÔä”dU5B’ç&VEö'—FW2‚’¢6VÆbçÂ6VÆbæ&6†—fRÒV"æFW&—fR‡6VÆbç6÷W&6RÂ6VÆbæ&6VÆ–æRÂ6VÆbç&ö÷BòvFW&—fVBrÂÂvRr¢cB¢6—FU÷&ö÷BÒ6VÆbç&ö÷Bòvç—Fö÷W"ç'Rs²&VçBÒ6—FU÷&ö÷Bòu÷&Wf–Wrs²&VçBæÖ¶F—"‡&VçG3ÕG'VR¢f÷"æÖR–â7&VFU÷&VÖ÷FRå$UT•$TC ¢Ò6—FU÷&ö÷BòæÖS²ç&VçBæÖ¶F—"‡&VçG3ÕG'VRÂW†—7Eöö³ÕG'VR“²çw&—FU÷FW‡B‚w&÷FV7FVC¢r²æÖR¢f÷"æÖR–â‚w6V&6ƒ2×6—FRÖ6æF–FFRrÂw6V&6ƒ2ÖÆö6ÂÖ6æF–FFRrÂw6V&6ƒ2×crÖ6æF–FFRrÀ¢w6V&6ƒ2×c‚Ö6æF–FFRrÂw6V&6ƒ2ÖæW‡BÖ6æF–FFRrÂw6V&6ƒ2ÖæW‚Ö6æF–FFRr“ ¢‡&VçBòæÖR’æÖ¶F—"‚“²‡&VçBòæÖRòv¶VWçG‡Br’çw&—FU÷FW‡B‚vöÆBVæ6†ævVC¢r²æÖR¢6‡WF–Âæ6÷—G&VR‡6VÆbç&ö÷Bòv–ç7FÆÆVB÷–ÆöBrÂ&VçBòw6V&6ƒ2ÖFW6–vâ×c"Ö6æF–FFRr¢6VÆbæF–vW7BÒ&VÖ÷FRæF–vW7B‡&VÖ÷FRæ§6öåö'—FW2‡&VÖ÷FRæ–çfVçF÷'’‡&VçBòw6V&6ƒ2ÖFW6–vâ×c"Ö6æF–FFRr’’¢6VÆbæ÷væW"Ò²¢§&VÖ÷FRå$TDT4U54õ%ôõtäU"ÂvF–vW7Bs¢6VÆbæF–vW7GĞ¢6VÆbç–ç2Ò·F6‚æö&¦V7B‡&VÖ÷FRÂu$TDT4U54õ%ôD”tU5BrÂ6VÆbæF–vW7B’ÂF6‚æö&¦V7B‡&VÖ÷FRÂu$TDT4U54õ%ôõtäU"rÂ6VÆbæ÷væW"•Ğ¢f÷"–â–â6VÆbç–ç3¢–âç7F'B‚“²6VÆbæFD6ÆVçW‡–âç7F÷¢6VÆbç6—FRÒ&VÖ÷FRå6—FR‡6—FU÷&ö÷B“²6VÆbç6—FRæ÷væW"çw&—FUö'—FW2‡&VÖ÷FRæ§6öåö'—FW2‡6VÆbæ÷væW"’¢6VÆbçWÆöG2ÒµĞ¢6VÆbæVçbÒ²tt•D…T%õ$Uõ4•Dõ%’s¢V"å$UòÂtt•D…T%õ$Tbs¢w&Vg2ö†VG2öÖ–ârÀ¢tt•D…T%ô5Dõ"s¢w–F¶öfbrÂtt•D…T%õE$”ttU$”äuô5Dõ"s¢w–F¶öfbrÂtt•D…T%ô5Dõ%ô”Bs¢s##c“3#“rrÀ¢tt•D…T%õ%TåôEDTÕBs¢srÂtt•D…T%ôUdTåEôäÔRs¢v—77VUö6öÖÖVçBrÂtt•D…T%õ%Tåô”Bs¢ssƒ’wĞ¢6VÆbæWfVçBÒ²w&W÷6—F÷'’s¢²vgVÆÅöæÖRs¢V"å$UòÂv–Bs¢3CSSƒ#sÒÀ¢w6VæFW"s¢²vÆöv–âs¢w–F¶öfbrÂv–Bs¢##c“3#“wÒÂv7F–öâs¢v7&VFVBrÂv—77VRs¢²vçVÖ&W"s¢C#wÒÀ¢v6öÖÖVçBs¢²wW6W"s¢²v–Bs¢##c“3#“wÒÂvWF†÷%ö76ö6–F–öâs¢tõtäU"rÀ¢v&öG’s¢V"å$Td•‚²vr¢C²rr²v2r¢C²r#2CSbw×Ğ ¢FVbFV$F÷vâ‡6VÆb“ ¢f÷"–â6VÆbçWÆöG3¢çVæÆ–æ²†Ö—76–æuöö³ÕG'VR¢6VÆbçF×æ6ÆVçW‚ ¢FVb7FvVB‡6VÆbÂ'VãÓsƒ’“ ¢fBÂæÖRÒFV×f–ÆRæÖ·7FV×‡&Vf—ƒÒw6V&6ƒ2ÖFW6–vâ×c"×WFFRârÂ7Vff—ƒÒrçF"æw¢rÂF—#Òr÷F×r“²÷2æ6Æ÷6R†fB¢ÒF‚†æÖR“²çw&—FUö'—FW2‡6VÆbæ&6†—fR“²6VÆbçWÆöG2æVæB‡¢&WGW&â²¢§6VÆbçÂvFWÆ÷•÷'Vâs¢'VâÂv&6†—fRs¢æÖRÂv&Vf÷&Rs¢6VÆbç6—FRç6æ6†÷B‚—Ğ ¢FVb&Wf–Wuö&6†—fR‡6VÆbÂ×WFFSÔæöæR“ ¢6öçFVçG2Ò²‚w–ÆöBòr²æÖR“¢‡6VÆbç6÷W&6Ròw–ÆöBròæÖR’ç&VEö'—FW2‚¢f÷"æÖR–â&VÖ÷FRæ–çfVçF÷'’‡6VÆbç6÷W&6Ròw–ÆöBr—Ğ¢ÖWFÒ²w66†VÖs¢Âw6÷W&6U÷6†s¢vr¢CÂw6÷W&6U÷G&VU÷6†s¢vBr¢CÂv&6U÷6†s¢v"r¢CÀ¢w'Våö–Bs¢s#2rÂw'VåöGFV×Bs¢srÂvFöæ÷%÷6÷W&6U÷6†s¢6VÆbææF—fU²vFöæ÷%6÷W&6RuÒÀ¢v–çFVæFVE÷&÷WFRs¢&VÖ÷FRå$õUDR²wf—7VÂ×6V&6‚òrÂw7FGW2s¢w&Wf–WrÖ'F–f7BÖæ÷B×V&Æ—6†VBrÀ¢wV&Æ–6F–öåöWF†÷&—G’s¢fÇ6RÂv6æöæ–6Å÷&÷WFU÷&Ww&—FW5öÆ–VBs¢fÇ6RÀ¢vf–ÆUö6÷VçBs¢ƒSRÂvf–ÆW2s¢·²wF‚s¢æÖRÂw6†#Sbs¢&VÖ÷FRæF–vW7B‡fÇVR’Âv'—FW2s¢ÆVâ‡fÇVR—Ğ¢f÷"æÖRÂfÇVR–â6÷'FVB‚†æÖU¶ÆVâ‚w–ÆöBòr“¥ÒÂfÇVR’f÷"æÖRÂfÇVR–â6öçFVçG2æ—FV×2‚’•×Ğ¢6öçFVçG5²v6öçG&öÂö–çfVçF÷'’æ§6öâuÒÒ&VÖ÷FRæ§6öåö'—FW2†ÖWF¢6öçFVçG5²v6öçG&öÂöæF—fRÖ'V–ÆBæ§6öâuÒÒ&VÖ÷FRæ§6öåö'—FW2‡6VÆbææF—fR¢&ööbÒ²w76—fT‡–G&F–öå6V&6†W2s¢Âvf÷&Õ7V&Ö—E6V&6†W2s¢ÂvÆö6Äf–ÇFW$W‡G&6V&6†W2s¢À¢vW†7DÆöFVDöffW%&WF–æVBs¢G'VRÂvfÆ–v‡D6†ö–6T–æFW‚s¢Âw6VÆV7FVDgVÆÅF÷FÂs¢#À¢v6öçF7E–ÆöDgVÆÅF÷FÂs¢#Âv6öçF7E–ÆöDfÆ–v‡D6†ö–6T–æFW‚s¢À¢v6öçF7E&Wf–Wt6÷VçBs¢Âw&VÄÆVE7V&Ö—76–öç2s¢Âv&6´f÷'v&E&WF–æVE6VÆV7F–öâs¢G'VRÀ¢v&6´f÷'v&DW‡G&6V&6†W2s¢ÂvW'&÷%&WF–æVE&÷w2s¢BÂvW‡Æ–6—E6V&6…&WG'”6÷VçBs¢À¢w&WG'•&÷w2s¢BÂvff÷&—FU7F÷&vU&W6W'fVBs¢G'VRÂv'VFvWDÆöFVD6÷VçBs¢"Âv'VFvWDW‡G&6V&6†W2s¢À¢v6ÆVæF%vW2s¢"Âv6ÆVæF$ÆFW$ÆöFVEF÷FÂs¢ccCÀ¢v6ÆVæF%v–ætW‡G&6V&6†W2s¢Âv6ÆVæF$†—7F÷'•vU&WF–æVBs¢G'VRÀ¢v6ÆVæF%6–ævÆUvVV´æf–vF–öâs¢G'VRÀ¢v&÷VæFVD–æ—F–Ä6&G2s¢#BÂv&÷VæFVDÆöFVD†÷FVÇ2s¢SRÀ¢v&÷VæFVD&6´6&G2s¢C‚Âv&÷VæFVDW‡G&6V&6†W2s¢À¢w7F'GWVæF–ætf÷&Ô†–FFVâs¢G'VRÂw7F'GWW'&÷%6V&6†W2s¢Âw7F'GW&WG'•6V&6†W2s¢À¢v7F—fT6öç7G&–çG5f—6–&ÆRs¢G'VRÂw&V6÷fW'”ÆöFVD†÷FVÇ2s¢"À¢w&V6÷fW'•&W6W'fVDÖVÂs¢G'VRÂw&V6÷fW'”W‡G&6V&6†W2s¢À¢vÆöF–æt–æ—F–Ä6÷VçDæWWG&Âs¢G'VRÂvÆöF–ætV×G”7F–öä†–FFVâs¢G'VRÂvÆöF–ætW‡G&6V&6†W2s¢À¢vf–ÆVD–æ—F–Ä6÷VçDæWWG&Âs¢G'VRÂvf–ÆVD–æ—F–Äg&–VæFÇ”6÷’s¢G'VRÂvf–ÆVD–æ—F–ÄW‡G&6V&6†W2s¢À¢vf–ÇFW&VD6ÆVæF%G'WF†gVÂs¢G'VRÀ¢w'F–ÄV×G”æWWG&Ä6÷VçBs¢G'VRÂw'F–Å6fVE6V&6…&WF–æVBs¢G'VRÀ¢w'F–ÄÆöFVD†÷FVÇ2s¢BÂw'F–ÄW‡G&6V&6†W2s¢À¢w'F–Äf–ÇFW&VE&V6÷fW'”ÆöFVD†÷FVÇ2s¢"À¢vfÆ–v‡DÇFW&æF—fW4W‡G&V÷FW2s¢ÂvfÆ–v‡DÇFW&æF—fT÷&–v–æÄ–æF–6W2s¢³ÂÂÒÀ¢vfÆ–v‡DÇFW&æF—fW46Æ÷6VD†V–v‡Bs¢SÂvfÆ–v‡DÇFW&æF—fW4W‡æFVD†V–v‡Bs¢ƒÀ¢vfÆ–v‡DÇFW&æF—fW56fVD†V–v‡Bs¢3À¢vfÖ–Ç”vW2s¢³ÂrÂuÒÂvfÖ–Ç”W‡G&6V&6†W2s¢ÂvfÖ–Ç”vU&Wf–Wu&WF–æVBs¢G'VRÀ¢væ–v‡D¶W–&ö&Dfö7W5&WF–æVBs¢G'VRÂvf÷&Ô6ÆVæF%v–ætfö7W5&WF–æVBs¢G'VRÀ¢vfÖ–Ç”–çWDfö7W5&WF–æVBs¢G'VRÂvFW7F–æF–öä¶W–&ö&Dfö7W5&WF–æVBs¢G'VRÀ¢vf÷&Õ÷W6–ævÆU7V&Ö—E&WF–æVBs¢G'VRÂw&W6V&6„æf–vF–öåG'WF†gVÂs¢G'VRÀ¢vÆFU&W6VçFF–öåFW&Ö–æÅ7FFW5&WF–æVBs¢G'VRÂvÆFU&W6VçFF–öäW‡G&6V&6†W2s¢À¢v6öçF7DW†7D—F–æW&'•&WF–æVBs¢G'VRÂv6öçF7DG&gDæD6öç6VçE&WF–æVBs¢G'VRÀ¢vw&÷WÖ–æ–×VÔ÷VæVD†÷FVÅv—F†÷WEV÷FRs¢G'VRÂvw&÷W76—fTW‡G&6V&6†W2s¢À¢vw&÷W76—fTW‡ç6–öç2s¢Âvw&÷WW‡Æ–6—DW‡æD6÷VçBs¢À¢vw&÷WW‡ç6–öäW†7E&VfW&Væ6W2s¢G'VRÂvw&÷WVæF–æu&VÖ÷VçE&WF–æVBs¢G'VRÀ¢vw&÷WVæF–æu7FGW4fö7W5&WF–æVBs¢G'VRÂvw&÷W6öæ7&WFUV÷FT6÷VçBs¢À¢vw&÷W6öæ7&WFTfö7W5&WF–æVBs¢G'VRÂvw&÷W&6µ&VÖ÷VçDW‡G&÷W&F–öç2s¢À¢vw&÷Wf—6–&ÆT6öæ7&WFTÖ–æ–×VÒs¢cCÂvw&÷Wf—6–&ÆT6öæ7&WFTFVÇFs¢“À¢vw&÷WF—&V7D6öæ7&WFU&V÷Vâs¢G'VRÀ¢w&WF–æVD6öçFVçBs¢°¢v†÷FVÄ–Bs¢3cs‚Âv†÷FVÄæÖRs¢u$”5T•DU2„õDTÂrÀ¢w6æ6†÷E4„#Sbs¢sC“V#&SS#cƒ3cƒf3“Vs–CS–C3fVFC“CvvSV3sfS66S“C–Fc†3vS2rÀ¢v–ÖvW2s¢°¢²vf–ÆRs¢w&–×7V—FW2Óæ§rrÀ¢w6÷W&6UU$Âs¢v‡GG3¢ò÷7FF–2çF÷W'f—6÷"ç'Rö†÷FVÅ÷–72öÖ–ãCó3““Bæ§rrÀ¢w6†#Sbs¢vc#S–6v3VFc““f&c#6SCSf#SCƒ““ƒ3SS3†CcVSƒfc“S&3“–&#3FCRwÒÀ¢²vf–ÆRs¢w&–×7V—FW2Ó"æ§rrÀ¢w6÷W&6UU$Âs¢v‡GG3¢ò÷7FF–2çF÷W'f—6÷"ç'Rö†÷FVÅ÷–72÷fW'–&–róBó3““BÓ“c3S#æ§rrÀ¢w6†#Sbs¢svsCc3&FFc#SVFSC3VSF#vfV3f3f3“ƒ&C33cƒSS&fS6C“F#†F#ƒ&FSƒS6F"wÕÒÀ¢v6&DW'&÷$æE&WG'’s¢G'VRÂvvÆÆW'”gVÆÄ–ÖvRs¢G'VRÀ¢vÆFTf–ÇW&T–væ÷&VBs¢G'VRÂvvÆÆW'”W'&÷$æE&WG'’s¢G'VRÀ¢v6ö×7D–ÖvTæõÆ6V†öÆFW"s¢G'VRÂv6ö×7DW'&÷%v—F†÷WD6öçG&öÇ2s¢G'VRÀ¢w76—fU7WÆ–W$÷W&F–öç2s¢ÒÀ¢v6öçF7EfÆ–FF–öâs¢²vV×G•†öæRs¢G'VRÂv–çfÆ–E†öæRs¢G'VRÀ¢w&W7F÷&VD–çfÆ–DG&gBs¢G'VRÂwv†—FW76U†öæRs¢G'VRÀ¢vÖ—76–æt6öç6VçBs¢G'VRÂv6÷'&V7FVE&Wf–WtFVÇFs¢À¢v–çfÆ–E&Wf–WtFVÇFs¢ÂvW†7D6öçFW‡E&WF–æVBs¢G'VRÀ¢v&6µ&V÷Vå&WF–æVBs¢G'VRÂvW‡G&7WÆ–W$÷W&F–öç2s¢À¢w&VÅ7V&Ö—76–öç2s¢ÒÀ¢w67&VVäæf–vF–öâs¢²vFVW67&öÆÂs¢#Âv†÷FVÄ†VF–æuf—6–&ÆRs¢G'VRÀ¢w&W7VÇDfö7W5&W7F÷&VBs¢G'VRÂw&W7VÇDæ6†÷$FVÇFs¢ÂvW‡G&6V&6†W2s¢À¢w&W7öç6—fT†–FFVäfö7W4fÆÆ&6²s¢G'VRÂw&W7öç6—fU&VÖ÷VçDW‡G&÷W&F–öç2s¢ÒÀ¢vÖævW$6öçF7Bs¢²wF÷FÂs¢ÂvfÆ–v‡D6†ö–6T–Bs¢æöæRÀ¢vöÆE—%&VÖ÷fVBs¢G'VRÂv6öç6VçE&Wfö¶VBs¢G'VWÒÀ¢væöäÖ–æ–×VÔ¦÷W&æW’s¢²vW†7DöffW$–æFW‚s¢ÂwF÷FÂs¢sCÀ¢w7VÖÖ'”æD6öçF–çVU&WF–æVBs¢G'VRÂv6öçF7D—F–æW&'•&WF–æVBs¢G'VRÀ¢v&6µ&V÷VäW‡G&÷W&F–öç2s¢ÒÀ¢v6öçF7E&–6T&Æö6´f—Bs¢²v6F–öä6÷VçBs¢ÂvÖ÷VçD6÷VçBs¢À¢w&VF&ÆT6F–öåvV–v‡Bs¢G'VRÂw&VF&ÆT6F–öå76–ærs¢G'VRÀ¢v6F–öä–ç6–FU&–6Rs¢G'VRÂvÖ÷VçD–ç6–FU&–6Rs¢G'VRÀ¢v6F–öä&÷fTÖ÷VçBs¢G'VRÂv÷fW&fÆ÷rs¢fÇ6WÒÀ¢vÖç”fÆ–v‡D6†ö–6W2s¢²wF÷FÂs¢CÂv–æ—F–ÆÇ•f—6–&ÆRs¢2Âv6öÆÆ6VBs¢3rÀ¢w6VÆV7FVD6æöæ–6Ä–æFW‚s¢3’Âw6VÆV7FVEF÷FÂs¢SÀ¢w76—fTW‡G&÷W&F–öç2s¢À¢vÖævW$&Vf÷&TÆ—7Bs¢²v&Vf÷&Rs¢G'VRÂwf—6–&ÆRs¢G'VRÂv÷fW&fÆ÷rs¢fÇ6W××Ğ¢&W÷'BÒ²w66†VÖs¢Âw6÷W&6U4„s¢vr¢CÂvFöæ÷%6÷W&6Rs¢6VÆbææF—fU²vFöæ÷%6÷W&6RuÒÀ¢v6ö×–ÆVDæF—fTÖæ–fW7Bs¢6VÆbææF—fRÂw7FGW2s¢w76VBrÂw&WV—&VEv–GF‡2s¢³C3Ã#ƒÒÀ¢w&WV—&VEFW‡EW&6VçG2s¢³ÒÂvW‡V7FVE—&VE67&VVç2s¢²w6V&6‚rÂw&W7VÇG2rÂv†÷FVÂrÂwF÷W"rÂvÆVBuÒÀ¢v66W2s¢µÒÂvf–ÇW&W2s¢µ×Ğ¢f÷"v–GF‚–âƒC3Ã#ƒ“ ¢f÷"W&6VçB–âƒÂ“ ¢66RÒ²wv–GF‚s¢v–GF‚ÂwFW‡EW&6VçBs¢W&6VçBÂw&ööbs¢F–7B‡&ööb’ÂvW'&÷'2s¢µÒÂwVæW‡V7FVE&WVW7G2s¢µÒÂvg&ÖW2s¢µ×Ğ¢66U²w&ööbuÕ²vÖç”fÆ–v‡D6†ö–6W2uÒÒ²¢§&ööe²vÖç”fÆ–v‡D6†ö–6W2uÒÀ¢w—$Æ–÷WBs¢²v6öÇVÖç2s¢"–bv–GF‚ÓÒ#ƒVÇ6RÀ¢w—&VBs¢v–GF‚ÓÒ#ƒÂw7F6¶VBs¢v–GF‚Ò#ƒ×Ğ¢66U²w&ööbuÕ²v•&–6T6öçF7BuÒÒ²w6V&6…&–6Rs¢3ƒ“ƒ’Âv6†V6¶VDgVÆÅF÷FÂs¢c3SbÀ¢w&VF&ÆTÖVÂs¢G'VRÂv÷&–v–æÄ–æFW‚s¢ÂvW‡Æ–6—D66WFæ6Rs¢G'VRÀ¢v6ö×&&ÆU6V&6…&–6W2s¢G'VRÂw6VÆV7FVE6¶vU&–6U&WF–æVBs¢G'VRÀ¢v6öæF—F–öç4w&VVÖVçBs¢G'VRÂv&6´f÷'v&DW‡G&÷W&F–öç2s¢À¢v6öçF7Df—Bs¢²wv–GF‚s¢C“–bv–GF‚ÓÒ#ƒVÇ6Rv–GF‚ÒcÀ¢wF—FÆUv–GF‚s¢3s–bv–GF‚ÓÒ#ƒVÇ6Rv–GF‚ÒCÀ¢wF—FÆTÆ–æW2s¢"ÂwF—FÆTf—G2s¢G'VRÂw7VÖÖ'”f—G2s¢G'VRÂv6öÇVÖç2s¢v–GF‚ãÒsc‡×Ğ¢66U²w&ööbuÕ²v6ÆVæF%f—6–&ÆTæf–vF–öâuÒÒ°¢vÆ7E&–6U&V6†&ÆT'”'&÷w2s¢G'VRÀ¢v&6·v&DFFW4æ÷E6¶—VBs¢G'VR–bv–GF‚ÓÒC3VÇ6RæöæRÀ¢wVç6VÆV7FVD&6µ÷6—F–öåf—6–&ÆRs¢G'VRÀ¢vÖö&–ÆU&VÖ÷VçE÷6—F–öå&WF–æVBs¢G'VR–bv–GF‚ÓÒC3VÇ6RæöæRÀ¢w6VÆV7FVDFFUf—6–&ÆRs¢G'VRÂv6ÆV&VDFFUf—6–&ÆRs¢G'VRÀ¢v&6µ÷6—F–öåf—6–&ÆRs¢G'VRÂv–×Æ–6—DF”Æö6F÷%67&öÆÂs¢fÇ6WĞ¢66U²w&ööbuÕ²v6öçF7DF—66Æ÷7W&RuÒÒ²v–æ—F–ÆÇ”6öÆÆ6VBs¢v–GF‚ÃÒscÀ¢vW‡æFVDf7G5f—6–&ÆRs¢G'VRÂw76—fTW‡G&÷W&F–öç2s¢Ğ¢–b‡v–GF‚ÂW&6VçB’ÓÒƒC3Â“ ¢66U²w&ööbuÒçWFFR‡&öw&W76—fTG&vW%&WF–æVDG&gDæDfö7W3ÕG'VRÂ'VFvWD'&V·ö–çDG&gE&WF–æVCÕG'VR¢f÷"æÖR–â6÷'FVB‡V"ææF—fUög&ÖUö–çfVçF÷'’‡v–GF‚ÂW&6VçB’Â¶W“ÖÆÖ&FæÖS¢†æÖRç7F'G7v—F‚‚vFöæ÷"Òr’ÂæÖR’“ ¢6–FRÒæÖRç7Æ—B‚rÒr•³Ğ¢6†÷'EöFW6·F÷ÒæÖRç7F'G7v—F‚‚væF—fR×6†÷'BÖFW6·F÷Òr¢Æöv–6ÅöæÖRÒæÖRç&WÆ6R‚væF—fR×6†÷'BÖFW6·F÷ÒrÂvæF—fRÒrÂ’–b6†÷'EöFW6·F÷VÇ6RæÖP¢67&VVâÒ‚w7F'GWr–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fR×7F'GWÒr¢VÇ6Rw6V&6‚r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fRÖfÖ–Ç’ÒrÂvæF—fRÖFW7F–æF–öâÒrÂvæF—fR×÷WÒrÂvæF—fRÖ–æ—F–Â×6V&6‚×&WGW&âÒr’¢VÇ6Rvf–ÇFW'2r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fRÖ'VFvWBÖ–çfÆ–BÒrÂvæF—fRÖ'VFvWBÖG&gBÒrÂvæF—fRÖ'VFvWB×&öw&W72Ö–çfÆ–BÒr’¢VÇ6Rw&W7VÇG2r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fRÖ6öçFVçB×&W7VÇG2ÒrÂvæF—fRÖ'VFvWB×&W7VÇG2ÒrÂvæF—fRÖW'&÷"ÒrÀ¢væF—fRÖ6ÆVæF"ÖÆFW"ÒrÂvæF—fRÖ6ÆVæF"×6–ævÆR×&ævRÒrÂvæF—fR×&W7VÇG2Ö&÷VæFVBÒrÂvæF—fRÖ–æ—F–ÂÖff÷&—FW2ÒrÀ¢væF—fRÖf–ÇFW'2Ö7F—fRÒrÂvæF—fRÖf–ÇFW"ÖV×G’ÒrÀ¢væF—fR×&W7VÇG2ÖÆöF–ærÒrÂvæF—fR×&W7VÇG2ÖW'&÷"ÒrÀ¢væF—fR×&W7VÇG2×'F–ÂÒrÂvæF—fRÖf–ÇFW"ÖV×G’×'F–ÂÒrÂvæF—fR×FW&Ö–æÂÒr’¢VÇ6RwF÷W"r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖ’×&–6RÖ6†ævVBÒr¢VÇ6RvÆVBr–bÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fRÖ’Ö6öçF7BÒrÂvæF—fRÖ6öçFVçBÖ6öçF7BÒr’¢VÇ6RvvÆÆW'’r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖ6öçFVçBÖvÆÆW'’Òr¢VÇ6Rv†÷FVÂr–bÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fRÖ†÷FVÂ×&WGW&âÒrÂvæF—fRÖ’Ö†÷FVÂÖ6†V6¶VBÒr’’VÇ6RÆöv–6ÅöæÖRç7Æ—B‚rÒr•³Ò¢ærÒ"uÇƒƒ•äuÇ%ÆåÇƒÆæf–7F–öæÂöffÆ–æRfW&–f–W"f—‡GW&Rp¢–b6†÷'EöFW6·F÷ ¢ærÒ"uÇƒƒ•äuÇ%ÆåÇƒÆåÇƒÇƒÇƒÇ$”„E"r²7G'V7Bç6²‚sä”’rÂ#ƒÂs#’²"vf–7F–öæÂöffÆ–æRfW&–f–W"f—‡GW&Rp¢–bæÖRç7F'G7v—F‚‚‚væF—fRÖ6ÆVæF"ÖÆFW"ÒrÂvæF—fRÖ6ÆVæF"×6–ævÆR×&ævRÒr’“ ¢ærÒ"uÇƒƒ•äuÇ%ÆåÇƒÆåÇƒÇƒÇƒÇ$”„E"r²7G'V7Bç6²‚sä”’rÂv–GF‚Â“’²"vf–7F–öæÂöffÆ–æRfW&–f–W"f—‡GW&Rp¢6öçFVçG5²vWf–FVæ6Ròr²æÖUÒÒæp¢†5ö'VFvWBÒ67&VVâÓÒvf–ÇFW'2r÷"67&VVâÓÒw&W7VÇG2ræBv–GF‚ãÒsc€¢6—¦RÒƒb–bv–GF‚ÃÒC3VÇ6RB’¢W&6VçBò ¢6ÆVæF%öf—BÒæöæP¢–bæÖRç7F'G7v—F‚‚‚væF—fRÖ6ÆVæF"ÖÆFW"ÒrÂvæF—fRÖ6ÆVæF"×6–ævÆR×&ævRÒr’“ ¢6ÆVæF%öf—BÒ²vÆVgBs¢rÂw&–v‡Bs¢v–GF‚ÒrÀ¢w7G&—s¢²vÆVgBs¢rÂw&–v‡Bs¢v–GF‚ÒrÀ¢w67&öÆÄÆVgBs¢#3–bv–GF‚ÓÒC3VÇ6RÀ¢v6Æ–VçEv–GF‚s¢v–GF‚Ò3BÀ¢w67&öÆÅv–GF‚s¢v–GF‚Ò3B²ƒ#3–bv–GF‚ÓÒC3VÇ6R’À¢vFFTÆVgBs¢v–GF‚Ò"ÂvFFU&–v‡Bs¢v–GF‚Ò‡ÒÀ¢vfö÷D6Æ–VçEv–GF‚s¢v–GF‚Ò3BÂvfö÷E67&öÆÅv–GF‚s¢v–GF‚Ò3BÀ¢wvW"s¢²vÆVgBs¢v–GF‚Ò’Âw&–v‡Bs¢v–GF‚ÒrÂwF÷s¢3Âv&÷GFöÒs¢3CGÒÀ¢v'WGFöç2s¢°¢²vF—6&ÆVBs¢fÇ6RÂvÆVgBs¢v–GF‚Ò’Âw&–v‡Bs¢v–GF‚ÒcRÀ¢wF÷s¢3Âv&÷GFöÒs¢3CBÂwv–GF‚s¢CBÂv†V–v‡Bs¢CGÒÀ¢²vF—6&ÆVBs¢G'VRÂvÆVgBs¢v–GF‚ÒcÂw&–v‡Bs¢v–GF‚ÒrÀ¢wF÷s¢3Âv&÷GFöÒs¢3CBÂwv–GF‚s¢CBÂv†V–v‡Bs¢CGÕÒÀ¢v6Æ—VBs¢fÇ6WĞ¢7VÖÖ'•öf—BÒµĞ¢–b6–FRÓÒvæF—fRræB67&VVâ–â‚wF÷W"rÂvÆVBr“ ¢7VÖÖ'•÷v–GF‚Òƒ3–bv–GF‚ÃÒC3VÇ6RC3B–b67&VVâÓÒvÆVBrVÇ6Rcs¢7VÖÖ'•öföçBÒB¢W&6VçBò ¢æ'&÷rÒ7VÖÖ'•÷v–GF‚ÃÒ7VÖÖ'•öföçB¢‚²¢7VÖÖ'•öf—BÒ·²v6Æ74æÖRs¢w7B×V–6²Ö6öçFW‡Br–bv–GF‚ÃÒC3æB67&VVâÓÒwF÷W"rVÇ6Rw7B×F÷W"Ö†÷FVÂrÀ¢wv–GF‚s¢7VÖÖ'•÷v–GF‚ÂvföçE6—¦Rs¢7VÖÖ'•öföçBÀ¢v–ÖvUv–GF‚s¢7VÖÖ'•÷v–GF‚–bæ'&÷rVÇ6Rƒ"À¢v6÷•v–GF‚s¢7VÖÖ'•÷v–GF‚–bæ'&÷rVÇ6R7VÖÖ'•÷v–GF‚¢ãrÀ¢v6÷•v–GF…&F–òs¢–bæ'&÷rVÇ6RãrÀ¢w7F6¶VBs¢æ'&÷rÂwVW'”æ'&÷rs¢æ'&÷wÕĞ¢öffW%ö7F–öåöf—BÒµĞ¢–b6–FRÓÒvæF—fRræB67&VVâÓÒv†÷FVÂs ¢öffW%÷v–GF‚Òv–GF‚Ò3b–bv–GF‚ÃÒC3VÇ6RcS ¢öffW%öföçBÒB¢W&6VçBò ¢öffW%öæ'&÷rÒöffW%÷v–GF‚ÃÒöffW%öföçB¢#"²¢öffW%ö7F–öåöf—BÒ·²wFW‡Bs¢FW‡BÂwv–GF‚s¢öffW%÷v–GF‚À¢vf–Æ&ÆUv–GF‚s¢öffW%÷v–GF‚Âv6öçF–æW%v–GF‚s¢öffW%÷v–GF‚À¢vföçE6—¦Rs¢öffW%öföçBÀ¢v7F–öåv–GF‚s¢öffW%÷v–GF‚–böffW%öæ'&÷rVÇ6RÀ¢v7F–öåv–GF…&F–òs¢–böffW%öæ'&÷rVÇ6RòöffW%÷v–GF‚À¢wVW'”æ'&÷rs¢öffW%öæ'&÷rÂv7F–öäöä÷vå&÷rs¢öffW%öæ'&÷rÀ¢v÷WG6–FRs¢fÇ6WÒf÷"FW‡B–â‚}	-½-Â-=rÂ}	-½Ò-=r•Ğ¢&VF&ÆU÷FW‡BÒ·²wFW‡Bs¢tf—‡GW&R6öæF—F–öârÂv6Æ—VBs¢fÇ6RÀ¢v'&ö¶Våv÷&G2s¢fÇ6RÂv÷fW&Æ–ætÆ–æW2s¢fÇ6RÂv¶–æBs¢v÷F†W"rÂv6&D–Bs¢æöæWÕĞ¢–bæÖRç7F'G7v—F‚‚væF—fR×÷WÖæ–v‡G2Òr“ ¢&VF&ÆU÷FW‡BæW‡FVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢FW‡BÂv¶–æBs¢væ–v‡B×&W6WBwĞ¢f÷"FW‡B–â‚srİí}]’rÂsİí}]’rÂsBİí}]’rÂs#İí}Âr’¢&W7VÇEö6&Eö–G2ÒµĞ¢&W7VÇEöæ÷F–6RÒ²wf—6–&ÆT6÷VçBs¢ÂvgFW$&F6‚s¢fÇ6RÂv6&Dæ÷F–6T6÷VçBs¢ÂwFW‡Bs¢rwĞ¢–b6–FRÓÒvæF—fRræB67&VVâÓÒw&W7VÇG2ræBæ÷BæÖRç7F'G7v—F‚‚€¢væF—fRÖf–ÇFW"ÖV×G’ÒrÂvæF—fR×&W7VÇG2ÖÆöF–ærÒrÂvæF—fR×&W7VÇG2ÖW'&÷"ÒrÀ¢væF—fR×&W7VÇG2×'F–ÂÖV×G’ÒrÂvæF—fRÖ–æ—F–ÂÖff÷&—FW2Òr’“ ¢&W7VÇEö6&Eö–G2Ò…³3cs…Ò–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖ6öçFVçB×&W7VÇG2Òr¢VÇ6RÆ—7B‡&ævRƒÂ#B’’–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fR×&W7VÇG2Ö&÷VæFVBÒr¢VÇ6R³"Â5Ò–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖ'VFvWB×&W7VÇG2Òr¢VÇ6R³ÂEÒ–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖf–ÇFW'2Ö7F—fRÒr’VÇ6R³Â"Â2ÂEÒ¢f—‡GW&Uö†÷FVÇ2Ò°¢‚td•…EU$RÆwVæ&V6‚&W6÷'BrÂ}
+-İM-İ½’İíÍ]rÂ}
+=½Í---­½í}]İâr’À¢‚td•…EU$RÖ&–æ&’†÷FVÂrÂ}
+-İM-İ½’İíÍ]rÂ}	}--­‚‚=mİ²r’À¢‚td•…EU$R6V6–FRv&FVâ†÷FVÂb&W6–FVæ6RrÂ}
+-İM-İ½’İíÍ]rÂ}	}--­‚r’À¢‚td•…EU$RÆwVæ6öÆÆV7F–öâ&VÖ—VÒ&W6÷'Bb&—fFRf–ÆÆ2rÀ¢}	-½½M-=Íòı½ÍİıÍ‚+r-í’]ÒrÂ}
+=½Í---­½í}]İâr•Ğ¢f÷"6&Eö–B–â&W7VÇEö6&Eö–G3 ¢–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖ6öçFVçB×&W7VÇG2Òr“ ¢f7G2Ò²w&W7VÇB×F—FÆRs¢u$”5T•DU2„õDTÂrÂw&W7VÇBÖÆö6F–öâs¢}
+-Í=²Â
+-=mòrÀ¢w&W7VÇBÖFFRs¢s"í­"+rrİí}]’rÂw&W7VÇB×&ööÒs¢}
+-İM-İ½’İíÍ]rÀ¢w&W7VÇBÖÖVÂs¢}
+=½Í---­½í}]İârÂw&W7VÇBÖ÷W&F÷"s¢td•…EU$REbrÀ¢w&W7VÇB×'G’s¢}}"-}í½½RwĞ¢VÇ6S ¢&÷VæFVBÒ6&Eö–BãÒ ¢†÷FVÂÒf—‡GW&Uö†÷FVÇ5²†6&Eö–BÒ’RB–b&÷VæFVBVÇ6R6&Eö–BÒĞ¢F—FÆRÒbtd”5D”ôäÂÆöFVB†÷FVÂ¶6&Eö–BÒ“““£&GÒr–b&÷VæFVBVÇ6R†÷FVÅ³Ğ¢FW&Ö–æÂÒÆöv–6ÅöæÖRç7F'G7v—F‚‚‚væF—fR×FW&Ö–æÂÒrÂvæF—fRÖ6ÆVæF"×6–ævÆR×&ævRÒr’¢÷W&F÷"Òtd•…EU$RäU‚r–bFW&Ö–æÂVÇ6Rtd•…EU$REbp¢f7G2Ò²w&W7VÇB×F—FÆRs¢F—FÆRÂw&W7VÇBÖÆö6F–öâs¢}
+-=mò+r	­]Í]rÀ¢w&W7VÇBÖFFRs¢s’í­"+rrİí}]’r–bFW&Ö–æÂVÇ6Rs"í­"+rrİí}]’rÂw&W7VÇB×&ööÒs¢†÷FVÅ³ÒÀ¢w&W7VÇBÖÖVÂs¢†÷FVÅ³%ÒÂw&W7VÇBÖ÷W&F÷"s¢÷W&F÷"Âw&W7VÇB×'G’s¢}}"-}í½½RwĞ¢&VF&ÆU÷FW‡BæW‡FVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢fÇVRÂv¶–æBs¢¶–æBÂv6&D–Bs¢6&Eö–GĞ¢f÷"¶–æBÂfÇVR–âf7G2æ—FV×2‚’¢&W7VÇEöæ÷F–6RÒ²wf—6–&ÆT6÷VçBs¢ÂvgFW$&F6‚s¢G'VRÂv6&Dæ÷F–6T6÷VçBs¢À¢wFW‡Bs¢}
+m]İ²rıí­(	B}-]Â-=‚-]R-=-í"â	ı]]B}ı-­í’ıí-]Âm]İ2Âİ½}R‚í-"ı­]-Â-­½í}òíı}-]½Íİ½RMíı½-²âwĞ¢&VF&ÆU÷FW‡BæVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢&W7VÇEöæ÷F–6U²wFW‡BuÒÂv¶–æBs¢w&W7VÇBÖæ÷F–6RwÒ¢–b6–FRÓÒvæF—fRræB67&VVâÓÒwF÷W"s ¢&VF&ÆU÷FW‡BæW‡FVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢FW‡GÒf÷"FW‡B–â€¢}
+-=-²rÂ}
+-=íı]-írÂ}	íı}-]½Íİ½RMíı½-²r’¢–bæÖRç7F'G7v—F‚‚væF—fRÖfÖ–Ç’Òr“ ¢7FFRÒæÖU¶ÆVâ‚væF—fRÖfÖ–Ç’Òr“¥Òç7Æ—B‚rÒrÂ•³Ğ¢'G’Ò²ss¢s-}í½½’rÂss¢s-}í½½’²]İí¢rÀ¢s"s¢s-}í½½’²"]İ­rÂs2s¢s-}í½½’²2]İ­rÀ¢vÆ–VBs¢s-}í½½’²2]İ­rÂw&Wf–Wrs¢s-}í½½’²2]İ­wÕ·7FFUĞ¢&VF&ÆU÷FW‡BæVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢'G—Ò¢–b7FFRÓÒw&Wf–Wrs ¢&VF&ÆU÷FW‡BæW‡FVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢FW‡GÒf÷"FW‡B–â€¢}	ıí-]Í-R-í}-M]-]’İM-2-í}-]İòrÀ¢}	ıíM--]M-R-í}-M]-]’İM-2-í}-]İòâr’¢–bæÖRç7F'G7v—F‚‚væF—fRÖ–æ—F–ÂÖff÷&—FW2Òr“ ¢&VF&ÆU÷FW‡BÒ·²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢FW‡GÒf÷"FW‡B–â€¢}	ıí¢]İR}ı=­½‚rÂ}	İ}İ-Rıí­rÀ¢}	-½]-R=½í-òıí]}M­‚‚İmÍ-R*½	İ-‚-=¼+²âr•Ğ¢6÷VçEöf—BÒ²wFW‡Bs¢}	ıí¢]İR}ı=­½‚r–bæÖRç7F'G7v—F‚‚væF—fRÖ–æ—F–ÂÖff÷&—FW2Òr’VÇ6RsBí-]½òrÀ¢wFööÆ&"s¢²vÆVgBs¢Âw&–v‡Bs¢v–GF‚ÒÒÀ¢wFW‡E&V7G2s¢·²vÆVgBs¢Âw&–v‡Bs¢ÂwF÷s¢Âv&÷GFöÒs¢CÕÒÀ¢v6öçG&öÇ2s¢·²wFW‡Bs¢}
+M½Í-²rÂvÆVgBs¢v–GF‚ÒÂw&–v‡Bs¢v–GF‚ÒÀ¢wF÷s¢Âv&÷GFöÒs¢SGÕÒÀ¢v÷WG6–FRs¢fÇ6RÂv÷fW&Æs¢fÇ6WÒ–b6–FRÓÒvæF—fRræB67&VVâÓÒw&W7VÇG2rVÇ6RæöæP¢FW7F–æF–öåöf—BÒæöæP¢–bæÖRç7F'G7v—F‚‚‚væF—fRÖFW7F–æF–öâÖ6†ö–6RÒrÂvæF—fRÖFW7F–æF–öâÖ6öæf—&ÒÒr’“ ¢&VF&ÆU÷FW‡BæVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢}	í-Í]İwÒ¢–bæÖRç7F'G7v—F‚‚væF—fRÖFW7F–æF–öâÖ6öæf—&ÒÒr“ ¢æ'&÷rÒW&6VçBÓÒ#æBv–GF‚–âƒ3cÂ3“ÂC3¢föçBÒ2¢W&6VçBò ¢f–Æ&ÆRÒ#s–bv–GF‚ÂscVÇ6Rƒ ¢FW7F–æF–öåöf—BÒ²vf–Æ&ÆRs¢f–Æ&ÆRÂvföçE6—¦Rs¢föçBÂwVW'”æ'&÷rs¢æ'&÷rÀ¢w7F6¶VBs¢æ'&÷rÂv÷WG6–FRs¢fÇ6RÂv÷fW&Æs¢fÇ6RÀ¢v7F–öç2s¢·²wFW‡Bs¢FW‡BÂvÆVgBs¢–bæ'&÷rVÇ6R–æFW‚¢3RÀ¢w&–v‡Bs¢#s–bæ'&÷rVÇ6R–æFW‚¢3R²#RÀ¢wF÷s¢–æFW‚¢S"–bæ'&÷rVÇ6RÂv&÷GFöÒs¢–æFW‚¢S"²CB–bæ'&÷rVÇ6RCBÀ¢wv–GF‚s¢#s–bæ'&÷rVÇ6R#RÂv†V–v‡Bs¢CBÂvF—6&ÆVBs¢fÇ6WĞ¢f÷"–æFW‚ÂFW‡B–âVçVÖW&FR‚‚}	í---ÂrÂ}	}Í]İ-Âr’•×Ğ¢&VF&ÆU÷FW‡BæW‡FVæB‡²¢§&VF&ÆU÷FW‡E³ÒÂwFW‡Bs¢FW‡GÒf÷"FW‡B–â‚}	í---ÂrÂ}	}Í]İ-Âr’¢÷WöVF—F÷"Ò‚vFFW2r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fR×÷WÖ6ÆVæF"Òr¢VÇ6Rvæ–v‡G2r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fR×÷WÖæ–v‡G2Òr¢VÇ6RwG&fVÆW'2r–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖfÖ–Ç’Òr’æBæ÷BÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖfÖ–Ç’ÖÆ–VBÒr¢VÇ6RvFW7F–æF–öâr–bÆöv–6ÅöæÖRç7F'G7v—F‚‚væF—fRÖFW7F–æF–öâÒr’VÇ6RæöæR¢÷Wöf—BÒ²vVF—F÷"s¢÷WöVF—F÷"ÂvÖöFÂs¢G'VRÂv÷WG6–FRs¢fÇ6RÀ¢wæVÄ÷fW&fÆ÷rs¢fÇ6RÂvf–æEf—6–&ÆRs¢G'VRÂvf–æDVæ&ÆVBs¢G'VRÀ¢vf–æD†V–v‡Bs¢SÂw7V&Ö—D6÷VçBs¢Ò–b÷WöVF—F÷"VÇ6RæöæP¢FW&Ö–æÅ÷7FFRÒæöæP¢–bæÖRç7F'G7v—F‚‚væF—fR×FW&Ö–æÂÒr“ ¢7FGW2ÒæÖRç7Æ—B‚rÒr•³%Ğ¢ÖW76vRÒ‚rr–b7FGW2ÓÒv6ö×ÆWFRrVÇ6Rt’…EEC2p¢–b7FGW2ÓÒw'F–ÂrVÇ6P¢}	İR=M½íÂ}-]-Âıí¢â	ıí½=}]İİ½Rı]M½ím]İòí]İ]İ²âr¢ÆW'BÒ‚}	ıí¢}-]ÒİRıí½İí-Íâp¢}	ıí­}İ²ı]M½ím]İó¢äU‚â	İR-R-í}İ­‚}-]½‚ıí£¢p¢uF÷W'f—6÷"‚æG&öÖVFâr–b7FGW2ÓÒw'F–ÂrVÇ6P¢}	İR=M½íÂ}-]-Âıí¢p¢}	ıí½=}]İİ½Rı]M½ím]İòí]İ]İ²â	}Í]İ-R=½í-ò½‚ıí--í-Rıí¢âp¢}	}Í]İ-Â‚ıí--í-Âr–b7FGW2ÓÒvW'&÷"rVÇ6Rrr¢FW&Ö–æÅ÷7FFRÒ²w7FGW2s¢7FGW2ÂvÖW76vRs¢ÖW76vRÂw6V&6„vVæW&F–öâs¢À¢w6V&6…7F'G2s¢Âv÷F†W$6ÆÇ2s¢ÂvÆW'Ef—6–&ÆRs¢7FGW2Òv6ö×ÆWFRrÀ¢vÆW'EFW‡Bs¢ÆW'BÀ¢v÷væW%4„#Sbs¢6VÆbææF—fU²vf–ÆW2uÕ²v'&–FvRæ§2u×Ğ¢6öç6VçEöf—BÒæöæP¢–b67&VVâÓÒvÆVBs ¢6öç6VçEöf—BÒ²vÆ&VÂs¢²vÆVgBs¢‚Âw&–v‡Bs¢v–GF‚Ò‚ÂwF÷s¢CCÂv&÷GFöÒs¢C“bÀ¢wv–GF‚s¢v–GF‚Ò3bÂv†V–v‡Bs¢SgÒÀ¢v6†V6¶&÷‚s¢²vÆVgBs¢#’Âw&–v‡Bs¢C’ÂwF÷s¢CSÂv&÷GFöÒs¢CsÀ¢wv–GF‚s¢#Âv†V–v‡Bs¢#ÒÀ¢v÷vç46†V6¶&÷‚s¢G'VRÂw&WV—&VBs¢G'VRÂv6öçF–æVBs¢G'VRÀ¢vfö7W4÷WFÆ–æRs¢6–FRÓÒvæF—fRwĞ¢66U²vg&ÖW2uÒæVæB‡²wFW&Ö–æÅ7FFRs¢FW&Ö–æÅ÷7FFRÂvf–ÆRs¢æÖRÂw6†#Sbs¢&VÖ÷FRæF–vW7B‡ær’Âw6–FRs¢6–FRÂw67&VVâs¢67&VVâÀ¢wf–Ww÷'Ev–GF‚s¢v–GF‚Âwf–Ww÷'D†V–v‡Bs¢s#–b6†÷'EöFW6·F÷VÇ6R“À¢vFö7VÖVçEv–GF‚s¢v–GF‚ÂwFW‡EW&6VçBs¢W&6VçBÂv÷fW&fÆ÷rs¢fÇ6RÂw7FvT†–FFVâs¢fÇ6RÀ¢w÷Wf—Bs¢÷Wöf—BÂv6ÆVæF$f—Bs¢6ÆVæF%öf—BÂvFW7F–æF–öäf—Bs¢FW7F–æF–öåöf—BÀ¢w7VÖÖ'”f—Bs¢7VÖÖ'•öf—BÂv6öç6VçDf—Bs¢6öç6VçEöf—BÀ¢vöffW$7F–öäf—Bs¢öffW%ö7F–öåöf—BÀ¢w&W7VÇD6&D–G2s¢&W7VÇEö6&Eö–G2Âw&W7VÇDæ÷F–6Rs¢&W7VÇEöæ÷F–6RÀ¢v'WGFöç2s¢·²wFW‡Bs¢}	¢ıÍ]-Âıí­rÂv6Æ—VBs¢fÇ6WÕÒ–bæÖRç7F'G7v—F‚‚væF—fRÖ–æ—F–ÂÖff÷&—FW2Òr’VÇ6RµÒ–bæÖRç7F'G7v—F‚‚‚væF—fR×7F'GW×VæF–ærÒrÂvæF—fR×&W7VÇG2ÖÆöF–ærÒr’’VÇ6R·²wFW‡Bs¢tf—‡GW&R7F–öârÂv6Æ—VBs¢fÇ6WÕÒÀ¢w&VF&ÆUFW‡Bs¢&VF&ÆU÷FW‡BÀ¢v†VFW$f—Bs¢²v÷WG6–FRs¢fÇ6RÂv÷fW&Æs¢fÇ6WÒÂv6÷VçDf—Bs¢6÷VçEöf—BÀ¢w6÷'Df—Bs¢²wFW‡Bs¢tf—‡GW&R6÷'BrÂvf–Æ&ÆRs¢#ÂwFW‡Ev–GF‚s¢ƒÒ–b67&VVâÓÒw&W7VÇG2rVÇ6RæöæRÀ¢v'VFvWD–çWG2s¢·²wFW‡Bs¢FW‡BÂvf–Æ&ÆRs¢#ÂwFW‡Ev–GF‚s¢ƒÂv6Æ—VBs¢fÇ6RÀ¢vV&æ6Rs¢wFW‡Ff–VÆBrÂvföçBs¢bsS·6—¦S¦w×‚W&÷÷'BÂ7—7FVÒ×V’Â6ç2×6W&–bwĞ¢f÷"FW‡B–â‚srÂsSr•Ò–b†5ö'VFvWBVÇ6RµÒÀ¢v'VFvWD6öÇVÖç2s¢ƒ"–bW&6VçBÓÒVÇ6R’–b67&VVâÓÒw&W7VÇG2ræBv–GF‚ãÒsc‚VÇ6RæöæRÀ¢w&–6W2s¢µÒ–b67&VVâÓÒw7F'GWr÷"æÖRç7F'G7v—F‚‚‚væF—fRÖfÖ–Ç’ÒrÂvæF—fRÖf–ÇFW"ÖV×G’ÒrÂvæF—fR×&W7VÇG2ÖÆöF–ærÒrÂvæF—fR×&W7VÇG2ÖW'&÷"ÒrÂvæF—fR×&W7VÇG2×'F–ÂÖV×G’ÒrÂvæF—fRÖ–æ—F–ÂÖff÷&—FW2ÒrÂvæF—fRÖ–æ—F–Â×6V&6‚×&WGW&âÒr’’VÇ6R·²v÷fW&fÆ÷rs¢fÇ6RÂvg&vÖVçFVBs¢fÇ6RÂwFW‡E66ÆUfW&–f–VBs¢G'VRÀ¢vföçE6—¦Rs¢#’¢W&6VçBòÂv&6VÆ–æTföçE6—¦Rs¢#—Õ×Ò¢&W÷'E²v66W2uÒæVæB†66R¢6öçFVçG5²vWf–FVæ6Rö66WFæ6Ræ§6öâuÒÒ&VÖ÷FRæ§6öåö'—FW2‡&W÷'B¢6öçFVçG5²vWf–FVæ6Röf—‡GW&Ræ§6öâuÒÒ"w²'66÷R#¢&f–7F–öæÂöffÆ–æRfW&–f–W"f—‡GW&R'ÕÆâp¢–b×WFFS¢×WFFR†6öçFVçG2¢÷WGWBÒ–òä'—FW4”ò‚¢v—F‚¦—f–ÆRå¦—f–ÆR†÷WGWBÂwrr’2&6†—fS ¢f÷"æÖRÂfÇVR–â6öçFVçG2æ—FV×2‚“¢&6†—fRçw&—FW7G"†æÖRÂfÇVR¢&WGW&â÷WGWBævWGfÇVR‚ ¢FVb&VE÷&Wf–Wr‡6VÆbÂ6öçFVçBÂF&vWCÒw&Wf–Wrr“ ¢–âÒ²¢§6VÆbææF—fU÷–âÂw6÷W&6Uõ¤•÷6†#Sbs¢&VÖ÷FRæF–vW7B†6öçFVçB—Ğ¢v—F‚F6‚æö&¦V7B‡&VÖ÷FRÂtäD•dUô44UDä4RrÂ–â“ ¢&WGW&âV"ç&W&UöæF—fU÷¦—†6öçFVçBÂ6VÆbçÂvBr¢CÂ–å²w6÷W&6Uõ¤•÷6†#SbuÒÂ6VÆbç&ö÷BòF&vWB ¢FVb76W'EöWf–FVæ6U÷&V¦V7FVB‡6VÆbÂ6†ævW2“ ¢2W†W&6—6R&VæFW&VB&ööbF×W&–ærv—F†÷WB&WVFVFÇ’W‡G&7F–ærƒSP¢2Ç&VG’×fW&–f–VB–ÆöBf–ÆW3²6ö×ÆWFR¤•FW7G2&WF–âF†B&÷VæF'’à¢v—F‚¦—f–ÆRå¦—f–ÆR†–òä'—FW4”ò‡6VÆbç&Wf–Wuö&6†—fR‚’’’2&6†—fS ¢÷&–v–æÂÒ§6öâæÆöG2†&6†—fRç&VB‚vWf–FVæ6Rö66WFæ6Ræ§6öâr’¢6Æ726†ævVDWf–FVæ6S ¢FVbõö–æ—Eõò‡6VÆbÂ&W÷'B“¢6VÆbç&W÷'BÒ&VÖ÷FRæ§6öåö'—FW2‡&W÷'B¢FVb&VB‡6VÆbÂæÖR“ ¢&WGW&â6VÆbç&W÷'B–bæÖRÓÒvWf–FVæ6Rö66WFæ6Ræ§6öârVÇ6R&6†—fRç&VB†æÖR¢FVb–æföÆ—7B‡6VÆb“¢&WGW&â&6†—fRæ–æföÆ—7B‚¢f÷"–æFW‚Â6†ævR–âVçVÖW&FR†6†ævW2“ ¢&W÷'BÒ6÷’æFVW6÷’†÷&–v–æÂ“²6†ævR‡&W÷'B¢v—F‚6VÆbç7V%FW7B†–æFWƒÖ–æFW‚’Â6VÆbæ76W'E&—6W2…fÇVTW'&÷"“ ¢V"ææF—fUöWf–FVæ6R„6†ævVDWf–FVæ6R‡&W÷'B’Â6VÆbçÂ6VÆbææF—fR ¢FVbFW7Eö÷væW%ö6öÖÖæEö†5öæõ÷F&vWEö÷%÷&VFV6W76÷%ö&wVÖVçB‡6VÆb“ ¢ÒV"æ6†V6¶VE÷&WVW7B‡6VÆbæWfVçBÂ6VÆbæVçb¢6VÆbæ76W'DWVÂ‡²w6÷W&6U÷6†uÒÂvr¢C¢6VÆbæ76W'DWVÂ‡V"å$TÄT4RÂw&VÆV6R÷6V&6ƒ2ÖFW6–vâ×c"r¢6VÆbæ76W'DWVÂ‡&VÖ÷FRå$õUDRÂrõ÷&Wf–Wr÷6V&6ƒ2ÖFW6–vâ×c"Ö6æF–FFRòr¢6VÆbæ76W'DWVÂ‡&VÖ÷FRå$TDT4U54õ%õ4õU$4RÂsƒCƒ“vfCSss†FV&SC#sC“CS##ssvcƒs†Cƒ6Rr¢6VÆbæ76W'DWVÂ‡&VÖ÷FRå$TDT4U54õ%õ%TâÂ3“3Cc#SCS"¢6VÆbæ76W'DWVÂ‡&VÖ÷FRå$TDT4U54õ%ôD”tU5BÂ6VÆbæF–vW7B ¢FVbFW7E÷&W&F–öåö†5öæõ÷V&Æ–6F–öåöWF†÷&—G•÷v—F†÷WE÷&VÅ÷–ç2‡6VÆb“ ¢v—F‚F6‚æö&¦V7B‡&VÖ÷FRÂtäD•dUô44UDä4RrÂæöæR“ ¢v—F‚6VÆbæ76W'E&—6W5&VvW‚…fÇVTW'&÷"ÂvæF—fUö66WFæ6Uöæ÷E÷–ææVBr“¢V"æ6†V6¶VE÷&WVW7B‡6VÆbæWfVçBÂ6VÆbæVçb¢v—F‚6VÆbæ76W'E&—6W5&VvW‚…fÇVTW'&÷"ÂvæF—fUö66WFæ6Uöæ÷E÷–ææVBr“¢&VÖ÷FRçfÆ–FFR‡6VÆbç¢v—F‚6VÆbæ76W'E&—6W5&VvW‚…fÇVTW'&÷"ÂvæF—fUö66WFæ6Uöæ÷E÷–ææVBr“ ¢V"æFW&—fR‡6VÆbç6÷W&6RÂ6VÆbæ&6VÆ–æRÂ6VÆbç&ö÷BòwVç–ææVBrÂ6VÆbçÂvRr¢cB¢6VÆbæ76W'DfÇ6R‚‡6VÆbç&ö÷BòwVç–ææVBr’æW†—7G2‚’ ¢FVbFW7Eö6ö×ÆWFU÷&Wf–Wu÷¦—÷&W6W'fW5öW†7EöæF—fU÷–ÆöB‡6VÆb“ ¢f–ÆW2Ò6VÆbç&VE÷&Wf–Wr‡6VÆbç&Wf–Wuö&6†—fR‚’¢6VÆbæ76W'DWVÂ†f–ÆW2Â&VÖ÷FRæ–çfVçF÷'’‡6VÆbç6÷W&6Ròw–ÆöBr’¢6VÆbæ76W'DWVÂ‡&VÖ÷FRæ–çfVçF÷'’‡6VÆbç&ö÷Bòw&Wf–Wr÷&VÆV6R÷–ÆöBr’Âf–ÆW2 ¢FVbFW7Eö6öÖÖæE÷&WVW7E÷&÷vFW5÷fW&–f–VE÷G&VU÷F‡&÷Vv…÷&W&Uö–çWG2‡6VÆb“ ¢–×÷'B6V&6ƒ5÷&Wf–Wu÷V&Æ—6‚26†&V@¢6öçFVçBÒ6VÆbç&Wf–Wuö&6†—fR‚¢–âÒ²¢§6VÆbææF—fU÷–âÂw6÷W&6Uõ¤•÷6†#Sbs¢&VÖ÷FRæF–vW7B†6öçFVçB—Ğ¢ÒV"æ6†V6¶VE÷&WVW7B‡6VÆbæWfVçBÂ6VÆbæVçb¢6VÆbæ76W'Dæ÷D–â‚w6÷W&6U÷G&VRrÂ’2F†—2—2F†R7GVÂWF†÷&—¦VB6öÖÖæB6†Rà¢’ÒÖö6²‚“²’æF÷væÆöBç6–FUöVffV7BÒÆÖ&F'F–f7C¢6öçFVçB–b'F–f7BÓÒCSbVÇ6R"v&6VÆ–æRf—‡GW&Rp¢FVb&6VÆ–æR†6öçFVçBÂ&WVW7BÂG&VRÂ¦—ö†6‚ÂF—&V7F÷'’“ ¢6VÆbæ76W'DWVÂ‡&WVW7E²v'F–f7Eö–BuÒÂ&VÖ÷FRäõ$”t”äÅô%D”d5B¢6‡WF–Âæ6÷—G&VR‡6VÆbæ&6VÆ–æRÂF—&V7F÷'’òw&VÆV6Rr¢v÷&²Ò6VÆbç&ö÷Bòw&W&RÖ–çWG2s²v÷&²æÖ¶F—"‚¢v—F‚F6‚æö&¦V7B‡&VÖ÷FRÂtäD•dUô44UDä4RrÂ–â’ÂF6‚æö&¦V7B‡6†&VBÂw&W&U÷¦—rÂ&6VÆ–æR“ ¢&VG’Â&6†—fRÒV"ç&W&Uö–çWG2†’ÂÂvBr¢CÂ–å²w6÷W&6Uõ¤•÷6†#SbuÒÂv÷&²¢6VÆbæ76W'DWVÂ‡&VÖ÷FRçfW&–g’‡v÷&²òvFW&—fVBrÂ&VG’’Â&VÖ÷FRæ–çfVçF÷'’‡v÷&²òvFW&—fVB÷–ÆöBr’¢6VÆbæ76W'DWVÂ‡&VG•²w6÷W&6U÷G&VRuÒÂvBr¢C¢6VÆbæ76W'Dæ÷D–â‚w6÷W&6U÷G&VRrÂ¢6VÆbæ76W'DWVÂ‡&VG•²v&6†—fU÷6†#SbuÒÂ&VÖ÷FRæF–vW7B†&6†—fR’¢6VÆbæ76W'DWVÂ†’æF÷væÆöBæ6ÆÅö&w5öÆ—7E³Òæ&w2ÂƒCSbÂ’ ¢FVbFW7E÷&Wf–Wu÷¦—÷&V¦V7G5ö–FVçF—G•÷66÷UöæEö'—FUöG&–gB‡6VÆb“ ¢FVbÖWFö6†ævR†6öçFVçG2Â¶W’ÂfÇVR“ ¢ÖWFÒ§6öâæÆöG2†6öçFVçG5²v6öçG&öÂö–çfVçF÷'’æ§6öâuÒ“²ÖWF¶¶W•ÒÒfÇVP¢6öçFVçG5²v6öçG&öÂö–çfVçF÷'’æ§6öâuÒÒ&VÖ÷FRæ§6öåö'—FW2†ÖWF¢×WFF–öç2Ò¶ÆÖ&F3¢ÖWFö6†ævR†2Âw6÷W&6U÷6†rÂvbr¢C’À¢ÆÖ&F3¢ÖWFö6†ævR†2ÂwV&Æ–6F–öåöWF†÷&—G’rÂG'VR’À¢ÆÖ&F3¢ÖWFö6†ævR†2Âw'VåöGFV×BrÂs"r’À¢ÆÖ&F3¢2çWFFR‡²w–ÆöB÷&÷F÷G—R×6V&6‚öFFæ§2s¢"vf÷&V–vâ&÷f–FW"'—FRwÒ’À¢ÆÖ&F3¢2çWFFR‡²w–ÆöB÷f—7VÂ×6V&6‚öæF—fR×c"÷Væ¶æ÷vâæ§2s¢"wVæ&÷fVBwÒ’À¢ÆÖ&F3¢2çWFFR‡²v6öçG&öÂ÷Væ¶æ÷vâç’s¢"wVæ&÷fVBwÒ’À¢ÆÖ&F3¢2çWFFR‡²rââöW66Rs¢"wVæ&÷fVBwÒ•Ğ¢f÷"’Â×WFFR–âVçVÖW&FR†×WFF–öç2“ ¢v—F‚6VÆbç7V%FW7B†–æFWƒÖ’’Â6VÆbæ76W'E&—6W2…fÇVTW'&÷"“¢6VÆbç&VE÷&Wf–Wr‡6VÆbç&Wf–Wuö&6†—fR†×WFFR’Âv&B×¦—Òr²7G"†’’ ¢FVbFW7E÷&VæFW&VEöWf–FVæ6U÷&WV—&W5ögVÆÅöÖG&—…öf7GVÅö¦÷W&æW•öæEö†6†W2‡6VÆb“ ¢FVb&W÷'Eö6†ævR†6öçFVçG2ÂÖöF–g’“ ¢&W÷'BÒ§6öâæÆöG2†6öçFVçG5²vWf–FVæ6Rö66WFæ6Ræ§6öâuÒ“²ÖöF–g’‡&W÷'B¢6öçFVçG5²vWf–FVæ6Rö66WFæ6Ræ§6öâuÒÒ&VÖ÷FRæ§6öåö'—FW2‡&W÷'B¢ÖöF–f–6F–öç2Ò¶ÆÖ&F#¢"çWFFR‡²w6÷W&6U4„s¢vbr¢CÒ’ÂÆÖ&F#¢%²v66W2uÒç÷‚’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÒçWFFR‡²w6VÆV7FVDgVÆÅF÷FÂs¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÕ²w&WF–æVD6öçFVçBuÒçWFFR‡²v†÷FVÄ–Bs¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÕ²w&WF–æVD6öçFVçBuÒçWFFR‡²w76—fU7WÆ–W$÷W&F–öç2s¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÕ²v6öçF7EfÆ–FF–öâuÒçWFFR‡²v–çfÆ–E&Wf–WtFVÇFs¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÕ²v6öçF7EfÆ–FF–öâuÒçWFFR‡²w&VÅ7V&Ö—76–öç2s¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÒçWFFR‡²w&VÄÆVE7V&Ö—76–öç2s¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²w&ööbuÒçWFFR‡²vÆö6Äf–ÇFW$W‡G&6V&6†W2s¢Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³ÒçWFFR‡²v÷fW&fÆ÷rs¢G'VWÒ’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³Õ²v'WGFöç2uÕ³ÒçWFFR‡²v6Æ—VBs¢G'VWÒ’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³Õ²w&–6W2uÕ³ÒçWFFR‡²vg&vÖVçFVBs¢G'VWÒ’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³Õ²w&–6W2uÕ³ÒçWFFR‡²wFW‡E66ÆUfW&–f–VBs¢fÇ6WÒ’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³Õ²w&–6W2uÕ³ÒçWFFR‡²vföçE6—¦Rs¢3Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²vg&ÖW2uÕ³ÒçWFFR‡²w6†#Sbs¢vbr¢cGÒ’À¢ÆÖ&F#¢æW‡B†g&ÖRf÷"g&ÖR–â%²v66W2uÕ³Õ²vg&ÖW2uĞ¢–bg&ÖU²vf–ÆRuÒç7F'G7v—F‚‚væF—fRÖ6öçFVçBÖ6öçF7BÒr’¢²v6öç6VçDf—BuÒçWFFR‡²v6öçF–æVBs¢fÇ6WÒ’À¢ÆÖ&F#¢æW‡B†g&ÖRf÷"g&ÖR–â%²v66W2uÕ³Õ²vg&ÖW2uĞ¢–bg&ÖU²vf–ÆRuÒç7F'G7v—F‚‚vFöæ÷"ÖÆVBÒr’¢²v6öç6VçDf—BuÒçWFFR‡²vfö7W4÷WFÆ–æRs¢G'VWÒ’À¢ÆÖ&F#¢æW‡B†g&ÖRf÷"g&ÖR–â%²v66W2uÕ³Õ²vg&ÖW2uĞ¢–bg&ÖU²vf–ÆRuÒç7F'G7v—F‚‚vFöæ÷"×&W7VÇG2Òr’’çWFFR‡²v6öç6VçDf—Bs¢6÷’æFVW6÷’€¢æW‡B†g&ÖRf÷"g&ÖR–â%²v66W2uÕ³Õ²vg&ÖW2uĞ¢–bg&ÖU²vf–ÆRuÒç7F'G7v—F‚‚vFöæ÷"ÖÆVBÒr’•²v6öç6VçDf—BuÒ—Ò’À¢ÆÖ&F#¢%²v66W2uÕ³Õ²wVæW‡V7FVE&WVW7G2uÒæVæB‚v‡GG3¢òöW‡FW&æÂæ–çfÆ–Bö’r’À¢ÆÖ&F#¢"çWFFR‡²vf–ÇW&W2s¢²v6öæf—&ÖVBf–ÇW&Ru×Ò•Ğ¢f÷"’ÂÖöF–g’–âVçVÖW&FR†ÖöF–f–6F–öç2“ ¢v—F‚6VÆbç7V%FW7B†–æFWƒÖ’’Â6VÆbæ76W'E&—6W2…fÇVTW'&÷"“ ¢6VÆbç&VE÷&Wf–Wr‡6VÆbç&Wf–Wuö&6†—fR†ÆÖ&F3¢&W÷'Eö6†ævR†2ÂÖöF–g’’’Âv&BÖWf–FVæ6RÒr²7G"†’’ ¢FVbFW7E÷Gvõ÷v–GF…ö¦÷W&æW•÷&WV—&W5öW†7Eó5ög&ÖW5öæEöÆÅöÆ–6&ÆU÷&VFV6W76÷%ög&ÖW2‡6VÆb“ ¢6öçFVçBÒ6VÆbç&WfŸ=ã{h‘éì¶»§q«^u”¡™¥¹‘!•¥¡ĞõQÉÕ”¤°±…µ‰‘„Èè™É…µ”¡È¥lÁ½ÁÕÁ¥Ğt¹ÕÁ‘…Ñ”¡™¥¹‘!•¥¡Ğõ™±½…Ğ ¹…¸œ¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÁ½ÁÕÁ¥Ğt¹ÕÁ‘…Ñ”¡ÍÕ‰µ¥Ñ½Õ¹ĞõQÉÕ”¤°±…µ‰‘„Èè™É…µ”¡È¥lÁ½ÁÕÁ¥Ğt¹ÕÁ‘…Ñ”¡ÍÕ‰µ¥Ñ½Õ¹ĞôÈ¥t(€€€€€€€‘•˜¹¥¡ÑÌ¡É•Á½ÉĞ¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•ÌulÁul™É…µ•Ìt¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ  ¹…Ñ¥Ù”µÁ½ÁÕÀµ¹¥¡ÑÌ´œ¤¤(€€€€€€€¡…¹•Ì¹•áÑ•¹ ¡±…µ‰‘„Èè¹¥¡ÑÌ¡È¥lÉ•…‘…‰±•Q•áĞt¹Á½À ¤°(€€€€€€€€€€€±…µ‰‘„Èè¹¥¡ÑÌ¡È¥lÉ•…‘…‰±•Q•áĞul´Åt¹ÕÁ‘…Ñ”¡­¥¹ô½Ñ¡•Èœ¤°(€€€€€€€€€€€±…µ‰‘„Èè¹¥¡ÑÌ¡È¥lÉ•…‘…‰±•Q•áĞul´Åt¹ÕÁ‘…Ñ”¡Ñ•áĞôœÈÄƒB÷BûFB×Bäœ¤°(€€€€€€€€€€€±…µ‰‘„Èè¹¥¡ÑÌ¡È¥lÉ•…‘…‰±•Q•áĞul´Åt¹ÕÁ‘…Ñ”¡±¥ÁÁ•õQÉÕ”¤¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ}•Ù¥‘•¹•}É•©•Ñ•¡¡…¹•Ì¤((€€€‘•˜Ñ•ÍÑ}‘•ÍÑ¥¹…Ñ¥½¹}™É…µ•Í}‘•¥Í¥½¹Í}…¹‘}É•…‘…‰±•}…Ñ¥½¹Í}…É•}É•ÅÕ¥É•¡Í•±˜¤è(€€€€€€€‘•˜™É…µ”¡É•Á½ÉĞ°…Í”ôÀ¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•Ìum…Í•ul™É…µ•Ìt¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ  ¹…Ñ¥Ù”µ‘•ÍÑ¥¹…Ñ¥½¸µ½¹™¥É´´œ¤¤(€€€€€€€¡…¹•Ì€ôm±…µ‰‘„Èè™É…µ”¡È¤¹Á½À ‘•ÍÑ¥¹…Ñ¥½¹¥Ğœ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğt¹ÕÁ‘…Ñ”¡½ÕÑÍ¥‘”õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğt¹ÕÁ‘…Ñ”¡½Ù•É±…ÀõQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğt¹ÕÁ‘…Ñ”¡™½¹ÑM¥é”õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğt¹ÕÁ‘…Ñ”¡ÅÕ•Éå9…ÉÉ½ÜõQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹Ìt¹Á½À ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹ÌulÁt¹ÕÁ‘…Ñ”¡¡•¥¡ĞôĞÌ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹ÌulÁt¹ÕÁ‘…Ñ”¡İ¥‘Ñ õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹ÌulÁt¹ÕÁ‘…Ñ”¡‘¥Í…‰±•õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹ÌulÁt¹ÕÁ‘…Ñ”¡Ñ•áĞôŸBwBÔƒBÿFBûBËB×FB×B÷Bøœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‘•ÍÑ¥¹…Ñ¥½¹¥Ğul…Ñ¥½¹ÌulÅt¹ÕÁ‘…Ñ”¡±•™ĞôÀ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÉ•…‘…‰±•Q•áĞt¹Á½À ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÉ•…‘…‰±•Q•áĞul´Åt¹ÕÁ‘…Ñ”¡‰É½­•¹]½É‘ÌõQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÉ•…‘…‰±•Q•áĞul´Ít¹ÕÁ‘…Ñ”¡Ñ•áĞôŸB{FBóB×Bôœ¥t(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ}•Ù¥‘•¹•}É•©•Ñ•¡¡…¹•Ì¤((€€€‘•˜Ñ•ÍÑ}Õ¹ÍÑ…ÉÑ•‘}ÁÉ½½™}½Áå}…¹‘}É•½µÁÕÑ•‘}Ñ½½±‰…É}•½µ•ÑÉå}…É•}É•ÅÕ¥É•¡Í•±˜¤è(€€€€€€€‘•˜™É…µ”¡É•Á½ÉĞ¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•ÌulÁul™É…µ•Ìt(€€€€€€€€€€€€€€€€€€€€€€€¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ  ¹…Ñ¥Ù”µ¥¹¥Ñ¥…°µ™…Ù½É¥Ñ•Ì´œ¤¤(€€€€€€€¡…¹•Ì€ôm±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹Á½À ÁÉ•Í•…É¡9…Ù¥…Ñ¥½¹QÉÕÑ¡™Õ°œ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡ÁÉ•Í•…É¡9…Ù¥…Ñ¥½¹QÉÕÑ¡™Õ°ôÄ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¤¹ÕÁ‘…Ñ”¡ÍÉ••¸ôÍ•…É œ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÁÉ¥•Ìt¹…ÁÁ•¹¡ìÑ•áĞœè€¥¹Ù•¹Ñ•…Ù…¥±…‰¥±¥Ñäô¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥lÉ•…‘…‰±•Q•áĞulÅt¹ÕÁ‘…Ñ”¡Ñ•áĞôŸBwB×FƒBÿBûBÓFBûBÓF?F'BãFƒFFFBûBÈœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l‰ÕÑÑ½¹ÌulÁt¹ÕÁ‘…Ñ”¡Ñ•áĞôŸBcBßBóB×B÷BãFF0ƒBÓBÃFF,œ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¤¹Á½À ½Õ¹Ñ¥Ğœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥Ğt¹ÕÁ‘…Ñ”¡Ñ•áĞôœÀƒBûFB×BïB×Bäœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥Ğt¹ÕÁ‘…Ñ”¡Ñ•áÑI•ÑÌõmt¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥Ğt¹ÕÁ‘…Ñ”¡½¹ÑÉ½±Ìõmt¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥ĞulÑ½½±‰…Èt¹ÕÁ‘…Ñ”¡É¥¡ĞõQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥ĞulÑ•áÑI•ÑÌulÁt¹ÕÁ‘…Ñ”¡É¥¡ĞôÔÀÀ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥ĞulÑ•áÑI•ÑÌulÁt¹ÕÁ‘…Ñ”¡±•™ĞõQÉÕ”¤°(€€€€€€€€€€€€Œ…±Í”ÍÕµµ…Éä™±…Ì…¹¹½Ğ¡¥‘”…ÑÕ…°½Ù•É±…ÁÁ¥¹œÉ•Ñ…¹±•Ì¸(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥Ğul½¹ÑÉ½±ÌulÁt¹ÕÁ‘…Ñ”¡±•™ĞôÈÀ°É¥¡ĞôäÀ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È¥l½Õ¹Ñ¥Ğt¹ÕÁ‘…Ñ”¡½Ù•É±…ÀõQÉÕ”¥t(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ}•Ù¥‘•¹•}É•©•Ñ•¡¡…¹•Ì¤((€€€‘•˜Ñ•ÍÑ}Ñ•Éµ¥¹…±}ÍÑ…ÑÕÍ}½İ¹•É}…¹‘}é•É½}•áÑÉ…}Í•…É¡•Í}…É•}É•ÅÕ¥É•‘}¥¹}•Ù•Éå}…Í”¡Í•±˜¤è(€€€€€€€‘•˜™É…µ”¡É•Á½ÉĞ°…Í”°ÍÑ…ÑÕÌ¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•Ìum…Í•ul™É…µ•Ìt(€€€€€€€€€€€€€€€€€€€€€€€¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ  ¹…Ñ¥Ù”µÑ•Éµ¥¹…°´œ€¬ÍÑ…ÑÕÌ€¬€œ´œ¤¤(€€€€€€€¡…¹•Ì€ômt(€€€€€€€™½È…Í”¥¸É…¹” È¤è(€€€€€€€€€€€™½È­•ä°İÉ½¹œ¥¸€  ±…Ñ•AÉ•Í•¹Ñ…Ñ¥½¹Q•Éµ¥¹…±MÑ…Ñ•ÍI•Ñ…¥¹•œ°€Ä¤°(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ ±…Ñ•AÉ•Í•¹Ñ…Ñ¥½¹áÑÉ…M•…É¡•Ìœ°…±Í”¤¤è(€€€€€€€€€€€€€€€¡…¹•Ì¹•áÑ•¹ ¡±…µ‰‘„È°Œõ…Í”°¬õ­•äèÉl…Í•ÌumulÁÉ½½˜t¹Á½À¡¬¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°¬õ­•ä°ØõİÉ½¹œèÉl…Í•ÌumulÁÉ½½˜t¹ÕÁ‘…Ñ”¡í¬èÙô¤¤¤(€€€€€€€€€€€™½ÈÍÑ…ÑÕÌ¥¸€ ½µÁ±•Ñ”œ°€Á…ÉÑ¥…°œ°€•ÉÉ½Èœ¤è(€€€€€€€€€€€€€€€¡…¹•Ì¹•áÑ•¹  (€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌèÉl…Í•Ìumul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È°Œ°Ì¤¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¤¹ÕÁ‘…Ñ”¡ÍÉ••¸ôÍ•…É œ¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¤¹Á½À Ñ•Éµ¥¹…±MÑ…Ñ”œ¤¤¤(€€€€€€€€€€€€€€€™½È­•ä°İÉ½¹œ¥¸€  ÍÑ…ÑÕÌœ°€±½…‘¥¹œœ¤°€ µ•ÍÍ…”œ°€¡…¹•œ¤°(€€€€€€€€€€€€€€€€€€€€ Í•…É¡•¹•É…Ñ¥½¸œ°QÉÕ”¤°€ Í•…É¡MÑ…ÉÑÌœ°€È¤°€ ½Ñ¡•É…±±Ìœ°€Ä¤°(€€€€€€€€€€€€€€€€€€€€ …±•ÉÑY¥Í¥‰±”œ°ÍÑ…ÑÕÌ€ôô€½µÁ±•Ñ”œ¤°(€€€€€€€€€€€€€€€€€€€€ …±•ÉÑQ•áĞœ°€Õ¹•áÁ•Ñ•œ¥˜ÍÑ…ÑÕÌ€ôô€½µÁ±•Ñ”œ•±Í”€œœ¤°(€€€€€€€€€€€€€€€€€€€€ ½İ¹•ÉM!ÈÔØœ°€˜œ€¨€ØĞ¤¤è(€€€€€€€€€€€€€€€€€€€¡…¹•Ì¹…ÁÁ•¹¡±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌ°¬õ­•ä°ØõİÉ½¹œè(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€™É…µ”¡È°Œ°Ì¥lÑ•Éµ¥¹…±MÑ…Ñ”t¹ÕÁ‘…Ñ”¡í¬èÙô¤¤(€€€€€€€€€€€€€€€¡…¹•Ì¹•áÑ•¹  (€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¥lÑ•Éµ¥¹…±MÑ…Ñ”t¹ÕÁ‘…Ñ”¡½Ñ¡•É…±±Ìõ…±Í”¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¥lÑ•Éµ¥¹…±MÑ…Ñ”t¹ÕÁ‘…Ñ”¡•áÑÉ„õQÉÕ”¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¥l¡•…‘•É¥Ğt¹ÕÁ‘…Ñ”¡½ÕÑÍ¥‘”õQÉÕ”¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¥lÉ•ÍÕ±Ñ…É‘%‘Ìt¹Á½À ¤°(€€€€€€€€€€€€€€€€€€€±…µ‰‘„È°Œõ…Í”°ÌõÍÑ…ÑÕÌè™É…µ”¡È°Œ°Ì¥lÁÉ¥•Ìt¹±•…È ¤¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ}•Ù¥‘•¹•}É•©•Ñ•¡¡…¹•Ì¤((€€€‘•˜Ñ•ÍÑ}™…µ¥±å}…¹‘}Í¡½ÉÑ}‘•Í­Ñ½Á}ÁÉ½½™}…¹¹½Ñ}‰•}µ¥ÍÍ¥¹}½É}µ¥Í±…‰•±±•¡Í•±˜¤è(€€€€€€€‘•˜™É…µ”¡É•Á½ÉĞ°ÁÉ•™¥à°…Í”ôÀ¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•Ìum…Í•ul™É…µ•Ìt¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ ¡ÁÉ•™¥à¤¤(€€€€€€€¡…¹•Ì€ôm±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹Á½À ™…µ¥±å•Ìœ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡™…µ¥±å•ÌõlÀ°€Ü°€ÄÙt¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡™…µ¥±å•Ìõm…±Í”°€Ü°€Äİt¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡™…µ¥±å•ÌõlÀ¸À°€Ü°€Äİt¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡™…µ¥±åáÑÉ…M•…É¡•ÌôÄ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹Á½À ™…µ¥±å•I•Ù¥•İI•Ñ…¥¹•œ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡™…µ¥±å•I•Ù¥•İI•Ñ…¥¹•õ…±Í”¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´À´œ¤¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±äµÉ•Ù¥•Ü´œ¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´Ì´œ¤¹ÕÁ‘…Ñ”¡ÍÉ••¸ôÉ•ÍÕ±ÑÌœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´Ä´œ¥lÉ•…‘…‰±•Q•áĞulÅt¹ÕÁ‘…Ñ”¡Ñ•áĞôœÄƒBËBßFBûFBïF/F€¬€ÄƒBÓB×FB×Bäœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±äµ…ÁÁ±¥•´œ¥lÉ•…‘…‰±•Q•áĞt¹Á½À ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±äµÉ•Ù¥•Ü´œ¥lÉ•…‘…‰±•Q•áĞt¹Á½À ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±äµÉ•Ù¥•Ü´œ¥lÉ•…‘…‰±•Q•áĞulÉt¹ÕÁ‘…Ñ”¡Ñ•áĞôŸB‡BûFFBÃB÷FGB÷B÷F/BÔƒBËBûBßFBÃFFBÀœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´È´œ¥lÉ•…‘…‰±•Q•áĞulÅt¹ÕÁ‘…Ñ”¡±¥ÁÁ•õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´À´œ¥lÁÉ¥•Ìt¹…ÁÁ•¹¡ìÑ•áĞœè€¥¹Ù•¹Ñ•™…µ¥±äÁÉ¥”ô¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µ™…µ¥±ä´È´œ¤¹ÕÁ‘…Ñ”¡Í¡„ÈÔØô˜œ€¨€ØĞ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÅul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÑ½ÕÈ´œ°€Ä¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÉ•ÍÕ±ÑÌ´œ°€Ä¤¹ÕÁ‘…Ñ”¡ÍÉ••¸ôÍ¡½ÉĞœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÍ•…É ´œ°€Ä¤¹Á½À Ù¥•İÁ½ÉÑ!•¥¡Ğœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÍ•…É ´œ°€Ä¤¹ÕÁ‘…Ñ”¡Ù¥•İÁ½ÉÑ!•¥¡ĞôäÀÀ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÍ•…É ´œ°€Ä¤¹ÕÁ‘…Ñ”¡Ù¥•İÁ½ÉÑ!•¥¡ĞôÜÈÀ¸À¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½Àµ¡½Ñ•°´œ°€Ä¤¹ÕÁ‘…Ñ”¡Í¡„ÈÔØô˜œ€¨€ØĞ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÑ½ÕÈ´œ°€Ä¥lÁÉ¥•ÌulÁt¹ÕÁ‘…Ñ”¡™É…µ•¹Ñ•õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½Àµ±•…´œ°€Ä¥lÍÕµµ…Éå¥Ğt¹±•…È ¥t(€€€€€€€™½È¤°¡…¹”¥¸•¹Õµ•É…Ñ”¡¡…¹•Ì¤è(€€€€€€€€€€€‘•˜µÕÑ…Ñ”¡½¹Ñ•¹ÑÌ¤è(€€€€€€€€€€€€€€€É•Á½ÉĞ€ô©Í½¸¹±½…‘Ì¡½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t¤ì¡…¹”¡É•Á½ÉĞ¤(€€€€€€€€€€€€€€€½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t€ôÉ•µ½Ñ”¹©Í½¹}‰åÑ•Ì¡É•Á½ÉĞ¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¥¹‘•àõ¤¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤è(€€€€€€€€€€€€€€€Í•±˜¹É•…‘}É•Ù¥•Ü¡Í•±˜¹É•Ù¥•İ}…É¡¥Ù”¡µÕÑ…Ñ”¤°€‰…µ™…µ¥±äµÍ¡½ÉĞµ•Ù¥‘•¹”´œ€¬ÍÑÈ¡¤¤¤((€€€‘•˜Ñ•ÍÑ}Í¡½ÉÑ}‘•Í­Ñ½Á}Á¹}‘¥µ•¹Í¥½¹Í}…É•}¡•­•‘}•Ù•¹}İ¥Ñ¡}µ…Ñ¡¥¹}¡…Í ¡Í•±˜¤è(€€€€€€€™½È¤°‘¥µ•¹Í¥½¹Ì¥¸•¹Õµ•É…Ñ”   ÄÈàÀ°€äÀÀ¤°€ ÄÈÜä°€ÜÈÀ¤¤¤è(€€€€€€€€€€€‘•˜µÕÑ…Ñ”¡½¹Ñ•¹ÑÌ¤è(€€€€€€€€€€€€€€€É•Á½ÉĞ€ô©Í½¸¹±½…‘Ì¡½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t¤(€€€€€€€€€€€€€€€™É…µ”€ô¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•ÌulÅul™É…µ•Ìt(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ  ¹…Ñ¥Ù”µÍ¡½ÉĞµ‘•Í­Ñ½ÀµÍ•…É ´œ¤¤(€€€€€€€€€€€€€€€¹…µ”€ô€•Ù¥‘•¹”¼œ€¬™É…µ•l™¥±”tìÙ…±Õ”€ô½¹Ñ•¹ÑÍm¹…µ•t(€€€€€€€€€€€€€€€½¹Ñ•¹ÑÍm¹…µ•t€ôÙ…±Õ•lèÄÙt€¬ÍÑÉÕĞ¹Á…¬ œù%$œ°€©‘¥µ•¹Í¥½¹Ì¤€¬Ù…±Õ•lÈĞét(€€€€€€€€€€€€€€€™É…µ•lÍ¡„ÈÔØt€ôÉ•µ½Ñ”¹‘¥•ÍĞ¡½¹Ñ•¹ÑÍm¹…µ•t¤(€€€€€€€€€€€€€€€½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t€ôÉ•µ½Ñ”¹©Í½¹}‰åÑ•Ì¡É•Á½ÉĞ¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡‘¥µ•¹Í¥½¹Ìõ‘¥µ•¹Í¥½¹Ì¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹…Ñ¥Ù•}Í¡½ÉÑ}‘•Í­Ñ½Á}Á¹}‘¥µ•¹Í¥½¹Í}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€€€€€Í•±˜¹É•…‘}É•Ù¥•Ü¡Í•±˜¹É•Ù¥•İ}…É¡¥Ù”¡µÕÑ…Ñ”¤°€‰…µÍ¡½ÉĞµÁ¹œ´œ€¬ÍÑÈ¡¤¤¤((€€€‘•˜Ñ•ÍÑ}ÍÑ…ÉÑÕÁ}ÁÉ½½™}É•ÅÕ¥É•Í}•á…Ñ}Ñ•¹}½É‘¥¹…Éå}™É…µ•Í}¹½}ÁÉ¥•Í}…¹‘}É•…‘…‰±•}É•ÑÉä¡Í•±˜¤è(€€€€€€€‘•˜™É…µ”¡É•Á½ÉĞ°¹…µ”¤è(€€€€€€€€€€€É•ÑÕÉ¸¹•áĞ¡É½Ü™½ÈÉ½Ü¥¸É•Á½ÉÑl…Í•ÌulÁul™É…µ•Ìt¥˜É½İl™¥±”t¹ÍÑ…ÉÑÍİ¥Ñ ¡¹…µ”¤¤(€€€€€€€¡…¹•Ì€ôm±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡ÍÑ…ÉÑÕÁA•¹‘¥¹½Éµ!¥‘‘•¸õ…±Í”¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹ÕÁ‘…Ñ”¡ÍÑ…ÉÑÕÁÉÉ½ÉM•…É¡•ÌôÄ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁulÁÉ½½˜t¹Á½À ÍÑ…ÉÑÕÁI•ÑÉåM•…É¡•Ìœ¤°(€€€€€€€€€€€±…µ‰‘„ÈèÉl…Í•ÌulÁul™É…µ•Ìt¹É•µ½Ù”¡™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¤¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµ•ÉÉ½È´œ¤¹ÕÁ‘…Ñ”¡™¥±”ô¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÕ¹…ÁÁÉ½Ù•´ÌØÀµÑ•áĞÄÀÀ¹Á¹œœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¤¹ÕÁ‘…Ñ”¡ÍÑ…•!¥‘‘•¸õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¤¹ÕÁ‘…Ñ”¡ÍÉ••¸ôÉ•ÍÕ±ÑÌœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¥lÁÉ¥•Ìt¹…ÁÁ•¹¡ì™½¹ÑM¥é”œè€Èåô¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµ•ÉÉ½È´œ¥l‰ÕÑÑ½¹Ìt¹±•…È ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµ•ÉÉ½È´œ¥l‰ÕÑÑ½¹ÌulÁt¹ÕÁ‘…Ñ”¡±¥ÁÁ•õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¥lÉ•…‘…‰±•Q•áĞulÁt¹ÕÁ‘…Ñ”¡±¥ÁÁ•õQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµÁ•¹‘¥¹œ´œ¥lÉ•…‘…‰±•Q•áĞulÁt¹ÕÁ‘…Ñ”¡½Ù•É±…ÁÁ¥¹1¥¹•ÌõQÉÕ”¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµ•ÉÉ½È´œ¥lÉ•…‘…‰±•Q•áĞulÁt¹Á½À ½Ù•É±…ÁÁ¥¹1¥¹•Ìœ¤°(€€€€€€€€€€€±…µ‰‘„Èè™É…µ”¡È°€¹…Ñ¥Ù”µÍÑ…ÉÑÕÀµ•ÉÉ½È´œ¥l¡•…‘•É¥Ğt¹ÕÁ‘…Ñ”¡½Ù•É±…ÀõQÉÕ”¥t(€€€€€€€™½È¤°¡…¹”¥¸•¹Õµ•É…Ñ”¡¡…¹•Ì¤è(€€€€€€€€€€€‘•˜µÕÑ…Ñ”¡½¹Ñ•¹ÑÌ¤è(€€€€€€€€€€€€€€€É•Á½ÉĞ€ô©Í½¸¹±½…‘Ì¡½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t¤ì¡…¹”¡É•Á½ÉĞ¤(€€€€€€€€€€€€€€€½¹Ñ•¹ÑÍl•Ù¥‘•¹”½…•ÁÑ…¹”¹©Í½¸t€ôÉ•µ½Ñ”¹©Í½¹}‰åÑ•Ì¡É•Á½ÉĞ¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¥¹‘•àõ¤¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤è(€€€€€€€€€€€€€€€Í•±˜¹É•…‘}É•Ù¥•Ü¡Í•±˜¹É•Ù¥•İ}…É¡¥Ù”¡µÕÑ…Ñ”¤°€‰…µÍÑ…ÉÑÕÀµ•Ù¥‘•¹”´œ€¬ÍÑÈ¡¤¤¤((€€€‘•˜Ñ•ÍÑ}¹…Ñ¥Ù•}¥¹Ù•¹Ñ½Éå}…¹¹½Ñ}…•ÁÑ}•áÑÉ…}½É}µ¥ÍÍ¥¹}…ÍÍ•Ğ¡Í•±˜¤è(€€€€€€€Á…Ñ €ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…½Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½¹½ĞµÉ•Ù¥•İ•¹©ÌœìÁ…Ñ ¹İÉ¥Ñ•}Ñ•áĞ ™½É•¥¸œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Í½ÕÉ•}¥¹Ù•¹Ñ½Éå}‘É¥™Ğœ¤è(€€€€€€€€€€€ÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€•áÑÉ„µ¹…Ñ¥Ù”œ°Í•±˜¹Ä°€”œ€¨€ØĞ¤(€€€€€€€Á…Ñ ¹Õ¹±¥¹¬ ¤ì€¡Í•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼É•µ½Ñ”¹9Q%Y}MMQMlÁt¤¹Õ¹±¥¹¬ ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Í½ÕÉ•}¥¹Ù•¹Ñ½Éå}‘É¥™Ğœ¤è(€€€€€€€€€€€ÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€µ¥ÍÍ¥¹œµ¹…Ñ¥Ù”œ°Í•±˜¹Ä°€”œ€¨€ØĞ¤((€€€‘•˜Ñ•ÍÑ}¹…Ñ¥Ù•}•¹ÑÉå}É•©•ÑÍ}±•…å}É•¹‘•É•É}•Ù•¹}…™Ñ•É}µ…¹¥™•ÍÑ}É•¡…Í ¡Í•±˜¤è(€€€€€€€Á…å±½…€ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œìÁ…Ñ €ôÁ…å±½…€¼€Ù¥ÍÕ…°µÍ•…É ½¥¹‘•à¹¡Ñµ°œ(€€€€€€€Á…Ñ ¹İÉ¥Ñ•}Ñ•áĞ¡Á…Ñ ¹É•…‘}Ñ•áĞ ¤€¬€œñÍÉ¥ÁĞÍÉŒôˆ¸½…ÁÀ¹©Ìˆ‘•™•Èøğ½ÍÉ¥ÁĞøœ¤(€€€€€€€µ…¹¥™•ÍÑ}Á…Ñ €ôÁ…å±½…€¼É•µ½Ñ”¹9Q%Y}59%MPì¹…Ñ¥Ù”€ô©Í½¸¹±½…‘Ì¡µ…¹¥™•ÍÑ}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€¹…Ñ¥Ù•l•¹ÑÉäul¡Ñµ°t€ôÉ•µ½Ñ”¹‘¥•ÍĞ¡Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤ìµ…¹¥™•ÍÑ}Á…Ñ ¹İÉ¥Ñ•}Ñ•áĞ¡©Í½¸¹‘ÕµÁÌ¡¹…Ñ¥Ù”°¥¹‘•¹ĞôÈ¤€¬€q¸œ¤(€€€€€€€Á¥¸€ôì¨©Í•±˜¹¹…Ñ¥Ù•}Á¥¸°€•¹ÑÉå}¡Ñµ±}Í¡„ÈÔØœè¹…Ñ¥Ù•l•¹ÑÉäul¡Ñµ°t°€Í½ÕÉ•}µ…¹¥™•ÍÑ}Í¡„ÈÔØœèÉ•µ½Ñ”¹‘¥•ÍĞ¡µ…¹¥™•ÍÑ}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¥ô(€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡É•µ½Ñ”°€9Q%Y}AQ9œ°Á¥¸¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹…Ñ¥Ù•}•á…Ñ}•¹ÑÉå}É…Á œ¤è(€€€€€€€€€€€É•µ½Ñ”¹¹…Ñ¥Ù•}É…Á ¡Á…å±½…¤((€€€‘•˜Ñ•ÍÑ}¹…Ñ¥Ù•}¡•­ÍÕµ}…¹‘}É½ÕÑ•}É•Ù•ÉÍ…±}ÁÉ½Ñ•Ñ}½É¥¥¹…±}½İ¹•È¡Í•±˜¤è(€€€€€€€µ…¹¥™•ÍĞ€ôÍ•±˜¹É½½Ğ€¼€‘•É¥Ù•½Á…å±½…œ€¼É•µ½Ñ”¹9Q%Y}59%MPì¹…Ñ¥Ù”€ô©Í½¸¹±½…‘Ì¡µ…¹¥™•ÍĞ¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€¹…Ñ¥Ù•lÉ…Á ulÍÉ¥ÁÑÌulÁulÍ¡„ÈÔØt€ô€˜œ€¨€ØĞìµ…¹¥™•ÍĞ¹İÉ¥Ñ•}Ñ•áĞ¡©Í½¸¹‘ÕµÁÌ¡¹…Ñ¥Ù”°¥¹‘•¹ĞôÈ¤€¬€q¸œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹…Ñ¥Ù•}É…Á¡}¡•­ÍÕ´œ¤èÉ•µ½Ñ”¹¹…Ñ¥Ù•}É…Á ¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•½Á…å±½…œ°É•İÉ¥ÑÑ•¸õQÉÕ”¤((€€€‘•˜Ñ•ÍÑ}½İ¹•É}µ…¥¹}•Ù•¹Ñ}…¹‘}…ÑÑ•µÁÑ}Õ…É‘Ì¡Í•±˜¤è(€€€€€€€™½È­•ä°Ù…±Õ”¥¸l %Q!U	}Iœ°€É•™Ì½¡•…‘Ì½İ½É¬œ¤°€ %Q!U	}Q=Hœ°€½Ñ¡•Èœ¤°(€€€€€€€€€€€€ %Q!U	}QI%I%9}Q=Hœ°€½Ñ¡•Èœ¤°€ %Q!U	}Q=I}%œ°€œÀœ¤°€ %Q!U	}IU9}QQ5APœ°€œÈœ¤°(€€€€€€€€€€€€ %Q!U	}Y9Q}95œ°€İ½É­™±½İ}‘¥ÍÁ…Ñ œ¤°€ %Q!U	}IA=M%Q=Idœ°€½Ñ¡•È½É•Á¼œ¥tè(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡­•äõ­•ä¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤èÁÕˆ¹¡•­•‘}É•ÅÕ•ÍĞ¡Í•±˜¹•Ù•¹Ğ°ì¨©Í•±˜¹•¹Ø°­•äèÙ…±Õ•ô¤(€€€€€€€™½È­•ä°™¥•±°Ù…±Õ”¥¸l ¥ÍÍÕ”œ°€¹Õµ‰•Èœ°€ÌĞÄä¤°€ ¥ÍÍÕ”œ°€¹Õµ‰•Èœ°€ÈÔÌÀ¤°(€€€€€€€€€€€€ ¥ÍÍÕ”œ°€¹Õµ‰•Èœ°€ääØ¤°€ ¥ÍÍÕ”œ°€ÁÕ±±}É•ÅÕ•ÍĞœ°íô¤°€ Í•¹‘•Èœ°€¥œ°€Ä¤°(€€€€€€€€€€€€ ½µµ•¹Ğœ°€…ÕÑ¡½É}…ÍÍ½¥…Ñ¥½¸œ°€55	Hœ¤°€ ½µµ•¹Ğœ°€ÕÍ•Èœ°ì¥œè€Åô¤°€ É•Á½Í¥Ñ½Éäœ°€¥œ°€Ä¥tè(€€€€€€€€€€€•Ù•¹Ğ€ô½Áä¹‘••Á½Áä¡Í•±˜¹•Ù•¹Ğ¤ì•Ù•¹Ñm­•åum™¥•±‘t€ôÙ…±Õ”(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡­•äõ­•ä°™¥•±õ™¥•±¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤èÁÕˆ¹¡•­•‘}É•ÅÕ•ÍĞ¡•Ù•¹Ğ°Í•±˜¹•¹Ø¤((€€€‘•˜Ñ•ÍÑ}‰…‘}Íå¹Ñ…á}…¹‘}½±‘}Í½ÕÉ•}É•©•Ñ•¡Í•±˜¤è(€€€€€€€½½€ôÍ•±˜¹•Ù•¹Ñl½µµ•¹Ğul‰½‘ät(€€€€€€€™½È‰½‘ä¥¸m½½€¬€q¸œ°½½€¬€œí¥œ°½½€¬€œ€½}ÁÉ•Ù¥•Ü½Í•…É Ìµ¹•áĞµ…¹‘¥‘…Ñ”¼œ°(€€€€€€€€€€€½½¹É•Á±…”¡ÁÕˆ¹AI%`°É•…Ñ½È¹AI%`¤°½½¹É•Á±…” œ€ÄÈÌ€œ°€œ€€ÄÈÌ€œ¤°(€€€€€€€€€€€½½¹É•Á±…” „œ€¨€ĞÀ°É•µ½Ñ”¹AIMM=I}M=UI¤°(€€€€€€€€€€€½½¹É•Á±…” „œ€¨€ĞÀ°É•µ½Ñ”¹=I%%91}M=UI¤°½½¹É•Á±…” œ€ÄÈÌ€œ°€œ€À€œ¥tè(€€€€€€€€€€€•Ù•¹Ğ€ô½Áä¹‘••Á½Áä¡Í•±˜¹•Ù•¹Ğ¤ì•Ù•¹Ñl½µµ•¹Ğul‰½‘ät€ô‰½‘ä(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡‰½‘äõ‰½‘ä¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤èÁÕˆ¹¡•­•‘}É•ÅÕ•ÍĞ¡•Ù•¹Ğ°Í•±˜¹•¹Ø¤((€€€‘•˜Ñ•ÍÑ}…±±}½µÁ±•Ñ•‘}Í½ÕÉ•Í}É•©•Ñ•‘}‰å}‰½Ñ¡}½İ¹•ÉÌ¡Í•±˜¤è(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹=5A1Q}M=UIL°€¡É•µ½Ñ”¹=I%%91}M=UI°(€€€€€€€€€€€€œäÔÁŒåˆÕŒÁ„ÀÀĞÌÁŒÕˆÕ„ÜÄÅÅˆäÕ‰ŒÀĞĞĞåÀØåœ°(€€€€€€€€€€€€œØÌÑÅŒäİ™İ‰˜ĞääÄÀİàÈÀÌØÔàá˜Ñ‰ÜÜÄÜÙäÌœ°(€€€€€€€€€€€€œÉ•ˆÈÌÜØÌåŒÙŒÔÍŒÌá˜ÈİÜÄØàÑ‘”ĞÌÌàĞàĞÉ‘…˜Üœ°(€€€€€€€€€€€€„Á”Õ˜Å”İŒÀÀàÍˆĞÔØÜá‘˜ÔàÌİŒİ™…˜Å…àÜÔÅ˜Øœ°(€€€€€€€€€€€€œÄØÄäØĞÄÁ„áˆäÁˆÄÁ”áÀÙˆİ…ŒáˆÌáÑ”İÈÌÕœ°(€€€€€€€€€€€€ˆÔÍÕ„Á‰˜ÔĞÅ”ØÙˆØàĞÀÄá™ˆİ‘ˆÌÌÉ‘”á™•™…˜Ìœ°(€€€€€€€€€€€€œĞäÔÕ•”ÀÜá…„ÀàÈİ˜ÜĞÕÜÌÜØàÅˆÑ•äÄàİ„ÈÜÑ‰œ°(€€€€€€€€€€€€œÀØÜÑ™„ÙŒÜÜĞÑ•”ÈÅˆÀÜÍˆÈàÑ˜ÀàåŒÈÀÄÜÅ˜Ìá”œ°(€€€€€€€€€€€€œáŒÉÀÌÀá•ˆÈå”ÈÙÈàÄäÌĞÉÄÀÔÀÅ‘ˆÅ•àÉ”Í‘ˆœ°(€€€€€€€€€€€€œå™•ŒÌÑ™•ˆÕ„İŒäÜØÔåˆÄØÄààĞÀÑ…”ÀÉŒÄØÙŒÜÜÀœ°(€€€€€€€€€€€€œÈÁŒØĞàáŒÀÅÜØÑ”å‰‘ŒÄåŒİ•ˆÜÅ˜ÀÄÄÀá•™‰‘„Ôœ°(€€€€€€€€€€€€œå‘”Ñ‘ˆÍÀĞÑˆÀØÁˆÀÌå…‰ŒÀäÙ˜äÌÔÄĞØØÄĞİàØœ°(€€€€€€€€€€€€œÕ„àÑ„ÁØØÌäĞÄÄÙ˜äàĞÕ‘”ÌÔØÔÔØÍ”ÅÀÈÕˆÙ‰Œœ°(€€€€€€€€€€€€œÜÕ”ÔÉ˜ÈÔäÜÄÜÈĞØå™‰ˆÙ˜ÜĞÉ‘ŒáŒİˆÔäÌÑÄÜÌœ°(€€€€€€€€€€€€œØØÁ„ÜØÁåÁ„ÁŒÀÄÈÅÀÕÔÍ‰‘ŒÀàäÔØàäØÀÁ‰Œàœ°(€€€€€€€€€€€€œÀá„äå˜É‘™”É˜ĞÈÁŒåŒÀÍ„Ù•ˆĞÔÅÀÁ”å„ÀÑ”ÔÀÈØœ°(€€€€€€€€€€€€„ÍˆÁ™„ÔÄÈÕ…‘ˆÅ„äÁˆÌÉ„ĞåÕ˜Èİ„ÙˆààÔÉ˜ÔÔÄÀœ°(€€€€€€€€€€€€ÌĞÅ˜ÜØĞàÜĞå˜É˜á„ÌÈÜÉ„Å”ÔÅ”ÉäÈÍŒÅ‘ˆàÁ„Øœ°(€€€€€€€€€€€€œÀÀÉ‘ŒÁØÌÙŒÕ…Ù”ÔÔäİÌÜÈÔå‰…‰„ÔÜÑ™”å•ààœ°(€€€€€€€€€€€€˜ÑˆÌĞÍ•”ÈĞÄÄàäå”É˜ÈÄÌáŒá™ŒÕ˜ØÑ•„Èİ•ˆÔœ°(€€€€€€€€€€€€œØÜĞØá…„Í‰„ÈĞÔÈÙ•”İŒÌÉÍ”Ôİ‰˜Éİ„Èá‰äÄäÀœ°(€€€€€€€€€€€€”ĞÉ”É„ÄåŒÄÌÑ„ÜäÄÈİˆÈÉ„Ù‘ÈÙ™ŒÅ…‰Äå”ĞÄœ°(€€€€€€€€€€€€œÉ‘„àá”ĞÅ™ˆĞÌÙ…•™ÈäÌÀØÙ‰Œäá‘ˆÀÄÍ”Àİ•”Àœ°(€€€€€€€€€€€€™‰‰ÈÍ”ÌåŒÑ™„ÜÅ˜á‰„äÔÀÀÀĞá•˜Ñ˜É„ÍŒÉ˜ÄÜÌÔœ°(€€€€€€€€€€€€œÜĞÁ•ÁˆÈÀÔäÙ˜äÀÅ„ÅÙŒÄÕÈÌá•ŒÔÈÜØÌÍ”àÀœ°(€€€€€€€€€€€€ˆáˆÄÑ”àääÌÅ™‰……ˆÌØÌàäÔÀØÕÔÍ•ÜÀØÌÌÌå•ˆÌœ°(€€€€€€€€€€€€…˜İ•Œá™É„á…˜àå•™‘˜ÀÈÔÌØÄå…”å‰ØÍ…ŒÜÔÙ‰„œ°(€€€€€€€€€€€€œĞÅ‘Õ„åŒÀÄÍˆäĞÌÅ˜Øá”ÌáˆàÕ‘”Õˆİ„ÜÉ…”ØàĞáœ°(€€€€€€€€€€€€ˆİ‰ˆÅ”ÌÜÉÀàÍàĞÀÉ„äÜÁ•ŒİÄÙ‰˜ÜÈÁŒÉ„ÌĞœ°(€€€€€€€€€€€€•‘ˆÕ„ÜÜØàÌØÙ„àÀÜÌÉ˜ÔÜàá•„ÈĞĞÙ•‰Í‰ŒÔÅ”œ°(€€€€€€€€€€€€œÔÑˆØÙ˜ÌÑå‘ŒÉ™‘ˆÅàÑ”Ñˆİ„Ù”ØÉ™ŒØĞĞäÜĞÈĞÄœ°(€€€€€€€€€€€€œáÍØÙ••ˆäÕ…ŒØäÔÌÑ•ŒÜÔÔİŒİŒÀäÈÙ˜ÈÀÄÔĞÍŒœ°(€€€€€€€€€€€€œÀĞØØÜäÄÉ‰ˆÅ˜Í™ˆàÅŒàå•‘…˜ĞÍˆÅ„ĞÁˆİÕ˜Ù”Åˆœ°(€€€€€€€€€€€€œÁ™ŒÄØÌÈÔØÌÕÄÄÍ™…™„äØÀàÅ˜ÈäÕ„Å„ÔØäØÌÔåŒÌœ°(€€€€€€€€€€€€˜ääÌÀÙ™™”ÌÜÈÕ˜É‰…‘ŒÜÀÀäÙàÀÄØÀá™ŒÔÌäÌÀÀäœ°(€€€€€€€€€€€€œÄäÔå‘…‰…ŒÄÜÌÌÕ™ÀäÜØÌÌàäÈÌÅ”Øİ‘ˆå…™‘”Ùˆœ°(€€€€€€€€€€€€‘ŒØäÀĞå˜ÄÈÙ…ŒÉ…”ÔÄÙ˜Õ•”ĞÅ”ààÙ„İ‰™ŒáŒÉœ°(€€€€€€€€€€€€œÈĞØØÜÀàÄá‰‰„ĞÌÍ…‘ŒåˆÀÀÉ”ÀÙˆÉÔØÁ˜ĞÙ•ˆÙ…Œœ°(€€€€€€€€€€€€œÜÔÙ˜áˆÑˆÁ••ŒØØÉ”áˆÜáŒÈÉ”ÑˆÉ„ÌÙ‘™”á”àØØåœ°(€€€€€€€€€€€€œÄàÔÜÌåĞØÜÔİ‰ÌÑ„ÀÔÜÀå”ÌØÔÙ•…ˆÜÙÄÀÀÍ™„Ôœ°(€€€€€€€€€€€€œàĞàäİ™ÔÜÜá‘•‰”ÀĞÁˆÜĞäĞÔÈÄÈÜÜİ……˜àÜáàÍ”œ¤¤(€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡É•µ½Ñ”°€AIMM=I}M=UIœ°€˜œ€¨€ĞÀ¤è(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ œÄØÄäØĞÄÁ„áˆäÁˆÄÁ”áÀÙˆİ…ŒáˆÌáÑ”İÈÌÕœ°É•µ½Ñ”¹=5A1Q}M=UIL¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ˆÔÍÕ„Á‰˜ÔĞÅ”ØÙˆØàĞÀÄá™ˆİ‘ˆÌÌÉ‘”á™•™…˜Ìœ°É•µ½Ñ”¹=5A1Q}M=UIL¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ œĞäÔÕ•”ÀÜá…„ÀàÈİ˜ÜĞÕÜÌÜØàÅˆÑ•äÄàİ„ÈÜÑ‰œ°É•µ½Ñ”¹=5A1Q}M=UIL¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ œÀØÜÑ™„ÙŒÜÜĞÑ•”ÈÅˆÀÜÍˆÈàÑ˜ÀàåŒÈÀÄÜÅ˜Ìá”œ°É•µ½Ñ”¹=5A1Q}M=UIL¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ œáŒÉÀÌÀá•ˆÈå”ÈÙÈàÄäÌĞÉÄÀÔÀÅ‘ˆÅ•àÉ”Í‘ˆœ°É•µ½Ñ”¹=5A1Q}M=UIL¤(€€€€€€€™½ÈÍ½ÕÉ”¥¸É•µ½Ñ”¹=5A1Q}M=UILè(€€€€€€€€€€€•Ù•¹Ğ€ô½Áä¹‘••Á½Áä¡Í•±˜¹•Ù•¹Ğ¤ì•Ù•¹Ñl½µµ•¹Ğul‰½‘ät€ô•Ù•¹Ñl½µµ•¹Ğul‰½‘ät¹É•Á±…” „œ€¨€ĞÀ°Í½ÕÉ”¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡Í½ÕÉ”õÍ½ÕÉ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹•İ}Í½ÕÉ•}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€€€€€ÁÕˆ¹¡•­•‘}É•ÅÕ•ÍĞ¡•Ù•¹Ğ°Í•±˜¹•¹Ø¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡Í½ÕÉ”õÍ½ÕÉ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹•İ}Í½ÕÉ•}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€€€€€É•µ½Ñ”¹Ù…±¥‘…Ñ”¡ì¨©Í•±˜¹Ä°€Í½ÕÉ•}Í¡„œèÍ½ÕÉ•ô¤((€€€‘•˜Ñ•ÍÑ}•á…Ñ}Í½ÕÉ•}¹…Ñ¥Ù•}¥}¡•­Í}É•ÅÕ¥É•¡Í•±˜¤è(€€€€€€€¡•­Ì€ômì¹…µ”œè¸°€¡•…‘}Í¡„œèÍ•±˜¹ÅlÍ½ÕÉ•}Í¡„t°€ÍÑ…ÑÕÌœè€½µÁ±•Ñ•œ°€½¹±ÕÍ¥½¸œè€ÍÕ•ÍÌœ°(€€€€€€€€€€€€…ÁÀœèìÍ±Õœœè€¥Ñ¡Õˆµ…Ñ¥½¹Ìô°€ÍÑ…ÉÑ•‘}…Ğœè€œÈÀÈØ´ÄÀ´ÄÅPÈÄèÌÀèÀÁhô™½È¸¥¸ÁÕˆ¹IEU%I}!-Mt(€€€€€€€±…ÍÌA$è(€€€€€€€€€€€‘•˜•Ğ¡Í•±˜°Á…Ñ ¤èÉ•ÑÕÉ¸ìÑ½Ñ…±}½Õ¹Ğœè±•¸¡¡•­Ì¤°€¡•­}ÉÕ¹Ìœè¡•­Íô(€€€€€€€ÁÕˆ¹ÍÑÉ¥Ñ}¡•­Ì¡A$ ¤°Í•±˜¹ÅlÍ½ÕÉ•}Í¡„t¤(€€€€€€€™½È­•ä°Ù…±Õ”¥¸l ½¹±ÕÍ¥½¸œ°€Í­¥ÁÁ•œ¤°€ ¡•…‘}Í¡„œ°€˜œ€¨€ĞÀ¤°€ ÍÑ…ÑÕÌœ°€¥¹}ÁÉ½É•ÍÌœ¤°€ …ÁÀœ°ìÍ±Õœœè€½Ñ¡•Èô¥tè(€€€€€€€€€€€ÁÉ•Ù¥½ÕÌ€ô¡•­ÍlÁum­•åtì¡•­ÍlÁum­•åt€ôÙ…±Õ”(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡­•äõ­•ä¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•Ì¡Y…±Õ•ÉÉ½È¤èÁÕˆ¹ÍÑÉ¥Ñ}¡•­Ì¡A$ ¤°Í•±˜¹ÅlÍ½ÕÉ•}Í¡„t¤(€€€€€€€€€€€¡•­ÍlÁum­•åt€ôÁÉ•Ù¥½ÕÌ(€€€€€€€¡•­Ì¹Á½À ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€É•ÅÕ¥É•‘}Ù¥ÍÕ…±}¡•­Í}µ¥ÍÍ¥¹œœ¤èÁÕˆ¹ÍÑÉ¥Ñ}¡•­Ì¡A$ ¤°Í•±˜¹ÅlÍ½ÕÉ•}Í¡„t¤((€€€‘•˜Ñ•ÍÑ}¹…Ñ¥Ù•}ÁÉ½Ù•¹…¹•}É•ÅÕ¥É•Í}•á…Ñ}É•Ù¥•İ•‘}µ•É•}½µµ¥ÑÍ}…¹‘}É•±…Ñ¥½¸¡Í•±˜¤è(€€€€€€€Í½ÕÉ•}Á…É•¹ÑÌ€ô€  œÄœ€¨€ĞÀ°€œÌœ€¨€ĞÀ¤°€ œÈœ€¨€ĞÀ°€œĞœ€¨€ĞÀ¤¤(€€€€€€€É•±•…Í•}Á…É•¹ÑÌ€ô€  œÈœ€¨€ĞÀ°€œĞœ€¨€ĞÀ¤°€ „œ€¨€ĞÀ°€œ€¨€ĞÀ¤¤(€€€€€€€Í½ÕÉ•}Á¥¸€ôÁ…Ñ ¹½‰©•Ğ¡ÁÕˆ°€9Q%Y}M=UI}AI9QLœ°Í½ÕÉ•}Á…É•¹ÑÌ¤(€€€€€€€É•±•…Í•}Á¥¸€ôÁ…Ñ ¹½‰©•Ğ¡ÁÕˆ°€9Q%Y}I1M}AI9QLœ°É•±•…Í•}Á…É•¹ÑÌ¤(€€€€€€€Í½ÕÉ•}Á¥¸¹ÍÑ…ÉĞ ¤ìÉ•±•…Í•}Á¥¸¹ÍÑ…ÉĞ ¤(€€€€€€€Í•±˜¹…‘‘±•…¹ÕÀ¡Í½ÕÉ•}Á¥¸¹ÍÑ½À¤ìÍ•±˜¹…‘‘±•…¹ÕÀ¡É•±•…Í•}Á¥¸¹ÍÑ½À¤(€€€€€€€¡•­Ì€ômì¹…µ”œè¸°€¡•…‘}Í¡„œè€„œ€¨€ĞÀ°€ÍÑ…ÑÕÌœè€½µÁ±•Ñ•œ°€½¹±ÕÍ¥½¸œè€ÍÕ•ÍÌœ°(€€€€€€€€€€€€…ÁÀœèìÍ±Õœœè€¥Ñ¡Õˆµ…Ñ¥½¹Ìô°€ÍÑ…ÉÑ•‘}…Ğœè€œÈÀÈØ´ÄÀ´ÄÉPÄÔèÀÀèÀÁhô(€€€€€€€€€€€™½È¸¥¸ÁÕˆ¹IEU%I}!-Mt(€€€€€€€Ù…±Õ•Ì€ôì(€€€€€€€€€€€€œ½¥Ğ½É•˜½¡•…‘Ì½µ…¥¸œèì½‰©•ĞœèìÍ¡„œè€˜œ€¨€ĞÁõô°(€€€€€€€€€€€€œ½¥Ğ½É•˜½¡•…‘Ì¼œ€¬ÁÕˆ¹I1Mèì½‰©•ĞœèìÍ¡„œè€Œœ€¨€ĞÁõô°(€€€€€€€€€€€€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀèìÑÉ•”œèìÍ¡„œè€œ€¨€ĞÁô°(€€€€€€€€€€€€€€€€Á…É•¹ÑÌœèmìÍ¡„œèÍ¡…ô™½ÈÍ¡„°|¥¸Í½ÕÉ•}Á…É•¹ÑÍuô°(€€€€€€€€€€€€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€Œœ€¨€ĞÀèìÑÉ•”œèìÍ¡„œè€œ€¨€ĞÁô°(€€€€€€€€€€€€€€€€Á…É•¹ÑÌœèmìÍ¡„œèÍ¡…ô™½ÈÍ¡„°|¥¸É•±•…Í•}Á…É•¹ÑÍuô°(€€€€€€€€€€€€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€œÄœ€¨€ĞÀèìÑÉ•”œèìÍ¡„œè€œÌœ€¨€ĞÁõô°(€€€€€€€€€€€€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€œÈœ€¨€ĞÀèìÑÉ•”œèìÍ¡„œè€œĞœ€¨€ĞÁõô°(€€€€€€€€€€€€œ½½µÁ…É”¼œ€¬€„œ€¨€ĞÀ€¬€œ¸¸¸œ€¬€Œœ€¨€ĞÀèìÍÑ…ÑÕÌœè€…¡•…œ°€‰•¡¥¹‘}‰äœè€À°€…¡•…‘}‰äœè€Ä°(€€€€€€€€€€€€€€€€µ•É•}‰…Í•}½µµ¥ĞœèìÍ¡„œè€„œ€¨€ĞÁõô°(€€€€€€€€€€€€œ½…Ñ¥½¹Ì½ÉÕ¹Ì¼ÄÈÌœèì¡•…‘}Í¡„œè€„œ€¨€ĞÀ°€Á…Ñ œèÉ•µ½Ñ”¹9Q%Y}	U%1}]=I-1=\°(€€€€€€€€€€€€€€€€•Ù•¹Ğœè€ÁÕ±±}É•ÅÕ•ÍĞœ°€ÍÑ…ÑÕÌœè€½µÁ±•Ñ•œ°€½¹±ÕÍ¥½¸œè€ÍÕ•ÍÌœ°€ÉÕ¹}…ÑÑ•µÁĞœè€Ä°(€€€€€€€€€€€€€€€€É•Á½Í¥Ñ½Éäœèì™Õ±±}¹…µ”œèÁÕˆ¹IA=ô°€¡•…‘}É•Á½Í¥Ñ½Éäœèì™Õ±±}¹…µ”œèÁÕˆ¹IA=õô°(€€€€€€€€€€€€œ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀ€¬€œ½¡•¬µÉÕ¹ÌıÁ•É}Á…”ôÄÀÀœèìÑ½Ñ…±}½Õ¹Ğœè±•¸¡¡•­Ì¤°€¡•­}ÉÕ¹Ìœè¡•­Íô°(€€€€€€€€€€€€œ½…Ñ¥½¹Ì½…ÉÑ¥™…ÑÌ¼ĞÔØœèì•áÁ¥É•œè…±Í”°€İ½É­™±½İ}ÉÕ¸œèì¥œè€ÄÈÌ°€¡•…‘}Í¡„œè€„œ€¨€ĞÁô°(€€€€€€€€€€€€€€€€¹…µ”œè€Í•…É Ìµ‘•Í¥¸µØÈµ¹…Ñ¥Ù”´œ€¬€„œ€¨€ĞÀ€¬€œ´ÄÈÌœ°€‘¥•ÍĞœè€Í¡„ÈÔØèœ€¬€”œ€¨€ØÑô°(€€€€€€€ô(€€€€€€€±…ÍÌA$è(€€€€€€€€€€€‘•˜}}¥¹¥Ñ}|¡Í•±˜°É½İÌ¤èÍ•±˜¹É½İÌ€ôÉ½İÌ(€€€€€€€€€€€‘•˜•Ğ¡Í•±˜°Á…Ñ ¤èÉ•ÑÕÉ¸Í•±˜¹É½İÍmÁ…Ñ¡t(€€€€€€€Ä€ôìÍ½ÕÉ•}Í¡„œè€„œ€¨€ĞÀ°€É•±•…Í•}Í¡„œè€Œœ€¨€ĞÀ°€‰Õ¥±‘}ÉÕ¸œè€ÄÈÌ°€…ÉÑ¥™…Ñ}¥œè€ĞÔÙô(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡ÁÕˆ¹¹…Ñ¥Ù•}ÁÉ½Ù•¹…¹”¡A$¡Ù…±Õ•Ì¤°Ä°€˜œ€¨€ĞÀ¤°€ œ€¨€ĞÀ°€”œ€¨€ØĞ¤¤(€€€€€€€µÕÑ…Ñ¥½¹Ì€ô€ (€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀ°±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡Á…É•¹ÑÌõmt¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀ°±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡Á…É•¹ÑÌõmìÍ¡„œè€œÀœ€¨€ĞÁõt¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½İlÁ…É•¹ÑÌt¹…ÁÁ•¹¡ìÍ¡„œè€œÀœ€¨€ĞÁô¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡Á…É•¹ÑÌõ±¥ÍĞ¡É•Ù•ÉÍ•¡É½İlÁ…É•¹ÑÌt¤¤¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}ÑÉ••}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€œÄœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½İlÑÉ•”t¹ÕÁ‘…Ñ”¡Í¡„ôœÀœ€¨€ĞÀ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}É•±•…Í•}ÑÉ••}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€Œœ€¨€ĞÀ°±…µ‰‘„É½ÜèÉ½İlÑÉ•”t¹ÕÁ‘…Ñ”¡Í¡„ôœÀœ€¨€ĞÀ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}É•±•…Í•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€Œœ€¨€ĞÀ°±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡Á…É•¹ÑÌõmìÍ¡„œè€œÀœ€¨€ĞÁõt¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}É•±•…Í•}Á…É•¹Ñ}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€Œœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡Á…É•¹ÑÌõ±¥ÍĞ¡É•Ù•ÉÍ•¡É½İlÁ…É•¹ÑÌt¤¤¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}ÑÉ••}Á¥¸œ°€œ½¥Ğ½½µµ¥ÑÌ¼œ€¬€œÈœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½İlÑÉ•”t¹ÕÁ‘…Ñ”¡Í¡„ôœÀœ€¨€ĞÀ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}•á…Ñ}µ•É•}É•±…Ñ¥½¸œ°€œ½½µÁ…É”¼œ€¬€„œ€¨€ĞÀ€¬€œ¸¸¸œ€¬€Œœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡ÍÑ…ÑÕÌô‘¥Ù•É•œ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}•á…Ñ}µ•É•}É•±…Ñ¥½¸œ°€œ½½µÁ…É”¼œ€¬€„œ€¨€ĞÀ€¬€œ¸¸¸œ€¬€Œœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡‰•¡¥¹‘}‰äôÄ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}•á…Ñ}µ•É•}É•±…Ñ¥½¸œ°€œ½½µÁ…É”¼œ€¬€„œ€¨€ĞÀ€¬€œ¸¸¸œ€¬€Œœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½Ü¹ÕÁ‘…Ñ”¡…¡•…‘}‰äôÈ¤¤°(€€€€€€€€€€€€ ¹…Ñ¥Ù•}•á…Ñ}µ•É•}É•±…Ñ¥½¸œ°€œ½½µÁ…É”¼œ€¬€„œ€¨€ĞÀ€¬€œ¸¸¸œ€¬€Œœ€¨€ĞÀ°(€€€€€€€€€€€€±…µ‰‘„É½ÜèÉ½İlµ•É•}‰…Í•}½µµ¥Ğt¹ÕÁ‘…Ñ”¡Í¡„ôœÀœ€¨€ĞÀ¤¤°(€€€€€€€€¤(€€€€€€€™½È¤°€¡µ•ÍÍ…”°Á…Ñ °µÕÑ…Ñ”¤¥¸•¹Õµ•É…Ñ”¡µÕÑ…Ñ¥½¹Ì¤è(€€€€€€€€€€€É½İÌ€ô½Áä¹‘••Á½Áä¡Ù…±Õ•Ì¤ìµÕÑ…Ñ”¡É½İÍmÁ…Ñ¡t¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¥¹‘•àõ¤¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°µ•ÍÍ…”¤è(€€€€€€€€€€€€€€€ÁÕˆ¹¹…Ñ¥Ù•}ÁÉ½Ù•¹…¹”¡A$¡É½İÌ¤°Ä°€˜œ€¨€ĞÀ¤(€€€€€€€É½İÌ€ô½Áä¹‘••Á½Áä¡Ù…±Õ•Ì¤(€€€€€€€É½İÍlœ½¥Ğ½½µµ¥ÑÌ¼œ€¬€„œ€¨€ĞÁulÁ…É•¹ÑÌt€ômìÍ¡„œè€œÀœ€¨€ĞÁõt(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹…Ñ¥Ù•}Í½ÕÉ•}Á…É•¹Ñ}Á¥¸œ¤è(€€€€€€€€€€€ÁÕˆ¹¹…Ñ¥Ù•}ÁÉ½Ù•¹…¹”¡A$¡É½İÌ¤°ì¨©Ä°€Í½ÕÉ•}Á…É•¹Ğœè€œÀœ€¨€ĞÀ°€Í½ÕÉ•}½µµ¥Ñ}½Õ¹Ğœè€Åô°€˜œ€¨€ĞÀ¤((€€€‘•˜Ñ•ÍÑ}½¹±å}•¥¡Ñ}É•Ù¥•İ•‘}ÁÉ•Í•¹Ñ…Ñ¥½¹}Á…Ñ¡Í}…¹}‘¥™™•È¡Í•±˜¤è(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•Ğ¡É•µ½Ñ”¹M=UI}!9L¤°ì(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½…ÍÍ•ĞµÍ¥é”¹©Í½¸œ°(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¡½Ñ•°µ‘•Ñ…¥±ÌµØÄ¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½½™™•Èµ±¥ÍĞµØÄ¹©Ìœ°(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¥¹‘•à¹¡Ñµ°œ°€Ù¥ÍÕ…°µÍ•…É ½µ¥É…Ñ¥½¸µµ…¹¥™•ÍĞ¹©Í½¸œ°(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½µ½‰¥±”µ½¹ÑÉ½±ÌµØÄ¹ÍÌœ°€Ù¥ÍÕ…°µÍ•…É ½ÍÑå±•Ì¹ÍÌô¤(€€€€€€€‰•™½É”€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í½ÕÉ”€¼€Á…å±½…œ¤ì…™Ñ•È€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•½Á…å±½…œ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•Ğ¡‰•™½É”¤°Í•Ğ¡…™Ñ•È¤¤ìÍ•±˜¹…ÍÍ•ÉÑÅÕ…°¡±•¸¡…™Ñ•È¤°€àÔÔ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡í¸™½È¸¥¸‰•™½É”¥˜‰•™½É•m¹t€„ô…™Ñ•Ém¹uô°Í•Ğ¡É•µ½Ñ”¹9Q%Y}I=UQ}!9L¤¤(€€€€€€€´€ô©Í½¸¹±½…‘Ì ¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•½½¹ÑÉ½°½µ…¹¥™•ÍĞ¹©Í½¸œ¤¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡µl‘•É¥Ù•‘}™É½´ul¡…¹•‘}Í½ÕÉ•}Á…å±½…‘}™¥±•Ìt°Í½ÉÑ•¡lÙ¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ°€©É•µ½Ñ”¹9Q%Y}IA1°€©É•µ½Ñ”¹9Q%Y}t¤¤(€€€€€€€ÄÈ°„È€ôÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€……¥¸œ°í¬èÍ•±˜¹Åm­t™½È¬¥¸½É¥¥¹…±}É•ÅÕ•ÍĞ ¥ô°€”œ€¨€ØĞ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡ÄÈ°Í•±˜¹Ä¤ìÍ•±˜¹…ÍÍ•ÉÑÅÕ…°¡„È°Í•±˜¹…É¡¥Ù”¤((€€€‘•˜Ñ•ÍÑ}¡½Ñ•±}…¹‘}½™™•É}ÁÉ•Í•¹Ñ…Ñ¥½¹}™¥±•Í}É•Ñ…¥¹}•Ù•Éå}½Ñ¡•É}Á…å±½…‘}‰åÑ”¡Í•±˜¤è(€€€€€€€™½È¤°¹…µ”¥¸•¹Õµ•É…Ñ”  Ù¥ÍÕ…°µÍ•…É ½¡½Ñ•°µ‘•Ñ…¥±ÌµØÄ¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½½™™•Èµ±¥ÍĞµØÄ¹©Ìœ¤¤è(€€€€€€€€€€€Í½ÕÉ•}Á…Ñ €ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼¹…µ”ì½É¥¥¹…°€ôÍ½ÕÉ•}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤(€€€€€€€€€€€Í½ÕÉ•}Á…Ñ ¹İÉ¥Ñ•}‰åÑ•Ì¡ˆÉ•Ù¥•İ•™¥¹…°M¥Ñ•ÌÁÉ•Í•¹Ñ…Ñ¥½¸œ¤(€€€€€€€€€€€½ÕÑÁÕĞ€ôÍ•±˜¹É½½Ğ€¼€ ¡½Ñ•°µÁÉ•Í•¹Ñ…Ñ¥½¸´œ€¬ÍÑÈ¡¤¤¤(€€€€€€€€€€€ÑÉäè(€€€€€€€€€€€€€€€Ä°|€ôÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°½ÕÑÁÕĞ°Í•±˜¹Ä°€”œ€¨€ØĞ¤(€€€€€€€€€€€€€€€É•µ½Ñ”¹Ù•É¥™ä¡½ÕÑÁÕĞ°Ä¤(€€€€€€€€€€€€€€€µ…¹¥™•ÍĞ€ô©Í½¸¹±½…‘Ì ¡½ÕÑÁÕĞ€¼€½¹ÑÉ½°½µ…¹¥™•ÍĞ¹©Í½¸œ¤¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡µ…¹¥™•ÍÑl‘•É¥Ù•‘}™É½´ul¡…¹•‘}Í½ÕÉ•}Á…å±½…‘}™¥±•Ìt°(€€€€€€€€€€€€€€€€€€€Í½ÉÑ•¡lÙ¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ°¹…µ”°€©É•µ½Ñ”¹9Q%Y}IA1°€©É•µ½Ñ”¹9Q%Y}t¤¤(€€€€€€€€€€€€€€€‰•™½É”€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í½ÕÉ”€¼€Á…å±½…œ¤ì…™Ñ•È€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡½ÕÑÁÕĞ€¼€Á…å±½…œ¤(€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡í¸™½È¸¥¸‰•™½É”¥˜‰•™½É•m¹t€„ô…™Ñ•Ém¹uô°Í•Ğ¡É•µ½Ñ”¹9Q%Y}I=UQ}!9L¤¤(€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…° ¡½ÕÑÁÕĞ€¼€Á…å±½…œ€¼¹…µ”¤¹É•…‘}‰åÑ•Ì ¤°Í½ÕÉ•}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€€€€€™¥¹…±±äè(€€€€€€€€€€€€€€€Í½ÕÉ•}Á…Ñ ¹İÉ¥Ñ•}‰åÑ•Ì¡½É¥¥¹…°¤((€€€‘•˜Ñ•ÍÑ}½É¥¥¹…±}‰…Í•±¥¹•}É•µ…¥¹Í}¥¹‘•Á•¹‘•¹Ñ}½™}¥¹ÍÑ…±±•‘}ÁÉ•‘••ÍÍ½È¡Í•±˜¤è(€€€€€€€µ…¹¥™•ÍĞ€ô©Í½¸¹±½…‘Ì ¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•½½¹ÑÉ½°½µ…¹¥™•ÍĞ¹©Í½¸œ¤¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡µ…¹¥™•ÍÑl‘•É¥Ù•‘}™É½´ul‰…Í•±¥¹”t°ì(€€€€€€€€€€€€Í½ÕÉ•}Í¡„œèÉ•…Ñ½È¹M=UI}M!°€‰Õ¥±‘}ÉÕ¸œèÉ•…Ñ½È¹	U%1}IU8°(€€€€€€€€€€€€…ÉÑ¥™…Ñ}¥œèÉ•…Ñ½È¹IQ%Q}%°€i%A}Í¡„ÈÔØœèÉ•…Ñ½È¹M=UI}i%A}M!ÈÔÙô¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ9½ÑÅÕ…°¡É•µ½Ñ”¹=I%%91}M=UI°É•µ½Ñ”¹AIMM=I}M=UI¤(€€€€€€€İ¥Ñ Á…Ñ  Í•…É Í}ÁÉ•Ù¥•İ}ÁÕ‰±¥Í ¹ÁÉ•Á…É•}é¥Àœ¤…ÌÁÉ•Á…É•}é¥À°Á…Ñ ¹½‰©•Ğ¡ÁÕˆ°€ÁÉ•Á…É•}¹…Ñ¥Ù•}é¥Àœ¤è(€€€€€€€€€€€±…ÍÌA$è(€€€€€€€€€€€€€€€‘•˜‘½İ¹±½…¡Í•±˜°…ÉÑ¥™…Ñ}¥¤èÉ•ÑÕÉ¸ˆÍå¹Ñ¡•Ñ¥Œi%@œ(€€€€€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡ÁÕˆ°€‘•É¥Ù”œ°É•ÑÕÉ¹}Ù…±Õ”ô¡Í•±˜¹Ä°Í•±˜¹…É¡¥Ù”¤¤è(€€€€€€€€€€€€€€€ÁÕˆ¹ÁÉ•Á…É•}¥¹ÁÕÑÌ¡A$ ¤°Í•±˜¹Ä°€œ€¨€ĞÀ°€”œ€¨€ØĞ°Í•±˜¹É½½Ğ€¼€¥¹ÁÕÑÌœ¤(€€€€€€€‰…Í•±¥¹•}É•ÅÕ•ÍĞ€ôÁÉ•Á…É•}é¥À¹…±±}…ÉÍ}±¥ÍÑlÁt¹…ÉÍlÅt(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡‰…Í•±¥¹•}É•ÅÕ•ÍÑlÍ½ÕÉ•}Í¡„t°É•µ½Ñ”¹=I%%91}M=UI¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡‰…Í•±¥¹•}É•ÅÕ•ÍÑlÉ•±•…Í•}Í¡„t°É•µ½Ñ”¹=I%%91}M=UI¤((€€€‘•˜Ñ•ÍÑ}…±±}½µÁ±•Ñ•‘}ÁÕ‰±¥Í¡}ÉÕ¹Í}…¹¹½Ñ}É•Á±…ä¡Í•±˜¤è(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L°(€€€€€€€€€€€€¡É•µ½Ñ”¹=I%%91}AU	1%M!}IU8°€ÌàÄàÀĞØÄÌÄä°€ÌàÄäÄÄÀĞÈÀÜ°(€€€€€€€€€€€€€€€€ÌàÄäÜĞÌÜàÌÔ°€ÌàÈÀÌÄÜÄÄäÜ°€ÌàÈÀÜàØÌÄäĞ°€ÌàÈÌÜÈĞØÄÜÄ°€ÌàÈÌàÔÀÌÄÀÄ°(€€€€€€€€€€€€€ÌàÈÔÔÈÈÈÈÔĞ°€ÌàÈØäÈÀØàÄä°€ÌàÈÜØØÌàÄÜÈ°€ÌàÈäÀäàäĞØÜ°€ÌàÌÄÈääÜàää°(€€€€€€€€€€€€€ÌàÌÈÀäÌĞØĞØ°€ÌàÌÌÄÀÌÌØàÈ°€ÌàÌÌØÌĞääÄÔ°€ÌàÌÔĞÈĞàäØÄ°€ÌàÌØÌÌÈÌØàä°€ÌàÌààäĞàÄÔÀ°€ÌàĞÀĞÈÈÈàÈÌ°(€€€€€€€€€€€€€ÌàĞÄÌÈÔäÄÄÀ°€ÌàĞÈÀĞÄÄÔÌÀ°€ÌàĞÈäÔØÈÄÜĞ°€ÌàĞÌÜÄÌäÄÈØ°€ÌàĞĞĞÔàÀØÈĞ°€ÌàĞÔÄàÀĞÌÈÜ°(€€€€€€€€€€€€€ÌàĞØĞÈÜÜÀàà°€ÌàĞÜÜĞÔĞÔäÌ°€ÌàĞàĞäÌÜÀäÀ°€ÌàĞäÌäàäÔÀÌ°€ÌàĞääÄÈÄÜÔĞ°€ÌàÔÀÔĞÔØØØÌ°(€€€€€€€€€€€€€ÌàÔÄĞÈÜØÌÌÈ°€ÌàÔÈÈØÜàØØä°€ÌàÔÌĞÜØÌÄàà°€ÌàÔÔàÀàÄÜÈà°€ÌàäĞÄÜÄäÈĞÀ°€ÌäÈĞÈäÔØØÔØ°€ÌäÈÔĞÀÈÈØàà°(€€€€€€€€€€€€€ÌäÈÜàÜäÔààÔ°€ÌäÈäÄÔäÈĞÌØ°€ÌäÌÌÌàÄÈÜØØ°€ÌäÌĞØÈÔÄĞÔÈ¤¤(€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡É•µ½Ñ”°€AIMM=I}IU8œ°€äää¤è(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈÀÜàØÌÄäĞ°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈÌÜÈĞØÄÜÄ°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈÌàÔÀÌÄÀÄ°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈÔÔÈÈÈÈÔĞ°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈØäÈÀØàÄä°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ ÌàÈÜØØÌàÄÜÈ°É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9L¤(€€€€€€€™½È‘•Á±½å}ÉÕ¸¥¸É•µ½Ñ”¹=5A1Q}AU	1%M!}IU9Lè(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡‘•Á±½å}ÉÕ¸õ‘•Á±½å}ÉÕ¸¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¹½}É•Á±…äœ¤è(€€€€€€€€€€€€€€€É•µ½Ñ”¹Ù…±¥‘…Ñ”¡ì¨©Í•±˜¹Ä°€‘•Á±½å}ÉÕ¸œè‘•Á±½å}ÉÕ¹ô¤((€€€‘•˜Ñ•ÍÑ}¡¥ÍÑ½É¥…±}É•…Ñ¥½¹}…¹¹½Ñ}É•Á±…•}ÕÉÉ•¹Ñ}ÁÉ•‘••ÍÍ½È¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•Ğœè€˜á”ĞÜĞÉ˜ØäØÑ‘ÄÈÌİ‘ŒàÙ‰„ÈİŒÁÌÌÜå„ÔÍˆÔİ„Ñ˜ĞÕÙŒÄÙ”ÜÄÍ˜ÌäÉˆĞÍ…•˜œ°(€€€€€€€€€€€€½İ¹•ÈœèìÉÕ¸œèÉ•µ½Ñ”¹=I%%91}AU	1%M!}IU8°€Í½ÕÉ”œèÉ•µ½Ñ”¹=I%%91}M=UI°(€€€€€€€€€€€€€€€€‘¥•ÍĞœè€˜á”ĞÜĞÉ˜ØäØÑ‘ÄÈÌİ‘ŒàÙ‰„ÈİŒÁÌÌÜå„ÔÍˆÔİ„Ñ˜ĞÕÙŒÄÙ”ÜÄÍ˜ÌäÉˆĞÍ…•˜œ°(€€€€€€€€€€€€€€€€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}Á½±¥Í¡}½İ¹•É}…¹¹½Ñ}±…¥µ}ÕÉÉ•¹Ñ}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÄàÀĞØÄÌÄä°(€€€€€€€€€€€€Í½ÕÉ”œè€œäÔÁŒåˆÕŒÁ„ÀÀĞÌÁŒÕˆÕ„ÜÄÅÅˆäÕ‰ŒÀĞĞĞåÀØåœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}É•ÍÑ½É…Ñ¥½¹}½İ¹•É}…¹¹½Ñ}±…¥µ}ÕÉÉ•¹Ñ}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÄäÄÄÀĞÈÀÜ°(€€€€€€€€€€€€Í½ÕÉ”œè€œØÌÑÅŒäİ™İ‰˜ĞääÄÀİàÈÀÌØÔàá˜Ñ‰ÜÜÄÜÙäÌœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}µ•…±}Í•…É¡}½İ¹•É}…¹¹½Ñ}±…¥µ}ÕÉÉ•¹Ñ}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÄäÜĞÌÜàÌÔ°(€€€€€€€€€€€€Í½ÕÉ”œè€œÉ•ˆÈÌÜØÌåŒÙŒÔÍŒÌá˜ÈİÜÄØàÑ‘”ĞÌÌàĞàĞÉ‘…˜Üœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}µ•…±}É•½¹¥±¥…Ñ¥½¹}½İ¹•É}…¹¹½Ñ}±…¥µ}¹…Ñ¥Ù•}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÈÀÜàØÌÄäĞ°(€€€€€€€€€€€€Í½ÕÉ”œè€œÄØÄäØĞÄÁ„áˆäÁˆÄÁ”áÀÙˆİ…ŒáˆÌáÑ”İÈÌÕœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}™¥ÉÍÑ}¹…Ñ¥Ù•}½İ¹•É}…¹¹½Ñ}±…¥µ}ÕÉÉ•¹Ñ}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÈÌàÔÀÌÄÀÄ°(€€€€€€€€€€€€Í½ÕÉ”œè€ˆÔÍÕ„Á‰˜ÔĞÅ”ØÙˆØàĞÀÄá™ˆİ‘ˆÌÌÉ‘”á™•™…˜Ìœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}½¹ÍÕµ•‘}½ÍÑ}±…‰•±}ÁÉ•‘••ÍÍ½É}…¹¹½Ñ}±…¥µ}ÕÉÉ•¹Ñ}¥¹Ù•¹Ñ½Éä¡Í•±˜¤è(€€€€€€€‰•™½É”€ôìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•ÈœèìÉÕ¸œè€ÌàÌØÌÌÈÌØàä°(€€€€€€€€€€€€Í½ÕÉ”œè€œÀá„äå˜É‘™”É˜ĞÈÁŒåŒÀÍ„Ù•ˆĞÔÅÀÁ”å„ÀÑ”ÔÀÈØœ°(€€€€€€€€€€€€‘¥•ÍĞœèÍ•±˜¹‘¥•ÍĞ°€ÍÑ…ÑÕÌœè€ÁÕ‰±¥Í¡•õô(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤è(€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤((€€€‘•˜Ñ•ÍÑ}ÍÕ•ÍÍ½É}É•ÅÕ¥É•Í}•á…Ñ}Ñ¡É••}™¥±•}‘•±Ñ…}…¹‘}Í…µ•|àÔÕ}Á…Ñ¡Ì¡Í•±˜¤è(€€€€€€€‰•™½É”€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¤(€€€€€€€…™Ñ•È€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•½Á…å±½…œ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡±•¸¡‰•™½É”¤°€àÔÔ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹9Q%Y}MUMM=I}!9L°€ (€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½™É½¹Ñ•¹¹©Ìœ°(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½Í½ÕÉ”µµ…¹¥™•ÍĞ¹©Í½¸œ°(€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½Ñ½ÕÈ¹©Ìœ°(€€€€€€€€¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹ÁÉ•‘••ÍÍ½É}‘•±Ñ„¡‰•™½É”°…™Ñ•È¤°É•µ½Ñ”¹9Q%Y}MUMM=I}!9L¤(€€€€€€€™½È¹…µ”¥¸€ Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‰É¥‘”¹©Ìœ°(€€€€€€€€€€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‰½½ÑÍÑÉ…À¹©Ìœ°(€€€€€€€€€€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‘½¹½È¹ÍÌœ°(€€€€€€€€€€€€€€€€€€€€€ÁÉ½Ñ½ÑåÁ”µÍ•…É ½‘…Ñ„¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½±Õ¥‘”¹µ¥¸¹©Ìœ¤è(€€€€€€€€€€€‰…€ôì¨©…™Ñ•È°¹…µ”è€˜œ€¨€ØÑô(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¹…µ”õ¹…µ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Õ¹É•Ù¥•İ•‘}ÁÉ•‘••ÍÍ½É}‘•±Ñ„œ¤è(€€€€€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½É}‘•±Ñ„¡‰•™½É”°‰…¤(€€€€€€€µ¥ÍÍ¥¹œ€ô‘¥Ğ¡…™Ñ•È¤ìµ¥ÍÍ¥¹œ¹Á½À¡É•µ½Ñ”¹9Q%Y}MUMM=I}!9MlÁt¤(€€€€€€€ÍÕ‰ÍÑ¥ÑÕÑ•€ôì¨©µ¥ÍÍ¥¹œ°€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½Õ¹­¹½İ¸¹©Ìœè€˜œ€¨€ØÑô(€€€€€€€™½È‰…¥¸€¡µ¥ÍÍ¥¹œ°ÍÕ‰ÍÑ¥ÑÕÑ•°ì¨©…™Ñ•È°€Õ¹­¹½İ¸¹©Ìœè€˜œ€¨€ØÑô¤è(€€€€€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€ÍÕ•ÍÍ½É}¥¹Ù•¹Ñ½Éå}‘É¥™Ğœ¤è(€€€€€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½É}‘•±Ñ„¡‰•™½É”°‰…¤(€€€€€€€™½È¹…µ”¥¸É•µ½Ñ”¹9Q%Y}MUMM=I}!9Lè(€€€€€€€€€€€¥¹½µÁ±•Ñ”€ôì¨©…™Ñ•È°¹…µ”è‰•™½É•m¹…µ•uô(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡µ¥ÍÍ¥¹}¡…¹”õ¹…µ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Õ¹É•Ù¥•İ•‘}ÁÉ•‘••ÍÍ½É}‘•±Ñ„œ¤è(€€€€€€€€€€€€€€€É•µ½Ñ”¹ÁÉ•‘••ÍÍ½É}‘•±Ñ„¡‰•™½É”°¥¹½µÁ±•Ñ”¤((€€€‘•˜Ñ•ÍÑ}¡¥ÍÑ½É¥…±}…±±½İ…¹•Í}…¹¹½Ñ}…Ñ¥Ù…Ñ•}•áÑÉ…}±•…å}½É}Õ¹É•Ù¥•İ•‘}¹…Ñ¥Ù•}¡…¹”¡Í•±˜¤è(€€€€€€€µ…¹¥™•ÍÑ}Á…Ñ €ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼É•µ½Ñ”¹9Q%Y}59%MP(€€€€€€€µ…¹¥™•ÍÑ}½É¥¥¹…°€ôµ…¹¥™•ÍÑ}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤(€€€€€€€™½È¤°¹…µ”¥¸•¹Õµ•É…Ñ”  Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ°€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‰É¥‘”¹©Ìœ¤¤è(€€€€€€€€€€€Á…Ñ €ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼¹…µ”ì½É¥¥¹…°€ôÁ…Ñ ¹É•…‘}‰åÑ•Ì ¤(€€€€€€€€€€€ÑÉäè(€€€€€€€€€€€€€€€Á…Ñ ¹İÉ¥Ñ•}‰åÑ•Ì¡½É¥¥¹…°€¬ˆœ•áÑÉ„¡…¹”½ÕÑÍ¥‘”ÍÕ•ÍÍ½ÈÍ½Á”œ¤(€€€€€€€€€€€€€€€¹…Ñ¥Ù”€ô½Áä¹‘••Á½Áä¡Í•±˜¹¹…Ñ¥Ù”¤(€€€€€€€€€€€€€€€¥˜¹…µ”¥¸É•µ½Ñ”¹9Q%Y}MMQLè(€€€€€€€€€€€€€€€€€€€¹…Ñ¥Ù•l™¥±•ÌumA…Ñ ¡¹…µ”¤¹¹…µ•t€ôÉ•µ½Ñ”¹‘¥•ÍĞ¡Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€€€€€€€€€€€€€™½ÈÉ½İÌ¥¸¹…Ñ¥Ù•lÉ…Á t¹Ù…±Õ•Ì ¤è(€€€€€€€€€€€€€€€€€€€€€€€™½ÈÉ½Ü¥¸É½İÌè(€€€€€€€€€€€€€€€€€€€€€€€€€€€¥˜É½İlÁ…Ñ t€ôô¹…µ”è(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€É½Ü¹ÕÁ‘…Ñ”¡Í¡„ÈÔØõÉ•µ½Ñ”¹‘¥•ÍĞ¡Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¤°‰åÑ•ÌõÁ…Ñ ¹ÍÑ…Ğ ¤¹ÍÑ}Í¥é”¤(€€€€€€€€€€€€€€€€€€€µ…¹¥™•ÍÑ}Á…Ñ ¹İÉ¥Ñ•}Ñ•áĞ¡©Í½¸¹‘ÕµÁÌ¡¹…Ñ¥Ù”°•¹ÍÕÉ•}…Í¥¤õ…±Í”°¥¹‘•¹ĞôÈ¤€¬€q¸œ¤(€€€€€€€€€€€€€€€İ¥Ñ Á…Ñ ¹‘¥Ğ¡Í•±˜¹¹…Ñ¥Ù•}Á¥¸°ìÍ½ÕÉ•}µ…¹¥™•ÍÑ}Í¡„ÈÔØœèÉ•µ½Ñ”¹‘¥•ÍĞ¡µ…¹¥™•ÍÑ}Á…Ñ ¹É•…‘}‰åÑ•Ì ¤¥ô¤è(€€€€€€€€€€€€€€€€€€€Ä°…É¡¥Ù”€ôÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€ •áÑÉ„µ‘•±Ñ„´œ€¬ÍÑÈ¡¤¤¤°Í•±˜¹Ä°€”œ€¨€ØĞ¤(€€€€€€€€€€€€€€€€€€€™°ÕÁ±½…‘}¹…µ”€ôÑ•µÁ™¥±”¹µ­ÍÑ•µÀ¡ÁÉ•™¥àôÍ•…É Ìµ‘•Í¥¸µØÈµÕÁ‘…Ñ”¸œ°ÍÕ™™¥àôœ¹Ñ…È¹èœ°‘¥Èôœ½ÑµÀœ¤ì½Ì¹±½Í”¡™¤(€€€€€€€€€€€€€€€€€€€ÕÁ±½…€ôA…Ñ ¡ÕÁ±½…‘}¹…µ”¤ìÕÁ±½…¹İÉ¥Ñ•}‰åÑ•Ì¡…É¡¥Ù”¤ìÍ•±˜¹ÕÁ±½…‘Ì¹…ÁÁ•¹¡ÕÁ±½…¤(€€€€€€€€€€€€€€€€€€€Ä¹ÕÁ‘…Ñ”¡‘•Á±½å}ÉÕ¸ôÜäÄ€¬¤°…É¡¥Ù”õÕÁ±½…‘}¹…µ”°‰•™½É”õÍ•±˜¹Í¥Ñ”¹Í¹…ÁÍ¡½Ğ ¤¤(€€€€€€€€€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¹…µ”õ¹…µ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Õ¹É•Ù¥•İ•‘}ÁÉ•‘••ÍÍ½É}‘•±Ñ„œ¤è(€€€€€€€€€€€€€€€€€€€€€€€Í•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹Í¹…ÁÍ¡½Ğ ¤°Ål‰•™½É”t¤(€€€€€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑ…±Í” ¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€ÁÉ•‘••ÍÍ½Èœ¤¹•á¥ÍÑÌ ¤¤(€€€€€€€€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¥lÍÑ…ÑÕÌt°€¹½Ñ}…Ñ¥Ù…Ñ•œ¤(€€€€€€€€€€€™¥¹…±±äè(€€€€€€€€€€€€€€€Á…Ñ ¹İÉ¥Ñ•}‰åÑ•Ì¡½É¥¥¹…°¤ìµ…¹¥™•ÍÑ}Á…Ñ ¹İÉ¥Ñ•}‰åÑ•Ì¡µ…¹¥™•ÍÑ}½É¥¥¹…°¤((€€€‘•˜Ñ•ÍÑ}ÍÕÁÁ±¥•É}ÁÉ¥•}±•…‘}±½½}™½¹Ñ}…¹‘}Õ¹­¹½İ¹}Á…å±½…‘}¡…¹•Í}‘•¹¥•¡Í•±˜¤è(€€€€€€€™½È¹…µ”¥¸lÁÉ½Ñ½ÑåÁ”µÍ•…É ½‘…Ñ„¹©Ìœ°€Í•…É µÁ…”µØÈ¹Á¡Àœ°€Í¥Ñ”µÁ…Ñ µØÄ¹Á¡Àœ°(€€€€€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½ÁÉ•Ù¥•Üµ±•…¹©Ìœ°€ÁÉ½Ñ½ÑåÁ”µÍ•…É ½±•…¹©Ìœ°€Ñ½ÕÈµ½¹ÑÉ½±±•ÈµØĞ¹©Ìœ°(€€€€€€€€€€€€€€€€Ù¥ÍÕ…°µÍ•…É ½…ÍÍ•ÑÌ½…¹åÑ½ÕÈµ±½¼¹ÍÙœœ°€Ù¥ÍÕ…°µÍ•…É ½™½¹ÑÌ½•É½Á½ÉĞ¹İ½™˜Ètè(€€€€€€€€€€€À€ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼¹…µ”ì½É¥¥¹…°€ôÀ¹É•…‘}‰åÑ•Ì ¤ìÀ¹İÉ¥Ñ•}‰åÑ•Ì¡½É¥¥¹…°€¬ˆœÕ¹É•Ù¥•İ•œ¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¹…µ”õ¹…µ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Õ¹É•Ù¥•İ•‘}Í½ÕÉ•}‘•±Ñ„œ¤è(€€€€€€€€€€€€€€€ÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€É•©•Ñ•œ°Í•±˜¹Ä°€”œ€¨€ØĞ¤(€€€€€€€€€€€À¹İÉ¥Ñ•}‰åÑ•Ì¡½É¥¥¹…°¤(€€€€€€€€¡Í•±˜¹Í½ÕÉ”€¼€Á…å±½…½¹•Üµ…ÍÍ•Ğ¹©Ìœ¤¹İÉ¥Ñ•}Ñ•áĞ Õ¹­¹½İ¸œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Í½ÕÉ•}¥¹Ù•¹Ñ½Éå}‘É¥™Ğœ¤èÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€É•©•Ñ•œ°Í•±˜¹Ä°€”œ€¨€ØĞ¤((€€€‘•˜Ñ•ÍÑ}½ÉÉÕÁÑ}Í½ÕÉ•}±•‘•É}‘•¹¥•¡Í•±˜¤è(€€€€€€€À€ôÍ•±˜¹Í½ÕÉ”€¼€Á…å±½…œ€¼É•…Ñ½È¹1I}AQ ì±•‘•È€ô©Í½¸¹±½…‘Ì¡À¹É•…‘}‰åÑ•Ì ¤¤(€€€€€€€±•‘•Él™¥±•ÌulÁulÍ¡„ÈÔØt€ô€˜œ€¨€ØĞìÀ¹İÉ¥Ñ•}Ñ•áĞ¡©Í½¸¹‘ÕµÁÌ¡±•‘•È¤¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Í½ÕÉ•}±•‘•É}…½Õ¹Ñ¥¹œœ¤èÁÕˆ¹‘•É¥Ù”¡Í•±˜¹Í½ÕÉ”°Í•±˜¹‰…Í•±¥¹”°Í•±˜¹É½½Ğ€¼€É•©•Ñ•œ°Í•±˜¹Ä°€”œ€¨€ØĞ¤((€€€‘•˜Ñ•ÍÑ}•á…Ñ}ÁÉ•‘••ÍÍ½É}½İ¹•É}…¹‘}¥¹Ù•¹Ñ½Éå}É•ÅÕ¥É•¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤(€€€€€€€™½È™¥•±°Ù…±Õ”¥¸l Í½ÕÉ”œ°€˜œ€¨€ĞÀ¤°€ ÉÕ¸œ°€ÄÈÌ¤°€ ÍÑ…ÑÕÌœ°€…Ñ¥Ù…Ñ•œ¤°€ ‘¥•ÍĞœ°€˜œ€¨€ØĞ¥tè(€€€€€€€€€€€‰…€ô½Áä¹‘••Á½Áä¡Ä¤ì‰…‘l‰•™½É”ul½İ¹•Èum™¥•±‘t€ôÙ…±Õ”(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡™¥•±õ™¥•±¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡‰…¤(€€€€€€€€¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ€¼€Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ¤¹İÉ¥Ñ•}Ñ•áĞ ‘¥™™•É•¹Ğ¥¹ÍÑ…±±•ÁÉ•Ù¥•Üœ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€ÁÉ•‘••ÍÍ½É}¡…¹•œ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤((€€€‘•˜Ñ•ÍÑ}…‰Í•¹Ñ}Õ¹­¹½İ¹}½É}Íåµ±¥¹­•‘}Ñ…É•Ñ}‘•¹¥•¡Í•±˜¤è(€€€€€€€™½È‰•™½É”¥¸mìÑ…É•Ğœè9½¹”°€½İ¹•Èœè9½¹•ô°ìÑ…É•ĞœèÍ•±˜¹‘¥•ÍĞ°€½İ¹•Èœè9½¹•õtè(€€€€€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤èÉ•µ½Ñ”¹ÁÉ•‘••ÍÍ½È¡‰•™½É”¤(€€€€€€€Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¹É•¹…µ”¡Í•±˜¹Í¥Ñ”¹Á…É•¹Ğ€¼€Õ¹ÑÉÕÍÑ•œ¤ìÍ•±˜¹Í¥Ñ”¹Ñ…É•Ğ¹Íåµ±¥¹­}Ñ¼¡Í•±˜¹Í¥Ñ”¹Á…É•¹Ğ€¼€Õ¹ÑÉÕÍÑ•œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Ñ…É•Ñ}½É}½İ¹•É}±¥¹¬œ¤èÉ•µ½Ñ”¹M¥Ñ”¡Í•±˜¹Í¥Ñ”¹É½½Ğ¤((€€€‘•˜Ñ•ÍÑ}…Ñ¥Ù…Ñ•}…¹‘}ÁÕ‰±¥Í¡}ÁÉ•Í•ÉÙ•}ÁÉ½‘ÕÑ¥½¹}…±±}½±‘}ÁÉ•Ù¥•İÌ¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ì½±€ôÍ•±˜¹Í¥Ñ”¹ÁÉ½Ñ•Ñ• ¤(€€€€€€€‰•™½É•}™¥±•Ì€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¤(€€€€€€€…Ñ¥Ù…Ñ¥½¸€ôÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡…Ñ¥Ù…Ñ¥½¹lÍÑ…ÑÕÌt°€…Ñ¥Ù…Ñ•œ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡…Ñ¥Ù…Ñ¥½¹l¡…¹•‘}Á…å±½…‘}™¥±•Ìt°±¥ÍĞ¡É•µ½Ñ”¹9Q%Y}MUMM=I}!9L¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡…Ñ¥Ù…Ñ¥½¹l™¥±•Ìt°€àÔÔ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä¥lÍÑ…ÑÕÌt°€ÁÕ‰±¥Í¡•œ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹ÁÉ½Ñ•Ñ• ¤°½±¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹‘¥•ÍĞ¡É•µ½Ñ”¹©Í½¹}‰åÑ•Ì¡É•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¤¤¤°Í•±˜¹ÅlÑ…É•Ñ}‘¥•ÍĞt¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹‘¥•ÍĞ¡É•µ½Ñ”¹©Í½¹}‰åÑ•Ì¡É•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€ÁÉ•‘••ÍÍ½Èœ¤¤¤°Í•±˜¹‘¥•ÍĞ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€ÁÉ•‘••ÍÍ½Èœ¤°‰•™½É•}™¥±•Ì¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡©Í½¸¹±½…‘Ì¡Í•±˜¹Í¥Ñ”¹½İ¹•È¹É•…‘}‰åÑ•Ì ¤¥lÍÑ…ÑÕÌt°€ÁÕ‰±¥Í¡•œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á…Ñ}ÁÕ‰±¥Í¡•‘}ÁÉ•‘••ÍÍ½É}É•ÅÕ¥É•œ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Í•±˜¹ÍÑ…•¡ÉÕ¸ôÜäÀ¤¤((€€€‘•˜Ñ•ÍÑ}É½±±‰…­}É•ÍÑ½É•Í}•á…Ñ}Ñ…É•Ñ}½İ¹•É}…¹‘}½±‘}ÁÉ•Ù¥•İÌ¡Í•±˜¤è(€€€€€€€‰•™½É•}™¥±•Ì€ôÉ•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¤(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ìÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¥lÍÑ…ÑÕÌt°€É½±±•‘}‰…­}Ñ½}•á…Ñ}ÁÉ•‘••ÍÍ½Èœ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹Í¹…ÁÍ¡½Ğ ¤°Ål‰•™½É”t¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…° ¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ€¼€Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ¤¹É•…‘}Ñ•áĞ ¤°€ÁÉ•Ù¥½ÕÌÁÕ‰±¥Í¡•Á½±¥Í œ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡É•µ½Ñ”¹¥¹Ù•¹Ñ½Éä¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¤°‰•™½É•}™¥±•Ì¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡±•¸¡‰•™½É•}™¥±•Ì¤°€àÔÔ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…° ¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ€¼€Ù¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‰½½ÑÍÑÉ…À¹©Ìœ¤¹É•…‘}Ñ•áĞ ¤°(€€€€€€€€€€€€€€€€€€€€€€€€€¹…Ñ¥Ù”™¥áÑÕÉ”éÙ¥ÍÕ…°µÍ•…É ½¹…Ñ¥Ù”µØÈ½‰½½ÑÍÑÉ…À¹©Ìœ¤((€€€‘•˜Ñ•ÍÑ}½µÁ±•Ñ•‘}ÁÕ‰±¥Í¡}½É}É½±±‰…­}…¹¹½Ñ}É•Á±…ä¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ìÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤ìÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä¤(€€€€€€€™½ÈÉ½±±‰…¬¥¸€¡…±Í”°QÉÕ”¤è(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡É½±±‰…¬õÉ½±±‰…¬¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€ÑÉ…¹Í…Ñ¥½¹}…±É•…‘å}™¥¹¥Í¡•œ¤èÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°É½±±‰…¬¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡©Í½¸¹±½…‘Ì¡Í•±˜¹Í¥Ñ”¹½İ¹•È¹É•…‘}‰åÑ•Ì ¤¥lÍÑ…ÑÕÌt°€ÁÕ‰±¥Í¡•œ¤((€€€‘•˜Ñ•ÍÑ}¥¹Ñ•ÉÉÕÁÑ¥½¹}…™Ñ•É}½±‘}µ½Ù•}É•ÍÑ½É•Í}İ¥Ñ¡½ÕÑ}Õ•ÍÍ¥¹œ¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ìÉ•…°€ôA…Ñ ¹É•¹…µ”(€€€€€€€‘•˜™…¥±}¹•İ}µ½Ù”¡Á…Ñ °Ñ…É•Ğ¤è(€€€€€€€€€€€¥˜Á…Ñ ¹¹…µ”€ôô€Á…å±½…œ…¹A…Ñ ¡Ñ…É•Ğ¤€ôôÍ•±˜¹Í¥Ñ”¹Ñ…É•ĞèÉ…¥Í”IÕ¹Ñ¥µ•ÉÉ½È ¥¹Ñ•ÉÉÕÁÑ•¥¹ÍÑ…±°œ¤(€€€€€€€€€€€É•ÑÕÉ¸É•…°¡Á…Ñ °Ñ…É•Ğ¤(€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡A…Ñ °€É•¹…µ”œ°™…¥±}¹•İ}µ½Ù”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡IÕ¹Ñ¥µ•ÉÉ½È°€¥¹Ñ•ÉÉÕÁÑ•¥¹ÍÑ…±°œ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ…±Í”¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ¹•á¥ÍÑÌ ¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¥lÍÑ…ÑÕÌt°€É½±±•‘}‰…­}Ñ½}•á…Ñ}ÁÉ•‘••ÍÍ½Èœ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹Í¹…ÁÍ¡½Ğ ¤°Ål‰•™½É”t¤((€€€‘•˜Ñ•ÍÑ}¥¹Ñ•ÉÉÕÁÑ¥½¹}‰•™½É•}½İ¹•É}½µµ¥Ñ}É•ÍÑ½É•Í}¡•­•‘}¹•İ}Á…å±½…¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤(€€€€€€€İ¥Ñ €¡Á…Ñ ¹½‰©•Ğ¡Í•±˜¹Í¥Ñ”°€İÉ¥Ñ•}½İ¹•Èœ°Í¥‘•}•™™•ĞõIÕ¹Ñ¥µ•ÉÉ½È ½İ¹•È¥¹Ñ•ÉÉÕÁÑ¥½¸œ¤¤°(€€€€€€€€€€€€Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡IÕ¹Ñ¥µ•ÉÉ½È°€½İ¹•È¥¹Ñ•ÉÉÕÁÑ¥½¸œ¤¤è(€€€€€€€€€€€Í•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡©Í½¸¹±½…‘Ì¡Í•±˜¹Í¥Ñ”¹½İ¹•È¹É•…‘}‰åÑ•Ì ¤¤°Í•±˜¹½İ¹•È¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¥lÍÑ…ÑÕÌt°€É½±±•‘}‰…­}Ñ½}•á…Ñ}ÁÉ•‘••ÍÍ½Èœ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹Í¹…ÁÍ¡½Ğ ¤°Ål‰•™½É”t¤((€€€‘•˜Ñ•ÍÑ}Ù…±¥‘…Ñ¥½¹}™…¥±ÕÉ•}‰•™½É•}…Ñ¥Ù…Ñ¥½¹}¡…Í}Ñ•Éµ¥¹…±}É••¥ÁĞ¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤(€€€€€€€İ¥Ñ Á…Ñ ¹½‰©•Ğ¡É•µ½Ñ”°€Ù•É¥™äœ°Í¥‘•}•™™•ĞõY…±Õ•ÉÉ½È ¥¹Ù…±¥…ÉÑ¥™…Ğœ¤¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€¥¹Ù…±¥…ÉÑ¥™…Ğœ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑÅÕ…°¡Í•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¥lÍÑ…ÑÕÌt°€¹½Ñ}…Ñ¥Ù…Ñ•œ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€ÑÉ…¹Í…Ñ¥½¹}…±É•…‘å}™¥¹¥Í¡•œ¤èÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€ÁÉ•Ù¥½ÕÍ}½ÕÑ½µ•}Õ¹­¹½İ¸œ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Í•±˜¹ÍÑ…• ¤¤((€€€‘•˜Ñ•ÍÑ}µ½‘¥™¥•‘}¹•İ}Ñ…É•Ñ}‰…­ÕÁ}½É}½İ¹•É}ÍÑ½ÁÍ}É½±±‰…¬¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ìÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€€¡Í•±˜¹Í¥Ñ”¹Ñ…É•Ğ€¼€Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ¤¹İÉ¥Ñ•}Ñ•áĞ …¹½Ñ¡•ÈİÉ¥Ñ•Èœ¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€µ½‘¥™¥•‘}Ñ…É•Ğœ¤èÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°QÉÕ”¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑQÉÕ” ¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€ÁÉ•‘••ÍÍ½Èœ¤¹¥Í}‘¥È ¤¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ…±Í” ¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€É•ÍÕ±Ğ¹©Í½¸œ¤¹•á¥ÍÑÌ ¤¤((€€€‘•˜Ñ•ÍÑ}É•ÅÕ•ÍÑ}½É}‰…­ÕÁ}‘É¥™Ñ}ÍÑ½ÁÍ}ÑÉ…¹Í…Ñ¥½¸¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤ìÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€…•ÁÑ•‘}¹…Ñ¥Ù•}Í½ÕÉ•}½¹±äœ¤èÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡ì¨©Ä°€…ÉÑ¥™…Ñ}¥œè€ääåô°QÉÕ”¤(€€€€€€€€¡Í•±˜¹Í¥Ñ”¹É••¥ÁĞ¡Ä¤€¼€ÁÉ•‘••ÍÍ½È½Ù¥ÍÕ…°µÍ•…É ½…ÁÀ¹©Ìœ¤¹İÉ¥Ñ•}Ñ•áĞ µ½‘¥™¥•‰…­ÕÀœ¤(€€€€€€€™½ÈÉ½±±‰…¬¥¸€¡…±Í”°QÉÕ”¤è(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡É½±±‰…¬õÉ½±±‰…¬¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€‰…­ÕÁ}¡…¹•œ¤èÍ•±˜¹Í¥Ñ”¹™¥¹¥Í ¡Ä°É½±±‰…¬¤((€€€‘•˜Ñ•ÍÑ}•á¥ÍÑ¥¹}ÁÉ•Ù¥•İ}±½­Í}É•™ÕÍ•}ÕÁ‘…Ñ”¡Í•±˜¤è(€€€€€€€Ä€ôÍ•±˜¹ÍÑ…• ¤(€€€€€€€™½È¹…µ”¥¸€ œ¹Í•…É ÌµÍ¥Ñ”µ±½¬œ°€œ¹Í•…É Ìµ±½…°µ±½¬œ°€œ¹Í•…É ÌµØÄÜµ±½¬œ°€œ¹Í•…É ÌµØÄàµ±½¬œ°€œ¹Í•…É Ìµ¹•áĞµ±½¬œ¤è(€€€€€€€€€€€À€ôÍ•±˜¹Í¥Ñ”¹Á…É•¹Ğ€¼¹…µ”ìÀ¹µ­‘¥È ¤(€€€€€€€€€€€İ¥Ñ Í•±˜¹ÍÕ‰Q•ÍĞ¡¹…µ”õ¹…µ”¤°Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€•á¥ÍÑ¥¹}ÁÉ•Ù¥•İ}‰ÕÍäœ¤èÍ•±˜¹Í¥Ñ”¹…Ñ¥Ù…Ñ”¡Ä¤(€€€€€€€€€€€À¹Éµ‘¥È ¤((€€€‘•˜Ñ•ÍÑ}É•ÅÕ•ÍÑ}Ñ…É•Ñ}‘¥•ÍÑ}…¹¹½Ñ}‰•}¡…¹•¡Í•±˜¤è(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€Á…å±½…‘}¡…Í¡•Ìœ¤èÉ•µ½Ñ”¹Ù•É¥™ä¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•œ°ì¨©Í•±˜¹Ä°€Ñ…É•Ñ}‘¥•ÍĞœè€˜œ€¨€ØÑô¤(€€€€€€€İ¥Ñ Í•±˜¹…ÍÍ•ÉÑI…¥Í•ÍI••à¡Y…±Õ•ÉÉ½È°€½¹ÑÉ½±}¡…Í œ¤èÉ•µ½Ñ”¹Ù•É¥™ä¡Í•±˜¹É½½Ğ€¼€‘•É¥Ù•œ°ì¨©Í•±˜¹Ä°€µ…¹¥™•ÍÑ}Í¡„ÈÔØœè€˜œ€¨€ØÑô¤((€€€‘•˜Ñ•ÍÑ}ÑÉÕÍÑ•‘}É•µ½Ñ•}µ½‘Õ±•}‰½½ÑÍÑÉ…Á}¥Í}Á½ÉÑ…‰±”¡Í•±˜¤è(€€€€€€€½‘”€ôÁÕˆ¹É•µ½Ñ•}Í½ÕÉ” ¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ9½Ñ%¸¡ˆÁÉ½Ñ½ÑåÁ”µÍ•…É œ°½‘”¹ÍÁ±¥Ğ¡ˆ•á•Œ¡½µÁ¥±”œ°€Ä¥lÁt¤(€€€€€€€€Œ½µÁ¥±”½¹±ä°Ñ¡•¸¥µÁ½ÉĞ‰½Ñ µ½‘Õ±•Ìİ¥Ñ¡½ÕĞÑ¡•¥È1$•¹ÑÉäÁ½¥¹Ğ¸(€€€€€€€½µÁ¥±”¡½‘”°€œñÑÉÕÍÑ•µÉ•µ½Ñ”øœ°€•á•Œœ¤(€€€€€€€¹…µ•ÍÁ…”€ôì}}¹…µ•}|œè€Á½ÉÑ…‰±•}Ñ•ÍĞôì•á•Œ¡½‘”°¹…µ•ÍÁ…”¤(€€€€€€€Í•±˜¹…ÍÍ•ÉÑ%¸ M¥Ñ”œ°¹…µ•ÍÁ…”¤ìÍ•±˜¹…ÍÍ•ÉÑÅÕ…°¡¹…µ•ÍÁ…•lI=UQt°É•µ½Ñ”¹I=UQ¤(()¥˜}}¹…µ•}|€ôô€}}µ…¥¹}|œèÕ¹¥ÑÑ•ÍĞ¹µ…¥¸ ¤(
