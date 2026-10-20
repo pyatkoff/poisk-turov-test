@@ -170,6 +170,26 @@ class UpdateContracts(unittest.TestCase):
             'groupConcreteFocusRetained': True, 'groupBackRemountExtraOperations': 0,
             'groupVisibleConcreteMinimum': 161400, 'groupVisibleConcreteDelta': 9000,
             'groupDirectConcreteReopen': True,
+            'retainedContent': {
+                'hotelId': 3678, 'hotelName': 'RIA SUITES HOTEL',
+                'snapshotSHA256': '00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3',
+                'images': [
+                    {'file': 'ria-suites-1.jpg',
+                     'sourceURL': 'https://static.tourvisor.ru/hotel_pics/main400/103994.jpg',
+                     'sha256': 'f259ca07c0edf996bf23e456b548990830e010538a465e86f952a399abb1c4d5'},
+                    {'file': 'ria-suites-2.jpg',
+                     'sourceURL': 'https://static.tourvisor.ru/hotel_pics/verybig/4/103994-90635200.jpg',
+                     'sha256': '7a74632ddf255de435e4b7fec6c6c982d33681552fe3d94b8aa4b80bde853dab'}],
+                'cardErrorAndRetry': True, 'galleryFullImage': True,
+                'lateFailureIgnored': True, 'galleryErrorAndRetry': True,
+                'compactImageNoPlaceholder': True, 'compactErrorWithoutControls': True,
+                'passiveSupplierOperations': 0},
+            'contactValidation': {'emptyPhone': True, 'invalidPhone': True,
+                'restoredInvalidDraft': True, 'whitespacePhone': True,
+                'missingConsent': True, 'correctedPreviewDelta': 1,
+                'invalidPreviewDelta': 0, 'exactContextRetained': True,
+                'backReopenRetained': True, 'extraSupplierOperations': 0,
+                'realSubmissions': 0},
             'screenNavigation': {'deepScroll': 1200, 'hotelHeadingVisible': True,
                 'resultFocusRestored': True, 'resultAnchorDelta': 0, 'extraSearches': 0,
                 'responsiveHiddenFocusFallback': True, 'responsiveRemountExtraOperations': 0},
@@ -221,13 +241,14 @@ class UpdateContracts(unittest.TestCase):
                     screen = ('startup' if logical_name.startswith('native-startup-')
                               else 'search' if logical_name.startswith(('native-family-', 'native-destination-', 'native-popup-', 'native-initial-search-return-'))
                               else 'filters' if logical_name.startswith(('native-budget-invalid-', 'native-budget-draft-', 'native-budget-progress-invalid-'))
-                              else 'results' if logical_name.startswith(('native-budget-results-', 'native-error-',
+                              else 'results' if logical_name.startswith(('native-content-results-', 'native-budget-results-', 'native-error-',
                                                                  'native-calendar-later-', 'native-calendar-single-range-', 'native-results-bounded-', 'native-initial-favorites-',
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
                                                                  'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
                               else 'tour' if logical_name.startswith('native-ai-price-changed-')
-                              else 'lead' if logical_name.startswith('native-ai-contact-')
+                              else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
+                              else 'gallery' if logical_name.startswith('native-content-gallery-')
                               else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
                     png = b'\x89PNG\r\n\x1a\nfictional offline verifier fixture'
                     if short_desktop:
@@ -286,7 +307,8 @@ class UpdateContracts(unittest.TestCase):
                     if side == 'native' and screen == 'results' and not name.startswith((
                             'native-filter-empty-', 'native-results-loading-', 'native-results-error-',
                             'native-results-partial-empty-', 'native-initial-favorites-')):
-                        result_card_ids = (list(range(1000, 1024)) if logical_name.startswith('native-results-bounded-')
+                        result_card_ids = ([3678] if logical_name.startswith('native-content-results-')
+                            else list(range(1000, 1024)) if logical_name.startswith('native-results-bounded-')
                             else [2, 3] if logical_name.startswith('native-budget-results-')
                             else [1, 4] if logical_name.startswith('native-filters-active-') else [1, 2, 3, 4])
                         fixture_hotels = [
@@ -296,14 +318,20 @@ class UpdateContracts(unittest.TestCase):
                             ('FIXTURE Laguna Collection Premium Resort & Private Villas',
                              'Вилла с двумя спальнями · свой бассейн', 'Ультра всё включено')]
                         for card_id in result_card_ids:
-                            bounded = card_id >= 1000
-                            hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
-                            title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
-                            terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
-                            operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
-                            facts = {'result-title': title, 'result-location': 'Турция · Кемер',
-                                'result-date': '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей', 'result-room': hotel[1],
-                                'result-meal': hotel[2], 'result-operator': operator, 'result-party': 'за 2 взрослых'}
+                            if logical_name.startswith('native-content-results-'):
+                                facts = {'result-title': 'RIA SUITES HOTEL', 'result-location': 'Стамбул, Турция',
+                                    'result-date': '12 окт · 7 ночей', 'result-room': 'Стандартный номер',
+                                    'result-meal': 'Ультра всё включено', 'result-operator': 'FIXTURE TV',
+                                    'result-party': 'за 2 взрослых'}
+                            else:
+                                bounded = card_id >= 1000
+                                hotel = fixture_hotels[(card_id - 1000) % 4 if bounded else card_id - 1]
+                                title = f'FICTIONAL loaded hotel {card_id - 999:02d}' if bounded else hotel[0]
+                                terminal = logical_name.startswith(('native-terminal-', 'native-calendar-single-range-'))
+                                operator = 'FIXTURE ANEX' if terminal else 'FIXTURE TV'
+                                facts = {'result-title': title, 'result-location': 'Турция · Кемер',
+                                    'result-date': '19 окт · 7 ночей' if terminal else '12 окт · 7 ночей', 'result-room': hotel[1],
+                                    'result-meal': hotel[2], 'result-operator': operator, 'result-party': 'за 2 взрослых'}
                             readable_text.extend({**readable_text[0], 'text': value, 'kind': kind, 'cardId': card_id}
                                                  for kind, value in facts.items())
                         result_notice = {'visibleCount': 1, 'afterBatch': True, 'cardNoticeCount': 0,
@@ -370,10 +398,18 @@ class UpdateContracts(unittest.TestCase):
                             'searchStarts': 1, 'otherCalls': 0, 'alertVisible': status != 'complete',
                             'alertText': alert,
                             'ownerSHA256': self.native['files']['bridge.js']}
+                    consent_fit = None
+                    if name.startswith(('native-content-contact-', 'native-content-contact-invalid-')):
+                        consent_fit = {'label': {'left': 18, 'right': width - 18, 'top': 440, 'bottom': 496,
+                                                   'width': width - 36, 'height': 56},
+                            'checkbox': {'left': 29, 'right': 49, 'top': 450, 'bottom': 470,
+                                         'width': 20, 'height': 20},
+                            'ownsCheckbox': True, 'required': True, 'contained': True, 'focusOutline': True}
                     case['frames'].append({'terminalState': terminal_state, 'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
                         'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,
-                        'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit, 'summaryFit': summary_fit,
+                        'popupFit': popup_fit, 'calendarFit': calendar_fit, 'destinationFit': destination_fit,
+                        'summaryFit': summary_fit, 'consentFit': consent_fit,
                         'offerActionFit': offer_action_fit,
                         'resultCardIds': result_card_ids, 'resultNotice': result_notice,
                         'buttons': [{'text': 'К параметрам поиска', 'clipped': False}] if name.startswith('native-initial-favorites-') else [] if name.startswith(('native-startup-pending-', 'native-results-loading-')) else [{'text': 'Fixture action', 'clipped': False}],
@@ -420,8 +456,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '185739d46757bd34a05709e3656eab76d1003fa5')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39333812766)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '84897fd5778debe040b74945212777aaf878d83e')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39346251452)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -476,6 +512,10 @@ class UpdateContracts(unittest.TestCase):
             contents['evidence/acceptance.json'] = remote.json_bytes(report)
         modifications = [lambda r: r.update({'sourceSHA': 'f' * 40}), lambda r: r['cases'].pop(),
             lambda r: r['cases'][0]['proof'].update({'selectedFullTotal': 1000}),
+            lambda r: r['cases'][0]['proof']['retainedContent'].update({'hotelId': 1}),
+            lambda r: r['cases'][0]['proof']['retainedContent'].update({'passiveSupplierOperations': 1}),
+            lambda r: r['cases'][0]['proof']['contactValidation'].update({'invalidPreviewDelta': 1}),
+            lambda r: r['cases'][0]['proof']['contactValidation'].update({'realSubmissions': 1}),
             lambda r: r['cases'][0]['proof'].update({'realLeadSubmissions': 1}),
             lambda r: r['cases'][0]['proof'].update({'localFilterExtraSearches': 1}),
             lambda r: r['cases'][0]['frames'][0].update({'overflow': True}),
@@ -484,37 +524,40 @@ class UpdateContracts(unittest.TestCase):
             lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'textScaleVerified': False}),
             lambda r: r['cases'][0]['frames'][0]['prices'][0].update({'fontSize': 30}),
             lambda r: r['cases'][0]['frames'][0].update({'sha256': 'f' * 64}),
+            lambda r: next(frame for frame in r['cases'][0]['frames']
+                           if frame['file'].startswith('native-content-contact-'))
+                           ['consentFit'].update({'contained': False}),
             lambda r: r['cases'][0]['unexpectedRequests'].append('https://external.invalid/api'),
             lambda r: r.update({'failures': ['confirmed failure']})]
         for i, modify in enumerate(modifications):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_two_width_journey_requires_exact_103_frames_and_all_applicable_predecessor_frames(self):
+    def test_two_width_journey_requires_exact_113_frames_and_all_applicable_predecessor_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 103)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 103)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 113)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 113)
             ai_frames = ('native-ai-price-changed-', 'native-ai-hotel-checked-', 'native-ai-contact-')
             self.assertEqual(sum(frame['file'].startswith(ai_frames)
                 for case in report['cases'] for frame in case['frames']), 6)
             for case in report['cases']:
                 case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(ai_frames)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 97)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 107)
             additions = ('native-tour-many-flights-', 'native-lead-manager-',
                          'native-hotel-selected-dearer-', 'native-lead-selected-dearer-')
             self.assertEqual(sum(frame['file'].startswith(additions)
                 for case in report['cases'] for frame in case['frames']), 8)
             for case in report['cases']:
                 case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(additions)]
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 89)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 99)
             self.assertEqual(sum(not frame['file'].startswith(('native-family-', 'native-short-desktop-', 'native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-'))
-                for case in report['cases'] for frame in case['frames']), 54)
-            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 71)
-            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 75)
-            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 79)
-            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 83)
+                for case in report['cases'] for frame in case['frames']), 64)
+            self.assertEqual(sum(not frame['file'].startswith(('native-destination-', 'native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 81)
+            self.assertEqual(sum(not frame['file'].startswith(('native-popup-', 'native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 85)
+            self.assertEqual(sum(not frame['file'].startswith(('native-initial-', 'native-terminal-')) for case in report['cases'] for frame in case['frames']), 89)
+            self.assertEqual(sum(not frame['file'].startswith('native-terminal-') for case in report['cases'] for frame in case['frames']), 93)
             self.assertEqual(sum(frame['file'].startswith('native-family-')
                 for case in report['cases'] for frame in case['frames']), 12)
             self.assertEqual(sum(frame['file'].startswith('native-short-desktop-')
@@ -1061,7 +1104,8 @@ class UpdateContracts(unittest.TestCase):
             'dc69049f126cac2ae516f5ee41e886a7cbfc8c2d',
             '246670818bba433adc9b002e06b2d560f46eb6ac',
             '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
-            '185739d46757bd34a05709e3656eab76d1003fa5'))
+            '185739d46757bd34a05709e3656eab76d1003fa5',
+            '84897fd5778debe040b74945212777aaf878d83e'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1209,7 +1253,7 @@ class UpdateContracts(unittest.TestCase):
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
              38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885, 39291592436, 39333812766))
+             39278795885, 39291592436, 39333812766, 39346251452))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1271,13 +1315,14 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_three_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
             'visual-search/native-v2/frontend.js',
             'visual-search/native-v2/source-manifest.json',
+            'visual-search/native-v2/tour.js',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
         for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
