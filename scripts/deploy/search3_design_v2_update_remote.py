@@ -18,9 +18,9 @@ from search3_design_v2_preview_remote import (Site as CreateSite, ROUTE, INVARIA
     SOURCE_ZIP_SHA256 as ORIGINAL_ZIP, digest, inventory, json_bytes, need, safe_extract, safe_name)
 
 ORIGINAL_PUBLISH_RUN = 38173086001
-PREDECESSOR_SOURCE = '2344c8533a5175cbb9f6843f5324248dd9562784'
-PREDECESSOR_RUN = 39390835598
-PREDECESSOR_DIGEST = '9e6c233d5b0b824ca7845bed8055eb33cc2967e43fad91cddb17666dc35cfa65'
+PREDECESSOR_SOURCE = '48252b25d1e7bab4156d35eff260021f99029db2'
+PREDECESSOR_RUN = 39423874280
+PREDECESSOR_DIGEST = '6d04d6653eda3933dd79ea3a0a97f413fd68974a0cabba9becd750c92bbb1c88'
 # Explicit history must not change when the next predecessor is selected.
 COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d',
     '634d1c97fd7bf499107d82036588f4bd77176d93',
@@ -64,7 +64,8 @@ COMPLETED_SOURCES = (ORIGINAL_SOURCE, '950c9b5c0a00430c5b5a711d1b95bc04449d069d'
     '185739d46757bd34a05709e3656eab76d1003fa5',
     '84897fd5778debe040b74945212777aaf878d83e',
     '2dc409517e88493d9d24e46cafe95e462aa45819',
-    '2344c8533a5175cbb9f6843f5324248dd9562784')
+    '2344c8533a5175cbb9f6843f5324248dd9562784',
+    '48252b25d1e7bab4156d35eff260021f99029db2')
 COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38197437835, 38203171197, 38207863194, 38237246171, 38238503101,
     38255222254, 38269206819, 38276638172, 38290989467, 38312997899,
@@ -72,7 +73,7 @@ COMPLETED_PUBLISH_RUNS = (ORIGINAL_PUBLISH_RUN, 38180461319, 38191104207,
     38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
     38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
     38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-    39278795885, 39291592436, 39333812766, 39346251452, 39354674302, 39390835598)
+    39278795885, 39291592436, 39333812766, 39346251452, 39354674302, 39390835598, 39423874280)
 PREDECESSOR_OWNER = {'run': PREDECESSOR_RUN, 'source': PREDECESSOR_SOURCE,
     'digest': PREDECESSOR_DIGEST, 'status': 'published'}
 SOURCE_CHANGES = ('visual-search/app.js', 'visual-search/asset-size.json',
@@ -88,16 +89,16 @@ ROUTE_CHANGES = tuple(sorted(('site-path-v1.php', 'visual-search/index.php',
 # Source/release trees and ordered parents are independently verified before
 # final controller review; commands/artifacts cannot select alternative pins.
 NATIVE_ACCEPTANCE = {
-    'source_sha': '48252b25d1e7bab4156d35eff260021f99029db2',
-    'source_tree': 'c926d00c87d0bf411d2b577b08dc56f6394eae38',
-    'release_sha': '1b5fcbbfa71cf08bef82624d73be4a1d4c7e1a82',
-    'release_tree': 'c926d00c87d0bf411d2b577b08dc56f6394eae38',
-    'build_run': 39420121327,
-    'artifact_id': 12262543365,
-    'source_ZIP_sha256': '90367d50b7afe11c0e03887727591136d60d4b11664d9cf5fa5565c470f46bea',
+    'source_sha': '09f5e18d5eb40f4f62bb723a9fd9e4092f784060',
+    'source_tree': '8c7f95f2425736f6a8947e257573d0dfddf9cbf4',
+    'release_sha': 'd8dab6b8748d70a0892b5b0c065c9de4b2676b4f',
+    'release_tree': '8c7f95f2425736f6a8947e257573d0dfddf9cbf4',
+    'build_run': 39453522427,
+    'artifact_id': 12279143677,
+    'source_ZIP_sha256': '8981d92668d407979fe7d95b74cc850042c0d3eb0cd67cf2a45b13334990f082',
     'entry_html_sha256': '1d2cf3076fbb949d0787ca82d7cfb4b442ba002364cc4b35f2be947ec490e8a7',
     'entry_php_sha256': 'c68afd233c54629b080744e47b31ea331a0c431137bbcc2b6b2439ecf3b80843',
-    'source_manifest_sha256': 'd62d3c03ed5afb0936bc6878ceab783bc0241124f17660c9c99e9c549dd2ff48',
+    'source_manifest_sha256': '0aa920b671b2ab78dd5ebeaea474dc03a77fdd6fc05ee51751412fddbd54bdc3',
 }
 NATIVE_BUILD_WORKFLOW = '.github/workflows/search3-design-v2-native.yml'
 NATIVE_REQUIRED_CHECKS = frozenset(('guard', 'native-acceptance'))
@@ -110,12 +111,12 @@ NATIVE_ADDED = tuple(sorted((*NATIVE_ASSETS, NATIVE_MANIFEST)))
 # Its exact bytes remain covered by the pinned source/graph manifest.
 NATIVE_REPLACED = ('visual-search/index.html', 'visual-search/index.php', 'prototype-search/data.js')
 NATIVE_ROUTE_CHANGES = tuple(sorted((set(ROUTE_CHANGES) - {'visual-search/index.php'}) | {NATIVE_MANIFEST}))
-# Only the two native consumers, accepted canonical policy and its generated
-# size ledger/native manifest differ from the exact 855-file published predecessor.
-# Historical baseline allowances do not authorize fresh legacy/provider/brand changes.
-NATIVE_SUCCESSOR_CHANGES = tuple(sorted(('prototype-search/data.js',
-    'visual-search/asset-size.json',
-    'visual-search/native-v2/bridge.js', 'visual-search/native-v2/tour.js',
+# Only the three reviewed native presentation owners and generated native
+# manifest differ from the exact 855-file published predecessor. Its accepted
+# canonical policy and size ledger stay unchanged; historical baseline
+# allowances do not authorize fresh legacy/provider/brand changes.
+NATIVE_SUCCESSOR_CHANGES = tuple(sorted(('visual-search/native-v2/frontend.js',
+    'visual-search/native-v2/tour.js', 'visual-search/native-v2/viewport.css',
     'visual-search/native-v2/source-manifest.json')))
 NATIVE_SCRIPTS = (
     '../prototype-search/config.js', '../runtime-v3.js', '../lead-search-context.js', '../lead-form-guard-v1.js',

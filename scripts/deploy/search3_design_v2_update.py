@@ -37,14 +37,24 @@ REQUIRED_CHECKS = NATIVE_REQUIRED_CHECKS
 # Exact ordered merge parents and trees. These static pins are never supplied by
 # commands or artifacts; reordering, substitution, omission or an extra parent fails.
 NATIVE_SOURCE_PARENTS = (
-    ('23e9568eaf1eaf3b36baeec2df2f3205d720ef6c', 'beccdab92949ac17295c2ae46515d795eaa1f5a5'),)
+    ('1fdb4de08b5ccb1826c27d72b3725e1f1e529a93', '353cf936af2c84a93944ef66a08c981bfd1c0ab6'),)
 NATIVE_RELEASE_PARENTS = (
-    ('4536d0a977ded83aa8c8d8ce2681f530c571f09f', '30359166c31101fa3e04d63da017aaf7aaf57e46'),
-    ('48252b25d1e7bab4156d35eff260021f99029db2', 'c926d00c87d0bf411d2b577b08dc56f6394eae38'),)
+    ('1fdb4de08b5ccb1826c27d72b3725e1f1e529a93', '353cf936af2c84a93944ef66a08c981bfd1c0ab6'),
+    ('09f5e18d5eb40f4f62bb723a9fd9e4092f784060', '8c7f95f2425736f6a8947e257573d0dfddf9cbf4'),)
 RESULT_FACT_KINDS = ('result-title', 'result-location', 'result-date', 'result-room',
                      'result-meal', 'result-operator', 'result-party')
 RESULT_NOTICE_TEXT = ('Цены из поиска — за весь тур и всех туристов. Перед заявкой проверим '
                       'цену, наличие и состав пакета, включая обязательные доплаты.')
+# Exact disclosure outputs of the reviewed native receipt presenter. All retain
+# unknown mandatory extras; this is not permission to promise an inclusive final
+# price or to substitute a notice from a different screen.
+TOUR_CONDITION_BASE = ('До оформления уточним: наличие мест, трансфер, страховку, '
+                       'обязательные доплаты')
+TOUR_CONDITION_NOTES = frozenset({
+    'До оформления уточним: рейсы, условия багажа, наличие мест, трансфер, страховку, обязательные доплаты.',
+    *(TOUR_CONDITION_BASE + suffix + '.' for suffix in ('', ', расписание', ', багаж',
+        ', ручную кладь', ', расписание, багаж', ', расписание, ручную кладь',
+        ', багаж, ручную кладь', ', расписание, багаж, ручную кладь'))})
 RESULT_FIXTURE_FACTS = (
     ('FIXTURE Laguna Beach Resort', 'Стандартный номер', 'Ультра всё включено'),
     ('FIXTURE Marina Bay Hotel', 'Стандартный номер', 'Завтраки и ужины'),
@@ -354,7 +364,10 @@ def native_evidence(archive, request, native):
         'familyExtraSearches': 0, 'familyAgeReviewRetained': True,
         'nightKeyboardFocusRetained': True, 'formCalendarPagingFocusRetained': True,
         'familyInputFocusRetained': True, 'destinationKeyboardFocusRetained': True,
-        'formPopupSingleSubmitRetained': True, 'presearchNavigationTruthful': True,
+        'formPopupSingleSubmitRetained': True,
+        'formPopupApplyExtraSearches': 0, 'formPopupEnterExtraSearches': 0,
+        'formPopupFindSearches': 1, 'formPopupCancelRetainsDraftAndFocus': True,
+        'presearchNavigationTruthful': True,
         'latePresentationTerminalStatesRetained': True, 'latePresentationExtraSearches': 0,
         'contactExactItineraryRetained': True, 'contactDraftAndConsentRetained': True,
         'groupMinimumOpenedHotelWithoutQuote': True, 'groupPassiveExtraSearches': 0,
@@ -515,14 +528,20 @@ def native_evidence(archive, request, native):
                     else 'destination' if logical_name.startswith('native-destination-') else None)
                 popup = frame.get('popupFit')
                 if popup_editor:
+                    # Applying an edit is local. The one native Find stays on
+                    # the form outside the modal; a pending destination
+                    # replacement cannot be applied before its explicit choice.
+                    apply_enabled = not logical_name.startswith('native-destination-confirm-')
                     need(isinstance(popup, dict) and set(popup) == {'editor', 'modal', 'outside',
-                         'panelOverflow', 'findVisible', 'findEnabled', 'findHeight', 'submitCount'}
+                         'panelOverflow', 'applyVisible', 'applyEnabled', 'applyHeight',
+                         'findOutsidePopup', 'submitCount'}
                          and popup.get('editor') == popup_editor and popup.get('modal') is True
                          and popup.get('outside') is False and popup.get('panelOverflow') is False
-                         and popup.get('findVisible') is True and popup.get('findEnabled') is True
-                         and type(popup.get('findHeight')) in (int, float) and 44 <= popup['findHeight'] < 1000
+                         and popup.get('applyVisible') is True and popup.get('applyEnabled') is apply_enabled
+                         and type(popup.get('applyHeight')) in (int, float) and 44 <= popup['applyHeight'] < 1000
+                         and popup.get('findOutsidePopup') is True
                          and type(popup.get('submitCount')) is int and popup['submitCount'] == 1,
-                         'native_popup_choice_and_single_submit_required')
+                         'native_popup_apply_and_outside_find_required')
                 else: need(popup is None, 'native_popup_measurement_scope')
                 need(frame.get('overflow') is False and type(frame.get('documentWidth')) in (int, float)
                      and frame['documentWidth'] <= key[0] + 1 and frame.get('stageHidden') is False, 'native_rendered_frame_geometry')
@@ -715,12 +734,13 @@ def native_evidence(archive, request, native):
                 need(presets == (['7 ночей', '10 ночей', '14 ночей', '21 ночь']
                      if logical_name.startswith('native-popup-nights-') else []),
                      'native_popup_night_presets_readability_required')
-                need(all(row.get('kind') in (*RESULT_FACT_KINDS, 'result-notice', 'night-preset', 'other')
+                need(all(row.get('kind') in (*RESULT_FACT_KINDS, 'result-notice', 'night-preset', 'tour-conditions-note', 'other')
                          and (row.get('cardId') is None
                               or type(row['cardId']) is int and row['cardId'] in card_ids)
                          and ('cardId' in row)
                          and (row['kind'] not in RESULT_FACT_KINDS or row['cardId'] is not None)
                          and (row['kind'] != 'result-notice' or row['cardId'] is None)
+                         and (row['kind'] != 'tour-conditions-note' or row['cardId'] is None)
                          for row in text), 'native_result_fact_identity_required')
                 result_rows = [row for row in text if row['kind'] in RESULT_FACT_KINDS]
                 note_rows = [row for row in text if row['kind'] == 'result-notice']
@@ -766,9 +786,15 @@ def native_evidence(archive, request, native):
                                         'cardNoticeCount': 0, 'text': ''},
                          'native_result_empty_scope_required')
                 if screen == 'tour':
-                    need({'Туристы', 'Туроператор', 'Обязательные доплаты'}
+                    need({'Туристы', 'Туроператор'}
                          <= {row['text'].strip() for row in text},
                          'native_tour_cost_labels_required')
+                    conditions = [row for row in text if row['kind'] == 'tour-conditions-note']
+                    need(len(conditions) == 1 and conditions[0]['text'].strip() in TOUR_CONDITION_NOTES,
+                         'native_tour_conditions_notice_required')
+                else:
+                    need(not any(row['kind'] == 'tour-conditions-note' for row in text),
+                         'native_tour_conditions_notice_scope')
                 if name.startswith('native-family-'):
                     state = name[len('native-family-'):].split('-', 1)[0]
                     expected = {'0': '1 взрослый', '1': '1 взрослый + 1 ребёнок',
