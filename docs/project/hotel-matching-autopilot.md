@@ -135,66 +135,90 @@ registry/resolver coverage, не подтверждённая live30 availabilit
 Полные receipts/хеши/точныеIDs/исходный и конечный срезы — в
 [отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json).
 
-### Актуальный checkpoint и порядок продолжения — 20.10.2026, после acquire-v8
+### Актуальный checkpoint и порядок продолжения — 20.10.2026, после acquire-v9
 
-Это исправление плана по повторной оценке владельца; оно не является новым
-execution admission. Exact IDs/hashes/receipts остаются в
+Exact IDs/hashes/receipts — в
 [существующем отчёте](../../reports/hotel-match-retained-intake-execution-20261020.json)
-(PR4750, report blob9563eb72) и
-[terminal acquire-v8](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6294082348).
+и [terminal acquire-v9](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295373481).
+Исходная приёмка7 связей и все прежние terminal/UNKNOWN остаются историей/no-replay.
 
-- **Подтверждённый результат:7 новых прямых ANEX-связей**, COMMIT + per-row
-  readback + canonical resolver. На том же CURRENT-v2 наборе3650→3657 eligible,
-  3689→3696 all; SEARCH effect не измерен.
-- После первых105Turkey последующие acquire-v2..v8 израсходовали ещё
-  **22physicalHTTP/8search starts/3UNKNOWN и дали0 новых native pairs/связей**.
-  Own known lineage:60HTTP/18starts/3UNKNOWN; GLOBAL usage/remaining NOT_MEASURED.
-  Нулевой результат относится к exact выбранным IDs/условиям, не к стране/ТО вообще.
-- 105/55/22, alternate25/v4,25/v5,25/v6,13/v7 и9Maldives/v8 — closed/consumed;
-  старые UNKNOWN сохранены. Диагностика v5/v6 и разборы8038/616 также sealed.
-  Не запускать их снова, не переименовывать, не делать empty writer/CURRENT census.
-- 204 ever-selected/409 never-selected (197 selected-ready+409=606) — bookkeeping
-  того же immutable CURRENT-v2, не новая перепись. Draft8Thailand/departure3/
-  22Feb2027/7n и4Thailand/departure22/11Nov2026/10n не admitted manifest.
-  Числовой departure не подменять угаданным городом.
-- Таймаут MATCH Client.call **60s уже подключён** к штатному carrier (PR4714/4715).
-  Это не доказательство причины прежних30s UNKNOWN или provider-wide recovery.
+- **Подтверждённый прирост:7 прямых ANEX-связей**, COMMIT + per-row readback +
+  canonical resolver. На том же CURRENT-v2 наборе3650→3657 eligible,3689→3696 all;
+  SEARCH effect не измерен. После первых105Turkey следующие25HTTP/9starts дали
+  0 новых native pairs/связей. Own known lineage63HTTP/19starts/3UNKNOWN;
+  GLOBAL usage/remaining NOT_MEASURED, общий account/provider-day limit5000.
+- **Общий механизм каталога партий реализован, проверен, merged и исполнен.**
+  Feature PR4756/helper6b52756c, main PR4758/controller5dea4d17; actual native CI
+  39453791525 выполнила63tests/0skips с MySQL/CURRENT/writer/resolver и stock;
+  Security, независимое review и exact merged-byte readback пройдены.
+  Не создавать повторно этот механизм или новый controller для следующего roster.
+- Acquire-v9 выбрал2 новых IDs345/131024 по exact saved user_search
+  30Oct2026/6n/country1/departure10/2A/nochildren. Сохранённые SAMO operator_5
+  anchors345[5215]/131024[37718,4958] использованы только как ANEX-related
+  candidate signals, оба токена131024 сохранены. Это не прямые Online IDs
+  и не доказательство текущих продаж. Run39454278331 completed/search_complete,
+  1start+1status+1results=3HTTP/UNKNOWN0;0selected ANEX hotels/details/nativepairs/
+  accepted/committed/readback/gain. Writer/CURRENT NOT_RUN_ZERO_PAIRS/ZERO_GAIN.
+  Ноль относится к этим IDs/условиям, не к стране/ТО вообще.
+- 105/55/22, alternate25/v4,25/v5,25/v6,13/v7,9Maldives/v8 и2Egypt/v9 — consumed.
+  Диагностика v5/v6, разборы8038/616 sealed; old UNKNOWN сохраняются. Ни replay,
+  ни новое имя, ни empty writer/CURRENT census по нулю не разрешены.
+- 206 ever-selected/407 never-selected (199 selected-ready+407=606) — bookkeeping
+  того же immutable CURRENT-v2, не новая перепись. Второй catalogue scope8Thailand/
+  departure3/22Feb2027/7n проверен и merged как config, **исполнение NOT_RUN**.
+  Он не автоматический next после нуля.4Thailand/departure22/11Nov10n — только
+  draft вне каталога. Названия departure3/10/22 не угадывать.
+- MATCH Client.call60s уже подключён; старые30s UNKNOWN не переписываются,
+  историческая причина и provider-wide recovery не установлены.
 
-**Следующий полезный блок — повысить выход доказательств и убрать повторную
-инженерию малых партий**, а не автоматически запускать следующий draft.
+#### Реализованный допуск партий
+
+Конечный каталог `scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json`
+живёт в trusted main. Parser читает его **до** supplier checkout, поэтому команда
+не может передать произвольный путь/roster/лимит. Exact bytes каталога входят в
+штатный source manifest отдельно от pinned17feature files. Catalogue SHA и
+canonical member SHA связываются в parser→remote→helper→result; обе начальные
+партии используют один код и один feature pin.
+
+Совместимые изменения данных каталога проходят concrete config review и тот же
+native CI через exact pathfilter, current merged bytes/owner/ordinary slot.
+Отдельный runner/controller/sourcepin на каждую партию не нужен; новые execution
+modes, provider/party contracts и расширения прежних bounds требуют своих
+действующих проверок. Каталог не заменяет и не ослабляет эти gates.
+
+В baseline сохраняются204 hotel claims и8actual acquisition receipts/request
+metadata, включая3UNKNOWN; текущие catalogue siblings проверяются по точным
+operation IDs, retained source catalogue+manifest, receipt и actual wire.
+Unknown/missing sibling receipt или непредставленный consumed hotel claim — HOLD,
+а не unspent. Существующие hotel/context/account ledgers не создаются заново
+и не сбрасываются; fresh hotel claims append под прежним lock/fsync.
+Исторический member при append остаётся неизменным. Если есть proven pairs,
+завершить writer **в той же catalogue revision** до append: совместимость
+незавершённого writer между версиями пока HOLD, не реализованный обход.
+
+Одна команда исполняет **одну bounded операцию**: до25IDs в текущем helper
+(до30 — общий API предел),1start/30physicalHTTP/60s, общий5000account/provider-day
+ledger, reserve BEFORE каждогоHTTP, raw private до parsing, first UNKNOWN stop,
+без /continue/full-drain/auto-drain. Код не перебирает каталог автоматически.
+Frozen generic400/NEXT/60/wide/13/9 profiles и их markers не ретаргетируются.
+
+#### Следующий полезный результат
 
 | Приоритет | Конкретная работа и условие результата |
 | --- | --- |
-| Готовые доказательства | Новые retained native facts/accepted anchors/точные handoffs → проверка namespaces/uniqueness → штатная CURRENT/guarded запись/readback. Готовая независимая пара не ждёт рефакторинга admission |
-| Общий пробел native proof | Для8038/616 уже доказаны только non_identifier_text HOTELLIST/TOWNFROM,0 positive native tokens/native authority=false. Искать **новый** авторитетный формат/семантику/независимый bridge. Не объявлять это шифрованием или дефектом parser и не перечитывать тот же raw |
-| Один цельный инженерный пакет | В существующих helpers/carrier подготовить каталог immutable bounded scopes и общую проверку их допуска; убрать необходимость менять literal controller/sourcepin для каждой партии9–13. Это NEXT engineering, пока не implemented/reviewed admission |
-| Остальной common4 | По FUN&SUN/БГ/Интуристу отдельно закрывать фактическое account access и operator-native namespace proof на новых материалах. ANEX13/detail binding на них не переносится |
-| Следующий сбор | Выбирать новые exact-compatible targets по спросу, имеющимся operator-specific tour/offer hints и ожидаемому proof, затем цене. Размер группы и saved user_search сами по себе не доказывают продажи ANEX; это ранжирование, не новый acceptance gate |
-| Семейный frontier | Нынешний nochildren helper не поддерживает все семьи. Сохранять их как unsupported party contract, не как непригодные/отсутствующие отели. Поддержка требует подтверждённой wire age semantics и конкретного review |
+| Готовые доказательства | Новые retained native facts/accepted anchors/точные handoffs → namespace/uniqueness → штатная CURRENT/guarded запись/readback. Готовая независимая пара не ждёт новой конфигурации |
+| Общий пробел native proof | Для8038/616 уже получены только non_identifier_text HOTELLIST/TOWNFROM,0positive native tokens/native authority=false. Нужен **новый** авторитетный формат/семантика/независимый bridge. Это не доказательство шифрования/дефекта parser; тот же raw не перечитывать |
+| Отбор следующего сбора | Ранжировать новый exact-compatible scope по спросу, сохранённым operator-specific tour/offer hints, ожидаемому native proof и цене. Saved user_search и размер группы не доказывают продажи ANEX. Это приоритет, не новый общий acceptance gate |
+| Остальной common4 | Отдельно закрывать фактическое account access и operator-native namespace proof FUN&SUN/БГ/Интуриста на новых материалах; ANEX13/detail binding на них не переносится |
+| Семейный frontier | Nochildren helper не поддерживает все семьи. Сохранять как unsupported party contract, не как непригодные/отсутствующие отели. Расширение требует подтверждённой wire age semantics и конкретного review |
 
-Каталог scopes должен сохранять exact immutable IDs/config/hash/provenance,
-CURRENT parent и source bundle, namespace/account/operator/party, durable hotel/context
-history со ВСЕМИ actual requests включая UNKNOWN, current ownership и no-replay.
-Каждый новый scope требует конкретной проверки конфигурации и applicable exact CI,
-review, current merged bytes и ordinary supplier slot; документ не разрешает
-подать произвольный roster в frozen mode. Общая реализация проверяется цельным
-согласованным пакетом; совместимые data-config изменения не должны автоматически
-порождать новый runner/controller и полный повтор несвязанных проверок.
-Существующие mandatory gates не отменяются; более общий контракт допуска сначала
-реализуется и проверяется, а не считается уже полученным из этой формулировки.
-
-Исполнение остаётся **одной bounded операцией**: до25IDs в текущем fresh helper
-(до30 — общий API предел, не разрешение тихо расширить helper),1start/30physicalHTTP,
-60s, общий5000account/provider-day ledger, reserve BEFORE каждогоHTTP, raw private
-до parsing, first UNKNOWN stop, без /continue/full-drain/auto-drain. Новый catalogue
-не даёт автоматической серии дат/стран. Old profiles/receipts/markers не меняются.
-
-После повторяющегося нулевого исхода того же класса сначала пересмотреть
-operator evidence/группировку/доступность нужного proof. Следующий поиск должен
-иметь конкретный недостающий факт и обоснованную возможность его получить;
-очередной час, новая страна или само наличие оставшихся409 не являются гипотезой.
-Это не полный запрет нового полезного контекста: owner continuation сохраняется,
-а новый проверенный неперекрывающийся scope проходит существующий admission.
+После повторяющегося нулевого исхода сначала пересмотреть operator evidence/
+группировку/доступность нужного proof; не запускать автоматически оставшуюся
+восьмёрку, новую дату/страну или очередной census. Новый поиск требует конкретного
+недостающего факта и обоснованной возможности его получить, fresh claim/source/slot.
+Owner continuation сохраняется для полезных новых неперекрывающихся scopes;
+час или само наличие407 не являются новой гипотезой. Один HOLD не останавливает
+независимую разрешённую MATCH работу. Code/CI/документы не matching gain.
 
 ### 1. Общий измеримый срез по ТО
 
@@ -582,4 +606,5 @@ per-row post-COMMIT readback. На тот момент:
 Все более поздние terminal/unknown операции также сохраняют no-replay статус.
 Проверять актуальные receipts/claims/ledger; этот список и датированные снимки
 не заменяют CURRENT DB/operation check и не дают разрешения повторять запись.
+
 

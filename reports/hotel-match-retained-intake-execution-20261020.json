@@ -4,7 +4,7 @@
   "coordination_issue": 4217,
   "date_local": "2026-10-20",
   "timezone": "Europe/Kaliningrad",
-  "status": "committed7_verified_plus_completed_never_selected_maldives9_zero_new_pairs",
+  "status": "committed7_verified_plus_bounded_catalogue_executed_egypt2_zero_new_pairs",
   "source_account_for_new_acquisition": "TOURVISOR_ANEX_JWT",
   "captured_at_utc": "2026-10-19T23:45:30Z",
   "capture": {
@@ -488,7 +488,7 @@
     "already_accepted": 448
   },
   "new_accepted_mappings": 7,
-  "supplier_http_calls": 60,
+  "supplier_http_calls": 63,
   "database_writes": 7,
   "mapping_writes": 7,
   "incomplete_old_operations": [
@@ -548,7 +548,7 @@
     "97targets not returned in selected contexts and1unresolved link remain distinct from global operator absence",
     "606ready missing targets include98already selected and508not yet selected; consumed105 queries must not be repeated unchanged"
   ],
-  "next_result": "Acquire-v8/never9 is COMPLETED/CONSUMED:3HTTP/UNKNOWN0/0returnedselectedANEXhotels/0newnativepairs/0newlinks/gain; not global absence. No emptywriter/CURRENT or archive reread. Next genuinely new native proof or an independently reviewed never-selected exact real context; already indexed draft8Thailand2/departure3/22Feb2027/7n/2A/nochildren is not admitted/executed.409never-selected and197previouslyselectedready are sameCURRENT-v2 bookkeeping;4Thailand/departure22/11Nov10n peers remain independently unadmitted. Keep common4 access/namespace gaps separate; all oldUNKNOWN/13/616/8038/diagnostics sealed.",
+  "next_result": "Bounded trusted-main catalogue mechanism is CHECKED/MERGED/EXECUTED, not pending engineering. Acquire-v9/Egypt2 is COMPLETED/CONSUMED:3HTTP/UNKNOWN0/0returnedselectedANEXhotels/nativepairs/links/gain. No emptywriter/CURRENT/archive reread or replay. Lower-priorityThailand8 scope is config-checked/merged but UNEXECUTED; do not automatically run it after zero. Next prioritize NEW independent native proof/accepted handoff or concrete operator-specific yield/context evidence; ready proven pairs use current guarded writer without waiting for new catalogue work. Common4access/nativebridge and unsupportedfamilyparty stay separate; no repeated whole-frontier pass.206everselected/407neverselected(199selectedready+407=606) is sameCURRENT-v2 bookkeeping. Knownown63HTTP/19starts/3UNKNOWN, globalusage/remainingNOT_MEASURED; prior7verifiedlinks/SEARCHunknown preserved.",
   "retained_link_completeness_audit": {
     "run_id": 39346987559,
     "command_comment_id": 6280298241,
@@ -815,7 +815,7 @@
   },
   "retained_intake_stage_new_accepted_mappings": 0,
   "aggregate_scope": "Historical committed7/readback/same-cohort CURRENT + sealed prior acquisitions/UNKNOWNs + completed 60s date contexts + new never-selected13 and Maldives9 exact saved-context acquisitions. Aggregate HTTP is known own lineage only, not global account usage.",
-  "updated_at_utc": "2026-10-20T15:08:00Z",
+  "updated_at_utc": "2026-10-20T16:07:12Z",
   "current_acquisition_acceptance": {
     "current_before": {
       "run_id": 39348390675,
@@ -3775,12 +3775,15 @@
     "new_unique_selected_never13": 13,
     "selected_ready_missing_after_never9": 197,
     "never_selected_ready_after_never9": 409,
-    "new_unique_selected_never9": 9
+    "new_unique_selected_never9": 9,
+    "selected_ready_missing_after_catalogue_egypt2": 199,
+    "never_selected_ready_after_catalogue_egypt2": 407,
+    "new_unique_selected_catalogue_egypt2": 2
   },
   "known_acquisition_lineage_accounting": {
     "account": "TOURVISOR_ANEX_JWT",
-    "physical_http_calls": 60,
-    "search_starts": 18,
+    "physical_http_calls": 63,
+    "search_starts": 19,
     "unknown_http_calls": 3,
     "provider_day": "2026-10-20",
     "global_account_usage": "not_measured",
@@ -4394,11 +4397,11 @@
     "consumed_105_not_to_repeat": true
   },
   "latest_continuation_result": {
-    "saved_current_bound_context_targets": 9,
+    "saved_current_bound_context_targets": 2,
     "validation_origin": "immutable_CURRENT-v2_not_fresh_DB_census",
-    "new_unique_targets": 9,
-    "supplier_search_start_addressed_unique_targets": 9,
-    "completed_result_unique_targets": 9,
+    "new_unique_targets": 2,
+    "supplier_search_start_addressed_unique_targets": 2,
+    "completed_result_unique_targets": 2,
     "returned_anex_hotels_for_selected_targets": 0,
     "new_detail_hotels": 0,
     "new_native_pairs": 0,
@@ -4412,8 +4415,8 @@
     "writer_status": "NOT_RUN_ZERO_PAIRS",
     "new_current_recount_status": "NOT_RUN_ZERO_GAIN",
     "not_returned_is_not_global_absence": true,
-    "context": "2026-10-21/5nights/departure1/Maldives8/ANEX13/2A/nochildren/actual_saved_user_search",
-    "run_id": 39444990095
+    "context": "2026-10-30/6nights/departure10/Egypt1/ANEX13/2A/nochildren/actual_saved_user_search",
+    "run_id": 39454278331
   },
   "continuation_engineering": {
     "source_prs": [
@@ -4451,8 +4454,8 @@
     "supplier_paths_source_account": "TOURVISOR_ANEX_JWT"
   },
   "current_supplier_lane_hold": {
-    "reason": "Three independent transport TimeoutError acquisitions: Thailand55 result, SriLanka22 start, owner-authorized Thailand25 new-date start; underlying cause not established",
-    "recovery_dependency": "Historical transport cause remains unestablished. New never9Maldives exact user_search completed3HTTP/UNKNOWN0/0selectedhotels, not provider-wide recovery/absence. Prior616/8038 text-only selectors remain sealed native-ID HOLD. Next new independent operator-native proof or reviewed unselected real-context scope; no same-input/hourly country/date availability probes.",
+    "reason": "Latest reviewed catalogue Egypt2 context completed0selectedANEXhotels/0pairs; exact operation consumed, no transport failure or global country/operator absence inferred.",
+    "recovery_dependency": "Proof/yield selection dependency: new independent operator-native fact or concrete re-evaluated missing-proof hypothesis. Do not rebuild implemented catalogue, blindly run Thailand8, replay consumed inputs or infer provider-wide recovery.",
     "no_further_paid_attempts_this_pass": true,
     "all_match_paused": false,
     "automation_disabled": false,
@@ -4469,12 +4472,13 @@
       "Owner1316 wide14–20Feb2027/7–14night/25hotel scope actually executed after ordinary slot release and exact15-file current-source compatibility:3HTTP/start1/UNKNOWN0/completed0selectedANEXhotels/0pairs/0writes, context consumed; oldhotelledger unchanged.",
       "New never-selected13 real11Nov9n/departure22 scope reviewed/merged/native51 and executed39436985531:4HTTP/UNKNOWN0/TV616detail/nativeIDunresolved/0newlinks; no writer/CURRENT.",
       "DistinctNEWTV616raw inspection run39438255466 verified0HTTP/DB/mapping,1812bytes,ANEXhost/search-tour but both selectors non_identifier_text/nativeauthorityfalse; five targetfiles+three ledgers unchanged. Both newops sealed.",
-      "New never-selectedMaldives9 exact21Oct5n/Moscow1 savedcontext reviewed/merged/native54+stock/Security and executed39444990095:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/newlinks. No emptywriter/CURRENT; prior195claims append9, alloldUNKNOWNsealed."
+      "New never-selectedMaldives9 exact21Oct5n/Moscow1 savedcontext reviewed/merged/native54+stock/Security and executed39444990095:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/newlinks. No emptywriter/CURRENT; prior195claims append9, alloldUNKNOWNsealed.",
+      "Implemented finite trusted-main catalogue and common parser/bundle/remote/helper/result binding; native63/no skips+stock, independent review, feature4756/main4758 merged. Prioritized two saved operator_5-related candidates and actually executed acquire-v9:3HTTP/UNKNOWN0/0selectedhotels/nativepairs/links; no automatic next, no emptywriter/CURRENT."
     ],
     "missing_common4_authority": "Only operator13/anextour live binding proven; other operator access/namespace bridges still require independent proof",
     "old_native_absent3": "Independent native/property+LOCAL/TV bridge/canonical anchor missing; no replay of saved proof passes",
     "latest_observed_context_completed_without_timeout": true,
-    "latest_observation_run": 39426607776,
+    "latest_observation_run": 39454278331,
     "provider_wide_recovery_established": false,
     "latest_pre_server_admission": {
       "run_id": 39415096942,
@@ -4484,7 +4488,8 @@
       "unknown": 0,
       "context_unspent": false,
       "context_consumed_by_subsequent_run": 39426607776
-    }
+    },
+    "historical_timeout_reason": "Three independent transport TimeoutError acquisitions: Thailand55 result, SriLanka22 start, owner-authorized Thailand25 new-date start; underlying cause not established"
   },
   "owner_date_variation_20261020": {
     "owner_direction_local": "2026-10-20T10:31:00+02:00",
@@ -5986,6 +5991,223 @@
       "context_source": "already_indexed_actual_saved_user_search",
       "new_links": 0,
       "requires": "fresh claims/immutable history incl consumed9/new exact config/source/CI/review/merged-byte/current-owner/ordinary-slot admission; same bounded helper, no old roster/replay"
+    }
+  },
+  "bounded_catalogue_execution_20261020": {
+    "status": "checked_merged_executed_completed_zero_new_pairs",
+    "engineering": {
+      "source_pr": 4756,
+      "reviewed_source_sha": "df27fbaff4d0be8945f3ccce2791205c3dbc82ec",
+      "source_merge_sha": "ba6ecf2ae842bea1424a585b5a2eb20907ffba9a",
+      "source_tree": "e2a5498836b23f5b51275a5fa314872f06163a11",
+      "helper_blob": "8994ba6a2424e4e3938a2970a466423a7d42157c",
+      "helper_sha256": "6b52756ce4417d9489d9c3ce9d94b0f250485c324e00e6eade566564e00caace",
+      "source_security_run": 39453172776,
+      "source_review_id": 5587845074,
+      "controller_pr": 4758,
+      "controller_source_sha": "7237a60fae26585b852fc7d482a92de559204412",
+      "control_merge_sha": "5dea4d172be30f90f2da29c72a4d7bd81ae1a95e",
+      "controller_tree": "96a86305bab297d50bd39701b2bce28fa4bea46c",
+      "controller_review_id": 5587910553,
+      "native_ci_run": 39453791525,
+      "native_ci_job": 118735209456,
+      "native_match_tests": 63,
+      "native_match_skips": 0,
+      "new_meaningful_catalogue_tests": 9,
+      "independent_new_test_passes": 9,
+      "security_run": 39453791466,
+      "security_job": 118735209640,
+      "trusted_catalogue_path": "scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json",
+      "catalogue_blob": "62c96af066dfacb54bd7dcf5f463e8c4be369337",
+      "catalogue_sha256": "bf61e5bcc50cfa6264819fca384915c3e4a45f756e304a96a22bc65ad2120b73",
+      "catalogue_bytes": 30750,
+      "catalogue_scope_count": 2,
+      "catalogue_total_targets": 10,
+      "source_bundle_feature_files": 17,
+      "source_bundle_control_catalogue_files": 1,
+      "old_frozen_scope_files_unchanged": true,
+      "frozen_modes_unchanged": true,
+      "new_modes": 0,
+      "new_runners": 0,
+      "transport_auth_permissions_unchanged": true,
+      "compressed_remote_command_bytes": 53147,
+      "stock_remote_command_maximum": 65536,
+      "configuration_only_changes_use_same_ci_and_do_not_require_new_controller_or_feature_pin_per_scope": true,
+      "one_command_one_scope_no_auto_iteration": true,
+      "pending_writer_cross_catalogue_revision_compatibility": "HOLD_not_implemented_finish_proven_pairs_under_same_catalogue_revision",
+      "source_prepared": true,
+      "source_checked": true,
+      "source_merged": true,
+      "carrier_executed": true,
+      "committed_new_links": 0
+    },
+    "scope_kind": "never_selected_bounded",
+    "context_origin": "saved_user_search_exact_date_nights",
+    "operation_id": "int-andromeda-match-retained-acquire-20261020-v9",
+    "write_operation_id": "int-andromeda-match-retained-anex-write-20261020-v10",
+    "cohort": "anex-next-d6d2deace82a110d",
+    "scope_id": "d6d2deace82a110dd0b72ec64b24aff82c74a89a080eed539b076c29ee479a39",
+    "member_sha256": "c8057c865a291b56c294a8397aede86d69814ae20c1cd7e53334eb522c03f10e",
+    "selected_tv_hotel_ids": [
+      345,
+      131024
+    ],
+    "selected_count": 2,
+    "new_unique_selected_hotels": 2,
+    "prior_ever_selected_unique_hotels": 204,
+    "country_id": 1,
+    "country_label_from_saved_targets": "Египет",
+    "departure_id": 10,
+    "departure_label": "unknown",
+    "adults": 2,
+    "children_count": 0,
+    "wire_context": {
+      "date_from": "2026-10-30",
+      "date_to": "2026-10-30",
+      "nights_from": 6,
+      "nights_to": 6
+    },
+    "context_observed_at": "2026-10-19 12:38:21",
+    "parent_operation_id": "int-andromeda-match-retained-current-20261020-v2",
+    "parent_evidence_sha256": "fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57",
+    "parent_receipt_sha256": "627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9",
+    "fresh_current_recount": false,
+    "ranking_evidence": {
+      "source": "saved_CURRENT-v2_operator_external_ids",
+      "operator_5_anchors": {
+        "345": [
+          "5215"
+        ],
+        "131024": [
+          "37718",
+          "4958"
+        ]
+      },
+      "all_tokens_preserved": true,
+      "signal": "ANEX_related_SAMO_candidate_anchors_only",
+      "not_direct_anex_online_id": true,
+      "not_current_selling_proof": true
+    },
+    "maximum_search_starts": 1,
+    "maximum_physical_http": 30,
+    "http_timeout_seconds": 60,
+    "shared_account_limit": 5000,
+    "account": "TOURVISOR_ANEX_JWT",
+    "global_account_usage": "not_measured",
+    "runtime_claim_comment_id": 6295327337,
+    "command_comment_id": 6295328178,
+    "run_id": 39454278331,
+    "execute_job_id": 118736900895,
+    "attempt": 1,
+    "artifact_id": 12280305251,
+    "artifact_created_at_utc": "2026-10-20T16:05:50Z",
+    "artifact_zip_bytes": 1401,
+    "zip_sha256": "1895f0ede936e262168dcbfd62140faeaeec85a2954b48d17d49fdef392b90ca",
+    "json_sha256": "3f332c3f2b8a0a1377969c28a8f9d21cc544f49ad190e9761af0d5a20a0aa2ae",
+    "private_receipt_sha256": "1cf755d5aa043d92ee6780bf0d7b0117b330ab41beb6fff23ab5c3d0dd2c544a",
+    "evidence_sha256": "4725428bd44d20704c3f274b09a43d8de21837053e3d959751510bbdb5482324",
+    "crc_sole_json_exact_job_verified": true,
+    "canonical_receipt_comment_id": 6295373481,
+    "actual_result": {
+      "acquisition_state": "completed",
+      "actions": {
+        "search_results": 1,
+        "search_start": 1,
+        "search_status": 1
+      },
+      "batches": [
+        {
+          "batch": 1,
+          "returned_anex_hotels": 0,
+          "search_complete": true,
+          "sent": 2
+        }
+      ],
+      "catalogue_sibling_history_sha256": "954e4aa4978af7a68bcbbad557947d0f5811f57f25e0751175dd7b0613fd73c8",
+      "cohort": "anex-next-d6d2deace82a110d",
+      "context_origin": "saved_user_search_exact_date_nights",
+      "continuation_catalogue_sha256": "bf61e5bcc50cfa6264819fca384915c3e4a45f756e304a96a22bc65ad2120b73",
+      "continuation_scope_sha256": "c8057c865a291b56c294a8397aede86d69814ae20c1cd7e53334eb522c03f10e",
+      "control_source_sha": "5dea4d172be30f90f2da29c72a4d7bd81ae1a95e",
+      "database_writes": 0,
+      "edge_states": {},
+      "edges": [],
+      "global_usage": "not_measured",
+      "mapping_writes": 0,
+      "new_accepted_mappings": 0,
+      "no_replay": true,
+      "operation_id": "int-andromeda-match-retained-acquire-20261020-v9",
+      "operator_account_binding": null,
+      "parent_evidence_sha256": "fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57",
+      "parent_receipt_sha256": "627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9",
+      "physical_http_reservations": 3,
+      "quota_before": {
+        "physical_http_attempts": 60,
+        "provider_day": "2026-10-20",
+        "tariff_search_units": 18
+      },
+      "safe_to_write_now": false,
+      "scope_id": "d6d2deace82a110dd0b72ec64b24aff82c74a89a080eed539b076c29ee479a39",
+      "selected_hotels": 2,
+      "selected_id_sha256": "c3e5d7231d6a86fa6ff2af7fc9cb08c805ab14de7fede50479f858d473ab6c15",
+      "selection_reservation_sha256": "d1a0e674c7110661071095cca50c6de5b95996c0a2bcb81d936f70dd6880caea",
+      "source_sha": "ba6ecf2ae842bea1424a585b5a2eb20907ffba9a",
+      "state": "acquired_retained_native_read_only",
+      "stop_reason": null,
+      "supplier_calls": 3,
+      "target_operation_id": "int-andromeda-match-retained-current-20261020-v2",
+      "tariff_search_units": 1,
+      "unknown_http_calls": 0,
+      "wire_context": {
+        "date_from": "2026-10-30",
+        "date_to": "2026-10-30",
+        "nights_from": 6,
+        "nights_to": 6
+      }
+    },
+    "selection_reservation_sha256": "d1a0e674c7110661071095cca50c6de5b95996c0a2bcb81d936f70dd6880caea",
+    "catalogue_sibling_history_sha256": "954e4aa4978af7a68bcbbad557947d0f5811f57f25e0751175dd7b0613fd73c8",
+    "prior_204_hotel_claim_entries_preserved_by_guarded_append": true,
+    "prior_8_acquisition_receipts_reverified_unchanged": true,
+    "context_ledger_not_written_by_this_code_path": true,
+    "production_unchanged": true,
+    "new_native_pairs": 0,
+    "new_accepted_mappings": 0,
+    "new_committed_mappings": 0,
+    "new_post_commit_readback_rows": 0,
+    "new_proved_coverage_gain": 0,
+    "writer_status": "NOT_RUN_ZERO_PROVEN_NATIVE_PAIRS",
+    "current_recount_status": "NOT_RUN_ZERO_GAIN",
+    "no_replay": true,
+    "own_lineage_after": {
+      "physical_http_calls": 63,
+      "search_starts": 19,
+      "unknown_http_calls": 3,
+      "global_account_usage": "not_measured",
+      "ever_selected_unique_hotels": 206,
+      "never_selected_ready_missing_hotels": 407,
+      "selected_ready_missing_hotels": 199,
+      "same_saved_current_snapshot_bookkeeping": true
+    },
+    "second_catalogue_scope": {
+      "cohort": "anex-next-bfaa91152b67044e",
+      "operation_id": "int-andromeda-match-retained-acquire-20261020-v10",
+      "selected_count": 8,
+      "selected_tv_hotel_ids": [
+        2007,
+        2068,
+        7883,
+        22601,
+        22602,
+        28559,
+        43505,
+        105946
+      ],
+      "context": "Thailand2/departure3/2027-02-22/7n/2A/nochildren",
+      "status": "CONFIG_CHECKED_MERGED_EXECUTION_NOT_RUN",
+      "automatic_next": false,
+      "operator_specific_selling_hint": "not_found_in_saved_CURRENT_rows",
+      "condition": "Re-evaluate specific missing proof and expected yield; fresh claim/source/slot required; no automatic next after zero or hour tick"
     }
   }
 }
