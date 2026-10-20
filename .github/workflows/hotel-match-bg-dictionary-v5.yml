@@ -1,0 +1,44 @@
+name: MATCH BG dictionary after prerequisite reconciliation v5
+'on':
+  pull_request:
+    types: [opened]
+    branches: [feature/anex-search-adapter-20260907]
+    paths:
+      - scripts/diagnostics/hotel_match_bg_dictionary_v5.py
+      - .github/workflows/hotel-match-bg-dictionary-v5.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: anytour-match-bg-dictionary-acquisition, cancel-in-progress: false}
+env:
+  SCRIPT: scripts/diagnostics/hotel_match_bg_dictionary_v5.py
+  HEAD: '${{ github.event.pull_request.head.sha }}'
+jobs:
+  dictionary:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.event.pull_request.head.ref == 'ops/match-bg-dictionary-1971-20260922-v5' && github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0, persist-credentials: false}
+      - name: Validate exact source, immutable inputs and reserve
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$(git rev-parse HEAD)" = "$HEAD"
+          test "$(git merge-base HEAD 78f074eb70c90bb75cba4767acba2420952f4541)" = 78f074eb70c90bb75cba4767acba2420952f4541
+          test "$(git diff --name-only 78f074eb70c90bb75cba4767acba2420952f4541..HEAD | sort | tr '\n' ' ')" = '.github/workflows/hotel-match-bg-dictionary-v5.yml scripts/diagnostics/hotel_match_bg_dictionary_v5.py '
+          echo "6d9d51b95380e6a99376498be62c09617eac0c789a4598e89e596d33a91156d5  $SCRIPT" | sha256sum -c -
+          python3 -m py_compile "$SCRIPT"
+          python3 "$SCRIPT" test
+          python3 "$SCRIPT" preflight
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'match-bg-dictionary-v5-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require Security and live capability proof then fetch exactly once
+        env: {GH_TOKEN: '${{ github.token }}'}
+        run: python3 "$SCRIPT" execute
+      - name: Preserve zero-access or unknown terminal state on earlier failure
+        if: always()
+        run: python3 "$SCRIPT" finish
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: {name: 'match-bg-dictionary-v5-terminal-${{ github.run_id }}', path: terminal/, retention-days: 90, if-no-files-found: error}
