@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -29,6 +30,8 @@ def load(name,path):
 m=load('retained_control',ROOT/'scripts/deploy/int_server_executor_match_retained.py')
 q=load('retained_quota',SOURCE/'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py')
 p=load('retained_projection',SOURCE/'scripts/diagnostics/hotel_match_retained_projection_v1.py')
+sys.path.insert(0,str(SOURCE/'scripts/diagnostics'))
+a=load('retained_acquisition',SOURCE/'scripts/diagnostics/hotel_match_retained_acquire_v1.py')
 SHA='a'*40
 CONTROL='b'*40
 OP='int-andromeda-match-retained-20261020-v1'
@@ -41,6 +44,17 @@ def core():
 
 
 class ContractTest(unittest.TestCase):
+    def test_acquisition_completion_accounts_for_real_supplier_calls(self):
+        cmd={'mode':'match-retained-acquire','source_sha':SHA,'operation_id':'int-andromeda-match-retained-acquire-20261020-v1',
+             'cohort':'anex105-current','target_operation_id':'int-andromeda-match-retained-current-20261020-v1'}
+        data={**cmd,'control_source_sha':CONTROL,'state':'acquired_retained_native_read_only','no_replay':True,
+              'safe_to_write_now':False,'supplier_calls':3,'database_writes':0,'mapping_writes':0}
+        result={**cmd,'status':'complete','production_unchanged':True,'supplier_calls':3,'database_writes':0,'mapping_writes':0,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
+        self.assertTrue(m.completed_result(cmd,result,CONTROL))
+        for patch in ({'supplier_calls':0},{'supplier_calls':None},{'mapping_writes':1}):
+            changed=copy.deepcopy(result);changed.update(patch);self.assertFalse(m.completed_result(cmd,changed,CONTROL))
+
     def test_current_uses_complete_project_cohort_and_preserves_parent(self):
         with tempfile.TemporaryDirectory() as td:
             private=Path(td)/'private';name='int-andromeda-match-retained-project-20261020-v2'
@@ -132,8 +146,8 @@ class ContractTest(unittest.TestCase):
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1'}[mode]
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current') else '')
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1'}[mode]
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire') else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -155,11 +169,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1'}[mode]
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current') else ''))
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1'}[mode]
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire') else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
@@ -326,6 +340,58 @@ class ProjectionTest(unittest.TestCase):
         self.assertEqual([],self.fixture([row,accepted])['candidate_edges'])
 
 
+class AcquisitionTest(unittest.TestCase):
+    def test_exact_anex_namespace_identity_and_sensitive_link_holds(self):
+        detail={'hotel':{'id':1546},'operator':{'id':13},'operatorLink':'https://agent.anextour.ru/search?HOTELLIST=5844'}
+        value=a.native_pair(detail,1546)
+        self.assertEqual('verified_native_pair',value['state']);self.assertEqual('anex_online',value['namespace'])
+        self.assertEqual('5844',value['anex_hotel_id'])
+        self.assertEqual('detail_identity_mismatch',a.native_pair(detail,1584)['state'])
+        for link in ('https://evil.example/?HOTELLIST=5844','https://anextour.ru/?HOTELLIST=5844&token=secret',
+                     'https://anextour.ru/?HOTELLIST=5844&hotelCode=999','https://anextour.ru:444/?HOTELLIST=5844'):
+            self.assertNotEqual('verified_native_pair',a.native_pair({**detail,'operatorLink':link},1546)['state'])
+
+    def test_raw_body_precedes_parsing_and_request_contains_no_token(self):
+        with tempfile.TemporaryDirectory() as td:
+            directory=Path(td);events=[]
+            class Q:
+                def reserve(self,*args):events.append(('reserve',args))
+                def complete(self,*args):events.append(('complete',args))
+            class R:
+                code=200
+                def __enter__(self):return self
+                def __exit__(self,*args):pass
+                def read(self,*args):return b'raw response before parsing'
+            client=a.Client.__new__(a.Client);client.q=Q();client.directory=directory;client.operation='test'
+            client.reserved=client.calls=client.tariff=client.unknown=0;client.counts=__import__('collections').Counter()
+            client.deadline=__import__('time').monotonic()+60;client.token='private-fixture-token'
+            client.open=mock.Mock();client.open.open.return_value=R()
+            def parse(raw):
+                self.assertEqual(raw,(directory/'response-0001.bin').read_bytes());raise ValueError('bad-json')
+            with mock.patch.object(a.json,'loads',side_effect=parse):
+                with self.assertRaisesRegex(ValueError,'response_json_invalid'):client.call('search_results','/tours/search/123',{'limit':10000})
+            self.assertEqual(1,client.calls);self.assertEqual('reserve',events[0][0]);self.assertEqual('response_received',events[-1][1][-1])
+            self.assertNotIn(client.token,(directory/'request-0001.json').read_text())
+
+    def test_only_selected_operator_hotel_is_detailed_once(self):
+        class C:
+            calls=reserved=tariff=unknown=0
+            counts=__import__('collections').Counter();before={'physical_http_attempts':0}
+            def call(self,action,path,params):
+                self.calls+=1;self.reserved+=1;self.counts[action]+=1;self.tariff+=int(action=='search_start')
+                if action=='search_start':value={'searchId':777};self.start=params
+                elif action=='search_status':value={'progress':100}
+                elif action=='search_results':value={'hotels':[{'id':1546,'tours':[{'id':888,'operator':13}]},{'id':1546,'tours':[{'id':888,'operator':13}]},{'id':999,'tours':[{'id':889,'operator':13}]}]}
+                else:value={'hotel':1546,'operator':13,'operatorLink':'https://anextour.ru/?HOTELLIST=5844'}
+                return 200,value,{'response_number':self.calls,'raw_sha256':'a'*64}
+        selected=[{'tv_hotel_id':1546,'future_context':{'departure_date':'2026-11-02','nights':7}}]
+        with tempfile.TemporaryDirectory() as td:
+            client=C();result=a.acquire(client,Path(td),selected,sleep=lambda _:None)
+        self.assertEqual([13],client.start['operatorIds']);self.assertEqual([1546],client.start['hotelIds'])
+        self.assertEqual({'verified_native_pair':1},result['edge_states']);self.assertEqual(4,result['supplier_calls'])
+        self.assertEqual('verified_live_operator13_anextour_link',result['operator_account_binding']['state'])
+
+
 @unittest.skipUnless(os.environ.get('MATCH_RETAINED_NATIVE_CI')=='1','native MySQL contract runs in stock CI')
 class NativeMySQLTest(unittest.TestCase):
     def test_current_resolver_manual_exclusion_context_and_scope(self):
@@ -341,7 +407,7 @@ class NativeMySQLTest(unittest.TestCase):
           $db->exec('CREATE TABLE tour_price_observations(hotel_id INT,departure_id INT,country_id INT,departure_date DATE,nights INT,adults INT,children_count INT,child_ages_signature TEXT,observed_at DATETIME,source TEXT) ENGINE=InnoDB');
           $st=$db->prepare("INSERT INTO catalog_hotels VALUES(?,'Fixture',4,?,1,'Region',1,'Subregion','5',36,32,1)");
           foreach([100,200,300,400,500,900] as $id)$st->execute([$id,$id===500?'Russia':'Turkey']);
-          $db->exec("INSERT INTO anex_hotel_search_mappings VALUES(1,100,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(2,200,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(3,400,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview')");
+          $db->exec("INSERT INTO anex_hotel_search_mappings VALUES(1,100,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(2,200,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(3,400,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview'),(4,500,'exact_operator_key','owner_exact_operator_key_20260912_v2',1,'preview')");
           $db->exec("INSERT INTO anex_hotel_decisions VALUES(2,'rejected',NULL)");$db->exec('INSERT INTO anex_review_pair_exclusions VALUES(3,400)');
           $st=$db->prepare("INSERT INTO andromeda_hotel_identities VALUES('andromeda_catalog',?,?,'accepted',?,?,?)");
           foreach([200,300,400] as $id)$st->execute([(string)$id,$id,str_repeat('a',64),hash('sha256','{}'),'{}']);
@@ -351,8 +417,8 @@ class NativeMySQLTest(unittest.TestCase):
         }finally{if($db->inTransaction())$db->rollBack();$db->exec('DROP DATABASE '.$name);}'''
         run=subprocess.run(['php','-r',code,str(SOURCE/'scripts/diagnostics/hotel_match_retained_current_v1.php')],capture_output=True,text=True,timeout=60)
         self.assertEqual(0,run.returncode,run.stderr);data=json.loads(run.stdout)
-        self.assertEqual(1,data['direct_anex_global_effective_native_ids'])
-        self.assertEqual(1,data['direct_anex_effective_on_cohort']);self.assertEqual(2,data['acquisition_ready_count'])
+        self.assertEqual(2,data['direct_anex_global_effective_native_ids'])
+        self.assertEqual(2,data['direct_anex_effective_on_cohort']);self.assertEqual(1,data['direct_anex_effective_on_eligible_cohort']);self.assertEqual(2,data['acquisition_ready_count'])
         rows={r['tv_hotel_id']:r for r in data['rows']}
         self.assertNotIn(900,rows);self.assertEqual('future_context_missing',rows[300]['state'])
         self.assertEqual('target_ineligible',rows[500]['state']);self.assertEqual('target_missing',rows[999]['state'])
