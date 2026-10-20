@@ -7,6 +7,31 @@ function positiveId(value){const s=String(value??'');return /^(?:[1-9][0-9]*)$/.
 function digest(value){return typeof value==='string'&&/^[a-f0-9]{64}$/.test(value)?value:'';}
 function amount(value){const raw=value&&typeof value==='object'?value.amount:value,n=Number(raw);return Number.isFinite(n)&&n>0&&n<=1e12?n:0;}
 function safeText(value,limit){return typeof value==='string'&&value.length<=limit&&!/[\u0000-\u001f\u007f]/.test(value)?value.trim():'';}
+// LOCAL search presentation taxonomy from 20260916-anytour-stay-catalog.sql.
+// A family is an OR of distinct canonical plans, never provider/package equivalence.
+const MEAL_FILTER_FAMILIES=Object.freeze({
+ 'no-meals':'no-meals',breakfast:'breakfast','half-board':'half-board','half-board-plus':'half-board',
+ 'full-board':'full-board','full-board-plus':'full-board','all-inclusive':'all-inclusive',
+ 'ultra-all-inclusive':'all-inclusive','soft-all-inclusive':'all-inclusive','alcohol-free-all-inclusive':'all-inclusive'
+});
+function mealFilterGroups(plans){
+ if(!Array.isArray(plans)||plans.length>1000)return[];
+ const members=[],ids=new Set(),byCode=new Map();
+ for(const plan of plans){
+  const nameRu=safeText(plan&&plan.nameRu,255),code=plan&&plan.code,id=plan&&plan.id;
+  if(!Number.isSafeInteger(id)||id<1||typeof code!=='string'||!/^[a-z0-9][a-z0-9-]{0,63}$/.test(code)||!nameRu||ids.has(id)||byCode.has(code))return[];
+  const member={id,code,nameRu};members.push(member);ids.add(id);byCode.set(code,member);
+ }
+ const groups=[],families=new Map();
+ for(const member of members){
+  const family=Object.hasOwn(MEAL_FILTER_FAMILIES,member.code)?MEAL_FILTER_FAMILIES[member.code]:null,base=family&&byCode.get(family);
+  if(!base){groups.push({key:'meal-plan:'+member.id,nameRu:member.nameRu,members:[member]});continue;}
+  let group=families.get(family);
+  if(!group){group={key:'meal-family:'+family,nameRu:base.nameRu,members:[]};families.set(family,group);groups.push(group);}
+  group.members.push(member);
+ }
+ return groups;
+}
 // Mirror the LOCAL listing contract. Even a previously verified quote is display-only here.
 function priceState(listing){
  const state=listing.listingPriceState;
@@ -162,7 +187,7 @@ function scopeSignature(params,response=false){
  }catch(_){return null;}
 }
 function canonicalOwner(){const module=root.Search3CanonicalProfilesV1;return module&&typeof module.current==='function'?module.current():null;}
-const api=Object.freeze({localCandidate,endpoint,offerTour,parse,apply,version:4});root.AnyTourLocalDbProviderV1=api;
+const api=Object.freeze({localCandidate,endpoint,offerTour,parse,apply,mealFilterGroups,version:4});root.AnyTourLocalDbProviderV1=api;
 const lifecycle=root.V2SearchLifecycle,target=endpoint();if(!lifecycle||!target||typeof root.fetch!=='function'||typeof root.addEventListener!=='function')return;
 let active=null;
 function current(run){return active===run&&lifecycle.generation===run.generation&&!lifecycle.dirty;}

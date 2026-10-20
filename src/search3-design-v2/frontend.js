@@ -114,12 +114,50 @@
     const resultBatch = 24;
     if (!Number.isInteger(state.resultLimit) || state.resultLimit < resultBatch) state.resultLimit = resultBatch;
     const resetResultLimit = () => { state.resultLimit = resultBatch; };
-    // Result meal groups use exact loaded canonical label or exact displayed
-    // supplier fact. They never create supplier IDs or modify form plan mapping.
-    const mealKey = offer => offer.mealFacet || mealText(offer);
+    // LOCAL supplies family membership. Persist only the exact canonical plan
+    // labels already understood by the bridge and supplier intent owner.
+    function mealGroups() {
+      const catalog=dictionaries?.meals||[],plans=catalog.filter(plan=>Number.isSafeInteger(plan.id)&&plan.id>0&&typeof plan.code==='string'&&typeof plan.nameRu==='string'&&plan.nameRu&&catalog.filter(other=>other.nameRu===plan.nameRu).length===1);
+      const groups=Array.isArray(dictionaries?.mealGroups)?dictionaries.mealGroups:plans.map(plan=>({key:'meal-plan:'+plan.id,nameRu:plan.nameRu,members:[plan]}));
+      return groups.map(group=>({...group,members:(group.members||[]).filter(member=>plans.some(plan=>plan.id===member.id&&plan.code===member.code&&plan.nameRu===member.nameRu))})).filter(group=>typeof group.key==='string'&&typeof group.nameRu==='string'&&group.members.length);
+    }
+    const mealKey = offer => {
+      const plans=dictionaries?.meals||[],plan=plans.find(plan=>Number.isSafeInteger(offer.mealPlanId)&&plan.id===offer.mealPlanId&&plan.code===offer.mealPlanCode&&plan.nameRu===offer.mealFacet&&plans.filter(other=>other.nameRu===plan.nameRu).length===1);
+      return plan?.nameRu || '';
+    };
+    const mealDetails=state.nativeMealDetails||{form:[],results:[]};state.nativeMealDetails=mealDetails;
+    const groupMeals = group => group.members.map(member=>member.nameRu);
+    function mealSummary(selected) {
+      const remaining=new Set(selected),labels=[];
+      for(const group of mealGroups()){
+        const members=groupMeals(group),chosen=members.filter(name=>remaining.has(name));
+        if(chosen.length){labels.push(chosen.length===members.length&&members.length>1?group.nameRu+': все варианты':chosen.join(', '));chosen.forEach(name=>remaining.delete(name));}
+      }
+      return [...labels,...remaining].join(' · ') || 'Любое';
+    }
+    function mealControls(groups,selected,context,filters) {
+      const form=context==='form',count=names=>rows({...filters,meals:names}).length;
+      const choice=(name,label,key)=>`<label class="${form?'q8c6':'st-check'}"><input type="checkbox" ${key?'data-native-meal-group-toggle="'+esc(key)+'" data-native-meal-context="'+context+'"':form?'data-native-form-meal="'+esc(name)+'"':'data-native-filter="meals"'} value="${esc(name)}" ${selected.includes(name)?'checked':''}><span${form?' class="st-condition-food-name"':''}>${esc(label)}${key?`<small class="st-native-meal-all">Все варианты (${groups.find(group=>group.key===key).members.length})</small>`:''}</span>${form?'':`<span class="st-filter-count" aria-label="${countText(count(key?groupMeals(groups.find(group=>group.key===key)):[name]))}">${count(key?groupMeals(groups.find(group=>group.key===key)):[name])}</span>`}</label>`;
+      return groups.map(group=>{
+        const names=groupMeals(group);if(names.length===1)return choice(names[0],group.nameRu);
+        const chosen=names.filter(name=>selected.includes(name)),partial=chosen.length>0&&chosen.length<names.length,open=mealDetails[context].includes(group.key);
+        return `<div class="st-native-meal-family" data-native-meal-family="${esc(group.key)}"><div class="st-native-meal-heading">${choice(group.key,group.nameRu,group.key)}<button type="button" class="st-native-meal-refine" data-native-meal-expand="${esc(group.key)}" data-native-meal-context="${context}" aria-expanded="${open}" aria-label="Уточнить: ${esc(group.nameRu)}">Уточнить${icon(open?'chevron-up':'chevron-down')}</button></div><p class="st-native-meal-selection" data-native-meal-selection ${partial?'':'hidden'}>${esc(chosen.join(', '))}</p><div class="st-native-meal-members" data-native-meal-members ${open?'':'hidden'}>${group.members.map(member=>choice(member.nameRu,member.nameRu)).join('')}</div></div>`;
+      }).join('');
+    }
+    function syncMealControls(panel,selected,context,filters) {
+      const groups=mealGroups();
+      for(const node of panel.querySelectorAll('[data-native-meal-group-toggle]')){
+        const group=groups.find(group=>group.key===node.dataset.nativeMealGroupToggle);if(!group)continue;
+        const names=groupMeals(group),chosen=names.filter(name=>selected.includes(name)),partial=chosen.length>0&&chosen.length<names.length;
+        node.checked=chosen.length===names.length;node.indeterminate=partial;node.setAttribute('aria-checked',partial?'mixed':String(node.checked));
+        const family=node.closest('[data-native-meal-family]'),summary=family.querySelector('[data-native-meal-selection]');summary.textContent=chosen.join(', ');summary.hidden=!partial;
+        const label=node.parentElement.querySelector('.st-filter-count');if(label){const count=rows({...filters,meals:names}).length;label.textContent=count;label.setAttribute('aria-label',countText(count));}
+      }
+      for(const node of panel.querySelectorAll(context==='form'?'[data-native-form-meal]':'[data-native-filter="meals"]'))node.checked=selected.includes(context==='form'?node.dataset.nativeFormMeal:node.value);
+    }
     function facetCoverage() {
       return {stars:state.hotels.every(hotel=>Number.isInteger(hotel.stars)&&hotel.stars>=1&&hotel.stars<=5),
-        meals:state.hotels.every(hotel=>(hotel.offers||[]).every(offer=>mealKey(offer)!=='Питание уточняется'))};
+        meals:state.hotels.every(hotel=>(hotel.offers||[]).every(offer=>!!mealKey(offer)))};
     }
     function eligible(hotel, filters = state.filters, selectedDate = state.selectedDate, onlyFavorites = state.onlyFavorites) {
       if (!hotel || !state.search || String(hotel.country) !== String(state.search.country)) return [];
@@ -143,7 +181,12 @@
     function resultConstraints() {
       const f=state.filters,items=[];
       if(f.min||f.max!==null)items.push({group:'budget',value:'',label:[f.min?'от '+money(f.min):'',f.max!==null?'до '+money(f.max):''].filter(Boolean).join(' · ')});
-      for(const group of ['stars','meals','resorts'])for(const value of f[group])items.push({group,value:String(value),label:group==='stars'?value+' звёзд':String(value)});
+      for(const group of ['stars','resorts'])for(const value of f[group])items.push({group,value:String(value),label:group==='stars'?value+' звёзд':String(value)});
+      const remaining=new Set(f.meals);
+      for(const group of mealGroups()){
+        const members=groupMeals(group);if(members.length>1&&members.every(name=>remaining.has(name))){items.push({group:'mealFamily',value:group.key,label:group.nameRu+': все варианты',members});members.forEach(name=>remaining.delete(name));}
+      }
+      for(const value of remaining)items.push({group:'meals',value,label:value});
       for(const id of f.hotelIds?.length?f.hotelIds:f.hotelId?[f.hotelId]:[])items.push({group:'hotel',value:String(id),label:state.hotels.find(h=>h.id===id)?.name||'Выбранный отель'});
       if(state.selectedDate)items.push({group:'date',value:state.selectedDate,label:'Вылет '+dateText(state.selectedDate)});
       if(state.onlyFavorites)items.push({group:'favorites',value:'',label:'Только избранное'});
@@ -154,6 +197,7 @@
       if(item.group==='budget'){filters.min=0;filters.max=null;}
       else if(item.group==='date')selectedDate=null;
       else if(item.group==='favorites')onlyFavorites=false;
+      else if(item.group==='mealFamily')filters.meals=filters.meals.filter(name=>!item.members.includes(name));
       else if(item.group==='hotel'){filters.hotelIds=(filters.hotelIds?.length?filters.hotelIds:filters.hotelId?[filters.hotelId]:[]).filter(id=>String(id)!==item.value);filters.hotelId=filters.hotelIds[0]||0;}
       else filters[item.group]=filters[item.group].filter(value=>String(value)!==item.value);
       return{filters,selectedDate,onlyFavorites};
@@ -337,11 +381,11 @@
     function budgetMaximum(filters){return Math.max(1000,filters.min,filters.max || 0,...state.hotels.flatMap(h=>(h.offers||[]).map(o=>o.total).filter(Number.isFinite)));}
     function facetHTML(filters) {
       const coverage=facetCoverage();
-      const options = [...new Set(state.hotels.flatMap(h => (h.offers || []).map(mealKey)))].filter(label => label !== 'Питание уточняется');
+      const loaded=new Set(state.hotels.flatMap(h=>(h.offers||[]).map(mealKey))),groups=mealGroups().filter(group=>group.members.some(member=>loaded.has(member.nameRu)));
       const count = (group,value) => rows({...filters,[group]:[value]}).length;
       const checkbox = (group,value,label) => `<label class="st-check"><input type="checkbox" data-native-filter="${group}" value="${esc(value)}" ${filters[group].includes(value) ? 'checked' : ''}><span>${esc(label)}</span><span class="st-filter-count" aria-label="${countText(count(group,value))}">${count(group,value)}</span></label>`;
       const unavailable = (group,title,fact) => `<div class="st-group" data-native-facet-group="${group}"><strong class="st-group-title">${title}</strong><p class="st-small st-muted st-native-facet-note" data-native-facet-unavailable="${group}">${fact} Фильтр будет доступен, когда данные будут полными.</p></div>`;
-      return `${coverage.stars?`<div class="st-group" data-native-facet-group="stars"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:unavailable('stars','Категория отеля','Категория указана не у всех найденных отелей.')}${coverage.meals?`<div class="st-group" data-native-facet-group="meals"><strong class="st-group-title">Питание</strong>${options.map(label=>checkbox('meals',label,label)).join('')}</div>`:unavailable('meals','Питание','Питание указано не во всех найденных турах.')}`;
+      return `${coverage.stars?`<div class="st-group" data-native-facet-group="stars"><strong class="st-group-title">Категория отеля</strong>${[5,4,3].map(n=>checkbox('stars',n,n+' звёзд')).join('')}</div>`:unavailable('stars','Категория отеля','Категория указана не у всех найденных отелей.')}${coverage.meals?`<div class="st-group" data-native-facet-group="meals"><strong class="st-group-title">Питание</strong>${mealControls(groups,filters.meals,'results',filters)}</div>`:unavailable('meals','Питание','Питание указано не во всех найденных турах.')}`;
     }
     function filterHTML(filters) {
       const max=budgetMaximum(filters);
@@ -359,17 +403,19 @@
       const panel=$('[data-filter-form]'),invalid=!!panel.querySelector('input[aria-invalid="true"]');
       const apply=$('[data-filter-apply]');apply.disabled=invalid;apply.textContent=invalid?'Проверьте бюджет':'Показать '+countText(rows(filterDraft).length);
       for(const node of panel.querySelectorAll('[data-native-filter]')){const group=node.dataset.nativeFilter,value=group==='stars'?Number(node.value):node.value,count=rows({...filterDraft,[group]:[value]}).length;const label=node.parentElement.querySelector('.st-filter-count');label.textContent=count;label.setAttribute('aria-label',countText(count));}
+      syncMealControls(panel,filterDraft.meals,'results',filterDraft);
       state.nativeFilters=filterSnapshot();
     }
     function refreshFilterEditor(){
       if(!filterDraft)return;
       const panel=$('[data-filter-form]'),coverage=facetCoverage(),active=window.document.activeElement;
-      const focusedFacet=active?.dataset.nativeFilter?{group:active.dataset.nativeFilter,value:active.value}:null;
+      const focusedFacet=active?.dataset.nativeFilter?{group:active.dataset.nativeFilter,value:active.value}:null,focusedMeal=active?.dataset.nativeMealGroupToggle||active?.dataset.nativeMealExpand;
       for(const key of ['stars','meals'])if(!coverage[key])filterDraft[key]=[];
       panel.querySelectorAll('[data-native-facet-group]').forEach(node=>node.remove());panel.insertAdjacentHTML('beforeend',facetHTML(filterDraft));
       const range=panel.querySelector('input[type="range"]');range.max=budgetMaximum(filterDraft);range.value=filterDraft.max??range.max;
       updateFilterDraft();
       if(focusedFacet)[...panel.querySelectorAll('[data-native-filter]')].find(node=>node.dataset.nativeFilter===focusedFacet.group&&node.value===focusedFacet.value)?.focus({preventScroll:true});
+      if(focusedMeal)[...panel.querySelectorAll(active.hasAttribute('data-native-meal-expand')?'[data-native-meal-expand]':'[data-native-meal-group-toggle]')].find(node=>(node.dataset.nativeMealExpand||node.dataset.nativeMealGroupToggle)===focusedMeal)?.focus({preventScroll:true});
       redrawIcons();
     }
     function validateResultBudget(panel){
@@ -462,6 +508,7 @@
       sourceAlert.hidden=!statusMessage||!state.hotels.length;
       sourceAlert.innerHTML=sourceAlert.hidden?'':`<strong>${esc(statusMessage.title)}</strong><span>${esc(statusMessage.detail)}</span>${statusMessage.action?`<div class="st-alert-actions"><button type="button" class="st-link cursor-interaction" data-action="search">${esc(statusMessage.action)}</button></div>`:''}`;
       $('[data-filter-sidebar]').innerHTML=filterHTML(state.filters);
+      syncMealControls($('[data-filter-sidebar]'),state.filters.meals,'results',state.filters);
       const list=$('[data-card-list]');list.innerHTML=visible.map(conditionRows).join('');
       let more=$('[data-result-more]');
       if(!more){more=window.document.createElement('div');more.className='st-result-more';more.dataset.resultMore='';list.after(more);}
@@ -600,9 +647,9 @@
       text('[data-search-family-status]',incomplete>=0?'Укажите возраст ребёнка '+(incomplete+1)+' на дату возвращения.':agesReviewNeeded?'Подтвердите возраста детей на дату возвращения.':party(draft));
       $('[data-search-family-status]').classList.toggle('st-family-incomplete',incomplete>=0);
       $('[data-search-editor-done="travelers"]').disabled=incomplete>=0;
-      const meals=dictionaries.meals||[];
-      $('.st-condition-food-list').innerHTML=meals.map(m=>`<label class="q8c6"><input type="checkbox" data-native-form-meal="${esc(m.nameRu)}" ${draftFilters.meals.includes(m.nameRu)?'checked':''}><span><span class="st-condition-food-name">${esc(m.nameRu)}</span></span></label>`).join('');
-      text('[data-search-food-value]',draftFilters.meals.length?draftFilters.meals.join(' · '):'Любое');
+      $('.st-condition-food-list').innerHTML=mealControls(mealGroups(),draftFilters.meals,'form');
+      syncMealControls($('.st-condition-food-list'),draftFilters.meals,'form');
+      text('[data-search-food-value]',mealSummary(draftFilters.meals));
       text('[data-search-budget-value]',draftFilters.min||draftFilters.max!==null?[draftFilters.min?'от '+money(draftFilters.min):'',draftFilters.max!==null?'до '+money(draftFilters.max):''].filter(Boolean).join(' · '):'Без лимита');
       $$('[data-search-budget]').forEach(n=>n.value=draftFilters[n.dataset.searchBudget]??'');
       validateBudget();
@@ -741,6 +788,11 @@
     function handleClick(event){
       const button=event.target.closest('button');if(!button||!root.contains(button))return;
       const d=button.dataset;
+      if(d.nativeMealExpand){
+        const context=d.nativeMealContext,open=!mealDetails[context].includes(d.nativeMealExpand);
+        mealDetails[context]=open?[...mealDetails[context],d.nativeMealExpand]:mealDetails[context].filter(key=>key!==d.nativeMealExpand);
+        button.setAttribute('aria-expanded',String(open));button.innerHTML='Уточнить'+icon(open?'chevron-up':'chevron-down');button.closest('[data-native-meal-family]').querySelector('[data-native-meal-members]').hidden=!open;redrawIcons();return;
+      }
       if(button.hasAttribute('data-native-remove-constraint')){
         const items=resultConstraints(),index=items.findIndex(item=>item.group===d.nativeRemoveConstraint&&item.value===d.nativeConstraintValue);
         if(index<0)return;
@@ -809,9 +861,17 @@
     root.addEventListener('scroll',event=>{if(event.target.matches?.('[data-native-calendar-strip]'))syncCalendarNavigation();},{capture:true,passive:true,signal:listeners.signal});
     window.addEventListener('scroll',saveView,{passive:true,signal:listeners.signal});
     root.addEventListener('change',async event=>{const node=event.target,d=node.dataset;
+      if(d.nativeMealGroupToggle){
+        const group=mealGroups().find(group=>group.key===d.nativeMealGroupToggle);if(!group)return;
+        const form=d.nativeMealContext==='form',f=form?draftFilters:filterDraft||state.filters,names=groupMeals(group);
+        f.meals=node.checked?[...new Set([...f.meals,...names])]:f.meals.filter(name=>!names.includes(name));
+        if(form){syncMealControls($('.st-condition-food-list'),f.meals,'form');text('[data-search-food-value]',mealSummary(f.meals));}
+        else if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();[...$('[data-filter-sidebar]').querySelectorAll('[data-native-meal-group-toggle]')].find(control=>control.dataset.nativeMealGroupToggle===d.nativeMealGroupToggle)?.focus({preventScroll:true});}
+        return;
+      }
       if(d.nativeFilter){const f=filterDraft||state.filters,key=d.nativeFilter,value=key==='stars'?Number(node.value):node.value;f[key]=node.checked?[...f[key],value]:f[key].filter(x=>x!==value);if(filterDraft)updateFilterDraft();else{resetResultLimit();renderResults();updateURL();[...$('[data-filter-sidebar]').querySelectorAll('[data-native-filter]')].find(control=>control.dataset.nativeFilter===key&&control.value===node.value)?.focus({preventScroll:true});}}
       if(d.nativeBudget){const inline=!filterDraft,kind=d.nativeBudget,type=node.type;changeResultBudget(node,true);if(inline)[...$('[data-filter-sidebar]').querySelectorAll('[data-native-budget]')].find(control=>control.dataset.nativeBudget===kind&&control.type===type)?.focus({preventScroll:true});}
-      if(d.nativeFormMeal){draftFilters.meals=node.checked?[...draftFilters.meals,d.nativeFormMeal]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);}
+      if(d.nativeFormMeal){draftFilters.meals=node.checked?[...new Set([...draftFilters.meals,d.nativeFormMeal])]:draftFilters.meals.filter(x=>x!==d.nativeFormMeal);syncMealControls($('.st-condition-food-list'),draftFilters.meals,'form');text('[data-search-food-value]',mealSummary(draftFilters.meals));}
       if(d.nativeAge!==undefined){draft.ages[Number(d.nativeAge)]=node.value===''?null:Number(node.value);renderSearch();}
       if(node.classList.contains('st-sort')){state.sort=node.value;resetResultLimit();renderResults();updateURL();}
       if(node.name==='origin'){

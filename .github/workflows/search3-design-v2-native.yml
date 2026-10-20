@@ -77,6 +77,7 @@ jobs:
             if [ "$test_file" != tests/search3-design-v2-native-browser.cjs ] && [ "$test_file" != tests/search3-design-v2-native-installed.cjs ]; then node "$test_file"; fi
           done
           node tests/search3-prototype-inventory-lifecycle.cjs
+          node tests/search3-local-db-meal-plan-v1.test.js
           node tests/search3-prototype-search-lifecycle-v1.cjs
           node tests/search3-prototype-selected-tour-retention.cjs
           node tests/search3-prototype-flight-price.cjs

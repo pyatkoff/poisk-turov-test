@@ -36,4 +36,45 @@ for(const mutate of [
 const request=stored('On Request');delete request.searchMeal;parsed=api.parse(reply(request));tour=parsed.hotels[0].offers[0].tour;
 assert.equal(tour.meal.name,'On Request','raw provider fact is preserved');
 assert.equal(tour.searchMealPlan,undefined,'On Request is not promoted to a meal plan without an accepted relation');
-console.log('SEARCH3_LOCAL_DB_MEAL_PLAN_OK accepted_relation=1 raw_detail_preserved=1 stale_rejected=1 on_request_not_promoted=1');
+const definitions=[
+ ['no-meals','Без питания'],['breakfast','Завтраки'],['half-board','Полупансион'],['half-board-plus','Полупансион плюс'],
+ ['full-board','Полный пансион'],['full-board-plus','Полный пансион плюс'],['all-inclusive','Всё включено'],
+ ['ultra-all-inclusive','Ультра всё включено'],['soft-all-inclusive','Мягкое всё включено'],['alcohol-free-all-inclusive','Всё включено без алкоголя']
+];
+const plans=definitions.map(([code,nameRu],index)=>Object.freeze({id:index+1,code,nameRu,nativeIds:Object.freeze(['native-'+index])}));
+Object.freeze(plans);
+const plain=value=>JSON.parse(JSON.stringify(value)),before=JSON.stringify(plans),groups=plain(api.mealFilterGroups(plans));
+assert.equal(api.version,4,'the additive presentation helper does not change listing version behavior');
+assert.deepEqual(groups.map(group=>[group.key,group.nameRu,group.members.map(member=>member.id)]),[
+ ['meal-family:no-meals','Без питания',[1]],['meal-family:breakfast','Завтраки',[2]],
+ ['meal-family:half-board','Полупансион',[3,4]],['meal-family:full-board','Полный пансион',[5,6]],
+ ['meal-family:all-inclusive','Всё включено',[7,8,9,10]]
+],'LOCAL families combine only the explicit canonical taxonomy');
+assert.deepEqual(groups.at(-1).members,plans.slice(6).map(({id,code,nameRu})=>({id,code,nameRu})),
+ 'ultra/soft/alcohol-free qualifiers retain their exact canonical IDs, codes and names');
+assert.equal(JSON.stringify(plans),before,'frozen source plans and provider native IDs are untouched');
+groups.at(-1).members[0].nameRu='changed output';
+assert.equal(plans[6].nameRu,'Всё включено','output contains fresh presentation descriptors');
+const custom={id:99,code:'hotel-premium-ai',nameRu:'Питание отеля',nativeIds:['AI']};
+assert.deepEqual(plain(api.mealFilterGroups([plans[6],custom])),[
+ {key:'meal-family:all-inclusive',nameRu:'Всё включено',members:[{id:7,code:'all-inclusive',nameRu:'Всё включено'}]},
+ {key:'meal-plan:99',nameRu:'Питание отеля',members:[{id:99,code:'hotel-premium-ai',nameRu:'Питание отеля'}]}
+],'a custom canonical code is not guessed from its name or native aliases');
+assert.deepEqual(plain(api.mealFilterGroups([plans[7],plans[8],plans[9]])),plans.slice(7).map(({id,code,nameRu})=>({
+ key:'meal-plan:'+id,nameRu,members:[{id,code,nameRu}]
+})),'without the canonical base there is no invented family label or broadening');
+const renamed=plans.map(plan=>plan.id===7?{...plan,nameRu:'Название из LOCAL'}:plan);
+assert.equal(api.mealFilterGroups(renamed).at(-1).nameRu,'Название из LOCAL','family labels come from canonical base content');
+const sameNames=[{id:101,code:'custom-a',nameRu:'Одинаковое название'},{id:102,code:'custom-b',nameRu:'Одинаковое название'}];
+assert.deepEqual(plain(api.mealFilterGroups(sameNames)).map(group=>group.key),['meal-plan:101','meal-plan:102'],
+ 'equal labels never establish canonical identity');
+for(const invalid of [
+ null,{},'AI',[{meal:'AI'}],[null],[{id:'7',code:'all-inclusive',nameRu:'Всё включено'}],
+ [{id:0,code:'all-inclusive',nameRu:'Всё включено'}],[{id:7,code:'AI',nameRu:'Всё включено'}],
+ [{id:7,code:'all-inclusive',nameRu:''}],[{id:7,code:'all-inclusive',nameRu:'Bad\u0000name'}],
+ [plans[6],plans[6]],[plans[6],{...plans[6],nameRu:'Conflict'}],
+ [plans[6],{id:88,code:'all-inclusive',nameRu:'Another plan'}],
+ [plans[6],{id:7,code:'another-code',nameRu:'Another plan'}]
+])assert.deepEqual(plain(api.mealFilterGroups(invalid)),[],'malformed or ambiguous catalogues cannot create filter groups');
+assert.deepEqual(plain(api.mealFilterGroups([])),[]);
+console.log('SEARCH3_LOCAL_DB_MEAL_PLAN_OK accepted_relation=1 raw_detail_preserved=1 stale_rejected=1 on_request_not_promoted=1 canonical_filter_families=1 exact_qualifiers_preserved=1 ambiguous_catalogue_rejected=1');
