@@ -38,8 +38,27 @@ submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сох
 consumed; reported5000/сутки не остаток/config/новый live-допуск. Site203reference,
 Site204viewer/d71b84ca, project/history/public сохранены.
 
-Следующий результат той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
-Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
+Конечный retained адаптив360/390/768 также принят
+[audit6282656840](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282656840):
+тот же exact1c7/app68843, без нового продукта/прогона/публикации.39PNG+4receipts:
+семья3A+[0,12]/manager186400→optionalpair3/189000→контакты→возврат/черновик,
+основная форма/фильтры и mixed-calendar5–7Nov/160000–180000→Mountain167000.
+Root+independent hashes/actualframes review ACCEPT; materialgaplist пуст.
+First bounded Mobile360/39010, intermediate7689.5, Calendar-range9.5;
+Selectedtour10 сохранён только в exactfamily scope. UI delta0, не общая оценка поиска.
+
+Доступная independent UI-работа этого конечного корпуса завершена. Fresh INT#2506
+(latest6280407846) — прежняя TVоперация consumed, нового repeated/allpair handoff нет;
+LOCAL#2690(latest6263877414) — только завершённый roothelperrepair, нового alias/IDs
+handoff нет. Physical iPhone/Safari маршрут для exact1c7 отсутствует; cloud/iframe/CI
+не подменяют его. Остальные внешние realLeadC3/price/Rix/production gates/owners/N
+сохранены. Не начинать новый аудит неизменённого UI или косметический пакет.
+После terminal/RELEASE приостановить **только это задание** по правилу отсутствия
+безопасного независимого шага; сохранить его schedule/timezone и чужие задания.
+Это не globalDONE и не остановка из-за одного частного baseline.
+
+Точное условие продолжения той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
+Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.
 
 ### История предыдущего corpus3bdd — 20.10.2026
 
@@ -65,11 +84,10 @@ Back/Close/reset/sort/Continue принят отдельно; native430/physical
 отель/варианты → конкретный тур и итог за всю группу → необязательные рейсы →
 контакты → возврат с сохранением выбора и допустимого черновика.
 
-Основной ordinary430/mobile и1280/desktop, включая short1280×720, принят
-в цельном наблюдавшемся scope6282417033 после ремонта. Прежний согласованный
-следующий остаток —360/390/768: сначала уже сохранённые exact1c7 кадры/receipts,
-без новых прогонов ради покрытия. Это не общая приёмка поиска и не перенос
-частногоFilters10 на другие размеры.200% и Compare/shortlist deferred.
+Observed ordinary430/mobile и1280/desktop, включая short1280×720, принят
+6282417033; конечный compiled360/390/768 остаток принят6282656840 по retained
+exact1c7 кадрам/receipts без новых прогонов. Installed/native/physical этих размеров
+не принимаются автоматически; это не общая приёмка поиска.200% и Compare/shortlist deferred.
 Обязательные штатные final-source CI/workflows сохраняются; дополнительных
 ручных или платных прогонов на остальные размеры нет.
 
@@ -105,20 +123,20 @@ evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` уже согласован
 6279680382 завершены. Повторять их нельзя; клавиатурный проход после нового
 запрета не является следующим действием или gate обычной поставки.
 
-### Один следующий результат: конечный адаптивный остаток после ordinary430/1280
+### Точное условие продолжения после закрытого наблюдавшегося UI
 
 Owner20Oct02:34 прямо разрешил один exact поиск/TVtour quote без предварительно подтверждённого резерва и сообщил5000/сутки. Этот конкретный допуск уже CONSUMED: [terminal6280546977](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6280546977), [audit6280542177](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280542177). Москва→Турция03–09Nov/7n/2A/AI:59отелей/381вариант, статус partial; exactTVtour99280056379835/ownhotel687/RIXOS/LOTI/04–11Nov/268848RUB за2A→managercontact→Back/Close/Continue/draft PASS. Это native1363×936, не430/1280/physical, не цена выбранной пары и не реальная доставка.5000 — owner-reported дневной лимит, не измеренный остаток и не изменение serverconfig. Не повторять поиск/quote и не ждать прежний admission заново.
 
 Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f6769843f9 добавил отдельную [рамку установленного NEXT](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo) в том же PUBLICproject/history. Deployment appgdep_6ad6ba5442f48191be103403d20f90e2 succeeded; saved appgver_a6d4f56bc84881919b15e748a5b2596e. Donor Site203/его UI и установленный3bdd/app7ae9ba не менялись. По умолчанию явное offlinefamily; liveFORM отдельно, без searched/autoFind; arbitraryURL/query не принимаются. PUBLICQA [audit6280721648](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648): child actual430×932/1280×720 + exact8script graph; managercontact186400/2A+[0,8], resize→Back/Close/Continue сохраняет выбор/черновик. Это новый installediframe scope, не native top-level/physical и не общая9,5. Нового live не было.
 
-Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
+Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.
 
 Приёмка проходит обычными кликами/тапами через этот точный installed runtime.
 Смена ширины в рамке не перезагружает child; каждый новый полный reload/mode switch
 начинает новый просмотр. Уже проверенные действия не запускаются ради покрытия.
-Observed ordinary430/1280 UI-этап закрыт6282417033; его завершённые действия
-не повторять.360/390/768 рассматриваются как один конечный адаптивный остаток
-по retained exactCI; код — только при существенном подтверждённом дефекте. Iframe не означает native430/physicalSafari/safearea и не принимает
+Observed ordinary430/1280 UI-этап закрыт6282417033, retained360/390/768 закрыт6282656840;
+завершённые действия не повторять. Код — только при существенном подтверждённом
+дефекте, которого в текущем наблюдавшемся корпусе нет. Iframe не означает native430/physicalSafari/safearea и не принимает
 реальные supplier prices/lead delivery. При недоступности child не делать proxy,
 не менять security headers/carrier/server/browser install. Sourceprepared/CI/
 published/installed/physical/live остаются разными статусами.
@@ -152,7 +170,7 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 | Область / состояние | Действующий ответственный | Следующее конкретное действие | Условие закрытия |
 | --- | --- | --- | --- |
 | Installed TV/manager-путь — COMPLETED/CONSUMED6280546977 | SEARCH, explicit owner allowance6280498998 | Сохранить exact RIXOStour99280056379835/268848RUB/2A и возврат; не повторять поиск/quote | Текущий TVoffer→managercontact/Back/Close/Continue PASS в native1363; не optionalpair/fullsource/430/realLead |
-| Installed iframe430/1280 — ordinary repair/path ACCEPTED6282417033; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | Принятый1c7 путь не повторять; конечный360/390/768 остаток сначала по retained exactCI, без нового платного/ручного покрытия | Цельный observed ordinary430/1280 UI scope закрыт; physicalSafari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
+| Installed iframe430/1280 — ordinary repair/path ACCEPTED6282417033; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | Принятый1c7 путь/retained360/390/768 не повторять; ближайший отсутствующий маршрут — physicaliPhone/Safari430, без нового платного/ручного покрытия | Цельный observed ordinary430/1280 UI scope закрыт; physicalSafari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
 | Rix aliases / submitted exactIDs — отдельные N | Canonical данные у LOCAL; применение у SEARCH | Проверить доступность alias только штатным canonical read/handoff; submittedIDs включать лишь в подходящий отдельно допущенный поиск, не делать платный поиск ради ввода | Canonical alias факт и фактические OR exactIDs приняты в своих scopes. Неизвестный/отсутствующий alias не угадывается и не чинится новым matching в SEARCH |
 | ANEX repeated/allpair authority — отдельный INT handoff отсутствует в последнем чтении | Действующий INT#2506; SEARCH принимает | Прочитать новый конкретный handoff/contract и exact quote/receipt semantics при его появлении; принятую optional-one-pair authority не расширять | Реализованный принятый bounded контракт и exact операция/total; proposal caps3/8/9 не authority. Не блокирует независимо допущенный TV/manager-path |
 | Реальная доставка заявки / LeadC3 — N, preview delivery выключена | Owner-reviewed lead transport, затем SEARCH | После отдельного точного разрешения защищённого scope проверить штатные pending/error/retry/success; до него сохранять локальную проверку/контакты отдельно | Реальная доставка доказана своим receipt; preview validation/quote expiry её не заменяют. Не условие закрытого учебного UI corpus |
@@ -168,7 +186,7 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 
 Stock compiled-browser workflow и существующие owners уже дали6viewport
 acceptance;430/1280 результаты переиспользуются в текущей рабочей матрице,
-360/390/768 составляют конечный retained остаток без новых прогонов. Все результаты принадлежат
+360/390/768 приняты6282656840 как конечный retained scope без новых прогонов. Все результаты принадлежат
 своему source/artifact.
 CloudChrome доступен для установленного desktop; top-level resize не подтверждён.
 С20Oct Site204 даёт фактически проверенный installediframe430×932/1280×720,
