@@ -5,9 +5,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {chromium,request:playwrightRequest}=require('playwright');
-const {fixture,fixtureBridge,manifest:compiledManifest,sourceSHA,hash,base,retainedMedia,mediaByURL}=require('./search3-design-v2-native-browser.cjs');
+const {fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest:compiledManifest,sourceSHA,hash,base,retainedMedia,mediaByURL}=require('./search3-design-v2-native-browser.cjs');
 const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/';
-const INSTALLED=Object.freeze({source:'2344c8533a5175cbb9f6843f5324248dd9562784',release:'fa3f0453cc2f79fab93b2fdff3b0f9f9cb3aa6a0',publishRun:39390835598,manifestSHA256:'1466712517312614b838df11f6841b4e5012ca8e69a82118ea52ea1e9fbbd96e'});
+const INSTALLED=Object.freeze({source:'48252b25d1e7bab4156d35eff260021f99029db2',release:'1b5fcbbfa71cf08bef82624d73be4a1d4c7e1a82',publishRun:39423874280,manifestSHA256:'da40c9448b3a856c5c28ec4fbe5f8eb512f4a0c80487afbe80a74b7f2a82f26b'});
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
 assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
@@ -18,8 +18,9 @@ const nativePrefix=base+'/visual-search/native-v2/';
 const bridgePath=nativePrefix+'bridge.js';
 const noOp=Buffer.from('/* Controlled installed presentation evidence: canonical transport disabled. */\n');
 const fixtureScript=Buffer.from('('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');');
+const terminalScript=Buffer.from('('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');');
 const report={schema:1,status:'running',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
-  scope:'Installed HTTPS native presentation, deterministic fictional bridge, Chromium 430/1280 at 100%; not live supplier or delivery authority',
+  scope:'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
   fixture:fixture.label,clock:'2026-10-12T08:00:00Z',widths:[430,1280],height:900,textPercent:100,
   manifest:null,graph:[],publicGETs:[],replacements:[],network:[],cases:[],unexpectedRequests:[],
   exclusions:{supplierSearches:0,supplierQuotes:0,canonicalAPIRequests:0,realLeadSubmissions:0,analyticsRequests:0,physicalSafari:'not_measured',liveAuthority:'not_measured'}};
@@ -30,7 +31,8 @@ function safeURL(value){
   assert.equal(url.protocol,'https:');assert.equal(url.username,'');assert.equal(url.password,'');assert.equal(url.hash,'');
   assert(!forbidden.test(url.pathname),'No API or delivery path');
   const spec=allowed.get(url.pathname);assert(spec,'Only pinned public graph paths: '+url.pathname);
-  assert(url.search===''||spec.sha256&&url.search==='?v='+spec.sha256.slice(0,12),'Only the pinned static version query');
+  if(spec.kind==='entry'&&url.search)verifyInitialURL(url.href+'#search');
+  else assert(url.search===''||spec.sha256&&url.search==='?v='+spec.sha256.slice(0,12),'Only the pinned static version query');
   return{url,spec};
 }
 function installGraph(manifest){
@@ -168,7 +170,7 @@ async function run(){
     for(const width of [430,1280]){
       const row={width,height:900,textPercent:100,frames:[],errors:[],proof:{},status:'running'};report.cases.push(row);
       const context=await browser.newContext({viewport:{width,height:900},locale:'ru-RU',timezoneId:'UTC',reducedMotion:'reduce',serviceWorkers:'block'});
-      let page;
+      let page,terminalJourney=false;
       await context.route('**/*',async route=>{
         const req=route.request(),value=req.url(),entry={width,url:value,method:req.method(),resourceType:req.resourceType()};report.network.push(entry);
         try{
@@ -177,10 +179,14 @@ async function run(){
           if(media){entry.action='retained-media-substitution';entry.sha256=media.sha256;await route.fulfill({status:200,contentType:'image/jpeg',body:media.body});return;}
           const {url,spec}=safeURL(value);const actual=await fetchPublic(value);
           let body=actual.body;
-          if(url.pathname===bridgePath){body=fixtureScript;entry.action='fixture-bridge';}
+          if(url.pathname===bridgePath){
+            body=terminalJourney?Buffer.concat([body,Buffer.from('\n('+recordTerminalBridge.toString()+')();')]):fixtureScript;
+            entry.action=terminalJourney?'verified-installed-bridge-instrumentation':'fixture-bridge';
+          }
+          else if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){body=terminalScript;entry.action='fictional-canonical-data';}
           else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')){body=noOp;entry.action='canonical-script-disabled';}
           else entry.action='verified-installed-bytes';
-          if(body!==actual.body){const change={path:url.pathname,originalSHA256:actual.sha256,replacementSHA256:hash(body),reason:entry.action};if(!report.replacements.some(r=>r.path===change.path))report.replacements.push(change);}
+          if(body!==actual.body){const change={path:url.pathname,originalSHA256:actual.sha256,replacementSHA256:hash(body),reason:entry.action};if(!report.replacements.some(r=>r.path===change.path&&r.replacementSHA256===change.replacementSHA256))report.replacements.push(change);}
           entry.servedSHA256=hash(body);
           const headers={...actual.headers,'content-length':String(body.length),'cache-control':'no-store'};
           delete headers['content-encoding'];delete headers['transfer-encoding'];
@@ -243,11 +249,77 @@ async function run(){
         const finalCalls=await calls(page);assert.deepEqual(finalCalls,{init:finalCalls.init,search:1,quote:1,expand:0,flight:[0],preview:1,submit:0});assert(finalCalls.init>=1);
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),112000);await capture(page,row,'lead-return');
         row.proof={...row.proof,passiveSearches:0,explicitFixtureSearches:1,localFilterExtraOperations:0,calendarFinalLoadedTotal:166400,passiveHotelQuotes:0,explicitFixtureQuotes:1,exactOffer:'fixture:offer:1',tourId:'fixture-tour:1',adults:2,ages:[],selectedFullTotal:112000,originalFlightChoiceIndex:0,previewCount:1,realLeadSubmissions:0,backForwardRetained:true,draftRetained:true,consentRetained:true,favorites:[1],calls:finalCalls};
+        // A second installed-entry visit uses the actual verified bridge bytes.
+        // Only its canonical data dependency supplies explicit fictional responses.
+        terminalJourney=true;
+        const fixtureQuery=new URLSearchParams({...fixture.trip,ages:fixture.trip.ages.join(',')});
+        await page.goto(TARGET+'?'+fixtureQuery,{waitUntil:'networkidle'});
+        await page.locator('[data-native-startup]').waitFor({state:'hidden'});
+        verifyInitialURL(page.url());
+        const actualProduct=page.locator('[data-product]:visible');
+        assert.equal(await page.evaluate(()=>window.__nativeTerminalFixture.calls.search),0);
+        await actualProduct.locator('[data-screen="search"] button[type="submit"]').click();
+        await actualProduct.locator('[data-screen="results"]').waitFor({state:'visible'});
+        const resizeTour=async responsiveWidth=>{
+          await page.setViewportSize({width:responsiveWidth,height:900});
+          await page.waitForFunction(()=>{
+            const root=[...document.querySelectorAll('[data-product]')].find(node=>!node.closest('[hidden]'));
+            return root&&root.classList.contains('st-mobile')===(innerWidth<=760)&&!root.querySelector('[data-screen="tour"]').hidden&&document.querySelector('[data-native-startup]').hidden;
+          },null,{timeout:10000,polling:50});
+        };
+        // The actual compiled bridge consumes the canonical non-retryable Error.
+        // No canonical HTTP or delivery is permitted in this fictional journey.
+        await page.evaluate(()=>window.__nativeTerminalFixture.installDenials());
+        await actualProduct.locator('[data-hotel-open="1"]').first().click();
+        await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+        const denialProof={};
+        for(const phase of ['quote','flights']){
+          const before=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
+          await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:'+phase+'"]').click();
+          const deniedTour=actualProduct.locator('[data-screen="tour"]');await deniedTour.waitFor({state:'visible'});
+          await deniedTour.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          const read=()=>page.evaluate(phase=>{
+            const c=window.__nativeTerminalFixture,value=c.bridge.getSelection();
+            return{...c.calls,key:value.key,exactOffer:value.offer===c.denials.offers[phase],searchTotal:value.offer.total,
+              pricePending:value.pricePending,priceAccepted:value.priceAccepted,retryable:value[phase+'Failure']?.retryable};
+          },phase);
+          const denied=await read();
+          assert.equal(denied.exactOffer,true);assert.equal(denied.retryable,false);assert.equal(denied.pricePending,true);assert.equal(denied.priceAccepted,false);
+          assert.equal(denied.quote,before.quote+1);assert.equal(denied.flights,before.flights+(phase==='flights'?1:0));
+          assert.equal(await deniedTour.locator('[data-native-check-tour],[data-native-retry-flights],[data-native-defer-flight],[data-native-tour-flight]').count(),0);
+          assert.equal(await deniedTour.locator('[data-action="lead"]').evaluateAll(nodes=>nodes.every(node=>node.disabled)),true);
+          assert.match(await deniedTour.locator('[data-native-price-caption]').first().innerText(),/Цена из поиска/);
+          const fit=await deniedTour.locator('[data-native-other-offers]').evaluate(node=>{
+            const r=node.getBoundingClientRect();return{height:r.height,width:r.width,clipped:node.scrollWidth>node.clientWidth+1};
+          });assert(fit.height>=44&&fit.width>=44&&!fit.clipped);
+          await capture(page,row,phase+'-unavailable');
+          await resizeTour(width<=760?1280:430);
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          await resizeTour(width);
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          assert.deepEqual(await read(),denied,'Responsive remount keeps the exact terminal denial without more operations');
+          await actualProduct.locator('[data-native-other-offers]').click();await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+          await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:'+phase+'"]').click();
+          await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
+          assert.deepEqual(await read(),denied,'Hotel return/reopen cannot turn the denial into another quote');
+          denialProof[phase]={exactOfferRetained:true,retryable:false,searchTotal:denied.searchTotal,contactBlocked:true,
+            retryAndManagerActionsAbsent:true,backAndResponsiveExtraOperations:0,actionFit:fit};
+          await actualProduct.locator('[data-native-other-offers]').click();await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
+        }
+        await actualProduct.locator('[data-hotel-offers] [data-offer="fixture:denial:allowed"]').click();
+        await actualProduct.locator('[data-native-tour-flight="0"]').click();
+        await actualProduct.locator('[data-action="accept-price"]:visible').first().click();
+        const allowedContact=actualProduct.locator('[data-screen="tour"] [data-action="lead"]:visible').first();
+        await allowedContact.waitFor({state:'visible'});assert.equal(await allowedContact.isEnabled(),true);
+        const finalDenials=await page.evaluate(()=>({...window.__nativeTerminalFixture.calls}));
+        assert.deepEqual(finalDenials,{search:1,other:0,quote:3,flights:2});
+        row.proof.permanentDenials={...denialProof,differentAllowedOfferReady:true,canonicalBridgeSHA256:installedManifest.files['bridge.js'],calls:finalDenials};
+        assert.equal(row.frames.length,12,'Ten existing installed states plus two permanent denials');
         assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
     }
-    assert.deepEqual(report.unexpectedRequests,[]);report.status='passed';
+    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),24);report.status='passed';
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
@@ -257,6 +329,9 @@ if(process.argv.includes('--policy-only')){
   const drift=Buffer.from(rendered.toString('utf8').replace('</body>','<div>UNREVIEWED ENTRY DRIFT</div></body>'));
   assert(!drift.equals(rendered));assert.throws(()=>verifyEntry(drift,compiledManifest),/Exact installed entry DOM/,'Changed static body must fail despite its unchanged script graph');
   const canonical=TARGET+'?'+new URLSearchParams({...fixture.trip,ages:fixture.trip.ages.join(',')})+'#search';verifyInitialURL(canonical);
+  safeURL(canonical.replace('#search',''));
+  assert.throws(()=>safeURL(canonical.replace('#search','&searched=1')));
+  assert.throws(()=>safeURL(canonical.replace('country=4','country=1').replace('#search','')));
   assert.throws(()=>verifyInitialURL(canonical.replace('#search','&searched=1#search')));assert.throws(()=>verifyInitialURL(canonical.replace('country=4','country=1')));assert.throws(()=>verifyInitialURL(canonical.replace('#search','#results')));
   assert.deepEqual(captureOptions('calendar-later'),{fullPage:false,animations:'allow',caret:'initial'});assert.deepEqual(captureOptions('results'),{fullPage:true,animations:'disabled',caret:'hide'});
   console.log('Installed native static policy PASS; no browser or network used.');
