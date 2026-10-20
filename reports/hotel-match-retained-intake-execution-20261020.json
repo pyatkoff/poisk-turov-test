@@ -5039,14 +5039,15 @@
       "current_anex_selector_configured": true,
       "current_selector_differs_from_default": true,
       "jwt_payload_parseable": true,
-      "jwt_expiry_claim_absent": true,
       "token_expired": "not_established",
       "client_deadline_seconds": 30,
       "comparison_saved_probe_deadline_seconds": 55,
       "comparison_standard_php_deadline_seconds": 60,
       "interpretation": "All three missing responses terminate near the configured30s deadline; one200 search_start took29.831s to capture. This supports a deadline-pressure hypothesis, not a proved network/provider root cause. Filesystem times include local capture/fsync; no DNS/connect/headers/body phase was recorded.",
       "global_account_usage": "not_measured",
-      "new_paid_requests_authorized_by_this_readback": false
+      "new_paid_requests_authorized_by_this_readback": false,
+      "jwt_integer_expiry_unavailable": true,
+      "jwt_integer_expiry_unavailable_interpretation": "expiry_epoch_seconds=null: no integer expiry was extracted; missing exp and unsupported claim type are not distinguished. Expiry/validity is not established."
     },
     "next_missing_fact": "Phase-resolved transport observation or accepted INT/provider recovery diagnosis on the same ANEX selector; not another blind date/country probe or an assumption that the key expired. Existing30s timeout/auth/source contracts unchanged in this diagnostic packet.",
     "canonical_receipt_comment": 6288301933,
