@@ -1565,6 +1565,9 @@ class PassiveFuelActivationTransactionTest(unittest.TestCase):
             value['preflight']['protected_before']['api-v2.php']=value['before_files']['api-v2.php']
             value['preflight']['protected_after']=copy.deepcopy(value['preflight']['protected_before'])
             value['protected_after']={**value['preflight']['protected_before'],'api-v2.php':value['after_files']['api-v2.php']}
+            if self.command['mode']==self.p.CURRENT_MODE:
+                value['preflight']['stock_topology']['manifest_record']={
+                    'sha256':self.p.CURRENT_MANIFEST_SHA256,'bytes':self.p.CURRENT_MANIFEST_BYTES,'mode':0o644}
             result={**self.command,'status':'complete','runtime_changed':True,'production_unchanged':True,
                 'production_before':production,'production_after':production,
                 'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
@@ -1702,6 +1705,104 @@ class PassiveFuelStockLayoutTest(unittest.TestCase):
         # positive topology proof; no change to the original mode's receipt.
         base.command=self.command;base.fixture=self.fixture
         base.test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files()
+
+
+class PassiveFuelCurrentLayoutTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.CURRENT_SOURCE,self.p.CURRENT_MODE,self.p.CURRENT_OPERATION])
+
+    def fixture(self,directory):
+        base=PassiveFuelStockLayoutTest();base.setUp()
+        ns,home,project,runtime,private,stage,op=base.fixture(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_'))}
+        exec(self.p.CURRENT_REMOTE,ns);ns.update(constants);ns['runtime']=runtime
+        ns['operation']=self.p.CURRENT_OPERATION;ns['pi_lint']=lambda path:None
+        path=runtime/'anex-preview-manifest.json';manifest=json.loads(path.read_text())
+        manifest['source_sha']=self.p.CURRENT_PUBLISHER_SOURCE
+        rows=[{'path':p,'bytes':v[0],'sha256':v[1]} for p,v in self.p.CURRENT_REQUIRED.items()]
+        rows.extend({'path':p,'bytes':0,'sha256':hashlib.sha256(b'').hexdigest()} for p in self.p.CURRENT_EMPTY_PATHS)
+        rows.extend({'path':'fixture/asset-'+str(i)+'.js','bytes':1,'sha256':'0'*64} for i in range(818-len(rows)))
+        manifest.update(files=rows,file_count=818);data=json.dumps(manifest).encode();path.write_bytes(data)
+        # Isolated fixture bytes never qualify as the pinned real publication.
+        # Override only the remote fixture globals, as with API/helper test hashes.
+        ns['PS_MANIFEST_PIN']=hashlib.sha256(data).hexdigest();ns['PS_MANIFEST_BYTES']=len(data)
+        return ns,home,project,runtime,private,stage,op
+
+    def test_current_exact_manifest_binding_and_two_file_receipt(self):
+        base=PassiveFuelStockLayoutTest();base.setUp();base.command=self.command;base.fixture=self.fixture
+        base.test_verified_stock_exclusion_installs_only_original_two_targets()
+        transaction=PassiveFuelActivationTransactionTest();transaction.setUp()
+        transaction.command=self.command;transaction.fixture=self.fixture
+        transaction.test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files()
+
+    def test_hash_size_count_anchor_and_unknown_empty_file_each_hold(self):
+        for case in ('hash','bytes','count','quote','unknown_empty','wrong_empty_hash'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                path=runtime/'anex-preview-manifest.json';value=json.loads(path.read_text())
+                if case=='hash':ns['PS_MANIFEST_PIN']='0'*64
+                elif case=='bytes':ns['PS_MANIFEST_BYTES']+=1
+                else:
+                    if case=='count':value['files'].pop();value['file_count']-=1
+                    elif case=='quote':value['files']=[r for r in value['files'] if r['path']!='api-andromeda-quote-preview.php'];value['file_count']-=1
+                    elif case=='unknown_empty':value['files'][-1]['bytes']=0;value['files'][-1]['sha256']=hashlib.sha256(b'').hexdigest()
+                    else:next(r for r in value['files'] if r['path']==self.p.CURRENT_EMPTY_PATHS[0])['sha256']='0'*64
+                    data=json.dumps(value).encode();path.write_bytes(data)
+                    ns['PS_MANIFEST_PIN']=hashlib.sha256(data).hexdigest();ns['PS_MANIFEST_BYTES']=len(data)
+                result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual(('hold',0,0),(result['status'],result['runtime_writes'],result['staging_file_writes']))
+
+    def test_extended_drift_and_old_scopes_stay_sealed(self):
+        base=PassiveFuelStockLayoutTest();base.setUp();base.command=self.command;base.fixture=self.fixture
+        base.test_manifest_or_nested_gateway_drift_after_ready_prevents_staging()
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        value=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,value.count("if mode not in ('passive-fuel-current-activate','reconcile',"))
+        self.assertEqual('0415fe57046a8929d1b857e13cd0d0d8824e904d',self.p.STOCK_SOURCE)
+        with self.assertRaises(ValueError):self.p.parse([self.p.STOCK_SOURCE,self.p.CURRENT_MODE,self.p.CURRENT_OPERATION])
+
+    def test_candidate_and_rollback_temps_are_never_created_under_public_project(self):
+        for fail_at in (None,6):
+            with self.subTest(fail_at=fail_at),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                before=ns['pp_snapshot']()[1];original=os.open;parents=[];calls=0
+                def opened(path,flags,*args,**kwargs):
+                    if flags&os.O_CREAT and str(path).startswith('.int-passive-fuel-'):
+                        self.assertIn('dir_fd',kwargs)
+                        parents.append(os.fstat(kwargs['dir_fd']).st_ino)
+                        self.assertEqual(op.lstat().st_ino,parents[-1])
+                    return original(path,flags,*args,**kwargs)
+                def lint(path):
+                    nonlocal calls
+                    calls+=1;self.assertFalse(list(project.rglob('.int-passive-fuel-*.tmp')))
+                    if path.name.endswith('.tmp'):self.assertEqual(op,path.parent)
+                    if calls==fail_at:raise RuntimeError('activation_syntax')
+                ns['pi_lint']=lint
+                with patch.object(os,'open',side_effect=opened):
+                    result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual('installed_verified' if fail_at is None else 'rolled_back_no_replay',result['status'])
+                self.assertEqual(2 if fail_at is None else 4,len(parents))
+                self.assertFalse(list(project.rglob('*.tmp')));self.assertFalse(list(op.glob('*.tmp')))
+                if fail_at is not None:self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_private_staging_directory_mode_or_substitution_cannot_redirect_writes(self):
+        for case in ('mode','substitution'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                before=ns['pp_snapshot']()[1];calls=0;foreign=op/'.int-passive-fuel-foreign.tmp'
+                def lint(path):
+                    nonlocal calls
+                    calls+=1
+                    if calls==4:
+                        if case=='mode':op.chmod(0o755)
+                        else:
+                            op.rename(home/'old-operation');op.mkdir(mode=0o700);foreign.write_bytes(b'foreign')
+                ns['pi_lint']=lint
+                result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual('unknown_no_replay',result['status']);self.assertEqual(0,result['runtime_writes'])
+                self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+                if case=='substitution':self.assertEqual(b'foreign',foreign.read_bytes())
 
 
 if __name__=='__main__':unittest.main(verbosity=2)

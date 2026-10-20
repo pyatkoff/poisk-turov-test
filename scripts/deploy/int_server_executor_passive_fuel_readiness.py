@@ -30,7 +30,10 @@ INSTALL_OPERATION = 'int-anex-passive-fuel-activate-20261020-v1'
 STOCK_MODE = 'passive-fuel-stock-activate'
 STOCK_SOURCE = '0415fe57046a8929d1b857e13cd0d0d8824e904d'
 STOCK_OPERATION = 'int-anex-passive-fuel-stock-activate-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE)
+CURRENT_MODE = 'passive-fuel-current-activate'
+CURRENT_SOURCE = '57ff5ced11f3912b6b39dd9d271c110029459f07'
+CURRENT_OPERATION = 'int-anex-passive-fuel-current-activate-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -60,7 +63,8 @@ def parse(parts):
     need(parts in ([SOURCE, MODE, OPERATION], [PRIVATE_SOURCE, PRIVATE_MODE, PRIVATE_OPERATION],
                   [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION],
                   [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION],
-                  [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION]),
+                  [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION],
+                  [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -80,7 +84,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -105,7 +109,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 
 def bundle_source(source_root, command=None):
     command = policy(command)
-    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE) else SOURCE_HASHES
+    hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -753,6 +757,70 @@ def passive_fuel_activation_plan(snapshot=None):
 '''
 
 
+# Exact observed current publication. Both the original seven anchors and the
+# newer publisher's quote-route requirement were reproduced from this source.
+# This is a separate fixed closure; the completed historical stock HOLD stays sealed.
+CURRENT_PUBLISHER_SOURCE = '786514ccbb4047868a89f00bb2d06dfe5157ffb8'
+CURRENT_MANIFEST_SHA256 = 'b16a2b0fa7939b4f73f7c09a37fea2b15d22058f4bbe7559901011019a530223'
+CURRENT_MANIFEST_BYTES = 117364
+CURRENT_EMPTY_PATHS = ('search3-entry-v1.js','search3-results-cards-v2.js')
+CURRENT_REQUIRED = {**STOCK_REQUIRED,
+    'api-anex-search3-preview.php': (54751, '75a4168920ba4ea4ca043516d5979a05acf2be2a2757096121ccb6180c49e74e'),
+    'api-andromeda-search3-preview.php': (50795, '47d41972b275913a48b8ac95101f928deb9d504cf1354ea86019f3463f076c6b'),
+    'app/integrations/anex-additional-prices-client.php': (25315, 'b13657f206961c2a3e88ef5515ba2bb5739230483d35102496b479656bb4db8e'),
+    'api-andromeda-quote-preview.php': (20781, '54bbab700a6507cd116744140b3bf8f4d1e05b9d549c4479ab98687d86eb6118'),
+}
+CURRENT_REMOTE = (STOCK_REMOTE
+    .replace('PS_SOURCE='+repr(STOCK_PUBLISHER_SOURCE), 'PS_SOURCE='+repr(CURRENT_PUBLISHER_SOURCE), 1)
+    .replace('PS_REQUIRED='+repr(STOCK_REQUIRED), 'PS_REQUIRED='+repr(CURRENT_REQUIRED), 1)
+    .replace("or value['file_count']!=len(value['files'])", "or value['file_count']!=818 or value['file_count']!=len(value['files'])", 1)
+    .replace("or not 0<row['bytes']<=8*1024*1024", "or not (0<row['bytes']<=8*1024*1024 or "
+        "(row['bytes']==0 and path in PS_EMPTY_PATHS and row['sha256']==PS_EMPTY_SHA))", 1)
+    .replace('verified=(ps_manifest(', 'verified=(records[\'stock_manifest\'] is not None '
+        "and records['stock_manifest']['sha256']==PS_MANIFEST_PIN and records['stock_manifest']['bytes']==PS_MANIFEST_BYTES and ps_manifest(", 1)
+    + '\nPS_MANIFEST_PIN='+repr(CURRENT_MANIFEST_SHA256)+'\nPS_MANIFEST_BYTES='+repr(CURRENT_MANIFEST_BYTES)
+    + '\nPS_EMPTY_PATHS='+repr(CURRENT_EMPTY_PATHS)+'\nPS_EMPTY_SHA='+repr(hashlib.sha256(b'').hexdigest())+'\n')
+
+# CURRENT-only: never expose candidate or rollback PHP as a readable .tmp in
+# the web root. Retain the sealed remote programs and their old receipts.
+for _old, _new, _count in (
+    ('old={};candidates={};installed={}', 'old={};candidates={};installed={};stage_parent=None', 1),
+    ("        snapshot_matches()\n        for index,rel in enumerate(order):\n            pi_private(",
+     "        stage_parent=pi_parent(op/'activation-private-stage.php')\n"
+     "        pi_current_stage_check(stage_parent,op)\n"
+     "        snapshot_matches()\n        for index,rel in enumerate(order):\n            pi_private(", 1),
+    ("        if lock is not None and pf_identity(os.fstat(lock))",
+     "        if stage_parent is not None:\n"
+     "            pi_current_stage_check(stage_parent,op)\n"
+     "        if lock is not None and pf_identity(os.fstat(lock))", 1),
+    ('identity=pi_write(parents[rel],name,candidates[rel],0o644)',
+     'pi_current_stage_check(stage_parent,op);identity=pi_write(stage_parent,name,candidates[rel],0o644)', 1),
+    ('pi_lint((project/rel).parent/name)', 'pi_lint(op/name)', 1),
+    ('os.stat(name,dir_fd=fd,follow_symlinks=False)', 'os.stat(name,dir_fd=stage_parent,follow_symlinks=False)', 2),
+    ('src_dir_fd=fd,dst_dir_fd=fd', 'src_dir_fd=stage_parent,dst_dir_fd=fd', 2),
+    ('identity=pi_write(fd,name,old[rel],0o644)',
+     'pi_current_stage_check(stage_parent,op);identity=pi_write(stage_parent,name,old[rel],0o644)', 1),
+    ("                fd=parents[rel]\n", "                pi_current_stage_check(stage_parent,op);fd=stage_parent\n", 1),
+    ('        for fd in parents.values():os.close(fd)',
+     '        for fd in parents.values():os.close(fd)\n        if stage_parent is not None:os.close(stage_parent)', 1),
+    ('            os.fsync(fd)\n            data,record=pf_read',
+     '            os.fsync(fd);os.fsync(stage_parent)\n            data,record=pf_read', 1),
+    ("out['rollback_files'].append(rel);os.fsync(fd)",
+     "out['rollback_files'].append(rel);os.fsync(fd);os.fsync(stage_parent)", 1),
+    ("        snapshot_matches();out['status']='prepared';checkpoint(",
+     "        os.fsync(stage_parent);snapshot_matches();out['status']='prepared';checkpoint(", 1),
+):
+    need(CURRENT_REMOTE.count(_old)==_count,'current_private_staging_registration_drift')
+    CURRENT_REMOTE=CURRENT_REMOTE.replace(_old,_new,_count)
+del _old, _new, _count
+CURRENT_REMOTE += r'''
+def pi_current_stage_check(descriptor,op):
+    pi_parent_stable(descriptor,op/'activation-private-stage.php')
+    info=os.fstat(descriptor)
+    if pf_stat.S_IMODE(info.st_mode)!=0o700 or info.st_dev!=project.lstat().st_dev:fail('activation_parent')
+'''
+
+
 def remote_program(remote, command=None):
     command = policy(command)
     mode = command['mode']
@@ -762,8 +830,8 @@ def remote_program(remote, command=None):
     size = "if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     need(remote.count(marker) == remote.count(dispatch) == remote.count(size) == 1
          and remote.count(exclusion) == 2, 'passive_registration_drift')
-    reader = STOCK_REMOTE if mode == STOCK_MODE else INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
-    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE) else SOURCE_HASHES
+    reader = CURRENT_REMOTE if mode == CURRENT_MODE else STOCK_REMOTE if mode == STOCK_MODE else INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
+    hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -773,7 +841,7 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
-    if mode in (INSTALL_MODE, STOCK_MODE):
+    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE):
         registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
         activation=result['passive_fuel_activation']
         result['production_after']=fingerprints()
@@ -791,6 +859,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
     if command['mode'] == PLAN_MODE:return plan_completed(command, result)
@@ -954,3 +1023,20 @@ def stock_completed(command,result):
     original=parse([INSTALL_SOURCE,INSTALL_MODE,INSTALL_OPERATION])
     normalized={**result,**original,'passive_fuel_activation':{**value,'preflight':preflight}}
     return install_completed(original,normalized)
+
+
+def current_completed(command,result):
+    if (command!=parse([CURRENT_SOURCE,CURRENT_MODE,CURRENT_OPERATION])
+            or any(result.get(k)!=command[k] for k in command)):return False
+    value=result.get('passive_fuel_activation')
+    if not isinstance(value,dict) or not isinstance(value.get('preflight'),dict):return False
+    preflight=dict(value['preflight']);topology=preflight.get('stock_topology')
+    if not isinstance(topology,dict) or topology.get('publisher_source_sha')!=CURRENT_PUBLISHER_SOURCE:return False
+    topology=dict(topology)
+    if topology.get('status')=='verified_stock_exclusion' and topology.get('manifest_record')!={
+            'sha256':CURRENT_MANIFEST_SHA256,'bytes':CURRENT_MANIFEST_BYTES,'mode':0o644}:return False
+    # Pure receipt-shape reuse after exact CURRENT proof; no old admission or
+    # operation is executed and the old source/mode validators remain unchanged.
+    topology['publisher_source_sha']=STOCK_PUBLISHER_SOURCE;preflight['stock_topology']=topology
+    original=parse([STOCK_SOURCE,STOCK_MODE,STOCK_OPERATION])
+    return stock_completed(original,{**result,**original,'passive_fuel_activation':{**value,'preflight':preflight}})
