@@ -160,8 +160,8 @@ class ContractTest(unittest.TestCase):
         m.register_parser(c)
         self.assertEqual(original,c.parse_command(c.PREFIX+SHA+' local-readback int-andromeda-read-local-test-v1 1 4 2026-10-21 2026-10-22 7 2 AI 0'))
         for mode,cohort in m.MODES.items():
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1'}[mode]
-            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode=='match-retained-anex-write' else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write') else '')
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1','match-retained-anex-write-v2':'int-andromeda-match-retained-anex-write-20261020-v2'}[mode]
+            command=c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') else '')
             parsed=c.parse_command(command)
             self.assertEqual(cohort,parsed['cohort'])
             for bad in (command+' extra',command.replace(cohort,'arbitrary-sql'),command.replace(op,op+'-replay')):
@@ -183,11 +183,11 @@ class ContractTest(unittest.TestCase):
     def test_stock_remote_registration_cannot_dispatch_supplier_collector(self):
         for mode,cohort in m.MODES.items():
             c=core();m.register_parser(c)
-            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1'}[mode]
-            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode=='match-retained-anex-write' else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write') else ''))
+            op={'match-retained-intake':OP,'match-retained-readback':'int-andromeda-match-retained-readback-20261020-v1','match-retained-project':'int-andromeda-match-retained-project-20261020-v1','match-tourvisor-quota-policy':QUOTA_OP,'match-retained-current':'int-andromeda-match-retained-current-20261020-v1','match-retained-acquire':'int-andromeda-match-retained-acquire-20261020-v1','match-retained-anex-write':'int-andromeda-match-retained-anex-write-20261020-v1','match-retained-anex-write-v2':'int-andromeda-match-retained-anex-write-20261020-v2'}[mode]
+            cmd=c.parse_command(c.PREFIX+SHA+' '+mode+' '+op+' '+cohort+(' '+('int-andromeda-match-retained-acquire-20261020-v1' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') else 'int-andromeda-match-retained-current-20261020-v1' if mode=='match-retained-acquire' else 'int-andromeda-match-retained-project-20261020-v2' if mode=='match-retained-current' else OP) if mode in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2') else ''))
             with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
             ast.parse(c.REMOTE)
-            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','reconcile',"))
+            self.assertEqual(2,c.REMOTE.count("if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',"))
             self.assertIn("globals().get('retained_reserved') is True",c.REMOTE)
             self.assertNotIn("if 'op' in globals() and op.exists():",c.REMOTE)
             self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
@@ -440,6 +440,11 @@ class NativeMySQLTest(unittest.TestCase):
           $st=$db->prepare("INSERT INTO anex_hotel_search_mappings VALUES(115,900,'exact_operator_key','preview','owner_exact_operator_key_20260912_v2',?,?,1)");$st->execute([str_repeat('b',64),str_repeat('c',64)]);
           $db->exec("UPDATE andromeda_hotel_identities SET evidence_json='changed' WHERE local_hotel_id=600");
           $input=['operation_id'=>'int-andromeda-match-retained-anex-write-20261020-v1','acquisition_evidence_sha256'=>str_repeat('d',64),'pairs'=>$pairs];
+          $input=json_decode(hmc4aw_json($input),true,64,JSON_THROW_ON_ERROR);
+          $snap=$input['pairs'][0]['snapshot'];$legacyOrderRejected=false;
+          try{hmc4aw_validate_anchors(['catalog_hotel_id'=>100,'unanimous_catalog_sha256'=>$snap['canonical_catalog_sha256'],'anchors'=>$snap['anchors']],hmc4aw_query($db,'SELECT * FROM andromeda_hotel_identities WHERE local_hotel_id=100'));}
+          catch(Throwable $e){$legacyOrderRejected=$e->getMessage()==='anchor_projection_drift';}
+          if(!$legacyOrderRejected)throw new RuntimeException('canonical_json_order_regression_not_reproduced');
           $db->failInsert=true;$failed=MatchRetainedAnexWriteV1::run($db,$input,str_repeat('e',40));$db->failInsert=false;
           if($failed['state']!=='rolled_back_no_write'||(int)$db->query('SELECT COUNT(*) FROM anex_hotel_search_mappings')->fetchColumn()!==1)throw new RuntimeException('rollback_contract');
           $success=MatchRetainedAnexWriteV1::run($db,$input,str_repeat('e',40));
