@@ -8,7 +8,18 @@ if (is_file($privateConfig)) require_once $privateConfig;
 require_once __DIR__ . '/catalog-cache-v1.php';
 require_once dirname(__DIR__) . '/app/integrations/tourvisor-anytour-offer-autosave.php';
 
-/** Optional passive evidence uses the existing INT helpers in either layout. */
+/** The permanent INT carrier owns this existing runtime; never create a ROOT copy. */
+function tourvisor_fuel_passive_root(): ?string
+{
+    $preview = __DIR__ . '/_preview';
+    $runtime = $preview . '/search3-anex-candidate';
+    foreach ([$preview, $runtime] as $directory) {
+        if (!is_dir($directory) || is_link($directory)) return null;
+    }
+    return $runtime;
+}
+
+/** Optional passive evidence uses only the existing INT runtime's helpers. */
 function tourvisor_fuel_passive_bootstrap(): void
 {
     $classes = ['AnyTourTourvisorOperatorFuelPassiveIntakeV1',
@@ -19,13 +30,16 @@ function tourvisor_fuel_passive_bootstrap(): void
     $files = ['tourvisor-operator-fuel-passive-intake.php',
         'tourvisor-operator-fuel-retained-intake.php',
         'operator-fuel-rule-store.php', 'operator-fuel-rule-evidence.php'];
-    foreach ([__DIR__ . '/app/integrations', dirname(__DIR__) . '/app/integrations'] as $directory) {
-        foreach ($files as $file) {
-            if (!is_file($directory . '/' . $file) || is_link($directory . '/' . $file)) continue 2;
-        }
-        require_once $directory . '/tourvisor-operator-fuel-passive-intake.php';
-        break;
+    $runtime = tourvisor_fuel_passive_root();
+    if ($runtime === null) return;
+    $directory = $runtime . '/app/integrations';
+    foreach ([$runtime . '/app', $directory] as $ancestor) {
+        if (!is_dir($ancestor) || is_link($ancestor)) return;
     }
+    foreach ($files as $file) {
+        if (!is_file($directory . '/' . $file) || is_link($directory . '/' . $file)) return;
+    }
+    require_once $directory . '/tourvisor-operator-fuel-passive-intake.php';
 }
 tourvisor_fuel_passive_bootstrap();
 
@@ -272,7 +286,9 @@ function tourvisor_fuel_passive_runtime(): ?array
     } elseif ($loaded !== count($helpers)) {
         return null;
     }
-    $private = __DIR__ . '/.andromeda-private.php';
+    $root = tourvisor_fuel_passive_root();
+    if ($root === null) return null;
+    $private = $root . '/.andromeda-private.php';
     if (!is_file($private) || is_link($private)) return null;
     $config = require $private;
     $catalog = is_array($config) ? ($config['catalog_path'] ?? null) : null;
