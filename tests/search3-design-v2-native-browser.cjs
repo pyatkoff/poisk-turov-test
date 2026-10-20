@@ -1159,7 +1159,7 @@ async function referenceFrame(page,width,percent,screen,row) {
         row.proof.managerContact={total:110000,flightChoiceId:null,oldPairRemoved:true,consentRevoked:true};
         await page.goBack();await screen('tour').waitFor({state:'visible'});
         await page.goBack();await screen('hotel').waitFor({state:'visible'});
-        await page.goBack();await screen('results').waitFor({state:'visible'});
+        await screen('hotel').locator('[data-action="results"]').click();await screen('results').waitFor({state:'visible'});
 
         // Exercise the new group route after all paired captures. Its held
         // fixture proves that opening a hotel is passive, only the explicit
