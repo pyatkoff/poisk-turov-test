@@ -73,17 +73,32 @@ class UpdateContracts(unittest.TestCase):
         q = {**original_request(), 'source_sha': 'a' * 40, 'release_sha': 'c' * 40,
             'source_tree': 'd' * 40, 'build_run': 123, 'artifact_id': 456, 'deploy_run': 789}
         # The predecessor is already a native 855-file publication, not a legacy
-        # 845-file fixture with a patched owner. Its canonical and brand bytes
-        # stay identical while only reviewed native owners and generated manifest
-        # change for this package.
+        # 845-file fixture with a patched owner. Only the accepted canonical
+        # policy, reviewed native consumers and generated manifest change;
+        # every other canonical/brand byte stays identical.
         pub.derive(self.source, self.baseline, self.root / 'installed', q, 'e' * 64)
         for name in remote.NATIVE_SUCCESSOR_CHANGES:
-            if name == remote.NATIVE_MANIFEST: continue
+            if name in (remote.NATIVE_MANIFEST, creator.LEDGER_PATH): continue
             path = self.source / 'payload' / name
             if name == 'visual-search/index.html':
                 path.write_text(path.read_text().replace('<main id="design-v2-native-root"></main>',
                     '<main id="design-v2-native-root"><div role="status">Native startup fixture</div></main>'))
+            elif name == 'prototype-search/data.js':
+                path.write_bytes(path.read_bytes() + b'\n// accepted INT policy fixture\n')
             else: path.write_text('reviewed native successor:' + name)
+        # The existing source builder regenerates its ledger after canonical
+        # data.js changes. Model that compiled-source accounting in this fixture.
+        ledger_path = self.source / 'payload' / creator.LEDGER_PATH
+        ledger = json.loads(ledger_path.read_bytes())
+        data = (self.source / 'payload/prototype-search/data.js').read_bytes()
+        entry = next(f for f in ledger['files'] if f['target'] == 'prototype-search/data.js')
+        entry.update(sha256=remote.digest(data), served=len(data), gzip_after=pub.gzip_lengths([data])[0])
+        graphs = {**ledger['graphs'], 'complete_live': ledger['graphs']['live'] + ledger['graphs']['ondemand'],
+            'complete_offline': ledger['graphs']['offline'] + ledger['graphs']['ondemand']}
+        for name, graph in graphs.items():
+            for field in ('served', 'gzip_after'):
+                ledger['totals'][name][field] = sum(f[field] for f in ledger['files'] if f['src'] in graph)
+        ledger_path.write_text(json.dumps(ledger, ensure_ascii=False, indent=2) + '\n')
         native['entry']['html'] = remote.digest((self.source / 'payload/visual-search/index.html').read_bytes())
         self.native_pin['entry_html_sha256'] = native['entry']['html']
         native['files'] = {Path(name).name: remote.digest((self.source / 'payload' / name).read_bytes())
@@ -236,6 +251,15 @@ class UpdateContracts(unittest.TestCase):
                     'backPositionVisible': True, 'implicitDayLocatorScroll': False}
                 case['proof']['contactDisclosure'] = {'initiallyCollapsed': width <= 760,
                     'expandedFactsVisible': True, 'passiveExtraOperations': 0}
+                case['proof']['permanentDenials'] = {
+                    phase: {'exactOfferRetained': True, 'retryable': False, 'searchTotal': total,
+                        'contactBlocked': True, 'retryAndManagerActionsAbsent': True,
+                        'backAndResponsiveExtraOperations': 0,
+                        'actionFit': {'height': 44, 'width': 180, 'clipped': False}}
+                    for phase, total in (('quote', 156400), ('flights', 157400))}
+                case['proof']['permanentDenials'].update(differentAllowedOfferReady=True,
+                    canonicalBridgeSHA256=self.native['files']['bridge.js'],
+                    calls={'search': 1, 'other': 0, 'quote': 3, 'flights': 2})
                 if (width, percent) == (430, 100):
                     case['proof'].update(progressiveDrawerRetainedDraftAndFocus=True, budgetBreakpointDraftRetained=True)
                 for name in sorted(pub.native_frame_inventory(width, percent), key=lambda name: (name.startswith('donor-'), name)):
@@ -250,7 +274,7 @@ class UpdateContracts(unittest.TestCase):
                                                                  'native-filters-active-', 'native-filter-empty-',
                                                                  'native-results-loading-', 'native-results-error-',
                                                                  'native-results-partial-', 'native-filter-empty-partial-', 'native-terminal-'))
-                              else 'tour' if logical_name.startswith('native-ai-price-changed-')
+                              else 'tour' if logical_name.startswith(('native-ai-price-changed-', 'native-quote-unavailable-', 'native-flights-unavailable-'))
                               else 'lead' if logical_name.startswith(('native-ai-contact-', 'native-content-contact-'))
                               else 'gallery' if logical_name.startswith('native-content-gallery-')
                               else 'hotel' if logical_name.startswith(('native-hotel-return-', 'native-ai-hotel-checked-')) else logical_name.split('-')[1])
@@ -461,8 +485,8 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(q['source_sha'], 'a' * 40)
         self.assertEqual(pub.RELEASE, 'release/search3-design-v2')
         self.assertEqual(remote.ROUTE, '/_preview/search3-design-v2-candidate/')
-        self.assertEqual(remote.PREDECESSOR_SOURCE, '2dc409517e88493d9d24e46cafe95e462aa45819')
-        self.assertEqual(remote.PREDECESSOR_RUN, 39354674302)
+        self.assertEqual(remote.PREDECESSOR_SOURCE, '2344c8533a5175cbb9f6843f5324248dd9562784')
+        self.assertEqual(remote.PREDECESSOR_RUN, 39390835598)
         self.assertEqual(remote.PREDECESSOR_DIGEST, self.digest)
 
     def test_preparation_has_no_publication_authority_without_real_pins(self):
@@ -545,12 +569,17 @@ class UpdateContracts(unittest.TestCase):
             with self.subTest(index=i), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(lambda c: report_change(c, modify)), 'bad-evidence-' + str(i))
 
-    def test_two_width_journey_requires_exact_113_frames_and_all_applicable_predecessor_frames(self):
+    def test_two_width_journey_requires_exact_117_frames_and_all_applicable_predecessor_frames(self):
         content = self.review_archive()
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
             report = json.loads(archive.read('evidence/acceptance.json'))
-            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 113)
-            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 113)
+            self.assertEqual(sum(len(case['frames']) for case in report['cases']), 117)
+            self.assertEqual(sum(name.endswith('.png') for name in archive.namelist()), 117)
+            denial_frames = ('native-quote-unavailable-', 'native-flights-unavailable-')
+            self.assertEqual(sum(frame['file'].startswith(denial_frames)
+                for case in report['cases'] for frame in case['frames']), 4)
+            for case in report['cases']:
+                case['frames'] = [frame for frame in case['frames'] if not frame['file'].startswith(denial_frames)]
             ai_frames = ('native-ai-price-changed-', 'native-ai-hotel-checked-', 'native-ai-contact-')
             self.assertEqual(sum(frame['file'].startswith(ai_frames)
                 for case in report['cases'] for frame in case['frames']), 6)
@@ -775,6 +804,28 @@ class UpdateContracts(unittest.TestCase):
                 contents['evidence/acceptance.json'] = remote.json_bytes(report)
             with self.subTest(index=index), self.assertRaises(ValueError):
                 self.read_review(self.review_archive(mutate), 'bad-whole-journey-' + str(index))
+
+    def test_permanent_denial_proof_cannot_grant_retry_or_contact_authority(self):
+        changes = [lambda r: r['cases'][0]['proof'].pop('permanentDenials'),
+            lambda r: r['cases'][0]['proof']['permanentDenials'].update(differentAllowedOfferReady=False),
+            lambda r: r['cases'][0]['proof']['permanentDenials'].update(canonicalBridgeSHA256='f' * 64),
+            lambda r: r['cases'][0]['proof']['permanentDenials']['calls'].update(quote=4)]
+        for phase in ('quote', 'flights'):
+            for field, value in (('retryable', True), ('contactBlocked', False),
+                                 ('retryAndManagerActionsAbsent', False), ('backAndResponsiveExtraOperations', 1)):
+                changes.append(lambda r, p=phase, k=field, v=value:
+                               r['cases'][0]['proof']['permanentDenials'][p].update({k: v}))
+        self.assert_evidence_rejected(changes)
+
+    def test_canonical_policy_cannot_change_with_a_rewritten_graph(self):
+        payload = self.source / 'payload'; name = 'prototype-search/data.js'
+        target = payload / name; target.write_bytes(target.read_bytes() + b' unreviewed policy')
+        manifest_path = payload / remote.NATIVE_MANIFEST; manifest = json.loads(manifest_path.read_bytes())
+        row = next(row for row in manifest['graph']['scripts'] if row['path'] == name)
+        row.update(sha256=remote.digest(target.read_bytes()), bytes=target.stat().st_size)
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+        with self.assertRaisesRegex(ValueError, 'native_source_manifest_pin'):
+            remote.native_graph(payload)
 
     def test_tour_cost_label_evidence_is_required_for_each_tour_capture(self):
         captures = [('native-tour-', 0), ('native-tour-alternatives-', 0),
@@ -1156,7 +1207,8 @@ class UpdateContracts(unittest.TestCase):
             '756f8b4b0eec662e8b78c22e4b2a36dfe8e8669d',
             '185739d46757bd34a05709e3656eab76d1003fa5',
             '84897fd5778debe040b74945212777aaf878d83e',
-            '2dc409517e88493d9d24e46cafe95e462aa45819'))
+            '2dc409517e88493d9d24e46cafe95e462aa45819',
+            '2344c8533a5175cbb9f6843f5324248dd9562784'))
         with patch.object(remote, 'PREDECESSOR_SOURCE', 'f' * 40):
             self.assertIn('16196410a8cb90b10e8d06b7ac8b38d4ce7d235d', remote.COMPLETED_SOURCES)
             self.assertIn('b53d5ca0bf541e66b684018fb7db332de8fefaf3', remote.COMPLETED_SOURCES)
@@ -1259,7 +1311,7 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 855)
         self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
         m = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
-        self.assertEqual(m['derived_from']['changed_source_payload_files'], sorted(['visual-search/app.js', *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
+        self.assertEqual(m['derived_from']['changed_source_payload_files'], sorted(['visual-search/app.js', creator.LEDGER_PATH, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
         q2, a2 = pub.derive(self.source, self.baseline, self.root / 'again', {k: self.q[k] for k in original_request()}, 'e' * 64)
         self.assertEqual(q2, self.q); self.assertEqual(a2, self.archive)
 
@@ -1273,7 +1325,7 @@ class UpdateContracts(unittest.TestCase):
                 remote.verify(output, q)
                 manifest = json.loads((output / 'control/manifest.json').read_bytes())
                 self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
-                    sorted(['visual-search/app.js', name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
+                    sorted(['visual-search/app.js', creator.LEDGER_PATH, name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
                 before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
                 self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
                 self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
@@ -1304,7 +1356,7 @@ class UpdateContracts(unittest.TestCase):
              38413259110, 38420411530, 38429562174, 38437139126, 38444580624, 38451804327,
              38464277088, 38477454593, 38484937090, 38493989503, 38499121754, 38505456663,
              38514276332, 38522678669, 38534763188, 38558081728, 38941719240, 39242956656, 39254022688,
-             39278795885, 39291592436, 39333812766, 39346251452, 39354674302))
+             39278795885, 39291592436, 39333812766, 39346251452, 39354674302, 39390835598))
         with patch.object(remote, 'PREDECESSOR_RUN', 999):
             self.assertIn(38207863194, remote.COMPLETED_PUBLISH_RUNS)
             self.assertIn(38237246171, remote.COMPLETED_PUBLISH_RUNS)
@@ -1373,20 +1425,23 @@ class UpdateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact_published_predecessor_required'):
             remote.predecessor(before)
 
-    def test_successor_requires_exact_two_file_delta_and_same_855_paths(self):
+    def test_successor_requires_exact_five_file_delta_and_same_855_paths(self):
         before = remote.inventory(self.site.target)
         after = remote.inventory(self.root / 'derived/payload')
         self.assertEqual(len(before), 855)
         self.assertEqual(remote.NATIVE_SUCCESSOR_CHANGES, (
+            'prototype-search/data.js',
+            'visual-search/asset-size.json',
+            'visual-search/native-v2/bridge.js',
             'visual-search/native-v2/source-manifest.json',
-            'visual-search/native-v2/viewport.css',
+            'visual-search/native-v2/tour.js',
         ))
         self.assertEqual(remote.predecessor_delta(before, after), remote.NATIVE_SUCCESSOR_CHANGES)
-        for name in ('visual-search/app.js', 'visual-search/native-v2/bridge.js',
-                     'visual-search/native-v2/frontend.js', 'visual-search/native-v2/tour.js',
+        for name in ('visual-search/app.js', 'visual-search/native-v2/viewport.css',
+                     'visual-search/native-v2/frontend.js',
                      'visual-search/native-v2/bootstrap.js',
                      'visual-search/native-v2/donor.css',
-                     'prototype-search/data.js', 'visual-search/native-v2/lucide.min.js'):
+                     'prototype-search/config.js', 'visual-search/native-v2/lucide.min.js'):
             bad = {**after, name: 'f' * 64}
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'unreviewed_predecessor_delta'):
                 remote.predecessor_delta(before, bad)
@@ -1403,8 +1458,8 @@ class UpdateContracts(unittest.TestCase):
     def test_historical_allowances_cannot_activate_extra_legacy_or_unreviewed_native_change(self):
         manifest_path = self.source / 'payload' / remote.NATIVE_MANIFEST
         manifest_original = manifest_path.read_bytes()
-        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/bridge.js',
-                                  'visual-search/native-v2/frontend.js', 'visual-search/native-v2/tour.js')):
+        for i, name in enumerate(('visual-search/app.js', 'visual-search/native-v2/viewport.css',
+                                  'visual-search/native-v2/frontend.js', 'visual-search/native-v2/bootstrap.js')):
             path = self.source / 'payload' / name; original = path.read_bytes()
             try:
                 path.write_bytes(original + b' extra change outside successor scope')
@@ -1430,7 +1485,14 @@ class UpdateContracts(unittest.TestCase):
                 path.write_bytes(original); manifest_path.write_bytes(manifest_original)
 
     def test_supplier_price_lead_logo_font_and_unknown_payload_changes_denied(self):
-        for name in ['prototype-search/data.js', 'search-page-v2.php', 'site-path-v1.php',
+        data_path = self.source / 'payload/prototype-search/data.js'; original = data_path.read_bytes()
+        try:
+            data_path.write_bytes(original + b' unreviewed')
+            with self.assertRaisesRegex(ValueError, 'native_graph_checksum:scripts'):
+                pub.derive(self.source, self.baseline, self.root / 'rejected', self.q, 'e' * 64)
+        finally:
+            data_path.write_bytes(original)
+        for name in ['search-page-v2.php', 'site-path-v1.php',
                 'visual-search/preview-lead.js', 'prototype-search/lead.js', 'tour-controller-v4.js',
                 'visual-search/assets/anytour-logo.svg', 'visual-search/fonts/Aeroport.woff2']:
             p = self.source / 'payload' / name; original = p.read_bytes(); p.write_bytes(original + b' unreviewed')
