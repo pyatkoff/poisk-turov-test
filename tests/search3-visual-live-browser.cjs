@@ -1386,7 +1386,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
     assert.equal(await page.locator('#hotel-query').inputValue(),'Azure');await page.locator('.mobile-close[data-action="close-filters"]').click();
    }
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:true,tripPreserved:true,supplier_HTTP:0,real_leads:0});
+   records.push({width,height:900,scenario:'family',ownHotel:900001,party:'2A+[0,8]',budgetBefore:185000,budgetRecovered:187000,remainingHotels:1,query:'Azure',meal:'Всё включено',recoveryApplyAndReopen:width===430,desktopImmediateRecovery:width===1280,tripPreserved:true,supplier_HTTP:0,real_leads:0});
   }finally{await context.close();}
  }
  fs.writeFileSync(path.join(evidence,'filter-recovery-apply.json'),JSON.stringify({compiled:true,physical_device:false,records},null,2)+'\n');
