@@ -15,10 +15,10 @@ are superseded by these actual receipts; they provide no retry authority.
 | Stage | Actual evidence |
 | --- | --- |
 | Source |[PR4762](https://github.com/pyatkoff/poisk-turov-test/pull/4762), final `fd78d4b478bd1e42997f9791be55048503e8efff`, main `0059b396ae239b58a2726ac504461d0144e9432f`; only existing readiness module and test changed |
-| Exact-source CI/review |Native [39457927779](https://github.com/pyatkoff/poisk-turov-test/actions/runs/39457927779), job118749561235 SUCCESS:109core tests plus20existing suites; Security39457927770/job118749560805 SUCCESS; independent [FINAL ACCEPT6295891765](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295891765) |
+| Exact-source CI/review |Native [39457927779](https://github.com/pyatkoff/poisk-turov-test/actions/runs/39457927779), job118749561235 SUCCESS:109core tests;20suites total passed; Security39457927770/job118749560805 SUCCESS; independent [FINAL ACCEPT6295891765](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295891765) |
 | Stock execution |Command6295904549, [run39458452075](https://github.com/pyatkoff/poisk-turov-test/actions/runs/39458452075)/job118751338139/attempt1 FAILED, sanitized `blocked_no_replay / activation_lock_unsafe`; [terminal6295995951](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6295995951) |
 | Preflight |READY: exact retained manifest117364B/SHA256 `b16a2b0fa7939b4f73f7c09a37fea2b15d22058f4bbe7559901011019a530223`, publisher source `786514ccbb4047868a89f00bb2d06dfe5157ffb8`,818rows,8source anchors and only2named empty JS rows; DB/config/proxy/store and predecessor/dependency predicates true |
-| Installation |Existing lock opened but rejected before flock; no publication lock acquired, backups, candidate staging or target writes. ROOT API remains01ac; private passive helper remainsbe4380. All supplier/DB read/DB write/booking/lead counters0; runtime_changed=false, production_unchanged=true |
+| Installation |Existing lock opened but rejected before flock; no publication lock acquired, activation backups, transaction candidate staging or target writes. Core private reservation/source bundle/receipt are separate. ROOT API remains01ac; private passive helper remainsbe4380. All supplier/DB read/DB write/booking/lead counters0; runtime_changed=false, production_unchanged=true |
 
 Artifact12281708061,2236B: ZIP SHA256
 `00ecdb2a954f7173b8eed68358c14ccd64c623b13c19549c4fb73b2ddba28f0f`;
