@@ -367,6 +367,7 @@ class ContinuationTest(unittest.TestCase):
                          'anchor_state':'canonical_anchor_ok'})
         current={'rows':rows}
         scope.update(selected_tv_hotel_ids=[101,102],selected_count=2,
+            country_id=2,
             parent_evidence_sha256=hashlib.sha256(a.canonical(current)).hexdigest(),
             current_row_sha256={str(r['tv_hotel_id']):hashlib.sha256(a.canonical(r)).hexdigest() for r in rows},
             future_contexts={str(r['tv_hotel_id']):r['future_context'] for r in rows})
@@ -393,6 +394,11 @@ class ContinuationTest(unittest.TestCase):
         scope,_=self.fixture()
         with tempfile.TemporaryDirectory() as td:
             home=Path(td);(home/'.anytoour-match').mkdir()
+            ledger=home/'.anytoour-match/retained-selection-claims.json'
+            with self.assertRaises(FileNotFoundError):a.reserve_selection(home,scope,'missing-ledger')
+            ledger.write_bytes(a.canonical({'schema_version':1,'claims':{
+                'TOURVISOR_ANEX_JWT:13:'+str(hid):{'state':'prior_consumed'}
+                for hid in scope['prior_selected_hotel_ids']}}))
             def reserve(op):
                 try:a.reserve_selection(home,scope,op);return True
                 except ValueError:return False
@@ -405,6 +411,56 @@ class ContinuationTest(unittest.TestCase):
             self.assertEqual(before,ledger.read_bytes())
             state=json.loads(before)
             self.assertEqual('prior_consumed',state['claims']['TOURVISOR_ANEX_JWT:13:'+str(scope['prior_selected_hotel_ids'][0])]['state'])
+
+    def test_negative_history_preserves_unknown_and_blocks_old_target_reselection(self):
+        with tempfile.TemporaryDirectory() as td:
+            private=Path(td);history=[]
+            for number,state,unknown,ids in [(1,'completed',0,[11]),(2,'partial_no_replay',1,[12,13])]:
+                name='int-andromeda-match-retained-acquire-20261020-v'+str(number)
+                target=private/name;target.mkdir()
+                data={'operation_id':name,'source_sha':SHA,'acquisition_state':state,
+                      'unknown_http_calls':unknown,'selected_hotels':len(ids),'database_writes':0,'mapping_writes':0}
+                digest=hashlib.sha256(a.canonical(data)).hexdigest()
+                wrapper={'status':'complete','mode':'match-retained-acquire','production_unchanged':True,
+                         'operation_id':name,'source_sha':SHA,'database_writes':0,'mapping_writes':0,
+                         'match_retained':{'data':data,'evidence_sha256':digest}}
+                for file,value in [('result.json',wrapper),('reservation.json',{'operation_id':name,'source_sha':SHA}),
+                                   ('acquisition-plan.json',{'hotel_ids':ids})]:
+                    (target/file).write_bytes(a.canonical(value))
+                history.append({'operation_id':name,'selected_tv_hotel_ids':ids,'evidence_sha256':digest,
+                                'acquisition_state':state,'unknown_http_calls':unknown})
+            def fail(reason):raise ValueError(reason)
+            space={'private':private,'safe_json':lambda path,bound:json.loads(path.read_text()),
+                   'hashlib':hashlib,'json':json,'re':__import__('re'),'fail':fail}
+            exec(m.REMOTE_HANDLER,space)
+            scope={'exclusion_history':history,'prior_selected_hotel_ids':[11,12,13],'selected_tv_hotel_ids':[14]}
+            before={p:p.read_bytes() for p in private.rglob('*.json')}
+            self.assertEqual(2,len(space['retained_prior_selection'](scope)))
+            self.assertEqual(before,{p:p.read_bytes() for p in private.rglob('*.json')})
+            for change in [('unknown',0),('state','completed'),('roster',[12])]:
+                bad=copy.deepcopy(scope)
+                if change[0]=='unknown':bad['exclusion_history'][1]['unknown_http_calls']=change[1]
+                elif change[0]=='state':bad['exclusion_history'][1]['acquisition_state']=change[1]
+                else:bad['selected_tv_hotel_ids']=change[1]
+                with self.assertRaises(ValueError):space['retained_prior_selection'](bad)
+
+    def test_exact_context_grouping_keeps_saved_dates_and_nights_separate(self):
+        scope,current=self.fixture();current['rows'][1]['future_context'].update(departure_date='2099-01-04',nights=12)
+        class C:
+            calls=reserved=tariff=unknown=0;counts=__import__('collections').Counter();before={}
+            seen=[]
+            def call(self,action,path,params):
+                self.calls+=1;self.reserved+=1;self.counts[action]+=1;self.tariff+=int(action=='search_start')
+                self.seen.append((action,params))
+                value={'searchId':777} if action=='search_start' else {'progress':100} if action=='search_status' else {'hotels':[]}
+                return 200,value,{}
+        with tempfile.TemporaryDirectory() as td:
+            client=C();a.acquire(client,Path(td),current['rows'],sleep=lambda _:None,scope=scope)
+        starts=[params for action,params in client.seen if action=='search_start']
+        self.assertEqual(2,len(starts))
+        self.assertEqual([('2099-01-03',9,[101]),('2099-01-04',12,[102])],
+                         [(x['dateFrom'],x['nightsFrom'],x['hotelIds']) for x in starts])
+        self.assertTrue(all(x['dateFrom']==x['dateTo'] and x['nightsFrom']==x['nightsTo'] for x in starts))
 
     def test_continuation_country_and_real_context_reach_existing_api_without_continue(self):
         scope,current=self.fixture()

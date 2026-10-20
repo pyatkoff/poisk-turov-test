@@ -18,10 +18,10 @@ MODES = {'match-retained-intake': 'common4-retained',
          'match-retained-anex-write': 'anex7-verified',
          'match-retained-anex-write-v2': 'anex7-reconciled'}
 SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php', 'scripts/diagnostics/hotel_match_retained_projection_v1.py', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py', 'v2/data/db-v1.php', 'scripts/diagnostics/hotel_match_retained_current_v1.php', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php', 'app/integrations/anex-search-mapping-registry.php', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'fc0c7f1dc6d913dd83ac7713ba1572ca3f17921da16d11b57e246c289e3615e2', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py': '1007341fa5032694e0a22d40e72bb8152ef49399ce49da6d2509e2b9168ecfe7', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py': '9690f85d2d7e5c5e66f946e83024c1df98ab7f4e35285e9b0cbd8acde72f385f', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php': '0156d1cad6a1f16d6eff5b5587993fafb61d8ad2854e5da3ef4f26b998aa8e06', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php': '4c6f232d139b2d88727be17727a072acefcb59b9a1aec5086b95c085318a04d4', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json': 'c0b1651a689325017203ee9529a26c87a4154061675cf10fb72786864a84997e'}
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'fc0c7f1dc6d913dd83ac7713ba1572ca3f17921da16d11b57e246c289e3615e2', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py': '701945bce41ec3b50a063d357624ef60896fa40fa9d268896a67a8b503863101', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py': '9690f85d2d7e5c5e66f946e83024c1df98ab7f4e35285e9b0cbd8acde72f385f', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php': '0156d1cad6a1f16d6eff5b5587993fafb61d8ad2854e5da3ef4f26b998aa8e06', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php': '4c6f232d139b2d88727be17727a072acefcb59b9a1aec5086b95c085318a04d4', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json': '9e6d4c654ae791327b5288fc8d87593a8fc79dc93c84f253b2fe90ba5fef32ba'}
 
 
-NEXT_SCOPE = {'cohort': 'anex-next-e424c34b2b9d970f', 'operation_id': 'int-andromeda-match-retained-acquire-20261020-v2', 'write_operation_id': 'int-andromeda-match-retained-anex-write-20261020-v3', 'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2', 'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57', 'scope_id': 'e424c34b2b9d970ff21026d97b1a4cf4bacc1e39f3023d0b01f8088cd9359525', 'selected_count': 55, 'path': 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'sha256': 'c0b1651a689325017203ee9529a26c87a4154061675cf10fb72786864a84997e'}
+NEXT_SCOPE = {'cohort': 'anex-next-d0017d8fffb4f69d', 'operation_id': 'int-andromeda-match-retained-acquire-20261020-v3', 'write_operation_id': 'int-andromeda-match-retained-anex-write-20261020-v4', 'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2', 'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57', 'scope_id': 'd0017d8fffb4f69d4d0049c74d1c20fdc4bf35b678fcd7410637b5e7157e729c', 'selected_count': 22, 'path': 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'sha256': '9e6d4c654ae791327b5288fc8d87593a8fc79dc93c84f253b2fe90ba5fef32ba'}
 
 def need(value, reason):
     if not value:
@@ -96,6 +96,34 @@ def retained_next_scope(stage):
     return value
 
 def retained_prior_selection(scope):
+    if 'exclusion_history' in scope:
+        history=scope['exclusion_history'];seen=set();receipts={}
+        if not isinstance(history,list) or not 1<=len(history)<=100:fail('continuation_history_shape')
+        for entry in history:
+            name=entry.get('operation_id','');ids=entry.get('selected_tv_hotel_ids')
+            if (not re.fullmatch(r'int-andromeda-match-retained-acquire-[0-9]{8}-v[1-9][0-9]*',name)
+                    or name in receipts or not isinstance(ids,list) or not ids
+                    or any(type(v) is not int or v<1 for v in ids) or ids!=sorted(set(ids))
+                    or seen.intersection(ids) or set(ids).intersection(scope['selected_tv_hotel_ids'])
+                    or entry.get('acquisition_state') not in ('completed','partial_no_replay')
+                    or type(entry.get('unknown_http_calls')) is not int or entry['unknown_http_calls']<0):fail('continuation_history_shape')
+            target=private/name
+            if target.is_symlink() or target.resolve()!=target:fail('continuation_prior_path')
+            wrapper=safe_json(target/'result.json',4194304);reservation=safe_json(target/'reservation.json',65536)
+            data=wrapper.get('match_retained',{}).get('data',{})
+            digest=hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            if (wrapper.get('status')!='complete' or wrapper.get('mode')!='match-retained-acquire'
+                    or wrapper.get('production_unchanged') is not True
+                    or any(data.get(k)!=entry[k] or type(data.get(k)) is not type(entry[k]) for k in ('acquisition_state','unknown_http_calls'))
+                    or any(x.get('operation_id')!=name for x in (wrapper,reservation,data))
+                    or wrapper.get('source_sha')!=reservation.get('source_sha') or data.get('source_sha')!=reservation.get('source_sha')
+                    or digest!=entry.get('evidence_sha256') or digest!=wrapper.get('match_retained',{}).get('evidence_sha256')
+                    or any(type(x.get(k)) is not int or x[k]!=0 for x in (wrapper,data) for k in ('database_writes','mapping_writes'))):fail('continuation_prior_binding')
+            plan=safe_json(target/'acquisition-plan.json',1048576)
+            if plan.get('hotel_ids')!=ids or data.get('selected_hotels')!=len(ids):fail('continuation_prior_roster')
+            receipts[name]=hashlib.sha256((target/'result.json').read_bytes()).hexdigest();seen.update(ids)
+        if sorted(seen)!=scope['prior_selected_hotel_ids']:fail('continuation_history_union')
+        return receipts
     name=scope['prior_acquisition_operation_id'];target=private/name
     if target.is_symlink() or target.resolve()!=target:fail('continuation_prior_path')
     wrapper=safe_json(target/'result.json',4194304);reservation=safe_json(target/'reservation.json',65536)
@@ -254,6 +282,7 @@ def acquire_retained_target(stage):
             or type(data.get('supplier_calls')) is not int or not 0<=data['supplier_calls']<=400
             or hashlib.sha256((target/'result.json').read_bytes()).hexdigest()!=before
             or hashlib.sha256(config.read_bytes()).hexdigest()!=config_hash):fail('acquire_result_binding')
+    if continuation and retained_prior_selection(continuation)!=prior_receipt:fail('acquire_history_drift_unknown_no_replay')
     data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
         cohort=payload['cohort'],target_operation_id=name,parent_receipt_sha256=before,no_replay=True)
     evidence=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
