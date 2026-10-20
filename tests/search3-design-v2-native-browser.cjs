@@ -1562,10 +1562,10 @@ if(require.main===module)(async()=>{
         await capture(page,'native',width,percent,'meal-family-details',row);
         await familyToggle().check();if(width===430)await product.locator('[data-action="apply-filters"]').click();
         assert.deepEqual(await product.locator('.st-hotel-card').evaluateAll(nodes=>nodes.map(node=>Number(node.dataset.hotelCard))),[911,912,914]);
-        assert.equal(await product.locator('[data-hotel-card="911"] .st-price').innerText(),'от120 000 ₽','The displayed minimum matches the same date, meal and budget');
+        assert.equal((await product.locator('[data-hotel-card="911"] .st-price').innerText()).replace(/\s+/g,''),'от120000₽','The displayed minimum matches the same date, meal and budget');
         assert.equal(await product.locator('[data-active-chips] [data-native-remove-constraint="mealFamily"]').count(),1);assert.equal(await product.locator('[data-active-chips] [data-native-remove-constraint="meals"]').count(),0);
         const canonicalURL=new URL(page.url());assert.equal(canonicalURL.searchParams.get('meals').split('|').length,4);assert(!canonicalURL.searchParams.get('meals').includes('meal-family:'));
-        await product.locator('[data-action="search"]').first().click();await screen('search').waitFor({state:'visible'});await product.locator('[data-conditions-open="food"]').click();
+        await product.locator('[data-action="search"]:visible').first().click();await screen('search').waitFor({state:'visible'});await product.locator('[data-conditions-open="food"]').click();
         const foodPopup=product.locator('[data-native-form-popup][open]'),foodGroup=()=>foodPopup.locator('[data-native-meal-group-toggle="meal-family:all-inclusive"]');
         await foodPopup.locator('[data-native-meal-expand="meal-family:all-inclusive"]').click();await foodGroup().uncheck();await foodPopup.locator('[data-native-form-meal="Ультра всё включено"]').check();
         assert.equal(await foodGroup().evaluate(node=>node.indeterminate),true);assert.equal(await product.locator('[data-search-food-value]').innerText(),'Ультра всё включено','An exact child remains narrower than the family');
