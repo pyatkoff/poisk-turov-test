@@ -1325,7 +1325,7 @@ class UpdateContracts(unittest.TestCase):
                 remote.verify(output, q)
                 manifest = json.loads((output / 'control/manifest.json').read_bytes())
                 self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
-                    sorted(['visual-search/app.js', name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
+                    sorted(['visual-search/app.js', creator.LEDGER_PATH, name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
                 before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
                 self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
                 self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
