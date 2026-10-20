@@ -1576,6 +1576,12 @@ class PassiveFuelActivationTransactionTest(unittest.TestCase):
                 self.assertFalse(m.completed_result(self.command,changed))
             changed=copy.deepcopy(result);changed['passive_fuel_activation']['protected_after']['index.php']={}
             self.assertFalse(m.completed_result(self.command,changed))
+            if 'stock_topology' in value['preflight']:
+                for key,bad in [('required_rows_verified',False),('manifest_record',None),
+                        ('status','unrecognized_manifest'),('publisher_source_sha','0'*40)]:
+                    changed=copy.deepcopy(result)
+                    changed['passive_fuel_activation']['preflight']['stock_topology'][key]=bad
+                    self.assertFalse(m.completed_result(self.command,changed))
 
     def test_completion_rejects_rollback_unknown_and_any_forged_extra_write(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1598,6 +1604,104 @@ class PassiveFuelActivationTransactionTest(unittest.TestCase):
 
     def _canonical_targets(self):
         ns={};exec(self.p.PLAN_REMOTE_READER,ns);return ns['PP_TARGETS']
+
+
+class PassiveFuelStockLayoutTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.STOCK_SOURCE,self.p.STOCK_MODE,self.p.STOCK_OPERATION])
+
+    def fixture(self,directory):
+        base=PassiveFuelActivationTransactionTest();base.setUp()
+        ns,home,project,runtime,private,stage,op=base.fixture(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_'))}
+        exec(self.p.STOCK_REMOTE,ns);ns.update(constants);ns['runtime']=runtime
+        ns['operation']=self.p.STOCK_OPERATION;ns['pi_lint']=lambda path:None
+        (runtime/'api-v2.php').unlink()
+        manifest={'schema_version':1,'source_sha':self.p.STOCK_PUBLISHER_SOURCE,
+            'route':'/_preview/search3-anex-candidate/','production_entry_changes':False,
+            'production_lead_delivery':False,'preview_metrika_counter':0,'mapping_scope':'preview',
+            'files':[{'path':path,'bytes':row[0],'sha256':row[1]} for path,row in self.p.STOCK_REQUIRED.items()],
+            'file_count':len(self.p.STOCK_REQUIRED)}
+        (runtime/'anex-preview-manifest.json').write_text(json.dumps(manifest))
+        return ns,home,project,runtime,private,stage,op
+
+    def test_verified_stock_exclusion_installs_only_original_two_targets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            value=ns['passive_fuel_activation_plan']()
+            self.assertEqual('ready',value['status']);self.assertEqual('excluded_by_stock_publisher',value['private_caller_state'])
+            result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual('installed_verified',result['status']);self.assertEqual(2,result['runtime_writes'])
+            self.assertEqual('verified_stock_exclusion',result['preflight']['stock_topology']['status'])
+            self.assertFalse((runtime/'api-v2.php').exists());self.assertFalse((runtime/'v2/api-v2.php').exists())
+            self.assertNotIn('SECRET_NEVER_EXPORT',json.dumps(result));self.assertNotIn(str(home),json.dumps(result))
+
+    def test_manifest_requires_all_seven_exact_rows_flags_and_unambiguous_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            path=runtime/'anex-preview-manifest.json';original=json.loads(path.read_text())
+            malformed=[]
+            for key,value in [('source_sha','0'*40),('production_entry_changes',True),('production_lead_delivery',True),
+                    ('preview_metrika_counter',False),('mapping_scope','production'),('file_count',True)]:
+                malformed.append({**copy.deepcopy(original),key:value})
+            for case in ('empty','missing','wrong_hash','duplicate','root_api','nested_api','dotdot','absolute'):
+                value=copy.deepcopy(original);rows=value['files']
+                if case=='empty':rows.clear()
+                elif case=='missing':rows.pop()
+                elif case=='wrong_hash':rows[0]['sha256']='0'*64
+                elif case=='duplicate':rows.append(dict(rows[0]))
+                else:rows.append({'path':{'root_api':'api-v2.php','nested_api':'v2/api-v2.php',
+                    'dotdot':'foo/../bar.php','absolute':'/foo.php'}[case],'sha256':'0'*64,'bytes':1})
+                value['file_count']=len(rows);malformed.append(value)
+            for value in malformed:
+                with self.subTest(value=str(value)[:80]):
+                    path.write_text(json.dumps(value));self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+                    result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                    self.assertEqual(('hold',0,0),(result['status'],result['runtime_writes'],result['staging_file_writes']))
+            self.assertFalse(ns['ps_manifest'](b'{"source_sha":"first","source_sha":"second"}'))
+            path.write_text(json.dumps(original));path.chmod(0o600)
+            self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+
+    def test_either_existing_private_gateway_holds_even_if_known_compatible(self):
+        for relative in ('api-v2.php','v2/api-v2.php'):
+            with self.subTest(relative=relative),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                target=runtime/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(b'<?php /* caller */')
+                ns['PP_CALLER']=hashlib.sha256(target.read_bytes()).hexdigest()
+                result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual(('hold',0),(result['status'],result['runtime_writes']))
+                self.assertEqual('gateway_present',result['preflight']['stock_topology']['status'])
+
+    def test_manifest_or_nested_gateway_drift_after_ready_prevents_staging(self):
+        for case in ('manifest','nested'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                original=ns['passive_fuel_activation_plan'];calls=0
+                def plan(*args):
+                    nonlocal calls
+                    calls+=1;value=original(*args)
+                    if calls==2:
+                        if case=='manifest':(runtime/'anex-preview-manifest.json').write_text('{}')
+                        else:(runtime/'v2').mkdir();(runtime/'v2/api-v2.php').write_bytes(b'<?php /* new caller */')
+                    return value
+                ns['passive_fuel_activation_plan']=plan
+                result=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual('blocked_no_replay',result['status']);self.assertEqual(0,result['runtime_writes'])
+                self.assertEqual(0,result['staging_file_writes'])
+
+    def test_new_contract_keeps_consumed_missing_caller_hold_and_strict_completion(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        remote=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,remote.count("if mode not in ('passive-fuel-stock-activate','reconcile',"))
+        base=PassiveFuelActivationTransactionTest();base.setUp()
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=base.fixture(directory);(runtime/'api-v2.php').unlink()
+            self.assertEqual('hold',ns['passive_fuel_activation_plan']()['status'])
+        # Exercise the same canonical installed readback validator with this
+        # positive topology proof; no change to the original mode's receipt.
+        base.command=self.command;base.fixture=self.fixture
+        base.test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files()
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
