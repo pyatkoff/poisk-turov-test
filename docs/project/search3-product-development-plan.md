@@ -8,7 +8,40 @@
 SEARCH-QUALITY-1 и существующие#4217/#1646/#1719; новый tracker не создаётся.
 Этот раздел и свежие terminal receipts главнее исторических очередей ниже.
 
-### Завершённый объём и граница оценки — 20.10.2026
+### Текущий результат после подтверждённого ремонта — 20.10.2026
+
+Опубликован и принят конечный ремонт ordinary430/1280: PR4685/source
+`1c7c3223190673726d5185c8946469f62e5294d3`, release
+`0576d6eb69cb31b80ca4d479e45a275f107a6e34`, appSHA256
+`68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`.
+Все5final-source gates успешны; штатный NEXTpublisher39360500690 succeeded,
+[terminal/RELEASE6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588).
+Публикация consumed; повторять команду нельзя. Main/production/Sites/соседние preview
+не менялись, predecessor3bdd retained. Source/CI/merge/publish/installed раздельно подтверждены.
+
+[Итоговый audit6282417033](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033)
+принял цельный наблюдавшийся ordinary UI430/1280 после ремонта: фактический
+installediframe430×932/1280×720, семья2A+[0,8], параметры/фильтры→отель/тур→
+manager-flight либо optionalpair3/189000 за всех→контакты→возврат/черновик.
+Бюджет185000→187000 теперь сохраняется после Apply/reopen; Reset убирает старый
+editor. Matchedinstalled430 Filters9→10(+1). Новый exactcompiled corpus:
+430familyMobile10/1280incl720Desktop9.5/Selectedtour10/Calendar9.5 только в своих
+scopes;17familyfiles совпали поhash,10изменённых desktopкадров/3новыхreceipts и
+8calendarкадров проверены. Нет нового UI-кандидата/композиции или косметического ремонта.
+Первый locator-клик при автопрокрутке не подтвердил source-дефект: обычный клик
+по уже видимой подписи сразу включает facet; отдельная правка не нужна.
+
+Это закрытие цельного наблюдавшегося ordinary430/1280 UI-этапа, **не общая
+оценка всего поиска и не globalDONE**. Native/physicalSafari/safearea, Rixaliases/
+submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют
+отдельные exact gates/owners/N. Прежние live6280546977/quote и Site204publication
+consumed; reported5000/сутки не остаток/config/новый live-допуск. Site203reference,
+Site204viewer/d71b84ca, project/history/public сохранены.
+
+Следующий результат той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
+Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
+
+### История предыдущего corpus3bdd — 20.10.2026
 
 [Ordinary closeout6280199658](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6280199658)
 и [audit6280193716](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280193716)
@@ -32,9 +65,11 @@ Back/Close/reset/sort/Continue принят отдельно; native430/physical
 отель/варианты → конкретный тур и итог за всю группу → необязательные рейсы →
 контакты → возврат с сохранением выбора и допустимого черновика.
 
-Текущие ширины только **430/mobile и1280/desktop**, включая уже имеющийся
-short1280×720. Остальные размеры отложены до завершения применимого UI≥9,5,
-после этого — отдельная адаптивная доводка.200% и Compare/shortlist deferred.
+Основной ordinary430/mobile и1280/desktop, включая short1280×720, принят
+в цельном наблюдавшемся scope6282417033 после ремонта. Прежний согласованный
+следующий остаток —360/390/768: сначала уже сохранённые exact1c7 кадры/receipts,
+без новых прогонов ради покрытия. Это не общая приёмка поиска и не перенос
+частногоFilters10 на другие размеры.200% и Compare/shortlist deferred.
 Обязательные штатные final-source CI/workflows сохраняются; дополнительных
 ручных или платных прогонов на остальные размеры нет.
 
@@ -42,9 +77,10 @@ short1280×720. Остальные размеры отложены до заве
 
 Target: [ORIGINAL NEXT](https://anytoour.ru/_preview/search3-next-candidate/visual-search/)
 на `release/search3-production-ready-v1`, repo `pyatkoff/poisk-turov-test`.
-Установленный продукт `3bdd75c40abc5c2d441e1edefcd494fcd9845336`,
-appSHA256 `7ae9ba5481151b38ae9f8159121de36d79c20b3593e77d5951aaf664431eb6cc`;
-[publication/readback6273604203](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6273604203).
+Установленный продукт `1c7c3223190673726d5185c8946469f62e5294d3`,
+appSHA256 `68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`;
+[publication/readback6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588).
+Predecessor3bdd/readback6273604203 — сохранённая история/rollback, не новый deploy.
 Source/CI/merge/publication/runtime — разные статусы.
 
 PUBLIC design-lab project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`,
@@ -69,20 +105,20 @@ evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` уже согласован
 6279680382 завершены. Повторять их нельзя; клавиатурный проход после нового
 запрета не является следующим действием или gate обычной поставки.
 
-### Один следующий результат: завершить обычный installed430 путь
+### Один следующий результат: конечный адаптивный остаток после ordinary430/1280
 
 Owner20Oct02:34 прямо разрешил один exact поиск/TVtour quote без предварительно подтверждённого резерва и сообщил5000/сутки. Этот конкретный допуск уже CONSUMED: [terminal6280546977](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6280546977), [audit6280542177](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280542177). Москва→Турция03–09Nov/7n/2A/AI:59отелей/381вариант, статус partial; exactTVtour99280056379835/ownhotel687/RIXOS/LOTI/04–11Nov/268848RUB за2A→managercontact→Back/Close/Continue/draft PASS. Это native1363×936, не430/1280/physical, не цена выбранной пары и не реальная доставка.5000 — owner-reported дневной лимит, не измеренный остаток и не изменение serverconfig. Не повторять поиск/quote и не ждать прежний admission заново.
 
 Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f6769843f9 добавил отдельную [рамку установленного NEXT](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo) в том же PUBLICproject/history. Deployment appgdep_6ad6ba5442f48191be103403d20f90e2 succeeded; saved appgver_a6d4f56bc84881919b15e748a5b2596e. Donor Site203/его UI и установленный3bdd/app7ae9ba не менялись. По умолчанию явное offlinefamily; liveFORM отдельно, без searched/autoFind; arbitraryURL/query не принимаются. PUBLICQA [audit6280721648](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648): child actual430×932/1280×720 + exact8script graph; managercontact186400/2A+[0,8], resize→Back/Close/Continue сохраняет выбор/черновик. Это новый installediframe scope, не native top-level/physical и не общая9,5. Нового live не было.
 
-Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.
+Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
 
 Приёмка проходит обычными кликами/тапами через этот точный installed runtime.
 Смена ширины в рамке не перезагружает child; каждый новый полный reload/mode switch
 начинает новый просмотр. Уже проверенные действия не запускаются ради покрытия.
-Проверить только реально недостающие значимые части одного связного пути, затем
-закрыть измеренный UI-этап либо собрать один пакет существенных подтверждённых
-дефектов. Iframe не означает native430/physicalSafari/safearea и не принимает
+Observed ordinary430/1280 UI-этап закрыт6282417033; его завершённые действия
+не повторять.360/390/768 рассматриваются как один конечный адаптивный остаток
+по retained exactCI; код — только при существенном подтверждённом дефекте. Iframe не означает native430/physicalSafari/safearea и не принимает
 реальные supplier prices/lead delivery. При недоступности child не делать proxy,
 не менять security headers/carrier/server/browser install. Sourceprepared/CI/
 published/installed/physical/live остаются разными статусами.
@@ -116,7 +152,7 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 | Область / состояние | Действующий ответственный | Следующее конкретное действие | Условие закрытия |
 | --- | --- | --- | --- |
 | Installed TV/manager-путь — COMPLETED/CONSUMED6280546977 | SEARCH, explicit owner allowance6280498998 | Сохранить exact RIXOStour99280056379835/268848RUB/2A и возврат; не повторять поиск/quote | Текущий TVoffer→managercontact/Back/Close/Continue PASS в native1363; не optionalpair/fullsource/430/realLead |
-| Installed iframe430 — bounded contact/return PASS6280721648; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | В той же рамке завершить только отсутствующие существенные form/calendar/filter/hotel/optional demo pair действия; phone/consent/return уже принятые не повторять без новой identity | Один цельный измеренный installed430 UI scope; физический Safari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
+| Installed iframe430/1280 — ordinary repair/path ACCEPTED6282417033; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | Принятый1c7 путь не повторять; конечный360/390/768 остаток сначала по retained exactCI, без нового платного/ручного покрытия | Цельный observed ordinary430/1280 UI scope закрыт; physicalSafari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
 | Rix aliases / submitted exactIDs — отдельные N | Canonical данные у LOCAL; применение у SEARCH | Проверить доступность alias только штатным canonical read/handoff; submittedIDs включать лишь в подходящий отдельно допущенный поиск, не делать платный поиск ради ввода | Canonical alias факт и фактические OR exactIDs приняты в своих scopes. Неизвестный/отсутствующий alias не угадывается и не чинится новым matching в SEARCH |
 | ANEX repeated/allpair authority — отдельный INT handoff отсутствует в последнем чтении | Действующий INT#2506; SEARCH принимает | Прочитать новый конкретный handoff/contract и exact quote/receipt semantics при его появлении; принятую optional-one-pair authority не расширять | Реализованный принятый bounded контракт и exact операция/total; proposal caps3/8/9 не authority. Не блокирует независимо допущенный TV/manager-path |
 | Реальная доставка заявки / LeadC3 — N, preview delivery выключена | Owner-reviewed lead transport, затем SEARCH | После отдельного точного разрешения защищённого scope проверить штатные pending/error/retry/success; до него сохранять локальную проверку/контакты отдельно | Реальная доставка доказана своим receipt; preview validation/quote expiry её не заменяют. Не условие закрытого учебного UI corpus |
@@ -132,7 +168,7 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 
 Stock compiled-browser workflow и существующие owners уже дали6viewport
 acceptance;430/1280 результаты переиспользуются в текущей рабочей матрице,
-остальные сохраняются как история без новых прогонов. Все результаты принадлежат
+360/390/768 составляют конечный retained остаток без новых прогонов. Все результаты принадлежат
 своему source/artifact.
 CloudChrome доступен для установленного desktop; top-level resize не подтверждён.
 С20Oct Site204 даёт фактически проверенный installediframe430×932/1280×720,

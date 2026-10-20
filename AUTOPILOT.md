@@ -41,34 +41,37 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-Owner20Oct02:34/02:43 facts supersede the completed admission wait. Same task
-S3_PRODUCT_CURRENT_ACCEPTANCE, originalNEXT product3bdd/app7ae9ba unchanged.
-One real03–09Nov/7n/2A/AI search and one exactTVtour99280056379835 quote268848RUB
-for2A→managercontact→Back/Close/Continue/draft are CONSUMED terminal6280546977 /
-audit6280542177. Owner explicitly allowed this one run without preconfirmed reserve
-and reported5000/day; that is not measured remaining balance or a config change.
-No new live/quote follows from it; do not repeat the permission/admission loop.
+Опубликован и принят конечный ремонт ordinary430/1280: PR4685/source
+`1c7c3223190673726d5185c8946469f62e5294d3`, release
+`0576d6eb69cb31b80ca4d479e45a275f107a6e34`, appSHA256
+`68843eeefb1c9829448645e74a2608d187f12164094495ec406f876a157ae1a0`.
+Все5final-source gates успешны; штатный NEXTpublisher39360500690 succeeded,
+[terminal/RELEASE6282322588](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6282322588).
+Публикация consumed; повторять команду нельзя. Main/production/Sites/соседние preview
+не менялись, predecessor3bdd retained. Source/CI/merge/publish/installed раздельно подтверждены.
 
-Same PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history preserved.
-Site203 visual reference/transfer unchanged. Site204/source d71b84ca adds only
-NEXT-viewer + existing width-controller support: actual installed NEXT iframe430,
-1280 and short720, default explicitly offlinefamily, separate liveFORM without
-searched/autoFind/arbitrary URL forwarding. Native deploymentappgdep_6ad6ba5442f48191be103403d20f90e2
-succeeded. PUBLICQA audit6280721648 confirms430×932/1280×720, exact app7ae9ba graph,
-managercontact186400/2A+[0,8] and resize/Back/Close/Continue/draft preservation.
-Iframe evidence is installed responsive viewport, not native top-level/physical.
+[Итоговый audit6282417033](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282417033)
+принял цельный наблюдавшийся ordinary UI430/1280 после ремонта: фактический
+installediframe430×932/1280×720, семья2A+[0,8], параметры/фильтры→отель/тур→
+manager-flight либо optionalpair3/189000 за всех→контакты→возврат/черновик.
+Бюджет185000→187000 теперь сохраняется после Apply/reopen; Reset убирает старый
+editor. Matchedinstalled430 Filters9→10(+1). Новый exactcompiled corpus:
+430familyMobile10/1280incl720Desktop9.5/Selectedtour10/Calendar9.5 только в своих
+scopes;17familyfiles совпали поhash,10изменённых desktopкадров/3новыхreceipts и
+8calendarкадров проверены. Нет нового UI-кандидата/композиции или косметического ремонта.
+Первый locator-клик при автопрокрутке не подтвердил source-дефект: обычный клик
+по уже видимой подписи сразу включает facet; отдельная правка не нужна.
 
-Next finite result: finish only missing substantial ordinary installed430 actions
-(form/calendar/filters/hotel/optional demo pair) through that SAME published viewer,
-then one coherent existing SEARCH-QUALITY-1 closeout. Reuse completed exact contact,
-return/resize and compiled430/1280 corpus; no byte-identical rerun or everyN queue.
-Repair source only for a confirmed substantial defect. No new renderer/tracker,
-keyboard/Tab/A11y/focus packet, otherwidth/text200/Compare, paid fallback or liveprobe.
-Physical/Rix realIDs/INT repeatedallpair/reallead/production keep separate exact gates;
-bounded scores and this control change never mean wholeSearch9.5/globalDONE.
-All protected owners/CI/approval/publisher boundaries remain. Foreignv2 and all
-schedules/settings/enabled/paused untouched. No further plan-only iteration absent
-new material fact/direct owner decision. Full current next_action in productplan/state.
+Это закрытие цельного наблюдавшегося ordinary430/1280 UI-этапа, **не общая
+оценка всего поиска и не globalDONE**. Native/physicalSafari/safearea, Rixaliases/
+submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют
+отдельные exact gates/owners/N. Прежние live6280546977/quote и Site204publication
+consumed; reported5000/сутки не остаток/config/новый live-допуск. Site203reference,
+Site204viewer/d71b84ca, project/history/public сохранены.
+
+Следующий результат той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
+Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
+
 
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
