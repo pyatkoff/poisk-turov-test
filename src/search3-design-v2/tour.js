@@ -23,20 +23,22 @@
     return mealNames[fact.toUpperCase()] || (/^(?:on request|питание уточняется)$/i.test(fact) || !fact ? 'Питание уточняется' : fact);
   }
   function describePrice(offer, value, {busy = false, error = ''} = {}) {
-    const quotedTotal = Boolean(value && !value.pricePending && Number.isFinite(Number(value.total)) && Number(value.total) > 0);
+    const unavailable = unavailableSelection(value);
+    const quotedTotal = Boolean(value && !unavailable && !value.pricePending && Number.isFinite(Number(value.total)) && Number(value.total) > 0);
     const total = quotedTotal ? Number(value.total) : Number(offer.total);
     const expired = [value?.expiresAt,value?.quoteResult?.expiresAt].some(expires => expires && expires * 1000 <= Date.now());
-    const failed = Boolean(error || value?.quoteError || value?.flightsError);
+    const failed = Boolean(unavailable || error || value?.quoteError || value?.flightsError);
     const checkedPrice = Boolean(quotedTotal && !busy && !value.loading && !expired && !failed && !value.flightsLoading);
     const index = value?.flightChoiceId === null || value?.flightChoiceId === undefined ? null : Number(value.flightChoiceId);
     const selectedFlight = Boolean(value?.quoteResult?.state === 'quote_verified' && value.quoteResult.choice
       || Number.isInteger(index) && index >= 0 && value?.variants?.[index]);
     const checkedFlight = checkedPrice && selectedFlight;
-    return {total,quotedTotal,expired,failed,checkedPrice,selectedFlight,checkedFlight,
+    return {total,quotedTotal,expired,failed,unavailable,checkedPrice,selectedFlight,checkedFlight,
       caption:checkedPrice ? 'Проверенная цена за всех' : quotedTotal ? 'Последняя цена за всех · нужна проверка' : 'Цена из поиска за всех',
       basis:checkedFlight ? 'С выбранным перелётом' : checkedPrice ? 'Рейс уточнит менеджер' : quotedTotal ? 'Последняя цена · нужна проверка' : 'Цена из поиска',
       origin:quotedTotal && total !== Number(offer.total) ? 'В поиске: ' + money(offer.total).replace(/ /g,'\u00a0') : '',
       note:busy || value?.loading ? 'Проверяем цену и перелёт. Дождитесь результата.'
+        : unavailable ? 'Онлайн-проверка этого тура недоступна. Выберите другой вариант.'
         : expired ? 'Срок цены истёк. Для оформления нужна новая проверка.'
         : failed ? 'Проверка не завершена. Цена и перелёт требуют уточнения.'
         : checkedFlight ? 'Цена проверена с выбранным перелётом. Доплаты и наличие уточнит менеджер.'
@@ -68,6 +70,7 @@
     const state=options.busy || value?.loading || value?.flightsLoading ? 'pending' : price.expired ? 'expired' : price.failed ? 'error'
       : price.checkedPrice ? value.priceAccepted===true ? 'checked' : 'acceptance' : 'search';
     const title=state==='pending' ? 'Проверяем цену и перелёт.'
+      : price.unavailable ? 'Онлайн-проверка этого тура недоступна.'
       : state==='expired' ? 'Срок цены истёк. До оформления нужна новая проверка.'
       : state==='error' ? 'Проверка не завершена. Цена требует уточнения.'
       : state==='acceptance' ? 'Новая стоимость проверена. Подтвердите изменение цены.'
@@ -77,6 +80,7 @@
     return {state,title,note:'Перед оформлением менеджер уточнит: '+unresolved.join(', ')+'.'};
   }
   const conditionsHTML = conditions => '<strong data-native-conditions-title>'+esc(conditions.title)+'</strong><p>'+esc(conditions.note)+'</p>';
+  const unavailableSelection = value => value?.quoteFailure?.retryable === false || value?.flightsFailure?.retryable === false;
   const displayError = message => /Tourvisor request failed/i.test(message || '') ? 'Не удалось получить условия у поставщика. Выбранный номер сохранён. Повторите проверку позже.' : message;
   function mount({root, bridge, renderPhoto = null, onChanged = () => {}, initialState = null}) {
     if (!root || !bridge) throw new Error('Не удалось подключить условия тура.');
@@ -102,7 +106,7 @@
     function emit(extra = {}) { if (alive) onChanged({selection:current(),ready:canContinue(),pending:busy,error,...extra}); }
     function canContinue() {
       const value = current();
-      return Boolean(value && !busy && !error && !value.quoteError && !value.pricePending && !value.flightsLoading && !value.flightsError
+      return Boolean(value && !unavailableSelection(value) && !busy && !error && !value.quoteError && !value.pricePending && !value.flightsLoading && !value.flightsError
         && Number.isFinite(Number(value.total)) && Number(value.total) > 0 && value.priceAccepted === true
         && (!value.expiresAt || value.expiresAt * 1000 > Date.now())
         && (!value.quoteResult?.expiresAt || value.quoteResult.expiresAt * 1000 > Date.now()));
@@ -243,6 +247,7 @@
       return content;
     }
     function contactFlightHTML(value) {
+      if(unavailableSelection(value))return '<p class="st-small st-muted">Перелёт не подтверждён.</p>';
       const chosen=value?.quoteResult?.state==='quote_verified'?value.quoteResult.choice:null;
       if(context.offer.provider==='anex'&&chosen)return chosen.legs.map((leg,index)=>'<div class="st-native-contact-leg"><strong>'+(index?'Обратно':'Туда')+'</strong><span>'+esc(leg.label)+'</span></div>').join('');
       const index=value?.flightChoiceId===null||value?.flightChoiceId===undefined?null:Number(value.flightChoiceId),pair=index===null?null:value?.variants?.[index];
@@ -294,16 +299,17 @@
       $$('[data-action="lead"]').forEach(node=>{node.disabled=!canContinue();node.setAttribute('aria-disabled',String(node.disabled));});
       const flightContent=$('[data-native-flight-content]');
       if (flightContent) {
-        if (context.offer.raw?.anexKind==='group_minimum') flightContent.innerHTML='<p class="st-small st-muted">Это минимальная цена группы предложений. Для выбора нужны точные варианты.</p><button type="button" class="st-secondary" data-native-expand-offer '+(busy?'disabled':'')+'>Показать точные варианты</button>';
+        if(price.unavailable) flightContent.innerHTML='<p class="st-small st-muted">Онлайн-проверка цены и перелёта для этого тура недоступна. Выбранное предложение сохранено.</p><button type="button" class="st-secondary" data-action="hotel" data-native-other-offers>Выбрать другой тур</button>';
+        else if (context.offer.raw?.anexKind==='group_minimum') flightContent.innerHTML='<p class="st-small st-muted">Это минимальная цена группы предложений. Для выбора нужны точные варианты.</p><button type="button" class="st-secondary" data-native-expand-offer '+(busy?'disabled':'')+'>Показать точные варианты</button>';
         else if (busy && !value) flightContent.innerHTML='<p class="st-small st-muted" role="status">Проверяем предложение и загружаем варианты рейсов…</p>';
         else if (value?.quoteError && !value.tour && !value.quoteResult) flightContent.innerHTML='<p class="st-small st-muted">'+esc(displayError(value.quoteError))+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Повторить проверку тура</button>' : '');
         else if (value) flightContent.innerHTML=flightChoiceHTML(value);
         else flightContent.innerHTML='<p class="st-small st-muted">'+esc(displayError(error) || 'Рейсы не подтверждены.')+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Проверить тур</button>' : '');
       }
-      text('[data-native-flight-status]',busy ? 'Проверяем' : expired ? 'Нужна новая проверка' : failed ? 'Требует проверки' : checkedFlight ? 'Выбранный перелёт' : checkedPrice ? 'Уточнит менеджер' : 'Требует уточнения');
+      text('[data-native-flight-status]',price.unavailable ? 'Недоступно онлайн' : busy ? 'Проверяем' : expired ? 'Нужна новая проверка' : failed ? 'Требует проверки' : checkedFlight ? 'Выбранный перелёт' : checkedPrice ? 'Уточнит менеджер' : 'Требует уточнения');
       const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
-      setStatus(busy ? 'Проверяем точное предложение…' : displayError(failure), Boolean(failure));
+      setStatus(price.unavailable ? 'Онлайн-проверка этого тура недоступна. Выберите другой вариант в предложениях отеля.' : busy ? 'Проверяем точное предложение…' : displayError(failure), Boolean(failure || price.unavailable));
       renderContact();scheduleExpiry();window.lucide?.createIcons({attrs:{width:18,height:18}});
     }
     function contactError() {

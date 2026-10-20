@@ -216,6 +216,13 @@
       if (!selected || selected.selection !== selectionGeneration || selected.searchGeneration !== searchGeneration) return null;
       return selected;
     }
+    // Classification comes from the canonical owner, never from operator names.
+    const failureInfo = error => Object.freeze({retryable: error?.retryable !== false});
+    function unavailable(value) { return value?.quoteFailure?.retryable === false || value?.flightsFailure?.retryable === false; }
+    function unavailableError(value) {
+      return Object.assign(new Error(value.quoteError || value.flightsError || 'Онлайн-проверка этого предложения недоступна.'), {retryable: false});
+    }
+    function requireAvailable(value) { if (unavailable(value)) throw unavailableError(value); }
     function quotedSelection(fields) {
       const next = {...selected, ...fields};
       next.priceAccepted = next.total === next.offer.total;
@@ -226,11 +233,13 @@
       if (!offer || expectedOffer && expectedOffer !== offer || offer.cached || !['tourvisor', 'anex'].includes(offer.provider)) {
         return Promise.reject(new Error('Этот источник требует отдельной актуализации точного предложения.'));
       }
+      const retained = currentSelection();
+      if (retained?.offer === offer && unavailable(retained)) return Promise.reject(unavailableError(retained));
       if (!force && currentSelection()?.offer === offer) return selectionPromise || Promise.resolve(selected);
       const epoch = searchGeneration, selection = ++selectionGeneration;
       ++flightGeneration; followupPromise = null;
       selected = {...offer, offer, selection, searchGeneration: epoch, loading: true, pricePending: true, priceAccepted: false,
-        flightsLoading: false, flightsError: '', flightChoiceId: null, variants: []};
+        flightsLoading: false, flightsError: '', quoteFailure: null, flightsFailure: null, flightChoiceId: null, variants: []};
       const current = () => epoch === searchGeneration && selection === selectionGeneration && selected?.offer === offer;
       const assertCurrent = () => { if (!current()) throw new Error('Выбранный тур изменился.'); };
       selectionPromise = (async () => {
@@ -250,17 +259,18 @@
             const variants = await data.flights(tour); assertCurrent();
             selected = {...selected, variants, flightsLoading: false, flightsLoaded: true, flightsError: '', pricePending: true};
           } catch (error) {
-            assertCurrent(); selected = {...selected, flightsLoading: false, flightsLoaded: false, flightsError: error.message, pricePending: true};
+            assertCurrent(); selected = {...selected, flightsLoading: false, flightsLoaded: false, flightsError: error.message, flightsFailure: failureInfo(error), pricePending: true};
           }
           return selected;
         } catch (error) {
-          if (current()) selected = {...selected, loading: false, flightsLoading: false, quoteError: error.message};
+          if (current()) selected = {...selected, loading: false, flightsLoading: false, quoteError: error.message, quoteFailure: failureInfo(error)};
           throw error;
         } finally { if (current()) selectionPromise = null; }
       })();
       return selectionPromise;
     }
     function selectFlight(originalIndex) {
+      requireAvailable(currentSelection());
       if (!currentSelection()?.tour || selected.provider !== 'tourvisor' || selected.loading || selected.flightsLoading || !Number.isSafeInteger(originalIndex)
         || !selected.variants?.[originalIndex]) throw new Error('Выберите перелёт из текущего предложения.');
       const total = data.variantPrice(selected.tour, selected.variants[originalIndex]);
@@ -270,6 +280,7 @@
     }
     function deferFlight() {
       const value = currentSelection(), total = amount(value?.tour?.price);
+      requireAvailable(value);
       if (!value || value.provider !== 'tourvisor' || value.loading || value.flightsLoading || !Number.isFinite(total) || total <= 0) throw new Error('Сначала подтвердите актуальную цену тура.');
       ++flightGeneration;
       return quotedSelection({flightChoiceId: null, total, variants: [], pricePending: false, flightsError: '', flightDeferred: true});
@@ -280,6 +291,7 @@
     }
     async function loadFlights() {
       const value = currentSelection();
+      requireAvailable(value);
       if (!value?.tour || value.provider !== 'tourvisor' || value.loading || value.flightsLoading) throw new Error('Сначала подтвердите актуальное предложение.');
       const epoch = searchGeneration, selection = selectionGeneration, flight = ++flightGeneration;
       selected = {...value, flightsLoading: true, flightsError: '', pricePending: true, priceAccepted: false, flightChoiceId: null};
@@ -287,9 +299,9 @@
       try {
         const variants = await data.flights(value.tour);
         if (!current()) throw new Error('Выбранный тур изменился.');
-        selected = {...selected, variants, flightsLoading: false, flightsLoaded: true}; return selected;
+        selected = {...selected, variants, flightsLoading: false, flightsLoaded: true, flightsFailure: null}; return selected;
       } catch (error) {
-        if (current()) selected = {...selected, flightsLoading: false, flightsError: error.message};
+        if (current()) selected = {...selected, flightsLoading: false, flightsError: error.message, flightsFailure: failureInfo(error)};
         throw error;
       }
     }
@@ -307,6 +319,7 @@
     }
     async function calculateProviderFlight(choiceRef) {
       const value = currentSelection();
+      requireAvailable(value);
       if (!value || value.provider !== 'anex' || !value.quoteResult?.choices?.some(choice => choice.choiceRef === choiceRef)) throw new Error('Выберите перелёт из текущего ответа ANEX.');
       const epoch = searchGeneration, selection = selectionGeneration, flight = ++flightGeneration;
       selected = {...value, pricePending: true, priceAccepted: false, flightsLoading: true, flightsError: '', receipt: null};
@@ -325,18 +338,20 @@
           flights: Object.freeze(result.choice.legs.map((leg, index) => Object.freeze({direction: String(index), name: leg.label})))});
         return quotedSelection({quoteResult: result, receipt, flightChoiceId: choiceRef, total, pricePending: false, flightsLoading: false, flightsError: ''});
       } catch (error) {
-        if (current()) selected = {...selected, flightsLoading: false, flightsError: error.message};
+        if (current()) selected = {...selected, flightsLoading: false, flightsError: error.message, flightsFailure: failureInfo(error)};
         throw error;
       }
     }
     function selectProviderFlight(choiceRef) { return trackFollowup(calculateProviderFlight(choiceRef)); }
     function acceptPrice() {
       const value = currentSelection();
+      requireAvailable(value);
       if (!value || value.loading || value.pricePending || value.flightsLoading || value.flightsError || value.quoteError || !Number.isFinite(value.total) || value.total <= 0) throw new Error('Сначала подтвердите стоимость выбранного тура.');
       selected = {...value, priceAccepted: true}; return selected;
     }
     function previewContact(formData) {
       const value = currentSelection();
+      requireAvailable(value);
       if (!value || value.loading || value.pricePending || value.flightsLoading || value.flightsError || value.quoteError) throw new Error('Сначала проверьте выбранный тур.');
       if (!value.priceAccepted) throw new Error('Подтвердите изменившуюся стоимость тура.');
       if (value.provider === 'anex') {
