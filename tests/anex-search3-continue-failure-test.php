@@ -93,7 +93,18 @@ cf_check($stored['X-AnyTour-Anex-Failure'] === 'ANEX_INTERNAL_ERROR'
     && !isset($stored['X-AnyTour-Anex-Elapsed-Ms'])
     && !str_contains(json_encode($stored), 'private-fixture'), 'stored_expand_resanitized');
 cf_check(anytour_anex_search3_retained_expand_failure(['status' => 'unknown']) === [], 'legacy_unknown_no_diagnosis');
+$request = ['action' => 'expand', 'generation' => 7, 'search_ref' => str_repeat('a', 32), 'offer_ref' => 'anex_online:' . str_repeat('b', 64)];
+$session = ['offer_context' => ['generation' => 7, 'gateway' => ['saved_offers' => ['search_ref' => $request['search_ref']]],
+    'expansions' => [$request['offer_ref'] => ['status' => 'unknown', 'failure' => $stored + ['X-AnyTour-Anex-Phase' => 'gateway']]]]];
+$bound = anytour_anex_search3_expand_failure_reply($request, $session, $missing);
+cf_check(($bound['retryable'] ?? null) === false && ($bound['diagnostics']['X-AnyTour-Anex-Phase'] ?? null) === 'gateway', 'bound_unknown_no_retry');
+foreach (['generation' => 8, 'search_ref' => str_repeat('c', 32), 'offer_ref' => [], 'action' => 'offer'] as $field => $value) {
+    cf_check(anytour_anex_search3_expand_failure_reply(array_replace($request, [$field => $value]), $session, $missing)
+        === ['diagnostics' => $missing], 'unbound_attempt_does_not_grant_authority_' . $field);
+}
+$session['offer_context']['expansions'][$request['offer_ref']]['status'] = 'complete';
+cf_check(!array_key_exists('retryable', anytour_anex_search3_expand_failure_reply($request, $session, $missing)), 'complete_not_unknown');
 $source = file_get_contents(__DIR__ . '/../v2/api-anex-search3-preview.php');
 cf_check(str_contains($source, "if (in_array(\$action ?? null, ['search', 'continue', 'expand'], true)"), 'search_continue_expand_diagnostics');
-cf_check(str_contains($source, "\$extra['diagnostics'] = \$safe;"), 'same_post_failure_body_retains_safe_diagnostics');
+cf_check(str_contains($source, "\$extra = anytour_anex_search3_expand_failure_reply(\$request, \$_SESSION, \$safe);"), 'same_post_failure_body_retains_safe_diagnostics');
 echo "ANEX_CONTINUE_FAILURE_CLASSIFICATION_OK supplier0/DB0/lead0\n";

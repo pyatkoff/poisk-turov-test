@@ -937,7 +937,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
     $attempt = $state['expansions'][$key] ?? null;
     if ($attempt !== null && ($attempt['status'] ?? null) !== 'complete') {
         $failure = anytour_anex_search3_retained_expand_failure($attempt);
-        return array_replace($reply, ['status' => 'expansion_unknown'], $failure === [] ? [] : ['diagnostics' => $failure]);
+        return array_replace($reply, ['status' => 'expansion_unknown', 'retryable' => false], $failure === [] ? [] : ['diagnostics' => $failure]);
     }
     $newExpansion = $attempt === null;
     if ($newExpansion) {
@@ -996,6 +996,7 @@ function anytour_anex_search3_followup(array $request, array &$state, callable $
         $state['expansions'][$key]['failure'] = $failure;
         $checkpoint($state);
         $result['diagnostics'] = $failure;
+        $result['retryable'] = false;
     }
     return $result;
 }
@@ -1094,6 +1095,25 @@ function anytour_anex_search3_retained_expand_failure(array $attempt): array
     $phase = $failure['X-AnyTour-Anex-Phase'] ?? null;
     if (in_array($phase, ['gateway', 'projection'], true)) $safe['X-AnyTour-Anex-Phase'] = $phase;
     return $safe;
+}
+
+/** Retry authority comes from this bound no-replay attempt, never its HTTP code. */
+function anytour_anex_search3_expand_failure_reply(array $request, array $session, array $safe): array
+{
+    $extra = ['diagnostics' => $safe];
+    $context = $session['offer_context'] ?? [];
+    $ref = $request['offer_ref'] ?? null;
+    if (($request['action'] ?? null) !== 'expand' || !is_int($request['generation'] ?? null)
+        || ($context['generation'] ?? null) !== $request['generation']
+        || !is_string($request['search_ref'] ?? null)
+        || ($context['gateway']['saved_offers']['search_ref'] ?? null) !== $request['search_ref']
+        || !is_string($ref) || !is_array($context['expansions'][$ref] ?? null)) return $extra;
+    $attempt = $context['expansions'][$ref];
+    $failure = anytour_anex_search3_retained_expand_failure($attempt);
+    if (isset($failure['X-AnyTour-Anex-Phase'])) $extra['diagnostics']['X-AnyTour-Anex-Phase'] = $failure['X-AnyTour-Anex-Phase'];
+    // This is no-replay authority, not proof that the richer failure flush succeeded.
+    if (($attempt['status'] ?? null) === 'unknown') $extra['retryable'] = false;
+    return $extra;
 }
 
 /** Read retained calculation diagnostics only; never return supplier/session identifiers. */
@@ -1295,11 +1315,8 @@ function anytour_anex_search3_http(): void
             && (!($error instanceof InvalidArgumentException) || $action === 'expand')) {
             $safe = anytour_anex_search3_continue_failure($error, $last, $action);
             if ($action === 'expand') {
-                $ref = $request['offer_ref'] ?? null;
-                $phase = is_string($ref)
-                    ? ($_SESSION['offer_context']['expansions'][$ref]['failure']['X-AnyTour-Anex-Phase'] ?? null) : null;
-                if (in_array($phase, ['gateway', 'projection'], true)) $safe['X-AnyTour-Anex-Phase'] = $phase;
-                $extra['diagnostics'] = $safe;
+                $extra = anytour_anex_search3_expand_failure_reply($request, $_SESSION, $safe);
+                $safe = $extra['diagnostics'];
             }
             foreach ($safe as $name => $value) {
                 header($name . ': ' . $value);

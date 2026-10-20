@@ -435,7 +435,8 @@ foreach (['transport' => 'ANEX_TRANSPORT_ERROR', 'http' => 'ANEX_HTTP_ERROR',
     $unknownState = unserialize(serialize($unknownState));
     $unknownState['params'] = $groupState['params'];
     $againFailure = $follow($expandRequest, $unknownState);
-    search3_check($againFailure['status'] === 'expansion_unknown' && ($againFailure['diagnostics'] ?? null) === $failure && $failedCalls === 1
+    search3_check($againFailure['status'] === 'expansion_unknown' && ($againFailure['retryable'] ?? null) === false
+        && ($againFailure['diagnostics'] ?? null) === $failure && $failedCalls === 1
         && $readFactoryCalls === 0, 'restored_expand_failure_replayed_' . $mode);
 }
 foreach (['expired', 'not_loaded'] as $terminal) {
@@ -460,13 +461,15 @@ foreach (['expired', 'not_loaded'] as $terminal) {
     $terminalReply = anytour_anex_search3_followup($expandRequest, $terminalState, $resolver, $terminalFactory,
         $metadataReader, $terminalClock, $persistTerminal);
     search3_check($terminalReply['status'] === $terminal && $terminalCalls === 1
+        && ($terminalReply['retryable'] ?? null) === false
         && ($terminalReply['diagnostics']['X-AnyTour-Anex-Upstream-Status'] ?? null) === '200'
         && ($terminalReply['diagnostics']['X-AnyTour-Anex-Phase'] ?? null) === 'projection'
         && count($terminalCheckpoints) === 2 && end($terminalCheckpoints) === $terminalState, 'expand_200_terminal_not_retained_' . $terminal);
 }
 $legacyUnknown = $groupState;
 $legacyUnknown['expansions'][$groupTour['offer_ref']] = ['status' => 'unknown'];
-search3_check($follow($expandRequest, $legacyUnknown)['status'] === 'expansion_unknown'
+$legacyReply = $follow($expandRequest, $legacyUnknown);
+search3_check($legacyReply['status'] === 'expansion_unknown' && ($legacyReply['retryable'] ?? null) === false
     && !isset($legacyUnknown['expansions'][$groupTour['offer_ref']]['failure']), 'legacy_unknown_cause_invented');
 $unreserved = $groupState;
 $failed = false;
