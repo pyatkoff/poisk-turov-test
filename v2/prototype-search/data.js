@@ -1156,7 +1156,7 @@
     // Party and canonical region OR are exact first-class observation scopes.
     // The observation reader has no exact subregion dimension yet: suppress it
     // instead of presenting a broader parent-region minimum as exact.
-    if(filters.hotelId||filters.q||observationBudget(filters)===null
+    if(filters.hotelId||filters.hotelIds?.length||filters.q||observationBudget(filters)===null
       ||['stars','operators','flight','amenities'].some(key=>filters[key]?.length)
       ||['rating','beach','family','spa'].some(key=>filters[key]))return false;
     try{if(destinationScope(s,filters).subregionIds.length)return false;}catch{return false;}

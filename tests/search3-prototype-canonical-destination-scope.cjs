@@ -119,9 +119,13 @@ test('canonical OR hotel coverage survives passive inspection, reordering and na
 });
 
 test('native-only coverage is a separate set and the accepted supplier request is unchanged',async()=>{
-  const {data}=harness();await data.countries('Москва');
+  const {data,fetchCalls}=harness();await data.countries('Москва');
   const filters={hotelId:0,hotelIds:[4234,684],resorts:[],stars:[],meals:[],min:0,max:null},native=['tv-4234','tv-684'];
   const search={origin:'Москва',country:'101',from:'2026-11-03',to:'2026-11-09',minNights:7,maxNights:7,adults:2,ages:[]};
+  for(const hotelFilter of [{hotelId:684},{hotelId:0,hotelIds:[684]},{hotelId:0,hotelIds:[4234,684]}]){
+    assert.equal(data.observationScopeSupported(search,hotelFilter),false,'the country observation reader cannot certify a selected local hotel/OR set');
+    const before=fetchCalls.length;assert.deepEqual(Array.from(await data.observedCalendar(search,search.from,search.to,new AbortController().signal,hotelFilter)),[]);assert.equal(fetchCalls.length,before,'unsupported hotel observations must not perform a broader DB read');
+  }
   const request=JSON.parse(JSON.stringify(data.params(search,native,filters)));
   assert.deepEqual(request,{departureId:'1',countryId:'4',dateFrom:'2026-11-03',dateTo:'2026-11-09',nightsFrom:7,nightsTo:7,adults:2,childs:[],meal:'',hotelCategory:'',hotelRating:'',hotelTypes:[],hotelIds:native,hotelServices:[],arrivalId:'',regionIds:[],subregionIds:[],operatorIds:[],priceFrom:'',priceTo:'',currency:'RUB',onlyCharter:false,onlyDirect:false},'local coverage must never replace the original ordered native payload');
   const previous=data.supplierScope({},native),subset=data.supplierScope({},['tv-684']);

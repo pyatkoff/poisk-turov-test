@@ -1316,7 +1316,7 @@ const searchDeliveryJourney=async(browser,origin,base,evidence)=>{
    await p.locator('.search-submit:not(:disabled)').waitFor();await p.waitForFunction(()=>document.querySelector('#destination-detail')?.textContent.includes('Rixos Fictional Belek 02'));
    await p.locator('.search-submit').click();await p.waitForFunction(()=>document.querySelector('#search-status h3')?.textContent.includes('Туры не загрузились')&&[...document.querySelectorAll('[data-search-source]')].filter(n=>n.textContent.includes('Предложения не загрузились')).length===2);
    const notice=p.locator('#search-status'),criteria=new URL(p.url()).searchParams.get('hotels');
-   assert.equal(criteria,'2001|2002');assert.deepEqual(starts,[['7001','7002']],'actual native request stays the ordered accepted projection');assert.deepEqual(anexStarts,['search']);
+   assert.equal(criteria,'2001|2002');assert.deepEqual(starts,[['7001','7002']],'actual native request stays the ordered accepted projection');assert.deepEqual(anexStarts,['search']);assert(!t.calls.some(c=>c.action==='price_calendar'),'selected OR hotels cannot use a broader country observation calendar');
    assert.match(await notice.textContent(),/Даты, туристы и фильтры сохранены/);assert.doesNotMatch(await p.locator('#cards').textContent(),/Попробуйте другие даты|Выбрать другие даты|Предложений по ней в текущем поиске нет/);
    await notice.scrollIntoViewIfNeeded();await p.screenshot({path:path.join(evidence,'search-failed-zero-'+width+'.png')});
    await p.locator('[data-action="about"]').click();await p.locator('#modal[open]').waitFor();await p.locator('[data-action="close-modal"]').click();await p.waitForFunction(()=>!document.querySelector('#modal').open);
