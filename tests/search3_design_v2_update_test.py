@@ -399,12 +399,13 @@ class UpdateContracts(unittest.TestCase):
                             'alertText': alert,
                             'ownerSHA256': self.native['files']['bridge.js']}
                     consent_fit = None
-                    if name.startswith(('native-content-contact-', 'native-content-contact-invalid-')):
+                    if screen == 'lead':
                         consent_fit = {'label': {'left': 18, 'right': width - 18, 'top': 440, 'bottom': 496,
                                                    'width': width - 36, 'height': 56},
                             'checkbox': {'left': 29, 'right': 49, 'top': 450, 'bottom': 470,
                                          'width': 20, 'height': 20},
-                            'ownsCheckbox': True, 'required': True, 'contained': True, 'focusOutline': True}
+                            'ownsCheckbox': True, 'required': True, 'contained': True,
+                            'focusOutline': side == 'native'}
                     case['frames'].append({'terminalState': terminal_state, 'file': name, 'sha256': remote.digest(png), 'side': side, 'screen': screen,
                         'viewportWidth': width, 'viewportHeight': 720 if short_desktop else 900,
                         'documentWidth': width, 'textPercent': percent, 'overflow': False, 'stageHidden': False,

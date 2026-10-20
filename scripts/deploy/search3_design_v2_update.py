@@ -576,11 +576,12 @@ def native_evidence(archive, request, native):
                 else:
                     need(summaries == [], 'native_selected_hotel_summary_scope')
                 consent = frame.get('consentFit')
-                if name.startswith(('native-content-contact-', 'native-content-contact-invalid-')):
+                if screen == 'lead':
                     need(isinstance(consent, dict) and set(consent) == {
                          'label', 'checkbox', 'ownsCheckbox', 'required', 'contained', 'focusOutline'}
                          and consent.get('ownsCheckbox') is True and consent.get('required') is True
-                         and consent.get('contained') is True and consent.get('focusOutline') is True,
+                         and consent.get('contained') is True
+                         and consent.get('focusOutline') is (frame.get('side') == 'native'),
                          'native_contact_consent_required')
                     for box in (consent.get('label'), consent.get('checkbox')):
                         need(isinstance(box, dict) and set(box) == {
