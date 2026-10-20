@@ -1565,7 +1565,7 @@ class PassiveFuelActivationTransactionTest(unittest.TestCase):
             value['preflight']['protected_before']['api-v2.php']=value['before_files']['api-v2.php']
             value['preflight']['protected_after']=copy.deepcopy(value['preflight']['protected_before'])
             value['protected_after']={**value['preflight']['protected_before'],'api-v2.php':value['after_files']['api-v2.php']}
-            if self.command['mode']==self.p.CURRENT_MODE:
+            if self.command['mode'] in (self.p.CURRENT_MODE,self.p.REPAIRED_MODE):
                 value['preflight']['stock_topology']['manifest_record']={
                     'sha256':self.p.CURRENT_MANIFEST_SHA256,'bytes':self.p.CURRENT_MANIFEST_BYTES,'mode':0o644}
             result={**self.command,'status':'complete','runtime_changed':True,'production_unchanged':True,
@@ -2136,6 +2136,126 @@ class PublicationLockModeRepairTest(unittest.TestCase):
             self.assertEqual((1,True,False),(result['permission_writes'],result['publication_lock_mode_changed'],result['runtime_changed']))
             self.assertEqual(initial.st_ino,leaf.stat().st_ino)
             self.assertEqual(result['production_before'],result['production_after'])
+
+
+class PassiveFuelRepairedActivationTest(unittest.TestCase):
+    # Retained public runner artifact; derive private bytes with the stock serializer.
+    ARTIFACT_BYTES = b'{\n  "booking_calls": 0,\n  "database_reads": 0,\n  "database_writes": 0,\n  "lead_calls": 0,\n  "mode": "publication-lock-mode-repair",\n  "operation_id": "int-anex-publication-lock-mode-repair-20261020-v1",\n  "permission_write_attempted": true,\n  "permission_writes": 1,\n  "production_after": {\n    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",\n    "v2/api-v2.php": null,\n    "v2/index.php": null,\n    "v2/lead-adapter-v2.php": null\n  },\n  "production_before": {\n    "index.php": "80e993e80a4c3e11612187e90ffd8cfdadce08657981db19429f882ed2de4c6f",\n    "v2/api-v2.php": null,\n    "v2/index.php": null,\n    "v2/lead-adapter-v2.php": null\n  },\n  "production_unchanged": true,\n  "publication_lock_mode_changed": true,\n  "publication_lock_mode_repair": {\n    "after": {\n      "booking_calls": 0,\n      "database_reads": 0,\n      "database_writes": 0,\n      "home_identity_matches": true,\n      "lead_calls": 0,\n      "lock": {\n        "bytes": 0,\n        "entry_identity_matches": true,\n        "kind": "regular",\n        "mode": 420,\n        "nlink": 1,\n        "owner_matches": true\n      },\n      "lock_identity_stable": true,\n      "parent": {\n        "bytes": 12288,\n        "kind": "directory",\n        "mode": 448,\n        "nlink": 74,\n        "owner_matches": true\n      },\n      "parent_identity_matches": true,\n      "reason": null,\n      "runtime_writes": 0,\n      "status": "measured",\n      "supplier_calls": 0,\n      "unsafe_predicates": []\n    },\n    "before": {\n      "booking_calls": 0,\n      "database_reads": 0,\n      "database_writes": 0,\n      "home_identity_matches": true,\n      "lead_calls": 0,\n      "lock": {\n        "bytes": 0,\n        "entry_identity_matches": true,\n        "kind": "regular",\n        "mode": 436,\n        "nlink": 1,\n        "owner_matches": true\n      },\n      "lock_identity_stable": true,\n      "parent": {\n        "bytes": 12288,\n        "kind": "directory",\n        "mode": 448,\n        "nlink": 74,\n        "owner_matches": true\n      },\n      "parent_identity_matches": true,\n      "reason": null,\n      "runtime_writes": 0,\n      "status": "measured",\n      "supplier_calls": 0,\n      "unsafe_predicates": [\n        "writable"\n      ]\n    },\n    "booking_calls": 0,\n    "database_reads": 0,\n    "database_writes": 0,\n    "exclusive_existing_lock": true,\n    "lead_calls": 0,\n    "mode_after": 420,\n    "mode_before": 436,\n    "permission_write_attempted": true,\n    "permission_writes": 1,\n    "reason": null,\n    "runtime_writes": 0,\n    "same_inode": true,\n    "status": "repaired_verified",\n    "supplier_calls": 0\n  },\n  "runtime_changed": false,\n  "runtime_writes": 0,\n  "schema_version": 1,\n  "source_sha": "61415e679957acac285bc0aa2f9c870f677618ea",\n  "status": "complete",\n  "supplier_calls": 0\n}\n'
+    PROOF_BYTES = json.dumps(json.loads(ARTIFACT_BYTES),sort_keys=True,separators=(',', ':')).encode()
+
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.REPAIRED_SOURCE,self.p.REPAIRED_MODE,self.p.REPAIRED_OPERATION])
+
+    def fixture(self,directory):
+        base=PassiveFuelCurrentLayoutTest();base.setUp()
+        ns,home,project,runtime,private,stage,op=base.fixture(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_','PS_'))}
+        exec(self.p.REPAIRED_REMOTE,ns);ns.update(constants)
+        ns['operation']=self.p.REPAIRED_OPERATION;ns['pi_lint']=lambda path:None
+        (private/'grouped-search-update.lock').chmod(0o644)
+        carrier=home/'.anytoour-int-executor';carrier.mkdir(mode=0o700)
+        proof=carrier/self.p.LOCK_REPAIR_OPERATION;proof.mkdir(mode=0o700)
+        (proof/'result.json').write_bytes(self.PROOF_BYTES);(proof/'result.json').chmod(0o600)
+        return ns,home,project,runtime,private,stage,op
+
+    def test_stock_private_serialization_and_public_artifact_have_distinct_pins(self):
+        self.assertEqual(2785,len(self.ARTIFACT_BYTES))
+        self.assertEqual('df690f8b5aa9d95a989057587e86f4eecdf515c12846357f46702ab116f92fa9',hashlib.sha256(self.ARTIFACT_BYTES).hexdigest())
+        self.assertTrue("json.dumps(result,sort_keys=True,separators=(',',':'))" in m.REMOTE,"stock private result serializer changed")
+        self.assertNotEqual(self.ARTIFACT_BYTES,self.PROOF_BYTES)
+        self.assertEqual(2056,len(self.PROOF_BYTES))
+        self.assertEqual('a1e608a8ad12c866169bbc4609365e1f6fbf901c86f59dd8e1e050973b6d7635',hashlib.sha256(self.PROOF_BYTES).hexdigest())
+
+    def test_pinned_correction_proof_and_existing_two_file_transaction(self):
+        self.assertEqual(self.p.REPAIR_RECEIPT_BYTES,len(self.PROOF_BYTES))
+        self.assertEqual(self.p.REPAIR_RECEIPT_SHA256,hashlib.sha256(self.PROOF_BYTES).hexdigest())
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual(('installed_verified',2,2),(value['status'],value['runtime_writes'],value['staging_file_writes']))
+            self.assertEqual(self.p.REPAIR_RECEIPT_SHA256,value['repair_proof']['sha256'])
+            self.assertTrue(value['repair_proof']['identity_stable'])
+            self.assertEqual(['_preview/search3-anex-candidate/app/integrations/tourvisor-operator-fuel-passive-intake.php','api-v2.php'],value['changed_files'])
+            self.assertEqual(self.PROOF_BYTES,(home/'.anytoour-int-executor'/self.p.LOCK_REPAIR_OPERATION/'result.json').read_bytes())
+            self.assertEqual(0o644,(private/'grouped-search-update.lock').stat().st_mode&0o777)
+
+    def test_missing_changed_symlink_linked_or_unowned_proof_cannot_acquire_lock_or_write(self):
+        for case in ('missing','hash','mode','hardlink','symlink','parent_mode','parent_symlink','owner'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                proof=home/'.anytoour-int-executor'/self.p.LOCK_REPAIR_OPERATION/'result.json'
+                if case=='missing':proof.unlink()
+                elif case=='hash':
+                    changed=self.PROOF_BYTES.replace(b'"complete"',b'"tampered"',1)
+                    self.assertNotEqual(changed,self.PROOF_BYTES);self.assertEqual(len(changed),len(self.PROOF_BYTES))
+                    proof.write_bytes(changed)
+                elif case=='mode':proof.chmod(0o644)
+                elif case=='hardlink':os.link(proof,proof.with_name('other.json'))
+                elif case=='symlink':proof.rename(proof.with_name('other.json'));proof.symlink_to(proof.with_name('other.json'))
+                elif case=='parent_mode':proof.parent.chmod(0o755)
+                elif case=='parent_symlink':
+                    original=proof.parent;original.rename(original.with_name('other'));original.symlink_to(original.with_name('other'),target_is_directory=True)
+                before=ns['pp_snapshot']()[1]
+                with patch.object(os,'getuid',return_value=os.getuid()+1 if case=='owner' else os.getuid()):
+                    value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual(('blocked_no_replay','activation_repair_proof','not_acquired'),(value['status'],value['reason'],value['publication_lock']))
+                self.assertEqual((0,0,False),(value['runtime_writes'],value['staging_file_writes'],value['backup_retained']))
+                self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_identical_proof_inode_replacement_after_staging_stops_before_apply(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            proof=home/'.anytoour-int-executor'/self.p.LOCK_REPAIR_OPERATION/'result.json';calls=0
+            before=ns['pp_snapshot']()[1]
+            def changed(path):
+                nonlocal calls
+                calls+=1
+                if calls==4:
+                    proof.rename(proof.with_name('old.json'));proof.write_bytes(self.PROOF_BYTES);proof.chmod(0o600)
+            ns['pi_lint']=changed;value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual(('blocked_no_replay','activation_repair_proof',0),(value['status'],value['reason'],value['runtime_writes']))
+            self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+
+    def test_proof_drift_after_first_apply_rolls_back_owned_target(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            proof=home/'.anytoour-int-executor'/self.p.LOCK_REPAIR_OPERATION/'result.json';calls=0
+            before=ns['pp_snapshot']()[1]
+            def changed(path):
+                nonlocal calls
+                calls+=1
+                if calls==5:proof.write_bytes(b'changed')
+            ns['pi_lint']=changed;value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual(('rolled_back_no_replay','activation_repair_proof',2),(value['status'],value['reason'],value['runtime_writes']))
+            self.assertEqual(value['changed_files'],value['rollback_files']);self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_current_lock_must_still_have_exact_corrected_mode_and_empty_shape(self):
+        for case in ('mode','nonempty'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory);lock=private/'grouped-search-update.lock'
+                if case=='mode':lock.chmod(0o664)
+                else:lock.write_bytes(b'other publisher')
+                value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual(('blocked_no_replay','activation_lock_unsafe',0,0),
+                    (value['status'],value['reason'],value['runtime_writes'],value['staging_file_writes']))
+
+    def test_exact_source_admission_and_sealed_old_scope_are_not_widened(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.CURRENT_SOURCE,self.p.REPAIRED_MODE,self.p.REPAIRED_OPERATION],
+                      [self.p.REPAIRED_SOURCE,self.p.REPAIRED_MODE,self.p.CURRENT_OPERATION],
+                      [self.p.REPAIRED_SOURCE,self.p.REPAIRED_MODE,self.p.REPAIRED_OPERATION,'force']):
+            with self.assertRaises(ValueError):self.p.parse(parts)
+        fixture=PassiveFuelActivationPlanTest();fixture.setUp();fixture.command=self.command
+        fixture.test_plan_admission_requires_own_unique_created_command_and_exact_candidate_ci()
+        generated=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,generated.count("if mode not in ('passive-fuel-repaired-activate','reconcile',"))
+        self.assertIn(self.p.REPAIR_RECEIPT_SHA256,generated)
+
+    def test_strict_two_file_completion_requires_verified_correction_proof(self):
+        fixture=PassiveFuelActivationTransactionTest();fixture.setUp()
+        fixture.command=self.command;fixture.fixture=self.fixture
+        fixture.test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files()
 
 
 if __name__=='__main__':unittest.main(verbosity=2)
