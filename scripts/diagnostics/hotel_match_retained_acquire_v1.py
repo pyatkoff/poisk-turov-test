@@ -108,6 +108,25 @@ def inspect_saved_detail(detail, hotel):
                    query_key_shapes=[k if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,40}',k) and not shape.SECRET.search(k) else 'redacted' for k,v in keys],
                    query_value_shapes=['digits:'+str(len(v)) if v.isascii() and v.isdigit() else 'opaque:'+str(len(v)) for k,v in keys],
                    html_entity_present='&amp;' in url,fragment_present=bool(parts.fragment),userinfo_present=bool(parts.username or parts.password))
+        selectors=[]
+        if not any(shape.SECRET.search(k or '') for k,v in keys):
+            for key,text in keys:
+                if key.upper() not in ('HOTELLIST','TOWNFROM'):continue
+                item={'key':key.upper(),'format':'non_identifier_text','positive_tokens':[],
+                      'all_tokens_preserved':True,'native_namespace_authority':False}
+                if re.fullmatch(r'[1-9][0-9]{0,19}',text):
+                    item.update(format='decimal_scalar',positive_tokens=[int(text)])
+                else:
+                    try:parsed=json.loads(text)
+                    except (ValueError,TypeError):parsed=None
+                    if isinstance(parsed,list) and 1<=len(parsed)<=30 and all(type(x) is int and x>0 for x in parsed):
+                        item.update(format='json_positive_integer_array',positive_tokens=parsed)
+                    elif isinstance(parsed,list):item['format']='json_array_not_all_positive_integers'
+                    elif isinstance(parsed,str):item['format']='json_string_not_native_decimal'
+                item['multiple_tokens']=len(item['positive_tokens'])>1
+                item['outside_existing_direct_anex_id_bound']=any(x>99999999 for x in item['positive_tokens'])
+                selectors.append(item)
+        out['selector_analysis']=selectors
     return out
 
 
