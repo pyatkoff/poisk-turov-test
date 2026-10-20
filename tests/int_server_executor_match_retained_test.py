@@ -202,6 +202,33 @@ class QuotaTest(unittest.TestCase):
 
 
 class ProjectionTest(unittest.TestCase):
+    def test_link_audit_separates_missing_empty_and_unrecognized_values(self):
+        missing=self.observation();del missing['row']['operator_link']
+        rows=[missing,*[self.observation(link=x) for x in
+              (None,'',{},'not-an-absolute-url','https://unknown.example/a?hotel=123')]]
+        result=self.fixture(rows)
+        audit=result['retained_link_audit']['observations_by_operator']['25']
+        self.assertEqual(6,audit['observations'])
+        self.assertEqual({'field_missing':1,'null':1,'empty':1,'non_string':1,
+            'relative_or_missing_host':1,'absolute_http_url':1},audit['operator_link']['states'])
+        self.assertEqual({'field_missing':6},audit['native_field_states'])
+        self.assertEqual([],result['candidate_edges'])
+
+    def test_link_audit_never_publishes_url_text_or_query_values(self):
+        secret='private-sentinel-never-publish'
+        url='https://unknown.example/'+secret+'?token='+secret
+        source_raw=json.dumps({'nested':[{'operatorLink':url},{'operator_link':None}]})
+        source={'namespace':'unbound','external_key':'1','source_json':source_raw,
+                'source_sha256':hashlib.sha256(source_raw.encode()).hexdigest()}
+        legacy={'kind':'legacy_source','old_local_id':1,'tv_hotel_id':1546,
+                'snapshot_sha256':'a'*64,'source':source}
+        result=self.fixture([self.observation(link=url),legacy])
+        audit=result['retained_link_audit']
+        self.assertEqual({'absolute_http_url':1,'null':1},audit['legacy_operator_link_fields']['states'])
+        self.assertEqual(1,audit['legacy_sources_scanned'])
+        self.assertNotIn(secret,json.dumps(result));self.assertNotIn('unknown.example',json.dumps(audit))
+        self.assertFalse(audit['acceptance_rules_changed'])
+
     def test_absent_operator_name_and_stored_native_field_are_preserved(self):
         row=self.observation(link=None);row['row'].update(operator_name=None,native_id_type='HOTELLIST',native_id_value='126268')
         result=self.fixture([row]);self.assertEqual(1,result['observed_operators'][0]['with_stored_native_field'])

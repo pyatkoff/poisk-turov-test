@@ -17,7 +17,7 @@ SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
                 'scripts/diagnostics/hotel_match_retained_projection_v1.py',
                 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py',
                 'v2/data/db-v1.php')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '056fe891af1e6e296f999b24844be9817edd778e8985ccc79fa5d67e42153e0a', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'}
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13'}
 
 
 def need(value, reason):
