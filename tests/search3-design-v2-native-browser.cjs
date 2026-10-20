@@ -622,7 +622,8 @@ if(require.main===module)(async()=>{
         }
         if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){await route.fulfill({status:200,contentType:'application/javascript',body:'('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');'});return;}
         if(url.pathname===base+'/search3-local-db-provider-v1.js'){
-          const actual=fs.readFileSync(path.join(assetRoot,'search3-local-db-provider-v1.js'));assert.equal(hash(actual),hash(fs.readFileSync(path.join(sourceRoot,'v2/search3-local-db-provider-v1.js'))));
+          const actual=fs.readFileSync(path.join(assetRoot,'search3-local-db-provider-v1.js')),expected=manifest.graph.scripts.find(row=>row.path==='search3-local-db-provider-v1.js');
+          assert(expected,'Compiled graph pins the LOCAL helper');assert.equal(hash(actual),expected.sha256,'Actual compiled LOCAL helper hash');assert.equal(actual.length,expected.bytes,'Actual compiled LOCAL helper length');
           await route.fulfill({status:200,contentType:'application/javascript',body:actual});return;
         }
         // Headless canonical contracts are exercised separately in the same CI
