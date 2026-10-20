@@ -27,9 +27,94 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
 
 
+def context_identity(scope, hotel):
+    return dict(namespace='anex_online',account=scope['account'],operator_id=13,tv_hotel_id=hotel,
+                country_id=scope['country_id'],departure_id=scope['departure_id'],adults=scope['adults'],
+                childs=[],**scope['wire_context'])
+
+
+def check_new_context(scope, previous):
+    wire=scope.get('wire_context',{})
+    if (scope.get('scope_kind')!='owner_date_variation' or scope.get('context_origin')!='owner_20261020_1031_saved_peer_context'
+            or set(wire)!=set(('date_from','date_to','nights_from','nights_to'))
+            or any(not isinstance(wire.get(k),str) or dt.date.fromisoformat(wire[k]).isoformat()!=wire[k] for k in ('date_from','date_to'))
+            or not dt.datetime.now(dt.timezone.utc).date().isoformat()<=wire['date_from']<=wire['date_to']
+            or (dt.date.fromisoformat(wire['date_to'])-dt.date.fromisoformat(wire['date_from'])).days>6
+            or any(type(wire.get(k)) is not int for k in ('nights_from','nights_to'))
+            or not 1<=wire['nights_from']<=wire['nights_to']<=28
+            or scope.get('search_start_maximum')!=1 or scope.get('supplier_http_maximum')!=30):
+        raise ValueError('date_context_policy')
+    ids=set(scope['selected_tv_hotel_ids'])
+    for record in previous:
+        p=record['params']
+        if (p['countryId']==scope['country_id'] and p['departureId']==scope['departure_id']
+                and p['adults']==scope['adults'] and p['childs']==[] and 13 in p['operatorIds']
+                and ids.intersection(p['hotelIds'])
+                and wire['date_from']<=p['dateTo'] and p['dateFrom']<=wire['date_to']):
+            raise ValueError('effective_date_range_consumed_no_replay')
+
+
+def reserve_contexts(home, scope, operation, previous):
+    """Append context claims; never mutate/recreate the original hotel claims."""
+    check_new_context(scope,previous)
+    root=Path(home)/'.anytoour-match';hotel=root/'retained-selection-claims.json'
+    if not root.is_dir() or root.is_symlink() or root.resolve()!=root:raise ValueError('selection_root')
+    with os.fdopen(os.open(hotel,os.O_RDONLY|os.O_NOFOLLOW),'rb') as saved:
+        fcntl.flock(saved,fcntl.LOCK_SH)
+        if os.fstat(saved.fileno()).st_nlink!=1:raise ValueError('selection_ledger_path')
+        raw=saved.read(8*1024*1024+1)
+        if len(raw)>8*1024*1024:raise ValueError('selection_ledger_path')
+        old=json.loads(raw)
+        if (old.get('schema_version')!=1 or any('TOURVISOR_ANEX_JWT:13:'+str(hid) not in old.get('claims',{})
+                                               for hid in scope['prior_selected_hotel_ids'])):
+            raise ValueError('selection_prior_claim_missing')
+        path=root/'retained-context-claims.json'
+        with os.fdopen(os.open(path,os.O_RDWR|os.O_CREAT|os.O_NOFOLLOW,0o600),'r+b') as stream:
+            fcntl.flock(stream,fcntl.LOCK_EX)
+            if os.fstat(stream.fileno()).st_nlink!=1 or os.fstat(stream.fileno()).st_size>8*1024*1024:raise ValueError('context_ledger_path')
+            body=stream.read();data=json.loads(body) if body else {'schema_version':1,'claims':{}}
+            if data.get('schema_version')!=1 or not isinstance(data.get('claims'),dict):raise ValueError('context_ledger_shape')
+            for hid in scope['selected_tv_hotel_ids']:
+                item=context_identity(scope,hid);key=hashlib.sha256(canonical(item)).hexdigest()
+                for existing in data['claims'].values():
+                    c=existing['context']
+                    if (all(c.get(k)==item[k] for k in ('account','namespace','operator_id','tv_hotel_id','country_id','departure_id','adults','childs'))
+                            and item['date_from']<=c['date_to'] and c['date_from']<=item['date_to']):
+                        raise ValueError('context_consumed_no_replay')
+                data['claims'][key]={'context':item,'operation_id':operation,'scope_id':scope['scope_id'],'state':'reserved_before_http_no_replay'}
+            encoded=canonical(data);stream.seek(0);stream.write(encoded);stream.truncate();stream.flush();os.fsync(stream.fileno())
+            stream.seek(0)
+            if stream.read()!=encoded:raise ValueError('context_reservation_unknown_no_replay')
+            fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+            try:os.fsync(fd)
+            finally:os.close(fd)
+        saved.seek(0)
+        if saved.read()!=raw:raise ValueError('hotel_ledger_changed')
+    return {'context_reservation_sha256':hashlib.sha256(encoded).hexdigest(),'hotel_ledger_sha256':hashlib.sha256(raw).hexdigest()}
+
+
+def inspect_saved_detail(detail, hotel):
+    """Structure only: never emit original URL, query values or opaque path tokens."""
+    value=native_pair(detail,hotel);url=detail.get('operatorLink') if isinstance(detail,dict) else None
+    out={'proof':value,'operator_link_type':type(url).__name__}
+    if isinstance(url,str):
+        parts=urllib.parse.urlsplit(url);keys=urllib.parse.parse_qsl(parts.query,keep_blank_values=True)
+        host=(parts.hostname or '').lower()
+        out.update(operator_link_sha256=hashlib.sha256(url.encode()).hexdigest(),
+                   recognized_anex_host=bool(re.fullmatch(r'(?:[a-z0-9-]+\.)*(?:anextour\.ru|anextour\.com)',host)),
+                   host=host if re.fullmatch(r'(?:[a-z0-9-]+\.)*(?:anextour\.ru|anextour\.com)',host) else 'unrecognized',
+                   path_sha256=hashlib.sha256(parts.path.encode()).hexdigest(),
+                   path_shape=[x if x in ('hotel','hotels','search','tour','tours','online','index.php','search.php') else 'digits:'+str(len(x)) if x.isascii() and x.isdigit() else 'opaque:'+str(len(x)) for x in parts.path.split('/') if x],
+                   query_key_shapes=[k if re.fullmatch(r'[A-Za-z_][A-Za-z_0-9]{0,40}',k) and not shape.SECRET.search(k) else 'redacted' for k,v in keys],
+                   query_value_shapes=['digits:'+str(len(v)) if v.isascii() and v.isdigit() else 'opaque:'+str(len(v)) for k,v in keys],
+                   html_entity_present='&amp;' in url,fragment_present=bool(parts.fragment),userinfo_present=bool(parts.username or parts.password))
+    return out
+
+
 def select_scope_rows(scope, current, today=None):
     """Select a reviewed, immutable, never-selected roster; old105 is separate."""
     today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
+    variation=scope.get('scope_kind')=='owner_date_variation'
     ids = scope.get('selected_tv_hotel_ids')
     prior = scope.get('prior_selected_hotel_ids')
     if (type(scope.get('schema_version')) is not int or scope['schema_version'] != 1
@@ -38,8 +123,9 @@ def select_scope_rows(scope, current, today=None):
             or any(type(v) is not int or v < 1 for v in ids) or ids != sorted(set(ids))
             or type(scope.get('selected_count')) is not int or len(ids) != scope['selected_count']
             or not isinstance(prior, list) or any(type(v) is not int or v < 1 for v in prior)
-            or prior != sorted(set(prior)) or set(ids).intersection(prior)
-            or scope.get('supplier_http_maximum') != 400
+            or prior != sorted(set(prior)) or (not variation and set(ids).intersection(prior))
+            or scope.get('supplier_http_maximum') != (30 if variation else 400)
+            or (variation and (len(ids)>25 or 8038 in ids or not set(ids).issubset(prior)))
             or scope.get('safe_to_write_now') is not False
             or any(type(scope.get(k)) is not int or scope[k] != 0 for k in ('database_writes','mapping_writes'))):
         raise ValueError('continuation_scope_shape')
@@ -49,13 +135,21 @@ def select_scope_rows(scope, current, today=None):
     if (type(scope.get('children_count')) is not int or scope['children_count'] != 0 or scope.get('child_ages_signature') != ''
             or scope['adults'] > 6):
         raise ValueError('continuation_party')
-    identity = hashlib.sha256(canonical({k: scope[k] for k in
-        ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')})).hexdigest()
+    identity_keys=('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')+(('scope_kind','wire_context','context_origin') if variation else ())
+    identity = hashlib.sha256(canonical({k: scope[k] for k in identity_keys})).hexdigest()
     if scope.get('scope_id') != identity or scope.get('cohort') != 'anex-next-'+identity[:16]:
         raise ValueError('continuation_scope_digest')
     if hashlib.sha256(canonical(current)).hexdigest() != scope.get('parent_evidence_sha256'):
         raise ValueError('continuation_parent_evidence')
     rows = {r['tv_hotel_id']: r for r in current['rows']}
+    if variation:
+        peer=rows.get(scope.get('context_peer_tv_hotel_id'),{})
+        ctx=peer.get('future_context',{})
+        if (hashlib.sha256(canonical(peer)).hexdigest()!=scope.get('context_peer_row_sha256')
+                or ctx.get('source')!='user_search' or any(ctx.get(k)!=scope[k] for k in ('country_id','departure_id','adults','children_count'))
+                or ctx.get('child_ages_signature')!='' or scope['wire_context']!={'date_from':ctx.get('departure_date'),'date_to':ctx.get('departure_date'),'nights_from':ctx.get('nights'),'nights_to':ctx.get('nights')}):
+            raise ValueError('date_context_peer_provenance')
+        check_new_context(scope,[])
     selected = []
     for hid in ids:
         row = rows.get(hid); ctx = (row or {}).get('future_context') or {}; target = (row or {}).get('target') or {}
@@ -168,10 +262,13 @@ def native_pair(detail, hotel):
 
 
 class Client:
+    http_maximum=400
+    search_start_maximum=None
     def __init__(self, home, root, directory, operation):
         self.q = Quota(home); self.directory = directory; self.operation = operation
         self.reserved = 0; self.calls = 0; self.tariff = 0; self.unknown = 0
         self.counts = collections.Counter(); self.deadline = time.monotonic()+660
+        self.http_maximum=400;self.search_start_maximum=None
         with self.q.locked() as (_, data, _):
             self.before = {k: data[k] for k in ('provider_day','physical_http_attempts','tariff_search_units')}
         php = 'require $argv[1];$a=defined("TOURVISOR_ANEX_JWT")?TOURVISOR_ANEX_JWT:getenv("TOURVISOR_ANEX_JWT");$b=defined("TOURVISOR_JWT")?TOURVISOR_JWT:getenv("TOURVISOR_JWT");if(!$a||$a===$b)exit(42);fwrite(STDOUT,(string)$a);'
@@ -182,7 +279,8 @@ class Client:
         self.open = urllib.request.build_opener(shape.NoRedirect())
 
     def call(self, action, path, params):
-        if self.reserved >= 400 or time.monotonic() > self.deadline:
+        if (self.reserved >= self.http_maximum or time.monotonic() > self.deadline
+                or (action=='search_start' and self.search_start_maximum is not None and self.tariff>=self.search_start_maximum)):
             raise ValueError('finite_budget_stop')
         index = self.reserved+1
         self.q.reserve(self.operation,index,action); self.reserved=index
@@ -224,7 +322,9 @@ def acquire(client, directory, selected, sleep=time.sleep, scope=None):
     planning=[{'tv_hotel_id':r['tv_hotel_id'],'country_id':country,'departure_id':departure,'adults':adults,
                'child_ages_signature':'','departure_date':r['future_context']['departure_date'],
                'nights':r['future_context']['nights'],'missing_operator_ids':[13]} for r in selected]
-    if scope and scope.get('context_grouping') == 'exact_date_nights':
+    if scope and scope.get('scope_kind')=='owner_date_variation':
+        groups=[dict(scope['wire_context'],hotel_ids=[r['tv_hotel_id'] for r in selected])]
+    elif scope and scope.get('context_grouping') == 'exact_date_nights':
         contexts=collections.defaultdict(list)
         for row in planning:contexts[(row['departure_date'],row['nights'])].append(row)
         groups=[group for key in sorted(contexts) for group in shape.chunks(contexts[key])]
@@ -301,10 +401,17 @@ if __name__=='__main__':
                 or json.loads(raw)!=scope or operation!=scope.get('operation_id')
                 or data.get('parent_evidence_sha256')!=scope.get('parent_evidence_sha256')):raise SystemExit('continuation_scope_binding')
         selected=select_scope_rows(scope,data['current'])
-        reserve_selection(Path.home(),scope,operation)
+        if scope.get('scope_kind')=='owner_date_variation':
+            context_claim=reserve_contexts(Path.home(),scope,operation,data['prior_effective_requests'])
+        else:reserve_selection(Path.home(),scope,operation)
     client=Client(Path.home(),root,directory,os.environ['MATCH_RETAINED_OPERATION'])
+    if scope and scope.get('scope_kind')=='owner_date_variation':
+        client.http_maximum=30;client.search_start_maximum=1
     result=acquire(client,directory,selected,scope=scope)
     result['parent_evidence_sha256']=scope['parent_evidence_sha256'] if scope else PARENT_EVIDENCE
     result['selected_id_sha256']=shape.plan_id_digest([r['tv_hotel_id'] for r in selected])
     if scope:result.update(continuation_scope_sha256=data['continuation_scope_sha256'],scope_id=scope['scope_id'])
+    if scope and scope.get('scope_kind')=='owner_date_variation':
+        if hashlib.sha256((Path.home()/'.anytoour-match/retained-selection-claims.json').read_bytes()).hexdigest()!=context_claim['hotel_ledger_sha256']:raise SystemExit('hotel_ledger_changed_unknown_no_replay')
+        result.update(context_claim,context_origin=scope['context_origin'],wire_context=scope['wire_context'])
     print(json.dumps(result,sort_keys=True,separators=(',',':')))
