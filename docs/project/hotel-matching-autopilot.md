@@ -109,16 +109,43 @@ projection fields совпали; новых accepted0/HTTP0/DBreads0/mappingwri
 Исправление источника #4672/control #4673 проверено native20tests и штатным
 contract39346753081/Security39346734598+39346753057 SUCCESS.
 
-**Следующий data-результат:** для одной полезной группы проверить scoped CURRENT
-прямые ANEX effective mappings и уже принятые provider-связи, исключить имеющиеся
-пары и явно выделить отсутствующий native/namespace proof.139 дополнительных IDs
-не являются готовой missing-очередью. Только недостающие факты получать адресно
-через `TOURVISOR_ANEX_JWT` с общим quota helper; до массового acquisition подтвердить
-operator/account binding. Повторно искать ссылки в неизменённой выгрузке не нужно.
-Пригодные независимые пары проходят штатные CURRENT/manual/exclusion/occupancy/geo
-guards, acceptance/readback/resolver; извлечение ID или CI не считаются gain.
-Старые fixed modes не ретаргетируются. Failed intakev1/v2 reconciled/no-replay;
-успешные quota apply/intakev3/saved projection не повторяются без нового решения.
+**Сквозной data-пакет20.10.2026 выполнен:** CURRENT39348390675 проверил те же5214
+IDs через штатный direct ANEX resolver с manual/exclusions.3689 имеют прямую связь,
+из них3650активных/неисключённых;136targetsнепригодны, активный denominator5078.
+613missing directANEX имели валидные canonical anchors и реальные будущие контексты.
+Для105Turkey4/Moscow1/2A/nochildren выполнены10поисков через `TOURVISOR_ANEX_JWT`:
+38physicalHTTP,8вернувшихсяANEXhotels,7точных native pairs,1ссылка без nativeID.
+Отсутствие остальных97в этих контекстах не означает глобальное отсутствие у ТО.
+Binding operator13/этойучётки подтверждён фактическим detail/anextour URL.
+
+Writer39353313622 принял **7новых ANEX-связей на7отелях**, каждая проверена после
+COMMIT и через canonical resolver.38HTTP — полный supplier расход этого пакета;
+write/post-CURRENT новых supplier calls не делали. Первый writer39352154123 имел
+0writes из-за порядка ключей JSON; это дефект адаптера, а не7реальных conflicts.
+Исправление сохраняет точный6-field set/типы/значения/хеши, canonical-roundtrip
+регрессия и real MySQL COMMIT/HOLD/rollback/UNKNOWN входят в28tests. Старый0write
+receipt сохранён и обязателен для отдельного repairedv2; ни старый writer, ни HTTP
+не replay. Legacy fixed5 writer/validator не изменены и не ретаргетированы.
+
+Post-CURRENT39353523840 на **тех же5214IDs** подтвердил ровно7новых пар без удаления
+старых: directANEX3696на всём наборе/3657на5078пригодных; ANEX union cSAMO3663,
+FUNSUN1004, BGunion1544, INTOURIST1073на том же пригодном наборе. Это identity
+registry/resolver coverage, не подтверждённая live30 availability или SEARCH rendering.
+Полные receipts/хеши/точныеIDs/исходный и конечный срезы — в
+[отчёте выполнения](../../reports/hotel-match-retained-intake-execution-20261020.json).
+
+**Следующий data-результат:** из606готовых missing directANEX отделены98уже
+прошедших этот acquisition и508ещё не выбранных. Крупнейшая новая однородная группа:
+55Moscow1→Thailand2/2A/nochildren с реальными будущими контекстами. Обобщить выбор
+следующего immutable scope в том же проверенном carrier/helpers, затем native proof
+→ CURRENT/manual/exclusion/occupancy/geo → guarded acceptance/readback; не создавать
+отдельный runner для каждого поля/малой delta. Режим первых105закрыт/consumed и не
+допускает новое имя для того же запроса. Для98нужен действительно новый факт/контекст,
+а не неизменённый повтор. Common4 сохраняется; доступ других ТО/namespace bridge
+должен быть доказан отдельно. Общий5000account/day budget и UNKNOWN сохраняются;
+неизмеренный глобальный расход не объявляется свободным остатком. Intake/raw/link
+parsing/quota apply/старые операции повторно не открываются. SEARCH effect — отдельный
+handoff без изменения UI/provider flags. Расписания/enabled/paused этим пакетом не менялись.
 
 ### 1. Общий измеримый срез по ТО
 
@@ -211,14 +238,13 @@ MATCH автоматически. Это не требует включать pr
 При отсутствии всех доступных действий сохранить конечный checkpoint и точное
 условие продолжения, без неизменённых нулевых прогонов/новых имён старых операций.
 
-**Ближайший конечный пакет:** scoped CURRENT существующих provider-связей,
-включая direct ANEX, для выбранной полезной группы → адресное недостающее
-native/namespace доказательство → CURRENT → пригодная acceptance/readback.
-Intake, quota helper и проверка полноты retained operatorLink завершены; они не
-образуют новую подготовительную очередь. Saved-link audit39346987559 consumed:
-неизменённый parsing, перепись и HTTP не повторять. Новые запросы направлять на конкретный пробел и считать принятые
-связи/HTTP/время;5000 запросов не означают5000 новых отелей. Расписания и enabled/paused
-состояния этим пакетом не менялись; текущие operational states читать из receipts.
+**Ближайший конечный пакет:** следующий непроходивший реальный контекст среди508
+готовых targets → адресное native доказательство → свежая CURRENT/guarded запись →
+per-row readback/resolver и delta на том же наборе. Первый105пакет завершён7новыми
+связями/38HTTP; его intake/acquisition/oldwriter/v2writer/post-CURRENT consumed.
+Повторение неизменённых запросов/переписей и отчётный CI без новых данных не gain.
+5000запросов не означают5000новых отелей. Operational states читаются из receipts;
+этот closeout не включает worker и не переключает расписания или соседние очереди.
 
 ## Старт каждого запуска
 
