@@ -1356,11 +1356,15 @@ class UpdateContracts(unittest.TestCase):
         self.assertEqual(set(before), set(after)); self.assertEqual(len(after), 855)
         self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
         m = json.loads((self.root / 'derived/control/manifest.json').read_bytes())
-        self.assertEqual(m['derived_from']['changed_source_payload_files'], sorted(['visual-search/app.js', creator.LEDGER_PATH, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
+        baseline = remote.inventory(self.baseline / 'payload')
+        # Native-only fixture changes do not imply fresh canonical/ledger bytes.
+        self.assertEqual(m['derived_from']['changed_source_payload_files'],
+            sorted(n for n in before if before[n] != baseline.get(n)))
         q2, a2 = pub.derive(self.source, self.baseline, self.root / 'again', {k: self.q[k] for k in original_request()}, 'e' * 64)
         self.assertEqual(q2, self.q); self.assertEqual(a2, self.archive)
 
     def test_hotel_and_offer_presentation_files_retain_every_other_payload_byte(self):
+        baseline = remote.inventory(self.baseline / 'payload')
         for i, name in enumerate(('visual-search/hotel-details-v1.js', 'visual-search/offer-list-v1.js')):
             source_path = self.source / 'payload' / name; original = source_path.read_bytes()
             source_path.write_bytes(b'reviewed final Sites presentation')
@@ -1369,9 +1373,10 @@ class UpdateContracts(unittest.TestCase):
                 q, _ = pub.derive(self.source, self.baseline, output, self.q, 'e' * 64)
                 remote.verify(output, q)
                 manifest = json.loads((output / 'control/manifest.json').read_bytes())
+                before = remote.inventory(self.source / 'payload')
                 self.assertEqual(manifest['derived_from']['changed_source_payload_files'],
-                    sorted(['visual-search/app.js', creator.LEDGER_PATH, name, *remote.NATIVE_REPLACED, *remote.NATIVE_ADDED]))
-                before = remote.inventory(self.source / 'payload'); after = remote.inventory(output / 'payload')
+                    sorted(n for n in before if before[n] != baseline.get(n)))
+                after = remote.inventory(output / 'payload')
                 self.assertEqual({n for n in before if before[n] != after[n]}, set(remote.NATIVE_ROUTE_CHANGES))
                 self.assertEqual((output / 'payload' / name).read_bytes(), source_path.read_bytes())
             finally:
