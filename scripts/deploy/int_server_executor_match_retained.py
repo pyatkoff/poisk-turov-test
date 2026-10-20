@@ -17,20 +17,11 @@ MODES = {'match-retained-intake': 'common4-retained',
          'match-retained-acquire': 'anex105-current',
          'match-retained-anex-write': 'anex7-verified',
          'match-retained-anex-write-v2': 'anex7-reconciled'}
-SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php',
-                'scripts/diagnostics/hotel_match_retained_projection_v1.py',
-                'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py',
-                'v2/data/db-v1.php',
-                'scripts/diagnostics/hotel_match_retained_current_v1.php',
-                'scripts/diagnostics/hotel_match_anex_effective_coverage.php',
-                'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php',
-                'app/integrations/anex-search-mapping-registry.php',
-                'scripts/diagnostics/hotel_match_retained_acquire_v1.py',
-                'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py',
-                'scripts/diagnostics/hotel_match_retained_anex_write_v1.php',
-                'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php')
-SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'fc0c7f1dc6d913dd83ac7713ba1572ca3f17921da16d11b57e246c289e3615e2', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py': '24e6efc5e9d8ff849a866ad579833ebfc616d756eb400c7375efefd665137995', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py': '9690f85d2d7e5c5e66f946e83024c1df98ab7f4e35285e9b0cbd8acde72f385f', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php': '6bf08e47b7a2db279547a2f44b64063dd66c830f846b6aabc5ed6ab0095844ce', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php': '4c6f232d139b2d88727be17727a072acefcb59b9a1aec5086b95c085318a04d4'}
+SOURCE_FILES = ('scripts/diagnostics/hotel_match_retained_intake_v1.php', 'scripts/diagnostics/hotel_match_retained_projection_v1.py', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py', 'v2/data/db-v1.php', 'scripts/diagnostics/hotel_match_retained_current_v1.php', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php', 'app/integrations/anex-search-mapping-registry.php', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json')
+SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c504844d96632e7bcd13d3becf16a7b7e5b388a64c2ef11e8c24f23a25a52c1', 'scripts/diagnostics/hotel_match_retained_projection_v1.py': '6ad86cdcd33edce8d20d238fdd4ba46dc61b76b16e6b32a85028fb2853a000d4', 'scripts/diagnostics/hotel_match_tourvisor_quota_v1.py': '74a9735375fd40bb776c2d8e6f4af15fc477dd88dc6b879e18436e90ad5b4df5', 'v2/data/db-v1.php': 'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13', 'scripts/diagnostics/hotel_match_retained_current_v1.php': 'fc0c7f1dc6d913dd83ac7713ba1572ca3f17921da16d11b57e246c289e3615e2', 'scripts/diagnostics/hotel_match_anex_effective_coverage.php': '638694ec2d7254d4436f0cdac3f7ce780ef3c987d12ecf0e648c9ad64e2f4067', 'scripts/diagnostics/hotel_match_live30_common4_anex_current_v4.php': '98243ba62910a2becf3c15a6a5c73d9635d07bca84374110d377577680a906b3', 'app/integrations/anex-search-mapping-registry.php': 'ba06d082ac66d671efc01569a7d11e9d8b5abd73cabde8ea72ecc154b3e67814', 'scripts/diagnostics/hotel_match_retained_acquire_v1.py': '1007341fa5032694e0a22d40e72bb8152ef49399ce49da6d2509e2b9168ecfe7', 'scripts/diagnostics/hotel_match_live30_common4_continuation_acquire_v10.py': '9690f85d2d7e5c5e66f946e83024c1df98ab7f4e35285e9b0cbd8acde72f385f', 'scripts/diagnostics/hotel_match_retained_anex_write_v1.php': '0156d1cad6a1f16d6eff5b5587993fafb61d8ad2854e5da3ef4f26b998aa8e06', 'scripts/diagnostics/hotel_match_live30_common4_anex_writer_v5.php': '4c6f232d139b2d88727be17727a072acefcb59b9a1aec5086b95c085318a04d4', 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json': 'c0b1651a689325017203ee9529a26c87a4154061675cf10fb72786864a84997e'}
 
+
+NEXT_SCOPE = {'cohort': 'anex-next-e424c34b2b9d970f', 'operation_id': 'int-andromeda-match-retained-acquire-20261020-v2', 'write_operation_id': 'int-andromeda-match-retained-anex-write-20261020-v3', 'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2', 'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57', 'scope_id': 'e424c34b2b9d970ff21026d97b1a4cf4bacc1e39f3023d0b01f8088cd9359525', 'selected_count': 55, 'path': 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'sha256': 'c0b1651a689325017203ee9529a26c87a4154061675cf10fb72786864a84997e'}
 
 def need(value, reason):
     if not value:
@@ -52,10 +43,14 @@ def register_parser(core):
         prefix = 'retained-readback' if mode=='match-retained-readback' else 'retained-project' if mode=='match-retained-project' else 'retained-current' if mode=='match-retained-current' else 'retained-acquire' if mode=='match-retained-acquire' else 'retained-anex-write' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') else 'retained' if mode == 'match-retained-intake' else 'quota5000'
         need(re.fullmatch(r'int-andromeda-match-' + prefix + r'-[0-9]{8}-v[1-9][0-9]*', operation) is not None,
              'retained_operation_scope')
-        need(cohort == MODES[mode], 'retained_cohort')
-        if mode=='match-retained-acquire':need(operation=='int-andromeda-match-retained-acquire-20261020-v1','acquire_consumed_scope')
+        continuation = cohort == NEXT_SCOPE['cohort'] and mode in ('match-retained-acquire','match-retained-anex-write-v2')
+        need(cohort == MODES[mode] or continuation, 'retained_cohort')
+        if continuation:
+            need(operation == NEXT_SCOPE['operation_id' if mode=='match-retained-acquire' else 'write_operation_id'], 'continuation_operation')
+            need(parts[4] == NEXT_SCOPE['parent_operation_id' if mode=='match-retained-acquire' else 'operation_id'], 'continuation_parent')
+        if mode=='match-retained-acquire' and not continuation:need(operation=='int-andromeda-match-retained-acquire-20261020-v1','acquire_consumed_scope')
         if mode=='match-retained-anex-write':need(operation=='int-andromeda-match-retained-anex-write-20261020-v1','write_fixed_scope')
-        if mode=='match-retained-anex-write-v2':need(operation=='int-andromeda-match-retained-anex-write-20261020-v2','write_reconciled_fixed_scope')
+        if mode=='match-retained-anex-write-v2' and not continuation:need(operation=='int-andromeda-match-retained-anex-write-20261020-v2','write_reconciled_fixed_scope')
         need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
         command = {'source_sha': source, 'mode': mode, 'operation_id': operation, 'cohort': cohort}
         if target_mode:
@@ -93,26 +88,54 @@ def bundle_source(source_root):
 
 
 REMOTE_HANDLER = r'''
+def retained_next_scope(stage):
+    path=stage/NEXT_SCOPE['path']
+    if not safe_file(path,262144) or hashlib.sha256(path.read_bytes()).hexdigest()!=NEXT_SCOPE['sha256']:fail('continuation_scope_file')
+    value=safe_json(path,262144)
+    if any(value.get(k)!=v for k,v in NEXT_SCOPE.items() if k not in ('path','sha256')):fail('continuation_scope_policy')
+    return value
+
+def retained_prior_selection(scope):
+    name=scope['prior_acquisition_operation_id'];target=private/name
+    if target.is_symlink() or target.resolve()!=target:fail('continuation_prior_path')
+    wrapper=safe_json(target/'result.json',4194304);reservation=safe_json(target/'reservation.json',65536)
+    data=wrapper.get('match_retained',{}).get('data',{})
+    digest=hashlib.sha256(json.dumps(data,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    if (wrapper.get('status')!='complete' or wrapper.get('mode')!='match-retained-acquire'
+            or wrapper.get('production_unchanged') is not True or data.get('acquisition_state')!='completed'
+            or data.get('unknown_http_calls')!=0 or any(x.get('operation_id')!=name for x in (wrapper,reservation,data))
+            or wrapper.get('source_sha')!=reservation.get('source_sha') or data.get('source_sha')!=reservation.get('source_sha')
+            or digest!=scope['prior_acquisition_evidence_sha256'] or digest!=wrapper.get('match_retained',{}).get('evidence_sha256')):fail('continuation_prior_binding')
+    plan=safe_json(target/'acquisition-plan.json',1048576)
+    if plan.get('hotel_ids')!=scope['prior_selected_hotel_ids']:fail('continuation_prior_roster')
+    return hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
+
 def write_retained_anex_target(stage):
-    reconciled=private/'int-andromeda-match-retained-anex-write-20261020-v1'
-    if reconciled.is_symlink() or reconciled.resolve()!=reconciled:fail('write_reconciliation_path')
-    prior_write=safe_json(reconciled/'result.json',1048576)
-    old=prior_write.get('match_retained',{}).get('data',{})
-    old_evidence='21f9f77b14a51e6935c1be9d4b7af0458c4e1e4df5ecf240d94709cefa8b47c7'
-    if (prior_write.get('status')!='complete' or prior_write.get('production_unchanged') is not True or prior_write.get('mode')!='match-retained-anex-write'
-            or old.get('state')!='completed_no_eligible' or old.get('new_accepted_mappings')!=0
-            or any(x.get(k)!=0 for x in (prior_write,old) for k in ('supplier_calls','database_writes','mapping_writes'))
-            or hashlib.sha256(json.dumps(old,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=old_evidence
-            or prior_write.get('match_retained',{}).get('evidence_sha256')!=old_evidence
-            or (reconciled/'commit-attempt.json').exists()):fail('write_v1_not_reconciled_zero')
-    reconciled_hash=hashlib.sha256((reconciled/'result.json').read_bytes()).hexdigest()
+    continuation=retained_next_scope(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else None
+    if not continuation:
+        reconciled=private/'int-andromeda-match-retained-anex-write-20261020-v1'
+        if reconciled.is_symlink() or reconciled.resolve()!=reconciled:fail('write_reconciliation_path')
+        prior_write=safe_json(reconciled/'result.json',1048576)
+        old=prior_write.get('match_retained',{}).get('data',{})
+        old_evidence='21f9f77b14a51e6935c1be9d4b7af0458c4e1e4df5ecf240d94709cefa8b47c7'
+        if (prior_write.get('status')!='complete' or prior_write.get('production_unchanged') is not True or prior_write.get('mode')!='match-retained-anex-write'
+                or old.get('state')!='completed_no_eligible' or old.get('new_accepted_mappings')!=0
+                or any(x.get(k)!=0 for x in (prior_write,old) for k in ('supplier_calls','database_writes','mapping_writes'))
+                or hashlib.sha256(json.dumps(old,sort_keys=True,separators=(',',':')).encode()).hexdigest()!=old_evidence
+                or prior_write.get('match_retained',{}).get('evidence_sha256')!=old_evidence
+                or (reconciled/'commit-attempt.json').exists()):fail('write_v1_not_reconciled_zero')
+        reconciled_hash=hashlib.sha256((reconciled/'result.json').read_bytes()).hexdigest()
     name=payload.get('target_operation_id','')
-    if name!='int-andromeda-match-retained-acquire-20261020-v1':fail('write_acquisition_scope')
+    if name!=(continuation['operation_id'] if continuation else 'int-andromeda-match-retained-acquire-20261020-v1'):fail('write_acquisition_scope')
     target=private/name
     if target.is_symlink() or target.resolve()!=target:fail('write_acquisition_path')
     prior=safe_json(target/'result.json',4194304);reservation=safe_json(target/'reservation.json',65536)
     acquired=prior.get('match_retained',{}).get('data',{})
-    expected='cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb'
+    expected=prior.get('match_retained',{}).get('evidence_sha256') if continuation else 'cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb'
+    if continuation and (acquired.get('continuation_scope_sha256')!=NEXT_SCOPE['sha256'] or acquired.get('scope_id')!=continuation['scope_id']
+            or acquired.get('parent_evidence_sha256')!=continuation['parent_evidence_sha256']
+            or acquired.get('selected_hotels')!=continuation['selected_count']
+            or acquired.get('selected_id_sha256')!=hashlib.sha256(json.dumps(continuation['selected_tv_hotel_ids'],separators=(',',':')).encode()).hexdigest()):fail('write_continuation_binding')
     if (prior.get('status')!='complete' or prior.get('mode')!='match-retained-acquire'
             or acquired.get('acquisition_state')!='completed' or acquired.get('unknown_http_calls')!=0
             or any(x.get('operation_id')!=name for x in (prior,reservation,acquired))
@@ -122,7 +145,7 @@ def write_retained_anex_target(stage):
             or prior.get('production_unchanged') is not True
             or any(x.get(k)!=0 for x in (prior,acquired) for k in ('database_writes','mapping_writes'))):fail('write_acquisition_binding')
     parent_hash=hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
-    current_dir=private/'int-andromeda-match-retained-current-20261020-v1'
+    current_dir=private/(continuation['parent_operation_id'] if continuation else 'int-andromeda-match-retained-current-20261020-v1')
     current=safe_json(current_dir/'result.json',32*1024*1024)
     if hashlib.sha256((current_dir/'result.json').read_bytes()).hexdigest()!=acquired.get('parent_receipt_sha256'):fail('write_current_parent_drift')
     context=current.get('match_retained',{}).get('data',{})
@@ -152,9 +175,11 @@ def write_retained_anex_target(stage):
         if not snap or snap.get('acquisition_ready') is not True:fail('write_target_snapshot')
         pairs.append({'edge':edge,'snapshot':snap})
     actual=sorted((p['edge']['anex_hotel_id'],p['edge']['tv_hotel_id']) for p in pairs)
-    if actual!=sorted([('9384',35297),('12901',1474),('8475',1014),('8476',1095),('14818',1015),('26591',3418),('19606',57027)]):fail('write_exact_seven_pairs')
-    manifest={'operation_id':operation,'acquisition_evidence_sha256':expected,
-        'reconciled_write_evidence_sha256':old_evidence,'pairs':pairs}
+    if not continuation and actual!=sorted([('9384',35297),('12901',1474),('8475',1014),('8476',1095),('14818',1015),('26591',3418),('19606',57027)]):fail('write_exact_seven_pairs')
+    if continuation and (not pairs or len(pairs)>continuation['selected_count'] or any(p['edge']['tv_hotel_id'] not in continuation['selected_tv_hotel_ids'] for p in pairs)):fail('write_continuation_roster')
+    manifest={'operation_id':operation,'acquisition_evidence_sha256':expected,'pairs':pairs}
+    if continuation:manifest.update(continuation_scope_sha256=NEXT_SCOPE['sha256'],scope_id=continuation['scope_id'])
+    else:manifest['reconciled_write_evidence_sha256']=old_evidence
     fd=os.open(op/'write-manifest.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,'wb') as handle:handle.write(json.dumps(manifest,sort_keys=True).encode());handle.flush();os.fsync(handle.fileno())
     config=project/'config.php'
@@ -175,20 +200,22 @@ def write_retained_anex_target(stage):
         result['match_retained_write_failure']=data;fail('write_failed_no_replay')
     if (data.get('supplier_calls')!=0 or data.get('safe_to_write_now') is not False
             or hashlib.sha256((target/'result.json').read_bytes()).hexdigest()!=parent_hash
-            or hashlib.sha256((reconciled/'result.json').read_bytes()).hexdigest()!=reconciled_hash
+            or (not continuation and hashlib.sha256((reconciled/'result.json').read_bytes()).hexdigest()!=reconciled_hash)
             or hashlib.sha256(config.read_bytes()).hexdigest()!=config_hash):fail('write_post_binding_unknown_no_replay')
     data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
         cohort=payload['cohort'],target_operation_id=name,parent_receipt_sha256=parent_hash,
-        acquisition_evidence_sha256=expected,raw_evidence_reverified_pairs=7,no_replay=True,
-        reconciled_write_evidence_sha256=old_evidence,reconciled_write_receipt_sha256=reconciled_hash)
+        acquisition_evidence_sha256=expected,raw_evidence_reverified_pairs=len(pairs),no_replay=True)
+    if continuation:data.update(continuation_scope_sha256=NEXT_SCOPE['sha256'],scope_id=continuation['scope_id'])
+    else:data.update(reconciled_write_evidence_sha256=old_evidence,reconciled_write_receipt_sha256=reconciled_hash)
     evidence=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
     fd=os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
     with os.fdopen(fd,'wb') as handle:handle.write(evidence);handle.flush();os.fsync(handle.fileno())
     return {'evidence_sha256':hashlib.sha256(evidence).hexdigest(),'data':data}
 
 def acquire_retained_target(stage):
+    continuation=retained_next_scope(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else None
     name=payload.get('target_operation_id','')
-    if name!='int-andromeda-match-retained-current-20261020-v1':fail('acquire_parent_scope')
+    if name!=(continuation['parent_operation_id'] if continuation else 'int-andromeda-match-retained-current-20261020-v1'):fail('acquire_parent_scope')
     target=private/name
     if target.is_symlink() or target.resolve()!=target:fail('acquire_parent_path')
     prior=safe_json(target/'result.json',32*1024*1024);reservation=safe_json(target/'reservation.json',65536)
@@ -198,17 +225,20 @@ def acquire_retained_target(stage):
             or parent.get('state')!='current_retained_read_only' or prior.get('production_unchanged') is not True
             or any(x.get('operation_id')!=name for x in (prior,reservation,parent))
             or parent.get('source_sha')!=prior.get('source_sha') or prior.get('source_sha')!=reservation.get('source_sha')
-            or digest!='c0d7c1f53cceea267f08a5b15d29d9f2bb314401b7de380e0fe40b59ad513046'
+            or digest!=(continuation['parent_evidence_sha256'] if continuation else 'c0d7c1f53cceea267f08a5b15d29d9f2bb314401b7de380e0fe40b59ad513046')
             or digest!=prior.get('match_retained',{}).get('evidence_sha256')
             or any(type(x.get(k)) is not int or x[k]!=0 for x in (prior,parent) for k in ('supplier_calls','database_writes','mapping_writes'))):fail('acquire_parent_not_complete')
     raw=target/'current-raw.json'
     if not safe_file(raw,32*1024*1024) or hashlib.sha256(raw.read_bytes()).hexdigest()!=parent.get('current_raw_sha256'):fail('acquire_parent_raw')
     before=hashlib.sha256((target/'result.json').read_bytes()).hexdigest()
+    if continuation:
+        if before!=continuation['parent_receipt_sha256']:fail('continuation_parent_receipt')
+        prior_receipt=retained_prior_selection(continuation)
     config=project/'config.php'
     if not safe_file(config,1048576):fail('acquire_config_path')
     config_hash=hashlib.sha256(config.read_bytes()).hexdigest()
     fd=os.open(op/'acquisition-input.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
-    with os.fdopen(fd,'wb') as handle:handle.write(json.dumps({'current':parent,'parent_evidence_sha256':digest},sort_keys=True).encode());handle.flush();os.fsync(handle.fileno())
+    with os.fdopen(fd,'wb') as handle:handle.write(json.dumps(dict(current=parent,parent_evidence_sha256=digest,**({'continuation_scope':continuation,'continuation_scope_sha256':NEXT_SCOPE['sha256']} if continuation else {})),sort_keys=True).encode());handle.flush();os.fsync(handle.fileno())
     env={k:os.environ[k] for k in ('HOME','PATH','LANG','LC_ALL') if k in os.environ}
     env.update(MATCH_RETAINED_DIR=str(op),MATCH_RETAINED_OPERATION=operation)
     run=subprocess.run(['python3',str(stage/'scripts/diagnostics/hotel_match_retained_acquire_v1.py')],cwd=project,env=env,capture_output=True,text=True,timeout=780)
@@ -216,9 +246,9 @@ def acquire_retained_target(stage):
         result['match_retained_child_failure']={'exit_code':run.returncode,'stdout_sha256':hashlib.sha256(run.stdout.encode()).hexdigest(),'stderr_sha256':hashlib.sha256(run.stderr.encode()).hexdigest()}
         fail('acquire_child_failed_no_replay')
     data=json.loads(run.stdout)
-    if (data.get('state')!='acquired_retained_native_read_only' or data.get('selected_hotels')!=105
+    if (data.get('state')!='acquired_retained_native_read_only' or data.get('selected_hotels')!=(continuation['selected_count'] if continuation else 105)
             or data.get('parent_evidence_sha256')!=digest
-            or data.get('selected_id_sha256')!='4f8fa702fad1445d2a6bb5978bbdc1e60f30abd75b9328251f381a86f2b351d3'
+            or data.get('selected_id_sha256')!=(hashlib.sha256(json.dumps(continuation['selected_tv_hotel_ids'],separators=(',',':')).encode()).hexdigest() if continuation else '4f8fa702fad1445d2a6bb5978bbdc1e60f30abd75b9328251f381a86f2b351d3')
             or data.get('safe_to_write_now') is not False
             or any(type(data.get(k)) is not int or data[k]!=0 for k in ('database_writes','mapping_writes','new_accepted_mappings'))
             or type(data.get('supplier_calls')) is not int or not 0<=data['supplier_calls']<=400
@@ -359,7 +389,7 @@ def retained_readback():
     return out
 
 def run_match_retained(stage):
-    if (payload.get('cohort')!=RETAINED_MODES.get(mode)
+    if ((payload.get('cohort')!=RETAINED_MODES.get(mode) and not (payload.get('cohort')==NEXT_SCOPE['cohort'] and mode in ('match-retained-acquire','match-retained-anex-write-v2')))
             or not re.fullmatch(r'[a-f0-9]{40}',str(payload.get('match_retained_control_sha','')))):
         fail('retained_remote_scope')
     if mode=='match-retained-project':return project_retained_target(stage)
@@ -471,10 +501,11 @@ def completed_result(command, result, control_sha):
         if command['mode']=='match-retained-acquire' and (type(data.get('supplier_calls')) is not int or not 0<=data['supplier_calls']<=400 or result.get('supplier_calls')!=data['supplier_calls']):return False
         if command['mode'] in ('match-retained-anex-write','match-retained-anex-write-v2'):
             n=data.get('new_accepted_mappings')
-            if type(n) is not int or not 0<=n<=7 or any(type(obj.get(k)) is not int or obj[k]!=n for obj in (data,result) for k in ('database_writes','mapping_writes')):return False
+            if type(n) is not int or not 0<=n<=(NEXT_SCOPE['selected_count'] if command['cohort']==NEXT_SCOPE['cohort'] else 7) or any(type(obj.get(k)) is not int or obj[k]!=n for obj in (data,result) for k in ('database_writes','mapping_writes')):return False
             if data.get('state')=='committed_verified' and (n<1 or len(data.get('rows',[]))!=n or data.get('readback_verified') is not True or data.get('resolver_readback_verified') is not True):return False
             if data.get('state') not in ('committed_verified','completed_no_eligible'):return False
             if data.get('state')=='completed_no_eligible' and n!=0:return False
+        if command['cohort']==NEXT_SCOPE['cohort'] and (data.get('continuation_scope_sha256')!=NEXT_SCOPE['sha256'] or data.get('scope_id')!=NEXT_SCOPE['scope_id']):return False
         expected = {'match-retained-intake':'captured_and_projected_read_only',
                     'match-tourvisor-quota-policy':'quota_policy_applied_no_supplier_calls',
                     'match-retained-readback':'reconciled_read_only','match-retained-project':'reprojected_retained_read_only',
@@ -503,7 +534,7 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
-    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
+    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(NEXT_SCOPE)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
     remote=remote.replace(anchors['manifest'],"    if not isinstance(files,dict) or files!="+repr(SOURCE_HASHES)+": fail('retained_manifest')",1)
