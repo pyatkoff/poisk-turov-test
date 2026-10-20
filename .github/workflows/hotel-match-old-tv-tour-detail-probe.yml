@@ -1,0 +1,79 @@
+name: MATCH old Tourvisor tour detail identity probe
+on:
+  push:
+    branches: [match/manual-live-review-queue-1971-20260914]
+    paths:
+      - 'scripts/diagnostics/hotel_match_old_tv_tour_detail_probe.php'
+      - '.github/workflows/hotel-match-old-tv-tour-detail-probe.yml'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: anytour-match-old-tv-tour-detail-1971-20260914-v1
+  cancel-in-progress: false
+env:
+  OPERATION_ID: hotel-match-old-tv-tour-detail-1971-20260914-v1-egypt
+  MATCH_TOUR_IDS: '13261030029798,13272998781716,13278670760276,13279232318040,13275454011191,13278723374403,13278948961675,13279232318107'
+  OUT: /tmp/match-old-tv-tour-detail-egypt
+jobs:
+  probe:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Offline checks
+        run: |
+          set -euo pipefail
+          php -l scripts/diagnostics/hotel_match_old_tv_tour_detail_probe.php
+          php scripts/diagnostics/hotel_match_old_tv_tour_detail_probe.php --self-test
+          ! grep -Eiq '\b(INSERT|UPDATE|DELETE|REPLACE|ALTER|DROP|CREATE|TRUNCATE)\b[[:space:]]' scripts/diagnostics/hotel_match_old_tv_tour_detail_probe.php
+      - name: Run immutable detail evidence probe
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$OUT"
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known"; sock="$RUNNER_TEMP/sock"
+          cleanup() { ssh -S "$sock" -O exit "$USER@$HOST" >/dev/null 2>&1 || true; rm -f "$key" "$known"; }
+          trap cleanup EXIT
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key"; else printf '%s' "$KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key" >/dev/null
+          ssh -M -S "$sock" -fnNT -o ControlPersist=600 -o ServerAliveInterval=15 -o ServerAliveCountMax=6 -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known" -o ConnectTimeout=20 "$USER@$HOST"
+          set +e
+          ssh -S "$sock" -T -o ControlMaster=no -o ServerAliveInterval=15 -o ServerAliveCountMax=6 "$USER@$HOST" "cd \"\$HOME/www/anytoour.ru\" && OPERATION_ID='$OPERATION_ID' MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_TOUR_IDS='$MATCH_TOUR_IDS' php -d display_errors=0 -d log_errors=0 -d memory_limit=512M" < scripts/diagnostics/hotel_match_old_tv_tour_detail_probe.php > "$OUT/remote-stdout.txt" 2> "$OUT/remote-stderr.txt"
+          rc=$?
+          ssh -S "$sock" -T -o ControlMaster=no "$USER@$HOST" "p=\"\$HOME/.anytoour-match/operations/$OPERATION_ID\"; test -d \"\$p\" && tar -C \"\$p\" -czf - ." > "$OUT/server-operation.tgz" 2>> "$OUT/remote-stderr.txt"
+          trc=$?
+          set -e
+          if [[ $trc -eq 0 && -s "$OUT/server-operation.tgz" ]]; then tar -xzf "$OUT/server-operation.tgz" -C "$OUT"; fi
+          export RC="$rc" TRC="$trc"
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib
+          out=pathlib.Path(os.environ['OUT'])
+          def load(n):
+              try:return json.loads((out/n).read_text())
+              except Exception:return {}
+          reservation=load('reservation.json'); result=load('result.json'); receipt=load('receipt.json')
+          rh=hashlib.sha256((out/'result.json').read_bytes()).hexdigest() if (out/'result.json').exists() else None
+          ok=(result.get('status') in {'completed','blocked'} and result.get('credential_identifier')=='TOURVISOR_JWT'
+              and reservation.get('state')=='reserved_before_supplier_access' and reservation.get('source_sha')==os.environ['GITHUB_SHA']
+              and receipt.get('readback_verified') is True and receipt.get('result_sha256')==rh
+              and result.get('database_writes')==0 and result.get('mapping_writes')==0)
+          gate={'operation_id':os.environ['OPERATION_ID'],'source_sha':os.environ['GITHUB_SHA'],'verified':ok,'status':result.get('status'),'tourvisor_calls':result.get('tourvisor_calls'),'detail_rows':result.get('detail_rows'),'strict_identity_rows':result.get('strict_identity_rows'),'barcelo_control':result.get('barcelo_control'),'remote_exit':int(os.environ['RC']),'tar_exit':int(os.environ['TRC']),'result_sha256':rh,'no_replay':True}
+          (out/'workflow-readback.json').write_text(json.dumps(gate,ensure_ascii=False,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(gate,ensure_ascii=False,sort_keys=True))
+          if not ok: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: match-old-tv-tour-detail-${{ github.run_id }}
+          path: ${{ env.OUT }}/
+          retention-days: 90
