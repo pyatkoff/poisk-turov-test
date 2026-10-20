@@ -1,0 +1,51 @@
+name: MATCH public ANEX full media chains v1
+on:
+  push:
+    branches: [match/anex-media-chain-1971-20260914]
+    paths: [.github/workflows/hotel-match-anex-media-chain-v1.yml]
+permissions:
+  contents: read
+concurrency:
+  group: match-public-anex-media-chain-1971-v1
+  cancel-in-progress: false
+jobs:
+  public-evidence:
+    if: github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Offline regression checks
+        run: python3 -m unittest discover -s tests -p anex_media_redirect_evidence_test.py -v
+      - name: Reserve exact public-only operation
+        run: |
+          python3 - <<'PY'
+          import hashlib, importlib.util, json, os, pathlib
+          spec=importlib.util.spec_from_file_location('evidence','scripts/diagnostics/anex_media_redirect_evidence.py')
+          m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/m.OPERATION
+          p.mkdir(mode=0o700)
+          data={'operation_id':m.OPERATION,'state':'reserved_before_public_access','source_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'seed_sha256':hashlib.sha256(json.dumps(m.seeds(),sort_keys=True).encode()).hexdigest(),'source_archive_sha256':'77d2d3a61c956bff3024bab8e46ffb701564c8cee75bf55a553826bc1404bd1a','source_run_id':34842972436,'database_access':False,'mapping_writes':0,'tourvisor_calls':0,'supplier_search_calls':0,'no_replay':True}
+          (p/'reservation.json').write_text(json.dumps(data,sort_keys=True,indent=2)+'\n')
+          print(json.dumps(data,sort_keys=True))
+          PY
+      - name: Persist reservation before public HTTP access
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-media-chain-v1-reservation
+          path: ${{ runner.temp }}/hotel-match-anex-media-chain-1971-20260914-v1/reservation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Read only the observed public card and media URL chains
+        run: python3 scripts/diagnostics/anex_media_redirect_evidence.py "$RUNNER_TEMP/hotel-match-anex-media-chain-1971-20260914-v1"
+      - name: Preserve result and receipt even on interruption
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: match-anex-media-chain-v1-result
+          path: ${{ runner.temp }}/hotel-match-anex-media-chain-1971-20260914-v1/
+          if-no-files-found: warn
+          retention-days: 90
