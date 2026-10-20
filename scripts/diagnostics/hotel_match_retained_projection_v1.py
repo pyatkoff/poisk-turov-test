@@ -60,6 +60,54 @@ def native_link(value):
         return []
 
 
+def link_shape(value, present=True):
+    """Describe every captured link without publishing URL text or values."""
+    if not present:
+        return 'field_missing', None
+    if value is None:
+        return 'null', None
+    if not isinstance(value, str):
+        return 'non_string', None
+    if not value.strip():
+        return 'empty', None
+    if len(value) > 2048:
+        return 'overlength', None
+    if any(ord(c) < 32 or ord(c) == 127 for c in value):
+        return 'control_characters', None
+    try:
+        url = urlsplit(value)
+        host = (url.hostname or '').lower()
+        port = url.port
+        if not url.scheme or not host:
+            return 'relative_or_missing_host', None
+        if url.username or url.password or url.fragment:
+            return 'userinfo_or_fragment', None
+        if url.scheme not in ('https', 'http'):
+            return 'other_scheme', None
+        known = next((base for base in ('anextour.ru','bgoperator.ru','fun-sun.ru','intourist.ru')
+                      if host == base or host.endswith('.'+base)), None)
+        descriptor = {'scheme': url.scheme, 'operator_domain': known,
+            'host_sha256': hashlib.sha256(host.encode()).hexdigest(),
+            'nonstandard_port': port not in (None, 80 if url.scheme == 'http' else 443),
+            'path_segments': min(len([x for x in url.path.split('/') if x]), 100),
+            'query_present': bool(url.query), 'recognized_native_url': bool(native_link(value))}
+        return 'absolute_http_url', descriptor
+    except (ValueError, TypeError):
+        return 'malformed', None
+
+
+def audit_link(bucket, value, present=True):
+    state, descriptor = link_shape(value, present)
+    bucket['states'][state] = bucket['states'].get(state, 0) + 1
+    if descriptor is not None:
+        key = json.dumps(descriptor, sort_keys=True, separators=(',', ':'))
+        bucket['formats'][key] = bucket['formats'].get(key, 0) + 1
+
+
+def new_link_audit():
+    return {'states': {}, 'formats': {}}
+
+
 def project(path: Path):
     counts = collections.Counter()
     by_operator = {}
@@ -71,6 +119,10 @@ def project(path: Path):
     scope = None
     raw_hash = hashlib.sha256()
     raw_bytes = 0
+    link_audit = {'observations_by_operator': {}, 'legacy_sources_scanned': 0,
+        'legacy_source_invalid_json': 0, 'legacy_operator_link_fields': new_link_audit(),
+        'scope': 'captured observation operator_link and literal operatorLink/operator_link JSON keys in retained source objects; embedded JSON strings not decoded',
+        'raw_urls_and_query_values_published': False, 'acceptance_rules_changed': False}
     with path.open('rb') as handle:
         for raw in handle:
             raw_bytes += len(raw)
@@ -107,8 +159,23 @@ def project(path: Path):
                     'observations': 0, 'with_native_url': 0, 'without_native_url': 0,'with_stored_native_field':0,
                     'stored_native_types':{}})
                 bucket['observations'] += 1
+                audit = link_audit['observations_by_operator'].setdefault(key, {
+                    'observations': 0, 'operator_link': new_link_audit(),
+                    'native_field_states': {}, 'unrecognized_nonempty_examples': []})
+                audit['observations'] += 1
+                audit_link(audit['operator_link'], r.get('operator_link'), 'operator_link' in r)
                 field_value = positive(r.get('native_id_value'))
                 field_type = r.get('native_id_type')
+                field_state = ('field_missing' if 'native_id_value' not in r else
+                    'null' if r['native_id_value'] is None else
+                    'valid_supported' if field_value and field_type in ('hotelCode','HOTELLIST','hotels','f4') else
+                    'valid_other_type' if field_value else 'empty_or_invalid')
+                audit['native_field_states'][field_state] = audit['native_field_states'].get(field_state, 0)+1
+                if (isinstance(r.get('operator_link'), str) and r['operator_link'].strip()
+                        and not native_link(r['operator_link']) and len(audit['unrecognized_nonempty_examples']) < 20):
+                    audit['unrecognized_nonempty_examples'].append({
+                        'observation_id': int(r['id']), 'tv_hotel_id': int(tv),
+                        'link_sha256': hashlib.sha256(r['operator_link'].encode()).hexdigest()})
                 if field_value and field_type in ('hotelCode','HOTELLIST','hotels','f4'):
                     bucket['with_stored_native_field'] += 1
                     bucket['stored_native_types'][field_type] = bucket['stored_native_types'].get(field_type,0)+1
@@ -134,6 +201,21 @@ def project(path: Path):
                 s = row['source']
                 if hashlib.sha256(s['source_json'].encode()).hexdigest() != s['source_sha256']:
                     raise ValueError('projection_source_integrity')
+                link_audit['legacy_sources_scanned'] += 1
+                try:
+                    pending = [json.loads(s['source_json'])]
+                    while pending:
+                        item = pending.pop()
+                        if isinstance(item, dict):
+                            for key, value in item.items():
+                                if key.replace('_', '').casefold() == 'operatorlink':
+                                    audit_link(link_audit['legacy_operator_link_fields'], value)
+                                if isinstance(value, (dict, list)):
+                                    pending.append(value)
+                        elif isinstance(item, list):
+                            pending.extend(x for x in item if isinstance(x, (dict, list)))
+                except (ValueError, TypeError):
+                    link_audit['legacy_source_invalid_json'] += 1
                 ns = str(s['namespace'])
                 source_namespaces[ns] += 1
                 tv = positive(row['tv_hotel_id'])
@@ -225,6 +307,7 @@ def project(path: Path):
         'cohort_tv_hotel_ids': sorted(map(int, cohort)), 'cohort_hotels': len(cohort),
         'raw_sha256': raw_hash.hexdigest(), 'raw_bytes': raw_bytes, 'capture_rows': dict(counts),
         'observed_operators': list(by_operator.values()), 'legacy_source_namespaces': dict(source_namespaces),
+        'retained_link_audit': link_audit,
         'registry_coverage': coverage, 'candidate_states': dict(states),
         'biblio_union_unique_registry_local_hotels': len(bg_local) if registry_available else None,
         'biblio_union_on_retained_cohort': len(bg_local & cohort) if registry_available else None,
