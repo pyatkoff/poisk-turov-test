@@ -1,0 +1,236 @@
+name: MATCH COMMON4 Biblio Turkey1 live v1
+on:
+  push:
+    branches: [ops/match-common4-biblio-turkey1-live-1971-20260919-v1]
+    paths:
+      - scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php
+      - .github/workflows/hotel-match-common4-biblio-turkey1-live-v1.yml
+permissions: {contents: read, actions: read, issues: read}
+concurrency: {group: hotel-match-common4-biblio-turkey1-live-1971-20260919-v1, cancel-in-progress: false}
+env:
+  OPERATION_ID: hotel-match-common4-biblio-turkey1-live-1971-20260919-v1
+  EXPECTED_BASE: e9d7bf349bfb601dff04b7fc47088c1eff38b369
+  CLAIM_COMMENT_ID: '5740882675'
+  INPUT_RUN_ID: '35435207854'
+  INPUT_ARTIFACT_ID: '10582300921'
+  INPUT_RESULT_SHA256: 522ac15ab2e6229b58e30f5e8e484a41cc7a65d7106fece440e97a3b9513e766
+  CONTEXT_SHA256: 3bfc185a402c2dd2776991c373d31ba75428f49a94619f30f18bfeadbb2b60d1
+jobs:
+  acquire:
+    if: github.repository == 'pyatkoff/poisk-turov-test' && github.actor == 'pyatkoff' && github.run_attempt == 1 && github.run_number == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: de7b66bdd95db8d82445cc5edee12c8a46373dd3
+          path: historical
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: '10582300921'
+          run-id: 35435207854
+          github-token: '${{ github.token }}'
+          path: prior
+          merge-multiple: true
+      - name: Verify exact source, stale31 input, one-edge context and owner claim
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077; mkdir -p payload reservation terminal
+          test "$(git merge-base HEAD "$EXPECTED_BASE")" = "$EXPECTED_BASE"
+          mapfile -t changed < <(git diff --name-only "$EXPECTED_BASE..HEAD")
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fx 'scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php'
+          printf '%s\n' "${changed[@]}" | grep -Fx '.github/workflows/hotel-match-common4-biblio-turkey1-live-v1.yml'
+          printf '%s\n' '2f0b1f31dd2275807b76b628b46f122864eb5aa79bbba47bd88fde9ba4ad043b  scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php' | sha256sum -c -
+          php -l scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php
+          php scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php --self-test
+          test "$(sha256sum historical/scripts/diagnostics/hotel_match_common4_samo34_live_v1.php | awk '{print $1}')" = 0dc3e14e22d797102aac54d82ee01c2ca75d7e9ba889d12e8b19e9244c89e7b0
+          test "$(sha256sum prior/server/result.json | awk '{print $1}')" = "$INPUT_RESULT_SHA256"
+          test "$(sha256sum prior/server/response-032.json | awk '{print $1}')" = 9a764693fd32121d321e6ebaad4845ef08733125de56ed3dceac39969622923c
+          test "$(sha256sum prior/server/response-033.json | awk '{print $1}')" = 9249d267b28ff7833ff9a954416d7023a07e819a8921dbd35cf2c25fb08618d7
+          test "$(sha256sum prior/server/hotel-40800-op18-search5.json | awk '{print $1}')" = 8a766c75d1b121ffa2132abfd1becae6a17c91a9c06affd3d8f5d6cce7ae8759
+          python3 - <<'PY'
+          import hashlib,json,pathlib,os
+          root=pathlib.Path('prior/server')
+          result=json.loads((root/'result.json').read_bytes())
+          receipt=json.loads((root/'receipt.json').read_bytes())
+          assert receipt['result_sha256']==os.environ['INPUT_RESULT_SHA256']
+          assert result['state']=='completed_read_only' and result['mapping_writes']==0 and result['daily_accounted_after']==1060
+          search=next(x for x in result['searches'] if x['search_no']==5)
+          assert search['operator']=='biblio_globus' and search['operator_id']==18 and search['target_supplier_namespace']=='operator_115'
+          assert search['hotel_ids']==search['found_ids']==[40800]
+          r32=json.loads((root/'response-032.json').read_bytes()); r33=json.loads((root/'response-033.json').read_bytes()); e=json.loads((root/'hotel-40800-op18-search5.json').read_bytes())
+          h=r32['data'][0]; d=r33['data']
+          assert h['id']==d['hotel']['id']==e['tv_hotel_id']==40800
+          assert h['name']==d['hotel']['name']=='SIDE LEGEND (EX. SIDE VIRGIN, SIDE ROSE)'
+          assert h['country']['id']==d['hotel']['country']['id']==4 and d['hotel']['region']['id']==23
+          assert len(h['tours'])==1 and str(h['tours'][0]['id'])==str(d['id'])==e['tour_id']=='18281432611532'
+          assert h['tours'][0]['operator']['id']==d['operator']['id']==e['operator_id']==18
+          assert d['operatorLink']==e['operator_link'] and hashlib.sha256(d['operatorLink'].encode()).hexdigest()=='bf74cb58dc83621ac4432acc2869f86d24cb462d1944f542c16a1f537fdefe73'
+          assert search['departure_date']=='2026-09-24' and search['departure_id']==1 and search['country_id']==4 and search['nights']==7 and search['adults']==2 and search['childs']==[14,15]
+          dossier={
+            'tv_hotel_id':40800,'hotel_name':d['hotel']['name'],'operator':'biblio_globus','tv_operator_id':18,'target_supplier_namespace':'operator_115','source_tour_id':str(d['id']),
+            'status':'exact_context_ready','exact_observation_count':1,'fallback_observation_count':0,
+            'current_hotel':{'id':40800,'name':d['hotel']['name'],'country_id':4,'country_name':'Турция','region_id':23,'region_name':'Сиде','subregion_id':None,'subregion_name':None,'is_active':1},
+            'context':{'source':'user_search','search_id':search['search_id'],'departure_id':1,'departure_name':'Москва','departure_active':1,'country_id':4,'region_id':23,'subregion_id':None,'departure_date':'2026-09-24','nights':7,'adults':2,'children_count':2,'child_ages_signature':'14,15','observed_at':None,'matched_tour_id':str(d['id'])},
+            'source_operator_link':d['operatorLink'],'source_operator_link_sha256':'bf74cb58dc83621ac4432acc2869f86d24cb462d1944f542c16a1f537fdefe73','safe_to_query_supplier_now':False,'safe_to_write_now':False,
+          }
+          ctx={'operation_id':'hotel-match-common4-biblio-turkey1-context-1971-20260919-v1','source_sha':'6dc19e220e18289345171d48d72b29a068182ee1','source_result_sha256':os.environ['INPUT_RESULT_SHA256'],'state':'completed_read_only','reason':None,'database_writes':0,'mapping_writes':0,'supplier_calls':0,'tourvisor_calls':0,'samo_calls':0,'no_replay':True,'read_at_utc':'2026-09-19T09:43:00Z','classification_counts':{'exact_context_ready':1},'unique_exact_context_keys':1,'dossiers':[dossier]}
+          raw=(json.dumps(ctx,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n').encode()
+          assert hashlib.sha256(raw).hexdigest()==os.environ['CONTEXT_SHA256']
+          pathlib.Path('payload/context.json').write_bytes(raw)
+          PY
+          php scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php --materialize "$GITHUB_WORKSPACE/historical/scripts/diagnostics/hotel_match_common4_samo34_live_v1.php" "$GITHUB_WORKSPACE/payload/acquire.php" >payload/materialization.json
+          php -l payload/acquire.php
+          php payload/acquire.php --self-test
+          python3 - <<'PY'
+          import hashlib,json,pathlib,os
+          m=json.loads(pathlib.Path('payload/materialization.json').read_bytes())
+          assert m['operation']==os.environ['OPERATION_ID'] and m['context_sha256']==os.environ['CONTEXT_SHA256']
+          assert m['materialized_sha256']==hashlib.sha256(pathlib.Path('payload/acquire.php').read_bytes()).hexdigest()
+          PY
+          gh api "repos/pyatkoff/poisk-turov-test/issues/comments/$CLAIM_COMMENT_ID" >payload/claim.json
+          python3 - <<'PY'
+          import json,os
+          c=json.load(open('payload/claim.json')); b=c.get('body','')
+          assert c.get('user',{}).get('id')==226193297 and c.get('author_association')=='OWNER'
+          assert c.get('issue_url','').endswith('/issues/2530') and os.environ['OPERATION_ID'] in b
+          assert os.environ['INPUT_RESULT_SHA256'] in b and 'operator_115' in b and 'TV40800' in b
+          PY
+      - name: Create durable reservation before database or provider access
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,datetime
+          deps=['payload/acquire.php','payload/context.json','scripts/diagnostics/hotel_match_common4_biblio_turkey1_live_v1.php','scripts/diagnostics/hotel_match_common4_operator_binding_v1.php','app/integrations/andromeda-client.php','app/integrations/andromeda-transport.php','app/integrations/andromeda-network-transport-failure.php']
+          r={'operation':os.environ['OPERATION_ID'],'state':'reserved_before_provider_access','source_sha':os.environ['GITHUB_SHA'],'claim_comment_id':os.environ['CLAIM_COMMENT_ID'],'reserved_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'provider':'andromeda','input_run_id':int(os.environ['INPUT_RUN_ID']),'input_artifact_id':int(os.environ['INPUT_ARTIFACT_ID']),'input_result_sha256':os.environ['INPUT_RESULT_SHA256'],'context_sha256':os.environ['CONTEXT_SHA256'],'provider_call_cap':24,'price_call_cap':20,'tourvisor_calls':0,'database_writes':0,'mapping_writes':0,'no_replay_after_provider_access':True,'dependencies':{p:hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest() for p in deps}}
+          raw=(json.dumps(r,ensure_ascii=False,sort_keys=True)+'\n').encode()
+          with open('reservation/reservation.json','xb') as f: f.write(raw); f.flush(); os.fsync(f.fileno())
+          pathlib.Path('reservation/reservation.sha256').write_text(hashlib.sha256(raw).hexdigest()+'  reservation.json\n')
+          PY
+      - name: Require exact-head Security before SSH
+        env: {GH_TOKEN: '${{ github.token }}'}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,os,time,urllib.request
+          u='https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/actions/runs?head_sha='+os.environ['GITHUB_SHA']+'&per_page=100'
+          for _ in range(72):
+            q=urllib.request.Request(u,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+            with urllib.request.urlopen(q,timeout=30) as f:runs=json.load(f)['workflow_runs']
+            xs=[r for r in runs if r['name']=='Security guard' and r['head_sha']==os.environ['GITHUB_SHA']]
+            if xs:
+              r=max(xs,key=lambda x:x['id'])
+              if r['status']=='completed': assert r['conclusion']=='success'; print('SECURITY_OK',r['id']); break
+            time.sleep(5)
+          else: raise SystemExit('security_not_available')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: {name: 'common4-biblio-turkey1-reservation-${{ github.run_id }}', path: reservation/, retention-days: 90, if-no-files-found: error}
+      - name: Require existing credentials
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          ANDROMEDA_USERNAME_VALUE: '${{ secrets.ANDROMEDA_USERNAME }}'
+          ANDROMEDA_PASSWORD_VALUE: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"; test -n "$HOST_VALUE"; test -n "$USER_VALUE"; test -n "$ANDROMEDA_USERNAME_VALUE"; test -n "$ANDROMEDA_PASSWORD_VALUE"
+      - name: Stage exact private payload with exclusive operation reservation
+        env:
+          KEY_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}'
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+        shell: bash
+        run: |
+          set -euo pipefail; umask 077
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE"|tr -d '\r'>"$key"; else printf '%s' "$KEY_VALUE"|base64 --decode>"$key"; fi
+          chmod 600 "$key"; ssh-keygen -y -f "$key">/dev/null; ssh-keyscan -T 15 -t ed25519 "$HOST_VALUE">"$known" 2>/dev/null; test -s "$known"
+          remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; stage=".anytoour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          ssh "${opts[@]}" "$remote" "set -eu;umask 077;test -d \"\$HOME/www/anytoour.ru\";mkdir -p \"\$HOME/.anytoour-match/operations\" \"\$HOME/.anytoour-operations-staging\";test ! -e \"\$HOME/$op\";mkdir \"\$HOME/$op\";mkdir \"\$HOME/$stage\""
+          scp "${opts[@]}" reservation/reservation.json "$remote:$op/reservation.json"
+          scp "${opts[@]}" payload/acquire.php payload/context.json scripts/diagnostics/hotel_match_common4_operator_binding_v1.php app/integrations/andromeda-client.php app/integrations/andromeda-transport.php app/integrations/andromeda-network-transport-failure.php "$remote:$stage/"
+          ssh "${opts[@]}" "$remote" "chmod 600 \"\$HOME/$op/reservation.json\" \"\$HOME/$stage/\"*"
+      - name: Run Biblio Turkey evidence acquisition once and retain terminal files
+        env:
+          HOST_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_HOST }}'
+          USER_VALUE: '${{ secrets.ANYTOOUR_DEPLOY_USER }}'
+          ANDROMEDA_USERNAME_VALUE: '${{ secrets.ANDROMEDA_USERNAME }}'
+          ANDROMEDA_PASSWORD_VALUE: '${{ secrets.ANDROMEDA_PASSWORD }}'
+        shell: bash
+        run: |
+          set -uo pipefail
+          key="$RUNNER_TEMP/key"; known="$RUNNER_TEMP/known_hosts"; remote="$USER_VALUE@$HOST_VALUE"; op=".anytoour-match/operations/$OPERATION_ID"; stage=".anytoour-operations-staging/$OPERATION_ID-$GITHUB_RUN_ID"
+          opts=(-i "$key" -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$known" -o GlobalKnownHostsFile=/dev/null -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4)
+          set +e
+          printf '%s\n%s\n' "$ANDROMEDA_USERNAME_VALUE" "$ANDROMEDA_PASSWORD_VALUE" | ssh "${opts[@]}" "$remote" "cd \"\$HOME/www/anytoour.ru\" && ANYTOOUR_ROOT=\"\$HOME/www/anytoour.ru\" MATCH_OPERATION_DIR=\"\$HOME/$op\" MATCH_SOURCE_SHA='$GITHUB_SHA' MATCH_CONTEXT_PATH=\"\$HOME/$stage/context.json\" MATCH_BINDER_PATH=\"\$HOME/$stage/hotel_match_common4_operator_binding_v1.php\" MATCH_CLIENT_PATH=\"\$HOME/$stage/andromeda-client.php\" MATCH_TRANSPORT_PATH=\"\$HOME/$stage/andromeda-transport.php\" php -d display_errors=0 -d log_errors=1 -d zend.exception_ignore_args=1 -d error_log=\"\$HOME/$op/bootstrap-errors.log\" -d memory_limit=512M \"\$HOME/$stage/acquire.php\"" >terminal/stdout.json 2>terminal/stderr.txt
+          rc=$?; printf '%s\n' "$rc">terminal/remote-exit.txt
+          ssh "${opts[@]}" "$remote" 'set -eu;cd "$HOME/'"$op"'";set -- reservation.json;for f in result.json receipt.json provider-calls.jsonl raw-manifest.json bootstrap-errors.log raw-*.json;do test ! -f "$f" || set -- "$@" "$f";done;tar -czf - -- "$@"' >terminal/server-operation.tgz 2>>terminal/stderr.txt
+          trc=$?; printf '%s\n' "$trc">terminal/tar-exit.txt
+          set -e
+          test "$trc" -eq 0
+      - name: Verify terminal receipt, provider evidence and Biblio URL diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,tarfile,urllib.parse
+          p=pathlib.Path('terminal'); s=p/'server'; s.mkdir(exist_ok=True); a=p/'server-operation.tgz'
+          assert a.exists() and a.stat().st_size>0, 'terminal_archive_absent'
+          names=set()
+          with tarfile.open(a,'r:gz') as t:
+            for m in t.getmembers():
+              assert m.isfile() and 0<=m.size<64_000_000 and re.fullmatch(r'[a-z0-9_.-]+',m.name) and m.name not in names
+              assert m.name in {'reservation.json','result.json','receipt.json','provider-calls.jsonl','raw-manifest.json','bootstrap-errors.log'} or re.fullmatch(r'raw-[a-z0-9_.-]+\.json',m.name)
+              names.add(m.name); (s/m.name).write_bytes(t.extractfile(m).read())
+          assert pathlib.Path('reservation/reservation.json').read_bytes()==(s/'reservation.json').read_bytes()
+          assert (s/'result.json').exists() and (s/'receipt.json').exists(), 'terminal_incomplete'
+          r=json.loads((s/'result.json').read_bytes()); q=json.loads((s/'receipt.json').read_bytes()); digest=hashlib.sha256((s/'result.json').read_bytes()).hexdigest()
+          assert q['result_sha256']==digest and r['operation']==q['operation']==os.environ['OPERATION_ID'] and r['source_sha']==os.environ['GITHUB_SHA']
+          assert r['database_writes']==q['database_writes']==0 and r['mapping_writes']==q['mapping_writes']==0 and r['tourvisor_calls']==q['tourvisor_calls']==0
+          assert r['provider_calls']==q['provider_calls']<=24 and r['price_calls']==q['price_calls']<=20
+          ledger=s/'provider-calls.jsonl'; lines=ledger.read_text().splitlines() if ledger.exists() else []
+          assert len(lines)==r['provider_calls'] and [json.loads(x)['seq'] for x in lines]==list(range(1,len(lines)+1))
+          if r['state']=='completed_read_only':
+            assert r['input_edges']==1 and len(r['dossiers'])==1 and r['live_operator_bindings']['biblio_globus']['provider_operator_id']=='115'
+            d=r['dossiers'][0]; assert d['tv_hotel_id']==40800 and d['operator']=='biblio_globus' and d['target_supplier_namespace']=='operator_115' and d['safe_to_write_now'] is False
+            natives=[str(x) for x in d['native_operator_hotel_ids']]
+          elif r['state']=='failed_before_provider_access' and r.get('reason')=='all_edges_already_closed':
+            assert r['provider_calls']==0 and r['price_calls']==0
+            natives=[]
+          else:
+            raise AssertionError('unexpected_terminal_state:'+str(r.get('state'))+':'+str(r.get('reason')))
+          ctx=json.loads(pathlib.Path('payload/context.json').read_bytes()); link=ctx['dossiers'][0]['source_operator_link']; qs=urllib.parse.parse_qs(urllib.parse.urlsplit(link).query); f4=qs.get('F4',[''])[0]
+          summary={'state':r['state'],'reason':r.get('reason'),'provider_calls':r['provider_calls'],'price_calls':r['price_calls'],'native_operator_hotel_ids':natives,'retained_bgoperator_f4':f4,'f4_equals_observed_native':f4 in natives,'result_sha256':digest}
+          pathlib.Path('terminal/verified-summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(summary,ensure_ascii=False))
+          if (s/'raw-manifest.json').exists():
+            rm=json.loads((s/'raw-manifest.json').read_bytes()); listed={x['file']:x for x in rm['files']}
+            for name,x in listed.items():
+              raw=(s/name).read_bytes(); assert hashlib.sha256(raw).hexdigest()==x['sha256'] and len(raw)==x['bytes']
+          PY
+          test "$(cat terminal/remote-exit.txt)" -eq 0 || python3 - <<'PY'
+          import json
+          r=json.load(open('terminal/server/result.json'))
+          assert r['state']=='failed_before_provider_access' and r.get('reason')=='all_edges_already_closed'
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: common4-biblio-turkey1-result-${{ github.run_id }}
+          path: |
+            terminal/
+            payload/context.json
+            payload/materialization.json
+          retention-days: 90
+          if-no-files-found: error
