@@ -28,6 +28,23 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
 
 
+def load_scope_file(source_root, data):
+    """Read only a scope pinned by the stock carrier's exact source manifest."""
+    scope=data['continuation_scope']
+    relative=data.get('continuation_scope_path') or (TIMEOUT60_SCOPE_FILE if scope.get('context_origin')=='owner_20261020_1257_timeout60_new_window' else SCOPE_FILE)
+    if not isinstance(relative,str) or not re.fullmatch(r'scripts/diagnostics/fixtures/hotel_match_retained_[a-z0-9_]+_scope_[0-9]{8}\.json',relative):
+        raise ValueError('continuation_scope_path')
+    path=Path(source_root)/relative;manifest_path=Path(source_root)/'manifest.json'
+    for file,bound in ((path,262144),(manifest_path,65536)):
+        if (file.is_symlink() or not file.is_file() or file.resolve()!=file or file.stat().st_nlink!=1 or file.stat().st_size>bound):
+            raise ValueError('continuation_scope_path')
+    manifest=json.loads(manifest_path.read_bytes());raw=path.read_bytes();digest=hashlib.sha256(raw).hexdigest()
+    if (manifest.get('schema_version')!=1 or manifest.get('files',{}).get(relative)!=digest
+            or digest!=data.get('continuation_scope_sha256') or json.loads(raw)!=scope):
+        raise ValueError('continuation_scope_binding')
+    return scope
+
+
 def context_identity(scope, hotel):
     return dict(namespace='anex_online',account=scope['account'],operator_id=13,tv_hotel_id=hotel,
                 country_id=scope['country_id'],departure_id=scope['departure_id'],adults=scope['adults'],
@@ -418,11 +435,7 @@ if __name__=='__main__':
         selected=select_rows(data['current'])
         if len(selected)!=105 or shape.plan_id_digest([r['tv_hotel_id'] for r in selected])!=SELECTED_IDS_SHA256:raise SystemExit('acquisition_cohort_binding')
     else:
-        scope_file=TIMEOUT60_SCOPE_FILE if scope.get('context_origin')=='owner_20261020_1257_timeout60_new_window' else SCOPE_FILE
-        scope_path=Path(__file__).resolve().parents[2]/scope_file
-        raw=scope_path.read_bytes()
-        if (scope_path.is_symlink() or hashlib.sha256(raw).hexdigest()!=data.get('continuation_scope_sha256')
-                or json.loads(raw)!=scope or operation!=scope.get('operation_id')
+        if (load_scope_file(Path(__file__).resolve().parents[2],data)!=scope or operation!=scope.get('operation_id')
                 or data.get('parent_evidence_sha256')!=scope.get('parent_evidence_sha256')):raise SystemExit('continuation_scope_binding')
         selected=select_scope_rows(scope,data['current'])
         if scope.get('scope_kind')=='owner_date_variation':
