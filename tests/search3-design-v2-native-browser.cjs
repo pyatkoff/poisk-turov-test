@@ -1542,9 +1542,9 @@ if(require.main===module)(async()=>{
             const r=node.getBoundingClientRect();return{height:r.height,width:r.width,clipped:node.scrollWidth>node.clientWidth+1};
           });assert(fit.height>=44&&fit.width>=44&&!fit.clipped);
           await capture(page,'native',width,percent,phase+'-unavailable',row);
-          await page.setViewportSize({width:width<=760?1280:430,height:900});
+          await resizeTour(width<=760?1280:430);
           await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
-          await page.setViewportSize({width,height:900});
+          await resizeTour(width);
           await actualProduct.locator('[data-native-flight-status]').filter({hasText:'Недоступно онлайн'}).waitFor({state:'visible'});
           assert.deepEqual(await read(),denied,'Responsive remount keeps the exact terminal denial without more operations');
           await actualProduct.locator('[data-native-other-offers]').click();await actualProduct.locator('[data-screen="hotel"]').waitFor({state:'visible'});
