@@ -24,8 +24,10 @@ SOURCE_HASHES = {'scripts/diagnostics/hotel_match_retained_intake_v1.php': '8c50
 NEXT_SCOPE = {'cohort': 'anex-next-ee68d11668a22e84', 'operation_id': 'int-andromeda-match-retained-acquire-20261020-v4', 'write_operation_id': 'int-andromeda-match-retained-anex-write-20261020-v5', 'readback_operation_id': 'int-andromeda-match-retained-readback-20261020-v3', 'saved_acquisition_operation_id': 'int-andromeda-match-retained-acquire-20261020-v2', 'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2', 'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57', 'scope_id': 'ee68d11668a22e84934fa4acd94a779238491f8a0db822ee2f91dc2212456f04', 'selected_count': 25, 'path': 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json', 'sha256': '458857b2e3641c143699247ea7c92c235cd9a0765b3e06fbce4aa81adfe41c31'}
 
 TRANSPORT_DIAGNOSTIC = {
-    'operation_id': 'int-andromeda-match-retained-readback-20261020-v5',
-    'target_operation_id': 'int-andromeda-match-retained-acquire-20261020-v4',
+    'operation_id': 'int-andromeda-match-retained-readback-20261020-v6',
+    'target_operation_id': 'int-andromeda-match-retained-readback-20261020-v5',
+    'failed_receipt_sha256': '1f74aa9e3f900d06c2277fc95683893d13ad95e38de3c59121a547caf066e305',
+    'failed_source_sha': '78f029da7522bc97051904770e7c077bbe1b985e',
     'parents': [
         {'version': 1, 'calls': 38, 'unknown': 0, 'evidence': 'cb7f28c82d5df5b8f069f894ab978f198b2eebfc949034c8e371050c4f4e0aeb'},
         {'version': 2, 'calls': 7, 'unknown': 1, 'evidence': 'cd58ab7c155c28688de65b43c196cbc8c6ddf406c76e92c890460af6b712b2f8'},
@@ -71,7 +73,7 @@ def register_parser(core):
         need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
         command = {'source_sha': source, 'mode': mode, 'operation_id': operation, 'cohort': cohort}
         if target_mode:
-            family='retained-acquire' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') or (continuation and mode=='match-retained-readback') else 'retained-current' if mode=='match-retained-acquire' else 'retained-project' if mode=='match-retained-current' else 'retained' if mode=='match-retained-project' else '(?:retained|quota5000)'
+            family='retained-readback' if transport_diagnostic else 'retained-acquire' if mode in ('match-retained-anex-write','match-retained-anex-write-v2') or (continuation and mode=='match-retained-readback') else 'retained-current' if mode=='match-retained-acquire' else 'retained-project' if mode=='match-retained-current' else 'retained' if mode=='match-retained-project' else '(?:retained|quota5000)'
             need(re.fullmatch(r'int-andromeda-match-'+family+r'-[0-9]{8}-v[1-9][0-9]*', parts[4]) is not None,
                  'retained_readback_target')
             command['target_operation_id'] = parts[4]
@@ -192,6 +194,19 @@ def retained_transport_diagnostic(stage):
         if signature(before)!=signature(after) or len(raw)!=after.st_size:fail('transport_evidence_drift')
         protected[path]=(hashlib.sha256(raw).hexdigest(),signature(after))
         return raw,after
+    failed=private/profile['target_operation_id']
+    if failed.is_symlink() or failed.resolve()!=failed:fail('transport_failed_path')
+    failed_raw,_=read(failed/'result.json',65536)
+    failed_result=json.loads(failed_raw)
+    failed_reservation=json.loads(read(failed/'reservation.json',65536)[0])
+    if (hashlib.sha256(failed_raw).hexdigest()!=profile['failed_receipt_sha256']
+            or any(x.get('operation_id')!=profile['target_operation_id']
+                   or x.get('source_sha')!=profile['failed_source_sha']
+                   or x.get('mode')!='match-retained-readback' for x in (failed_result,failed_reservation))
+            or failed_result.get('status')!='unknown_no_replay'
+            or failed_result.get('reason')!="name 'Path' is not defined"
+            or any(type(failed_result.get(k)) is not int or failed_result[k]!=0
+                   for k in ('supplier_calls','database_writes','mapping_writes','lead_calls','booking_calls'))):fail('transport_failed_binding')
     rows=[];parents=[]
     for pin in profile['parents']:
         name='int-andromeda-match-retained-acquire-20261020-v'+str(pin['version'])
@@ -240,7 +255,7 @@ def retained_transport_diagnostic(stage):
         if missing!=pin['unknown'] or actions!=data.get('actions'):fail('transport_unknown_or_action_binding')
         parents.append({'operation_id':name,'receipt_sha256':hashlib.sha256(raw).hexdigest(),'evidence_sha256':evidence,
                         'recorded_http_attempts':pin['calls'],'recorded_unknown':pin['unknown'],'stop_reason':data.get('stop_reason')})
-    home=Path.home();account_root=home/'.anytoour-match'
+    home=pathlib.Path.home();account_root=home/'.anytoour-match'
     ledgers={}
     for label,path in [('hotel_selection',account_root/'retained-selection-claims.json'),
                        ('context_selection',account_root/'retained-context-claims.json'),
@@ -265,6 +280,8 @@ def retained_transport_diagnostic(stage):
         raw,stamp=read(path,8*1024*1024)
         if hashlib.sha256(raw).hexdigest()!=digest or (stamp.st_dev,stamp.st_ino,stamp.st_size,stamp.st_mtime_ns,stamp.st_ctime_ns)!=signature:fail('transport_protected_drift')
     return {'state':'retained_transport_inspected_read_only','target_operation_id':profile['target_operation_id'],
+            'failed_operation_receipt_sha256':profile['failed_receipt_sha256'],'failed_operation_replayed':False,
+            'failed_operation_status':'unknown_no_replay',
             'continuation_scope_sha256':NEXT_SCOPE['sha256'],'scope_id':scope['scope_id'],'parents':parents,'requests':rows,
             'known_lineage_http_attempts':sum(p['calls'] for p in profile['parents']),
             'known_lineage_unknown':sum(p['unknown'] for p in profile['parents']),
@@ -622,7 +639,7 @@ def run_match_retained(stage):
     if not safe_file(config,1048576) or not safe_file(dbhelper,65536):fail('retained_config_paths')
     config_hash=hashlib.sha256(config.read_bytes()).hexdigest()
     if mode=='match-retained-readback':
-        data=retained_transport_diagnostic(stage) if operation=='int-andromeda-match-retained-readback-20261020-v5' else retained_saved_detail(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else retained_readback()
+        data=retained_transport_diagnostic(stage) if operation==TRANSPORT_DIAGNOSTIC['operation_id'] else retained_saved_detail(stage) if payload.get('cohort')==NEXT_SCOPE['cohort'] else retained_readback()
         data.update(operation_id=operation,source_sha=source,control_source_sha=payload['match_retained_control_sha'],
             cohort=payload['cohort'],supplier_calls=0,database_writes=0,mapping_writes=0,safe_to_write_now=False,no_replay=True)
         raw_result=json.dumps(data,sort_keys=True,separators=(',',':')).encode()
@@ -730,6 +747,9 @@ def completed_result(command, result, control_sha):
         if command['operation_id']==TRANSPORT_DIAGNOSTIC['operation_id']:
             if (command['mode']!='match-retained-readback' or command['cohort']!=NEXT_SCOPE['cohort']
                     or command.get('target_operation_id')!=TRANSPORT_DIAGNOSTIC['target_operation_id']
+                    or data.get('failed_operation_receipt_sha256')!=TRANSPORT_DIAGNOSTIC['failed_receipt_sha256']
+                    or data.get('failed_operation_status')!='unknown_no_replay'
+                    or data.get('failed_operation_replayed') is not False
                     or data.get('protected_inputs_unchanged') is not True
                     or any(data.get(k) is not False for k in ('cause_established','historical_network_phase_recorded','metadata_signature_verified','raw_response_bodies_read'))
                     or data.get('config_metadata_is_current_not_historical') is not True
