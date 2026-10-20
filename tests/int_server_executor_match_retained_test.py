@@ -354,6 +354,110 @@ class ProjectionTest(unittest.TestCase):
         self.assertEqual([],self.fixture([row,accepted])['candidate_edges'])
 
 
+class ContinuationTest(unittest.TestCase):
+    def fixture(self):
+        scope=json.loads((SOURCE/a.SCOPE_FILE).read_text())
+        rows=[]
+        for hid in (101,102):
+            ctx={'country_id':2,'departure_id':1,'adults':2,'children_count':0,
+                 'child_ages_signature':'','departure_date':'2099-01-03','nights':9,'hotel_id':hid,
+                 'source':'user_search','observed_at':'2026-10-20 00:01:02'}
+            rows.append({'tv_hotel_id':hid,'target':{'country_id':2},'future_context':ctx,
+                         'acquisition_ready':True,'direct_anex_native_ids':[],
+                         'anchor_state':'canonical_anchor_ok'})
+        current={'rows':rows}
+        scope.update(selected_tv_hotel_ids=[101,102],selected_count=2,
+            parent_evidence_sha256=hashlib.sha256(a.canonical(current)).hexdigest(),
+            current_row_sha256={str(r['tv_hotel_id']):hashlib.sha256(a.canonical(r)).hexdigest() for r in rows},
+            future_contexts={str(r['tv_hotel_id']):r['future_context'] for r in rows})
+        scope['scope_id']=hashlib.sha256(a.canonical({k:scope[k] for k in
+            ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts')})).hexdigest()
+        scope['cohort']='anex-next-'+scope['scope_id'][:16]
+        return scope,current
+
+    def test_all_selected_rows_bound_to_parent_context_and_never_selected(self):
+        scope,current=self.fixture()
+        self.assertEqual([101,102],[r['tv_hotel_id'] for r in a.select_scope_rows(scope,current,'2026-10-20')])
+        for field,value in (('account','TOURVISOR_JWT'),('operator_id',18),('selected_count',True),
+                            ('children_count',False),('scope_id','0'*64),
+                            ('prior_selected_hotel_ids',[101]),('selected_tv_hotel_ids',[101,101])):
+            bad=copy.deepcopy(scope);bad[field]=value
+            with self.assertRaises(ValueError):a.select_scope_rows(bad,current,'2026-10-20')
+        for field,value in (('acquisition_ready',False),('direct_anex_native_ids',[5844]),
+                            ('anchor_state','source_ambiguous')):
+            bad=copy.deepcopy(current);bad['rows'][0][field]=value
+            with self.assertRaises(ValueError):a.select_scope_rows(scope,bad,'2026-10-20')
+        with self.assertRaises(ValueError):a.select_scope_rows(scope,current,'2099-01-04')
+
+    def test_shared_selection_reservation_blocks_rename_day_and_concurrent_replay(self):
+        scope,_=self.fixture()
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);(home/'.anytoour-match').mkdir()
+            def reserve(op):
+                try:a.reserve_selection(home,scope,op);return True
+                except ValueError:return False
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                got=list(pool.map(reserve,['new-operation-one','new-operation-renamed']))
+            self.assertEqual(1,sum(got))
+            ledger=home/'.anytoour-match/retained-selection-claims.json';before=ledger.read_bytes()
+            with self.assertRaisesRegex(ValueError,'consumed_no_replay'):
+                a.reserve_selection(home,scope,'different-operation-next-day')
+            self.assertEqual(before,ledger.read_bytes())
+            state=json.loads(before)
+            self.assertEqual('prior_consumed',state['claims']['TOURVISOR_ANEX_JWT:13:'+str(scope['prior_selected_hotel_ids'][0])]['state'])
+
+    def test_continuation_country_and_real_context_reach_existing_api_without_continue(self):
+        scope,current=self.fixture()
+        class C:
+            calls=reserved=tariff=unknown=0
+            counts=__import__('collections').Counter();before={'physical_http_attempts':38}
+            seen=[]
+            def call(self,action,path,params):
+                self.calls+=1;self.reserved+=1;self.counts[action]+=1;self.tariff+=int(action=='search_start');self.seen.append((action,path,params))
+                if action=='search_start':value={'searchId':777}
+                elif action=='search_status':value={'progress':100}
+                elif action=='search_results':value={'hotels':[{'id':101,'tours':[{'id':888,'operator':13}]},{'id':102,'tours':[{'id':889,'operator':13}]}]}
+                elif path.endswith('888'):value={'hotel':101,'operator':13,'operatorLink':'https://anextour.ru/?HOTELLIST=5844'}
+                else:value={'hotel':102,'operator':13,'operatorLink':None}
+                return 200,value,{'response_number':self.calls,'raw_sha256':'a'*64}
+        with tempfile.TemporaryDirectory() as td:
+            client=C();result=a.acquire(client,Path(td),current['rows'],sleep=lambda _:None,scope=scope)
+        self.assertEqual({'verified_native_pair':1,'native_link_unresolved':1},result['edge_states'])
+        start=client.seen[0][2]
+        self.assertEqual((2,1,2,[],[13]),tuple(start[k] for k in ('countryId','departureId','adults','childs','operatorIds')))
+        self.assertEqual(('2099-01-03','2099-01-03',9,9),tuple(start[k] for k in ('dateFrom','dateTo','nightsFrom','nightsTo')))
+        self.assertEqual([101,102],start['hotelIds']);self.assertLessEqual(len(start['hotelIds']),30)
+        self.assertFalse(any('continue' in path for _,path,_ in client.seen))
+
+    def test_existing_modes_admit_only_reviewed_continuation_not_renamed_frozen_scope(self):
+        c=core();m.register_parser(c)
+        for mode,op,parent in [('match-retained-acquire',m.NEXT_SCOPE['operation_id'],m.NEXT_SCOPE['parent_operation_id']),
+                               ('match-retained-anex-write-v2',m.NEXT_SCOPE['write_operation_id'],m.NEXT_SCOPE['operation_id'])]:
+            c=core();m.register_parser(c)
+            command=c.PREFIX+' '.join((SHA,mode,op,m.NEXT_SCOPE['cohort'],parent))
+            parsed=c.parse_command(command);self.assertEqual(m.NEXT_SCOPE['cohort'],parsed['cohort'])
+            with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+            ast.parse(c.REMOTE)
+            for bad in (command.replace(op,op+'-replay'),command.replace(parent,parent+'0'),
+                        command.replace(m.NEXT_SCOPE['cohort'],m.MODES[mode])):
+                with self.assertRaises(ValueError):c.parse_command(bad)
+
+    def test_public_completion_requires_scope_digest_and_full_new_write_readback(self):
+        cmd={'mode':'match-retained-anex-write-v2','source_sha':SHA,'operation_id':m.NEXT_SCOPE['write_operation_id'],
+             'cohort':m.NEXT_SCOPE['cohort'],'target_operation_id':m.NEXT_SCOPE['operation_id']}
+        data={**cmd,'control_source_sha':CONTROL,'state':'committed_verified','supplier_calls':0,
+              'database_writes':8,'mapping_writes':8,'new_accepted_mappings':8,'rows':[{}]*8,
+              'readback_verified':True,'resolver_readback_verified':True,'no_replay':True,'safe_to_write_now':False,
+              'continuation_scope_sha256':m.NEXT_SCOPE['sha256'],'scope_id':m.NEXT_SCOPE['scope_id']}
+        result={**cmd,'status':'complete','production_unchanged':True,'supplier_calls':0,'database_writes':8,'mapping_writes':8,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(a.canonical(data)).hexdigest()}}
+        self.assertTrue(m.completed_result(cmd,result,CONTROL))
+        for key,value in [('scope_id','f'*64),('continuation_scope_sha256','f'*64),('resolver_readback_verified',False)]:
+            bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+            bad['match_retained']['evidence_sha256']=hashlib.sha256(a.canonical(bad['match_retained']['data'])).hexdigest()
+            self.assertFalse(m.completed_result(cmd,bad,CONTROL))
+
+
 class AcquisitionTest(unittest.TestCase):
     def test_exact_anex_namespace_identity_and_sensitive_link_holds(self):
         detail={'hotel':{'id':1546},'operator':{'id':13},'operatorLink':'https://agent.anextour.ru/search?HOTELLIST=5844'}
