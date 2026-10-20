@@ -22,6 +22,7 @@ BASE = 'https://api.tourvisor.ru/search/api/v1'
 BODY_LIMIT = 16*1024*1024
 SCOPE_FILE = 'scripts/diagnostics/fixtures/hotel_match_retained_next_scope_20261020.json'
 TIMEOUT60_SCOPE_FILE = 'scripts/diagnostics/fixtures/hotel_match_retained_timeout60_scope_20261020.json'
+CATALOGUE_FILE = 'scripts/deploy/fixtures/hotel_match_retained_scope_catalogue_v1.json'
 
 
 def canonical(value):
@@ -31,6 +32,58 @@ def canonical(value):
 def load_scope_file(source_root, data):
     """Read only a scope pinned by the stock carrier's exact source manifest."""
     scope=data['continuation_scope']
+    if 'continuation_catalogue_sha256' in data:
+        catalogue_digest=data['continuation_catalogue_sha256']
+        member_digest=data.get('continuation_scope_sha256')
+        if (not isinstance(scope,dict) or data.get('continuation_scope_path')!=CATALOGUE_FILE
+                or not isinstance(catalogue_digest,str) or re.fullmatch(r'[a-f0-9]{64}',catalogue_digest) is None
+                or not isinstance(member_digest,str) or re.fullmatch(r'[a-f0-9]{64}',member_digest) is None):
+            raise ValueError('continuation_catalogue_binding')
+        path=Path(source_root)/CATALOGUE_FILE;manifest_path=Path(source_root)/'manifest.json'
+        for file,bound in ((path,1024*1024),(manifest_path,65536)):
+            if (file.is_symlink() or not file.is_file() or file.resolve()!=file
+                    or file.stat().st_nlink!=1 or not 0<file.stat().st_size<=bound):
+                raise ValueError('continuation_catalogue_path')
+        def unique_object(pairs):
+            value={}
+            for key,item in pairs:
+                if key in value:raise ValueError('continuation_catalogue_duplicate_key')
+                value[key]=item
+            return value
+        manifest=json.loads(manifest_path.read_bytes(),object_pairs_hook=unique_object)
+        raw=path.read_bytes();digest=hashlib.sha256(raw).hexdigest()
+        if (not isinstance(manifest,dict) or set(manifest)!={'schema_version','files'}
+                or type(manifest.get('schema_version')) is not int or manifest['schema_version']!=1
+                or not isinstance(manifest.get('files'),dict)
+                or manifest['files'].get(CATALOGUE_FILE)!=digest or digest!=catalogue_digest):
+            raise ValueError('continuation_catalogue_binding')
+        catalogue=json.loads(raw,object_pairs_hook=unique_object)
+        if (not isinstance(catalogue,dict) or set(catalogue)!={'schema_version','kind','scopes'}
+                or type(catalogue.get('schema_version')) is not int or catalogue['schema_version']!=1
+                or catalogue.get('kind')!='retained_never_selected_catalogue'
+                or not isinstance(catalogue.get('scopes'),list) or not 1<=len(catalogue['scopes'])<=100):
+            raise ValueError('continuation_catalogue_shape')
+        cohorts=set();identities=set();matches=[]
+        for item in catalogue['scopes']:
+            if (not isinstance(item,dict) or not isinstance(item.get('cohort'),str)
+                    or not isinstance(item.get('scope_id'),str)
+                    or re.fullmatch(r'[a-f0-9]{64}',item['scope_id']) is None
+                    or item['cohort']!='anex-next-'+item['scope_id'][:16]
+                    or item['cohort'] in cohorts or item['scope_id'] in identities
+                    or item.get('scope_kind')!='never_selected_bounded'
+                    or not isinstance(item.get('selected_tv_hotel_ids'),list)
+                    or not 1<=len(item['selected_tv_hotel_ids'])<=25
+                    or any(type(hid) is not int or hid<1 for hid in item['selected_tv_hotel_ids'])
+                    or item['selected_tv_hotel_ids']!=sorted(set(item['selected_tv_hotel_ids']))
+                    or type(item.get('selected_count')) is not int
+                    or item['selected_count']!=len(item['selected_tv_hotel_ids'])):
+                raise ValueError('continuation_catalogue_member')
+            cohorts.add(item['cohort']);identities.add(item['scope_id'])
+            if item['cohort']==scope.get('cohort') and item['scope_id']==scope.get('scope_id'):
+                matches.append(item)
+        if len(matches)!=1 or matches[0]!=scope or hashlib.sha256(canonical(matches[0])).hexdigest()!=member_digest:
+            raise ValueError('continuation_catalogue_member_binding')
+        return scope
     relative=data.get('continuation_scope_path') or (TIMEOUT60_SCOPE_FILE if scope.get('context_origin')=='owner_20261020_1257_timeout60_new_window' else SCOPE_FILE)
     if not isinstance(relative,str) or not re.fullmatch(r'scripts/diagnostics/fixtures/hotel_match_retained_[a-z0-9_]+_scope_[0-9]{8}\.json',relative):
         raise ValueError('continuation_scope_path')
@@ -476,6 +529,8 @@ if __name__=='__main__':
     result['parent_evidence_sha256']=scope['parent_evidence_sha256'] if scope else PARENT_EVIDENCE
     result['selected_id_sha256']=shape.plan_id_digest([r['tv_hotel_id'] for r in selected])
     if scope:result.update(continuation_scope_sha256=data['continuation_scope_sha256'],scope_id=scope['scope_id'])
+    if 'continuation_catalogue_sha256' in data:
+        result['continuation_catalogue_sha256']=data['continuation_catalogue_sha256']
     if scope and scope.get('scope_kind')=='owner_date_variation':
         if hashlib.sha256((Path.home()/'.anytoour-match/retained-selection-claims.json').read_bytes()).hexdigest()!=context_claim['hotel_ledger_sha256']:raise SystemExit('hotel_ledger_changed_unknown_no_replay')
         result.update(context_claim,context_origin=scope['context_origin'],wire_context=scope['wire_context'])
