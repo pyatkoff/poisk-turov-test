@@ -89,7 +89,7 @@ class SchemaControlContract(unittest.TestCase):
         wrapper=importlib.util.module_from_spec(wrapper_spec); wrapper_spec.loader.exec_module(wrapper)
         c=wrapper.core
         body=f'{c.PREFIX}{SHA} {m.MODE} {m.INSPECT_OPERATION}'
-        event={'issue':{'number':4217},'comment':{'id':99,'user':{'id':226193297},'author_association':'OWNER','body':body}}
+        event={'issue':{'number':4709},'comment':{'id':99,'user':{'id':226193297},'author_association':'OWNER','body':body}}
         def api(path, token):
             if path=='/issues/comments/99': return {'body':body,'user':{'id':226193297}}
             if path=='/git/ref/heads/main': return {'object':{'sha':'b'*40}}

@@ -1,12 +1,26 @@
 # poisk-turov-test — Autopilot Rules
 
-## Текущий журнал координации — 2026-10-01
+## Текущий журнал координации — 2026-10-20
 
-Все новые claims, handoff, результаты и разрешённые команды: [#4217](https://github.com/pyatkoff/poisk-turov-test/issues/4217).
-#3419, #2530 и #996 — история/no-replay; незавершённые claims и ограничения сохраняются.
+Все новые claims, handoff, результаты: [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
+#4217 достиг2500комментариев; он и #3419/#2530/#996 остаются историей/no-replay.
+Все незавершённые claims, ограничения, reservations и UNKNOWN сохраняются без переавторизации.
+Перед серверной командой подтвердить cutover своего существующего carrier в свежем main:
+постоянный INT/MATCH/LOCAL executor использует только #4709; немигрированные publisher gates
+не получают новый допуск от этого текста. Actors/source/pins/locks/receipt/production guards неизменны.
 При блокере зафиксировать причину и продолжать следующую доступную независимую задачу.
 Маршрутизация и действующие исполнители: [coordination-journal.md](docs/project/coordination-journal.md).
-Перенос журнала не разрешает повтор операций и не расширяет доступ или production-допуск.
+Перенос не разрешает повтор операций, новый транспорт/worker или расширение production-допуска.
+
+## Development routing — owner direction 2026-09-09
+
+Start with [AnyTour development](docs/project/anytour-development.md): four workstreams,
+one coordinator in #4709, one owner per shared component. Use the fresh release
+`AUTOPILOT_STATE.json.current_task` for product execution; its historical snapshots
+and the inherited ANEX root state are not new queues. Integrations use their scoped
+ANEX plan; SITE #1719 and SEO #1720 remain independent within existing permissions.
+This routing preserves all protected contracts, production approval and applicable CI.
+
 
 ## Product mission
 
@@ -200,3 +214,11 @@ Later, reporting frequency may be reduced as the product stabilizes.
 ## Core principle
 
 Optimize for a product that is reliable, beautiful, fast, understandable and commercially effective — not for number of commits or number of features shipped.
+
+## Search3 presentation source ownership
+
+The owner authorized search refactoring on 2026-09-05. Search3 presentation source
+modules now live in `src/search3/`; see its README and AGENTS.md before changing
+the generated `v2/search3-*` assets. Run `python3 scripts/build/search3_assets.py --write`
+and commit modules, generated assets and import hashes together. This scoped
+refactor does not lift the production visual-approval gate or protected contracts.

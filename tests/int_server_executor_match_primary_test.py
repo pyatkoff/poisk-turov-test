@@ -1101,7 +1101,7 @@ class Source3RegistrationTest(unittest.TestCase):
         self.assertLessEqual(len(remote_command.encode()),65536)
 
     def test_source3_keeps_owner_canonical_and_current_head_authorization(self):
-        body=self.body();event={'issue':{'number':4217},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
+        body=self.body();event={'issue':{'number':4709},'comment':{'id':123,'body':body,'user':{'id':226193297},'author_association':'OWNER'}}
         def api(path,token):
             if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
             if path=='/git/ref/heads/main':return {'object':{'sha':CONTROL}}
@@ -2677,7 +2677,7 @@ class PassiveOct4RegistrationTest(unittest.TestCase):
             with self.assertRaises(ValueError):registration.activate(self.core,changed)
 
     def test_original_actor_issue_comment_and_fresh_heads_guard(self):
-        event={'issue':{'number':4217},'comment':{'id':123,'body':self.body(),
+        event={'issue':{'number':4709},'comment':{'id':123,'body':self.body(),
                'user':{'id':226193297},'author_association':'OWNER'}}
         def api(path,token):
             if path=='/issues/comments/123':return copy.deepcopy(event['comment'])
