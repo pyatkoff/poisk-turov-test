@@ -83,6 +83,15 @@ function verifyEntry(bytes,manifest){
   return{sha256:hash(bytes),bytes:bytes.length,exactSourceTransform:true,sourceHTMLSHA256:expected.sourceHTMLSHA256,sourcePHPSHA256:expected.sourcePHPSHA256,scripts:actualScripts,styles:actualStyles};
 }
 function writeReport(){fs.writeFileSync(path.join(out,'acceptance.json'),JSON.stringify(report,null,2)+'\n');}
+function verifyInitialURL(value){
+  const actual=new URL(value),target=new URL(TARGET);
+  assert.equal(actual.origin,target.origin);assert.equal(actual.pathname,target.pathname);
+  assert.equal(actual.username,'');assert.equal(actual.password,'');assert.equal(actual.hash,'#search');
+  const expected={...fixture.trip,ages:fixture.trip.ages.join(',')};
+  const entries=Object.entries(expected).map(([key,value])=>[key,String(value)]).sort(([a],[b])=>a.localeCompare(b));
+  assert.deepEqual([...actual.searchParams.entries()].sort(([a],[b])=>a.localeCompare(b)),entries,'Only the exact canonical fictional trip is restored in the installed URL');
+  return actual.href;
+}
 function calls(page){return page.evaluate(()=>structuredClone(window.__nativeFixture.calls));}
 async function capture(page,row,name){
   await page.evaluate(()=>document.fonts.ready);
@@ -147,7 +156,7 @@ async function run(){
         page.on('pageerror',error=>row.errors.push(error.message));
         await page.clock.setFixedTime(new Date(report.clock));
         await page.goto(TARGET,{waitUntil:'networkidle'});
-        assert.equal(page.url(),TARGET);const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
+        row.initialURL=verifyInitialURL(page.url());const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});assert.equal((await calls(page)).search,0);
         await capture(page,row,'search');
         await product.locator('[data-search-nights-toggle]').click();await product.locator('[data-native-night="10"]').click();
@@ -211,5 +220,7 @@ if(process.argv.includes('--policy-only')){
   const rendered=renderedEntry(compiledManifest).body;verifyEntry(rendered,compiledManifest);
   const drift=Buffer.from(rendered.toString('utf8').replace('</body>','<div>UNREVIEWED ENTRY DRIFT</div></body>'));
   assert(!drift.equals(rendered));assert.throws(()=>verifyEntry(drift,compiledManifest),/Exact installed entry DOM/,'Changed static body must fail despite its unchanged script graph');
+  const canonical=TARGET+'?'+new URLSearchParams({...fixture.trip,ages:fixture.trip.ages.join(',')})+'#search';verifyInitialURL(canonical);
+  assert.throws(()=>verifyInitialURL(canonical.replace('#search','&searched=1#search')));assert.throws(()=>verifyInitialURL(canonical.replace('country=4','country=1')));assert.throws(()=>verifyInitialURL(canonical.replace('#search','#results')));
   console.log('Installed native static policy PASS; no browser or network used.');
 }else run().then(()=>console.log('Installed native presentation acceptance PASS: 430/1280, controlled data only.')).catch(error=>{console.error(error.stack||error);process.exitCode=1;});
