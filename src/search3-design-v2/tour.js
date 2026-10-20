@@ -34,15 +34,15 @@
       || Number.isInteger(index) && index >= 0 && value?.variants?.[index]);
     const checkedFlight = checkedPrice && selectedFlight;
     return {total,quotedTotal,expired,failed,unavailable,checkedPrice,selectedFlight,checkedFlight,
-      caption:checkedPrice ? 'Проверенная цена за всех' : quotedTotal ? 'Последняя цена за всех · нужна проверка' : 'Цена из поиска за всех',
+      caption:checkedFlight ? 'Цена с выбранным перелётом за всех' : checkedPrice ? 'Цена предложения за всех' : quotedTotal ? 'Последняя цена за всех · нужна проверка' : 'Цена из поиска за всех',
       basis:checkedFlight ? 'С выбранным перелётом' : checkedPrice ? 'Рейс уточнит менеджер' : quotedTotal ? 'Последняя цена · нужна проверка' : 'Цена из поиска',
       origin:quotedTotal && total !== Number(offer.total) ? 'В поиске: ' + money(offer.total).replace(/ /g,'\u00a0') : '',
       note:busy || value?.loading ? 'Проверяем цену и перелёт. Дождитесь результата.'
         : unavailable ? 'Онлайн-проверка этого тура недоступна. Выберите другой вариант.'
         : expired ? 'Срок цены истёк. Для оформления нужна новая проверка.'
         : failed ? 'Проверка не завершена. Цена и перелёт требуют уточнения.'
-        : checkedFlight ? 'Цена проверена с выбранным перелётом. Доплаты и наличие уточнит менеджер.'
-        : checkedPrice ? 'Цена предложения проверена. Рейс и доплаты уточнит менеджер.'
+        : checkedFlight ? 'Выбранный перелёт учтён в цене. Доплаты и наличие мест уточним до оформления.'
+        : checkedPrice ? 'Цена предложения получена. Рейс и доплаты уточним до оформления.'
         : 'Цена из поиска. Выберите перелёт, чтобы узнать стоимость тура с ним.'};
   }
   const flightPlaceholder = flight => /000$/.test(String(flight?.number || '').replace(/\s/g,'')) && flight?.departure?.time==='00:00' && flight?.arrival?.time==='00:00';
@@ -73,11 +73,11 @@
       : price.unavailable ? 'Онлайн-проверка этого тура недоступна.'
       : state==='expired' ? 'Срок цены истёк. До оформления нужна новая проверка.'
       : state==='error' ? 'Проверка не завершена. Цена требует уточнения.'
-      : state==='acceptance' ? 'Новая стоимость проверена. Подтвердите изменение цены.'
-      : price.checkedFlight ? 'Цена проверена с выбранным перелётом.'
-      : price.checkedPrice ? 'Цена предложения проверена. Рейсы уточнит менеджер.'
+      : state==='acceptance' ? 'Стоимость изменилась. Подтвердите новую сумму.'
+      : price.checkedFlight ? 'Выбранный перелёт учтён в цене.'
+      : price.checkedPrice ? 'Перелёт не выбран. Условия уточнит менеджер.'
       : 'Цена из поиска. Стоимость пакета ещё не проверена.';
-    return {state,title,note:'Перед оформлением менеджер уточнит: '+unresolved.join(', ')+'.'};
+    return {state,title,note:'До оформления уточним: '+unresolved.join(', ')+'.'};
   }
   const conditionsHTML = conditions => '<strong data-native-conditions-title>'+esc(conditions.title)+'</strong><p>'+esc(conditions.note)+'</p>';
   const unavailableSelection = value => value?.quoteFailure?.retryable === false || value?.flightsFailure?.retryable === false;
@@ -133,14 +133,23 @@
         sections[1].dataset.nativeFlightSection = '';
         sections[1].innerHTML = '<div class="st-step-label">ПЕРЕЛЁТ</div><div class="st-section-top"><h3>Туда и обратно</h3><span class="st-status-pill" data-native-flight-status>Требует проверки</span></div><div data-native-flight-content></div>';
       }
-      if (sections[2]) sections[2].innerHTML = '<div class="st-step-label">ПРОВЕРКА УСЛОВИЙ</div><div class="st-native-conditions" data-native-package-note></div>';
+      if (sections[2]) {
+        sections[2].innerHTML = '<div class="st-native-conditions st-native-tour-conditions" data-native-package-note></div>';
+      }
       const costDetails = tourScreen.querySelector('.st-tour-layout > aside');
       if (costDetails) {
         costDetails.dataset.nativeCostDetails='';
         const priceCaption=costDetails.querySelector('.st-total > .st-small');
         if(priceCaption)priceCaption.dataset.nativePriceCaption='';
         const priceNote=costDetails.querySelector('.st-safety');
-        if(priceNote)priceNote.innerHTML=icon('shield-check')+'<span data-native-cost-note></span>';
+        if(priceNote)priceNote.innerHTML=icon('shield-check')+'<span data-native-cost-note>Без оплаты сейчас.</span>';
+        const packageNote=tourScreen.querySelector('[data-native-package-note]');
+        const total=costDetails.querySelector('.st-total');
+        if(packageNote)total.insertBefore(packageNote,total.querySelector('[data-action="lead"]'));
+        if(sections[2])sections[2].remove();
+        // Unknown supplements are explained once with the other unresolved facts.
+        const supplements=costDetails.querySelector('.st-cost-list > div:last-child');
+        if(supplements&&!supplements.querySelector('[data-tour-operator]'))supplements.remove();
         if (root.classList.contains('st-mobile')) {
           costDetails.querySelector('h3').textContent='Условия тура';
           if(!tourScreen.querySelector('.st-native-quick-party')){
@@ -224,7 +233,7 @@
       }
       const index=value?.flightChoiceId===null || value?.flightChoiceId===undefined ? null : Number(value.flightChoiceId),selected=index===null ? null : variants[index];
       let content=selected ? legHTML(selected.forward,'Туда')+legHTML(selected.backward,'Обратно') : '<p class="st-small st-muted">Выберите перелёт или оставьте уточнение рейсов менеджеру.</p>';
-      if (value?.tour && bridge.deferFlight) content+='<button type="button" class="st-link" data-native-defer-flight '+(busy ? 'disabled' : '')+'>Рейс уточнит менеджер</button>';
+      if (value?.tour && bridge.deferFlight) content+='<button type="button" class="st-link" data-native-defer-flight '+(busy ? 'disabled' : '')+'>Уточнить рейсы с менеджером</button>';
       const directionHTML=(segments,label)=>{
         if(!Array.isArray(segments)||!segments.length)return '<div class="st-native-flight-leg"><span class="st-native-flight-direction">'+label+'</span><div class="st-native-flight-route">Расписание уточняется</div></div>';
         return segments.map((segment,connection)=>{
@@ -269,7 +278,7 @@
       const offer=context.offer,hotel=context.hotel,value=current(),tour=value?.tour;
       selection=value;
       const price = describePrice(offer,value,{busy,error});
-      const {total,expired,failed,checkedPrice,checkedFlight,caption:priceCaption,note:priceNote} = price;
+      const {total,expired,failed,checkedPrice,checkedFlight,caption:priceCaption} = price;
       const room=textFact(tour?.roomType) || offer.room || 'Номер уточняется',meal=mealLabel(mealFact(tour?.meal) || offer.meal);
       text('[data-tour-hotel],[data-quick-hotel],[data-lead-hotel]',hotel?.name || 'Отель уточняется');
       text('[data-tour-location]',hotel?.location || 'Расположение уточняется');
@@ -280,7 +289,8 @@
       text('[data-native-price-caption]',priceCaption);
       text('[data-native-price-origin]',price.origin);
       $$('[data-native-price-origin]').forEach(node=>node.hidden=!price.origin);
-      text('.st-quick-price-note',priceNote);text('[data-native-cost-note]','Без оплаты сейчас. '+priceNote);
+      text('.st-quick-price-note',busy||value?.loading||value?.flightsLoading?'Проверяем цену и перелёт…':price.unavailable?'Онлайн-проверка недоступна.':expired?'Срок цены истёк — нужна новая проверка.':failed?'Цена и перелёт требуют уточнения.':checkedPrice?'Доплаты и наличие уточняются до оформления.':'Цена и состав тура требуют проверки.');
+      text('[data-native-cost-note]','Без оплаты сейчас.');
       text('[data-lead-choice]',room+' · '+meal);text('[data-lead-context]',stay+' · '+party(offer));
       text('[data-native-contact-origin]',offer.search?.origin||'Город уточняется');text('[data-native-contact-operator]',offer.operator||'Уточняется');
       const ages=offer.ages||[];
@@ -295,7 +305,7 @@
       const changed=value && !value.pricePending && Number(value.total)!==Number(offer.total);
       $$('[data-price-change]').forEach(node=>{node.hidden=!changed || value.priceAccepted===true;});
       text('[data-price-change-text]',changed ? 'Было '+money(offer.total)+' → стало '+money(value.total)+' за всех туристов.' : '');
-      $$('[data-action="accept-price"]').forEach(node=>node.disabled=busy || !changed);
+      $$('[data-action="accept-price"]').forEach(node=>node.disabled=!checkedPrice || !changed);
       $$('[data-action="lead"]').forEach(node=>{node.disabled=!canContinue();node.setAttribute('aria-disabled',String(node.disabled));});
       const flightContent=$('[data-native-flight-content]');
       if (flightContent) {
@@ -307,7 +317,6 @@
         else flightContent.innerHTML='<p class="st-small st-muted">'+esc(displayError(error) || 'Рейсы не подтверждены.')+'</p>'+(offer.provider==='tourvisor' && !offer.cached ? '<button type="button" class="st-secondary" data-native-check-tour>Проверить тур</button>' : '');
       }
       text('[data-native-flight-status]',price.unavailable ? 'Недоступно онлайн' : busy ? 'Проверяем' : expired ? 'Нужна новая проверка' : failed ? 'Требует проверки' : checkedFlight ? 'Выбранный перелёт' : checkedPrice ? 'Уточнит менеджер' : 'Требует уточнения');
-      const supplements=tourScreen.querySelector('[data-native-cost-details] .st-cost-list > div:last-child > b');if(supplements)supplements.textContent='Уточняются';
       const failure=error || value?.quoteError || value?.flightsError || '';
       setStatus(price.unavailable ? 'Онлайн-проверка этого тура недоступна. Выберите другой вариант в предложениях отеля.' : busy ? 'Проверяем точное предложение…' : displayError(failure), Boolean(failure || price.unavailable));
       renderContact();scheduleExpiry();window.lucide?.createIcons({attrs:{width:18,height:18}});
@@ -385,6 +394,7 @@
       if(button.hasAttribute('data-native-check-tour'))operation(offer=>bridge.quoteOffer(offer.key,{force:true,expectedOffer:offer}));
       if(button.hasAttribute('data-native-expand-offer'))operation(async offer=>({navigate:'hotel',expandedOffers:await bridge.expandOfferGroup(offer.key,{expectedOffer:offer})}));
       if(button.dataset.action==='accept-price'){
+        if(!context?.offer||!describePrice(context.offer,current(),{busy,error}).checkedPrice)return;
         try{selection=bridge.acceptPrice();error='';review=null;renderDetails();emit();}catch(failure){error=failure.message;renderDetails();emit();}
       }
     },{signal:controller.signal});

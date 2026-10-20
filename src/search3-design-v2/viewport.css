@@ -21,7 +21,7 @@ body { margin: 0; padding: 0; }
   #design-v2-native-root #b4 .st-desktop .q8c0 .st-search-submit-wrap { margin-top: 16px; }
 }
 /* Existing field content opens above the form, in the browser's modal layer.
-   A compact bottom sheet keeps the same choice and one Find button on phones. */
+   A compact bottom sheet keeps one explicit Apply action on phones. */
 #design-v2-native-root #b4 [data-native-form-popup] {
   box-sizing: border-box;
   width: min(480px, calc(100vw - 32px));
@@ -56,13 +56,15 @@ body { margin: 0; padding: 0; }
   overflow: auto;
   overscroll-behavior: contain;
 }
-#design-v2-native-root #b4 .st-popup-submit {
+#design-v2-native-root #b4 .st-popup-actions {
   flex: none;
   padding: 14px 20px;
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
-#design-v2-native-root #b4 .st-popup-submit > [type="submit"] { width: 100%; margin: 0; }
+#design-v2-native-root #b4 .st-popup-actions > * { margin: 0; }
+#design-v2-native-root #b4 .st-popup-actions :is([data-calendar-done],[data-search-editor-done],[data-destination-apply],[data-conditions-apply]) { min-height: 44px; }
+#design-v2-native-root #b4 .st-popup-actions > :is(.st-calendar-bottom,.st-night-footer,.st-family-apply) { padding: 0; border: 0; }
 #design-v2-native-root #b4 [data-native-popup-panel] :is(.st-form-cancel, .st-condition-cancel) {
   white-space: nowrap;
   overflow-wrap: normal;
@@ -80,7 +82,7 @@ body { margin: 0; padding: 0; }
     margin: auto 0 0;
     border-radius: 20px 20px 0 0;
   }
-  #design-v2-native-root #b4 .st-popup-submit { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+  #design-v2-native-root #b4 .st-popup-actions { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
 }
 /* Keep full totals legible when text grows; wrapping uses numeric groups. */
 #design-v2-native-root #b4 .st-mobile .st-price-area > div {
@@ -451,6 +453,8 @@ body { margin: 0; padding: 0; }
 #design-v2-native-root #b4 .st-native-conditions { min-width: 0; font-size: 13px; line-height: 1.55; }
 #design-v2-native-root #b4 .st-native-conditions > strong { display: block; font-weight: 500; }
 #design-v2-native-root #b4 .st-native-conditions > p { margin: 8px 0 0; color: var(--muted); }
+#design-v2-native-root #b4 [data-action="best-tour"][hidden] { display: none !important; }
+#design-v2-native-root #b4 .st-native-tour-conditions { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
 #design-v2-native-root #b4 [data-native-hotel-conditions] { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
 #design-v2-native-root #b4 [data-native-flight-section] { container: native-itinerary / inline-size; }
 @container native-itinerary (min-width: 52em) {

@@ -455,7 +455,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
         focusOutline:style.outlineStyle!=='none'&&parseFloat(style.outlineWidth)>=2};
     }
     const popup=root.querySelector('[data-native-form-popup][open]');let popupFit=null;
-    if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),find=popup.querySelector('[type="submit"]'),action=find.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,findVisible:action.top>=0&&action.bottom<=innerHeight,findEnabled:!find.disabled,findHeight:action.height,submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
+    if(popup){const panel=popup.querySelector('[data-native-popup-panel]:not([hidden])'),bounds=popup.getBoundingClientRect(),apply=popup.querySelector('.st-popup-actions [data-native-popup-apply]'),find=root.querySelector('[data-search-form] [type="submit"]'),action=apply.getBoundingClientRect();popupFit={editor:popup.dataset.editor,modal:popup.matches(':modal'),outside:bounds.left<-1||bounds.right>innerWidth+1||bounds.top<-1||bounds.bottom>innerHeight+1,panelOverflow:panel.scrollWidth>panel.clientWidth+1,applyVisible:action.top>=0&&action.bottom<=innerHeight,applyEnabled:!apply.disabled,applyHeight:action.height,findOutsidePopup:!popup.contains(find),submitCount:root.querySelector('[data-search-form]').querySelectorAll('[type="submit"]').length};}
     return{viewportWidth:innerWidth,viewportHeight:innerHeight,documentWidth:doc.scrollWidth,overflow:doc.scrollWidth>innerWidth+1,stageHidden:Boolean(stage?.hidden),screen:root?.querySelector('[data-screen]:not([hidden])')?.dataset.screen||(root?.matches('[data-native-startup]')?'startup':undefined),prices,buttons,budgetInputs,budgetColumns,readableText,headerFit,countFit,sortFit,
       popupFit,calendarFit,destinationFit,summaryFit,offerActionFit,consentFit,resultCardIds,resultNotice,boxes:{header:box('.st-header'),title:box('h1'),sidebar:box('[data-filter-sidebar]'),card:box('.st-hotel-card'),price:box('.st-price'),form:box('[data-search-form]'),tour:box('.st-tour-layout'),contact:box('[data-lead-form]')}};
   },percent);
@@ -475,7 +475,7 @@ async function capture(page,side,width,percent,screen,row,fullPage=true) {
   const contentScreen={'content-results':'results','content-gallery-error':'gallery','content-gallery':'gallery','content-contact-invalid':'lead','content-contact':'lead','quote-unavailable':'tour','flights-unavailable':'tour'}[logicalScreen];
   assert.equal(measurements.screen,contentScreen ?? (logicalScreen.startsWith('startup-')?'startup':logicalScreen.startsWith('family-')||logicalScreen.startsWith('destination-')||logicalScreen.startsWith('popup-')||logicalScreen==='initial-search-return'?'search':logicalScreen==='budget-draft'||logicalScreen==='budget-invalid'||logicalScreen==='budget-progress-invalid'?'filters':['terminal-complete','terminal-partial','terminal-error','initial-favorites','budget-results','results-loading','results-error','results-partial-empty','results-partial','results-bounded','filters-active','filter-empty','filter-empty-partial','calendar-later','calendar-single-range','error'].includes(logicalScreen)?'results':['hotel-return','hotel-selected-dearer','ai-hotel-checked'].includes(logicalScreen)?'hotel':['lead-manager','lead-selected-dearer','ai-contact'].includes(logicalScreen)?'lead':['tour-alternatives','tour-many-flights','ai-price-changed'].includes(logicalScreen)?'tour':logicalScreen),'Captured frame must show the requested usable screen, never a replacement startup shell');
   if(side==='native'){
-    if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.findVisible,true,'Find stays visible while popup content scrolls');assert.equal(p.findEnabled,true);assert(p.findHeight>=44);assert.equal(p.submitCount,1,'Popup reuses exactly one canonical search submit');}
+    if(measurements.popupFit){const p=measurements.popupFit;assert.equal(p.modal,true);assert.equal(p.outside,false,'Popup stays inside the viewport');assert.equal(p.panelOverflow,false,'Popup content has no horizontal overflow');assert.equal(p.applyVisible,true,'Apply stays visible while popup content scrolls');assert.equal(p.applyEnabled,logicalScreen!=='destination-confirm','A pending replacement must be resolved before Apply');assert(p.applyHeight>=44);assert.equal(p.findOutsidePopup,true,'Find is outside the modal and cannot compete with Apply');assert.equal(p.submitCount,1,'The form retains exactly one canonical Find submit');}
     const cardIds=measurements.resultCardIds,notice=measurements.resultNotice;
     assert.ok(cardIds.every(id=>Number.isInteger(id)&&id>0),'Every measured result card retains its exact hotel ID');
     assert.equal(new Set(cardIds).size,cardIds.length,'Measured result card identities are unique');
@@ -749,9 +749,33 @@ if(require.main===module)(async()=>{
         const formAfter=await product.locator('[data-search-form]').boundingBox();
         assert(Math.abs(formAfter.height-formBefore.height)<1.1,'Opening a popup does not expand the form');
         await capture(page,'native',width,percent,'popup-calendar',row,false);
+        const popupSearches=await page.evaluate(()=>window.__nativeFixture.calls.search);
+        await product.locator('[data-calendar-boundary="to"]').click();
+        await product.locator('[data-native-date="2026-10-25"]').click();
+        assert.equal(await product.locator('.st-popup-actions [data-calendar-done]').count(),1,'Choosing a date keeps Apply outside the scrolling calendar');
+        await product.locator('[data-calendar-month="1"]:visible').first().click();
+        assert.equal(await product.locator('.st-popup-actions [data-calendar-done]').count(),1,'Paging the calendar keeps Apply in the fixed action area');
+        await product.locator('[data-calendar-done]').click();
+        assert.equal(await product.locator('[data-native-form-popup]').isVisible(),false,'Apply closes the calendar without searching');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),popupSearches);
+        row.proof.formPopupApplyExtraSearches=0;
+        await product.locator('[data-conditions-open="budget"]').click();
+        await product.locator('[data-search-budget="max"]').press('Enter');
+        assert.equal(await product.locator('[data-native-form-popup]').isVisible(),false,'Enter applies the editor without searching');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),popupSearches);
+        row.proof.formPopupEnterExtraSearches=0;
+        const nightsBeforeCancel=await product.locator('[data-search-night-value]').innerText();
+        await product.locator('[data-search-nights-toggle]').click();
+        await product.locator('[data-native-night="10"]').click();
+        await product.locator('[data-native-night="10"]').press('Escape');
+        assert.equal(await product.locator('[data-search-night-value]').innerText(),nightsBeforeCancel);
+        assert.equal(await product.locator('[data-search-nights-toggle]').evaluate(node=>node===document.activeElement),true);
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),popupSearches);
+        row.proof.formPopupCancelRetainsDraftAndFocus=true;
         await screen('search').locator('button[type="submit"]').click();
         await screen('results').waitFor({state:'visible'});
-        assert.equal(await product.locator('[data-native-form-popup]').isVisible(),false,'Find applies the valid popup selection and closes it');
+        assert.equal(await page.evaluate(()=>window.__nativeFixture.calls.search),popupSearches+1,'Only Find in the closed form starts one search');
+        row.proof.formPopupFindSearches=1;
         row.proof.formPopupSingleSubmitRetained=true;
         await product.locator('.st-hotel-card').nth(3).waitFor();
         assert.match(await product.locator('[data-mobile-dates]').textContent(),/12–25 окт/,'Same-month range keeps the donor compact copy');
@@ -1037,6 +1061,7 @@ if(require.main===module)(async()=>{
         row.proof.screenNavigation={deepScroll:deepPosition.scroll,hotelHeadingVisible:true,resultFocusRestored:true,resultAnchorDelta:returnedPosition.top-deepPosition.top,extraSearches:0};
         await product.locator('[data-hotel-open="1"]').first().click();
         await screen('hotel').waitFor({state:'visible'});
+        assert.equal(await product.locator('[data-action="best-tour"]:visible').count(),0,'Without a chosen exact offer the hotel has no competing default-tour action');
         await capture(page,'native',width,percent,'hotel',row);await referenceFrame(reference,width,percent,'hotel',row);
         await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();
         await screen('tour').waitFor({state:'visible'});
@@ -1084,7 +1109,7 @@ if(require.main===module)(async()=>{
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         for(const fact of ['09:20','13:20','13:00','17:00','FX 101','FX 102','FIXTURE Moscow','FIXTURE Antalya','FIXTURE TV','Москва'])assert((await product.locator('[data-native-contact-facts]').innerText()).includes(fact),'Final contact review retains '+fact);
         assert.match(await product.locator('[data-lead-context]').innerText(),/12 окт — 19 окт/);
-        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена проверена с выбранным перелётом/);
+        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Выбранный перелёт учтён в цене/);
         row.proof.contactExactItineraryRetained=true;
         await capture(page,'native',width,percent,'lead',row);await referenceFrame(reference,width,percent,'lead',row);
         const leadPriceFit=await screen('lead').evaluate(root=>{
@@ -1185,7 +1210,7 @@ if(require.main===module)(async()=>{
         assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().flightChoiceId),null);assert.equal(await page.evaluate(()=>window.__nativeFixture.getSelection().total),110000);
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
         assert.match(await product.locator('[data-native-contact-flight]').innerText(),/Рейс уточнит менеджер/);assert.doesNotMatch(await product.locator('[data-native-contact-flight]').innerText(),/FX /);
-        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Цена предложения проверена\. Рейсы уточнит менеджер/);
+        assert.match(await product.locator('[data-native-contact-note]').innerText(),/Перелёт не выбран\. Условия уточнит менеджер/);
         assert.equal(await form.locator('[name="consent"]').isChecked(),false,'Changing the flight decision revokes prior consent');
         await capture(page,'native',width,percent,'lead-manager',row);
         if(width<=760)await product.locator('[data-native-contact-facts] > summary').click();
