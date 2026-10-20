@@ -215,6 +215,66 @@ async function quoteReturnRegressions(){
   }finally{local.window.close();assert.deepEqual(localErrors,[]);}
  }
 }
+async function terminalQuoteRegressions(){
+ for(const width of [430,1280])for(const phase of ['quote','flights']){
+  const t=fixture(),localErrors=[],console=new VirtualConsole();console.on('jsdomError',e=>localErrors.push(e.message));t.state.wideFacets=true;
+  const local=new JSDOM(source('visual-search/index.html'),{url:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/?'+new URLSearchParams({...trip,ages:''}),runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console});
+  const win=local.window,doc=win.document,get=s=>doc.querySelector(s),tap=s=>{assert(get(s),s);get(s).click();};
+  Object.assign(win,{innerWidth:width,structuredClone,TextEncoder,CSS:w.CSS});Object.defineProperty(win,'crypto',{value:require('node:crypto').webcrypto});
+  win.matchMedia=()=>({matches:win.innerWidth<768,addEventListener(){},removeEventListener(){}});win.IntersectionObserver=class{observe(){}unobserve(){}disconnect(){}};
+  win.HTMLElement.prototype.scrollIntoView=function(){};win.HTMLElement.prototype.getClientRects=function(){return [{}];};win.scrollTo=()=>{};
+  win.HTMLDialogElement.prototype.showModal=function(){this.open=true};win.HTMLDialogElement.prototype.close=function(){this.open=false};
+  const key='tourvisor%3Avisual-tv-101',exact='[data-action="offer"][data-key="'+key+'"]';let deny=true,attempts=0;
+  const denied=()=>Object.assign(new Error('Fictional permanent provider denial'),{code:'tourvisor_operator_unsupported',retryable:false});
+  win.fetch=async(url,options={})=>{
+   assert(!/lead|booking/.test(String(url)),'no real lead transport');const u=new URL(url,win.location.href),action=u.searchParams.get('action'),value=await t.json(url,options);
+   if(action==='tour'){value.id=u.searchParams.get('tourId');if(value.id==='visual-tv-101')value.price=137000;}
+   return new Response(JSON.stringify(value),{status:value.ok===false?502:200,headers:{'Content-Type':'application/json'}});
+  };
+  for(const file of scripts){
+   if(file==='visual-search/app.js'){
+    const canonical=win.AnyTourPrototypeData;
+    // Model the accepted adapter Error boundary before any fictional HTTP.
+    // The presentation receives no operator dictionary or source inference.
+    win.AnyTourPrototypeData=Object.freeze(Object.create(canonical,{
+     quote:{value:async o=>{if(deny&&phase==='quote'&&o.key===key){attempts++;throw denied();}return canonical.quote(o);}},
+     flights:{value:async tour=>{if(deny&&phase==='flights'&&tour.id==='visual-tv-101'){attempts++;throw denied();}return canonical.flights(tour);}}
+    }));
+   }
+   let code=source(file);if(file==='visual-search/app.js'){const marker='async function restoreURLHotel(){';assert.equal(code.split(marker).length,2);code=code.replace(marker,'window.__terminal=()=>({offer:selectedOffer,type:modalType,first:offerFromKey("tourvisor%3Avisual-tv-101"),capture:()=>captureModalStep($("#modal")),back:snapshot=>{modalHistory.push(snapshot);modalBack();},route:reopenUIRoute});\n'+marker);}win.eval(code);
+  }
+  const until=async fn=>{for(let i=0;i<100;i++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,30));}throw Error('Terminal quote timeout '+phase+'/'+width);};
+  const open=()=>{tap('[data-action="all-offers"][data-id="501"]');tap('#modal-body '+exact);};
+  const operations=()=>t.calls.filter(c=>['tour','flights'].includes(c.action)).length;
+  const forced=action=>{const b=doc.createElement('button');b.dataset.action=action;b.dataset.key=key;doc.body.append(b);b.click();b.remove();};
+  try{
+   await until(()=>!get('.search-submit').disabled);tap('.search-submit');await until(()=>get('[data-action="all-offers"][data-id="501"]'));open();
+   const original=win.__terminal().offer,searchPrice=original.total,raw=original.raw;let staleContact=null,staleOffer=null;
+   tap('[data-action="start-lead"]');
+   if(phase==='flights'){
+    await until(()=>get('#prototype-lead-form'));assert.equal(win.__terminal().offer.total,137000,'the prior checked total differs from the search price');staleContact=win.__terminal().capture();
+    tap('#modal-back');staleOffer=win.__terminal().capture();tap('[data-action="retry-flights"]');
+   }
+   await until(()=>get('#modal-body .error-text'));
+   const assertDenied=()=>{
+    const current=win.__terminal().offer;assert.equal(current.quoteErrorCode,'tourvisor_operator_unsupported');assert.equal(current.quoteErrorTerminal,true,'permanent Error classification survives the actual app');assert.strictEqual(current.raw,raw);assert.equal(current.total,searchPrice);assert.equal(current.tour,null,'denial removes prior quote authority');
+    assert.equal(get('#modal-footer .primary').dataset.action,'all-offers');assert.match(get('#modal-footer').textContent,/Выбрать другой тур/);assert.match(get('.footer-price-status').textContent,/не подтверждена/);assert.doesNotMatch(get('#modal-body').textContent,/Повторите проверку/);assert(!get('#prototype-lead-form')&&!get('[data-action="start-lead"]')&&!get('[data-action="start-tour-flights"]')&&!get('[data-action="choose-flight"]'));
+   };
+   assertDenied();const before=operations();assert.equal(before,phase==='quote'?0:1,'denied boundary itself sends no fictional HTTP');
+   for(const action of ['start-lead','start-tour-flights','retry-flights','choose-flight','apply-flight','confirm-tour']){forced(action);await Promise.resolve();assertDenied();}
+   if(staleContact){win.__terminal().back(staleContact);assertDenied();win.__terminal().back(staleOffer);assertDenied();}
+   for(const type of ['selected-tour','flights']){win.__terminal().route({type,key});assertDenied();}
+   assert.equal(attempts,1,'forced continuation never re-enters the permanently denied boundary');assert.equal(operations(),before);
+   tap('[data-action="all-offers"]');tap('#modal-body '+exact);assertDenied();
+   tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);win.history.forward();await until(()=>get('#modal').open&&win.__terminal().type==='offer');assertDenied();
+   win.innerWidth=width===430?1280:430;win.dispatchEvent(new win.Event('resize'));assertDenied();assert.equal(operations(),before,'passive reopen/history/resize never requotes');
+   tap('[data-action="all-offers"]');tap('#modal-body [data-action="offer"][data-key="tourvisor%3Aoperator-tour-0"]');tap('[data-action="start-lead"]');await until(()=>get('#prototype-lead-form'));assert.equal(attempts,1,'a different allowed offer remains usable');
+   tap('[data-action="close-modal"]');await until(()=>!get('#modal').open&&!win.history.state?.['anytour.prototype.v18.ui.v1']);tap('#applied-search [data-action="edit-search"]');deny=false;tap('.search-submit');await until(()=>win.__terminal().first?.raw!==raw&&get('[data-action="all-offers"][data-id="501"]'));open();
+   assert.notStrictEqual(win.__terminal().offer.raw,raw,'a new search has a new source identity');tap('[data-action="start-lead"]');await until(()=>get('#prototype-lead-form'));assert.equal(attempts,1,'a prior terminal view cannot poison new search authority');
+  }finally{local.window.close();assert.deepEqual(localErrors,[]);}
+ }
+ console.log('PASS permanent canonical quote/flights denial:430/1280, source-bound retention/history/resize, forced continuation blocked, allowed offer/new search and search-price-only authority; fictional transport only');
+}
 // The actual entry graph and canonical catalogue adapter own these passive
 // regressions. JSDOM permits focus identity, not rendered/physical geometry.
 async function pickerRetainedDraftRegressions(){
@@ -345,6 +405,7 @@ async function pickerRetainedDraftRegressions(){
  const completed=await Promise.allSettled([
   pickerRetainedDraftRegressions(),
   (async()=>{
+ await terminalQuoteRegressions();
  await quoteReturnRegressions();
  await wait(()=>!q('.search-submit').disabled);
  assert.equal(starts(),0,'opening shared/search URL never spends a supplier search');assert.equal(d.querySelectorAll('.hotel-card').length,0);

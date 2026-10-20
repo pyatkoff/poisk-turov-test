@@ -7,7 +7,8 @@ const start=app.indexOf('function openFlightPicker('),end=app.indexOf('function 
 const stayStart=app.indexOf('function chosenStayHTML('),stayEnd=app.indexOf('\nfunction ',stayStart);assert(stayStart>=0&&stayEnd>stayStart,'actual chosen-stay owner extraction');
 assert(app.slice(stayEnd+1).startsWith('function offerSelectionHint('),'chosen-stay extraction ends at the next actual owner');
 const staySource=app.slice(stayStart,stayEnd);
-const source=app.slice(start,end),flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
+const terminalStart=app.indexOf('function terminalOfferQuote('),terminalEnd=app.indexOf('function offerQuoteFailure(',terminalStart);assert(terminalStart>=0&&terminalEnd>terminalStart,'actual terminal-quote guard extraction');
+const source=app.slice(terminalStart,terminalEnd)+app.slice(start,end),flush=async()=>{for(let i=0;i<6;i++)await Promise.resolve();};
 async function actualSession(){
  const root=__dirname+'/../v2/visual-search',errors=[],reads=[],console=new VirtualConsole();console.on('jsdomError',e=>errors.push(e.message));
  const dom=new JSDOM(fs.readFileSync(root+'/index.html','utf8'),{url:'https://fixture.test/?scenario=flights&searched=1',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:console}),w=dom.window,d=w.document;
@@ -62,13 +63,17 @@ function fixture(){
  const ctx={window:{},Promise,Error,document,$:s=>document.querySelector(s),modalType:'offer',flightDraft:null,selectedOffer:{key:'fixture-exact-tv-501',hotelId:501,flightChoiceId:'0',variants:[{}],provider:'fixture',room:'Fictional STANDARD SEA VIEW',meal:'AI · fictional meal',operator:'Fictional TV operator',tour:{id:'fixture-exact-tv-501',placement:'DBL exact quote fixture'}},hotels:[{id:501,name:'Вымышленный отель'}],esc:String,money:String,data:{text:String,variantPrice:()=>{throw Error('loader cannot calculate a price')}},legHTML:()=>'',fuelText:()=>{throw Error('loader cannot read fuel')},mealLabel:o=>o.meal,displayMealLabel:o=>o.meal,roomLabel:o=>o.room,selectionStepsHTML:()=>'<steps>',rangeText:()=> 'Даты',nightsText:()=> '7 ночей',guestsText:()=> '2 взрослых',
   setTimeout:fn=>{const id=++nextTimer;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),
   showModal:(type,title,kicker,body)=>{ctx.modalType=type;ctx.$('#modal').open=true;ctx.$('#modal-body').innerHTML=body;ctx.$('#modal-footer').hidden=true;},
-  selectedTourHotel:()=>ctx.hotels[0],offerDetailBodyHTML:(o,h,a,b,c,editing)=>'<section class="flight-picker-context">'+ctx.chosenStayHTML(o)+'</section><div id="tour-flight-options">'+ctx.window.AnyTourFlightPickerUIV1.render(o,ctx.flightDraft.id)+'</div>',offerDetailFooterHTML:(o,actions)=>'<div class="footer-total"><strong>Current total</strong><span class="footer-price-status"></span></div>'+actions,syncDestinationViewport:()=>{},updateFlightPreview:()=>previews++,rememberUIRoute:()=>history++};
+  retainedProviderView:()=>null,selectedTourHotel:()=>ctx.hotels[0],offerDetailBodyHTML:(o,h,a,b,c,editing)=>'<section class="flight-picker-context">'+ctx.chosenStayHTML(o)+'</section><div id="tour-flight-options">'+ctx.window.AnyTourFlightPickerUIV1.render(o,ctx.flightDraft.id)+'</div>',offerDetailFooterHTML:(o,actions)=>'<div class="footer-total"><strong>Current total</strong><span class="footer-price-status"></span></div>'+actions,syncDestinationViewport:()=>{},updateFlightPreview:()=>previews++,rememberUIRoute:()=>history++};
  document.head.append=script=>scripts.push(script);
  vm.createContext(ctx);vm.runInContext(fs.readFileSync(__dirname+'/../v2/visual-search/flight-picker-v18.js','utf8'),ctx);vm.runInContext(staySource,ctx);vm.runInContext(source,ctx);
  const owner={render:(offer,id)=>{renders.push({offer,id});return '<div class="flight-options"></div>';},bind:container=>binds.push(container)};
  return {ctx,dom,scripts,timers,renders,binds,owner,history:()=>history,previews:()=>previews,close:()=>dom.window.close()};
 }
 (async()=>{
+ for(const retained of [false,true]){
+  const denied=fixture();if(retained)denied.ctx.retainedProviderView=()=>({offer:{quoteErrorTerminal:true}});else denied.ctx.selectedOffer.quoteErrorTerminal=true;
+  denied.ctx.openFlightPicker();assert.equal(denied.scripts.length,0,'a direct or retained terminal denial cannot load the flight picker');assert.equal(denied.ctx.flightDraft,null);denied.close();
+ }
  const f=fixture();assert.equal(f.scripts.length,0,'bootstrap does not fetch the picker UI');f.ctx.openFlightPicker();f.ctx.openFlightPicker();assert.equal(f.scripts.length,1,'overlapping opens share the cold request');assert.equal(f.scripts[0].src,'./flight-picker-ui-v1.js?v=exact');assert.match(f.ctx.$('#modal-body').innerHTML,/role="status"/);assert(f.ctx.$('#modal-footer').hidden,'apply action is absent during loading');
  const latest=f.ctx.flightDraft;f.ctx.window.AnyTourFlightPickerUIV1=f.owner;f.scripts[0].onload();await flush();assert.equal(f.renders.length,1,'only the latest open paints');assert.strictEqual(f.renders[0].offer,latest.base);assert.equal(f.binds.length,1);assert.equal(f.history(),1);assert.equal(f.previews(),1);assert.equal(f.timers.size,0);assert(!f.ctx.$('#modal-footer').hidden);
  const stay=f.ctx.$('.flight-picker-context .chosen-stay');assert(stay,'actual chosen-stay helper supplies the picker context');
