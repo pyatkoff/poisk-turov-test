@@ -41,42 +41,35 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 ### Current Search3 execution — owner direction 2026-10-19
 
-Owner20Oct02:15: the observed ordinary current3bdd430/1280 UI corpus is closed,
-not the entire installed/real-data Search product. Terminal6280199658/audit6280193716
-records FIRST bounded compiled430 Mobile2/2/2/2/2=10/UI0; Desktop1280/short9.5,
-Selectedtour10/Calendar9.5 carry only their own exact scopes. Finite material-gap
-list empty; no cosmetic repair/repeat demo/score pass is justified. New installed
-desktop pointer filter→zero-match→explicit budget recovery→own-offer manager
-contact→Back/Close/reset/sort/Continue passed separately. Source3bdd/app7ae9ba
-and approved/transferred Site203/project/history/public unchanged.
+Owner20Oct02:34/02:43 facts supersede the completed admission wait. Same task
+S3_PRODUCT_CURRENT_ACCEPTANCE, originalNEXT product3bdd/app7ae9ba unchanged.
+One real03–09Nov/7n/2A/AI search and one exactTVtour99280056379835 quote268848RUB
+for2A→managercontact→Back/Close/Continue/draft are CONSUMED terminal6280546977 /
+audit6280542177. Owner explicitly allowed this one run without preconfirmed reserve
+and reported5000/day; that is not measured remaining balance or a config change.
+No new live/quote follows from it; do not repeat the permission/admission loop.
 
-Same task S3_PRODUCT_CURRENT_ACCEPTANCE now has ONE concrete next result:
-a READY/BLOCKED admission packet in existing#4217 for the installed real
-offer/optional-one-pair/contact/return scenario. Read retained authoritative
-stock executor/profile, exact source/runtime, owner allowance, operation identity,
-budget/reservation and unconsumed limits first; no live/paid trial or invented
-caps. Proposed upper product scope: one explicit search/firstportion/week,
-own current whole-party offerprice→manager-flight contact→return, optional
-oneexactpair only under its own existing allowance. This is NOT supplier HTTPbudget
-or authorization; numerical limits come only from accepted executor/reservation.
-No valid exact gate → precise owner/missing-action BLOCKED, not a new QA/CI/deploy
-or unchanged demo loop. Full details are in the top product plan/current_task.
+Same PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history preserved.
+Site203 visual reference/transfer unchanged. Site204/source d71b84ca adds only
+NEXT-viewer + existing width-controller support: actual installed NEXT iframe430,
+1280 and short720, default explicitly offlinefamily, separate liveFORM without
+searched/autoFind/arbitrary URL forwarding. Native deploymentappgdep_6ad6ba5442f48191be103403d20f90e2
+succeeded. PUBLICQA audit6280721648 confirms430×932/1280×720, exact app7ae9ba graph,
+managercontact186400/2A+[0,8] and resize/Back/Close/Continue/draft preservation.
+Iframe evidence is installed responsive viewport, not native top-level/physical.
 
-Native430/physical, canonicalRix aliases/submittedIDs, INT repeated/allpair authority,
-real lead delivery and production retain individual owner/action/closure conditions.
-They are not a circular AND-gate and do not create tasks from everyN.
-Partial baseline does not imply globalDONE, full mobile9.5 or other-width unlock.
-Current widths430/1280; otherwidths/200%/Compare remain per owner/plan.
+Next finite result: finish only missing substantial ordinary installed430 actions
+(form/calendar/filters/hotel/optional demo pair) through that SAME published viewer,
+then one coherent existing SEARCH-QUALITY-1 closeout. Reuse completed exact contact,
+return/resize and compiled430/1280 corpus; no byte-identical rerun or everyN queue.
+Repair source only for a confirmed substantial defect. No new renderer/tracker,
+keyboard/Tab/A11y/focus packet, otherwidth/text200/Compare, paid fallback or liveprobe.
+Physical/Rix realIDs/INT repeatedallpair/reallead/production keep separate exact gates;
+bounded scores and this control change never mean wholeSearch9.5/globalDONE.
+All protected owners/CI/approval/publisher boundaries remain. Foreignv2 and all
+schedules/settings/enabled/paused untouched. No further plan-only iteration absent
+new material fact/direct owner decision. Full current next_action in productplan/state.
 
-Keyboard walkthroughs/Tab/A11y-only/focus microtasks are FORBIDDEN.
-Completed Site203/4647/4649/6279680382/6280199658 and oldlive/paid/deploy
-are no-replay. One writer/integrator, independent read-only review and separate
-stock NEXT-only publisher only for a ready changed artifact. Existing required
-CI/approval/price/lead/production/protected gates remain; no workflow/allowlist/
-draft-ready weakening, server/browserinstall/carrier workaround or foreignv2 work.
-This correction changes control only; diff/JSON/current_task-only/protected/history
-equality, independent review and applicable owner-policy/security CI suffice.
-No UI/browser/build/deploy or scheduler/settings/other-task change for documents.
 
 ## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 

@@ -69,46 +69,29 @@ evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` уже согласован
 6279680382 завершены. Повторять их нельзя; клавиатурный проход после нового
 запрета не является следующим действием или gate обычной поставки.
 
-### Один следующий результат: допуск к реальному установленному сценарию
+### Один следующий результат: завершить обычный installed430 путь
 
-Следующий результат SEARCH в существующем#4217 — **один проверяемый admission
-пакет для exact установленного NEXT**, со статусом READY либо BLOCKED и точной
-недостающей предпосылкой. Это продолжение той же задачи, не новый tracker,
-дизайн, QA-очередь или разрешение на запрос.
+Owner20Oct02:34 прямо разрешил один exact поиск/TVtour quote без предварительно подтверждённого резерва и сообщил5000/сутки. Этот конкретный допуск уже CONSUMED: [terminal6280546977](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6280546977), [audit6280542177](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280542177). Москва→Турция03–09Nov/7n/2A/AI:59отелей/381вариант, статус partial; exactTVtour99280056379835/ownhotel687/RIXOS/LOTI/04–11Nov/268848RUB за2A→managercontact→Back/Close/Continue/draft PASS. Это native1363×936, не430/1280/physical, не цена выбранной пары и не реальная доставка.5000 — owner-reported дневной лимит, не измеренный остаток и не изменение serverconfig. Не повторять поиск/quote и не ждать прежний admission заново.
 
-1. По retained state/receipt и действующему stock executor определить допустимый
-   профиль и его identity: exact source3bdd/runtime, параметры одного сценария,
-   supplier operation/лимиты HTTP, отдельное действующее owner allowance,
-   budget/reservation и их ещё не потреблённый остаток. Не выдумывать числовые
-   caps и не делать пробный запрос ради preflight. Старый live05c/6264963728
-   consumed; новый идентификатор сам по себе не разрешает повтор.
-2. Согласуемый продуктовый scope — один явный поиск/первая порция и первая неделя,
-   конкретный доступный offer → успешная текущая цена за всю группу →
-   контакты с рейсом менеджеру; при действующем допуске опционально одна точная
-   пара и цена именно её → Back/Close/Continue. Без реальной отправки.
-   Это верхняя граница предлагаемого сценария, **не supplier HTTPbudget и не
-   допуск к live**. Числовые лимиты/стоимость берутся только из принятого
-   профиля executor и reservation. Если профиль не разрешает optionalpair,
-   её часть остаётся отдельно BLOCKED; manager-path не подменяется перебором40.
-3. READY допустим только при всех фактических pins/allowance/ownership/budget
-   для соответствующей операции; затем выполнить её один раз штатным executor
-   и принять exact offer/pair/party/search/generation/total и возврат.
-   BLOCKED означает одну конкретную запись «чего нет / чей действующий scope /
-   какое действие закрывает», без live/платного/browser capability probe,
-   новогоCI/deploy или очередного unchanged demo. Отказ/UNKNOWN сначала сверяется
-   по receipt/state; другой carrier не является решением.
-4. Native430/physical, canonicalRix, INT repeated/allpair, доставка и production
-   ведутся по точным строкам ниже. Они не объединяются в круговой AND-gate:
-   недоступный native430 не запрещает отдельно допущенный desktop live-сценарий,
-   а отсутствие live allowance не отменяет разрешённое canonical read.
-   Исправление кода появляется только после существенного подтверждённого
-   дефекта и проходит прежние owners/CI/approval/publisher/readback gates.
+Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f6769843f9 добавил отдельную [рамку установленного NEXT](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo) в том же PUBLICproject/history. Deployment appgdep_6ad6ba5442f48191be103403d20f90e2 succeeded; saved appgver_a6d4f56bc84881919b15e748a5b2596e. Donor Site203/его UI и установленный3bdd/app7ae9ba не менялись. По умолчанию явное offlinefamily; liveFORM отдельно, без searched/autoFind; arbitraryURL/query не принимаются. PUBLICQA [audit6280721648](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648): child actual430×932/1280×720 + exact8script graph; managercontact186400/2A+[0,8], resize→Back/Close/Continue сохраняет выбор/черновик. Это новый installediframe scope, не native top-level/physical и не общая9,5. Нового live не было.
 
-Сейчас действующий следующий шаг — **подготовить этот admission, не повторять
-завершённую демо-приёмку**. Текущая запись не выдаёт нового live/paid/lead допуска;
-наличие конкретного действующего allowance/reservation нужно доказать.
-Нового INT handoff в#2506 после19.10 20:00Z при последнем чтении нет; это
-датированное наблюдение, а не разрешение и не вечный вывод о состоянии INT.
+Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.
+
+Приёмка проходит обычными кликами/тапами через этот точный installed runtime.
+Смена ширины в рамке не перезагружает child; каждый новый полный reload/mode switch
+начинает новый просмотр. Уже проверенные действия не запускаются ради покрытия.
+Проверить только реально недостающие значимые части одного связного пути, затем
+закрыть измеренный UI-этап либо собрать один пакет существенных подтверждённых
+дефектов. Iframe не означает native430/physicalSafari/safearea и не принимает
+реальные supplier prices/lead delivery. При недоступности child не делать proxy,
+не менять security headers/carrier/server/browser install. Sourceprepared/CI/
+published/installed/physical/live остаются разными статусами.
+
+Новый supplier/live/paid/реальный lead всё ещё требует своего действующего exact
+допуска и применимых stock accounting/budget gates; consumed one-run исключение
+6280498998 не расширяется. Native/physical, canonicalRix и INT/production зависимости
+не объединяются в круговой AND-gate. Не создавать ещё один admission для уже
+завершённой операции или повторять её под новым именем.
 
 ### Способ приёмки и пределы текущего этапа
 
@@ -132,8 +115,8 @@ scope сохраняет честныйN/deferred, не даёт фиктивн�
 
 | Область / состояние | Действующий ответственный | Следующее конкретное действие | Условие закрытия |
 | --- | --- | --- | --- |
-| Installed реальная цена/путь — admission ещё не подготовлен | SEARCH как принимающий; существующий stock executor/владелец allowance и reservation | В#4217 связать exact3bdd/runtime + существующий executor/profile + owner allowance + бюджет/reservation + границы одного сценария, без пробного live; READY/BLOCKED | Один отдельно разрешённый сценарий с ценой собственного exact offer/optionalpair и возвратом, terminal consumed receipt. Нет pins/допуска — назвать именно недостающее |
-| Native430 / physical Safari — N | SEARCH + QA, штатная разрешённая capability/устройство | При фактическом новом доступном пути выполнить обычные тапы того же installed artifact; capability перепроверять только при изменении/конкретном отказе | Installed430 подтверждён отдельно; physicalSafari/safearea только по факту. Нельзя подменять compiled или блокировать им независимо разрешённую работу |
+| Installed TV/manager-путь — COMPLETED/CONSUMED6280546977 | SEARCH, explicit owner allowance6280498998 | Сохранить exact RIXOStour99280056379835/268848RUB/2A и возврат; не повторять поиск/quote | Текущий TVoffer→managercontact/Back/Close/Continue PASS в native1363; не optionalpair/fullsource/430/realLead |
+| Installed iframe430 — bounded contact/return PASS6280721648; native top-level/physicalSafari — N | SEARCH + QA; same Site204 viewer, затем реальное устройство для physical | В той же рамке завершить только отсутствующие существенные form/calendar/filter/hotel/optional demo pair действия; phone/consent/return уже принятые не повторять без новой identity | Один цельный измеренный installed430 UI scope; физический Safari/safearea только своим фактом. Iframe/native/physical/compiled не смешивать |
 | Rix aliases / submitted exactIDs — отдельные N | Canonical данные у LOCAL; применение у SEARCH | Проверить доступность alias только штатным canonical read/handoff; submittedIDs включать лишь в подходящий отдельно допущенный поиск, не делать платный поиск ради ввода | Canonical alias факт и фактические OR exactIDs приняты в своих scopes. Неизвестный/отсутствующий alias не угадывается и не чинится новым matching в SEARCH |
 | ANEX repeated/allpair authority — отдельный INT handoff отсутствует в последнем чтении | Действующий INT#2506; SEARCH принимает | Прочитать новый конкретный handoff/contract и exact quote/receipt semantics при его появлении; принятую optional-one-pair authority не расширять | Реализованный принятый bounded контракт и exact операция/total; proposal caps3/8/9 не authority. Не блокирует независимо допущенный TV/manager-path |
 | Реальная доставка заявки / LeadC3 — N, preview delivery выключена | Owner-reviewed lead transport, затем SEARCH | После отдельного точного разрешения защищённого scope проверить штатные pending/error/retry/success; до него сохранять локальную проверку/контакты отдельно | Реальная доставка доказана своим receipt; preview validation/quote expiry её не заменяют. Не условие закрытого учебного UI corpus |
@@ -151,9 +134,12 @@ Stock compiled-browser workflow и существующие owners уже дал
 acceptance;430/1280 результаты переиспользуются в текущей рабочей матрице,
 остальные сохраняются как история без новых прогонов. Все результаты принадлежат
 своему source/artifact.
-CloudChrome доступен для установленного desktop, resize у этого маршрута
-не подтверждён. Проверять capability снова только при её изменении/конкретном
-отказе. Без нового действия или риска не повторять installed/compiled/CI/deploy.
+CloudChrome доступен для установленного desktop; top-level resize не подтверждён.
+С20Oct Site204 даёт фактически проверенный installediframe430×932/1280×720,
+с тем же NEXTrenderer и сохранением выбора наresize (audit6280721648).
+Это разрешённый публичный UI-маршрут без нового платного fallback; physical/native
+не заявляются. Capability повторно проверять только при изменении/конкретном
+отказе. Без нового действия/риска не повторять installed/compiled/CI/deploy.
 TinyFish metered; попытка4df685a1 с отсутствующим resize завершена/consumed
 [6279010055](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6279010055),
 мобильная приёмка ею не получена. Повтор того же setup, платный fallback по

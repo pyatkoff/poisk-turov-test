@@ -2,52 +2,25 @@
 
 ## Организация ближайшей поставки — поручение владельца 19.10.2026
 
-Owner20Oct02:15: закрыть завершённый демо-объём и выбрать конкретный следующий
-результат. Единственная очередь — верхний [product plan](search3-product-development-plan.md#исполняемый-порядок--решение-владельца-19102026)
-и та же AUTOPILOT_STATE.json.current_task/S3_PRODUCT_CURRENT_ACCEPTANCE.
-Исторические очереди не возобновляют завершённое.
+Тот же S3_PRODUCT_CURRENT_ACCEPTANCE, originalNEXT/release/search3-production-ready-v1.
+Верхний product plan и свежие terminal receipts являются единственной очередью.
 
-Observed current3bdd ordinary430/1280 corpus закрыт terminal6280199658 /
-[audit6280193716](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280193716).
-FIRST bounded compiled430 Mobile2/2/2/2/2=10/UI0; Desktop1280/short9.5 и
-Selectedtour10/Calendar9.5 сохраняются в своих scopes. Это не общая оценка
-mobile/Search и не installed430/physical/live/доставка. Подтверждённых существенных
-дефектов в просмотренном пути нет; косметический ремонт или новый демо-проход
-не требуется. Новый installed desktop pointer filter→zero-match→явное восстановление
-бюджета→свой тур/manager-contact→Back/Close/reset/sort/Continue принят отдельно.
-Source3bdd/app7ae9ba и согласованный/перенесённый Site203/history/public прежние.
+Owner20Oct02:34 прямо разрешил один exact поиск/TVtour quote без предварительно подтверждённого резерва и сообщил5000/сутки. Этот конкретный допуск уже CONSUMED: [terminal6280546977](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6280546977), [audit6280542177](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280542177). Москва→Турция03–09Nov/7n/2A/AI:59отелей/381вариант, статус partial; exactTVtour99280056379835/ownhotel687/RIXOS/LOTI/04–11Nov/268848RUB за2A→managercontact→Back/Close/Continue/draft PASS. Это native1363×936, не430/1280/physical, не цена выбранной пары и не реальная доставка.5000 — owner-reported дневной лимит, не измеренный остаток и не изменение serverconfig. Не повторять поиск/quote и не ждать прежний admission заново.
 
-Следующий результат SEARCH — один READY/BLOCKED admission в существующем#4217:
-exact installed artifact/runtime, действующий stock executor/profile/operation,
-отдельное owner allowance, budget/reservation и непотреблённые лимиты для
-одного реального offer/optional-one-pair/contact/return сценария. Подготовка
-read-only, без пробного paid/live. Предлагаемый один Find/первая порция/неделя
-и максимум одна отдельно допущенная pair — не числовой supplierbudget и не
-разрешение. Лимиты только из принятого профиля/reservation; без фактических pins
-записать точного ответственного/недостающее действие BLOCKED. Не повторять
-consumed05c live, изменяя имя операции, и не создавать QA/CI/deploy цикл.
+Owner20Oct02:43 «делай»: Site204/source d71b84cae73d947438b16407dfb527f6769843f9 добавил отдельную [рамку установленного NEXT](https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo) в том же PUBLICproject/history. Deployment appgdep_6ad6ba5442f48191be103403d20f90e2 succeeded; saved appgver_a6d4f56bc84881919b15e748a5b2596e. Donor Site203/его UI и установленный3bdd/app7ae9ba не менялись. По умолчанию явное offlinefamily; liveFORM отдельно, без searched/autoFind; arbitraryURL/query не принимаются. PUBLICQA [audit6280721648](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6280721648): child actual430×932/1280×720 + exact8script graph; managercontact186400/2A+[0,8], resize→Back/Close/Continue сохраняет выбор/черновик. Это новый installediframe scope, не native top-level/physical и не общая9,5. Нового live не было.
 
-В product plan каждой оставшейся зависимости назначены текущий владелец,
-конкретное действие и условие закрытия: native430/physical; canonicalRix/realIDs;
-INT repeated/allpair; реальная доставка; production. Они не круговой AND-gate:
-недоступный native430 не запрещает отдельно допущенную desktop операцию,
-а отсутствие live allowance не отменяет разрешённый canonical read.
-Partialbaseline не снимает обязательные gates/globalDONE и не unlock иных ширин.
+Следующий конечный результат: Через опубликованный Site204 NEXT-viewer https://anytour-search3-design-lab.fq4yjrcrmm.chatgpt.site/next-preview?width=430&mode=demo завершить только недостающие существенные обычные действия установленного3bdd на430: параметры/календарь/фильтры→отель/варианты→необязательная демо-пара и её собственная цена→возврат. Уже принятые manager-contact/Back/Close/Continue/draft/resize430↔1280 audit6280721648 и реальныйTV/manager-путь6280546977 не повторять без изменения риска/identity. Один связный итоговый обзор по существующему SEARCH-QUALITY-1; исправлять код лишь при существенном подтверждённом дефекте. Iframe430 — installed responsive viewport, не native top-level/physicalSafari. Новый live/paid/quote не разрешён consumed исключением; Клавиатурные/Tab/A11y-only/focus-пакеты запрещены; остальные ширины/200%/Compare deferred. Empty material-gaplist не создаёт косметический пакет; закрыть измеренный UI-этап с отдельными внешними gates, без globalDONE/новогоtracker.
 
-Рабочая матрица430/1280,200%/Compare/прочие размеры deferred по решению владельца.
-Keyboard/Tab/A11y-only/focus микрозадачи запрещены. Один writer/integrator,
-независимый read-only review, отдельный штатный NEXT-only publisher только
-готового изменённого продукта. Новый дизайн требует whole-version approval
-в том же PUBLICprojectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public.
-Foreign design-v2/его claims/publisher/автоматизации не трогать.
-
-Рубрика12/11/5/N, source/compiled/installed/physical/live separation и прежние
-price/lead/production/CI/allowlist/draft-ready boundaries сохранены. Этот control-only
-diff проверяется по JSON/current_task-only/protected/history equality, независимому
-review и applicable owner-policy/security. UI/browser/build/deploy/live для
-документов не нужны. Tasks/settings/schedules/enabled/paused не меняются.
-Результат/RELEASE —#4217, оценка—#1646, стадия—#1719. Новое переписывание плана
-без существенного факта/прямого решения владельца не является следующим шагом.
+Observed compiled430/1280 corpus6280199658/audit6280193716 сохранён: FIRST bounded
+Mobile2/2/2/2/2=10/UI0, Desktop9.5/Selectedtour10/Calendar9.5 лишь свои scopes.
+Новые live/iframe receipts не переносят эти баллы на весь installed/mobile/Search.
+Один writer/integrator, независимый review, отдельный штатный publisher лишь при
+изменении готового NEXT artifact; для Sites использован штатный sameproject flow.
+Новый дизайн требует прежнего whole-version approval. Foreignv2 не трогать.
+Рубрика12/11/5/N и price/lead/production/CI/allowlist/draft-ready boundaries прежние;
+rootstate/history/scheduler/tasks/settings не меняются. Этот4path control diff имеет
+JSON/protected/history checks, independentreview и existing owner/security finalCI;
+не требует ещё одного runtime build/deploy. Результаты —#4217/#1646/#1719.
 
 ## SEARCH/SITE: исполняемое поручение visual/UX9,5–10 — 10.10.2026
 
