@@ -556,6 +556,10 @@ class ContinuationTest(unittest.TestCase):
             variation=dict(scope,scope_kind='owner_date_variation',context_origin='owner_20261020_1257_timeout60_new_window',
                            selected_tv_hotel_ids=[12],context_history=[dict(history[1],operation_id=name,selected_tv_hotel_ids=[12],evidence_sha256=digest)])
             self.assertEqual(3,len(space['retained_prior_selection'](variation)))
+            fresh=dict(variation,scope_kind='never_selected_bounded',context_origin='saved_user_search_exact_date_nights',selected_tv_hotel_ids=[14])
+            self.assertEqual(3,len(space['retained_prior_selection'](fresh)))
+            fresh['context_origin']='unreviewed-origin'
+            with self.assertRaisesRegex(ValueError,'history_shape'):space['retained_prior_selection'](fresh)
             variation['context_origin']='owner_20261020_1031_saved_peer_context'
             with self.assertRaisesRegex(ValueError,'history_shape'):space['retained_prior_selection'](variation)
             for change in [('unknown',0),('state','completed'),('roster',[12])]:
@@ -651,6 +655,80 @@ class ContinuationTest(unittest.TestCase):
 
 
 class AcquisitionTest(unittest.TestCase):
+    def bounded_fresh_scope(self):
+        scope,current=ContinuationTest().fixture()
+        scope.update(scope_kind='never_selected_bounded',context_origin='saved_user_search_exact_date_nights',
+                     wire_context={'date_from':'2099-01-03','date_to':'2099-01-03','nights_from':9,'nights_to':9},
+                     supplier_http_maximum=30,search_start_maximum=1,http_timeout_seconds=60)
+        scope['scope_id']=hashlib.sha256(a.canonical({k:scope[k] for k in ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts','scope_kind','wire_context','context_origin')})).hexdigest()
+        scope['cohort']='anex-next-'+scope['scope_id'][:16]
+        return scope,current
+
+    def test_never_selected_bounded_keeps_real_exact_context_and_rejects_budget_or_reselection(self):
+        scope,current=self.bounded_fresh_scope();before=copy.deepcopy(current)
+        self.assertEqual(2,len(a.select_scope_rows(scope,current,'2026-10-20')));self.assertEqual(before,current)
+        for key,value in [('supplier_http_maximum',400),('search_start_maximum',2),('http_timeout_seconds',30),
+                          ('context_origin','owner_20261020_1257_timeout60_new_window'),('prior_selected_hotel_ids',[101])]:
+            with self.assertRaises(ValueError):a.select_scope_rows(dict(scope,**{key:value}),current,'2026-10-20')
+        changed=copy.deepcopy(scope);changed['wire_context']['nights_to']=10
+        changed['scope_id']=hashlib.sha256(a.canonical({k:changed[k] for k in ('parent_evidence_sha256','selected_tv_hotel_ids','future_contexts','scope_kind','wire_context','context_origin')})).hexdigest()
+        changed['cohort']='anex-next-'+changed['scope_id'][:16]
+        with self.assertRaisesRegex(ValueError,'exact_saved_context'):a.select_scope_rows(changed,current,'2026-10-20')
+        a.check_never_selected_requests(scope,[{'params':{'hotelIds':[999]}}])
+        with self.assertRaisesRegex(ValueError,'effective_request_consumed'):
+            a.check_never_selected_requests(scope,[{'params':{'hotelIds':[101]},'unknown_http_calls':1}])
+
+    def test_never_selected_budget_is_applied_to_real_client_and_first_unknown_stops(self):
+        scope,current=self.bounded_fresh_scope();client=a.Client.__new__(a.Client)
+        client.http_maximum=400;client.search_start_maximum=None
+        a.configure_scope_budget(client,scope)
+        self.assertEqual((30,1),(client.http_maximum,client.search_start_maximum))
+        client.deadline=10**20;client.reserved=30;client.tariff=0
+        with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('tour_detail','/tours/1',{})
+        client.reserved=0;client.tariff=1
+        with self.assertRaisesRegex(ValueError,'finite_budget_stop'):client.call('search_start','/tours/search',{})
+        legacy=a.Client.__new__(a.Client);legacy.http_maximum=400;legacy.search_start_maximum=None
+        a.configure_scope_budget(legacy,{'scope_kind':'historical'})
+        self.assertEqual((400,None),(legacy.http_maximum,legacy.search_start_maximum))
+        class C:
+            calls=reserved=tariff=unknown=0;counts=__import__('collections').Counter();before={}
+            def call(self,action,path,params):
+                self.calls+=1;self.reserved+=1;self.tariff+=1;self.unknown+=1;self.counts[action]+=1
+                raise TimeoutError()
+        with tempfile.TemporaryDirectory() as td:
+            out=a.acquire(C(),Path(td),current['rows'],sleep=lambda _:self.fail('no polling after UNKNOWN'),scope=scope)
+        self.assertEqual(('partial_no_replay',1,1),tuple(out[k] for k in ('acquisition_state','supplier_calls','unknown_http_calls')))
+
+    def test_new13_exact_profile_preserves_old_manifests_and_requires_full_bounded_completion(self):
+        p=m.NEXT_NEVER13_SCOPE;scope=json.loads((SOURCE/p['path']).read_text())
+        self.assertEqual(13,p['selected_count']);self.assertFalse(set(scope['selected_tv_hotel_ids']).intersection(scope['prior_selected_hotel_ids']))
+        self.assertEqual(6,len(scope['exclusion_history'])+len(scope['context_history']))
+        self.assertEqual((2,22,2,0),tuple(scope[k] for k in ('country_id','departure_id','adults','children_count')))
+        self.assertEqual(1,len({(c['departure_date'],c['nights']) for c in scope['future_contexts'].values()}))
+        c=core();m.register_parser(c)
+        command=c.PREFIX+' '.join((SHA,'match-retained-acquire',p['operation_id'],p['cohort'],p['parent_operation_id']))
+        parsed=c.parse_command(command)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,dict(parsed))
+        self.assertIn('NEXT_SCOPE='+repr(p),c.REMOTE);ast.parse(c.REMOTE)
+        self.assertIn("continuation.get('scope_kind')=='never_selected_bounded'",c.REMOTE)
+        for old in (m.NEXT_SCOPE,m.NEXT_60_SCOPE,m.NEXT_WIDE_SCOPE):
+            self.assertNotEqual(p['operation_id'],old['operation_id'])
+            self.assertEqual(old['sha256'],hashlib.sha256((SOURCE/old['path']).read_bytes()).hexdigest())
+        for bad in (command.replace(p['operation_id'],p['operation_id']+'-renamed'),command.replace(p['cohort'],m.NEXT_WIDE_SCOPE['cohort'])):
+            with self.assertRaises(ValueError):c.parse_command(bad)
+        data={**parsed,'control_source_sha':CONTROL,'state':'acquired_retained_native_read_only','supplier_calls':3,
+              'physical_http_reservations':3,'tariff_search_units':1,'database_writes':0,'mapping_writes':0,
+              'no_replay':True,'safe_to_write_now':False,'continuation_scope_sha256':p['sha256'],'scope_id':p['scope_id'],
+              'context_origin':p['context_origin'],'wire_context':p['wire_context'],'selection_reservation_sha256':'c'*64}
+        result={**parsed,'status':'complete','production_unchanged':True,'supplier_calls':3,'database_writes':0,'mapping_writes':0,
+                'match_retained':{'data':data,'evidence_sha256':hashlib.sha256(a.canonical(data)).hexdigest()}}
+        self.assertTrue(m.completed_result(parsed,result,CONTROL))
+        for key,value in [('supplier_calls',31),('physical_http_reservations',2),('tariff_search_units',2),('selection_reservation_sha256',None)]:
+            bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+            if key=='supplier_calls':bad['supplier_calls']=value
+            bad['match_retained']['evidence_sha256']=hashlib.sha256(a.canonical(bad['match_retained']['data'])).hexdigest()
+            self.assertFalse(m.completed_result(parsed,bad,CONTROL))
+
     def test_scope_loader_requires_both_controller_digest_and_exact_carrier_manifest_without_path_escape(self):
         with tempfile.TemporaryDirectory() as td:
             root=Path(td);relative=m.NEXT_WIDE_SCOPE['path'];path=root/relative;path.parent.mkdir(parents=True)
