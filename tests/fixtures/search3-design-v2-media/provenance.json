@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "scope": "Genuine saved hotel identity and original photography; controlled fictional offers and preview receipts are not availability, current price or a real lead.",
+  "snapshot": "v2/visual-search/fixtures/live-search-2026-09-23.json",
+  "snapshotSHA256": "00d95b2e50b683686c95a79aa459ad36a5dd947a7e5c70fe3ce9049df0a8c7e3",
+  "capturedAt": "2026-09-23T10:10:38.394Z",
+  "hotel": {
+    "id": 3678,
+    "name": "RIA SUITES HOTEL",
+    "location": "Стамбул, Турция",
+    "stars": 3,
+    "description": "Ресторан или кафе · Wi-Fi · Городской · Wi-Fi в номере"
+  },
+  "images": [
+    {
+      "file": "ria-suites-1.jpg",
+      "sourceURL": "https://static.tourvisor.ru/hotel_pics/main400/103994.jpg",
+      "sha256": "f259ca07c0edf996bf23e456b548990830e010538a465e86f952a399abb1c4d5",
+      "bytes": 29215
+    },
+    {
+      "file": "ria-suites-2.jpg",
+      "sourceURL": "https://static.tourvisor.ru/hotel_pics/verybig/4/103994-90635200.jpg",
+      "sha256": "7a74632ddf255de435e4b7fec6c6c982d33681552fe3d94b8aa4b80bde853dab",
+      "bytes": 149720
+    }
+  ]
+}
