@@ -23,16 +23,19 @@ function page(number=1,state='available',ids=[number],searchRef=ref){
 }
 function samoPage(number=1,total=2){return {provider:'andromeda',generation:1,search_ref:'2'.repeat(64),page:number,pages_count:total,
  date_range:{from:params.dateFrom,to:params.dateTo},hotels:[],status:'complete',selection_enabled:false,first_page_only:false};}
+const responseHeaders=values=>({get(name){return values[name.toLowerCase()]??null;}});
+const searchWarning=line=>{assert(line.startsWith('[AnyTour search] '));return JSON.parse(line.slice('[AnyTour search] '.length));};
 function harness(){
- const stored=new Map(),calls=[],events=[],apiCalls=[];
+ const stored=new Map(),calls=[],events=[],apiCalls=[],warnings=[];
  let clock=Date.now();class ClockDate extends Date{static now(){return clock;}}
  const profile={clearOffers(src){for(const [k,v] of stored)if(v.source===src)stored.delete(k);},upsertLegacyOffer(id,tour,{source}){stored.set(source+':'+tour.offerRef,{id,tour,source});},refresh(){},reset(){stored.clear();},
   read(){const hotels=new Map();for(const v of stored.values()){if(!hotels.has(v.id))hotels.set(v.id,{id:v.id,name:'Hotel',canonicalLegacyIds:[v.id],tours:[]});hotels.get(v.id).tours.push(v.tour);}return [...hotels.values()];}};
  let fetchImpl=async (url,body)=>({ok:true,data:url.includes('api-andromeda-')?samoPage(body.page):page(body.page)});
  let apiImpl=async(action)=>action==='search_status'?{progress:100,status:'complete'}:action==='search_results'?[]:{};
  const sandbox={console,URL,Map,Set,WeakMap,AbortController,TextEncoder,Date:ClockDate,structuredClone,Uint8Array,setTimeout,clearTimeout,DOMException,
-  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,json:async()=>result};}};
+  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,headers:result.responseHeaders,json:async()=>result};}};
  const root={location:{origin,href:origin+'/_preview/search3-next-candidate/visual-search/'},crypto:webcrypto,TextEncoder,
+  console:{warn(line){warnings.push(line);}},
   V2_CONFIG:{anexApi:endpoint,andromedaApi:origin+'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'},
   V2Runtime:{api:async(action,p)=>{apiCalls.push({action,params:p});return apiImpl(action,p);},setSearchId(){}},
   Search3CanonicalProfilesV1:{create:()=>profile}};
@@ -54,7 +57,7 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   continued:false,expired:false,sourceCounts:{},lastProgress:-10,lastRead:0,deadline:0};
  let notify=event=>events.push(event);
  root.__test.set(run,event=>notify(event));
- return {run,calls,events,apiCalls,stored,t:root.__test,root,now(){return clock;},advance(ms){clock+=ms;},
+ return {run,calls,events,apiCalls,warnings,stored,t:root.__test,root,now(){return clock;},advance(ms){clock+=ms;},
   setFetch(fn){fetchImpl=fn;},setApi(fn){apiImpl=fn;},setNotify(fn){notify=fn;},
   initial(data=page(),index=0,total=1){return root.__test.applyDirectAnex(run,data,params,index,total);},
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
@@ -85,6 +88,58 @@ test('transport exception is observable without exporting its message or guessin
  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),{stage:'search',code:'unknown'});
  assert(!JSON.stringify(h.events).includes('PRIVATE_'));assert.equal(h.calls.length,1);
 });
+test('one initial failed response retains safe header diagnostics and emits one public warning',async()=>{
+ const h=harness(),headers={'x-anytour-anex-failure':'ANEX_HTTP_ERROR','x-anytour-anex-stage':'search',
+  'x-anytour-anex-category':'http','x-anytour-anex-native-action':'SearchTour_PRICES','x-anytour-anex-upstream-status':'503',
+  'x-anytour-anex-supplier-code':'101','x-anytour-anex-transport-code':'0','x-anytour-anex-elapsed-ms':'30219',
+  'x-anytour-anex-private':'PRIVATE_HEADER','authorization':'PRIVATE_TOKEN'};
+ h.setFetch(async()=>({ok:false,status:502,error:'supplier_unavailable',message:'PRIVATE_MESSAGE',url:'PRIVATE_URL',
+  responseHeaders:responseHeaders(headers)}));
+ await h.t.enrichAnex(h.run,params);await h.t.pollSearch(h.run);
+ const expected={stage:'search',code:'supplier_unavailable',httpStatus:502,backendFailure:'ANEX_HTTP_ERROR',backendStage:'search',
+  backendCategory:'http',nativeAction:'SearchTour_PRICES',upstreamStatus:503,supplierCode:101,transportCode:0,elapsedMs:30219};
+ assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+ assert.deepEqual(JSON.parse(JSON.stringify(h.events.at(-1).sources.anex.failure)),expected);
+ assert.equal(h.warnings.length,1,'Terminal publication does not log the response again');
+ assert.deepEqual(searchWarning(h.warnings[0]),{provider:'anex',...expected});
+ assert(!JSON.stringify([...h.events,...h.warnings]).includes('PRIVATE_'));
+ assert.equal(h.calls.length,1);assert.deepEqual(h.calls[0],{url:endpoint,body:{action:'search',generation:1,params}});
+});
+test('malformed and missing response headers cannot leak text or change the ordinary error',async()=>{
+ const invalid={'x-anytour-anex-failure':'PRIVATE_FAILURE','x-anytour-anex-stage':'PRIVATE_STAGE','x-anytour-anex-category':'PRIVATE_CATEGORY',
+  'x-anytour-anex-native-action':'PRIVATE_ACTION','x-anytour-anex-upstream-status':'600','x-anytour-anex-supplier-code':'100000',
+  'x-anytour-anex-transport-code':'1000','x-anytour-anex-elapsed-ms':'120001'};
+ for(const headers of [undefined,null,{},responseHeaders(invalid),{get(){throw new Error('PRIVATE_HEADER_ERROR');}},
+  responseHeaders(Object.fromEntries(Object.keys(invalid).map(key=>[key,'PRIVATE_TOKEN\nPRIVATE_URL'])))]){
+  const h=harness();h.setFetch(async()=>({ok:false,status:502,error:'supplier_timeout',responseHeaders:headers}));
+  await h.t.enrichAnex(h.run,params);
+  const expected={stage:'search',code:'supplier_timeout',httpStatus:502};
+  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',...expected}]);
+  assert.equal(h.calls.length,1);assert(!JSON.stringify([...h.events,...h.warnings]).includes('PRIVATE_'));
+ }
+});
+test('header numbers retain only exact bounded integers including explicit zero',async()=>{
+ const limits={'upstream-status':599,'supplier-code':99999,'transport-code':999,'elapsed-ms':120000};
+ for(const value of ['0','max','-1','1.5',' 1','1 ','01','1e2',false,28]){
+  const h=harness(),headers=Object.fromEntries(Object.entries(limits).map(([key,max])=>['x-anytour-anex-'+key,value==='max'?String(max):value]));
+  h.setFetch(async()=>({ok:false,status:502,error:'supplier_unavailable',responseHeaders:responseHeaders(headers)}));
+  await h.t.enrichAnex(h.run,params);
+  const expected={stage:'search',code:'supplier_unavailable',httpStatus:502};
+  if(value==='0'||value==='max')Object.assign(expected,{upstreamStatus:value==='0'?0:599,supplierCode:value==='0'?0:99999,
+   transportCode:value==='0'?0:999,elapsedMs:value==='0'?0:120000});
+  assert.deepEqual(JSON.parse(JSON.stringify(h.run.sourceCounts.anex.failure)),expected);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',...expected}]);assert.equal(h.calls.length,1);
+ }
+});
+test('successful responses never log failure headers and a failing console cannot change an error',async()=>{
+ const h=harness();h.setFetch(async()=>({ok:true,data:page(),responseHeaders:responseHeaders({'x-anytour-anex-failure':'ANEX_HTTP_ERROR'})}));
+ await h.t.enrichAnex(h.run,params);assert.equal(h.run.sourceCounts.anex.status,'partial');assert.deepEqual(h.warnings,[]);assert.equal(h.calls.length,1);
+ const broken=harness();broken.root.console.warn=()=>{throw new Error('PRIVATE_CONSOLE_ERROR');};
+ broken.setFetch(async()=>({ok:false,status:429,error:'rate_limited'}));await broken.t.enrichAnex(broken.run,params);
+ assert.deepEqual(JSON.parse(JSON.stringify(broken.run.sourceCounts.anex.failure)),{stage:'search',code:'rate_limited',httpStatus:429});
+ assert.equal(broken.calls.length,1);assert(!JSON.stringify(broken.events).includes('PRIVATE_'));
+});
 test('continued endpoint rejection retains diagnostics and the consumed page fence',async()=>{
  const h=harness();await h.initial();h.setFetch(async()=>({ok:false,status:502,error:'supplier_timeout',message:'PRIVATE_MESSAGE'}));
  await h.t.continueSearch();
@@ -98,6 +153,7 @@ test('stopped initial search cannot publish a late rejected response',async()=>{
  const pending=h.t.enrichAnex(h.run,params);h.t.stop();
  d.resolve({ok:false,status:429,error:'rate_limited'});await pending;
  assert.equal(h.events.filter(event=>event.status==='error').length,0);assert.equal(h.run.sourceCounts.anex,undefined);assert.equal(h.calls.length,1);
+ assert.deepEqual(h.warnings,[],'A stopped generation cannot emit a late failure warning');
 });
 test('legacy endpoint: retain first page; do not invent continuation',async()=>{const h=harness(),p=page();delete p.continuation;await h.initial(p);assert.equal(h.stored.size,1);assert.equal(h.t.available(h.run),false);assert.equal(h.calls.length,0);assert.equal(await h.t.continueSearch(),false);});
 test('initial available page is immediate and does not auto-drain',async()=>{const h=harness();await h.initial();assert.equal(h.t.available(h.run),true);assert.equal(h.calls.length,0);assert.equal(h.run.sourceCounts.anex.status,'partial');});
