@@ -155,7 +155,7 @@ jobs:
       - name: Exact reviewed MATCH retained source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
-          ref: d83ec9f66ba52de6efaddb1383e8e57d5bee677d
+          ref: de532b1fb715fe5c07b26a2916de6dfac3a91b08
           path: match-retained-source
           persist-credentials: false
       - name: MATCH retained intake and shared quota native acceptance
