@@ -69,8 +69,27 @@ submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сох
 consumed; reported5000/сутки не остаток/config/новый live-допуск. Site203reference,
 Site204viewer/d71b84ca, project/history/public сохранены.
 
-Следующий результат той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
-Наблюдавшийся цельный ordinary UI430/1280 после ремонта1c7 принят audit6282417033: параметры/фильтры→отель/тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик; публикация39360500690 consumed6282322588. Не повторять эти действия/старый3bdd/CI/deploy. Следующий конечный остаток прежнего плана — адаптив360/390/768: сначала просмотреть уже сохранённые exact1c7 CI кадры/receipts тех же основных экранов и сопоставить existing audit; это возврат после цельной430/1280 приёмки, не разблокировка от одного частногоFilters10. Не запускать новый paid/live/browser/server/workflow ради покрытия и не писать код без существенного подтверждённого дефекта. Installed/native/physical/real supplier/LeadC3/production остаются отдельными exact gates/owners; весь поиск9.5/globalDONE не заявлены. Keyboard запрещён;200%/Compare deferred; без новой причины принятый430/1280 corpus не переоткрывать.
+Конечный retained адаптив360/390/768 также принят
+[audit6282656840](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6282656840):
+тот же exact1c7/app68843, без нового продукта/прогона/публикации.39PNG+4receipts:
+семья3A+[0,12]/manager186400→optionalpair3/189000→контакты→возврат/черновик,
+основная форма/фильтры и mixed-calendar5–7Nov/160000–180000→Mountain167000.
+Root+independent hashes/actualframes review ACCEPT; materialgaplist пуст.
+First bounded Mobile360/39010, intermediate7689.5, Calendar-range9.5;
+Selectedtour10 сохранён только в exactfamily scope. UI delta0, не общая оценка поиска.
+
+Доступная independent UI-работа этого конечного корпуса завершена. Fresh INT#2506
+(latest6280407846) — прежняя TVоперация consumed, нового repeated/allpair handoff нет;
+LOCAL#2690(latest6263877414) — только завершённый roothelperrepair, нового alias/IDs
+handoff нет. Physical iPhone/Safari маршрут для exact1c7 отсутствует; cloud/iframe/CI
+не подменяют его. Остальные внешние realLeadC3/price/Rix/production gates/owners/N
+сохранены. Не начинать новый аудит неизменённого UI или косметический пакет.
+После terminal/RELEASE приостановить **только это задание** по правилу отсутствия
+безопасного независимого шага; сохранить его schedule/timezone и чужие задания.
+Это не globalDONE и не остановка из-за одного частного baseline.
+
+Точное условие продолжения той же `S3_PRODUCT_CURRENT_ACCEPTANCE`:
+Доступный наблюдавшийся ordinary UI430/1280 и конечный retained адаптив360/390/768 завершены: audit6282417033/6282656840, product1c7/app68843 без нового изменения. Существенных подтверждённых UI-дефектов в этом корпусе нет; повторять эти кадры/действия/CI/deploy или создавать косметический пакет нельзя. Единственное ближайшее условие продолжения: доступный штатный physical iPhone/Safari QA-маршрут для установленного exact1c7, ordinary430 offlinefamily2A+[0,8]→тур→manager-flight либо optionalpair3/189000→контакты→возврат/черновик, только тапы/обычное заполнение, без Tab/keyboard-прохода, realSubmit/supplier/paid. Сейчас такого маршрута/receipt нет. Rixaliases/submittedrealIDs, INT repeated/allpair, realLeadC3/delivery и production сохраняют свои отдельные owners/точные допуски; новый accepted handoff рассматривается только в своём scope. WholeSearch9.5/globalDONE не заявлены;200%/Compare deferred. При полном отсутствии независимого безопасного шага приостановить только это существующее задание с сохранением schedule/timezone/чужих задач; не запускать новый аудит неизменённого UI.
 
 
 
