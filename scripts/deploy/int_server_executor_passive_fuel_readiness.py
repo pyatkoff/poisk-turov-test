@@ -33,7 +33,11 @@ STOCK_OPERATION = 'int-anex-passive-fuel-stock-activate-20261020-v1'
 CURRENT_MODE = 'passive-fuel-current-activate'
 CURRENT_SOURCE = '57ff5ced11f3912b6b39dd9d271c110029459f07'
 CURRENT_OPERATION = 'int-anex-passive-fuel-current-activate-20261020-v1'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE)
+# A distinct metadata inspection, never an activation retry or lock repair.
+LOCK_MODE = 'publication-lock-metadata'
+LOCK_SOURCE = '61415e679957acac285bc0aa2f9c870f677618ea'
+LOCK_OPERATION = 'int-anex-publication-lock-metadata-20261020-v1'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -64,7 +68,8 @@ def parse(parts):
                   [PLAN_SOURCE, PLAN_MODE, PLAN_OPERATION],
                   [INSTALL_SOURCE, INSTALL_MODE, INSTALL_OPERATION],
                   [STOCK_SOURCE, STOCK_MODE, STOCK_OPERATION],
-                  [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION]),
+                  [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION],
+                  [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -84,7 +89,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and env.get('GITHUB_WORKFLOW_REF') == repo + '/.github/workflows/int-server-executor.yml@refs/heads/main'
          and env.get('GITHUB_ACTOR') == env.get('GITHUB_TRIGGERING_ACTOR') == 'pyatkoff'
          and env.get('GITHUB_RUN_ATTEMPT') == '1', 'passive_readiness_event')
-    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE)
+    private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -110,6 +115,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
 def bundle_source(source_root, command=None):
     command = policy(command)
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
+    if command['mode'] == LOCK_MODE: hashes = {}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -821,6 +827,81 @@ def pi_current_stage_check(descriptor,op):
 '''
 
 
+LOCK_METADATA_REMOTE = r'''
+import stat as lm_stat
+
+def publication_lock_metadata():
+    # O_PATH observes the existing inode without opening its data or taking flock.
+    # No caller-controlled path, content read, lock acquisition or repair exists.
+    out={'status':'not_measured','reason':None,'parent':None,'lock':None,
+         'home_identity_matches':None,'parent_identity_matches':None,
+         'lock_identity_stable':None,'unsafe_predicates':[],
+         'supplier_calls':0,'database_reads':0,'database_writes':0,
+         'runtime_writes':0,'booking_calls':0,'lead_calls':0}
+    descriptors=[]
+    def identity(s):
+        return (s.st_dev,s.st_ino,s.st_mode,s.st_uid,s.st_gid)
+    def lock_identity(s):
+        return identity(s)+(s.st_nlink,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    def kind(s):
+        for name,check in (('regular',lm_stat.S_ISREG),('directory',lm_stat.S_ISDIR),
+                           ('symlink',lm_stat.S_ISLNK),('fifo',lm_stat.S_ISFIFO),
+                           ('socket',lm_stat.S_ISSOCK)):
+            if check(s.st_mode):return name
+        return 'other'
+    def record(s):
+        return {'kind':kind(s),'nlink':s.st_nlink,'bytes':s.st_size,
+                'mode':lm_stat.S_IMODE(s.st_mode),'owner_matches':s.st_uid==os.getuid()}
+    try:
+        if not hasattr(os,'O_PATH'):
+            out['reason']='metadata_handle_unavailable';return out
+        flags=os.O_PATH|os.O_NOFOLLOW|os.O_NONBLOCK
+        root=os.open(home,flags|os.O_DIRECTORY);descriptors.append(root)
+        root_before=os.fstat(root)
+        try:parent=os.open('.anytoour-andromeda',flags,dir_fd=root)
+        except FileNotFoundError:
+            out['reason']='parent_missing';return out
+        descriptors.append(parent);parent_before=os.fstat(parent)
+        out['parent']=record(parent_before)
+        if not lm_stat.S_ISDIR(parent_before.st_mode):
+            out['reason']='parent_not_directory';return out
+        try:leaf=os.open('grouped-search-update.lock',flags,dir_fd=parent)
+        except FileNotFoundError:
+            out['reason']='lock_missing';return out
+        descriptors.append(leaf);first=os.fstat(leaf)
+        entry=os.stat('grouped-search-update.lock',dir_fd=parent,follow_symlinks=False)
+        last=os.fstat(leaf)
+        parent_entry=os.stat('.anytoour-andromeda',dir_fd=root,follow_symlinks=False)
+        out['home_identity_matches']=(identity(root_before)==identity(os.fstat(root))
+                                      ==identity(home.lstat()) and home.resolve()==home)
+        out['parent_identity_matches']=(identity(parent_before)==identity(os.fstat(parent))
+                                        ==identity(parent_entry))
+        out['lock_identity_stable']=lock_identity(first)==lock_identity(last)
+        out['lock']={**record(first),'entry_identity_matches':lock_identity(last)==lock_identity(entry)}
+        checks=(('home_identity',out['home_identity_matches']),
+                ('parent_identity',out['parent_identity_matches']),
+                ('parent_owner',out['parent']['owner_matches']),
+                ('parent_writable',not out['parent']['mode']&0o022),
+                ('regular_type',out['lock']['kind']=='regular'),
+                ('link_count',out['lock']['nlink']==1),
+                ('owner',out['lock']['owner_matches']),
+                ('writable',not out['lock']['mode']&0o022),
+                ('byte_size',out['lock']['bytes']<=65536),
+                ('entry_identity',out['lock']['entry_identity_matches']),
+                ('lock_stable',out['lock_identity_stable']))
+        out['unsafe_predicates']=[name for name,valid in checks if not valid]
+        out['status']='measured'
+        if not (out['home_identity_matches'] and out['parent_identity_matches']
+                and out['lock_identity_stable'] and out['lock']['entry_identity_matches']):
+            out.update(status='not_measured',reason='metadata_changed')
+        return out
+    except OSError:
+        out.update(status='not_measured',reason='metadata_unavailable');return out
+    finally:
+        for descriptor in reversed(descriptors):os.close(descriptor)
+'''
+
+
 def remote_program(remote, command=None):
     command = policy(command)
     mode = command['mode']
@@ -832,12 +913,20 @@ def remote_program(remote, command=None):
          and remote.count(exclusion) == 2, 'passive_registration_drift')
     reader = CURRENT_REMOTE if mode == CURRENT_MODE else STOCK_REMOTE if mode == STOCK_MODE else INSTALL_REMOTE if mode == INSTALL_MODE else PLAN_REMOTE_READER if mode == PLAN_MODE else PRIVATE_REMOTE_READER if mode == PRIVATE_MODE else REMOTE_READER
     hashes = PRIVATE_SOURCE_HASHES if mode in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE) else SOURCE_HASHES
+    if mode == LOCK_MODE: reader,hashes = LOCK_METADATA_REMOTE,{}
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
     fixed = "    if mode==" + repr(mode) + " and (source!=" + repr(command['source_sha']) + " or operation!=" + repr(command['operation_id']) + "):fail('passive_fixed_scope')\n"
     remote = remote.replace(gate, fixed + gate, 1)
     registration = REMOTE_DISPATCH.replace(repr(MODE), repr(mode), 1)
+    if mode == LOCK_MODE:
+        registration = "    if mode==" + repr(mode) + ":\n" + """        result['publication_lock_metadata']=publication_lock_metadata()
+        result['production_after']=fingerprints()
+        result.update(status='complete',supplier_calls=0,database_reads=0,database_writes=0,
+            runtime_writes=0,booking_calls=0,lead_calls=0,runtime_changed=False,
+            production_unchanged=result['production_after']==before)
+"""
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
@@ -859,6 +948,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
+    if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
@@ -905,6 +995,55 @@ def completed(command, result):
             and all(type(result.get(k)) is int and result[k] == 0
                     for k in ('supplier_calls', 'database_reads', 'database_writes', 'booking_calls', 'lead_calls'))
             and all(type(value.get(k)) is int and value[k] == 0 for k in counts))
+
+
+def lock_metadata_completed(command,result):
+    value=result.get('publication_lock_metadata')
+    counts={'supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls'}
+    fields={'status','reason','parent','lock','home_identity_matches','parent_identity_matches',
+            'lock_identity_stable','unsafe_predicates',*counts}
+    if not isinstance(value,dict) or set(value)!=fields:return False
+    if (value['status'] not in ('measured','not_measured')
+            or value['reason'] not in (None,'metadata_handle_unavailable','parent_missing',
+                'parent_not_directory','lock_missing','metadata_changed','metadata_unavailable')
+            or value['status']=='measured' and value['reason'] is not None
+            or value['status']=='not_measured' and value['reason'] is None):return False
+    def record(row,leaf=False):
+        keys={'kind','nlink','bytes','mode','owner_matches'}
+        if leaf:keys.add('entry_identity_matches')
+        return (isinstance(row,dict) and set(row)==keys
+            and row['kind'] in ('regular','directory','symlink','fifo','socket','other')
+            and all(type(row[k]) is int and 0<=row[k]<2**63 for k in ('nlink','bytes'))
+            and type(row['mode']) is int and 0<=row['mode']<=0o7777
+            and type(row['owner_matches']) is bool
+            and (not leaf or type(row['entry_identity_matches']) is bool))
+    if any(value[k] is not None and type(value[k]) is not bool for k in
+            ('home_identity_matches','parent_identity_matches','lock_identity_stable')):return False
+    if (value['parent'] is not None and not record(value['parent'])
+            or value['lock'] is not None and not record(value['lock'],True)
+            or not isinstance(value['unsafe_predicates'],list)
+            or any(type(k) is not str for k in value['unsafe_predicates'])
+            or len(value['unsafe_predicates'])!=len(set(value['unsafe_predicates']))):return False
+    allowed={'home_identity','parent_identity','parent_owner','parent_writable','regular_type',
+             'link_count','owner','writable','byte_size','entry_identity','lock_stable'}
+    if any(type(k) is not str or k not in allowed for k in value['unsafe_predicates']):return False
+    if value['status']=='measured':
+        if (value['parent'] is None or value['parent']['kind']!='directory' or value['lock'] is None
+                or any(value[k] is not True for k in ('home_identity_matches','parent_identity_matches','lock_identity_stable'))
+                or value['lock']['entry_identity_matches'] is not True):return False
+        parent,leaf=value['parent'],value['lock']
+        expected=[name for name,valid in (('parent_owner',parent['owner_matches']),
+            ('parent_writable',not parent['mode']&0o022),('regular_type',leaf['kind']=='regular'),
+            ('link_count',leaf['nlink']==1),('owner',leaf['owner_matches']),
+            ('writable',not leaf['mode']&0o022),('byte_size',leaf['bytes']<=65536)) if not valid]
+        if value['unsafe_predicates']!=expected:return False
+    before=result.get('production_before')
+    return (all(result.get(k)==command[k] for k in command)
+        and result.get('status')=='complete' and result.get('runtime_changed') is False
+        and result.get('production_unchanged') is True
+        and isinstance(before,dict) and set(before)=={'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}
+        and before==result.get('production_after')
+        and all(type(value[k]) is int and value[k]==0 and type(result.get(k)) is int and result[k]==0 for k in counts))
 
 
 def plan_completed(command, result):
@@ -1040,3 +1179,4 @@ def current_completed(command,result):
     topology['publisher_source_sha']=STOCK_PUBLISHER_SOURCE;preflight['stock_topology']=topology
     original=parse([STOCK_SOURCE,STOCK_MODE,STOCK_OPERATION])
     return stock_completed(original,{**result,**original,'passive_fuel_activation':{**value,'preflight':preflight}})
+
