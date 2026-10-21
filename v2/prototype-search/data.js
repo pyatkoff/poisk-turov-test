@@ -111,7 +111,9 @@
     }
     return cleanAnexSearchDiagnostics(values);
   }
-  const anexClientGuards=new Set(['envelope','tour_identity','amount','offer_scope','selected_meal','exact_stay','projected_identity','unknown']);
+  const anexClientGuards=new Set(['envelope','envelope_provider','envelope_generation','envelope_search_ref','envelope_offer_ref','envelope_status',
+    'envelope_hotels_type','envelope_hotels_count','envelope_hotel_identity','envelope_tours_type','envelope_tours_empty',
+    'tour_identity','amount','offer_scope','selected_meal','exact_stay','projected_identity','unknown']);
   function anexProjectionError(clientGuard,message){return Object.assign(new Error(message),{anexClientGuard:clientGuard});}
   function anexSearchError(response,payload,stage,clientPhase='',clientGuard=''){
     const expansion=stage==='expand',status=expansion?payload?.data?.status:null;
@@ -1391,10 +1393,13 @@
         &&['expansion_unknown','expired','not_loaded'].includes(expanded.status)&&expanded.retryable===false){
         throw anexSearchError(response,{data:expanded},'expand');
       }
-      if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searchRef||expanded.offer_ref!==targetRef
-        ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
-        ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
-        throw anexProjectionError('envelope','ANEX не вернул конкретные варианты выбранного тура.');
+      const envelopeGuard=expanded.provider!=='anex'?'envelope_provider':expanded.generation!==epoch?'envelope_generation'
+        :expanded.search_ref!==searchRef?'envelope_search_ref':expanded.offer_ref!==targetRef?'envelope_offer_ref'
+        :expanded.status!=='expanded'?'envelope_status':!Array.isArray(expanded.hotels)?'envelope_hotels_type'
+        :expanded.hotels.length!==1?'envelope_hotels_count':Number(expanded.hotels[0]?.local_id)!==localHotelId?'envelope_hotel_identity'
+        :!Array.isArray(expanded.hotels[0]?.tours)?'envelope_tours_type':!expanded.hotels[0].tours.length?'envelope_tours_empty':'';
+      if(envelopeGuard) {
+        throw anexProjectionError(envelopeGuard,'ANEX не вернул конкретные варианты выбранного тура.');
       }
       const seen=new Set(),normalized=[],rejected=new Set();
       for(const tour of expanded.hotels[0].tours){
