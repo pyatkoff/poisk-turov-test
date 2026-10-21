@@ -2258,6 +2258,141 @@ class PassiveFuelRepairedActivationTest(unittest.TestCase):
         fixture.test_installed_completion_requires_exact_two_readback_records_and_unchanged_protected_files()
 
 
+class TourvisorChildPartyActivationTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.PARTY_SOURCE,self.p.PARTY_MODE,self.p.PARTY_OPERATION])
+
+    def fixture(self,directory):
+        base=PassiveFuelRepairedActivationTest();base.setUp()
+        ns,home,project,runtime,private,stage,op=base.fixture(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_','PS_'))}
+        exec(self.p.PARTY_REMOTE,ns);ns.update(constants)
+        # Simulate the already completed predecessor installation, not a replay.
+        (project/'api-v2.php').write_bytes((stage/'v2/api-v2.php').read_bytes())
+        passive=runtime/'app/integrations/tourvisor-operator-fuel-passive-intake.php'
+        passive.write_bytes((stage/'app/integrations/tourvisor-operator-fuel-passive-intake.php').read_bytes())
+        ns['PP_OLD_PASSIVE']=hashlib.sha256(passive.read_bytes()).hexdigest()
+        old=hashlib.sha256((project/'api-v2.php').read_bytes()).hexdigest()
+        candidate=b'<?php /* isolated new child-party candidate */'
+        (stage/'v2/api-v2.php').write_bytes(candidate)
+        ns['PP_TARGETS']={'api-v2.php':(old,hashlib.sha256(candidate).hexdigest())}
+        ns['operation']=self.p.PARTY_OPERATION;ns['pi_lint']=lambda path:None
+        return ns,home,project,runtime,private,stage,op
+
+    def test_single_api_write_private_staging_backup_and_all_dependencies_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            before=ns['pp_snapshot']();production=ns['fingerprints']()
+            writes=[];original=os.open
+            def observed(path,flags,*args,**kwargs):
+                if flags&os.O_CREAT and str(path).startswith('.int-passive-fuel-'):
+                    self.assertEqual(op.stat().st_ino,os.fstat(kwargs['dir_fd']).st_ino)
+                    writes.append(str(path))
+                return original(path,flags,*args,**kwargs)
+            with patch.object(os,'open',side_effect=observed):
+                value=ns['passive_fuel_activate'](stage,op,production)
+            self.assertEqual(('installed_verified',1,1),(value['status'],value['runtime_writes'],value['staging_file_writes']))
+            self.assertEqual(['api-v2.php'],value['changed_files']);self.assertEqual(1,len(writes))
+            self.assertEqual(before[0]['api-v2.php'],(op/'activation-backup-0.php').read_bytes())
+            after=ns['pp_snapshot']()
+            self.assertEqual({'api-v2.php'},{p for p in before[1] if before[1][p]!=after[1][p]})
+            self.assertEqual(production,ns['fingerprints']());self.assertEqual([],list((private/'searches').iterdir()))
+            self.assertFalse(list(project.rglob('*.tmp')));self.assertFalse(list(op.glob('*.tmp')))
+
+    def test_old_predecessor_missing_proof_busy_or_unsafe_lock_never_write(self):
+        import fcntl
+        for case in ('predecessor','proof','busy','lock_mode','lock_nonempty'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory);fd=None
+                lock=private/'grouped-search-update.lock'
+                if case=='predecessor':(project/'api-v2.php').write_bytes(b'old or foreign API')
+                elif case=='proof':(home/'.anytoour-int-executor'/self.p.LOCK_REPAIR_OPERATION/'result.json').unlink()
+                elif case=='lock_mode':lock.chmod(0o664)
+                elif case=='lock_nonempty':lock.write_bytes(b'publisher')
+                else:fd=os.open(lock,os.O_RDWR);fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                before=ns['pp_snapshot']()[1]
+                try:value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                finally:
+                    if fd is not None:os.close(fd)
+                self.assertEqual((0,0,[]),(value['runtime_writes'],value['staging_file_writes'],value['changed_files']))
+                self.assertEqual(before,ns['pp_snapshot']()[1])
+
+    def test_post_apply_failure_rolls_back_only_owned_api(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            before=ns['pp_snapshot']()[1];calls=0
+            def failed(path):
+                nonlocal calls
+                calls+=1
+                if calls==3:raise RuntimeError('activation_syntax')
+            ns['pi_lint']=failed
+            value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual(('rolled_back_no_replay',2,['api-v2.php']),
+                (value['status'],value['runtime_writes'],value['rollback_files']))
+            self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+
+    def test_exact_new_source_ci_unique_comment_and_old_profiles_are_separate(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        for parts in ([self.p.REPAIRED_SOURCE,self.p.PARTY_MODE,self.p.PARTY_OPERATION],
+                      [self.p.PARTY_SOURCE,self.p.PARTY_MODE,self.p.REPAIRED_OPERATION],
+                      [self.p.PARTY_SOURCE,self.p.PARTY_MODE,self.p.PARTY_OPERATION,'force']):
+            with self.assertRaises(ValueError):self.p.parse(parts)
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+            'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+            'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        event={'action':'created','repository':{'full_name':m.REPO},'comment':{'id':123}}
+        body=m.PREFIX+' '.join(self.command.values())
+        checks={'total_count':5,'check_runs':[{'id':i,'status':'completed','conclusion':'success',
+            'app':{'slug':'github-actions'}} for i in self.p.PARTY_CHECK_IDS]}
+        def api(path,token):
+            if '/check-runs?' in path:
+                self.assertIn(self.p.PARTY_CHECK_COMMIT,path);return checks
+            return [{'id':123,'body':body}]
+        self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        with self.assertRaisesRegex(ValueError,'no_replay'):
+            self.p.admission(lambda path,token:checks if '/check-runs?' in path else
+                [{'id':122,'body':body},{'id':123,'body':body}],event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        checks['check_runs'][0]['conclusion']='failure'
+        with self.assertRaisesRegex(ValueError,'source_ci'):
+            self.p.admission(api,event,'token',env,m.REPO,m.ISSUE,m.PREFIX,self.command)
+        program=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,program.count("if mode not in ('tourvisor-child-party-activate','reconcile',"))
+        self.assertIn('order=(root,)',program);self.assertNotIn('order=(passive,root)',program)
+        self.assertIn('files!='+repr(self.p.PARTY_SOURCE_HASHES),program)
+
+    def test_completion_requires_one_exact_api_and_zero_other_side_effects(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            production=ns['fingerprints']();value=ns['passive_fuel_activate'](stage,op,production)
+            old={'sha256':self.p.PRIVATE_SOURCE_HASHES['v2/api-v2.php'],'bytes':20233,'mode':0o644}
+            new={'sha256':self.p.PARTY_API_SHA256,'bytes':20362,'mode':0o644}
+            pre=value['preflight'];pre['plan_files']={'api-v2.php':{
+                'predecessor_sha256':old['sha256'],'candidate_sha256':new['sha256']}}
+            pre['protected_before']['api-v2.php']=old;pre['protected_after']=copy.deepcopy(pre['protected_before'])
+            pre['stock_topology']['manifest_record']={'sha256':self.p.CURRENT_MANIFEST_SHA256,
+                'bytes':self.p.CURRENT_MANIFEST_BYTES,'mode':0o644}
+            value.update(before_files={'api-v2.php':old},after_files={'api-v2.php':new},
+                protected_after={**pre['protected_before'],'api-v2.php':new})
+            result={**self.command,'status':'complete','runtime_changed':True,'production_unchanged':True,
+                'production_before':production,'production_after':production,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,
+                'passive_fuel_activation':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('runtime_writes',2),('runtime_writes',True),('staging_file_writes',2),
+                    ('changed_files',['api-v2.php','third.php']),('rollback_files',['api-v2.php']),
+                    ('after_files',{}),('supplier_calls',1),('backup_retained',False),('repair_proof',{}),
+                    ('status','rolled_back_no_replay'),('status','unknown_no_replay')]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed),key)
+            for key,bad in [('dependencies_exact',False),('private_db_dependency_matches',False)]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation']['preflight'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed),key)
+            changed=copy.deepcopy(result);changed['passive_fuel_activation']['protected_after']['index.php']={
+                'sha256':'0'*64,'bytes':1,'mode':0o644}
+            self.assertFalse(m.completed_result(self.command,changed))
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 

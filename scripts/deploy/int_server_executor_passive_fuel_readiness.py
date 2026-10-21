@@ -47,7 +47,13 @@ REPAIRED_OPERATION = 'int-anex-passive-fuel-repaired-activate-20261021-v1'
 # The stock server persists compact JSON; the runner artifact is pretty JSON.
 REPAIR_RECEIPT_SHA256 = 'a1e608a8ad12c866169bbc4609365e1f6fbf901c86f59dd8e1e050973b6d7635'
 REPAIR_RECEIPT_BYTES = 2056
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
+PARTY_MODE = 'tourvisor-child-party-activate'
+PARTY_SOURCE = 'd6f5afd6ed3dcf090afb9a7463c0bbc675c86780'
+PARTY_OPERATION = 'int-anex-tourvisor-child-party-20261021-v1'
+PARTY_CHECK_COMMIT = '28441a96a537e168e2bdc43d9c94e7371c14092e'
+PARTY_CHECK_IDS = {119329030098,119329027030,119329026567,119329026268,119329025959}
+PARTY_API_SHA256 = '90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2'
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE, PARTY_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -66,6 +72,7 @@ SOURCE_HASHES = {
 }
 PRIVATE_SOURCE_HASHES = {**SOURCE_HASHES,
     'v2/api-v2.php': '04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15'}
+PARTY_SOURCE_HASHES = {**PRIVATE_SOURCE_HASHES, 'v2/api-v2.php': PARTY_API_SHA256}
 
 
 def need(value, reason):
@@ -81,7 +88,8 @@ def parse(parts):
                   [CURRENT_SOURCE, CURRENT_MODE, CURRENT_OPERATION],
                   [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION],
                   [LOCK_REPAIR_SOURCE, LOCK_REPAIR_MODE, LOCK_REPAIR_OPERATION],
-                  [REPAIRED_SOURCE, REPAIRED_MODE, REPAIRED_OPERATION]),
+                  [REPAIRED_SOURCE, REPAIRED_MODE, REPAIRED_OPERATION],
+                  [PARTY_SOURCE, PARTY_MODE, PARTY_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -104,6 +112,8 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
     private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
+    if command['mode'] == PARTY_MODE:
+        check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
          and {c.get('id') for c in checks.get('check_runs', [])} == check_ids
@@ -128,6 +138,7 @@ def bundle_source(source_root, command=None):
     command = policy(command)
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
+    if command['mode'] == PARTY_MODE: hashes = PARTY_SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -908,6 +919,15 @@ for _old,_new in (
     REPAIRED_REMOTE=REPAIRED_REMOTE.replace(_old,_new,1)
 
 
+# New confirmed party correction: reuse the reviewed transaction and corrected
+# lock proof, but activate only ROOT API. Already installed helpers are read-only.
+need(REPAIRED_REMOTE.count('order=(passive,root)') == 1, 'party_registration_drift')
+PARTY_REMOTE = REPAIRED_REMOTE.replace('order=(passive,root)', 'order=(root,)', 1)
+PARTY_REMOTE += '\nPP_OLD_PASSIVE=' + repr(PRIVATE_SOURCE_HASHES[
+    'app/integrations/tourvisor-operator-fuel-passive-intake.php']) + '\nPP_TARGETS=' + repr({
+        'api-v2.php': (PRIVATE_SOURCE_HASHES['v2/api-v2.php'], PARTY_API_SHA256)}) + '\n'
+
+
 LOCK_METADATA_REMOTE = r'''
 import stat as lm_stat
 
@@ -1073,6 +1093,7 @@ def remote_program(remote, command=None):
     if mode == LOCK_MODE: reader,hashes = LOCK_METADATA_REMOTE,{}
     if mode == LOCK_REPAIR_MODE: reader,hashes = LOCK_REPAIR_REMOTE,{}
     if mode == REPAIRED_MODE: reader,hashes = REPAIRED_REMOTE,PRIVATE_SOURCE_HASHES
+    if mode == PARTY_MODE: reader,hashes = PARTY_REMOTE,PARTY_SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -1100,7 +1121,7 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
-    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE):
+    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE, PARTY_MODE):
         registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
         activation=result['passive_fuel_activation']
         result['production_after']=fingerprints()
@@ -1121,6 +1142,7 @@ def completed(command, result):
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
+    if command['mode'] == PARTY_MODE:return party_completed(command,result)
     if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
@@ -1268,6 +1290,91 @@ def repaired_completed(command,result):
             or type(proof.get('mode')) is not int or type(proof.get('identity_stable')) is not bool):return False
     original=parse([CURRENT_SOURCE,CURRENT_MODE,CURRENT_OPERATION])
     return current_completed(original,{**result,**original,'passive_fuel_activation':normalized})
+
+
+def party_completed(command, result):
+    """Accept only one API replacement, retaining the complete existing proof."""
+    if (command != parse([PARTY_SOURCE, PARTY_MODE, PARTY_OPERATION])
+            or any(result.get(k) != command[k] for k in command)
+            or result.get('status') != 'complete' or result.get('production_unchanged') is not True
+            or result.get('production_before') != result.get('production_after')
+            or not isinstance(result.get('production_before'), dict)
+            or set(result['production_before']) != {'index.php','v2/index.php','v2/api-v2.php','v2/lead-adapter-v2.php'}):
+        return False
+    zero = ('supplier_calls','database_reads','database_writes','booking_calls','lead_calls')
+    value = result.get('passive_fuel_activation')
+    fields = {'status','reason','preflight','publication_lock','changed_files','rollback_files',
+        'before_files','after_files','protected_after','protected_unchanged_except_target',
+        'runtime_writes','staging_file_writes','backup_retained','repair_proof',*zero}
+    if (not isinstance(value, dict) or set(value) != fields
+            or any(type(result.get(k)) is not int or result[k] != 0
+                   or type(value[k]) is not int or value[k] != 0 for k in zero)
+            or value['protected_unchanged_except_target'] is not True
+            or value['repair_proof'] != {'status':'verified','operation_id':LOCK_REPAIR_OPERATION,
+                'sha256':REPAIR_RECEIPT_SHA256,'bytes':REPAIR_RECEIPT_BYTES,'mode':0o600,'identity_stable':True}):
+        return False
+    if (type(value['repair_proof']['bytes']) is not int or type(value['repair_proof']['mode']) is not int
+            or type(value['repair_proof']['identity_stable']) is not bool):return False
+    pre = value['preflight']
+    flags = {'gateway_predecessor_matches','passive_predecessor_matches','dependencies_exact',
+        'db_predecessor_matches','private_db_dependency_matches','root_config_predecessor_matches',
+        'proxy_predecessor_matches','store_directory_owner_matches','binding_identity_stable','protected_unchanged'}
+    pre_fields = {'status','private_caller_state','store_state','store_directory_mode','backing_config_record',
+        'private_gateway_record','private_db_record','proxy_record','loaded_db_state','plan_files',
+        'protected_before','protected_after','stock_topology','runtime_writes',*flags,*zero}
+    def record(row):
+        return row is None or (isinstance(row,dict) and set(row) == {'sha256','bytes','mode'}
+            and isinstance(row['sha256'],str) and re.fullmatch('[a-f0-9]{64}',row['sha256']) is not None
+            and type(row['bytes']) is int and 0 < row['bytes'] <= 2*1024*1024
+            and type(row['mode']) is int and 0 <= row['mode'] <= 0o7777)
+    if (not isinstance(pre,dict) or set(pre) != pre_fields
+            or pre['status'] not in ('ready','hold') or any(type(pre[k]) is not bool for k in flags)
+            or pre['loaded_db_state'] != 'not_executed'
+            or pre['binding_identity_stable'] is not True or pre['protected_unchanged'] is not True
+            or any(type(pre[k]) is not int or pre[k] != 0 for k in (*zero,'runtime_writes'))
+            or not all(record(pre[k]) for k in ('backing_config_record','private_gateway_record','private_db_record','proxy_record'))
+            or pre['store_directory_mode'] is not None and (type(pre['store_directory_mode']) is not int
+                or not 0 <= pre['store_directory_mode'] <= 0o7777)
+            or pre['private_caller_state'] not in ('excluded_by_stock_publisher','missing','unrecognized','compatible_pr4732','legacy_eager_dependency')
+            or pre['store_state'] not in ('verified_stock_binding','config_unrecognized','config_binding_mismatch','store_unavailable')
+            or pre['plan_files'] != {'api-v2.php':{'predecessor_sha256':PRIVATE_SOURCE_HASHES['v2/api-v2.php'],
+                                                'candidate_sha256':PARTY_API_SHA256}}):
+        return False
+    before = pre['protected_before']
+    if (not isinstance(before,dict) or set(before) != set(PROTECTED)
+            or not all(map(record,before.values())) or pre['protected_after'] != before):return False
+    topology = pre['stock_topology']
+    if (not isinstance(topology,dict) or set(topology) != {'status','publisher_source_sha','required_rows_verified',
+            'manifest_record','nested_gateway_record'} or topology['publisher_source_sha'] != CURRENT_PUBLISHER_SOURCE
+            or topology['status'] not in ('verified_stock_exclusion','gateway_present','unrecognized_manifest')
+            or type(topology['required_rows_verified']) is not bool
+            or not record(topology['manifest_record']) or not record(topology['nested_gateway_record'])):return False
+    if value['status'] == 'hold':
+        return (value['reason'] in ('preflight_hold','publication_lock_missing','publication_busy')
+            and (value['reason'] != 'preflight_hold' or pre['status'] == 'hold')
+            and value['publication_lock'] in ('not_acquired','exclusive_existing')
+            and value['changed_files'] == value['rollback_files'] == []
+            and value['before_files'] == value['after_files'] == {}
+            and type(value['runtime_writes']) is int and value['runtime_writes'] == 0
+            and type(value['staging_file_writes']) is int and value['staging_file_writes'] == 0
+            and value['backup_retained'] is False and result.get('runtime_changed') is False
+            and value['protected_after'] == before)
+    old = {'sha256':PRIVATE_SOURCE_HASHES['v2/api-v2.php'],'bytes':20233,'mode':0o644}
+    new = {'sha256':PARTY_API_SHA256,'bytes':20362,'mode':0o644}
+    return (value['status'] == 'installed_verified' and value['reason'] is None
+        and pre['status'] == 'ready' and all(pre[k] for k in flags)
+        and pre['private_caller_state'] == 'excluded_by_stock_publisher'
+        and pre['store_state'] == 'verified_stock_binding' and pre['private_gateway_record'] is None
+        and topology == {'status':'verified_stock_exclusion','publisher_source_sha':CURRENT_PUBLISHER_SOURCE,
+            'required_rows_verified':True,'manifest_record':{'sha256':CURRENT_MANIFEST_SHA256,
+                'bytes':CURRENT_MANIFEST_BYTES,'mode':0o644},'nested_gateway_record':None}
+        and value['publication_lock'] == 'exclusive_existing' and value['backup_retained'] is True
+        and value['changed_files'] == ['api-v2.php'] and value['rollback_files'] == []
+        and value['before_files'] == {'api-v2.php':old} and value['after_files'] == {'api-v2.php':new}
+        and before['api-v2.php'] == old and value['protected_after'] == {**before,'api-v2.php':new}
+        and type(value['runtime_writes']) is int and value['runtime_writes'] == 1
+        and type(value['staging_file_writes']) is int and value['staging_file_writes'] == 1
+        and result.get('runtime_changed') is True)
 
 
 def plan_completed(command, result):
