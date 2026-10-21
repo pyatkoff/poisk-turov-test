@@ -77,6 +77,14 @@ PROOF_SOURCE_INSPECTION = {
 }
 
 
+OPERATOR_BINDING = {
+    'cohort': 'common4-egypt-operator-binding-20261021',
+    'operation_id': 'int-andromeda-match-retained-acquire-20261021-v1',
+    'parent_operation_id': 'int-andromeda-match-retained-current-20261020-v2',
+    'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57',
+}
+
+
 def need(value, reason):
     if not value:
         raise ValueError(reason)
@@ -202,6 +210,14 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if len(parts) >= 4 and parts[3] == OPERATOR_BINDING['cohort']:
+            need(len(parts) == 5 and parts[1] == 'match-retained-acquire'
+                 and parts[2] == OPERATOR_BINDING['operation_id']
+                 and parts[4] == OPERATOR_BINDING['parent_operation_id'], 'operator_dictionary_scope')
+            need(core.SHA_RE.fullmatch(parts[0]) is not None, 'retained_source_sha')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         target_mode = parts[1] in ('match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2')
         need(len(parts) == (5 if target_mode else 4), 'retained_command_arity')
         source, mode, operation, cohort = parts[:4]
@@ -1225,7 +1241,170 @@ REMOTE_DISPATCH = r'''    if mode in RETAINED_MODES:
 '''
 
 
+OPERATOR_BINDING_HANDLER = r'''
+def operator_dictionary_projection(value):
+    aliases = {
+        'anex': {'anex', 'anex tour', 'анекс тур'},
+        'biblio': {'библио-глобус', 'библио глобус', 'biblio-globus', 'biblio globus'},
+        'funsun': {'fun&sun', 'fun & sun', 'фан&сан', 'фан & сан'},
+        'intourist': {'интурист', 'intourist'},
+    }
+    if not isinstance(value, list) or len(value) > 1000:
+        raise ValueError('operator_dictionary_shape')
+    seen = set(); bindings = {}
+    for row in value:
+        if (not isinstance(row, dict) or not set(row).issubset({'id', 'name', 'fullName', 'russianName'})
+                or type(row.get('id')) is not int or not 1 <= row['id'] <= 2147483647
+                or row['id'] in seen):
+            raise ValueError('operator_dictionary_row')
+        seen.add(row['id']); labels = []
+        for key in ('name', 'fullName', 'russianName'):
+            if key not in row: continue
+            label = row[key]
+            if (not isinstance(label, str) or len(label) > 255
+                    or any(ord(c) < 32 or ord(c) == 127 for c in label)):
+                raise ValueError('operator_dictionary_label')
+            if label.strip(): labels.append(' '.join(label.casefold().split()))
+        if not labels: raise ValueError('operator_dictionary_label')
+        families = {family for family, names in aliases.items() if any(label in names for label in labels)}
+        if len(families) > 1: raise ValueError('operator_dictionary_conflict')
+        if families:
+            family = next(iter(families))
+            if family in bindings: raise ValueError('operator_dictionary_ambiguous')
+            bindings[family] = row['id']
+    return [{'family': family, 'operator_id': ident} for family, ident in sorted(bindings.items())]
+
+def retained_operator_dictionary(stage):
+    import importlib.util
+    import sys
+    profile = NEXT_SCOPE
+    if (mode != 'match-retained-acquire' or payload.get('cohort') != profile['cohort']
+            or operation != profile['operation_id'] or payload.get('target_operation_id') != profile['parent_operation_id']):
+        fail('operator_dictionary_scope')
+    protected = {}
+    def retain(path, bound):
+        if not safe_file(path, bound) or path.resolve() != path or path.stat().st_nlink != 1:
+            fail('operator_dictionary_protected_path')
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(fd)
+            with os.fdopen(os.dup(fd), 'rb') as handle: raw = handle.read(bound+1)
+            after = os.fstat(fd)
+        finally: os.close(fd)
+        signature = lambda stat: (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        if signature(before) != signature(after) or len(raw) != after.st_size or len(raw) > bound:
+            fail('operator_dictionary_protected_drift')
+        protected[path] = (hashlib.sha256(raw).hexdigest(), signature(after))
+        return raw
+    parent_dir = private/profile['parent_operation_id']
+    if parent_dir.is_symlink() or parent_dir.resolve() != parent_dir: fail('operator_dictionary_parent_path')
+    parent = json.loads(retain(parent_dir/'result.json', 32*1024*1024))
+    reservation = json.loads(retain(parent_dir/'reservation.json', 65536))
+    data = parent.get('match_retained', {}).get('data', {})
+    digest = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    if (parent.get('status') != 'complete' or parent.get('mode') != 'match-retained-current'
+            or parent.get('production_unchanged') is not True or data.get('state') != 'current_retained_read_only'
+            or digest != profile['parent_evidence_sha256'] or parent['match_retained'].get('evidence_sha256') != digest
+            or any(obj.get('operation_id') != profile['parent_operation_id'] for obj in (parent, reservation, data))
+            or any(obj.get('source_sha') != reservation.get('source_sha') for obj in (parent, data))
+            or any(type(obj.get(key)) is not int or obj[key] != 0 for obj in (parent, data)
+                   for key in ('supplier_calls', 'database_writes', 'mapping_writes'))):
+        fail('operator_dictionary_parent_binding')
+    retain(project/'config.php', 1048576)
+    home = pathlib.Path.home()
+    for name in ('retained-selection-claims.json', 'retained-context-claims.json'):
+        retain(home/'.anytoour-match'/name, 8*1024*1024)
+    sys.path.insert(0, str(stage/'scripts/diagnostics'))
+    spec = importlib.util.spec_from_file_location('binding_acquisition', stage/'scripts/diagnostics/hotel_match_retained_acquire_v1.py')
+    helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)
+    client = helper.Client(home, project, op, operation)
+    client.http_maximum = 1; client.search_start_maximum = 0; client.deadline = time.monotonic()+60
+    outcome = dict(state='operator_dictionary_failed_no_replay', bindings=[], stop_reason=None)
+    try:
+        status, value, raw = client.call('dictionary', '/operators', {'departureId': 1, 'countryId': 1})
+        outcome.update(raw_response=raw, http_status=status)
+        body = retain(op/'response-0001.bin', helper.BODY_LIMIT)
+        if hashlib.sha256(body).hexdigest() != raw['raw_sha256']:
+            raise ValueError('operator_dictionary_raw_digest')
+        def unique(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result: raise ValueError('operator_dictionary_duplicate_key')
+                result[key] = value
+            return result
+        value = json.loads(body, object_pairs_hook=unique)
+        outcome['bindings'] = operator_dictionary_projection(value)
+        outcome['state'] = 'operator_dictionary_captured'
+    except Exception as error:
+        # Exception text can contain sensitive supplier data; expose only its class.
+        outcome['stop_reason'] = type(error).__name__
+    for path, (expected, signature) in protected.items():
+        if (not safe_file(path, 32*1024*1024) or path.resolve() != path or path.stat().st_nlink != 1
+                or hashlib.sha256(path.read_bytes()).hexdigest() != expected
+                or (path.stat().st_dev, path.stat().st_ino, path.stat().st_size,
+                    path.stat().st_mtime_ns, path.stat().st_ctime_ns) != signature):
+            fail('operator_dictionary_protected_drift')
+    outcome.update(operation_id=operation, source_sha=source, control_source_sha=payload['match_retained_control_sha'],
+        cohort=payload['cohort'], target_operation_id=profile['parent_operation_id'], parent_evidence_sha256=digest,
+        account='TOURVISOR_ANEX_JWT', dictionary_scope={'departure_id': 1, 'country_id': 1},
+        supplier_calls=client.calls, physical_http_reservations=client.reserved, unknown_http_calls=client.unknown,
+        tariff_search_units=client.tariff, actions=dict(client.counts), database_writes=0, mapping_writes=0,
+        new_database_reads=0, new_accepted_mappings=0, selected_hotels=0, native_hotel_authority=False,
+        hotel_sales_access_proven=False, safe_to_write_now=False, no_replay=True,
+        protected_inputs_unchanged=True, global_usage='not_measured')
+    evidence = json.dumps(outcome, sort_keys=True, separators=(',', ':')).encode()
+    helper.save_bytes(op/'retained-evidence.json', evidence)
+    return {'data': outcome, 'evidence_sha256': hashlib.sha256(evidence).hexdigest()}
+'''
+
+
+def completed_operator_dictionary(command, result, control_sha):
+    try:
+        data = result['match_retained']['data']
+        if (command.get('mode') != 'match-retained-acquire' or command.get('cohort') != OPERATOR_BINDING['cohort']
+                or command.get('operation_id') != OPERATOR_BINDING['operation_id']
+                or command.get('target_operation_id') != OPERATOR_BINDING['parent_operation_id']
+                or result.get('status') != 'complete' or result.get('production_unchanged') is not True
+                or data.get('state') != 'operator_dictionary_captured' or data.get('stop_reason') is not None
+                or data.get('control_source_sha') != control_sha
+                or data.get('account') != 'TOURVISOR_ANEX_JWT'
+                or data.get('parent_evidence_sha256') != OPERATOR_BINDING['parent_evidence_sha256']
+                or data.get('dictionary_scope') != {'departure_id': 1, 'country_id': 1}
+                or data.get('actions') != {'dictionary': 1}
+                or type(data.get('http_status')) is not int or data['http_status'] != 200): return False
+        for key in ('mode', 'source_sha', 'operation_id'):
+            if result.get(key) != command.get(key): return False
+        for key in ('source_sha', 'operation_id', 'cohort', 'target_operation_id'):
+            if data.get(key) != command.get(key): return False
+        for obj in (result, data):
+            for key in ('database_writes', 'mapping_writes'):
+                if type(obj.get(key)) is not int or obj[key] != 0: return False
+            if type(obj.get('supplier_calls')) is not int or obj['supplier_calls'] != 1: return False
+        for key in ('physical_http_reservations',):
+            if type(data.get(key)) is not int or data[key] != 1: return False
+        for key in ('unknown_http_calls', 'tariff_search_units', 'new_database_reads', 'new_accepted_mappings', 'selected_hotels'):
+            if type(data.get(key)) is not int or data[key] != 0: return False
+        if any(data.get(key) is not False for key in ('native_hotel_authority', 'hotel_sales_access_proven', 'safe_to_write_now')): return False
+        if any(data.get(key) is not True for key in ('no_replay', 'protected_inputs_unchanged')): return False
+        raw = data.get('raw_response', {})
+        if type(raw.get('response_number')) is not int or raw['response_number'] != 1 or not re.fullmatch(r'[a-f0-9]{64}', str(raw.get('raw_sha256', ''))): return False
+        bindings = data.get('bindings')
+        if not isinstance(bindings, list) or len(bindings) > 4: return False
+        families = set(); ids = set()
+        for row in bindings:
+            if (not isinstance(row, dict) or set(row) != {'family', 'operator_id'}
+                    or row['family'] not in ('anex', 'biblio', 'funsun', 'intourist') or row['family'] in families
+                    or type(row['operator_id']) is not int or not 1 <= row['operator_id'] <= 2147483647
+                    or row['operator_id'] in ids): return False
+            families.add(row['family']); ids.add(row['operator_id'])
+        return result['match_retained'].get('evidence_sha256') == hashlib.sha256(canonical(data)).hexdigest()
+    except (KeyError, TypeError, AttributeError, ValueError):
+        return False
+
+
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == OPERATOR_BINDING['cohort']:
+        return completed_operator_dictionary(command, result, control_sha)
     try:
         policy=continuation_policy(command.get('cohort'))
         data = result['match_retained']['data']
@@ -1330,9 +1509,16 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
-    policy=continuation_policy(command.get('cohort'))
+    binding = command.get('cohort') == OPERATOR_BINDING['cohort']
+    policy = OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
-    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+REMOTE_HANDLER+'\n'+anchors['definition'],1)
+    handler = REMOTE_HANDLER
+    if binding:
+        anchor = "    if mode=='match-retained-acquire':return acquire_retained_target(stage)"
+        need(handler.count(anchor) == 1, 'operator_dictionary_dispatch_anchor')
+        handler = handler.replace(anchor, "    if mode=='match-retained-acquire':return retained_operator_dictionary(stage)", 1)
+        handler += OPERATOR_BINDING_HANDLER
+    remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
     hashes=dict(SOURCE_HASHES)
@@ -1347,4 +1533,5 @@ def activate(core, command):
     core.REMOTE=remote;core.bundle_source=lambda source_root:bundle_source(source_root,catalogue=catalogue)
     original=core.completed_result
     core.completed_result=lambda cmd,res: completed_result(cmd,res,control) if cmd.get('mode') in MODES else original(cmd,res)
+
 
