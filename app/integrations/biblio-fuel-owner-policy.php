@@ -6,6 +6,7 @@ require_once __DIR__ . '/operator-fuel-rule-evidence.php';
 /**
  * Owner-authoritative Biblio-Globus fuel policy (22.09.2026).
  *
+ * Only SAMO search listings (internal provider andromeda) use this rule.
  * Fuel is zero and already included in the supplier search price. This resolves only
  * the fuel component; it deliberately does NOT make the whole tour final/verified.
  * Children age >=2 follow the adult fuel rate (zero here). Infants remain a separate
@@ -44,6 +45,9 @@ final class AnyTourBiblioFuelOwnerPolicyV1
     {
         $hold = static fn(string $reason): array => ['dto'=>$dto,'applied'=>false,'reason'=>$reason];
         try {
+            if (($dto['provider'] ?? null) !== 'andromeda') {
+                return $hold('biblio_policy_provider');
+            }
             if (($dto['quote_state'] ?? null) !== 'unknown'
                 || ($dto['final_price_verified'] ?? null) !== false
                 || ($dto['finalPriceReady'] ?? null) !== false
