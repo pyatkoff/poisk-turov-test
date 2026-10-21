@@ -72,6 +72,8 @@ const previousMealPlan=`function(t,provider=String(t?.provider||'tourvisor').toL
 function harness(source,{providers=false}={}){
  const log=[],events=[],calls=[],timers=new Map(),http=[];let id=0,clock=1791878400000,status={progress:100},inventory=rows(),onEvent=()=>{},respond=null,fetchGate=null;
  const window={location:{href:'https://anytoour.ru/_preview/search3-next-candidate/visual-search/',origin:'https://anytoour.ru'},
+  // Freeze entropy with the existing clock/transport so the original trace stays exact.
+  crypto:{getRandomValues(values){return values.fill(0);}},
   V2_CONFIG:providers?{andromedaApi:'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'}:{},
   V2Runtime:{setSearchId(value){log.push(['searchId',value]);},async api(action,body){calls.push({action,body:copy(body)});log.push(['api',action,copy(body)]);if(respond)return respond(action,body);if(action==='search_start')return{searchId:17};if(action==='search_status')return status;if(action==='search_results')return inventory;if(action==='search_continue')return{};throw Error('Unexpected API '+action);}},
   Search3CanonicalProfilesV1:{create(publish){return {reset(){log.push(['reset']);},read(value){log.push(['read',value.length]);return value;},clearOffers(value){log.push(['clearOffers',value]);},refresh(){log.push(['refresh']);publish();}}; }},
