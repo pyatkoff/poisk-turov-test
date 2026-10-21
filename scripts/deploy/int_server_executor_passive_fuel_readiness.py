@@ -53,7 +53,13 @@ PARTY_OPERATION = 'int-anex-tourvisor-child-party-20261021-v1'
 PARTY_CHECK_COMMIT = '28441a96a537e168e2bdc43d9c94e7371c14092e'
 PARTY_CHECK_IDS = {119329030098,119329027030,119329026567,119329026268,119329025959}
 PARTY_API_SHA256 = '90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2'
-MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE, PARTY_MODE)
+PARTY_CONTINUE_MODE = 'tourvisor-child-party-continue'
+PARTY_CONTINUE_SOURCE = PARTY_SOURCE
+PARTY_CONTINUE_OPERATION = 'int-anex-tourvisor-child-party-continue-20261021-v1'
+PARTY_ROOT_DB_SHA256 = 'ca7f11d6ec53e0cd3d4464e0f645f15b761bb734da1323689479838868d4abc4'
+PARTY_HOLD_SHA256 = '7e1b4cf6b92f52b2645b50ef5ae5ea56507fbcba955eceb98f3d1179683a081f'
+PARTY_HOLD_BYTES = 7767
+MODES = (MODE, PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE, PARTY_MODE, PARTY_CONTINUE_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -89,7 +95,8 @@ def parse(parts):
                   [LOCK_SOURCE, LOCK_MODE, LOCK_OPERATION],
                   [LOCK_REPAIR_SOURCE, LOCK_REPAIR_MODE, LOCK_REPAIR_OPERATION],
                   [REPAIRED_SOURCE, REPAIRED_MODE, REPAIRED_OPERATION],
-                  [PARTY_SOURCE, PARTY_MODE, PARTY_OPERATION]),
+                  [PARTY_SOURCE, PARTY_MODE, PARTY_OPERATION],
+                  [PARTY_CONTINUE_SOURCE, PARTY_CONTINUE_MODE, PARTY_CONTINUE_OPERATION]),
          'passive_readiness_fixed_scope')
     return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2])
 
@@ -112,7 +119,7 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
     private = command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, LOCK_MODE, LOCK_REPAIR_MODE, REPAIRED_MODE)
     check_commit = PRIVATE_SOURCE_CHECK_COMMIT if private else SOURCE_CHECK_COMMIT
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
-    if command['mode'] == PARTY_MODE:
+    if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
     need(checks.get('total_count') == len(check_ids)
@@ -138,7 +145,7 @@ def bundle_source(source_root, command=None):
     command = policy(command)
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
-    if command['mode'] == PARTY_MODE: hashes = PARTY_SOURCE_HASHES
+    if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -927,6 +934,29 @@ PARTY_REMOTE += '\nPP_OLD_PASSIVE=' + repr(PRIVATE_SOURCE_HASHES[
     'app/integrations/tourvisor-operator-fuel-passive-intake.php']) + '\nPP_TARGETS=' + repr({
         'api-v2.php': (PRIVATE_SOURCE_HASHES['v2/api-v2.php'], PARTY_API_SHA256)}) + '\n'
 
+# Resume only the never-started activation after its exact immutable zero-write
+# HOLD. ROOT uses the release helper; the private helper retains its own pin.
+PARTY_PARENT_PROOF_REMOTE = (REPAIR_PROOF_REMOTE
+    .replace(repr(LOCK_REPAIR_OPERATION), repr(PARTY_OPERATION))
+    .replace(repr(REPAIR_RECEIPT_SHA256), repr(PARTY_HOLD_SHA256))
+    .replace('PR_REPAIR_BYTES='+str(REPAIR_RECEIPT_BYTES), 'PR_REPAIR_BYTES='+str(PARTY_HOLD_BYTES))
+    .replace('PR_', 'PC_').replace('pr_repair_proof', 'pc_parent_hold_proof')
+    .replace('activation_repair_proof', 'activation_parent_hold_proof'))
+PARTY_CONTINUE_REMOTE = PARTY_REMOTE + PARTY_PARENT_PROOF_REMOTE + '\nPC_ROOT_DB='+repr(PARTY_ROOT_DB_SHA256)+'\n'
+for _old, _new in (
+    ("db_ok=digest('data/db-v1.php')==PP_DB", "db_ok=digest('data/db-v1.php')==PC_ROOT_DB"),
+    ("'backup_retained':False,'repair_proof':None,", "'backup_retained':False,'repair_proof':None,'parent_hold_proof':None,"),
+    ('    def snapshot_matches():\n        pr_repair_proof()',
+     '    def snapshot_matches():\n        pc_parent_hold_proof()\n        pr_repair_proof()'),
+    ("        out['repair_proof']=pr_repair_proof()\n",
+     "        out['parent_hold_proof']=pc_parent_hold_proof()\n        out['repair_proof']=pr_repair_proof()\n"),
+    ("'activation_syntax','activation_readback','activation_repair_proof'",
+     "'activation_syntax','activation_readback','activation_repair_proof','activation_parent_hold_proof'"),
+):
+    need(PARTY_CONTINUE_REMOTE.count(_old)==1, 'party_continuation_registration_drift')
+    PARTY_CONTINUE_REMOTE=PARTY_CONTINUE_REMOTE.replace(_old,_new,1)
+del _old, _new
+
 
 LOCK_METADATA_REMOTE = r'''
 import stat as lm_stat
@@ -1094,6 +1124,7 @@ def remote_program(remote, command=None):
     if mode == LOCK_REPAIR_MODE: reader,hashes = LOCK_REPAIR_REMOTE,{}
     if mode == REPAIRED_MODE: reader,hashes = REPAIRED_REMOTE,PRIVATE_SOURCE_HASHES
     if mode == PARTY_MODE: reader,hashes = PARTY_REMOTE,PARTY_SOURCE_HASHES
+    if mode == PARTY_CONTINUE_MODE: reader,hashes = PARTY_CONTINUE_REMOTE,PARTY_SOURCE_HASHES
     remote = remote.replace(marker, reader + '\n' + marker, 1)
     gate = "    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(gate) == 1, 'passive_remote_gate')
@@ -1121,7 +1152,7 @@ def remote_program(remote, command=None):
     if mode == PLAN_MODE:
         registration = registration.replace("result['passive_fuel_readiness']=passive_fuel_readiness()",
             "result['passive_fuel_activation_plan']=passive_fuel_activation_plan()", 1)
-    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE, PARTY_MODE):
+    if mode in (INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE, PARTY_MODE, PARTY_CONTINUE_MODE):
         registration = "    if mode==" + repr(mode) + ":\n" + """        result['passive_fuel_activation']=passive_fuel_activate(stage,op,before)
         activation=result['passive_fuel_activation']
         result['production_after']=fingerprints()
@@ -1143,6 +1174,7 @@ def completed(command, result):
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
     if command['mode'] == PARTY_MODE:return party_completed(command,result)
+    if command['mode'] == PARTY_CONTINUE_MODE:return party_continue_completed(command,result)
     if command['mode'] == CURRENT_MODE:return current_completed(command,result)
     if command['mode'] == STOCK_MODE:return stock_completed(command,result)
     if command['mode'] == INSTALL_MODE:return install_completed(command,result)
@@ -1290,6 +1322,27 @@ def repaired_completed(command,result):
             or type(proof.get('mode')) is not int or type(proof.get('identity_stable')) is not bool):return False
     original=parse([CURRENT_SOURCE,CURRENT_MODE,CURRENT_OPERATION])
     return current_completed(original,{**result,**original,'passive_fuel_activation':normalized})
+
+
+def party_continue_completed(command, result):
+    if (command != parse([PARTY_CONTINUE_SOURCE,PARTY_CONTINUE_MODE,PARTY_CONTINUE_OPERATION])
+            or any(result.get(k) != command[k] for k in command)):return False
+    value=result.get('passive_fuel_activation')
+    if not isinstance(value,dict):return False
+    normalized=dict(value);proof=normalized.pop('parent_hold_proof',None)
+    if (proof != {'status':'verified','operation_id':PARTY_OPERATION,'sha256':PARTY_HOLD_SHA256,
+            'bytes':PARTY_HOLD_BYTES,'mode':0o600,'identity_stable':True}
+            or not isinstance(proof,dict) or type(proof.get('bytes')) is not int
+            or type(proof.get('mode')) is not int or type(proof.get('identity_stable')) is not bool):return False
+    pre=normalized.get('preflight')
+    if (not isinstance(pre,dict) or not isinstance(pre.get('protected_before'),dict)
+            or pre['protected_before'].get('data/db-v1.php') != {
+                'sha256':PARTY_ROOT_DB_SHA256,'bytes':3861,'mode':0o644}
+            or pre.get('private_db_record') != {
+                'sha256':'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13',
+                'bytes':3282,'mode':0o644}):return False
+    original=parse([PARTY_SOURCE,PARTY_MODE,PARTY_OPERATION])
+    return party_completed(original,{**result,**original,'passive_fuel_activation':normalized})
 
 
 def party_completed(command, result):
