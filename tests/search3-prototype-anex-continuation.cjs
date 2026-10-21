@@ -90,12 +90,18 @@ test('one sealed expansion retains safe producer facts and never repeats or prom
 test('legacy UNKNOWN and explicit post-HTTP terminal outcomes retain noReplay without inventing a cause',async()=>{
  for(const status of ['expansion_unknown','expired','not_loaded']){
   const h=await expansionHarness();h.setFetch(async(url,body)=>({ok:true,data:{...expandIdentity(body),status,retryable:false,
-   ...(status==='expansion_unknown'?{}:{diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Phase':'projection'}})}}));
+   ...(status==='expansion_unknown'?{}:{diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Phase':'projection',
+    ...(status==='not_loaded'?{'X-AnyTour-Anex-Failure':'ANEX_EXPANSION_NOT_LOADED','X-AnyTour-Anex-Category':'application','X-AnyTour-Anex-Upstream-Status':'200'}:{})}})}}));
   let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.code===(status==='expired'?'offer_expired':'anex_expand_unconfirmed');});
   await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
   const fact=searchWarning(h.warnings[0]);assert.equal(fact.code,status);assert.equal(fact.httpStatus,200);
   if(status==='expansion_unknown')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200});
-  else assert.equal(fact.backendPhase,'projection');
+  else {
+   assert.equal(fact.backendPhase,'projection');
+   if(status==='not_loaded')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200,
+    backendStage:'expand',backendPhase:'projection',backendFailure:'ANEX_EXPANSION_NOT_LOADED',backendCategory:'application',
+    nativeAction:'SearchTour_PRICES',upstreamStatus:200,elapsedMs:1450});
+  }
  }
 });
 test('HTTP status alone does not invent a producer retry policy',async()=>{
