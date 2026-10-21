@@ -1815,5 +1815,148 @@ class CatalogueTest(unittest.TestCase):
                 self.assertTrue(changed[0]);self.assertFalse(private_output.exists())
                 self.assertEqual(protected,{path:path.read_bytes() for path in protected})
 
+class OperatorDictionaryTest(unittest.TestCase):
+    def parser(self):
+        c=core();m.register_parser(c);return c
+
+    def command(self):
+        return dict(source_sha=SHA, mode='match-retained-acquire',
+            operation_id=m.OPERATOR_BINDING['operation_id'], cohort=m.OPERATOR_BINDING['cohort'],
+            target_operation_id=m.OPERATOR_BINDING['parent_operation_id'])
+
+    def space(self):
+        space={};exec(m.OPERATOR_BINDING_HANDLER,space);return space
+
+    def test_fixed_dictionary_command_rejects_other_intents_and_attempts(self):
+        c=self.parser();cmd=self.command()
+        text=c.PREFIX+' '.join(cmd.values())
+        self.assertEqual(cmd,c.parse_command(text))
+        for key in ('mode','operation_id','target_operation_id'):
+            bad=dict(cmd);bad[key]={'mode':'match-retained-readback','operation_id':cmd['operation_id']+'0',
+                                  'target_operation_id':'int-andromeda-match-retained-current-20261020-v1'}[key]
+            with self.subTest(key=key),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad.values()))
+        for extra in (' x',''):
+            if extra:
+                with self.assertRaises(ValueError):c.parse_command(text+extra)
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(text)
+        with self.assertRaises(ValueError):c.parse_command(text.rsplit(' ',1)[0])
+
+    def test_dictionary_requires_typed_unique_unambiguous_official_names(self):
+        parse=self.space()['operator_dictionary_projection']
+        rows=[{'id':709,'name':'ANEX Tour'}, {'id':801,'name':'Библио-Глобус','russianName':'Библио-Глобус'},
+              {'id':55,'name':'FUN&SUN'}, {'id':19,'name':'Интурист'}, {'id':80,'name':'Unrelated operator'}]
+        self.assertEqual([{'family':'anex','operator_id':709},{'family':'biblio','operator_id':801},
+                          {'family':'funsun','operator_id':55},{'family':'intourist','operator_id':19}],parse(rows))
+        self.assertEqual([],parse([]))
+        bad=[{},[{'id':True,'name':'ANEX'}],[{'id':'13','name':'ANEX'}],
+             [{'id':13,'name':'ANEX','russianName':'Библио-Глобус'}],
+             [{'id':13,'name':'ANEX'},{'id':14,'name':'ANEX Tour'}],rows+[rows[0]],
+             [{'id':13,'name':'ANEX','operatorLink':'not-a-dictionary-field'}],
+             [{'id':13,'name':None}],[{'id':13,'name':'ANEX\n'}],[{'id':13}],
+             [{'id':0,'name':'ANEX'}],[{'id':13,'name':'x'*256}]]
+        for value in bad:
+            with self.subTest(value=value),self.assertRaises(ValueError):parse(value)
+        self.assertEqual([],parse([{'id':25,'name':'Библио-Глобус UNKNOWN VARIANT'}]))
+
+    def _dictionary_case(self, supplied_body=None, timeout=False):
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);project=home/'project';project.mkdir();(project/'config.php').write_text('private-config')
+            private=home/'private';private.mkdir();op=private/m.OPERATOR_BINDING['operation_id'];op.mkdir()
+            parent_dir=private/m.OPERATOR_BINDING['parent_operation_id'];parent_dir.mkdir()
+            parent_data=dict(state='current_retained_read_only',operation_id=parent_dir.name,source_sha=SHA,
+                             supplier_calls=0,database_writes=0,mapping_writes=0)
+            digest=hashlib.sha256(m.canonical(parent_data)).hexdigest()
+            parent=dict(status='complete',mode='match-retained-current',production_unchanged=True,
+                        operation_id=parent_dir.name,source_sha=SHA,supplier_calls=0,database_writes=0,mapping_writes=0,
+                        match_retained=dict(data=parent_data,evidence_sha256=digest))
+            (parent_dir/'result.json').write_bytes(m.canonical(parent))
+            (parent_dir/'reservation.json').write_bytes(m.canonical(dict(operation_id=parent_dir.name,source_sha=SHA)))
+            quota=q.Quota(home);quota.root.mkdir(parents=True);quota.path.write_bytes(q.encoded(dict(provider='tourvisor-anex',
+                provider_day=quota.day,physical_http_attempts=7,tariff_search_units=2,operations={'old':'unknown_no_replay'})))
+            quota.apply_policy()
+            for name in ('retained-selection-claims.json','retained-context-claims.json'):
+                (home/'.anytoour-match'/name).write_text('{"retained":true}')
+            protected={path:path.read_bytes() for path in [project/'config.php',parent_dir/'result.json',
+                parent_dir/'reservation.json',home/'.anytoour-match/retained-selection-claims.json',
+                home/'.anytoour-match/retained-context-claims.json']}
+            profile=dict(m.OPERATOR_BINDING,parent_evidence_sha256=digest)
+            space=self.space();space.update(NEXT_SCOPE=profile,private=private,project=project,op=op,
+                mode='match-retained-acquire',operation=op.name,source=SHA,
+                payload=dict(self.command(),match_retained_control_sha=CONTROL),
+                pathlib=__import__('pathlib'),hashlib=hashlib,json=json,time=__import__('time'),os=os,
+                fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)),
+                safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound)
+            body=supplied_body if supplied_body is not None else json.dumps([{'id':801,'name':'Библио-Глобус'}]).encode()
+            calls=[]
+            class Response:
+                code=200
+                def __enter__(self):return self
+                def __exit__(self,*args):return False
+                def read(self,n):
+                    if timeout:raise TimeoutError('private-supplier-sentinel')
+                    return body
+            class Opener:
+                def open(self,request,timeout):
+                    ledger=json.loads(quota.path.read_bytes())
+                    row=ledger['physical_http_reservations'][op.name+':1']
+                    self_case.assertEqual('reserved_unknown_no_replay',row['state'])
+                    self_case.assertEqual(8,ledger['physical_http_attempts'])
+                    self_case.assertEqual('dictionary',row['action'])
+                    calls.append((request.full_url,timeout));return Response()
+            self_case=self;real_json_loads=json.loads
+            def check_parse(value,*args,**kwargs):
+                if value==body:self.assertEqual(body,(op/'response-0001.bin').read_bytes())
+                return real_json_loads(value,*args,**kwargs)
+            with mock.patch.object(Path,'home',return_value=home), \
+                 mock.patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'private-token',b'')), \
+                 mock.patch('urllib.request.build_opener',return_value=Opener()),mock.patch.object(json,'loads',check_parse):
+                out=space['retained_operator_dictionary'](SOURCE)
+            self.assertEqual([(a.BASE+'/operators?departureId=1&countryId=1',60)],calls)
+            self.assertEqual(protected,{path:path.read_bytes() for path in protected})
+            if timeout:self.assertFalse((op/'response-0001.bin').exists())
+            else:
+                self.assertEqual(body,(op/'response-0001.bin').read_bytes())
+                self.assertEqual(0o600,(op/'response-0001.bin').stat().st_mode&0o777)
+            after=json.loads(quota.path.read_bytes());self.assertEqual(8,after['physical_http_attempts'])
+            self.assertEqual(2,after['tariff_search_units']);self.assertEqual({'old':'unknown_no_replay'},after['operations'])
+            self.assertEqual('failed_unknown_no_replay' if timeout else 'response_received',
+                             after['physical_http_reservations'][op.name+':1']['state'])
+            result=dict(self.command(),status='complete',production_unchanged=True,supplier_calls=1,
+                        database_writes=0,mapping_writes=0,match_retained=out)
+            with mock.patch.dict(m.OPERATOR_BINDING,profile):
+                if supplied_body is not None or timeout:
+                    self.assertEqual('operator_dictionary_failed_no_replay',out['data']['state'])
+                    self.assertEqual(1 if timeout else 0,out['data']['unknown_http_calls'])
+                    self.assertNotIn('private-supplier-sentinel',json.dumps(out))
+                    self.assertFalse(m.completed_result(self.command(),result,CONTROL))
+                    return
+                self.assertTrue(m.completed_result(self.command(),result,CONTROL))
+                for key,value in [('supplier_calls',True),('unknown_http_calls',1),('native_hotel_authority',True),
+                                  ('physical_http_reservations',0),('selected_hotels',1),('new_accepted_mappings',1),
+                                  ('dictionary_scope',{'departure_id':True,'country_id':1}),('actions',{'dictionary':True}),
+                                  ('raw_response',{'response_number':1,'raw_sha256':'a'*64,'url':'private-url-sentinel'}),
+                                  ('safe_to_write_now',True),('bindings',[{'family':'biblio','operator_id':True}])]:
+                    bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+                    bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
+                    with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
+
+    def test_real_client_reserves_once_retains_raw_before_parse_and_protects_inputs(self):
+        self._dictionary_case()
+
+    def test_invalid_or_duplicate_raw_and_unknown_are_sealed_without_second_request(self):
+        for body in (b'not-json',b'[{"id":13,"id":801,"name":"ANEX"}]',b'{"items":[]}'):
+            with self.subTest(body=body):self._dictionary_case(supplied_body=body)
+        self._dictionary_case(timeout=True)
+
+    def test_new_remote_uses_existing_acquisition_slot_manifest_and_fixed_dictionary_dispatch(self):
+        c=self.parser();cmd=self.command()
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
+        ast.parse(c.REMOTE)
+        self.assertIn("if mode=='match-retained-acquire':return retained_operator_dictionary(stage)",c.REMOTE)
+        self.assertIn('NEXT_SCOPE='+repr(m.OPERATOR_BINDING),c.REMOTE)
+        self.assertEqual(m.SOURCE_HASHES,c.bundle_source(SOURCE)[1])
+        self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
+
 if __name__=='__main__':unittest.main()
+
 
