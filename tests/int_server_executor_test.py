@@ -2393,6 +2393,101 @@ class TourvisorChildPartyActivationTest(unittest.TestCase):
             self.assertFalse(m.completed_result(self.command,changed))
 
 
+class TourvisorChildPartyContinuationTest(unittest.TestCase):
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.command=self.p.parse([self.p.PARTY_CONTINUE_SOURCE,self.p.PARTY_CONTINUE_MODE,self.p.PARTY_CONTINUE_OPERATION])
+
+    def fixture(self,directory):
+        base=TourvisorChildPartyActivationTest();base.setUp()
+        ns,home,project,runtime,private,stage,op=base.fixture(directory)
+        constants={k:copy.deepcopy(v) for k,v in ns.items() if k.startswith(('PF_','PP_','PS_'))}
+        exec(self.p.PARTY_CONTINUE_REMOTE,ns);ns.update(constants)
+        ns['operation']=self.p.PARTY_CONTINUE_OPERATION;ns['pi_lint']=lambda path:None
+        (project/'data/db-v1.php').write_bytes(b'<?php /* isolated ROOT helper, distinct private version */')
+        ns['PC_ROOT_DB']=hashlib.sha256((project/'data/db-v1.php').read_bytes()).hexdigest()
+        # Fixture receipt is deliberately not the deployable canonical receipt.
+        parent=home/'.anytoour-int-executor'/self.p.PARTY_OPERATION;parent.mkdir(mode=0o700)
+        data=b'{"status":"complete","activation":"hold","runtime_writes":0,"staging_file_writes":0}'
+        (parent/'result.json').write_bytes(data);(parent/'result.json').chmod(0o600)
+        ns['PC_REPAIR_SHA']=hashlib.sha256(data).hexdigest();ns['PC_REPAIR_BYTES']=len(data)
+        return ns,home,project,runtime,private,stage,op
+
+    def test_distinct_role_pins_resume_only_one_api_and_parent_receipt_is_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            before=ns['pp_snapshot']();parent=home/'.anytoour-int-executor'/self.p.PARTY_OPERATION/'result.json'
+            proof=parent.read_bytes();identity=parent.stat().st_ino
+            value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual(('installed_verified',1,['api-v2.php']),
+                (value['status'],value['runtime_writes'],value['changed_files']))
+            self.assertEqual(self.p.PARTY_OPERATION,value['parent_hold_proof']['operation_id'])
+            self.assertEqual(proof,parent.read_bytes());self.assertEqual(identity,parent.stat().st_ino)
+            self.assertEqual({'api-v2.php'},{k for k in before[1] if before[1][k]!=ns['pp_snapshot']()[1][k]})
+
+    def test_swapped_or_foreign_db_roles_and_missing_or_tampered_parent_stop_before_writes(self):
+        for case in ('root_private','private_root','foreign_root','parent_missing','parent_changed'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,project,runtime,private,stage,op=self.fixture(directory)
+                root=project/'data/db-v1.php';private_db=runtime/'data/db-v1.php'
+                parent=home/'.anytoour-int-executor'/self.p.PARTY_OPERATION/'result.json'
+                if case=='root_private':root.write_bytes(private_db.read_bytes())
+                elif case=='private_root':private_db.write_bytes(root.read_bytes())
+                elif case=='foreign_root':root.write_bytes(b'foreign helper')
+                elif case=='parent_missing':parent.unlink()
+                else:parent.write_bytes(b'changed')
+                before=ns['pp_snapshot']()[1]
+                value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+                self.assertEqual((0,0,[]),(value['runtime_writes'],value['staging_file_writes'],value['changed_files']))
+                self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertEqual('not_acquired',value['publication_lock'])
+
+    def test_parent_receipt_substitution_after_staging_prevents_activation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            parent=home/'.anytoour-int-executor'/self.p.PARTY_OPERATION/'result.json';before=ns['pp_snapshot']()[1];calls=0
+            def changed(path):
+                nonlocal calls
+                calls+=1
+                if calls==2:
+                    data=parent.read_bytes();parent.rename(parent.with_name('old.json'))
+                    parent.write_bytes(data);parent.chmod(0o600)
+            ns['pi_lint']=changed
+            value=ns['passive_fuel_activate'](stage,op,ns['fingerprints']())
+            self.assertEqual((0,'activation_parent_hold_proof'),(value['runtime_writes'],value['reason']))
+            self.assertEqual(before,ns['pp_snapshot']()[1]);self.assertFalse(list(project.rglob('*.tmp')))
+
+    def test_exact_continuation_admission_and_bound_receipt_cannot_promote_old_scope(self):
+        self.assertEqual(self.command,m.parse_command(m.PREFIX+' '.join(self.command.values())))
+        with self.assertRaises(ValueError):self.p.parse([self.p.PARTY_SOURCE,self.p.PARTY_CONTINUE_MODE,self.p.PARTY_OPERATION])
+        generated=self.p.remote_program(m.REMOTE,self.command)
+        self.assertEqual(2,generated.count("if mode not in ('tourvisor-child-party-continue','reconcile',"))
+        self.assertIn(self.p.PARTY_HOLD_SHA256,generated);self.assertIn('db_ok=digest(\'data/db-v1.php\')==PC_ROOT_DB',generated)
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,project,runtime,private,stage,op=self.fixture(directory)
+            production=ns['fingerprints']();value=ns['passive_fuel_activate'](stage,op,production)
+            old={'sha256':self.p.PRIVATE_SOURCE_HASHES['v2/api-v2.php'],'bytes':20233,'mode':0o644}
+            new={'sha256':self.p.PARTY_API_SHA256,'bytes':20362,'mode':0o644}
+            pre=value['preflight'];pre['plan_files']={'api-v2.php':{
+                'predecessor_sha256':old['sha256'],'candidate_sha256':new['sha256']}}
+            pre['protected_before']['api-v2.php']=old
+            pre['protected_before']['data/db-v1.php']={'sha256':self.p.PARTY_ROOT_DB_SHA256,'bytes':3861,'mode':0o644}
+            pre['private_db_record']={'sha256':'c1c841d38c62845bc36e559183da17e0411c1c5bdd909517ffc02b5fbb1e2f13','bytes':3282,'mode':0o644}
+            pre['protected_after']=copy.deepcopy(pre['protected_before'])
+            pre['stock_topology']['manifest_record']={'sha256':self.p.CURRENT_MANIFEST_SHA256,'bytes':self.p.CURRENT_MANIFEST_BYTES,'mode':0o644}
+            value.update(before_files={'api-v2.php':old},after_files={'api-v2.php':new},protected_after={**pre['protected_before'],'api-v2.php':new},
+                parent_hold_proof={'status':'verified','operation_id':self.p.PARTY_OPERATION,'sha256':self.p.PARTY_HOLD_SHA256,
+                    'bytes':self.p.PARTY_HOLD_BYTES,'mode':0o600,'identity_stable':True})
+            result={**self.command,'status':'complete','runtime_changed':True,'production_unchanged':True,
+                'production_before':production,'production_after':production,
+                'supplier_calls':0,'database_reads':0,'database_writes':0,'booking_calls':0,'lead_calls':0,'passive_fuel_activation':value}
+            self.assertTrue(m.completed_result(self.command,result))
+            for key,bad in [('parent_hold_proof',{}),('runtime_writes',2),('changed_files',['third.php'])]:
+                changed=copy.deepcopy(result);changed['passive_fuel_activation'][key]=bad
+                self.assertFalse(m.completed_result(self.command,changed),key)
+            changed=copy.deepcopy(result);changed['passive_fuel_activation']['preflight']['private_db_record']['sha256']=self.p.PARTY_ROOT_DB_SHA256
+            self.assertFalse(m.completed_result(self.command,changed))
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
