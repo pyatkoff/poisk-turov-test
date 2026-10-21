@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "PUBLISHED_41FBE_ANEX_ENVELOPE_CONTRACT_HANDOFF_PENDING",
+    "status": "PUBLISHED_E9D1_ANEX_ENVELOPE_STATUS_HANDOFF_PENDING",
     "issue": 1646,
     "coordinator_issue": 4709,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-21T02:02:00+00:00",
+    "updated_at": "2026-10-21T03:03:00Z",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа. 20.10.2026: «Запрет на проход клавиатурой» и повторное требование вернуться к основной поставке: обычный цельный путь мышью/тапами в NEXT; прекратить отдельные keyboard/A11y/focus микрозадачи и дробление на частные оценки. 20.10.2026 02:15: «исправил? …план оптимальный?» — записать завершённую демо-приёмку и один конкретный следующий admission-результат; для каждой внешней зависимости указать текущего ответственного, действие и условие закрытия, без круговых блокировок и повышения общей оценки. 20.10.2026 02:34: прямо разрешён один конкретный live поиск/TVquote без предварительного подтверждённого резерва, owner сообщил5000/сутки; этот допуск consumed6280546977. 02:43 «делай» — опубликовать просмотр установленного NEXT430 в том же Sitesproject и убрать устаревшее ожидание admission. 20.10.2026: «можешь не спрашивать разрешения на разовые поиски» — standing permission для нового обоснованного обычного one-off/quote в прежних лимитах/штатном UI; #4217/6286202365, без bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production или изменения квот.",
-    "acceptance_status": "INSTALLED_CLIENT_GUARD_AND_TERMINAL_RETURN_ACCEPTED_EXACT_ANEX_PATH_PENDING",
-    "last_fully_checked_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
-    "published_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305962224",
-    "planning_base_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
+    "acceptance_status": "INSTALLED_PREDICATE_AND_TERMINAL_RETURN_ACCEPTED_EXACT_ANEX_STATUS_PENDING",
+    "last_fully_checked_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+    "published_source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306717099",
+    "planning_base_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "Current41fbe diagnostics source/CI/artifact/install accepted; actual oneordinary4–10Nov ANEX first-envelope HTTP200 rejection/terminal+retainedreturn430x932↔1280x720 accepted audit6306085730. Fixed8localguard narrows actualboundary, no price/schema/suppliercause proven. No complete new5criterionrow/numericuplift; app/UI unchanged0. Old9977/5e1/compiled9.5 evidence exactscopes/noReplay retained, not retagged. WholeANEXexactprice/pair/contact N; wholeSearch9.5/physical/real delivery/fullleadvalidation N/deferred."
+      "score_status": "Retained ordinary coherent audit6306948619: exact1c7 compiledmobile10/desktop9.5/selected10/calendar9.5+installedfilters10 and real5e1familyselected10 retain five reasons/delta0; substantial confirmed ordinaryUIgap list empty in those scenarios. Not retagged e9d1. Currente9d1 diagnostics/install and actualEgypt terminal/localreturn independently accepted6306962193, UI/app/CSS unchanged0, no new5criterionrow. ANEXwholeprice/pair/contact and LeadC3pending/error/duplicate/retry N; wholeSearch9.5/physical/real delivery/prod not accepted; deferred dimensions/200/Compare/forbiddenkeyboard not blockers/newqueues."
     },
-    "next_action": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
+    "next_action": "Принять bounded authoritative INT→SEARCH original application-status/reason по #2506/6306937236 и terminal #4709/6306948129. Новый обычный Egypt4–10Nov currente9d1 доказал envelope_status: provider/generation/search_ref/offer_ref PASS, status!==expanded; конкретное status/body NOT_RETAINED. Только существующие разрешённые retained executor facts/logs/receipt или authoritative producer contract; если факта нет — NOT_RETAINED. Исправлять лишь подтверждённое существенное несоответствие в existing owner. Без private-session/body/newreader/endpoint/нового supplierrequest/replay/другого offer/providerfallback/ослабления guard/ещё одного общего diagnosticloop. PR4780 source/CI/stock/новый ordinarycase COMPLETED_CONSUMED_NO_REPLAY; предыдущие контексты sealed. Только430/1280 ordinaryUI; keyboard запрещён, прочие размеры/200%/Compare deferred, native/physical/delivery/production separate externalgates.",
     "next_task": {
-      "scope": "Тот же ORIGINAL NEXT/source41fbe; fixedlocal8guard diagnostics installed/verified. Один следующий input — authoritative producer/receiver first-envelopecontract/facts по #2506/6306074777; exactfailedclause неизвестна, без повторного запроса/нового reader/спекулятивного ослабления.",
+      "scope": "Тот же ORIGINAL NEXT/sourcee9d1. INT-request6306351620 minimal FIRST-failing predicates DELIVERED/CLOSED4780/6306717323. Новый связный ordinaryEgyptcase доказал status!==expanded; следующий accepted input — конкретный original applicationstatus/reason из existing разрешённых retainedfacts по2506/6306937236, без новых запросов/reader/спекулятивного исправления.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён. Site204/source d71b84ca — только NEXT-viewer/общий width-controller, не новый productdesign; Site203 остаётся согласованным визуальным reference.",
-      "acceptance": "PR4778 source+6applicableworkflows/7checks firstattempt+actual843SOURCE/READY/DEPLOY/readback independently accepted. Newordinary4–10Nov/7n/2A/AI:75hotels294UIvariants/partial; DG HOTELS ROSE RESORT/EconomyRoom/AI/4–11Nov/listing96117unconfirmed; ONEexpand→HTTP200/projection/clientGuardenvelope01:47:26.498Z beforequote. Terminal/ordinaryreturn430x932↔1280x720↔430 preserved/sameONEwarn. TwoactualterminalJPG independentlyaccepted; return is ROOTreportedDOMtrace. Audit6306085730. NumericalUI0, wholeANEXprice/pair/contact/global9.5/physical/delivery N.",
-      "execution": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
+      "acceptance": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion.",
+      "execution": "Принять bounded authoritative INT→SEARCH original application-status/reason по #2506/6306937236 и terminal #4709/6306948129. Новый обычный Egypt4–10Nov currente9d1 доказал envelope_status: provider/generation/search_ref/offer_ref PASS, status!==expanded; конкретное status/body NOT_RETAINED. Только существующие разрешённые retained executor facts/logs/receipt или authoritative producer contract; если факта нет — NOT_RETAINED. Исправлять лишь подтверждённое существенное несоответствие в existing owner. Без private-session/body/newreader/endpoint/нового supplierrequest/replay/другого offer/providerfallback/ослабления guard/ещё одного общего diagnosticloop. PR4780 source/CI/stock/новый ordinarycase COMPLETED_CONSUMED_NO_REPLAY; предыдущие контексты sealed. Только430/1280 ordinaryUI; keyboard запрещён, прочие размеры/200%/Compare deferred, native/physical/delivery/production separate externalgates.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. Owner6286202365 permits justified ordinary one-off searches/normalquotes within existinglimits/stockUI without repeatedpermission; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/prod expansion. Other protected operations still require their exact allowance/budget/stockexecutor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1356,34 +1356,34 @@
       "artifact_id": 11958778448,
       "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
       "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
-      "remaining": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
-      "historical_pins": "Flat legacy pins and dated_history are history/no-replay, not queue. latest_next/published_source_sha identify installed PR4778/source41fbe/app380b/data00ac/stock39528574999. Prior9977 latest_next retained verbatim in dated_history.latest_next_before_41fbe; old14–20Dec/7–13Dec/Rix/family/FUNSUN scopes remain sealed and not retagged. New4–10Nov case proves clientGuardenvelope only, not individualclause/suppliercause/price/global/physical/delivery acceptance.",
+      "remaining": "Принять bounded authoritative INT→SEARCH original application-status/reason по #2506/6306937236 и terminal #4709/6306948129. Новый обычный Egypt4–10Nov currente9d1 доказал envelope_status: provider/generation/search_ref/offer_ref PASS, status!==expanded; конкретное status/body NOT_RETAINED. Только существующие разрешённые retained executor facts/logs/receipt или authoritative producer contract; если факта нет — NOT_RETAINED. Исправлять лишь подтверждённое существенное несоответствие в existing owner. Без private-session/body/newreader/endpoint/нового supplierrequest/replay/другого offer/providerfallback/ослабления guard/ещё одного общего diagnosticloop. PR4780 source/CI/stock/новый ordinarycase COMPLETED_CONSUMED_NO_REPLAY; предыдущие контексты sealed. Только430/1280 ordinaryUI; keyboard запрещён, прочие размеры/200%/Compare deferred, native/physical/delivery/production separate externalgates.",
+      "historical_pins": "Flat legacy pins/dated_history are history/no-replay, not queue. latest_next/published_source_sha identify PR4780/sourcee9d1/app380b/datacb1e/stock39534263868. Prior41fbe latest_next/handoff archived verbatim dated_history.latest_next_before_e9d1/active_handoff_before_e9d1. Existing current_live_anex_guard stays exact41fbe/coarseenvelope; new current_live_anex_status separately identifies e9d1Egypt/status predicate. Old14–20Dec/7–13Dec/Rix/family/FUNSUN and scores not retagged. Newcase proves status!=expanded, not actualstatus/nativecause/price/globalphysicaldelivery.",
       "latest_next": {
-        "source_pr": 4778,
-        "source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
-        "source_tree_sha": "497feabab87f54841059c33cfc97ffbb692e6392",
-        "release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
-        "build_run": 39527075039,
-        "artifact_id": 12312993243,
-        "visual_run": 39527075033,
+        "source_pr": 4780,
+        "source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
+        "source_tree_sha": "cbb7771f21a569b6d2527afafeb2cee5402b9e3c",
+        "release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+        "build_run": 39532953050,
+        "artifact_id": 12315884451,
+        "visual_run": 39532953183,
         "source_ci_runs": {
-          "Security guard": 39527075147,
-          "Build Search3 whole-site preview artifact": 39527075039,
-          "Search3 AnyTour destination identities": 39527075106,
-          "Search3 canonical meal plan client": 39527075025,
-          "Search3 prototype source receipt": 39527075058,
-          "Search3 full visual migration": 39527075033
+          "Security guard": 39532953080,
+          "Build Search3 whole-site preview artifact": 39532953050,
+          "Search3 AnyTour destination identities": 39532953111,
+          "Search3 canonical meal plan client": 39532953054,
+          "Search3 prototype source receipt": 39532953060,
+          "Search3 full visual migration": 39532953183
         },
-        "publish_run": 39528574999,
-        "ready_artifact": 12315030107,
-        "deployment_receipt_artifact": 12314650725,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305962224",
+        "publish_run": 39534263868,
+        "ready_artifact": 12316218057,
+        "deployment_receipt_artifact": 12316861897,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306717099",
         "compiled_app_sha256": "380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072",
-        "compiled_data_sha256": "00ac6716b43c3837dca0ce9b36f680e90b7655c9fb4e943b5401c697e0a45d95",
-        "previous_source_sha": "9977cd95465f02ad0d329160715941c344a7b3a7",
-        "status": "PUBLISHED_INSTALLED_READBACK_AFFECTED_GUARD_TERMINAL_ACCEPTED_NO_REPLAY",
+        "compiled_data_sha256": "cb1ee7318a84328542121f69b6a34c80aa84982f4952598651c49d9f5db19a68",
+        "previous_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
+        "status": "PUBLISHED_INSTALLED_READBACK_AFFECTED_STATUS_TERMINAL_ACCEPTED_NO_REPLAY",
         "rollback_retained": true,
-        "scope": "PR4778 source+6applicableworkflows/7checks firstattempt+actual843SOURCE/READY/DEPLOY/readback independently accepted. Newordinary4–10Nov/7n/2A/AI:75hotels294UIvariants/partial; DG HOTELS ROSE RESORT/EconomyRoom/AI/4–11Nov/listing96117unconfirmed; ONEexpand→HTTP200/projection/clientGuardenvelope01:47:26.498Z beforequote. Terminal/ordinaryreturn430x932↔1280x720↔430 preserved/sameONEwarn. TwoactualterminalJPG independentlyaccepted; return is ROOTreportedDOMtrace. Audit6306085730. NumericalUI0, wholeANEXprice/pair/contact/global9.5/physical/delivery N."
+        "scope": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion."
       },
       "root_api_install": {
         "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
@@ -1649,6 +1649,37 @@
         "active_handoff_before_41fbe": {
           "remaining": "Принять bounded retained safe PUBLIC envelope/projection facts оригинального ANEX POST200 21Oct00:47:43.821Z по #2506/6305290603 и #4709/6305290836. SEARCH owns receiving adapter/app; INT owns authoritative producer shape. Различить existing identity/kind/date+nights/normalization/projection guard только по сохранённым фактам; если отсутствуют — NOT_RETAINED. Исправлять только подтверждённое несоответствие в existing owner; без нового Find/expand/probe/reader и без угадывания supplier cause. PR4775/source9977 реально установлен и affected terminal/return430↔1280 проверен; его source/CI/stock/ordinary control CONSUMED/no-replay. Старые Rix/family/FUNSUN/7–13Dec контексты не повторять; keyboard запрещён, остальные deferred/external gates не превращать в очередь.",
           "historical_pins": "Flat legacy pins and dated_history are history/no-replay, not queue. latest_next/published_source_sha identify installed PR4775/source9977/app380b/data49a1. Old5e1 realRix/family and predecessorcases retain exact ownscopes; old7–13Dec and new14–20Dec contexts sealed. Current safeoriginal200 clientprojection cause does not reconstruct historicalgenericfailure; no inheritednumeric/global/physical/delivery acceptance."
+        },
+        "latest_next_before_e9d1": {
+          "source_pr": 4778,
+          "source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
+          "source_tree_sha": "497feabab87f54841059c33cfc97ffbb692e6392",
+          "release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
+          "build_run": 39527075039,
+          "artifact_id": 12312993243,
+          "visual_run": 39527075033,
+          "source_ci_runs": {
+            "Security guard": 39527075147,
+            "Build Search3 whole-site preview artifact": 39527075039,
+            "Search3 AnyTour destination identities": 39527075106,
+            "Search3 canonical meal plan client": 39527075025,
+            "Search3 prototype source receipt": 39527075058,
+            "Search3 full visual migration": 39527075033
+          },
+          "publish_run": 39528574999,
+          "ready_artifact": 12315030107,
+          "deployment_receipt_artifact": 12314650725,
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305962224",
+          "compiled_app_sha256": "380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072",
+          "compiled_data_sha256": "00ac6716b43c3837dca0ce9b36f680e90b7655c9fb4e943b5401c697e0a45d95",
+          "previous_source_sha": "9977cd95465f02ad0d329160715941c344a7b3a7",
+          "status": "PUBLISHED_INSTALLED_READBACK_AFFECTED_GUARD_TERMINAL_ACCEPTED_NO_REPLAY",
+          "rollback_retained": true,
+          "scope": "PR4778 source+6applicableworkflows/7checks firstattempt+actual843SOURCE/READY/DEPLOY/readback independently accepted. Newordinary4–10Nov/7n/2A/AI:75hotels294UIvariants/partial; DG HOTELS ROSE RESORT/EconomyRoom/AI/4–11Nov/listing96117unconfirmed; ONEexpand→HTTP200/projection/clientGuardenvelope01:47:26.498Z beforequote. Terminal/ordinaryreturn430x932↔1280x720↔430 preserved/sameONEwarn. TwoactualterminalJPG independentlyaccepted; return is ROOTreportedDOMtrace. Audit6306085730. NumericalUI0, wholeANEXprice/pair/contact/global9.5/physical/delivery N."
+        },
+        "active_handoff_before_e9d1": {
+          "remaining": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
+          "historical_pins": "Flat legacy pins and dated_history are history/no-replay, not queue. latest_next/published_source_sha identify installed PR4778/source41fbe/app380b/data00ac/stock39528574999. Prior9977 latest_next retained verbatim in dated_history.latest_next_before_41fbe; old14–20Dec/7–13Dec/Rix/family/FUNSUN scopes remain sealed and not retagged. New4–10Nov case proves clientGuardenvelope only, not individualclause/suppliercause/price/global/physical/delivery acceptance."
         }
       },
       "root_recovery": {
@@ -1963,9 +1994,40 @@
         ],
         "excluded": "Earliertransitional1280alloffers frame excluded fromterminalmatchedscope.",
         "external": "ExactANEXwholeprice/pair/contact/global9.5/physical/real delivery notestablished; numericUI0."
+      },
+      "current_live_anex_status": {
+        "operation": "next-e9d1-moscow-egypt-20261104-20261021-v1",
+        "status": "COMPLETED_CONSUMED_NO_REPLAY",
+        "source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
+        "release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+        "stock_run": 39534263868,
+        "terminal": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306948129",
+        "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6306948619",
+        "independent_review": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6306962193",
+        "handoff": "https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6306937236",
+        "observed": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion.",
+        "cause": "First failing ordered predicate envelope_status; first4bindings PASS; actualstatus/body NOT_RETAINED. Adapter envelope, not measured native supplierstatus/cause; no emptyhotels/HTTP502 inference.",
+        "evidence_files": [
+          {
+            "name": "original-next-e9d1-egypt-status430-1792551279168.jpg",
+            "bytes": 54212,
+            "sha256": "c7e313521250b601e28f2445d965f3a9d85161e6382703724b794057284f1730"
+          },
+          {
+            "name": "original-next-e9d1-egypt-status1280-1792551553579.jpg",
+            "bytes": 91159,
+            "sha256": "61f3d0c109054e2aacdcaeb3e69924cc3fefc2c8ff2f46dc588006856a1cb595"
+          },
+          {
+            "name": "original-next-e9d1-egypt-trace-1792551581083.json",
+            "bytes": 53731,
+            "sha256": "4241b226dee50611c634c2f90ae60f2112608bfe83cd76a794e47231b8fdf4e7"
+          }
+        ],
+        "excluded": "No network/body/quota audit, otheroffer success, wholeANEXprice/pair/contact, native/physical/delivery/global9.5; no new scores or replay."
       }
     },
-    "published_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
+    "published_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
@@ -1975,10 +2037,10 @@
       "reporting": "One terminal/RELEASE/nextstep in4709; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
       "blocker_scope": "Keyboard walkthroughs/Tab/A11y-only/focus tasks forbidden by owner20Oct; keep history/N/deferred without making them an ordinary-UI blocker or inventing scores. Native430/physical and external INT/data/delivery/production retain exact gates separately. Missing resize or everyN is not a new task; no cosmetic/coverage/paid retry loop.",
-      "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. PR4778 necessary minimal diagnostic+focusedexistingfixtures followed all applicable gates and one justified affectedordinarycase; no newQA-only/score/cosmeticqueue. Standing ordinaryoneoff/normalquote permission6286202365 withinexistinglimits/stockUI; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
+      "qa_only_authority": "OldQA/publish/live contexts consumed.4780 minimal accepted INTpredicate request completed through applicable exactgates+one stockpublication, then independently justified current-sourceordinaryEgyptacceptance consumed. No newQA-only/cosmetic/scoretracker/genericdiagnosticcycle. Ordinaryoneoff6286202365 only withinexistinglimits/stockUI, no replay/bulk/autodrain/paidbrowser/repeatedANEX/realLead/prod expansion.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
-      "verification_pin": "Installed ORIGINAL NEXT PR4778 source41fbe711e11bede04890b9150a41220e3bb24a17/app380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072/data00ac6716b43c3837dca0ce9b36f680e90b7655c9fb4e943b5401c697e0a45d95/runtime release93914a8a523e13fa315c578bc874f0e037c3a57f/stock39528574999/receipt4709/6305962224. SOURCE12312993243/READY12315030107/DEPLOY12314650725 independently accepted separately. Actual next-anex-ordinary-default-20261104-20261021-v1 terminal6306078713/audit6306085730:75hotels294variants partial, DG/EconomyRoom/AI/4–11Nov/2A/96117unconfirmed, ONEexpand→HTTP200/clientprojection/envelope. Actual2terminalJPG independent ACCEPT; ordinaryreturn/resize ROOTreportedDOM, not independentfulltrace. No native/physical/pair/price/contact promotion; source/stock/ordinary consumed/noReplay. Latest exactINT6306074777 first-envelopecontract; individualclause NOT_ESTABLISHED.",
-      "closeout": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
+      "verification_pin": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion. Installed sourcee9d1ce67f94a48c9854972f0af6d22c13affcfcc/app380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072/datacb1ee7318a84328542121f69b6a34c80aa84982f4952598651c49d9f5db19a68/runtimeab6e96fcda4861bc42c35b382ac14ddbe7b67ec4/SOURCE12315884451/READY12316218057/DEPLOY12316861897.",
+      "closeout": "Принять bounded authoritative INT→SEARCH original application-status/reason по #2506/6306937236 и terminal #4709/6306948129. Новый обычный Egypt4–10Nov currente9d1 доказал envelope_status: provider/generation/search_ref/offer_ref PASS, status!==expanded; конкретное status/body NOT_RETAINED. Только существующие разрешённые retained executor facts/logs/receipt или authoritative producer contract; если факта нет — NOT_RETAINED. Исправлять лишь подтверждённое существенное несоответствие в existing owner. Без private-session/body/newreader/endpoint/нового supplierrequest/replay/другого offer/providerfallback/ослабления guard/ещё одного общего diagnosticloop. PR4780 source/CI/stock/новый ordinarycase COMPLETED_CONSUMED_NO_REPLAY; предыдущие контексты sealed. Только430/1280 ordinaryUI; keyboard запрещён, прочие размеры/200%/Compare deferred, native/physical/delivery/production separate externalgates.",
       "viewport_scope": {
         "owner_direction": "20.10.2026 00:52",
         "current_widths_px": [
@@ -1996,9 +2058,9 @@
         "focus_changes": "Only a confirmed substantial ordinary-click/tap defect in the coherent product repair; no cosmetic task from keyboard screenshot",
         "existing_ci": "Preserve applicable existing mandatory workflows/gates; no additional keyboard QA run"
       },
-      "autopilot_boundary": "OwnAutomation_395ea9035ab8819188dadef16b09085d freshpeek21Oct enabledtrue; no settings/schedule/timezone/prompt mutation. ExistingINT first-envelopecontract handoff is progressing, not a permanentabsenceofsafeaction. Physical/iPhone/Safari deferred, not globalpause/predecessor. No consumedoperation replay or foreign task change."
+      "autopilot_boundary": "OwnAutomation_395ea9035ab8819188dadef16b09085d freshpeek21Oct enabledtrue; no settings/schedule/timezone/prompt changes. ExactINToriginalstatus/reason handoff6306937236 progressing, not stable absenceofsafeaction. Nativephysical/deferredkeyboard not globalpause. No consumed replay/foreign task mutation."
     },
-    "last_fully_checked_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17"
+    "last_fully_checked_source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
