@@ -502,7 +502,8 @@ test('ANEX retained expansion never substitutes a different valid day when the s
   return {response:{ok:true,json:async()=>value}};
  }});
  canonicalMeals(h);await h.start();await h.poll();const group=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
- await assert.rejects(h.data.expandAnexGroup(group),/Конкретные варианты ANEX больше недоступны/);
+ let failure;await assert.rejects(h.data.expandAnexGroup(group),error=>{failure=error;return error.code==='anex_expand_unconfirmed'&&error.retryable===false&&error.searchFailure?.clientPhase==='projection';});
+ await assert.rejects(h.data.expandAnexGroup(group),error=>error===failure,'missing selected day cannot authorize replay');
  assert.deepEqual(h.anexCalls.map(c=>c.action),['search','expand']);
 });
 test('ANEX expands the retained group without a second initial search or a new generation',async()=>{
@@ -568,7 +569,7 @@ for(const phase of ['initial','flight-choices','verified','failed'])test('ANEX e
  await assert.rejects(h.data.expandAnexGroup(group),/нельзя конкретизировать/);
  assert.equal(h.anexCalls.length,before,'old ANEX groups cannot restart after explicit Stop or a changed search');
 });
-test('a superseded ANEX expansion cannot publish its late response in the same search',async()=>{
+test('duplicate pending ANEX expansion shares one response without aborting or restarting the same group',async()=>{
  const gate=defer(),verifyRef='a'.repeat(32);let verification=false,firstSignal=null;
  const h=harness({anex:async(body,signal)=>{
   if(body.action==='expand'&&!firstSignal){firstSignal=signal;await gate.promise;}
@@ -579,9 +580,10 @@ test('a superseded ANEX expansion cannot publish its late response in the same s
  const group=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');verification=true;
  const pending=h.data.expandAnexGroup(group);
  await waitFor(()=>firstSignal!==null,'first expansion reaches its pending response');
- const current=await h.data.expandAnexGroup(group);
- assert.equal(current.offers.length,2);assert.equal(firstSignal.aborted,true);
- gate.resolve();await assert.rejects(pending,/Условия поиска изменились/);
+ const duplicate=h.data.expandAnexGroup(group);
+ assert.equal(firstSignal.aborted,false);assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
+ gate.resolve();const [current,same]=await Promise.all([pending,duplicate]);assert.strictEqual(same,current);assert.equal(current.offers.length,2);
+ assert.equal(firstSignal.aborted,false);assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand']);
  h.data.stop();
 });
 test('expanded concrete ANEX offer verifies in the same provider session without Tourvisor fallback',async()=>{
@@ -846,7 +848,8 @@ test('ANEX retained group expansion rejects foreign or unavailable response cont
    return {response:{ok:true,json:async()=>value}};
   }});
   canonicalMeals(h);await h.start();await h.poll();const offer=h.latest().flatMap(row=>row.offers).find(item=>item.provider==='anex');
-  await assert.rejects(h.data.expandAnexGroup(offer),/ANEX/,name);
+  let failure;await assert.rejects(h.data.expandAnexGroup(offer),error=>{failure=error;return error.code==='anex_expand_unconfirmed'&&error.retryable===false&&error.searchFailure?.clientPhase==='projection';},name);
+  await assert.rejects(h.data.expandAnexGroup(offer),error=>error===failure,name+' cannot replay a locally unconfirmed projection');
   assert.deepEqual(h.anexCalls.map(call=>call.action),['search','expand'],name+' cannot trigger a replacement search');
  }
 });

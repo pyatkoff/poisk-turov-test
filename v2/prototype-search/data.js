@@ -9,7 +9,7 @@
   const quoteReceipts = new WeakMap();
   const andromedaQuoteChoices=new Map(),andromedaQuoteAttempts=new Map();
   const anexCurrentReceipts=new Set(),anexAdditionalAttempts=new Set(),anexFlightAttempts=new Set(),anexFlightReceipts=new Map();
-  const anexPackageReceipts=new Map();
+  const anexPackageReceipts=new Map(),anexExpansionAttempts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
   let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
@@ -85,8 +85,8 @@
       'ANEX_RESPONSE_TOO_LARGE','ANEX_INVALID_PRICES','ANEX_REPEATED_PRICE_PAGE','ANEX_INVALID_PUBLIC_RESULT',
       'ANEX_REQUEST_LIMIT','ANEX_SESSION_UNAVAILABLE','ANEX_SESSION_EXPIRED','ANEX_CLOCK_ERROR',
       'ANEX_RESERVATION_REQUIRED','ANEX_RATE_LIMIT','ANEX_CLIENT_UNAVAILABLE','ANEX_INVALID_PARAMS',
-      'ANEX_SESSION_OFFER_LIMIT','ANEX_SEARCH_NOT_STARTED','ANEX_DATABASE_ERROR','ANEX_TYPE_ERROR','ANEX_INTERNAL_ERROR']),
-    backendStage:new Set(['search']),backendCategory:new Set(['transport','http','supplier','database','limit','response','application']),
+      'ANEX_SESSION_OFFER_LIMIT','ANEX_SEARCH_NOT_STARTED','ANEX_EXPANSION_NOT_LOADED','ANEX_DATABASE_ERROR','ANEX_TYPE_ERROR','ANEX_INTERNAL_ERROR']),
+    backendStage:new Set(['search','expand']),backendPhase:new Set(['gateway','projection']),backendCategory:new Set(['transport','http','supplier','database','limit','response','application']),
     nativeAction:new Set(['SearchTour_TOWNFROMS','SearchTour_STATES','SearchTour_CURRENCIES','SearchTour_PRICES'])
   });
   const anexSearchDiagnosticBounds=Object.freeze({upstreamStatus:599,supplierCode:99999,transportCode:999,elapsedMs:120000});
@@ -96,11 +96,12 @@
     for(const [key,max] of Object.entries(anexSearchDiagnosticBounds))if(Number.isSafeInteger(value[key])&&value[key]>=0&&value[key]<=max)result[key]=value[key];
     return result;
   }
-  function anexSearchDiagnostics(response){
-    const values={},headers={backendFailure:'Failure',backendStage:'Stage',backendCategory:'Category',nativeAction:'Native-Action',
+  function anexSearchDiagnostics(response,reported){
+    const values={},headers={backendFailure:'Failure',backendStage:'Stage',backendPhase:'Phase',backendCategory:'Category',nativeAction:'Native-Action',
       upstreamStatus:'Upstream-Status',supplierCode:'Supplier-Code',transportCode:'Transport-Code',elapsedMs:'Elapsed-Ms'};
     for(const [key,suffix] of Object.entries(headers)){
-      let value;try{value=response?.headers?.get?.('X-AnyTour-Anex-'+suffix);}catch{continue;}
+      let value;try{value=response?.headers?.get?.('X-AnyTour-Anex-'+suffix);}catch{}
+      if(value==null&&reported&&typeof reported==='object'&&!Array.isArray(reported))value=reported['X-AnyTour-Anex-'+suffix];
       if(typeof value!=='string')continue;
       if(Object.hasOwn(anexSearchDiagnosticBounds,key)){
         if(!/^(?:0|[1-9][0-9]{0,5})$/.test(value))continue;
@@ -110,13 +111,27 @@
     }
     return cleanAnexSearchDiagnostics(values);
   }
-  function anexSearchError(response,payload,stage){
-    const failure={stage,code:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
+  function anexSearchError(response,payload,stage,clientPhase=''){
+    const expansion=stage==='expand',status=expansion?payload?.data?.status:null;
+    const failure={stage,code:expansion&&clientPhase?'client_'+clientPhase+'_unconfirmed'
+      :expansion&&['expansion_unknown','expired','not_loaded'].includes(status)?status:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
     if(Number.isInteger(response?.status)&&response.status>=100&&response.status<=599)failure.httpStatus=response.status;
-    Object.assign(failure,anexSearchDiagnostics(response));
+    if(expansion&&clientPhase)failure.clientPhase=clientPhase;
+    else {
+      const diagnostic=anexSearchDiagnostics(response,expansion?(payload?.diagnostics||payload?.data?.diagnostics):undefined);
+      if(!expansion||diagnostic.backendStage==='expand')Object.assign(failure,diagnostic);
+    }
     // Public enums and bounded numeric facts only; never response text or identities.
     try{root.console?.warn?.('[AnyTour search] '+JSON.stringify({provider:'anex',...failure}));}catch{}
-    return Object.assign(new Error(stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
+    const error=Object.assign(new Error(expansion?'Не удалось подтвердить конкретные варианты тура.':stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
+    if(expansion){
+      error.code=status==='expired'&&!clientPhase?'offer_expired':'anex_expand_unconfirmed';
+      // The producer owns a sealed UNKNOWN; local unreadable/projection outcomes
+      // are independently unconfirmed. Neither can be repaired by replaying POST.
+      if(clientPhase||payload?.retryable===false||payload?.data?.retryable===false)error.retryable=false;
+      else if(payload?.retryable===true||payload?.data?.retryable===true)error.retryable=true;
+    }
+    return error;
   }
   function anexSearchFailure(error,stage){
     const value=error?.searchFailure,result={stage,code:anexSearchFailureCodes.has(value?.code)?value.code:'unknown'};
@@ -508,7 +523,7 @@
     localContentQueue.length=0;
     clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
-    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();
+    activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();anexExpansionAttempts.clear();
     return generation;
   }
   async function searchError(run,error){
@@ -1349,19 +1364,30 @@
     const p=directFirstWeekScopes(params(o.search,[String(localHotelId)]))[0],epoch=generation;
     const url=nativeEndpoint(root.V2_CONFIG&&root.V2_CONFIG.anexApi,'/_preview/search3-anex-candidate/api-anex-search3-preview.php');
     if(!url)throw new Error('ANEX сейчас недоступен.');
+    const attemptKey=JSON.stringify([epoch,searchRef,targetRef,localHotelId,exact,filters]),previous=anexExpansionAttempts.get(attemptKey);
+    if(previous?.error)throw previous.error;
+    if(previous?.pending)return previous.pending;
     activeVerification?.abort();const controller=new AbortController();activeVerification=controller;
+    let response=null;
     const request=async body=>{
-      const response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+      response=await fetch(url.href,{method:'POST',credentials:'same-origin',cache:'no-store',signal:controller.signal,
         headers:{'Content-Type':'application/json','X-Requested-With':'AnyTourSearch3'},body:JSON.stringify(body)});
       const payload=await response.json().catch(()=>null);
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!response.ok||payload?.ok!==true||!payload.data)throw new Error('ANEX не смог проверить выбранное предложение.');
+      if(!response.ok||payload?.ok!==true||!payload.data)throw anexSearchError(response,payload,'expand',
+        !payload||typeof payload!=='object'||Array.isArray(payload)||response.ok&&payload?.ok!==false?'response':'');
       return payload.data;
     };
+    const attempt={error:null,pending:null};anexExpansionAttempts.set(attemptKey,attempt);
+    attempt.pending=(async()=>{
     try{
       // The initial search already retained this exact group on the server.
       // A narrowed replacement search would violate its first-week window gate.
       const expanded=await request({action:'expand',generation:epoch,search_ref:searchRef,offer_ref:targetRef,local_hotel_id:localHotelId});
+      if(expanded.provider==='anex'&&expanded.generation===epoch&&expanded.search_ref===searchRef&&expanded.offer_ref===targetRef
+        &&['expansion_unknown','expired','not_loaded'].includes(expanded.status)&&expanded.retryable===false){
+        throw anexSearchError(response,{data:expanded},'expand');
+      }
       if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searchRef||expanded.offer_ref!==targetRef
         ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
         ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
@@ -1380,7 +1406,21 @@
         throw new Error('Не удалось подготовить конкретные варианты ANEX.');
       }
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
-    }finally{if(activeVerification===controller)activeVerification=null;}
+    }catch(error){
+      if(epoch!==generation)throw error;
+      // Switching offers can abort this POST without changing the search. Its
+      // unknown outcome still belongs to this offer; only a new generation clears it.
+      const failure=controller.signal.aborted?anexSearchError(response,null,'expand','transport')
+        :error?.searchFailure?error:anexSearchError(response,null,'expand',response?'projection':'transport');
+      if(failure.retryable===false)attempt.error=failure;
+      throw failure;
+    }finally{
+      attempt.pending=null;
+      if(!attempt.error&&anexExpansionAttempts.get(attemptKey)===attempt)anexExpansionAttempts.delete(attemptKey);
+      if(activeVerification===controller)activeVerification=null;
+    }
+    })();
+    return attempt.pending;
   }
   function anexConcreteKey(o){
     const raw=o&&o.raw,localId=Number(raw?.anexLocalHotelId),epoch=Number(raw?.anexGeneration),offerRef=String(raw?.offerRef||''),searchRef=String(raw?.searchRef||'');

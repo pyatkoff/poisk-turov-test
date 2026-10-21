@@ -51,10 +51,12 @@ async function expansionEntryScenario(count,late=false){
    assert.match(q('#modal-body').textContent,/ANEX STANDARD/,'late expansion does not replace the original group inventory');
    assert.doesNotMatch(q('#modal-body').textContent,/ANEX CONCRETE/);
   }else if(count===0){
-   await wait(()=>q('#modal-body .error-text')?.textContent.trim()==='Не удалось проверить цену и наличие тура. Повторите проверку.');
-   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty supplier expansion keeps existing recovery');
-   assert.equal(q('#all-offers-list'),null);assert(q('[data-action="refresh-hotel"]'));
+   const terminal=()=>{assert.equal(q('#modal-body .error-text')?.textContent.trim(),'Не удалось подтвердить этот тур. Выберите другой вариант.');assert(q('#modal-footer [data-action="all-offers"]'));assert(!q('#modal [data-action="refresh-hotel"]'));assert.match(q('.footer-price-status').textContent,/не подтверждена/);};
+   await wait(()=>q('#modal-body .error-text'));terminal();
+   assert.equal(q('#modal-title').textContent,'Ваш тур в деталях','empty expansion preserves the existing selected-tour view');
+   assert.equal(q('#all-offers-list'),null);
    click('#modal-back');await settle();assert.match(q('#modal-body').textContent,/ANEX STANDARD/);
+   click('#modal-body [data-action="offer"][data-key^="anex%3A"]');await settle();terminal();assert.equal(transport.calls.filter(c=>c.action==='expand').length,1,'ordinary return cannot replay an empty expansion');
   }else if(count===2){
    await wait(()=>q('#all-offers-list')&&q('#modal-body').textContent.includes('ANEX ALTERNATIVE'));
    assert.equal(d.querySelectorAll('#all-offers-list [data-action="offer"][data-key^="anex%3A"]').length,2,'multiple exact offers retain explicit choice');

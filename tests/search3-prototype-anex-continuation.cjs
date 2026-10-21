@@ -33,7 +33,7 @@ function harness(){
  let fetchImpl=async (url,body)=>({ok:true,data:url.includes('api-andromeda-')?samoPage(body.page):page(body.page)});
  let apiImpl=async(action)=>action==='search_status'?{progress:100,status:'complete'}:action==='search_results'?[]:{};
  const sandbox={console,URL,Map,Set,WeakMap,AbortController,TextEncoder,Date:ClockDate,structuredClone,Uint8Array,setTimeout,clearTimeout,DOMException,
-  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,headers:result.responseHeaders,json:async()=>result};}};
+  fetch:async(url,options)=>{const body=JSON.parse(options.body);calls.push({url,body});const result=await fetchImpl(url,body);return {ok:result.ok!==false,status:result.status||200,headers:result.responseHeaders,json:async()=>{if(result.unreadable)throw Error('PRIVATE_UNREADABLE_BODY');return result;}};}};
  const root={location:{origin,href:origin+'/_preview/search3-next-candidate/visual-search/'},crypto:webcrypto,TextEncoder,
   console:{warn(line){warnings.push(line);}},
   V2_CONFIG:{anexApi:endpoint,andromedaApi:origin+'/_preview/search3-anex-candidate/api-andromeda-search3-preview.php'},
@@ -48,6 +48,7 @@ set(run,callback){activeSearch=run;generation=run.generation;searchId=run.search
 offers(){return project(owner.read(raw,{}),context).flatMap(h=>h.offers);},
 receipt(o){const key=anexConcreteKey(o);return key&&anexPackageReceipts.get(key.key);},
 applied(value){context=structuredClone(value);},
+expansionCatalog(){catalog.departures=[{id:1,name:'Москва'}];catalog.countries=[{id:'4',name:'Турция',tourvisorIds:['4']}];},
 epoch(value){generation=value;activeSearch.generation=value;},
 search(value){searchId=value;activeSearch.searchId=value;},
 snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCurrentReceipts],receipts:[...anexPackageReceipts].map(([key,r])=>({key,...r,pending:Boolean(r.pending),quotes:[...r.quotes]})),active:Boolean(activeVerification),deadline:activeSearch.deadline});},
@@ -63,6 +64,102 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+async function expansionHarness(ids=[1]){
+ const h=harness(),p=page(1,'available',ids);h.run.anexSessionCurrent=true;h.t.expansionCatalog();
+ p.hotels[0].tours.forEach(t=>t.kind='group_minimum');await h.initial(p);
+ const offers=h.t.offers();assert.equal(offers.length,ids.length);
+ return {...h,offers,o:offers[0],expand(o=offers[0]){return h.root.AnyTourPrototypeData.expandAnexGroup(o);}};
+}
+const expandDiagnostic={
+ 'X-AnyTour-Anex-Stage':'expand','X-AnyTour-Anex-Phase':'gateway','X-AnyTour-Anex-Failure':'ANEX_HTTP_ERROR',
+ 'X-AnyTour-Anex-Category':'http','X-AnyTour-Anex-Native-Action':'SearchTour_PRICES',
+ 'X-AnyTour-Anex-Upstream-Status':'502','X-AnyTour-Anex-Elapsed-Ms':'1450',private:'PRIVATE_TOKEN'
+};
+const expandIdentity=body=>({provider:'anex',generation:body.generation,search_ref:body.search_ref,offer_ref:body.offer_ref});
+test('one sealed expansion retains safe producer facts and never repeats or promotes its listing',async()=>{
+ const h=await expansionHarness(),gate=deferred();h.setFetch(()=>gate.promise);
+ const first=h.expand(),duplicate=h.expand();assert.equal(h.calls.length,1,'pending duplicates share the canonical attempt');
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic,message:'PRIVATE_BODY'});
+ let failure;await assert.rejects(first,e=>{failure=e;return e.retryable===false&&e.code==='anex_expand_unconfirmed';});
+ await assert.rejects(duplicate,e=>e===failure);await assert.rejects(h.expand(),e=>e===failure);
+ assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'supplier_unavailable',httpStatus:502,
+  backendStage:'expand',backendPhase:'gateway',backendFailure:'ANEX_HTTP_ERROR',backendCategory:'http',nativeAction:'SearchTour_PRICES',upstreamStatus:502,elapsedMs:1450}]);
+ assert.equal(h.calls.length,1);assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.o.total,100000);assert.equal(h.o.raw.finalPriceVerified,false);
+ assert.equal(h.apiCalls.length,0,'diagnostics do not add a provider request');
+});
+test('legacy UNKNOWN and explicit post-HTTP terminal outcomes retain noReplay without inventing a cause',async()=>{
+ for(const status of ['expansion_unknown','expired','not_loaded']){
+  const h=await expansionHarness();h.setFetch(async(url,body)=>({ok:true,data:{...expandIdentity(body),status,retryable:false,
+   ...(status==='expansion_unknown'?{}:{diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Phase':'projection',
+    ...(status==='not_loaded'?{'X-AnyTour-Anex-Failure':'ANEX_EXPANSION_NOT_LOADED','X-AnyTour-Anex-Category':'application','X-AnyTour-Anex-Upstream-Status':'200'}:{})}})}}));
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.code===(status==='expired'?'offer_expired':'anex_expand_unconfirmed');});
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  const fact=searchWarning(h.warnings[0]);assert.equal(fact.code,status);assert.equal(fact.httpStatus,200);
+  if(status==='expansion_unknown')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200});
+  else {
+   assert.equal(fact.backendPhase,'projection');
+   if(status==='not_loaded')assert.deepEqual(fact,{provider:'anex',stage:'expand',code:status,httpStatus:200,
+    backendStage:'expand',backendPhase:'projection',backendFailure:'ANEX_EXPANSION_NOT_LOADED',backendCategory:'application',
+    nativeAction:'SearchTour_PRICES',upstreamStatus:200,elapsedMs:1450});
+  }
+ }
+});
+test('HTTP status alone does not invent a producer retry policy',async()=>{
+ for(const status of [400,429,502,503]){
+  const h=await expansionHarness();h.setFetch(async()=>({ok:false,status,error:'temporarily_unavailable'}));
+  await assert.rejects(h.expand(),e=>e.retryable===undefined);assert.equal(h.calls.length,1);
+  h.setFetch(async()=>({ok:false,status,error:'temporarily_unavailable',retryable:true}));
+  await assert.rejects(h.expand(),e=>e.retryable===true);assert.equal(h.calls.length,2,'an explicit unsealed retry remains possible');
+ }
+});
+test('post200 client rejection is classified locally and cannot borrow supplied upstream diagnostics',async()=>{
+ for(const fault of ['identity','empty','kind']){
+  const h=await expansionHarness();h.setFetch(async(url,body)=>{
+   const p=page();p.hotels[0].tours[0].kind=fault==='kind'?'group_minimum':'concrete';
+   return {ok:true,data:{...expandIdentity(body),status:'expanded',diagnostics:expandDiagnostic,
+    ...(fault==='identity'?{generation:999}:{}),hotels:fault==='empty'?[]:p.hotels}};
+  });
+  await assert.rejects(h.expand(),e=>e.retryable===false&&e.searchFailure.clientPhase==='projection');await assert.rejects(h.expand());
+  assert.equal(h.calls.length,1);assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',httpStatus:200,clientPhase:'projection'}]);
+ }
+});
+test('unreadable success and lost transport remain local unknown with no raw error or fake backend status',async()=>{
+ for(const response of [null,{ok:true}]){
+  const h=await expansionHarness();h.setFetch(async()=>{if(response===null)throw new Error('PRIVATE_TRANSPORT_URL');return response;});
+  await assert.rejects(h.expand(),e=>e.retryable===false);await assert.rejects(h.expand());assert.equal(h.calls.length,1);
+  const fact=searchWarning(h.warnings[0]);assert.equal(fact.clientPhase,response===null?'transport':'response');
+  assert.equal(Object.hasOwn(fact,'httpStatus'),response!==null);assert.equal(Object.hasOwn(fact,'backendFailure'),false);assert(!JSON.stringify(fact).includes('PRIVATE_'));
+ }
+});
+test('an unreadable non-2xx response remains local unknown rather than a new replay permission',async()=>{
+ for(const status of [200,502,503]){
+  const h=await expansionHarness();h.setFetch(async()=>({ok:status===200,status,unreadable:true,responseHeaders:responseHeaders(Object.fromEntries(Object.entries(expandDiagnostic).map(([k,v])=>[k.toLowerCase(),v])))}));
+  await assert.rejects(h.expand(),e=>e.retryable===false);await assert.rejects(h.expand());assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_response_unconfirmed',httpStatus:status,clientPhase:'response'}]);
+ }
+});
+test('malformed expansion diagnostics stay absent and a failed offer cannot poison another offer',async()=>{
+ const h=await expansionHarness([1,2]);h.setFetch(async()=>({ok:false,status:503,error:'temporarily_unavailable',retryable:false,
+  diagnostics:{...expandDiagnostic,'X-AnyTour-Anex-Failure':'PRIVATE_FAILURE','X-AnyTour-Anex-Phase':'PRIVATE_PHASE',
+   'X-AnyTour-Anex-Upstream-Status':'999','X-AnyTour-Anex-Supplier-Code':'-1','X-AnyTour-Anex-Elapsed-Ms':'1e3'}}));
+ await assert.rejects(h.expand());await assert.rejects(h.expand(h.offers[1]));assert.equal(h.calls.length,2,'independent exact offer has its own attempt');
+ await assert.rejects(h.expand());assert.equal(h.calls.length,2);assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));
+ for(const fact of h.warnings.map(searchWarning))for(const field of ['backendFailure','backendPhase','upstreamStatus','supplierCode','elapsedMs'])assert.equal(Object.hasOwn(fact,field),false);
+});
+test('switching offers retains an interrupted POST as local unknown without poisoning the independent offer',async()=>{
+ const h=await expansionHarness([1,2]),gate=deferred();h.setFetch(async(url,body)=>body.offer_ref===offerRef(1)?gate.promise
+  :{ok:true,data:{...expandIdentity(body),status:'expanded',hotels:page(1,'available',[3]).hotels}});
+ const pending=h.expand(),rejected=assert.rejects(pending,e=>e.retryable===false&&e.searchFailure.clientPhase==='transport');
+ const other=await h.expand(h.offers[1]);assert.equal(other.offers[0].raw.anexKind,'concrete');
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic});await rejected;
+ await assert.rejects(h.expand(),e=>e.retryable===false);assert.equal(h.calls.length,2,'returning to A cannot send a second POST A');
+ const fact=searchWarning(h.warnings[0]);assert.equal(fact.clientPhase,'transport');assert.equal(Object.hasOwn(fact,'backendFailure'),false,'interruption cannot borrow the late producer cause');
+});
+test('a stopped expansion cannot log or retain a late failure in the next generation',async()=>{
+ const h=await expansionHarness(),gate=deferred();h.setFetch(()=>gate.promise);const pending=h.expand();h.t.stop();
+ gate.resolve({ok:false,status:502,error:'supplier_unavailable',retryable:false,diagnostics:expandDiagnostic});
+ await assert.rejects(pending);assert.deepEqual(h.warnings,[]);assert.equal(h.calls.length,1);
+});
 test('initial endpoint rejection retains only its public code and HTTP status',async()=>{
  for(const [code,status] of [['invalid_request',400],['forbidden',403],['search_not_supported',422],['rate_limited',429],['supplier_timeout',502],['temporarily_unavailable',503]]){
   const h=harness();h.setFetch(async()=>({ok:false,status,error:code,message:'PRIVATE_MESSAGE',url:'PRIVATE_URL',diagnostic:{token:'PRIVATE_TOKEN'}}));
