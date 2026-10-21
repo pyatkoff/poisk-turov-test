@@ -64,11 +64,14 @@ final class AnyTourThreeProviderAnexOffer
             || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $offer['offer_key'])) {
             throw new InvalidArgumentException('THREE_PROVIDER_ANEX_REFERENCE');
         }
+        $expectedInfants = anytour_anex_normalizer_infant_count($search['child_ages']);
+        $infants = $offer['infants'] ?? null;
         if (($offer['adults'] ?? null) !== $search['adults'] || ($offer['children'] ?? null) !== $search['children']
             || !is_int($offer['nights'] ?? null) || !is_string($offer['checkin'] ?? null)
             || $offer['nights'] < $search['nights_from'] || $offer['nights'] > $search['nights_till']
             || $offer['checkin'] < $search['checkin_begin'] || $offer['checkin'] > $search['checkin_end']
-            || !array_key_exists('infants', $offer) || !in_array($offer['infants'], [null, 0], true)) {
+            || !array_key_exists('infants', $offer)
+            || ($expectedInfants > 0 ? $infants !== $expectedInfants : !in_array($infants, [null, 0], true))) {
             throw new InvalidArgumentException('THREE_PROVIDER_ANEX_SEARCH_CONTEXT');
         }
         if (!is_array($offer['price'] ?? null) || !is_array($offer['availability'] ?? null)

@@ -149,4 +149,35 @@ anex_normalizer_check($children['search']['child_ages'] === [8] && count($childr
 $travelNights = anytour_anex_normalize_prices(['prices' => [array_replace($row, ['checkOut' => '20260922'])]], $context);
 anex_normalizer_check(count($travelNights['offers']) === 1, 'hotel dates not equated to transport-inclusive nights');
 
+// Synthetic infant fixtures: source-contract inference, not observed supplier acceptance.
+foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9]] as $ages) {
+    $infants = count(array_filter($ages, static fn($age) => $age < 2));
+    $familyContext = array_replace($context, ['children' => count($ages), 'child_ages' => $ages]);
+    $familyRow = array_replace($row, ['child' => count($ages) - $infants, 'infant' => (string) $infants]);
+    $family = anytour_anex_normalize_prices(['prices' => [$familyRow]], $familyContext);
+    anex_normalizer_check(count($family['offers']) === 1 && $family['rejected_count'] === 0,
+        'matching infant family accepted');
+    anex_normalizer_check($family['search']['child_ages'] === $ages
+        && $family['offers'][0]['children'] === count($ages)
+        && $family['offers'][0]['infants'] === $infants, 'full party and repeated ages preserved');
+    anex_normalizer_check($family['offers'][0]['price'] === $group['price']
+        && $family['offers'][0]['final_price_verified'] === false, 'infant listing is not a recalculated total');
+    $missing = $familyRow; unset($missing['infant']);
+    foreach ([$missing, array_replace($familyRow, ['infant' => null]),
+        array_replace($familyRow, ['infant' => false]), array_replace($familyRow, ['infant' => 'unknown']),
+        array_replace($familyRow, ['infant' => 0]), array_replace($familyRow, ['infant' => $infants + 1]),
+        array_replace($familyRow, ['child' => count($ages)]),
+        array_replace($familyRow, ['adult' => 0])] as $wrongFamily) {
+        $denied = anytour_anex_normalize_prices(['prices' => [$wrongFamily]], $familyContext);
+        anex_normalizer_check($denied['offers'] === [] && $denied['rejected_count'] === 1,
+            'ambiguous or incomplete infant party rejected');
+    }
+}
+foreach ([2, 17] as $age) {
+    $child = anytour_anex_normalize_prices(['prices' => [array_replace($row, ['child' => 1, 'infant' => 0])]],
+        array_replace($context, ['children' => 1, 'child_ages' => [$age]]));
+    anex_normalizer_check(count($child['offers']) === 1 && $child['offers'][0]['infants'] === 0,
+        'non-infant child boundary preserved');
+}
+
 echo "ANEX normalizer smoke: passed\n";
