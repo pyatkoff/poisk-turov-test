@@ -130,6 +130,8 @@ OPERATOR_ALIAS_AUDIT = {
     'captured_source_sha': '6cdf8ae1720d6336e677eabc13659b0b8ce1cd60',
     'raw_sha256': '3f915ea52e17f12eb036a2dd4835418d78c0b387551b689884b593b3d18bd905',
 }
+_ALIAS_BRAND = r'(?:FUN[ ]*&[ ]*SUN|FUN[ ]+AND[ ]+SUN|ФАН[ ]*&[ ]*САН|TUI|ТУИ)'
+OPERATOR_ALIAS_LABEL_PATTERN = _ALIAS_BRAND + r'(?:[ ]*(?:[/\-][ ]*(?:ex[.]?[ ]+)?' + _ALIAS_BRAND + r'|\((?:ex[.]?[ ]+)?' + _ALIAS_BRAND + r'\)))?'
 
 
 def need(value, reason):
@@ -1468,7 +1470,7 @@ def retained_operator_alias_audit(stage):
         if not ('tui' in normalized or 'туи' in normalized or ('fun' in normalized and 'sun' in normalized)
                 or ('фан' in normalized and 'сан' in normalized)): continue
         candidates.append({'operator_id':row['id'],'candidate_only':True,'labels':[
-            {'field':key,'value':label if re.fullmatch(r"[A-Za-zА-Яа-яЁё0-9&()+., /\-]{1,100}",label) else None,
+            {'field':key,'value':label if len(label)<=100 and re.fullmatch(OPERATOR_ALIAS_LABEL_PATTERN,label,re.I) else None,
              'sha256':hashlib.sha256(label.encode()).hexdigest()} for key,label in labels]})
     if len(candidates) > 8: fail('alias_candidate_bound')
     home = pathlib.Path.home()/'.anytoour-match'
@@ -1498,7 +1500,7 @@ def retained_operator_alias_audit(stage):
 def operator_alias_audit_handler():
     anchor = '\ndef retained_operator_dictionary(stage):'
     need(OPERATOR_BINDING_HANDLER.count(anchor) == 1, 'alias_projection_anchor')
-    return OPERATOR_BINDING_HANDLER.split(anchor, 1)[0] + OPERATOR_ALIAS_AUDIT_HANDLER
+    return 'OPERATOR_ALIAS_LABEL_PATTERN='+repr(OPERATOR_ALIAS_LABEL_PATTERN)+'\n'+OPERATOR_BINDING_HANDLER.split(anchor, 1)[0] + OPERATOR_ALIAS_AUDIT_HANDLER
 
 
 BG_IDENTITY_HANDLER = r'''
@@ -1996,7 +1998,7 @@ def completed_operator_alias_audit(command, result, control_sha):
                         or label['field'] in fields or not re.fullmatch('[a-f0-9]{64}',str(label['sha256']))): return False
                 fields.add(label['field'])
                 value = label['value']
-                if value is not None and (not isinstance(value,str) or not re.fullmatch(r"[A-Za-zА-Яа-яЁё0-9&()+., /\-]{1,100}",value)
+                if value is not None and (not isinstance(value,str) or len(value)>100 or not re.fullmatch(OPERATOR_ALIAS_LABEL_PATTERN,value,re.I)
                     or hashlib.sha256(value.encode()).hexdigest() != label['sha256']): return False
         return d.get('global_usage') == 'not_measured' and result['match_retained'].get('evidence_sha256') == hashlib.sha256(canonical(d)).hexdigest()
     except (KeyError,TypeError,ValueError,AttributeError): return False

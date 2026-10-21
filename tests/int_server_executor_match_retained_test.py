@@ -2380,11 +2380,12 @@ class OperatorAliasAuditTest(unittest.TestCase):
                 self.assertFalse((op/'retained-evidence.json').exists())
 
     def test_unsafe_literal_is_hashed_and_candidate_roster_is_bounded(self):
-        with tempfile.TemporaryDirectory() as td:
-            p,s,home,stage,target,op=self.fixture(Path(td),[{'id':77,'name':'TUI https://private.example/?token=sentinel'}])
-            with mock.patch.object(Path,'home',return_value=home):out=s['retained_operator_alias_audit'](stage)
-            self.assertIsNone(out['data']['alias_candidates'][0]['labels'][0]['value'])
-            self.assertNotIn('sentinel',json.dumps(out));self.assertNotIn('https://',json.dumps(out))
+        for label in ('TUI https://private.example/?token=sentinel','TUI eyJhbGci.sentinel.signature','TUI token sentinel'):
+            with self.subTest(label=label),tempfile.TemporaryDirectory() as td:
+                p,s,home,stage,target,op=self.fixture(Path(td),[{'id':77,'name':label}])
+                with mock.patch.object(Path,'home',return_value=home):out=s['retained_operator_alias_audit'](stage)
+                self.assertIsNone(out['data']['alias_candidates'][0]['labels'][0]['value'])
+                self.assertNotIn('sentinel',json.dumps(out));self.assertNotIn('https://',json.dumps(out))
         with tempfile.TemporaryDirectory() as td:
             p,s,home,stage,target,op=self.fixture(Path(td),[{'id':i+1,'name':'TUI variant '+str(i)} for i in range(9)])
             with mock.patch.object(Path,'home',return_value=home),self.assertRaisesRegex(ValueError,'alias_candidate_bound'):s['retained_operator_alias_audit'](stage)
