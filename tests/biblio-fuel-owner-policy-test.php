@@ -46,6 +46,30 @@ function bg_request(array $ages):array{
     ]];
 }
 
+/** Canonical confirmation DTO, with provider identity owned by its adapter. */
+function bg_listing(string $provider, array $ages, ?array $fuel = null): array {
+    $offer=AnyTourThreeProviderOfferContract::fromSearch([
+        'provider'=>$provider,'operator'=>$provider==='anex'?null:'Biblio Globus',
+        'local_hotel_id'=>101,'provider_hotel_ref'=>'private-'.$provider.'-hotel',
+        'search_ref'=>'private-'.$provider.'-search','offer_ref'=>'private-'.$provider.'-offer',
+        'checkin'=>'2026-10-10','nights'=>7,'adults'=>2,'children'=>count($ages),'child_ages'=>$ages,
+        'meal'=>['raw'=>'AI','family'=>'ai','qualifiers'=>['plus'=>false,'without_alcohol'=>false]],
+        'room'=>['raw'=>'Standard','normalized'=>'standard'],'placement'=>null,
+        'availability'=>['hotel'=>null,'flight_outbound_economy'=>null,'flight_return_economy'=>null],
+        'search_price'=>['amount'=>'185125','currency'=>'RUB','source'=>$provider.'_search'],
+        'fuel_charge_reported'=>$fuel,'additional_prices_reported'=>[],
+        'observed_at'=>'2026-09-23T00:00:00Z',
+    ]);
+    $issued=strtotime('2026-09-23T00:00:00Z');
+    $retained=AnyTourThreeProviderOfferContext::retain($offer,1,1,$issued,900);
+    $current=array_intersect_key($retained,array_flip([
+        'provider','operator','local_hotel_id','identity','generation','page',
+    ]));
+    return AnyTourThreeProviderSearchHandoff::fromConfirmationRequiredSearchOffer(
+        $offer,$retained,$current,$issued+30
+    );
+}
+
 $adultChild=AnyTourBiblioFuelOwnerPolicyV1::forParty('Biblio Globus',[
     'adults'=>2,'children'=>1,'child_ages'=>[5],
 ]);
@@ -62,6 +86,36 @@ bg_ok($infant['infant_pricing_state']==='separate_unknown','infant missing separ
 bg_ok(AnyTourBiblioFuelOwnerPolicyV1::forParty('FUN&SUN',[
     'adults'=>2,'children'=>1,'child_ages'=>[5],
 ])===null,'policy leaked to other operator');
+
+// Owner zero fuel is ONLY the SAMO search listing (internal provider andromeda).
+// Missing TV fuel, an explicit TV amount and infant age0 must remain untouched.
+foreach ([[5],[0]] as $ages) {
+    $policy=AnyTourBiblioFuelOwnerPolicyV1::forParty('Biblio Globus',[
+        'adults'=>2,'children'=>1,'child_ages'=>$ages,
+    ]);
+    $samo=bg_listing('andromeda',$ages);
+    $samoApplied=AnyTourBiblioFuelOwnerPolicyV1::apply($samo,$policy);
+    bg_ok($samoApplied['applied']===true,'SAMO listing policy rejected');
+    bg_ok($samoApplied['dto']['money']['fuel_charge_reported']['amount']==='0.00','SAMO fuel missing');
+    bg_ok($samoApplied['dto']['price']===$samo['price']
+        && $samoApplied['dto']['final_price_verified']===false
+        && $samoApplied['dto']['finalPrice']===null,'SAMO policy changed total/authority');
+    bg_ok($samoApplied['dto']['money']['operator_fuel_policy']['infant_pricing_state']
+        ===($ages===[0]?'separate_unknown':'not_applicable'),'SAMO infant pricing inferred');
+
+    foreach ([
+        bg_listing('tourvisor',$ages),
+        bg_listing('tourvisor',$ages,['amount'=>'28381','currency'=>'RUB','source'=>'tourvisor_fuel']),
+        bg_listing('tourvisor',$ages,['amount'=>'0.00','currency'=>'RUB','source'=>'tourvisor_fuel']),
+        bg_listing('anex',$ages),
+        array_replace($samo,['provider'=>'unknown']),
+        array_diff_key($samo,['provider'=>true]),
+    ] as $foreign) {
+        $held=AnyTourBiblioFuelOwnerPolicyV1::apply($foreign,$policy);
+        bg_ok($held['applied']===false&&$held['reason']==='biblio_policy_provider','policy escaped SAMO listing');
+        bg_ok($held['dto']===$foreign,'policy changed foreign price/fuel/infant/provenance');
+    }
+}
 
 $dir=bg_dir();
 try{
