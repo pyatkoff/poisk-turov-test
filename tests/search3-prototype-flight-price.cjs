@@ -145,6 +145,12 @@ vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/d
  const sealedCalls=calls.length;
  await assert.rejects(data.flights(expiring.tour),expired,'The known-expired exact receipt is not requested again');
  assert.equal(calls.length,sealedCalls,'A repeated expired flight intent performs no supplier call');
+ reply=gone;
+ await assert.rejects(data.quote(expiring),expired,'The known-expired exact receipt is not revalidated again');
+ assert.equal(calls.length,sealedCalls,'A repeated expired quote intent performs no supplier call');
+ reply={id:'other-tour',price:95000};
+ const independent=await data.quote({...other,tour:expiring.tour});
+ assert.equal(independent.price,95000,'A mismatched failed previous receipt cannot block another quote');
  assert.equal(otherSession.payload({}).tour,other.tour,'Another exact offer receipt remains current');
  data.leadSession(other);
  reply=httpError(410);reply.data.diagnostics.stage='tour';

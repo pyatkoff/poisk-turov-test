@@ -2027,11 +2027,13 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
     assertTourvisorRecalculationSupported(o.raw.operator,o.raw.operatorName);
+    const previous=String(o.tour?.id)===String(o.raw.id)?o.tour:null;
+    const failure=quoteReceipts.get(previous)?.failure;if(failure)throw failure;
     const run=generation,id=searchId;
     const sourceOperators=[o.raw.operator,o.raw.operatorName];
     let t;
     try{t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});}
-    catch(error){throw tourvisorQuoteFailure(error,String(o.tour?.id)===String(o.raw.id)?o.tour:null);}
+    catch(error){throw tourvisorQuoteFailure(error,previous);}
     if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
     if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
     assertTourvisorRecalculationSupported(...sourceOperators,t.operator,t.operatorName);
