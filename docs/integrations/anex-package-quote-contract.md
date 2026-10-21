@@ -170,3 +170,35 @@ Existing family case6325407802 is consumed/no-replay; its missing historical fie
 cannot be reconstructed by this addition. Only a future justified new ordinary
 case can establish actual supplier counter semantics. Source, CI, independent
 review, stock installation and that future live acceptance remain separate stages.
+
+## Observed age-zero boundary — 22 October 2026
+
+PR4802 was independently reviewed, merged as5a703baf, and installed through the
+existing runtime and endpoint carriers (39685334326 and39685594872). In the one
+new ordinary Moscow→Egypt14–20Feb2027/7n/2A+[0]/AI case, the current-session receipt
+reported174 raw rows, all with parsed counters adult2/child0/infant0. Every row
+failed the existing `infant` predicate; normalized rows and requested-hotel
+filtered rows were both0. Thus the specific local rejection and the returned
+counter values are established. This is not an empty supplier page or a proved
+transport outage. The historical31Jan case still lacks these exact facts.
+
+The installed request path has no falsy-age filter: the existing real Client
+validates and serializes CHILD1 and AGES`0`. The focused offline Search→Client
+regression checks that complete query boundary and the observed rejection shape
+through an injected transport. It is source/offline evidence, not a capture of the
+actual live request URL or proof of the supplier's interpretation of age0.
+The public SearchTour contract documents CHILD/AGES and separate response counters;
+its zero-infant example supplies no supported nonzero-infant guarantee.
+
+Consequently live infant support remains UNCONFIRMED. Accepting returned infant0
+as the requested whole family, changing age0 to1, inventing an INFANT parameter,
+or treating a missing infant charge as0 would discard the unresolved binding.
+The next provider contract result must establish how the requested infant appears
+in the supported search/package claim and typed quote participants. Until then the
+current strict checks and unknown infant fee remain in force; no whole-family
+flight/final-price acceptance is claimed. The completed14Feb case is consumed and
+must not be rerun, repolled or varied as a fallback. Tourvisor remains independent.
+
+Evidence: #4709/6327863689 (single Find/one regular own-session receipt, no expand,
+quote, Continue or retry); retained DOM/receipt JSON SHA256
+`3b15c5c92b2e7ebc6555b2ab7d5175b0ea551b502b987f7a1c115b24963245ad`.
