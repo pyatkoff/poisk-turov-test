@@ -2148,6 +2148,143 @@ class FullOperatorDictionaryTest(OperatorDictionaryTest):
         self.assertIn("dictionary_scope={'kind': 'all_active_operators'}",m.full_operator_binding_handler())
 
 
+class BiblioIdentityTest(unittest.TestCase):
+    def command(self):
+        p=m.BG_IDENTITY_SCOPE
+        return dict(source_sha=SHA,mode='match-retained-acquire',operation_id=p['operation_id'],
+                    cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
+
+    def test_closed_scope_and_original_bundle(self):
+        c=core();m.register_parser(c);cmd=self.command();text=c.PREFIX+' '.join(cmd.values())
+        self.assertEqual(cmd,c.parse_command(text))
+        for key in ('mode','operation_id','target_operation_id'):
+            bad=dict(cmd);bad[key]+='x'
+            with self.subTest(key=key),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad.values()))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(text)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
+        ast.parse(c.REMOTE)
+        self.assertIn("return retained_bg_identity(stage)",c.REMOTE)
+        self.assertIn('NEXT_SCOPE='+repr(m.BG_IDENTITY_SCOPE),c.REMOTE)
+        self.assertEqual(m.SOURCE_HASHES,c.bundle_source(SOURCE)[1])
+
+    def run_case(self,kind='candidate',bad_parent=False):
+        fixed_now=dt.datetime(2026,10,22,tzinfo=dt.timezone.utc)
+        with tempfile.TemporaryDirectory() as td, mock.patch('datetime.datetime',wraps=dt.datetime) as clock:
+            clock.now.return_value=fixed_now
+            home=Path(td);project=home/'project';project.mkdir();(project/'config.php').write_text('private-config')
+            private=home/'private';private.mkdir();profile=copy.deepcopy(m.BG_IDENTITY_SCOPE)
+            op=private/profile['operation_id'];op.mkdir()
+            def parent(name,mode,data):
+                data=dict(data,operation_id=name,source_sha=SHA)
+                value=dict(status='complete',mode=mode,production_unchanged=True,source_sha=SHA,operation_id=name,
+                    match_retained=dict(data=data,evidence_sha256=hashlib.sha256(m.canonical(data)).hexdigest()))
+                directory=private/name;directory.mkdir();(directory/'result.json').write_bytes(m.canonical(value))
+                (directory/'reservation.json').write_bytes(m.canonical(dict(operation_id=name,source_sha=SHA)))
+                return value
+            binding=parent(profile['parent_operation_id'],'match-retained-acquire',dict(state='operator_dictionary_captured',
+                account='TOURVISOR_ANEX_JWT',bindings=[{'family':'biblio','operator_id':18}],unknown_http_calls=0))
+            profile['parent_evidence_sha256']=binding['match_retained']['evidence_sha256']
+            context={'adults':1,'child_ages_signature':'13','children_count':1,'country_id':1,
+                'departure_date':'2026-10-24','departure_id':11,'hotel_id':321,'nights':6,
+                'observed_at':'2026-10-08 00:57:29','source':'user_search'}
+            row=dict(tv_hotel_id=321,anchor_state='canonical_anchor_ok',target={'country_id':1,'is_active':1},
+                     accepted_provider_ids={'operator_5':['17678']},future_context=context)
+            if kind=='already':row['accepted_provider_ids']['bgoperator']=['old']
+            if kind=='wrong_party':row['future_context']['adults']=2
+            profile['target_row_sha256']=hashlib.sha256(m.canonical(row)).hexdigest()
+            current=parent(profile['current_operation_id'],'match-retained-current',dict(state='current_retained_read_only',rows=[row]))
+            profile['current_evidence_sha256']=current['match_retained']['evidence_sha256']
+            profile['current_receipt_sha256']=hashlib.sha256(m.canonical(current)).hexdigest()
+            if bad_parent:profile['parent_evidence_sha256']='0'*64
+            quota=q.Quota(home);quota.root.mkdir(parents=True);quota.path.write_bytes(q.encoded(dict(provider='tourvisor-anex',
+                provider_day=quota.day,physical_http_attempts=7,tariff_search_units=2,operations={'old':'unknown_no_replay'})))
+            quota.apply_policy()
+            hotel=home/'.anytoour-match/retained-selection-claims.json';hotel.write_text('{"old":"preserve"}')
+            ledger=home/'.anytoour-match/retained-context-claims.json'
+            oldclaim={'context':{'account':'TOURVISOR_ANEX_JWT','namespace':'anex_online','operator_id':13,'tv_hotel_id':321}}
+            ledger.write_bytes(m.canonical({'schema_version':1,'claims':{'old':oldclaim}}))
+            protected={p:p.read_bytes() for p in private.rglob('*') if p.is_file()}
+            protected[hotel]=hotel.read_bytes();protected[project/'config.php']=(project/'config.php').read_bytes()
+            space={};exec(m.BG_IDENTITY_HANDLER,space)
+            space.update(NEXT_SCOPE=profile,private=private,project=project,op=op,operation=op.name,
+                mode='match-retained-acquire',source=SHA,payload=dict(self.command(),match_retained_control_sha=CONTROL),
+                pathlib=__import__('pathlib'),hashlib=hashlib,json=json,time=__import__('time'),os=os,
+                fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)),
+                safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound)
+            values=[{'searchId':999},{'progress':100},[] if kind=='empty' else [{'id':321,'tours':[{'id':9991,'operatorId':18}]}],
+                    {'hotelId':321,'operatorId':13 if kind=='mismatch' else 18,
+                     'operatorLink':'https://www.bgoperator.ru/price.shtml?f4=10212345'}]
+            calls=[];self_case=self;real_loads=json.loads
+            class Response:
+                code=200
+                def __init__(self,body,index):self.body=body;self.index=index
+                def __enter__(self):return self
+                def __exit__(self,*args):return False
+                def read(self,n):
+                    if kind=='timeout' and self.index==2:raise TimeoutError('private-url-secret-sentinel')
+                    return self.body
+            class Opener:
+                def open(self,request,timeout):
+                    index=len(calls)+1;state=real_loads(quota.path.read_bytes())
+                    debit=state['physical_http_reservations'][op.name+':'+str(index)]
+                    self_case.assertEqual('reserved_unknown_no_replay',debit['state'])
+                    self_case.assertEqual(7+index,state['physical_http_attempts'])
+                    calls.append((request.full_url,timeout));return Response(json.dumps(values[index-1]).encode(),index)
+            def parse_check(body,*args,**kwargs):
+                if body in [json.dumps(v).encode() for v in values]:
+                    self.assertTrue(any(p.read_bytes()==body for p in op.glob('response-*.bin')))
+                return real_loads(body,*args,**kwargs)
+            with mock.patch.object(Path,'home',return_value=home),mock.patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'token',b'')), \
+                 mock.patch('urllib.request.build_opener',return_value=Opener()),mock.patch('time.sleep'),mock.patch.object(json,'loads',parse_check):
+                if bad_parent or kind in ('already','wrong_party'):
+                    before=ledger.read_bytes()
+                    with self.assertRaises(ValueError):space['retained_bg_identity'](SOURCE)
+                    self.assertEqual([],calls);self.assertEqual(before,ledger.read_bytes());return
+                out=space['retained_bg_identity'](SOURCE)
+                count=3 if kind=='empty' else 2 if kind=='timeout' else 4
+                self.assertEqual(count,len(calls))
+                query=__import__('urllib.parse',fromlist=['parse_qs','urlsplit'])
+                params=query.parse_qs(query.urlsplit(calls[0][0]).query)
+                for key,value in {'childs':['13'],'adults':['1'],'operatorIds':['18'],'hotelIds':['321'],
+                                  'dateFrom':['2026-10-24'],'dateTo':['2026-10-24'],'departureId':['11'],'countryId':['1']}.items():
+                    self.assertEqual(value,params[key])
+                self.assertTrue(all(0<t<=60 for _,t in calls))
+                self.assertEqual(protected,{p:p.read_bytes() for p in protected})
+                claims=real_loads(ledger.read_bytes());self.assertEqual(oldclaim,claims['claims']['old']);self.assertEqual(2,len(claims['claims']))
+                self.assertEqual('tourvisor_operator:18',next(v['context']['namespace'] for k,v in claims['claims'].items() if k!='old'))
+                self.assertNotIn('private-url-secret-sentinel',json.dumps(out))
+                self.assertNotIn('f4=',json.dumps(out))
+                self.assertFalse(out['data']['native_hotel_authority']);self.assertFalse(out['data']['safe_to_write_now'])
+                result=dict(self.command(),status='complete',production_unchanged=True,supplier_calls=count,
+                            database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,match_retained=out)
+                with mock.patch.dict(m.BG_IDENTITY_SCOPE,profile):
+                    good=kind in ('candidate','empty')
+                    self.assertEqual(good,m.completed_result(self.command(),result,CONTROL))
+                    if kind=='candidate':
+                        self.assertEqual(1,out['data']['native_candidate_count'])
+                        candidate=real_loads((op/'bg-native-candidate.json').read_bytes())
+                        self.assertEqual('operator_url:bgoperator.ru:f4',candidate['namespace'])
+                        self.assertTrue(candidate['independent_namespace_bridge_required'])
+                    if good:
+                        for key,value in [('supplier_calls',True),('physical_http_reservations',0),('unknown_http_calls',1),
+                            ('operator_id',13),('tv_hotel_id',129),('native_hotel_authority',True),('hotel_sales_access_proven',True),
+                            ('parent_evidence_sha256','0'*64),('context_claim_namespace','anex_online'),('target_row_sha256','0'*64),
+                            ('booking_calls',1),('lead_calls',1),
+                            ('actions',{'search_start':True,'search_status':1,'search_results':1}),('native_candidate_count',True)]:
+                            bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+                            bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
+                            with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
+                with self.assertRaisesRegex(ValueError,'bg_context_consumed_no_replay'):space['retained_bg_identity'](SOURCE)
+                self.assertEqual(count,len(calls))
+
+    def test_real_client_exact_family_wire_raw_first_and_candidate_namespace(self):self.run_case()
+    def test_zero_results_completes_without_detail_or_write(self):self.run_case('empty')
+    def test_unknown_stops_without_retry_and_wrong_detail_never_completes(self):
+        self.run_case('timeout');self.run_case('mismatch')
+    def test_bad_parent_existing_bg_and_changed_party_stop_before_network(self):
+        self.run_case(bad_parent=True);self.run_case('already');self.run_case('wrong_party')
+
+
 if __name__=='__main__':unittest.main()
 
 

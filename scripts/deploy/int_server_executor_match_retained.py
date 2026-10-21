@@ -107,6 +107,21 @@ OPERATOR_BINDING_FULL = {
     'parent_evidence_sha256': 'ea17686a3fb7c1a47fc349e3333f1fb24729c5f1a77bb2b6e6f3f27a6a707a10',
 }
 
+BG_IDENTITY_SCOPE = {
+    'cohort': 'biblio-menaville-family13-20261022',
+    'operation_id': 'int-andromeda-match-retained-acquire-20261022-v2',
+    'parent_operation_id': OPERATOR_BINDING_FULL['operation_id'],
+    'parent_evidence_sha256': 'ca613f2afe8ba344fdf57f1232ad174a42aea430ab44bbffa4a037b67a9f0291',
+    'current_operation_id': 'int-andromeda-match-retained-current-20261020-v2',
+    'current_receipt_sha256': '627aaba39d6ec77a2e0e986d524324cc262cf8fea4a50b1fe5203c0ecf6da7c9',
+    'current_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57',
+    'target_row_sha256': '1af1b88b0bfec19efe97c2575fb75a9f9dda3f4addf000cb68b517d402dbdc06',
+    'operator_id': 18, 'tv_hotel_id': 321,
+    'wire': {'departureId': 11, 'countryId': 1, 'dateFrom': '2026-10-24', 'dateTo': '2026-10-24',
+             'nightsFrom': 6, 'nightsTo': 6, 'adults': 1, 'childs': [13],
+             'currency': 'RUB', 'onlyCharter': False, 'operatorIds': [18], 'hotelIds': [321]},
+}
+
 
 def need(value, reason):
     if not value:
@@ -242,8 +257,8 @@ def register_parser(core):
             need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
             return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
                         cohort=parts[3], target_operation_id=parts[4])
-        if len(parts) >= 4 and parts[3] in (OPERATOR_BINDING['cohort'], OPERATOR_BINDING_FULL['cohort']):
-            profile = OPERATOR_BINDING_FULL if parts[3] == OPERATOR_BINDING_FULL['cohort'] else OPERATOR_BINDING
+        if len(parts) >= 4 and parts[3] in (OPERATOR_BINDING['cohort'], OPERATOR_BINDING_FULL['cohort'], BG_IDENTITY_SCOPE['cohort']):
+            profile = BG_IDENTITY_SCOPE if parts[3] == BG_IDENTITY_SCOPE['cohort'] else OPERATOR_BINDING_FULL if parts[3] == OPERATOR_BINDING_FULL['cohort'] else OPERATOR_BINDING
             need(len(parts) == 5 and parts[1] == 'match-retained-acquire'
                  and parts[2] == profile['operation_id']
                  and parts[4] == profile['parent_operation_id'], 'operator_dictionary_scope')
@@ -1391,6 +1406,169 @@ def retained_operator_dictionary(stage):
 '''
 
 
+BG_IDENTITY_HANDLER = r'''
+def retained_bg_identity(stage):
+    import importlib.util
+    import sys
+    import fcntl
+    import datetime
+    profile = NEXT_SCOPE
+    def canonical(value): return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+    def digest(value): return hashlib.sha256(canonical(value)).hexdigest()
+    def unique(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out: raise ValueError('bg_duplicate_json_key')
+            out[key] = value
+        return out
+    protected = {}
+    def retained(path, limit=32*1024*1024):
+        if not safe_file(path, limit) or path.resolve() != path or path.stat().st_nlink != 1:
+            fail('bg_protected_path')
+        before = path.stat(); body = path.read_bytes(); after = path.stat()
+        signature = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+        if signature(before) != signature(after) or len(body) != after.st_size: fail('bg_protected_drift')
+        protected[path] = (hashlib.sha256(body).hexdigest(), signature(after))
+        return body
+    def receipt(name, mode_name, evidence, receipt_hash=None):
+        directory = private/name
+        if directory.is_symlink() or directory.resolve() != directory: fail('bg_parent_path')
+        parent = json.loads(retained(directory/'result.json'), object_pairs_hook=unique)
+        reservation = json.loads(retained(directory/'reservation.json', 65536), object_pairs_hook=unique)
+        data = parent.get('match_retained', {}).get('data', {})
+        if (parent.get('status') != 'complete' or parent.get('mode') != mode_name
+                or parent.get('production_unchanged') is not True or digest(data) != evidence
+                or parent.get('match_retained', {}).get('evidence_sha256') != evidence
+                or (receipt_hash is not None and digest(parent) != receipt_hash)
+                or any(x.get('operation_id') != name for x in (parent, reservation, data))
+                or any(x.get('source_sha') != reservation.get('source_sha') for x in (parent, data))):
+            fail('bg_parent_binding')
+        return data
+    if (mode != 'match-retained-acquire' or operation != profile['operation_id']
+            or payload.get('cohort') != profile['cohort'] or payload.get('target_operation_id') != profile['parent_operation_id']):
+        fail('bg_fixed_scope')
+    binding = receipt(profile['parent_operation_id'], 'match-retained-acquire', profile['parent_evidence_sha256'])
+    if (binding.get('state') != 'operator_dictionary_captured' or binding.get('account') != 'TOURVISOR_ANEX_JWT'
+            or {'family': 'biblio', 'operator_id': profile['operator_id']} not in binding.get('bindings', [])
+            or type(binding.get('unknown_http_calls')) is not int or binding['unknown_http_calls'] != 0): fail('bg_operator_binding')
+    current = receipt(profile['current_operation_id'], 'match-retained-current', profile['current_evidence_sha256'], profile['current_receipt_sha256'])
+    rows = [r for r in current.get('rows', []) if r.get('tv_hotel_id') == profile['tv_hotel_id']]
+    if len(rows) != 1 or digest(rows[0]) != profile['target_row_sha256']: fail('bg_target_row')
+    row = rows[0]; context = row.get('future_context', {}); wire = profile['wire']
+    if (row.get('anchor_state') != 'canonical_anchor_ok' or row.get('target', {}).get('country_id') != 1
+            or row.get('target', {}).get('is_active') != 1
+            or any(row.get('accepted_provider_ids', {}).get(ns) for ns in ('bgoperator', 'operator_115'))): fail('bg_target_already_bound_or_invalid')
+    if (context != {'adults': 1, 'child_ages_signature': '13', 'children_count': 1, 'country_id': 1,
+                    'departure_date': '2026-10-24', 'departure_id': 11, 'hotel_id': 321, 'nights': 6,
+                    'observed_at': '2026-10-08 00:57:29', 'source': 'user_search'}
+            or datetime.datetime.now(datetime.timezone.utc).date().isoformat() > wire['dateFrom']): fail('bg_saved_party_or_date')
+    home = pathlib.Path.home()
+    retained(project/'config.php', 1048576)
+    retained(home/'.anytoour-match/retained-selection-claims.json', 8*1024*1024)
+    ledger = home/'.anytoour-match/retained-context-claims.json'
+    if ledger.is_symlink() or ledger.resolve() != ledger or not safe_file(ledger, 8*1024*1024): fail('bg_context_path')
+    identity = {'account': 'TOURVISOR_ANEX_JWT', 'namespace': 'tourvisor_operator:18',
+                'operator_id': 18, 'tv_hotel_id': 321, 'wire': wire}
+    with os.fdopen(os.open(ledger, os.O_RDWR | os.O_NOFOLLOW), 'r+b') as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        opened = os.fstat(handle.fileno()); named = ledger.lstat()
+        if (opened.st_nlink != 1 or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino)
+                or ledger.is_symlink() or ledger.resolve() != ledger): fail('bg_context_path')
+        old = handle.read(8*1024*1024+1)
+        if len(old) > 8*1024*1024: fail('bg_context_bound')
+        claims = json.loads(old, object_pairs_hook=unique)
+        if type(claims.get('schema_version')) is not int or claims['schema_version'] != 1 or not isinstance(claims.get('claims'), dict): fail('bg_context_shape')
+        key = digest(identity)
+        if key in claims['claims']: fail('bg_context_consumed_no_replay')
+        for prior in claims['claims'].values():
+            c = prior.get('context', {})
+            if c.get('account') == identity['account'] and c.get('operator_id') == 18 and c.get('tv_hotel_id') == 321:
+                fail('bg_prior_target_claim')
+        claims['claims'][key] = {'context': identity, 'operation_id': operation, 'state': 'reserved_before_http_no_replay'}
+        encoded = canonical(claims); handle.seek(0); handle.write(encoded); handle.truncate(); handle.flush(); os.fsync(handle.fileno())
+        handle.seek(0)
+        if handle.read() != encoded: fail('bg_context_write_unknown_no_replay')
+        written = os.fstat(handle.fileno())
+        context_signature = (written.st_dev, written.st_ino, written.st_size, written.st_mtime_ns, written.st_ctime_ns)
+        directory_fd = os.open(ledger.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try: os.fsync(directory_fd)
+        finally: os.close(directory_fd)
+    context_hash = hashlib.sha256(encoded).hexdigest()
+    sys.path.insert(0, str(stage/'scripts/diagnostics'))
+    spec = importlib.util.spec_from_file_location('bg_existing_acquisition', stage/'scripts/diagnostics/hotel_match_retained_acquire_v1.py')
+    helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper)
+    shape = helper.shape
+    import hotel_match_retained_projection_v1 as projection
+    client = helper.Client(home, project, op, operation)
+    client.http_maximum = 6; client.search_start_maximum = 1; client.deadline = time.monotonic()+60
+    outcome = dict(state='bg_offer_identity_partial_no_replay', search_complete=False, operator_offer_observed=False,
+                   detail_identity_verified=False, native_candidate_count=0, native_candidate_namespace=None,
+                   native_candidate_id_sha256=None, operator_link_state='not_observed', stop_reason=None)
+    raws = []
+    def call(action, path, params):
+        status, value, raw = client.call(action, path, params); raws.append(raw)
+        body = retained(op/('response-%04d.bin' % raw['response_number']), helper.BODY_LIMIT)
+        if hashlib.sha256(body).hexdigest() != raw['raw_sha256']: fail('bg_raw_digest')
+        return status, json.loads(body, object_pairs_hook=unique)
+    try:
+        _, start = call('search_start', '/tours/search', wire); start = shape.unwrap(start)
+        sid = shape.num(start.get('searchId') or start.get('id')) if isinstance(start, dict) else None
+        if sid is None: raise ValueError('bg_search_id_missing')
+        for delay in (2, 4, 7):
+            time.sleep(delay)
+            _, status = call('search_status', '/tours/search/%s/status' % sid, {'operatorStatus': False})
+            if shape.ready(status): outcome['search_complete'] = True; break
+        if not outcome['search_complete']: raise ValueError('bg_search_not_complete')
+        _, found = call('search_results', '/tours/search/%s' % sid, {'limit': 10000})
+        hotels = [h for h in shape.hotel_rows(found) if isinstance(h, dict) and shape.num(h.get('id')) == 321]
+        if len(hotels) > 1: raise ValueError('bg_duplicate_target')
+        tours = [t for h in hotels for t in h.get('tours', []) if isinstance(t, dict) and shape.ident(t, 'operator') == 18
+                 and shape.num(t.get('id') or t.get('tourId'))]
+        if tours:
+            outcome['operator_offer_observed'] = True
+            tid = shape.num(tours[0].get('id') or tours[0].get('tourId'))
+            status, detail = call('tour_detail', '/tours/%s' % tid, {'currency': 'RUB'})
+            detail = shape.unwrap(detail)
+            if status != 200 or not isinstance(detail, dict) or shape.ident(detail, 'hotel') != 321 or shape.ident(detail, 'operator') != 18:
+                raise ValueError('bg_detail_identity_mismatch')
+            outcome['detail_identity_verified'] = True
+            url = detail.get('operatorLink'); candidates = projection.native_link(url)
+            candidates = [c for c in candidates if c['namespace'] == 'operator_url:bgoperator.ru:f4']
+            outcome['operator_link_state'] = 'url_native_candidate' if candidates else 'no_proven_native_identifier'
+            if len(candidates) == 1:
+                candidate = candidates[0]
+                helper.save_json(op/'bg-native-candidate.json', dict(candidate, tv_hotel_id=321, operator_id=18,
+                    source_raw=raws[-1], native_hotel_authority=False, independent_namespace_bridge_required=True))
+                outcome.update(native_candidate_count=1, native_candidate_namespace=candidate['namespace'],
+                    native_candidate_id_sha256=hashlib.sha256(candidate['external_id'].encode()).hexdigest())
+        outcome['state'] = 'bg_offer_identity_completed_read_only'
+    except Exception as error:
+        # Supplier exception text/URLs/values never enter the public receipt.
+        allowed = {'bg_search_id_missing', 'bg_search_not_complete', 'bg_duplicate_target', 'bg_detail_identity_mismatch'}
+        outcome['stop_reason'] = str(error) if str(error) in allowed else type(error).__name__
+    for path, (expected, signature) in protected.items():
+        st = path.stat()
+        if (not safe_file(path, 32*1024*1024) or path.resolve() != path or st.st_nlink != 1
+                or hashlib.sha256(path.read_bytes()).hexdigest() != expected
+                or (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns) != signature): fail('bg_protected_drift')
+    stat = ledger.stat()
+    if (not safe_file(ledger, 8*1024*1024) or ledger.is_symlink() or ledger.resolve() != ledger or stat.st_nlink != 1
+            or (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns) != context_signature
+            or hashlib.sha256(ledger.read_bytes()).hexdigest() != context_hash): fail('bg_context_drift')
+    outcome.update(operation_id=operation, source_sha=source, control_source_sha=payload['match_retained_control_sha'],
+        cohort=payload['cohort'], target_operation_id=profile['parent_operation_id'],
+        parent_evidence_sha256=profile['parent_evidence_sha256'], current_evidence_sha256=profile['current_evidence_sha256'],
+        target_row_sha256=profile['target_row_sha256'], account='TOURVISOR_ANEX_JWT', operator_id=18, tv_hotel_id=321,
+        context_reservation_sha256=context_hash, context_claim_namespace='tourvisor_operator:18', raw_responses=raws,
+        supplier_calls=client.calls, physical_http_reservations=client.reserved, unknown_http_calls=client.unknown,
+        tariff_search_units=client.tariff, actions=dict(client.counts), database_writes=0, mapping_writes=0, booking_calls=0, lead_calls=0,
+        new_database_reads=0, new_accepted_mappings=0, native_hotel_authority=False, hotel_sales_access_proven=False,
+        safe_to_write_now=False, no_replay=True, protected_inputs_unchanged=True, global_usage='not_measured')
+    helper.save_bytes(op/'retained-evidence.json', canonical(outcome))
+    return {'data': outcome, 'evidence_sha256': digest(outcome)}
+'''
+
+
 def full_operator_binding_handler():
     # Preserve the consumed filtered operation's generated bytes. OpenAPI 1.2.4
     # defines the unfiltered endpoint as the full active operator dictionary.
@@ -1632,7 +1810,64 @@ def completed_operator_dictionary(command, result, control_sha, profile=None):
         return False
 
 
+def completed_bg_identity(command, result, control_sha):
+    try:
+        p = BG_IDENTITY_SCOPE; d = result['match_retained']['data']
+        if (command.get('mode') != 'match-retained-acquire' or command.get('cohort') != p['cohort']
+                or command.get('operation_id') != p['operation_id'] or command.get('target_operation_id') != p['parent_operation_id']): return False
+        for key in ('mode', 'source_sha', 'operation_id'):
+            if result.get(key) != command.get(key): return False
+        for key in ('source_sha', 'operation_id', 'cohort', 'target_operation_id'):
+            if d.get(key) != command.get(key): return False
+        if (result.get('status') != 'complete' or result.get('production_unchanged') is not True
+                or d.get('control_source_sha') != control_sha or d.get('state') != 'bg_offer_identity_completed_read_only'
+                or d.get('search_complete') is not True or d.get('stop_reason') is not None
+                or d.get('account') != 'TOURVISOR_ANEX_JWT' or type(d.get('operator_id')) is not int or d['operator_id'] != 18
+                or type(d.get('tv_hotel_id')) is not int or d['tv_hotel_id'] != 321
+                or any(d.get(k) != p[k] for k in ('parent_evidence_sha256','current_evidence_sha256','target_row_sha256'))
+                or d.get('context_claim_namespace') != 'tourvisor_operator:18'
+                or not re.fullmatch('[a-f0-9]{64}', str(d.get('context_reservation_sha256', '')))): return False
+        actions = d.get('actions', {})
+        if (not isinstance(actions, dict) or not set(actions).issubset({'search_start','search_status','search_results','tour_detail'})
+                or any(type(v) is not int for v in actions.values()) or actions.get('search_start') != 1
+                or actions.get('search_results') != 1 or not 1 <= actions.get('search_status', 0) <= 3
+                or actions.get('tour_detail', 0) not in (0,1)): return False
+        count = sum(actions.values())
+        for obj in (result, d):
+            for key in ('database_writes','mapping_writes','booking_calls','lead_calls'):
+                if type(obj.get(key)) is not int or obj[key] != 0: return False
+            if type(obj.get('supplier_calls')) is not int or obj['supplier_calls'] != count: return False
+        for key, expected in [('physical_http_reservations',count),('tariff_search_units',1),('unknown_http_calls',0),
+                              ('new_database_reads',0),('new_accepted_mappings',0)]:
+            if type(d.get(key)) is not int or d[key] != expected: return False
+        if not 3 <= count <= 6: return False
+        for key in ('native_hotel_authority','hotel_sales_access_proven','safe_to_write_now'):
+            if d.get(key) is not False: return False
+        for key in ('no_replay','protected_inputs_unchanged'):
+            if d.get(key) is not True: return False
+        offer = d.get('operator_offer_observed'); detail = d.get('detail_identity_verified')
+        if type(offer) is not bool or detail is not offer or actions.get('tour_detail',0) != int(offer): return False
+        candidates = d.get('native_candidate_count')
+        if type(candidates) is not int or candidates not in (0,1) or (candidates and not offer): return False
+        if candidates:
+            if (d.get('native_candidate_namespace') != 'operator_url:bgoperator.ru:f4'
+                    or d.get('operator_link_state') != 'url_native_candidate'
+                    or not re.fullmatch('[a-f0-9]{64}',str(d.get('native_candidate_id_sha256','')))): return False
+        elif (d.get('native_candidate_namespace') is not None or d.get('native_candidate_id_sha256') is not None
+              or d.get('operator_link_state') != ('no_proven_native_identifier' if offer else 'not_observed')): return False
+        raws = d.get('raw_responses')
+        if not isinstance(raws,list) or len(raws) != count: return False
+        for i, raw in enumerate(raws,1):
+            if (not isinstance(raw,dict) or set(raw) != {'response_number','raw_sha256'}
+                    or type(raw['response_number']) is not int or raw['response_number'] != i
+                    or not re.fullmatch('[a-f0-9]{64}',str(raw['raw_sha256']))): return False
+        return d.get('global_usage') == 'not_measured' and result['match_retained'].get('evidence_sha256') == hashlib.sha256(canonical(d)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError): return False
+
+
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == BG_IDENTITY_SCOPE['cohort']:
+        return completed_bg_identity(command, result, control_sha)
     if command.get('cohort') in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort']):
         return completed_binding_reconciliation(command, result, control_sha)
     if command.get('cohort') == OPERATOR_BINDING['cohort']:
@@ -1745,9 +1980,10 @@ def activate(core, command):
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
     reconciliation_v2 = command.get('cohort') == BINDING_RECONCILIATION_V2['cohort']
     reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort'] or reconciliation_v2
+    bg_identity = command.get('cohort') == BG_IDENTITY_SCOPE['cohort']
     binding_full = command.get('cohort') == OPERATOR_BINDING_FULL['cohort']
     binding = command.get('cohort') == OPERATOR_BINDING['cohort'] or binding_full
-    policy = BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING_FULL if binding_full else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
+    policy = BG_IDENTITY_SCOPE if bg_identity else BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING_FULL if binding_full else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
     handler = REMOTE_HANDLER
     if reconciliation:
@@ -1760,6 +1996,11 @@ def activate(core, command):
         need(handler.count(anchor) == 1, 'operator_dictionary_dispatch_anchor')
         handler = handler.replace(anchor, "    if mode=='match-retained-acquire':return retained_operator_dictionary(stage)", 1)
         handler += full_operator_binding_handler() if binding_full else OPERATOR_BINDING_HANDLER
+    if bg_identity:
+        anchor = "    if mode=='match-retained-acquire':return acquire_retained_target(stage)"
+        need(handler.count(anchor) == 1, 'bg_identity_dispatch_anchor')
+        handler = handler.replace(anchor, "    if mode=='match-retained-acquire':return retained_bg_identity(stage)", 1)
+        handler += BG_IDENTITY_HANDLER
     remote=remote.replace(anchors['definition'],'RETAINED_MODES='+repr(MODES)+'\nNEXT_SCOPE='+repr(policy)+'\nSAVED_DETAIL_READBACKS='+repr(SAVED_DETAIL_READBACKS)+'\nTRANSPORT_DIAGNOSTIC='+repr(TRANSPORT_DIAGNOSTIC)+'\nPROOF_SOURCE_INSPECTION='+repr(PROOF_SOURCE_INSPECTION)+'\n'+handler+'\n'+anchors['definition'],1)
     remote=remote.replace(anchors['dispatch'],REMOTE_DISPATCH+anchors['dispatch'],1)
     remote=remote.replace(anchors['collector'],"    if mode not in ('match-retained-intake','match-tourvisor-quota-policy','match-retained-readback','match-retained-project','match-retained-current','match-retained-acquire','match-retained-anex-write','match-retained-anex-write-v2','reconcile',")
