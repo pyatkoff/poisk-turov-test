@@ -60,12 +60,27 @@ rendered-матрица, независимый просмотр кадров и
 
 ### Текущая точка и выполненная работа
 
-Приоритет владельца 21.10: объединить питание в фильтрах через LOCAL.
+Поручение владельца 21.10 — объединить питание в фильтрах через LOCAL;
+реализация опубликована одним пакетом. Его конечное закрытие определяется
+actual installed приёмкой ниже, а не фактом merge или публикации.
 Тестовую отправку заявки и физический Safari владелец отложил; они не являются
 текущей работой или условием продолжения. Новые supplier-запросы для фильтров
 не нужны: проверка использует сохранённые предложения и deterministic fixtures.
 
-- Установлен source `09f5e18d5eb40f4f62bb723a9fd9e4092f784060`, runtime release
+- Установлен source `4442cec9921d0888b43cc7a7137385f1e6223c48`, runtime release
+  `43c6a56e06a7fd634a603e24a890f745c5e49773`, publish run `39518137791`.
+  855 файлов; target digest
+  `45ca6fe2db4d700607442a71e32892724ff60e9dcba45eebd24ecd751c3ae741`,
+  native manifest `839d40fef279afee958d447858eada8bfac5e536b99b7b76d7bf34d22f8f1d67`.
+  Фактический terminal/readback и освобождение publisher/main window:
+  [6304609116](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6304609116).
+  Source PR4771 и controller PR4774 приняты; actual source artifact
+  `12308015603` / native CI `39514687859` содержит 123 compiled кадра,
+  включая шесть новых состояний питания на 430/1280@100.
+  Точная runtime-дельта к сохранённому 09f5 — шесть файлов: LOCAL helper,
+  его generated size ledger, native bridge/frontend/viewport/source manifest.
+  Runtime операция завершена/consumed/no-replay; QA-only изменения её не повторяют.
+- Предшествующая поставка: source `09f5e18d5eb40f4f62bb723a9fd9e4092f784060`, runtime release
   `d8dab6b8748d70a0892b5b0c065c9de4b2676b4f`, publish run `39458975873`.
   855 файлов; target digest
   `da2c706bf0faa2c72421a746c26566b82db3843e8f30b5a7f163625e6e301b7b`.
@@ -159,12 +174,12 @@ FUN&SUN-контекст выше не доказывает устранение
 Sites204-пробы и не создавать новый транспорт ради снимка; готовность всего
 проекта и 9,5 из контролируемых кадров не выводятся.
 
-### Активный пакет — группы питания LOCAL
+### Опубликованный пакет — группы питания LOCAL
 
 `native-meal-families-20261021-v1`, паспорт/точные writers:
 [6303618597](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6303618597).
-Текущий плоский фильтр смешивает canonical типы с необработанными названиями;
-последние также не восстанавливаются через canonical URL/form intent.
+Плоский фильтр заменён компактными группами canonical планов;
+необработанные названия не становятся canonical URL/form intent.
 LOCAL предоставляет чистые метаданные групп из существующей собственной taxonomy
 `family_code`; native не добавляет переводы, aliases или supplier-маппинг.
 Основные группы компактны, точный вариант доступен внутри группы. Сохранённые
@@ -184,10 +199,32 @@ LOCAL предоставляет чистые метаданные групп и
    CI/review на 430/1280@100 → одна штатная публикация → actual installed приёмка.
    API/DB/provider/money/fuel/CRM/Metrika и остальные preview не меняются.
 
+Конечный postinstalled carrier — существующий
+`tests/search3-design-v2-native-installed.cjs --meal-only`, ветка
+`test/design-v2-installed-meals-20261021`, точный QA claim
+[6304165376](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6304165376).
+Он проверяет только шесть изменённых actual installed кадров на 430/1280@100,
+реальный hash-verified LOCAL helper и явные fictional canonical data:
+объединение 3 уникальных отелей против суммы дочерних 4, partial 2,
+same-offer minimum 120000, canonical URL, Apply/Cancel, 430↔1280 и Back/Forward,
+сохранённые exact offer/112000/flight0/избранное и 0 дополнительных операций.
+Старые 24 installed кадра и завершённые supplier-контексты не повторяются.
+Реальная API/supplier/analytics/lead активность — 0; это не live availability.
+
+**Условие закрытия этого пакета:** в #4709 есть final actual installed ACCEPT
+для source4442/publish39518137791, зелёный exact-head QA, равенство всех 855
+compiled runtime bytes продукту и независимый source/pins/шести installed кадров
+review. При выполнении этого условия пакет ЗАВЕРШЁН/NO REPLAY; не открывать его
+заново ради очередного запуска или статуса. Если такого terminal ещё нет,
+продолжать только указанную конечную QA-приёмку в существующем claim,
+без новой публикации, нового supplier/device запроса или повторного общего аудита.
+
 ### Конечный порядок доводки до 9,5
 
-После actual installed приёмки активного пакета обновить затронутый evidence
-в существующей SEARCH-QUALITY-1 и записать конкретный остаток.
+После actual installed приёмки опубликовать одну запись затронутой дельты
+source4442/publish39518137791 в существующей SEARCH-QUALITY-1/#1646 и записать
+конкретный остаток. Если final delta уже записана, этот оценочный шаг закрыт:
+не повторять завершённый аудит09f5 или всю таблицу ради статуса.
 Переиспользовать неизменённые доказательства; новый материал получать только для
 точного непроверенного критерия. Новый пакет нужен лишь при подтверждённом
 существенном дефекте; не начинать повторные общие аудиты или мелкие выпуски.
