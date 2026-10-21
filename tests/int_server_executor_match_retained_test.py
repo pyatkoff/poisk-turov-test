@@ -1964,13 +1964,21 @@ class BindingFailureReconciliationV2Test(BindingFailureReconciliationTest):
 
 
 class OperatorDictionaryTest(unittest.TestCase):
+    profile_name = 'OPERATOR_BINDING'
+    parent_mode = 'match-retained-current'
+    parent_state = 'current_retained_read_only'
+    expected_url = '/operators?departureId=1&countryId=1'
+
+    def profile(self):
+        return getattr(m, self.profile_name)
+
     def parser(self):
         c=core();m.register_parser(c);return c
 
     def command(self):
         return dict(source_sha=SHA, mode='match-retained-acquire',
-            operation_id=m.OPERATOR_BINDING['operation_id'], cohort=m.OPERATOR_BINDING['cohort'],
-            target_operation_id=m.OPERATOR_BINDING['parent_operation_id'])
+            operation_id=self.profile()['operation_id'], cohort=self.profile()['cohort'],
+            target_operation_id=self.profile()['parent_operation_id'])
 
     def space(self):
         space={};exec(m.OPERATOR_BINDING_HANDLER,space);return space
@@ -2006,15 +2014,15 @@ class OperatorDictionaryTest(unittest.TestCase):
             with self.subTest(value=value),self.assertRaises(ValueError):parse(value)
         self.assertEqual([],parse([{'id':25,'name':'Библио-Глобус UNKNOWN VARIANT'}]))
 
-    def _dictionary_case(self, supplied_body=None, timeout=False):
+    def _dictionary_case(self, supplied_body=None, timeout=False, bad_parent=False, missing_day=False):
         with tempfile.TemporaryDirectory() as td:
             home=Path(td);project=home/'project';project.mkdir();(project/'config.php').write_text('private-config')
-            private=home/'private';private.mkdir();op=private/m.OPERATOR_BINDING['operation_id'];op.mkdir()
-            parent_dir=private/m.OPERATOR_BINDING['parent_operation_id'];parent_dir.mkdir()
-            parent_data=dict(state='current_retained_read_only',operation_id=parent_dir.name,source_sha=SHA,
+            private=home/'private';private.mkdir();op=private/self.profile()['operation_id'];op.mkdir()
+            parent_dir=private/self.profile()['parent_operation_id'];parent_dir.mkdir()
+            parent_data=dict(state=self.parent_state,operation_id=parent_dir.name,source_sha=SHA,
                              supplier_calls=0,database_writes=0,mapping_writes=0)
             digest=hashlib.sha256(m.canonical(parent_data)).hexdigest()
-            parent=dict(status='complete',mode='match-retained-current',production_unchanged=True,
+            parent=dict(status='complete',mode=self.parent_mode,production_unchanged=True,
                         operation_id=parent_dir.name,source_sha=SHA,supplier_calls=0,database_writes=0,mapping_writes=0,
                         match_retained=dict(data=parent_data,evidence_sha256=digest))
             (parent_dir/'result.json').write_bytes(m.canonical(parent))
@@ -2027,7 +2035,12 @@ class OperatorDictionaryTest(unittest.TestCase):
             protected={path:path.read_bytes() for path in [project/'config.php',parent_dir/'result.json',
                 parent_dir/'reservation.json',home/'.anytoour-match/retained-selection-claims.json',
                 home/'.anytoour-match/retained-context-claims.json']}
-            profile=dict(m.OPERATOR_BINDING,parent_evidence_sha256=digest)
+            profile=dict(self.profile(),parent_evidence_sha256=digest)
+            if bad_parent:
+                parent['mode']='match-retained-current'
+                (parent_dir/'result.json').write_bytes(m.canonical(parent))
+                protected[parent_dir/'result.json']=(parent_dir/'result.json').read_bytes()
+            if missing_day:quota.path.unlink()
             space=self.space();space.update(NEXT_SCOPE=profile,private=private,project=project,op=op,
                 mode='match-retained-acquire',operation=op.name,source=SHA,
                 payload=dict(self.command(),match_retained_control_sha=CONTROL),
@@ -2058,8 +2071,14 @@ class OperatorDictionaryTest(unittest.TestCase):
             with mock.patch.object(Path,'home',return_value=home), \
                  mock.patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'private-token',b'')), \
                  mock.patch('urllib.request.build_opener',return_value=Opener()),mock.patch.object(json,'loads',check_parse):
+                if bad_parent or missing_day:
+                    with self.assertRaises(ValueError if bad_parent else FileNotFoundError):
+                        space['retained_operator_dictionary'](SOURCE)
+                    self.assertEqual([],calls)
+                    self.assertFalse((op/'response-0001.bin').exists())
+                    return
                 out=space['retained_operator_dictionary'](SOURCE)
-            self.assertEqual([(a.BASE+'/operators?departureId=1&countryId=1',60)],calls)
+            self.assertEqual([(a.BASE+self.expected_url,60)],calls)
             self.assertEqual(protected,{path:path.read_bytes() for path in protected})
             if timeout:self.assertFalse((op/'response-0001.bin').exists())
             else:
@@ -2071,7 +2090,7 @@ class OperatorDictionaryTest(unittest.TestCase):
                              after['physical_http_reservations'][op.name+':1']['state'])
             result=dict(self.command(),status='complete',production_unchanged=True,supplier_calls=1,
                         database_writes=0,mapping_writes=0,match_retained=out)
-            with mock.patch.dict(m.OPERATOR_BINDING,profile):
+            with mock.patch.dict(self.profile(),profile):
                 if supplied_body is not None or timeout:
                     self.assertEqual('operator_dictionary_failed_no_replay',out['data']['state'])
                     self.assertEqual(1 if timeout else 0,out['data']['unknown_http_calls'])
@@ -2101,9 +2120,33 @@ class OperatorDictionaryTest(unittest.TestCase):
         with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
         ast.parse(c.REMOTE)
         self.assertIn("if mode=='match-retained-acquire':return retained_operator_dictionary(stage)",c.REMOTE)
-        self.assertIn('NEXT_SCOPE='+repr(m.OPERATOR_BINDING),c.REMOTE)
+        self.assertIn('NEXT_SCOPE='+repr(self.profile()),c.REMOTE)
         self.assertEqual(m.SOURCE_HASHES,c.bundle_source(SOURCE)[1])
         self.assertEqual(CONTROL,cmd['match_retained_control_sha'])
+
+class FullOperatorDictionaryTest(OperatorDictionaryTest):
+    profile_name = 'OPERATOR_BINDING_FULL'
+    parent_mode = 'match-retained-readback'
+    parent_state = 'binding_failure_reconciled_before_supplier_call'
+    expected_url = '/operators'
+
+    def space(self):
+        space={};exec(m.full_operator_binding_handler(),space);return space
+
+    def test_current_snapshot_or_missing_day_cannot_trigger_http(self):
+        self._dictionary_case(bad_parent=True)
+        self._dictionary_case(missing_day=True)
+
+    def test_new_scope_cannot_use_consumed_filtered_command_or_parent(self):
+        c=self.parser();cmd=self.command()
+        for key,value in [('target_operation_id',m.OPERATOR_BINDING['parent_operation_id']),
+                          ('operation_id',m.OPERATOR_BINDING['operation_id']),
+                          ('cohort',m.OPERATOR_BINDING['cohort'])]:
+            bad=dict(cmd);bad[key]=value
+            with self.subTest(key=key),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad.values()))
+        self.assertNotIn("client.call('dictionary', '/operators', {'departureId'",m.full_operator_binding_handler())
+        self.assertIn("dictionary_scope={'kind': 'all_active_operators'}",m.full_operator_binding_handler())
+
 
 if __name__=='__main__':unittest.main()
 
