@@ -1116,7 +1116,38 @@ function anytour_anex_search3_expand_failure_reply(array $request, array $sessio
     return $extra;
 }
 
-/** Read retained calculation diagnostics only; never return supplier/session identifiers. */
+/** Aggregate the current retained first page without exposing its private digest. */
+function anytour_anex_search3_retained_page_receipt(array $session): ?array
+{
+    $state = $session['offer_context'] ?? null;
+    $snapshot = $state['gateway']['search'] ?? null;
+    $saved = $state['gateway']['saved_offers'] ?? null;
+    if (!is_array($state) || !is_int($state['generation'] ?? null) || $state['generation'] < 1
+        || !is_array($snapshot) || ($snapshot['schema_version'] ?? null) !== 1 || !is_array($saved)
+        || !is_string($saved['search_ref'] ?? null)
+        || preg_match('/\A[a-f0-9]{32}\z/D', $saved['search_ref']) !== 1
+        || !is_array($snapshot['context'] ?? null) || !is_array($saved['search'] ?? null)
+        || !is_array($snapshot['offers'] ?? null) || !array_is_list($snapshot['offers'])
+        || count($snapshot['offers']) > 300) return null;
+    try {
+        if (anytour_anex_normalizer_context($snapshot['context']) !== anytour_anex_normalizer_context($saved['search'])) return null;
+    } catch (InvalidArgumentException $ignored) { return null; }
+    $page = $snapshot['pagination'] ?? null;
+    if (!is_array($page) || ($page['pages_read'] ?? null) !== 1
+        || !in_array($page['state'] ?? null, ['available', 'exhausted'], true)
+        || !is_array($page['page_digests'] ?? null) || !array_is_list($page['page_digests'])
+        || count($page['page_digests']) !== 1 || !is_string($page['page_digests'][0])
+        || preg_match('/\A[a-f0-9]{64}\z/D', $page['page_digests'][0]) !== 1) return null;
+    // AnyTourAnexSearch hashes the raw rows before normalization or hotel filtering.
+    $empty = hash_equals(hash('sha256', '[]'), $page['page_digests'][0]);
+    $count = count($snapshot['offers']);
+    if ($empty && ($count !== 0 || $page['state'] !== 'exhausted')) return null;
+    return ['raw_rows' => $empty ? 'empty' : 'nonempty', 'retained_offers' => $count,
+        'interpretation' => $empty ? 'empty_supplier_page'
+            : ($count === 0 ? 'rows_rejected_or_filtered' : 'offers_retained')];
+}
+
+/** Read regular own-session aggregates only; never return supplier/session identifiers. */
 function anytour_anex_search3_quote_receipt(array $session): array
 {
     $attempts = $session['offer_context']['package_quotes'] ?? [];
@@ -1174,7 +1205,10 @@ function anytour_anex_search3_quote_receipt(array $session): array
         }
         $records[] = $record;
     }
-    return ['retained_only' => true, 'supplier_calls' => 0, 'records' => $records];
+    $receipt = ['retained_only' => true, 'supplier_calls' => 0, 'records' => $records];
+    $page = anytour_anex_search3_retained_page_receipt($session);
+    if ($page !== null) $receipt['retained_first_page'] = $page;
+    return $receipt;
 }
 
 function anytour_anex_search3_http(): void

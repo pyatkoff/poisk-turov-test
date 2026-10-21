@@ -84,6 +84,16 @@ non-infant behavior is preserved. Only the existing explicit RUB gross calcfull
 total can verify the entire party; separate infant fee remains unknown. No APD,
 fuel, currency, booking, personal-data write or additional endpoint is introduced.
 
+The existing own-session `quote_receipt` can additionally report a validated
+`retained_first_page` aggregate. It compares the already retained pre-normalization
+raw-row digest with SHA256 of `[]`; the digest itself and supplier identifiers
+never leave the server. An empty raw page is distinguished from a nonempty page
+with no retained offers (rows rejected or hotel-filtered). It cannot identify the
+individual rejection, raw party counters, HTTP timing, market availability or a
+root cause. Missing, malformed, continued or blocked snapshots omit this field:
+unknown is not empty. This diagnostic read does not renew expiry, start requests,
+create quote authority or reopen any attempt. No new endpoint or query is added.
+
 ## Bounded repeated pricing — owner authorization 2026-10-07
 
 Only newly created version-2 attempts have repeated-pricing capability. The same

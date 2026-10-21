@@ -646,6 +646,53 @@ $safe = anytour_anex_search3_quote_receipt(['offer_context' => ['package_quotes'
 qp_assert(count($safe['records']) === 40 && $safe['records'][0] === ['status' => 'quote_unknown', 'reason' => null,
     'stages' => [['stage' => 'start', 'state' => 'complete']]], 'bounded allowlist handles malformed retained values');
 qp_assert(anytour_anex_search3_quote_receipt([])['records'] === [], 'missing session never triggers a fresh quote');
+// Read existing raw-page digests, never replay a search to distinguish empty/rejected.
+$pageContext = ['checkin_begin' => '2027-01-31', 'checkin_end' => '2027-02-06',
+    'nights_from' => 7, 'nights_till' => 7, 'adults' => 2, 'children' => 1, 'child_ages' => [0]];
+$pageSession = ['offer_context' => ['generation' => 7, 'gateway' => [
+    'search' => ['schema_version' => 1, 'context' => $pageContext, 'offers' => [],
+        'pagination' => ['pages_read' => 1, 'state' => 'exhausted', 'page_digests' => [hash('sha256', '[]')]]],
+    'saved_offers' => ['search_ref' => str_repeat('a', 32), 'search' => $pageContext]]],
+    'PRIVATE_BODY' => 'PRIVATE_TOKEN'];
+foreach (['empty', 'nonempty'] as $rawPage) {
+    $retained = $pageSession;
+    if ($rawPage === 'nonempty') $retained['offer_context']['gateway']['search']['pagination']['page_digests'][0] = hash('sha256', '["PRIVATE_RAW_ROW"]');
+    $beforePageRead = serialize($retained);
+    $pageReceipt = anytour_anex_search3_quote_receipt($retained);
+    qp_assert($pageReceipt['retained_first_page'] === ['raw_rows' => $rawPage, 'retained_offers' => 0,
+        'interpretation' => $rawPage === 'empty' ? 'empty_supplier_page' : 'rows_rejected_or_filtered'], 'retained page distinguishes supplier empty from rejected/filtered rows');
+    qp_assert($pageReceipt['records'] === [] && serialize($retained) === $beforePageRead
+        && anytour_anex_search3_quote_receipt($retained) === $pageReceipt, 'page receipt is pure and never creates a quote/search');
+    qp_assert(!str_contains(json_encode($pageReceipt), 'PRIVATE')
+        && !str_contains(json_encode($pageReceipt), $retained['offer_context']['gateway']['search']['pagination']['page_digests'][0])
+        && !str_contains(json_encode($pageReceipt), str_repeat('a', 32)), 'raw digest, IDs and unrelated session values remain private');
+}
+$withOffers = $retained;
+$withOffers['offer_context']['gateway']['search']['offers'] = [['supplier_offer_id' => 'PRIVATE_CATCLAIM']];
+qp_assert(anytour_anex_search3_quote_receipt($withOffers)['retained_first_page'] === [
+    'raw_rows' => 'nonempty', 'retained_offers' => 1, 'interpretation' => 'offers_retained'], 'nonempty retained offers are not called rejected');
+foreach (['missing', 'continued', 'blocked', 'bad-digest', 'array-digest', 'extra-digest', 'empty-with-offers',
+    'empty-available', 'bad-schema', 'bad-context', 'foreign-context', 'bad-ref', 'bad-generation', 'overfull', 'non-list'] as $badPage) {
+    $badSession = $pageSession;
+    $snap = &$badSession['offer_context']['gateway']['search'];
+    if ($badPage === 'missing') unset($snap['pagination']);
+    elseif ($badPage === 'continued') $snap['pagination']['pages_read'] = 2;
+    elseif ($badPage === 'blocked') $snap['pagination']['state'] = 'blocked';
+    elseif ($badPage === 'bad-digest') $snap['pagination']['page_digests'] = ['PRIVATE'];
+    elseif ($badPage === 'array-digest') $snap['pagination']['page_digests'] = [[]];
+    elseif ($badPage === 'extra-digest') $snap['pagination']['page_digests'][] = hash('sha256', '[]');
+    elseif ($badPage === 'empty-with-offers') $snap['offers'] = [['supplier_offer_id' => 'PRIVATE']];
+    elseif ($badPage === 'empty-available') $snap['pagination']['state'] = 'available';
+    elseif ($badPage === 'bad-schema') $snap['schema_version'] = 2;
+    elseif ($badPage === 'bad-context') $snap['context'] = [];
+    elseif ($badPage === 'foreign-context') $snap['context']['child_ages'] = [1];
+    elseif ($badPage === 'bad-ref') $badSession['offer_context']['gateway']['saved_offers']['search_ref'] = 'PRIVATE';
+    elseif ($badPage === 'bad-generation') $badSession['offer_context']['generation'] = '7';
+    elseif ($badPage === 'overfull') $snap['offers'] = array_fill(0, 301, []);
+    elseif ($badPage === 'non-list') $snap['offers'] = [1 => []];
+    unset($snap);
+    qp_assert(!isset(anytour_anex_search3_quote_receipt($badSession)['retained_first_page']), 'unproved page remains unknown: ' . $badPage);
+}
 // Infant party fixtures exercise the inferred source contract, NOT live acceptance.
 foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9], [2]] as $ages) {
     [$s, $r, , , , $f, $make, $save] = qp_fixture('', $ages);
