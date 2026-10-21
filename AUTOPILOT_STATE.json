@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "NEXT_FIRSTPARTY_ANEX_PRICE_CONTACT_CLOSEOUT",
+    "status": "NEXT_ORDINARY_UI_ACCEPTED_EXTERNAL_GATES_REMAIN",
     "issue": 1646,
     "coordinator_issue": 4709,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-21T13:48:06Z",
+    "updated_at": "2026-10-21",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа. 20.10.2026: «Запрет на проход клавиатурой» и повторное требование вернуться к основной поставке: обычный цельный путь мышью/тапами в NEXT; прекратить отдельные keyboard/A11y/focus микрозадачи и дробление на частные оценки. 20.10.2026 02:15: «исправил? …план оптимальный?» — записать завершённую демо-приёмку и один конкретный следующий admission-результат; для каждой внешней зависимости указать текущего ответственного, действие и условие закрытия, без круговых блокировок и повышения общей оценки. 20.10.2026 02:34: прямо разрешён один конкретный live поиск/TVquote без предварительного подтверждённого резерва, owner сообщил5000/сутки; этот допуск consumed6280546977. 02:43 «делай» — опубликовать просмотр установленного NEXT430 в том же Sitesproject и убрать устаревшее ожидание admission. 20.10.2026: «можешь не спрашивать разрешения на разовые поиски» — standing permission для нового обоснованного обычного one-off/quote в прежних лимитах/штатном UI; #4217/6286202365, без bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production или изменения квот. 21.10.2026: «Не понимаю в чем ошибка?» → «Разбирайся» — targeted investigation привела к подтверждённому дефекту cross-site LIVEpreview и минимальному ремонту того же Sitesproject; прежний universal no-safe-step superseded конкретным результатом.",
-    "acceptance_status": "SITE205_LIVE_ENTRY_FIXED_FIRSTPARTY_ANEX_EXPANSION_ACCEPTED_WHOLE_PRICE_CONTACT_N",
-    "last_fully_checked_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
-    "published_source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306717099",
-    "planning_base_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+    "acceptance_status": "CURRENT_3D7_COMPILED_430_1280_ORDINARY_UI_ACCEPTED_INSTALLED_REAL_ANEX_PAIR_PRICE_CONTACT_RETURN_ACCEPTED",
+    "last_fully_checked_release_sha": "5e0e90c750fb4ead5d9a95e9479e0409cb584547",
+    "published_source_sha": "3d7d50d17aec24cecc74fb25d04ee7015601daf1",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6319546742",
+    "planning_base_release_sha": "5e0e90c750fb4ead5d9a95e9479e0409cb584547",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "Retained ordinary coherent audit6306948619: exact1c7 compiledmobile10/desktop9.5/selected10/calendar9.5+installedfilters10 and real5e1familyselected10 retain five reasons/delta0; substantial confirmed ordinaryUIgap list empty in those scenarios. Not retagged e9d1. Currente9d1 diagnostics/install and actualEgypt terminal/localreturn independently accepted6306962193, UI/app/CSS unchanged0, no new5criterionrow. ANEXwholeprice/pair/contact and LeadC3pending/error/duplicate/retry N; wholeSearch9.5/physical/real delivery/prod not accepted; deferred dimensions/200/Compare/forbiddenkeyboard not blockers/newqueues."
+      "score_status": "Existing oldexact1c7/5e1 rows retain6306948619 unchanged. New FIRSTbounded3d7 compiled430/1280incl720 fullordinary review6319858062: Desktop9.5/Mobile10/Filters10/Selectedtour10/Calendar9.5 withall5reasons, UI0; actual24PNG+receipts, no inheritedoldscore. Separately installedrealANEX146015/2A ownpair/contact/Back/Close/reopen accepted6319827377 in1363x936 technicalscope. No wholeSearch9.5/globalDONE/native430/physical/LeadC3pending-error-duplicate/real delivery/prod acceptance; thoseN remain exactseparate scopes, notnewQA/cosmeticqueue."
     },
-    "next_action": "Продолжить тот же конечный обычный путь ORIGINAL NEXT через top-level anytoour.ru. Подтверждённый дефект cross-site LIVEiframe устранён Site205/source74490263; first-party ANEX32 concrete tours принят6317462567. Следующий связный результат — authoritative итог выбранного ANEX тура за всю группу → контакт с рейсами через менеджера → обычный возврат/черновик; точная пара только опционально и со своей authoritative ценой. Для действительно необходимого нового обычного one-off/normalquote действует owner6286202365 в прежних лимитах/штатном UI; сначала fresh claims/identity/доступный exact retained scope. Ни один consumed Find/expand/quote/context не повторять; новый32-case завершён без quote и не является разрешением его replay/дренажа. Не начинать новый диагностический цикл, PHP/cookie/auth/guard repair, косметический/per-N пакет или unchanged CI/NEXT deploy. Только430/1280 для UI; natural1348×936 firstparty check — техническая функция, не новый UI размер/балл. Keyboard запрещён,200%/Compare/другие размеры deferred, physical/delivery/production отдельны. После factual docs merge/readback возобновить только существующий собственный Automation_395ea9035ab8819188dadef16b09085d, сохранив schedule/timezone/prompt и чужие задачи; фактический enabled readback — в terminal4709. Полная поставка не DONE.",
+    "next_action": "Обычный доступный UI430/1280(inclshort720) exact3d7 compiled пакет и отдельный установленный realANEX146015/2A→contact→Back/Close/reopen приняты6319827377/6319858062; существенный gaplist пуст, UI0/FIRST baseline. Не повторять consumed Find/expand/quote/context/CI/publish и не создавать per-N/cosmetic/diagnostic очередь. Следовать существующей таблице внешних зависимостей: принять только новый exact доступный handoff/допуск при появлении; native430/physicalSafari требует штатной capability, canonicalaliases/submittedIDs — canonical facts/legitimate ordinary intent, repeatedANEX — принятыйboundedINTcontract, realLead — exactprotectedapproval, production — отдельный approval конкретного3d7/SOURCE12355335919. Старые32/zero/NOT_RETAINED неизменны. Keyboard запрещён;200%/Compare/другиеразмерыdeferred, прежнийretained360/390/768 не очередь. Полная поставка не globalDONE; собственная существующая automation покаenabled, schedule/timezone/prompt и чужиезадачи сохраняются. Без нового материального разрешённого шага — без перепроверок/повторного отчёта.",
     "next_task": {
-      "scope": "Тот же S3_PRODUCT_CURRENT_ACCEPTANCE/ORIGINAL NEXT e9d1/app380b/datacb1e/installedab6e. Site205 ремонтирует только live-entry в прежнем PUBLIC design-lab. Firstparty ANEX32 variants accepted; весь ANEX price/contact path ещё N. Не новый roadmap/scoretracker/producer repair.",
+      "scope": "Same S3_PRODUCT_CURRENT_ACCEPTANCE/ORIGINAL3d7/data4b618132/app380b/runtime5e0. FiniteavailableordinaryUI430/1280 compiled and actualboundedANEXpairprice/contact/return accepted. No newproductpackage or pending sourcewriter/publisher.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 остаётся утверждённым productreference. Site205/source74490263 только previewnavigation: demo430/1280/short720 iframe, live существующий top-level NEXT. Один writer/integrator, независимый read-only review. Foreign design-v2 исключён; NEXT renderer/composition не менялись.",
-      "acceptance": "Site205/source74490263aef3270a35bed23a8b880bd341116568: focused3DOMblocks PASS, Site204negativecontrol FAIL at LIVEiframe, node syntax/diff PASS, independent source ACCEPT. Native PUBLIC deploymentappgdep_6ad8c286010c8191832b27160e37dd91 SUCCEEDED; actual oldmode=live430 handoff→linkclick→top-level unsearchedNEXT, no liveiframe; demo430×932→1280×720→430 samefamilysrc. Terminal6317776266. Separate e9d1 ordinaryFind11–17Nov/7n2A AI→151hotels340variants partial; firstownANEX12–19Nov/StandardRoom/AI→32concrete ownvariants, Close/reopen cached identical/warnings[]. Terminal6317462567/audit6317578235; quote/pair/contact/retry/drain/realLead UIintents0. Not wirequota/finalprice/globalANEX recovery/native430/physical/UIscore; oldEgyptactualstatus remainsNOT_RETAINED.",
-      "execution": "Продолжить тот же конечный обычный путь ORIGINAL NEXT через top-level anytoour.ru. Подтверждённый дефект cross-site LIVEiframe устранён Site205/source74490263; first-party ANEX32 concrete tours принят6317462567. Следующий связный результат — authoritative итог выбранного ANEX тура за всю группу → контакт с рейсами через менеджера → обычный возврат/черновик; точная пара только опционально и со своей authoritative ценой. Для действительно необходимого нового обычного one-off/normalquote действует owner6286202365 в прежних лимитах/штатном UI; сначала fresh claims/identity/доступный exact retained scope. Ни один consumed Find/expand/quote/context не повторять; новый32-case завершён без quote и не является разрешением его replay/дренажа. Не начинать новый диагностический цикл, PHP/cookie/auth/guard repair, косметический/per-N пакет или unchanged CI/NEXT deploy. Только430/1280 для UI; natural1348×936 firstparty check — техническая функция, не новый UI размер/балл. Keyboard запрещён,200%/Compare/другие размеры deferred, physical/delivery/production отдельны. После factual docs merge/readback возобновить только существующий собственный Automation_395ea9035ab8819188dadef16b09085d, сохранив schedule/timezone/prompt и чужие задачи; фактический enabled readback — в terminal4709. Полная поставка не DONE.",
+      "acceptance": "PR4784 all7exactheadchecksSUCCESS; SOURCE12355335919/READY12356356803/DEPLOY12355602949 independentlyaccepted; stock39623511472/readback6319546742. Finalcompiled24matched430/1280PNG+family/filter/calendar/identity receipts accepted FIRSTbaseline Desktop9.5/Mobile10/Filters10/Selected10/Calendar9.5 UI0 inexistingaudit6319858062. OneactualnewEgypt27Nov–3Dec7n2AAI→ANEX159→ownBEACH SAFARI3634/StandardRoom02–09Dec32tours→pair1AJetVF276+VF253/VF252+VF275→146015RUBwholeparty fromlisting116353→contactfakeDraft→ordinaryBack+Close/samecardreopen retainsprice/pair/name/comment/filledphone, consentfalse/realLead0.14DOM+2JPEG independentACCEPT6319827377. Native1363x936technicalonly, exactphonebytesredacted, ANEXmanagerbranch/notallpair/native430/physical/delivery/prod notclaimed.",
+      "execution": "Обычный доступный UI430/1280(inclshort720) exact3d7 compiled пакет и отдельный установленный realANEX146015/2A→contact→Back/Close/reopen приняты6319827377/6319858062; существенный gaplist пуст, UI0/FIRST baseline. Не повторять consumed Find/expand/quote/context/CI/publish и не создавать per-N/cosmetic/diagnostic очередь. Следовать существующей таблице внешних зависимостей: принять только новый exact доступный handoff/допуск при появлении; native430/physicalSafari требует штатной capability, canonicalaliases/submittedIDs — canonical facts/legitimate ordinary intent, repeatedANEX — принятыйboundedINTcontract, realLead — exactprotectedapproval, production — отдельный approval конкретного3d7/SOURCE12355335919. Старые32/zero/NOT_RETAINED неизменны. Keyboard запрещён;200%/Compare/другиеразмерыdeferred, прежнийretained360/390/768 не очередь. Полная поставка не globalDONE; собственная существующая automation покаenabled, schedule/timezone/prompt и чужиезадачи сохраняются. Без нового материального разрешённого шага — без перепроверок/повторного отчёта.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. Owner6286202365 permits justified ordinary one-off searches/normalquotes within existinglimits/stockUI without repeatedpermission; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/prod expansion. Other protected operations still require their exact allowance/budget/stockexecutor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1339,10 +1339,10 @@
     "scheduler_observation": {
       "id": "Automation_395ea9035ab8819188dadef16b09085d",
       "title": "AnyTour Sites автопилот",
-      "is_enabled": false,
+      "is_enabled": true,
       "schedule": "BEGIN:VEVENT\nDTSTART;TZID=Europe/Kaliningrad:20261001T022000\nRRULE:FREQ=HOURLY\nEND:VEVENT",
       "timezone": "Europe/Kaliningrad",
-      "scope": "Freshpeek after Site205 confirms ownpaused; resume after thisfactualcheckpoint merge/readback perfulfilledcontinuationcondition. Actualenabledterminalreceipt separate; no schedule/timezone/prompt/foreigntask change."
+      "scope": "Fresh ownpeek21Octafteractual3d7acceptance: enabledtrue. No update/toggle/schedule/timezone/prompt/foreign taskchange. CurrentUIcompiledscopeaccepted; remainingexternalgates separate, no globalDONE."
     },
     "resume_evidence": {
       "approved_site198": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6187906754",
@@ -1352,34 +1352,26 @@
       "artifact_id": 11958778448,
       "desktop_offline_acceptance": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6220598449",
       "scope": "2026-10-16;1363x936;app39eb57f77661/stylesce296c36f84f;mixed controlled corpus. PalmGarden variants -> Family125500/BB/operator2 -> DEMO102 pair126800 -> local application validation/consent -> Back/reopen/Close/Continue preserve draft/pair/total -> success explicitly not sent/not saved.",
-      "remaining": "Продолжить тот же конечный обычный путь ORIGINAL NEXT через top-level anytoour.ru. Подтверждённый дефект cross-site LIVEiframe устранён Site205/source74490263; first-party ANEX32 concrete tours принят6317462567. Следующий связный результат — authoritative итог выбранного ANEX тура за всю группу → контакт с рейсами через менеджера → обычный возврат/черновик; точная пара только опционально и со своей authoritative ценой. Для действительно необходимого нового обычного one-off/normalquote действует owner6286202365 в прежних лимитах/штатном UI; сначала fresh claims/identity/доступный exact retained scope. Ни один consumed Find/expand/quote/context не повторять; новый32-case завершён без quote и не является разрешением его replay/дренажа. Не начинать новый диагностический цикл, PHP/cookie/auth/guard repair, косметический/per-N пакет или unchanged CI/NEXT deploy. Только430/1280 для UI; natural1348×936 firstparty check — техническая функция, не новый UI размер/балл. Keyboard запрещён,200%/Compare/другие размеры deferred, physical/delivery/production отдельны. После factual docs merge/readback возобновить только существующий собственный Automation_395ea9035ab8819188dadef16b09085d, сохранив schedule/timezone/prompt и чужие задачи; фактический enabled readback — в terminal4709. Полная поставка не DONE.",
-      "historical_pins": "Flat legacy pins/dated_history are history/no-replay, not queue. latest_next/published_source_sha identify PR4780/sourcee9d1/app380b/datacb1e/stock39534263868. Prior41fbe latest_next/handoff archived verbatim dated_history.latest_next_before_e9d1/active_handoff_before_e9d1. Existing current_live_anex_guard stays exact41fbe/coarseenvelope; new current_live_anex_status separately identifies e9d1Egypt/status predicate. Old14–20Dec/7–13Dec/Rix/family/FUNSUN and scores not retagged. Newcase proves status!=expanded, not actualstatus/nativecause/price/globalphysicaldelivery. Final6307192120 answers6306937236 NOT_RETAINED; current_anex_status_disposition is final dependency boundary, not a new queue or retagged runtime. Directowner21Oct+confirmed Site204liveembeddefect supersedes olduniversalstop, not oldsealedfacts. Current Site205/source74490263 terminal6317776266 and firstparty6317462567 are separate from originalEgyptstatus6307192120; latest_next/published_source remain unchanged e9d1.",
+      "remaining": "Обычный доступный UI430/1280(inclshort720) exact3d7 compiled пакет и отдельный установленный realANEX146015/2A→contact→Back/Close/reopen приняты6319827377/6319858062; существенный gaplist пуст, UI0/FIRST baseline. Не повторять consumed Find/expand/quote/context/CI/publish и не создавать per-N/cosmetic/diagnostic очередь. Следовать существующей таблице внешних зависимостей: принять только новый exact доступный handoff/допуск при появлении; native430/physicalSafari требует штатной capability, canonicalaliases/submittedIDs — canonical facts/legitimate ordinary intent, repeatedANEX — принятыйboundedINTcontract, realLead — exactprotectedapproval, production — отдельный approval конкретного3d7/SOURCE12355335919. Старые32/zero/NOT_RETAINED неизменны. Keyboard запрещён;200%/Compare/другиеразмерыdeferred, прежнийretained360/390/768 не очередь. Полная поставка не globalDONE; собственная существующая automation покаenabled, schedule/timezone/prompt и чужиезадачи сохраняются. Без нового материального разрешённого шага — без перепроверок/повторного отчёта.",
+      "historical_pins": "Flatlegacy/rootstate/dated_history notqueue. Currentlatest_next belowidentifiesPR4784/source3d7/runtime5e0/data4b618132/app380b/stock39623511472. Olde9d1latest_next andoldexecution+qualitytext archivedverbatim in dated_history.*before_3d7_20261021; originalEgyptstatus NOT_RETAINED andold32/zero consumed unchanged. Site205sameproject/source74490263; actualnew146015context separatelyaccepted andconsumed, notoldcauseevidence.",
       "latest_next": {
-        "source_pr": 4780,
-        "source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
-        "source_tree_sha": "cbb7771f21a569b6d2527afafeb2cee5402b9e3c",
-        "release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
-        "build_run": 39532953050,
-        "artifact_id": 12315884451,
-        "visual_run": 39532953183,
-        "source_ci_runs": {
-          "Security guard": 39532953080,
-          "Build Search3 whole-site preview artifact": 39532953050,
-          "Search3 AnyTour destination identities": 39532953111,
-          "Search3 canonical meal plan client": 39532953054,
-          "Search3 prototype source receipt": 39532953060,
-          "Search3 full visual migration": 39532953183
-        },
-        "publish_run": 39534263868,
-        "ready_artifact": 12316218057,
-        "deployment_receipt_artifact": 12316861897,
-        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306717099",
+        "source_pr": 4784,
+        "source_sha": "3d7d50d17aec24cecc74fb25d04ee7015601daf1",
+        "source_tree_sha": "af83c0a76f3fa3064b33f692910b4246d85f51b3",
+        "release_sha": "5e0e90c750fb4ead5d9a95e9479e0409cb584547",
+        "build_run": 39621190009,
+        "artifact_id": 12355335919,
+        "visual_run": 39621189953,
+        "publish_run": 39623511472,
+        "ready_artifact": 12356356803,
+        "deployment_receipt_artifact": 12355602949,
+        "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6319546742",
         "compiled_app_sha256": "380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072",
-        "compiled_data_sha256": "cb1ee7318a84328542121f69b6a34c80aa84982f4952598651c49d9f5db19a68",
-        "previous_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
-        "status": "PUBLISHED_INSTALLED_READBACK_AFFECTED_STATUS_TERMINAL_ACCEPTED_NO_REPLAY",
+        "compiled_data_sha256": "4b61813283cfad7c9aa11092a5be0a66e4f025348bf9cca7119075fb7d81ee94",
+        "previous_source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
+        "status": "PUBLISHED_INSTALLED_READBACK_REAL_ANEX_CONNECTED_ACCEPTED_CONSUMED_NO_REPLAY",
         "rollback_retained": true,
-        "scope": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion."
+        "scope": "PR4784 all7exactheadchecksSUCCESS; SOURCE12355335919/READY12356356803/DEPLOY12355602949 independentlyaccepted; stock39623511472/readback6319546742. Finalcompiled24matched430/1280PNG+family/filter/calendar/identity receipts accepted FIRSTbaseline Desktop9.5/Mobile10/Filters10/Selected10/Calendar9.5 UI0 inexistingaudit6319858062. OneactualnewEgypt27Nov–3Dec7n2AAI→ANEX159→ownBEACH SAFARI3634/StandardRoom02–09Dec32tours→pair1AJetVF276+VF253/VF252+VF275→146015RUBwholeparty fromlisting116353→contactfakeDraft→ordinaryBack+Close/samecardreopen retainsprice/pair/name/comment/filledphone, consentfalse/realLead0.14DOM+2JPEG independentACCEPT6319827377. Native1363x936technicalonly, exactphonebytesredacted, ANEXmanagerbranch/notallpair/native430/physical/delivery/prod notclaimed."
       },
       "root_api_install": {
         "source_sha": "d6780854c16f390ec9ad3117a484e72e0851c884",
@@ -1722,6 +1714,39 @@
           "first_background_run_after_resume_verified": false,
           "prompt_unchanged": true,
           "schedule_unchanged": true
+        },
+        "latest_next_before_3d7_20261021": {
+          "source_pr": 4780,
+          "source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc",
+          "source_tree_sha": "cbb7771f21a569b6d2527afafeb2cee5402b9e3c",
+          "release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+          "build_run": 39532953050,
+          "artifact_id": 12315884451,
+          "visual_run": 39532953183,
+          "source_ci_runs": {
+            "Security guard": 39532953080,
+            "Build Search3 whole-site preview artifact": 39532953050,
+            "Search3 AnyTour destination identities": 39532953111,
+            "Search3 canonical meal plan client": 39532953054,
+            "Search3 prototype source receipt": 39532953060,
+            "Search3 full visual migration": 39532953183
+          },
+          "publish_run": 39534263868,
+          "ready_artifact": 12316218057,
+          "deployment_receipt_artifact": 12316861897,
+          "receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306717099",
+          "compiled_app_sha256": "380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072",
+          "compiled_data_sha256": "cb1ee7318a84328542121f69b6a34c80aa84982f4952598651c49d9f5db19a68",
+          "previous_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
+          "status": "PUBLISHED_INSTALLED_READBACK_AFFECTED_STATUS_TERMINAL_ACCEPTED_NO_REPLAY",
+          "rollback_retained": true,
+          "scope": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion."
+        },
+        "execution_before_3d7_20261021": {
+          "status": "NEXT_FIRSTPARTY_ANEX_PRICE_CONTACT_CLOSEOUT",
+          "acceptance_status": "SITE205_LIVE_ENTRY_FIXED_FIRSTPARTY_ANEX_EXPANSION_ACCEPTED_WHOLE_PRICE_CONTACT_N",
+          "next_action": "Продолжить тот же конечный обычный путь ORIGINAL NEXT через top-level anytoour.ru. Подтверждённый дефект cross-site LIVEiframe устранён Site205/source74490263; first-party ANEX32 concrete tours принят6317462567. Следующий связный результат — authoritative итог выбранного ANEX тура за всю группу → контакт с рейсами через менеджера → обычный возврат/черновик; точная пара только опционально и со своей authoritative ценой. Для действительно необходимого нового обычного one-off/normalquote действует owner6286202365 в прежних лимитах/штатном UI; сначала fresh claims/identity/доступный exact retained scope. Ни один consumed Find/expand/quote/context не повторять; новый32-case завершён без quote и не является разрешением его replay/дренажа. Не начинать новый диагностический цикл, PHP/cookie/auth/guard repair, косметический/per-N пакет или unchanged CI/NEXT deploy. Только430/1280 для UI; natural1348×936 firstparty check — техническая функция, не новый UI размер/балл. Keyboard запрещён,200%/Compare/другие размеры deferred, physical/delivery/production отдельны. После factual docs merge/readback возобновить только существующий собственный Automation_395ea9035ab8819188dadef16b09085d, сохранив schedule/timezone/prompt и чужие задачи; фактический enabled readback — в terminal4709. Полная поставка не DONE.",
+          "quality_score_status": "Retained ordinary coherent audit6306948619: exact1c7 compiledmobile10/desktop9.5/selected10/calendar9.5+installedfilters10 and real5e1familyselected10 retain five reasons/delta0; substantial confirmed ordinaryUIgap list empty in those scenarios. Not retagged e9d1. Currente9d1 diagnostics/install and actualEgypt terminal/localreturn independently accepted6306962193, UI/app/CSS unchanged0, no new5criterionrow. ANEXwholeprice/pair/contact and LeadC3pending/error/duplicate/retry N; wholeSearch9.5/physical/real delivery/prod not accepted; deferred dimensions/200/Compare/forbiddenkeyboard not blockers/newqueues."
         }
       },
       "root_recovery": {
@@ -2094,9 +2119,37 @@
           "trace_records": 9
         },
         "limits": "Natural1348×936 technicalfirstpartyfunction only, not newUIwidthscore/native430/physical. Quote/pair/contact/retry/drain/secondFind/realLead UIintents0; physicalHTTP/quotaN. No authoritativeprice/globalANEXrecovery/oldEgyptstatusinheritance."
+      },
+      "current_anex_ordinary_wholeprice": {
+        "operation": "original-anex-wholeprice-contact-egypt-20261127-20261021-v1",
+        "status": "COMPLETED_CONSUMED_NO_REPLAY",
+        "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6319547105",
+        "terminal": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6319827377",
+        "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6319858062",
+        "source_sha": "3d7d50d17aec24cecc74fb25d04ee7015601daf1",
+        "observed": "PR4784 all7exactheadchecksSUCCESS; SOURCE12355335919/READY12356356803/DEPLOY12355602949 independentlyaccepted; stock39623511472/readback6319546742. Finalcompiled24matched430/1280PNG+family/filter/calendar/identity receipts accepted FIRSTbaseline Desktop9.5/Mobile10/Filters10/Selected10/Calendar9.5 UI0 inexistingaudit6319858062. OneactualnewEgypt27Nov–3Dec7n2AAI→ANEX159→ownBEACH SAFARI3634/StandardRoom02–09Dec32tours→pair1AJetVF276+VF253/VF252+VF275→146015RUBwholeparty fromlisting116353→contactfakeDraft→ordinaryBack+Close/samecardreopen retainsprice/pair/name/comment/filledphone, consentfalse/realLead0.14DOM+2JPEG independentACCEPT6319827377. Native1363x936technicalonly, exactphonebytesredacted, ANEXmanagerbranch/notallpair/native430/physical/delivery/prod notclaimed.",
+        "evidence": {
+          "trace_records": 14,
+          "trace_bytes": 56202,
+          "trace_sha256": "f02024f8b9f043a63ee4d34da0dd15f894350ab7d19390789df112fc57a91d8f",
+          "price_jpeg_bytes": 93022,
+          "price_jpeg_sha256": "34b0327cdf7256ec7425485c964813798fa4bee0ac435da80b77cf3bfda3cccf",
+          "contact_jpeg_bytes": 106341,
+          "contact_jpeg_sha256": "b4c75cf9a323f316804a659be465d169d367b572e837471baabe52e62b737041"
+        },
+        "limits": "UIintentFind1/expand1/quotecontext1/wholeprice1/selectedpair1/otherpair0/retry0/drain0/realLead0/Checklead0/keyboard0; no wireHTTP/quota inference. Natural1363x936technicalbehavior only; no native430/physical/ANEXmanagerbranch/allpair/delivery/prod; phoneDOMredacted, exactphonebytes notestablished."
+      },
+      "current_compiled_ordinary_closeout": {
+        "status": "ACCEPTED_FIRST_BOUNDED_BASELINES_UI_DELTA0",
+        "source_sha": "3d7d50d17aec24cecc74fb25d04ee7015601daf1",
+        "visual_run": 39621189953,
+        "run_attempt": 1,
+        "scope": "24actualmatchedPNGs+exactfamily430/1280/short7209stages,manager186400/pair3=189000/contact/return/draft/consent/anchor,filters/query/meal/budget/ORIDs/readfailure/calendarapply/history/unknown/recovery. Existingindex1219files; no newrun, inheritedscore, live/native430/physical, forbiddenkeyboardor200text/Comparepass.",
+        "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6319858062",
+        "material_confirmed_ui_gaps": []
       }
     },
-    "published_release_sha": "ab6e96fcda4861bc42c35b382ac14ddbe7b67ec4",
+    "published_release_sha": "5e0e90c750fb4ead5d9a95e9479e0409cb584547",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
@@ -2108,8 +2161,8 @@
       "blocker_scope": "Keyboard walkthroughs/Tab/A11y-only/focus tasks forbidden by owner20Oct; keep history/N/deferred without making them an ordinary-UI blocker or inventing scores. Native430/physical and external INT/data/delivery/production retain exact gates separately. Missing resize or everyN is not a new task; no cosmetic/coverage/paid retry loop.",
       "qa_only_authority": "OldQA/publish/live contexts consumed.4780 minimal accepted INTpredicate request completed through applicable exactgates+one stockpublication, then independently justified current-sourceordinaryEgyptacceptance consumed. No newQA-only/cosmetic/scoretracker/genericdiagnosticcycle. Ordinaryoneoff6286202365 only withinexistinglimits/stockUI, no replay/bulk/autodrain/paidbrowser/repeatedANEX/realLead/prod expansion. Site205 actualnavigationregression was necessaryconfirmedfunctionalrepair, notcoverage/cosmeticprogramme; its no-supplier checks completed. FirstpartyANEX32case consumed; no replaymerelyfornewversion.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
-      "verification_pin": "PR4780/sourcee9d1:canonical53/inventory160/bridge PASS;6applicable workflows/7checks firstattempt;843SOURCE/READY/DEPLOY independently accepted; stock39534263868/readback6306717099. ONEFind02:51:50.983Z Moscow→Egypt4–10Nov/7n/2A/AI→126hotels312UIvariants partial; ownBEACH SAFARI NUBIAN RESORT/StandardRoom/AI/4–11Nov/regular/listing117766RUB UNCONFIRMED. ONEexpand02:52:53.190Z→singlewarn02:52:53.569Z HTTP200/projection/client_projection_unconfirmed/envelope_status beforequote. Sameownoffer localreturn/reopen430×932↔1280×720↔430 preserves selection/conditions/unconfirmedprice/fuelunknown;2actualJPG+15recordDOM/consoletrace independently ACCEPT6306962193. Quote/pair/contact/retry/drain/realLead recordedUIintents0, physicalHTTP/quota N. No numericgrowth/fullANEXprice/pair/contact/global9.5/native/physical/delivery promotion. Installed sourcee9d1ce67f94a48c9854972f0af6d22c13affcfcc/app380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072/datacb1ee7318a84328542121f69b6a34c80aa84982f4952598651c49d9f5db19a68/runtimeab6e96fcda4861bc42c35b382ac14ddbe7b67ec4/SOURCE12315884451/READY12316218057/DEPLOY12316861897. FinalINT6307192120/ACK6307219842: originalstatus/reason NOT_RETAINED, source-stage deduction only, no product/runtime/UI change. Superseding concreteSite205 navigation repair/source74490263/publicdeploy/readback6317776266; separatecurrente9d1 firstpartyANEX32 result6317462567. OldsealedEgypt statusNOT_RETAINED unchanged.",
-      "closeout": "Продолжить тот же конечный обычный путь ORIGINAL NEXT через top-level anytoour.ru. Подтверждённый дефект cross-site LIVEiframe устранён Site205/source74490263; first-party ANEX32 concrete tours принят6317462567. Следующий связный результат — authoritative итог выбранного ANEX тура за всю группу → контакт с рейсами через менеджера → обычный возврат/черновик; точная пара только опционально и со своей authoritative ценой. Для действительно необходимого нового обычного one-off/normalquote действует owner6286202365 в прежних лимитах/штатном UI; сначала fresh claims/identity/доступный exact retained scope. Ни один consumed Find/expand/quote/context не повторять; новый32-case завершён без quote и не является разрешением его replay/дренажа. Не начинать новый диагностический цикл, PHP/cookie/auth/guard repair, косметический/per-N пакет или unchanged CI/NEXT deploy. Только430/1280 для UI; natural1348×936 firstparty check — техническая функция, не новый UI размер/балл. Keyboard запрещён,200%/Compare/другие размеры deferred, physical/delivery/production отдельны. После factual docs merge/readback возобновить только существующий собственный Automation_395ea9035ab8819188dadef16b09085d, сохранив schedule/timezone/prompt и чужие задачи; фактический enabled readback — в terminal4709. Полная поставка не DONE.",
+      "verification_pin": "Current3d7 install/readback6319546742 +ordinaryfullprice/contact/return6319827377 +existingaudit6319858062. Currentdata4b618132/app380b, stock39623511472, all7sourcechecks/SOURCE+READY+DEPLOY actualindependentACCEPT.24retainedmatchedcompiled430/1280PNGs+receipts independentlyreviewed, no newCI/live/paidrun. AlloldEgypt32/zero/status operations remainconsumed/NOT_RETAINED; no historicalcausepromotion.",
+      "closeout": "Обычный доступный UI430/1280(inclshort720) exact3d7 compiled пакет и отдельный установленный realANEX146015/2A→contact→Back/Close/reopen приняты6319827377/6319858062; существенный gaplist пуст, UI0/FIRST baseline. Не повторять consumed Find/expand/quote/context/CI/publish и не создавать per-N/cosmetic/diagnostic очередь. Следовать существующей таблице внешних зависимостей: принять только новый exact доступный handoff/допуск при появлении; native430/physicalSafari требует штатной capability, canonicalaliases/submittedIDs — canonical facts/legitimate ordinary intent, repeatedANEX — принятыйboundedINTcontract, realLead — exactprotectedapproval, production — отдельный approval конкретного3d7/SOURCE12355335919. Старые32/zero/NOT_RETAINED неизменны. Keyboard запрещён;200%/Compare/другиеразмерыdeferred, прежнийretained360/390/768 не очередь. Полная поставка не globalDONE; собственная существующая automation покаenabled, schedule/timezone/prompt и чужиезадачи сохраняются. Без нового материального разрешённого шага — без перепроверок/повторного отчёта.",
       "viewport_scope": {
         "owner_direction": "20.10.2026 00:52",
         "current_widths_px": [
@@ -2127,9 +2180,9 @@
         "focus_changes": "Only a confirmed substantial ordinary-click/tap defect in the coherent product repair; no cosmetic task from keyboard screenshot",
         "existing_ci": "Preserve applicable existing mandatory workflows/gates; no additional keyboard QA run"
       },
-      "autopilot_boundary": "Directowner21Oct«Разбирайся»+confirmedSitesdefect fulfills priorresumecondition; oneexistingSitesautomation only: Automation_395ea9035ab8819188dadef16b09085d. Resumeafterfactualdocsmerge/readback; preserveexactoriginalschedule/timezone/prompt and allforeignenabled/pausedtasks. Actualupdate/readbackin4709. No globalDONE/newautomation/repeatedcontext/protectedscope expansion."
+      "autopilot_boundary": "SameexistingAutomation_395ea9035ab8819188dadef16b09085d freshpeekenabledtrue; preserveenabled/schedule/timezone/prompt andallforeign tasks. CurrentordinaryUIstageclosed inexactscope; fullagreedexternalgates notglobalDONE. No automaticdisablefrompartialbaseline or newtask, no unchangedrerun/statusnotification. Stoponlywhenagreedfinitefullscopeprovencomplete or persistentnoauthorizedsafestep, perowner; thischeckpointdoesnottoggle."
     },
-    "last_fully_checked_source_sha": "e9d1ce67f94a48c9854972f0af6d22c13affcfcc"
+    "last_fully_checked_source_sha": "3d7d50d17aec24cecc74fb25d04ee7015601daf1"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
