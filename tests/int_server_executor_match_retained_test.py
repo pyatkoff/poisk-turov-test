@@ -1816,8 +1816,14 @@ class CatalogueTest(unittest.TestCase):
                 self.assertEqual(protected,{path:path.read_bytes() for path in protected})
 
 class BindingFailureReconciliationTest(unittest.TestCase):
+    expected_protected = 25
+
+    def policy(self): return m.BINDING_RECONCILIATION
+
+    def handler(self): return m.BINDING_RECONCILIATION_HANDLER
+
     def command(self):
-        p=m.BINDING_RECONCILIATION
+        p=self.policy()
         return dict(source_sha=SHA,mode='match-retained-readback',operation_id=p['operation_id'],
                     cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
 
@@ -1836,7 +1842,7 @@ class BindingFailureReconciliationTest(unittest.TestCase):
 
     def fixture(self,root):
         home=root/'home';private=root/'private';stage=root/'stage';stage.mkdir()
-        profile=copy.deepcopy(m.BINDING_RECONCILIATION);target=private/profile['parent_operation_id']
+        profile=copy.deepcopy(self.policy());target=private/profile['parent_operation_id']
         target.mkdir(parents=True);(target/'source').mkdir()
         prior=dict(status='unknown_no_replay',operation_id=profile['parent_operation_id'],
                    source_sha=profile['failed_source_sha'],mode='match-retained-acquire',supplier_calls=None,
@@ -1861,7 +1867,7 @@ class BindingFailureReconciliationTest(unittest.TestCase):
                    payload={**self.command(),'match_retained_control_sha':SHA},
                    safe_file=lambda p,b: p.is_file() and not p.is_symlink() and p.stat().st_size<=b,
                    fail=lambda reason: (_ for _ in ()).throw(ValueError(reason)))
-        exec(m.BINDING_RECONCILIATION_HANDLER,space)
+        exec(self.handler(),space)
         return home,stage,target,day,space
 
     def test_actual_readonly_source_and_request_absence_proof_preserves_every_input(self):
@@ -1870,14 +1876,14 @@ class BindingFailureReconciliationTest(unittest.TestCase):
             before={str(p):p.read_bytes() for p in root.rglob('*') if p.is_file()}
             with mock.patch.object(Path,'home',return_value=home):out=space['retained_binding_reconciliation'](stage)
             self.assertEqual(before,{str(p):p.read_bytes() for p in root.rglob('*') if p.is_file()})
-            self.assertEqual(25,out['data']['protected_inputs_count'])
+            self.assertEqual(self.expected_protected,out['data']['protected_inputs_count'])
             self.assertEqual(0,out['data']['proved_failed_operation_supplier_calls'])
             self.assertEqual('unknown_no_replay',out['data']['prior_status'])
             self.assertIsNone(out['data']['prior_supplier_calls'])
             result=dict(status='complete',production_unchanged=True,mode='match-retained-readback',source_sha=SHA,
                         operation_id=space['operation'],supplier_calls=0,database_writes=0,mapping_writes=0,
                         booking_calls=0,lead_calls=0,match_retained=out)
-            with mock.patch.dict(m.BINDING_RECONCILIATION,space['NEXT_SCOPE']):
+            with mock.patch.dict(self.policy(),space['NEXT_SCOPE']):
                 self.assertTrue(m.completed_result(self.command(),result,SHA))
                 for key,value in [('proved_failed_operation_supplier_calls',False),('prior_supplier_calls',0),
                                   ('staged_source_files_verified',True),('safe_to_write_now',True),
@@ -1903,6 +1909,58 @@ class BindingFailureReconciliationTest(unittest.TestCase):
                     else:os.link(other,path)
                 with mock.patch.object(Path,'home',return_value=home),self.assertRaises(ValueError):
                     space['retained_binding_reconciliation'](stage)
+
+
+class BindingFailureReconciliationV2Test(BindingFailureReconciliationTest):
+    expected_protected = 29
+
+    def policy(self): return m.BINDING_RECONCILIATION_V2
+
+    def handler(self): return m.binding_reconciliation_v2_handler()
+
+    def fixture(self,root):
+        home,stage,target,day,space=super().fixture(root);profile=space['NEXT_SCOPE']
+        # Execute the actual stock carrier metadata writer; the v1 fixture omitted it.
+        lines=core().REMOTE.splitlines()
+        index=next(i for i,line in enumerate(lines) if "(op/'installed-source.json').write_text" in line)
+        writer='\n'.join(line[4:] for line in lines[index:index+2])
+        exec(writer,dict(op=target,source=profile['failed_source_sha'],files=m.SOURCE_HASHES,json=json,os=os))
+        previous=space['private']/profile['prior_reconciliation_id'];previous.mkdir();(previous/'source').mkdir()
+        result=dict(status='unknown_no_replay',reason='binding_reconciliation_request_present',
+                    source_sha=profile['prior_reconciliation_source'],operation_id=profile['prior_reconciliation_id'],
+                    mode='match-retained-readback',supplier_calls=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0)
+        profile['prior_reconciliation_digest']=hashlib.sha256(m.canonical(result)).hexdigest()
+        (previous/'result.json').write_bytes(m.canonical(result))
+        (previous/'reservation.json').write_text(json.dumps({k:result[k] for k in ('source_sha','operation_id','mode')}))
+        exec(writer,dict(op=previous,source=profile['prior_reconciliation_source'],files=m.SOURCE_HASHES,json=json,os=os))
+        return home,stage,target,day,space
+
+    def test_actual_carrier_metadata_is_required_and_both_failed_receipts_remain_bound(self):
+        for variant in ('installed_source','installed_files','previous_result','previous_metadata','previous_request','completion'):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as tmp:
+                home,stage,target,day,space=self.fixture(Path(tmp));previous=space['private']/space['NEXT_SCOPE']['prior_reconciliation_id']
+                if variant=='installed_source':
+                    value=json.loads((target/'installed-source.json').read_text());value['source_sha']='0'*40
+                    (target/'installed-source.json').write_text(json.dumps(value))
+                elif variant=='installed_files':
+                    value=json.loads((target/'installed-source.json').read_text());value['files']={}
+                    (target/'installed-source.json').write_text(json.dumps(value))
+                elif variant=='previous_result':(previous/'result.json').write_text('{}')
+                elif variant=='previous_metadata':(previous/'installed-source.json').write_text('{}')
+                elif variant=='previous_request':(previous/'request-0001.json').write_text('{}')
+                with mock.patch.object(Path,'home',return_value=home):
+                    if variant!='completion':
+                        with self.assertRaises(ValueError):space['retained_binding_reconciliation'](stage)
+                    else:
+                        out=space['retained_binding_reconciliation'](stage)
+                        result=dict(status='complete',production_unchanged=True,mode='match-retained-readback',source_sha=SHA,
+                            operation_id=space['operation'],supplier_calls=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,match_retained=out)
+                        with mock.patch.dict(self.policy(),space['NEXT_SCOPE']):
+                            for key,value in [('installed_metadata_verified',False),('prior_reconciliation_preserved',False),
+                                ('prior_reconciliation_canonical_sha256','0'*64),('prior_reconciliation_operation_id','wrong')]:
+                                bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+                                bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
+                                self.assertFalse(m.completed_result(self.command(),bad,SHA))
 
 
 class OperatorDictionaryTest(unittest.TestCase):
