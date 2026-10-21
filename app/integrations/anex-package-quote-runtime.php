@@ -39,7 +39,7 @@ function anytour_anex_quote_participant_counts(array $doc, bool $withInfants = f
             if (in_array($value, ['ADL', 'CHD', 'INF'], true)) $classes[$value] = true;
         }
         if (count($classes) !== 1 || (!$withInfants && isset($classes['INF']))) return null;
-        if ($withInfants && !array_key_exists('key', $person)) return null;
+        if ($withInfants && !isset($person['key'])) return null;
         if (isset($person['key'])) {
             if (!is_string($person['key']) && !is_int($person['key'])) return null;
             $key = (string) $person['key'];
@@ -286,8 +286,9 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     $key = $request['offer_ref'];
     $base = ['status' => 'quote_unavailable', 'final_price_verified' => false, 'selection_state' => 'disabled'];
     if (($offer['kind'] ?? null) !== 'concrete') return $base;
-    if (($offer['infants'] ?? 0) !== 0) {
-        $ages = $state['gateway']['search']['context']['child_ages'] ?? null;
+    $ages = $state['gateway']['search']['context']['child_ages'] ?? null;
+    $hasInfantAge = is_array($ages) && array_filter($ages, static fn($age) => is_int($age) && $age >= 0 && $age < 2) !== [];
+    if (($offer['infants'] ?? 0) !== 0 || $hasInfantAge) {
         $infants = $offer['infants'];
         if (!is_int($infants) || $infants < 1 || !is_int($offer['children'] ?? null)
             || !is_array($ages) || !array_is_list($ages) || count($ages) !== $offer['children']) {

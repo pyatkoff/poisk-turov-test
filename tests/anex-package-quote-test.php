@@ -688,7 +688,7 @@ foreach (['without-summaries', 'human-infant'] as $variant) {
 }
 $familyStages = ['start', 'transports', 'SetTransport', 'calcfull'];
 foreach ($familyStages as $stageIndex => $badStage) {
-    foreach (['missing-people', 'missing-infant', 'duplicate-key', 'missing-key', 'unknown-class',
+    foreach (['missing-people', 'missing-infant', 'duplicate-key', 'missing-key', 'null-key', 'all-null-keys', 'unknown-class',
         'conflicting-class', 'wrong-adult', 'child-includes-infant', 'wrong-infant',
         'null-infant', 'bool-infant', 'array-infant'] as $variant) {
         [$s, $r, , , , $f, $make, $save] = qp_fixture('', [0]);
@@ -698,6 +698,11 @@ foreach ($familyStages as $stageIndex => $badStage) {
             elseif ($variant === 'missing-infant') array_pop($doc['peoples']['people']);
             elseif ($variant === 'duplicate-key') $doc['peoples']['people'][2]['key'] = '2';
             elseif ($variant === 'missing-key') unset($doc['peoples']['people'][2]['key']);
+            elseif ($variant === 'null-key') $doc['peoples']['people'][2]['key'] = null;
+            elseif ($variant === 'all-null-keys') {
+                foreach ($doc['peoples']['people'] as &$person) $person['key'] = null;
+                unset($person);
+            }
             elseif ($variant === 'unknown-class') $doc['peoples']['people'][2]['age'] = 'UNKNOWN';
             elseif ($variant === 'conflicting-class') $doc['peoples']['people'][2]['human'] = 'CHD';
             elseif ($variant === 'wrong-adult') $doc['adult'] = '3';
@@ -727,11 +732,9 @@ foreach ($familyStages as $stageIndex => $badStage) {
 foreach ([null, 0, 2, '1', false] as $badInfants) {
     [$s, $r, , , , $f, $make, $save] = qp_fixture('', [0]);
     $s['gateway']['saved_offers']['offers'][$r['offer_ref']]['offer']['infants'] = $badInfants;
-    // Null/zero still follow the old no-infant contract and cannot verify the returned INF.
+    // Old retained zero/missing infant counts must not bypass full age0/1 binding.
     $reply = qp_run($r, $s, $make, $save);
     qp_unverified($reply, 'foreign infant binding cannot verify');
-    if (!in_array($badInfants, [null, 0], true)) {
-        qp_assert($f->calls === [] && $f->factory_calls === 0, 'invalid infant binding rejected before client creation');
-    }
+    qp_assert($f->calls === [] && $f->factory_calls === 0, 'invalid or legacy infant binding rejected before client creation');
 }
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";

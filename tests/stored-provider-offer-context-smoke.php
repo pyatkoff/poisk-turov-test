@@ -145,7 +145,7 @@ if (in_array('--native', $argv, true)) {
     [$row, $session, $keys] = fixture('anex', $now);
     $session['saved_offers']['search'] += ['checkin_begin' => '2027-01-25', 'checkin_end' => '2027-01-25', 'nights_from' => 7, 'nights_till' => 7];
     foreach ($session['saved_offers']['offers'] as &$entry) $entry['offer'] += [
-        'final_price_verified' => false, 'infants' => 0, 'price' => ['amount' => '133500.50', 'currency' => 'RUB'],
+        'final_price_verified' => false, 'infants' => 1, 'price' => ['amount' => '133500.50', 'currency' => 'RUB'],
         'availability' => ['hotel' => null, 'flight_outbound_economy' => null, 'flight_return_economy' => null]];
     unset($entry);
     $clientCalls = 0; $registryCalls = 0;
@@ -161,6 +161,18 @@ if (in_array('--native', $argv, true)) {
     check($resolved['resolved']['selection_state'] === 'disabled', 'No quote or booking authority fabricated');
     check($registryCalls === 1 && $clientCalls === 0, 'Current ANEX registry called; token-bearing client never created');
     check(serialize($session) === $original, 'Native ANEX read cannot renew background session lifetime');
+    foreach ([0, null] as $legacyInfants) {
+        $legacy = $session;
+        $legacy['saved_offers']['offers'][$keys[1]]['offer']['infants'] = $legacyInfants;
+        $beforeLegacy = serialize($legacy);
+        try {
+            AnyTourStoredProviderOfferContext::resolveAnex($row, $legacy, $gateway, $allows, $now);
+            throw new LogicException('Legacy infant mismatch was accepted');
+        } catch (InvalidArgumentException $e) {
+            check($e->getMessage() === 'THREE_PROVIDER_ANEX_SEARCH_CONTEXT', 'Native family rejects old zero/missing infant binding');
+        }
+        check(serialize($legacy) === $beforeLegacy && $clientCalls === 0, 'Refused native family remains read-only with no supplier client');
+    }
     $changed = new AnyTourAnexPreviewGateway($client, static fn() => 102, [], static fn() => $now);
     rejects(fn() => AnyTourStoredProviderOfferContext::resolveAnex($row, $session, $changed, $allows, $now), 'NATIVE_UNAVAILABLE');
     check($clientCalls === 0, 'Failures never start supplier work');
