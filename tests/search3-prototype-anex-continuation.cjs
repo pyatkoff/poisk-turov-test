@@ -114,13 +114,14 @@ test('HTTP status alone does not invent a producer retry policy',async()=>{
  }
 });
 test('post200 rejection retains only the actual fixed client guard and cannot borrow supplied diagnostics',async()=>{
- const cases=[['identity','envelope'],['empty','envelope'],['kind','tour_identity'],['search_ref','tour_identity'],
+ const cases=[['identity','envelope_generation'],['empty','envelope_hotels_count'],['kind','tour_identity'],['search_ref','tour_identity'],
   ['amount','amount'],['offer_ref','offer_scope'],['meal','selected_meal'],['stay','exact_stay'],
-  ['projection','projected_identity'],['mixed','unknown'],['unknown','unknown']];
+  ['projection','projected_identity'],['mixed','unknown'],['unknown','unknown'],['coarse','envelope']];
  for(const [fault,guard] of cases){
   const h=await expansionHarness();
   if(fault==='projection')h.t.dropProjectedOffer();
   if(fault==='unknown')h.root.crypto={subtle:{digest(){throw Object.assign(new Error('PRIVATE_INTERNAL_URL'),{anexClientGuard:'PRIVATE_GUARD'});}}};
+  if(fault==='coarse')h.root.crypto={subtle:{digest(){throw Object.assign(new Error('PRIVATE_INTERNAL_URL'),{anexClientGuard:'envelope'});}}};
   h.setFetch(async(url,body)=>{
    const p=page(1,'available',fault==='mixed'?[2,3]:[2]),tour=p.hotels[0].tours[0];
    if(fault==='kind')tour.kind='group_minimum';
@@ -136,6 +137,35 @@ test('post200 rejection retains only the actual fixed client guard and cannot bo
   let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.searchFailure.clientPhase==='projection'&&e.searchFailure.clientGuard===guard;},fault);
   await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
   assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',httpStatus:200,clientPhase:'projection',clientGuard:guard}],fault);
+  assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.apiCalls.length,0);assert.equal(h.o.raw.finalPriceVerified,false);
+ }
+});
+test('envelope rejection retains the first predicate without reading later fields or logging their values',async()=>{
+ const later=()=>{throw new Error('PRIVATE_LATER_FIELD');};
+ const poison=(object,key)=>Object.defineProperty(object,key,{get:later});
+ const cases=[
+  ['provider',d=>{d.provider='PRIVATE_PROVIDER';poison(d,'generation');}],
+  ['generation',d=>{d.generation='PRIVATE_GENERATION';poison(d,'search_ref');}],
+  ['search_ref',d=>{d.search_ref='PRIVATE_SEARCH';poison(d,'offer_ref');}],
+  ['offer_ref',d=>{d.offer_ref='PRIVATE_OFFER';poison(d,'status');}],
+  ['status',d=>{d.status='PRIVATE_STATUS';poison(d,'hotels');}],
+  ['hotels_type',d=>{d.hotels={};poison(d.hotels,'length');}],
+  ['hotels_count',d=>{d.hotels.push({});poison(d.hotels[0],'local_id');}],
+  ['hotel_identity',d=>{d.hotels[0].local_id='PRIVATE_ID';poison(d.hotels[0],'tours');}],
+  ['tours_type',d=>{d.hotels[0].tours={};poison(d.hotels[0].tours,'length');}],
+  ['tours_empty',d=>{d.hotels[0].tours=[];}]
+ ];
+ for(const [predicate,change] of cases){
+  const h=await expansionHarness();h.setFetch(async(url,body)=>{
+   const data={...expandIdentity(body),status:'expanded',hotels:page(1,'available',[2]).hotels,
+    diagnostics:expandDiagnostic,clientGuard:'PRIVATE_PAYLOAD_GUARD'};
+   change(data);return {ok:true,data};
+  });
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false
+   &&e.searchFailure.clientPhase==='projection'&&e.searchFailure.clientGuard==='envelope_'+predicate;},predicate);
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',
+   httpStatus:200,clientPhase:'projection',clientGuard:'envelope_'+predicate}],predicate);
   assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.apiCalls.length,0);assert.equal(h.o.raw.finalPriceVerified,false);
  }
 });
