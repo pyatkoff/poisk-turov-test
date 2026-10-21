@@ -1875,12 +1875,14 @@ class BindingFailureReconciliationTest(unittest.TestCase):
             self.assertEqual('unknown_no_replay',out['data']['prior_status'])
             self.assertIsNone(out['data']['prior_supplier_calls'])
             result=dict(status='complete',production_unchanged=True,mode='match-retained-readback',source_sha=SHA,
-                        operation_id=space['operation'],supplier_calls=0,database_writes=0,mapping_writes=0,match_retained=out)
+                        operation_id=space['operation'],supplier_calls=0,database_writes=0,mapping_writes=0,
+                        booking_calls=0,lead_calls=0,match_retained=out)
             with mock.patch.dict(m.BINDING_RECONCILIATION,space['NEXT_SCOPE']):
                 self.assertTrue(m.completed_result(self.command(),result,SHA))
                 for key,value in [('proved_failed_operation_supplier_calls',False),('prior_supplier_calls',0),
                                   ('staged_source_files_verified',True),('safe_to_write_now',True),
-                                  ('prior_receipt_preserved',False),('failed_canonical_sha256','0'*64)]:
+                                  ('prior_receipt_preserved',False),('failed_canonical_sha256','0'*64),
+                                  ('lead_calls',True),('booking_calls',1),('global_usage','measured')]:
                     bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
                     bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
                     with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,SHA))

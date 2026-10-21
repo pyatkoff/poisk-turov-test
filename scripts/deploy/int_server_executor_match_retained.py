@@ -1421,7 +1421,8 @@ def retained_binding_reconciliation(stage):
         fail('binding_reconciliation_failed_receipt')
     current_manifest = parsed(stage/'manifest.json')
     prior_manifest = parsed(target/'source/manifest.json')
-    if (current_manifest != prior_manifest or current_manifest.get('schema_version') != 1
+    if (current_manifest != prior_manifest or type(current_manifest.get('schema_version')) is not int
+            or current_manifest['schema_version'] != 1
             or not isinstance(current_manifest.get('files'), dict) or len(current_manifest['files']) != 17):
         fail('binding_reconciliation_manifest')
     for relative, expected in current_manifest['files'].items():
@@ -1459,7 +1460,8 @@ def retained_binding_reconciliation(stage):
         prior_supplier_calls=None, proved_failed_operation_supplier_calls=0, request_files_absent=True,
         failed_operation_day_reservations=0, staged_source_files_verified=17, provider_day=profile['provider_day'],
         historical_ledger_sha256=history, protected_inputs_count=len(protected), protected_inputs_unchanged=True,
-        supplier_calls=0, database_writes=0, mapping_writes=0, new_database_reads=0, new_accepted_mappings=0,
+        supplier_calls=0, database_writes=0, mapping_writes=0, booking_calls=0, lead_calls=0,
+        new_database_reads=0, new_accepted_mappings=0,
         native_hotel_authority=False, hotel_sales_access_proven=False, safe_to_write_now=False,
         no_replay=True, global_usage='not_measured')
     return {'data': data, 'evidence_sha256': hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
@@ -1484,13 +1486,14 @@ def completed_binding_reconciliation(command, result, control_sha):
         for key in ('source_sha', 'operation_id', 'cohort', 'target_operation_id'):
             if data.get(key) != command.get(key): return False
         for obj in (result, data):
-            if any(type(obj.get(k)) is not int or obj[k] != 0 for k in ('supplier_calls','database_writes','mapping_writes')): return False
+            if any(type(obj.get(k)) is not int or obj[k] != 0 for k in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls')): return False
         for key in ('new_database_reads','new_accepted_mappings','proved_failed_operation_supplier_calls','failed_operation_day_reservations'):
             if type(data.get(key)) is not int or data[key] != 0: return False
         if type(data.get('staged_source_files_verified')) is not int or data['staged_source_files_verified'] != 17: return False
         if type(data.get('protected_inputs_count')) is not int or data['protected_inputs_count'] != 25: return False
         if any(data.get(k) is not True for k in ('prior_receipt_preserved','request_files_absent','protected_inputs_unchanged','no_replay')): return False
         if any(data.get(k) is not False for k in ('native_hotel_authority','hotel_sales_access_proven','safe_to_write_now')): return False
+        if data.get('global_usage') != 'not_measured': return False
         history = data.get('historical_ledger_sha256')
         if (not isinstance(history,dict) or set(history) != {'retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-20.json'}
                 or any(not re.fullmatch(r'[a-f0-9]{64}',str(v)) for v in history.values())): return False
