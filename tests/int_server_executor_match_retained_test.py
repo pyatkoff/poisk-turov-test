@@ -1933,6 +1933,8 @@ class OperatorDictionaryTest(unittest.TestCase):
                 self.assertTrue(m.completed_result(self.command(),result,CONTROL))
                 for key,value in [('supplier_calls',True),('unknown_http_calls',1),('native_hotel_authority',True),
                                   ('physical_http_reservations',0),('selected_hotels',1),('new_accepted_mappings',1),
+                                  ('dictionary_scope',{'departure_id':True,'country_id':1}),('actions',{'dictionary':True}),
+                                  ('raw_response',{'response_number':1,'raw_sha256':'a'*64,'url':'private-url-sentinel'}),
                                   ('safe_to_write_now',True),('bindings',[{'family':'biblio','operator_id':True}])]:
                     bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
                     bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()

@@ -1372,6 +1372,8 @@ def completed_operator_dictionary(command, result, control_sha):
                 or data.get('dictionary_scope') != {'departure_id': 1, 'country_id': 1}
                 or data.get('actions') != {'dictionary': 1}
                 or type(data.get('http_status')) is not int or data['http_status'] != 200): return False
+        if (any(type(data['dictionary_scope'].get(key)) is not int for key in ('departure_id', 'country_id'))
+                or type(data['actions'].get('dictionary')) is not int): return False
         for key in ('mode', 'source_sha', 'operation_id'):
             if result.get(key) != command.get(key): return False
         for key in ('source_sha', 'operation_id', 'cohort', 'target_operation_id'):
@@ -1387,7 +1389,9 @@ def completed_operator_dictionary(command, result, control_sha):
         if any(data.get(key) is not False for key in ('native_hotel_authority', 'hotel_sales_access_proven', 'safe_to_write_now')): return False
         if any(data.get(key) is not True for key in ('no_replay', 'protected_inputs_unchanged')): return False
         raw = data.get('raw_response', {})
-        if type(raw.get('response_number')) is not int or raw['response_number'] != 1 or not re.fullmatch(r'[a-f0-9]{64}', str(raw.get('raw_sha256', ''))): return False
+        if (not isinstance(raw, dict) or set(raw) != {'response_number', 'raw_sha256'}
+                or type(raw.get('response_number')) is not int or raw['response_number'] != 1
+                or not re.fullmatch(r'[a-f0-9]{64}', str(raw.get('raw_sha256', '')))): return False
         bindings = data.get('bindings')
         if not isinstance(bindings, list) or len(bindings) > 4: return False
         families = set(); ids = set()
