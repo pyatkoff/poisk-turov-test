@@ -254,6 +254,31 @@ const server=http.createServer((req,res)=>{
    assert.equal(realCardScan.length,24,'real retained snapshot has its first24 cards');assert.equal(realCardScan[0].id,'3678');assert.match(realCardScan[0].total,/96.*953/);for(const card of realCardScan){assert(card.key&&card.title&&card.geography&&card.trip&&card.room&&card.operator);assert(card.profile.height>=43.5);if(width<=760){assert(card.summary.width>=card.card.width-42,'real long-name summary uses the full mobile inner width');assert.equal(card.footerVisible,!!card.variants);if(card.variants)assert(card.variants.width>=card.card.width-42);}}
    await page.locator('#hotel-2611 [data-operator="LOTI"] img').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#hotel-2611 [data-operator="LOTI"] img').naturalWidth>0);assert.match(await page.locator('#hotel-2611 [data-operator="LOTI"] img').getAttribute('src'),/assets\/operators\/loti\.png$/);
    fs.writeFileSync(path.join(evidence,'snapshot-real-card-scan-'+width+'.json'),JSON.stringify({width,scenario:'snapshot23Sep2026; Moscow/Turkey1–7Oct/7nights/2adults; historical offers',cards:realCardScan,supplier_requests:0,real_leads:0,physicalSafari:false},null,2));await shot('snapshot-real-results');assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   if(width===1280){
+    const navigation=[];
+    for(const height of [900,720]){
+     await page.setViewportSize({width,height});
+     const meal=page.locator('#filter-panel [data-filter="meals"][value="Всё включено"]');
+     await page.evaluate(()=>scrollTo({top:2800,behavior:'instant'}));
+     const before=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top,summary:document.querySelector('#results-summary').textContent}));
+     assert(before.y>2000&&before.heading<0,'reader starts deep in the old result list');
+     await shot('desktop-filter-deep-'+height);
+     await meal.check();
+     await page.waitForFunction(()=>document.querySelector('#results-title').getBoundingClientRect().top>=0);
+     const after=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top,summary:document.querySelector('#results-summary').textContent,first:document.querySelector('#cards .hotel-card h3').textContent,meal:document.querySelector('#filter-panel [data-filter="meals"][value="Всё включено"]').checked,url:location.search,overflow:document.documentElement.scrollWidth>innerWidth+1}));
+     assert(after.y<before.y-1000&&after.heading<height-100,'updated heading is visible without manual scroll');
+     assert.match(after.summary,/291 отель.*416/);assert.match(after.first,/RIXOS PREMIUM BODRUM VILLAS/);
+     assert.equal(after.meal,true);assert.equal(new URLSearchParams(after.url).get('meals'),'Всё включено');assert.equal(after.overflow,false);
+     await shot('desktop-filter-revealed-'+height);
+     await page.evaluate(()=>scrollTo({top:2800,behavior:'instant'}));
+     await page.locator('#filter-panel [data-action="reset"]').click();
+     await page.waitForFunction(()=>document.querySelector('#results-title').getBoundingClientRect().top>=0);
+     const reset=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top,summary:document.querySelector('#results-summary').textContent,meal:document.querySelector('#filter-panel [data-filter="meals"][value="Всё включено"]').checked}));
+     assert(reset.heading<height-100&&reset.y<1000);assert.match(reset.summary,/1047 отелей/);assert.equal(reset.meal,false);
+     navigation.push({width,height,before,after,reset,supplier_requests:0,real_leads:0,physicalSafari:false});
+    }
+    fs.writeFileSync(path.join(evidence,'desktop-filter-navigation.json'),JSON.stringify(navigation,null,2));
+   }
   }finally{release?.();await context.close();}
  }}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}
  fs.writeFileSync(path.join(evidence,'receipt.json'),JSON.stringify(receipts,null,2)+'\n');console.log('PASS compiled approved interface and cold offer-list browser',JSON.stringify(receipts));
