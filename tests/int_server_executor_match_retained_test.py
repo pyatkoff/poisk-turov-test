@@ -1815,6 +1815,94 @@ class CatalogueTest(unittest.TestCase):
                 self.assertTrue(changed[0]);self.assertFalse(private_output.exists())
                 self.assertEqual(protected,{path:path.read_bytes() for path in protected})
 
+class BindingFailureReconciliationTest(unittest.TestCase):
+    def command(self):
+        p=m.BINDING_RECONCILIATION
+        return dict(source_sha=SHA,mode='match-retained-readback',operation_id=p['operation_id'],
+                    cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
+
+    def test_fixed_readonly_parser_and_dispatch(self):
+        c=core();m.register_parser(c);cmd=self.command();body=c.PREFIX+' '.join(cmd.values())
+        self.assertEqual(cmd,c.parse_command(body))
+        for key in ('mode','operation_id','target_operation_id'):
+            bad=dict(cmd);bad[key]+='x'
+            with self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad.values()))
+        with self.assertRaises(ValueError):c.parse_command(body+' x')
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(body)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':SHA}):m.activate(c,cmd)
+        self.assertIn("if mode=='match-retained-readback':return retained_binding_reconciliation(stage)",c.REMOTE)
+        self.assertNotIn('return retained_operator_dictionary(stage)',c.REMOTE)
+        ast.parse(c.REMOTE)
+
+    def fixture(self,root):
+        home=root/'home';private=root/'private';stage=root/'stage';stage.mkdir()
+        profile=copy.deepcopy(m.BINDING_RECONCILIATION);target=private/profile['parent_operation_id']
+        target.mkdir(parents=True);(target/'source').mkdir()
+        prior=dict(status='unknown_no_replay',operation_id=profile['parent_operation_id'],
+                   source_sha=profile['failed_source_sha'],mode='match-retained-acquire',supplier_calls=None,
+                   database_writes=0,mapping_writes=0,lead_calls=0,booking_calls=0,reason='synthetic missing day file')
+        profile['failed_canonical_sha256']=hashlib.sha256(m.canonical(prior)).hexdigest()
+        (target/'result.json').write_bytes(m.canonical(prior))
+        (target/'reservation.json').write_text(json.dumps({k:prior[k] for k in ('operation_id','source_sha','mode')}))
+        manifest={'schema_version':1,'files':m.SOURCE_HASHES}
+        for dest in (stage,target/'source'):
+            (dest/'manifest.json').write_text(json.dumps(manifest))
+        for relative in m.SOURCE_FILES:
+            dest=target/'source'/relative;dest.parent.mkdir(parents=True,exist_ok=True);dest.write_bytes((SOURCE/relative).read_bytes())
+        ledger=home/'.anytoour-match';(ledger/'provider-quotas').mkdir(parents=True)
+        for name in ('retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-20.json'):
+            (ledger/name).write_text('{"historical":"preserve"}')
+        day=ledger/'provider-quotas/tourvisor-anex-2026-10-21.json'
+        day.write_text(json.dumps(dict(provider='tourvisor-anex',provider_day='2026-10-21',quota_policy='physical-http-v1',
+            physical_http_daily_limit=5000,physical_http_attempts=4,tariff_search_units=1,operations={},
+            physical_http_reservations={'another-operation:1':{'state':'reserved_unknown_no_replay'}})))
+        space=dict(pathlib=__import__('pathlib'),os=os,re=__import__('re'),json=json,hashlib=hashlib,
+                   NEXT_SCOPE=profile,private=private,mode='match-retained-readback',operation=profile['operation_id'],source=SHA,
+                   payload={**self.command(),'match_retained_control_sha':SHA},
+                   safe_file=lambda p,b: p.is_file() and not p.is_symlink() and p.stat().st_size<=b,
+                   fail=lambda reason: (_ for _ in ()).throw(ValueError(reason)))
+        exec(m.BINDING_RECONCILIATION_HANDLER,space)
+        return home,stage,target,day,space
+
+    def test_actual_readonly_source_and_request_absence_proof_preserves_every_input(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);home,stage,target,day,space=self.fixture(root)
+            before={str(p):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            with mock.patch.object(Path,'home',return_value=home):out=space['retained_binding_reconciliation'](stage)
+            self.assertEqual(before,{str(p):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+            self.assertEqual(25,out['data']['protected_inputs_count'])
+            self.assertEqual(0,out['data']['proved_failed_operation_supplier_calls'])
+            self.assertEqual('unknown_no_replay',out['data']['prior_status'])
+            self.assertIsNone(out['data']['prior_supplier_calls'])
+            result=dict(status='complete',production_unchanged=True,mode='match-retained-readback',source_sha=SHA,
+                        operation_id=space['operation'],supplier_calls=0,database_writes=0,mapping_writes=0,match_retained=out)
+            with mock.patch.dict(m.BINDING_RECONCILIATION,space['NEXT_SCOPE']):
+                self.assertTrue(m.completed_result(self.command(),result,SHA))
+                for key,value in [('proved_failed_operation_supplier_calls',False),('prior_supplier_calls',0),
+                                  ('staged_source_files_verified',True),('safe_to_write_now',True),
+                                  ('prior_receipt_preserved',False),('failed_canonical_sha256','0'*64)]:
+                    bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+                    bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
+                    with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,SHA))
+
+    def test_refuses_any_request_debit_source_or_receipt_ambiguity(self):
+        for variant in ('request','reservation','source','receipt','symlink','hardlink','duplicate'):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp);home,stage,target,day,space=self.fixture(root)
+                if variant=='request':(target/'request-0001.json').write_text('{}')
+                elif variant=='reservation':
+                    value=json.loads(day.read_text());value['physical_http_reservations'][space['NEXT_SCOPE']['parent_operation_id']+':1']={};day.write_text(json.dumps(value))
+                elif variant=='source':(target/'source'/m.SOURCE_FILES[0]).write_text('changed')
+                elif variant=='receipt':(target/'result.json').write_text('{}')
+                elif variant=='duplicate':day.write_text('{"provider":1,"provider":2}')
+                else:
+                    path=target/'reservation.json';other=root/'other';path.rename(other)
+                    if variant=='symlink':path.symlink_to(other)
+                    else:os.link(other,path)
+                with mock.patch.object(Path,'home',return_value=home),self.assertRaises(ValueError):
+                    space['retained_binding_reconciliation'](stage)
+
+
 class OperatorDictionaryTest(unittest.TestCase):
     def parser(self):
         c=core();m.register_parser(c);return c

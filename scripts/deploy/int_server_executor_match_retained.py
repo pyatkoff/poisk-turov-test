@@ -84,6 +84,15 @@ OPERATOR_BINDING = {
     'parent_evidence_sha256': 'fbdbc3c0e5327d77017ad2b65599d841849ab332e900c2883a5a5d7dc2578c57',
 }
 
+BINDING_RECONCILIATION = {
+    'cohort': 'common4-binding-failure-20261021',
+    'operation_id': 'int-andromeda-match-retained-readback-20261021-v1',
+    'parent_operation_id': OPERATOR_BINDING['operation_id'],
+    'failed_source_sha': 'a74f6405db37214cb64edd2c6695024921877ac4',
+    'failed_canonical_sha256': '6d48def9061bf57966f5f2d48e8aa1d76c544161b3b6a833c3b18d671ff0a858',
+    'provider_day': '2026-10-21',
+}
+
 
 def need(value, reason):
     if not value:
@@ -210,6 +219,14 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
+        if len(parts) >= 4 and parts[3] == BINDING_RECONCILIATION['cohort']:
+            need(len(parts) == 5 and parts[1] == 'match-retained-readback'
+                 and parts[2] == BINDING_RECONCILIATION['operation_id']
+                 and parts[4] == BINDING_RECONCILIATION['parent_operation_id'], 'binding_reconciliation_scope')
+            need(core.SHA_RE.fullmatch(parts[0]) is not None, 'retained_source_sha')
+            need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
+            return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
+                        cohort=parts[3], target_operation_id=parts[4])
         if len(parts) >= 4 and parts[3] == OPERATOR_BINDING['cohort']:
             need(len(parts) == 5 and parts[1] == 'match-retained-acquire'
                  and parts[2] == OPERATOR_BINDING['operation_id']
@@ -1358,6 +1375,130 @@ def retained_operator_dictionary(stage):
 '''
 
 
+BINDING_RECONCILIATION_HANDLER = r'''
+def retained_binding_reconciliation(stage):
+    profile = NEXT_SCOPE
+    if (mode != 'match-retained-readback' or operation != profile['operation_id']
+            or payload.get('cohort') != profile['cohort']
+            or payload.get('target_operation_id') != profile['parent_operation_id']):
+        fail('binding_reconciliation_scope')
+    protected = {}
+    def read(path, bound=1048576):
+        if not safe_file(path, bound) or path.resolve() != path or path.stat().st_nlink != 1:
+            fail('binding_reconciliation_path')
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(fd)
+            with os.fdopen(os.dup(fd), 'rb') as handle: raw = handle.read(bound+1)
+            after = os.fstat(fd)
+        finally: os.close(fd)
+        signature = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+        if signature(before) != signature(after) or len(raw) != after.st_size or len(raw) > bound:
+            fail('binding_reconciliation_drift')
+        protected[path] = (hashlib.sha256(raw).hexdigest(), signature(after))
+        return raw
+    def unique(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out: fail('binding_reconciliation_duplicate_key')
+            out[key] = value
+        return out
+    def parsed(path): return json.loads(read(path), object_pairs_hook=unique)
+    target = private/profile['parent_operation_id']
+    if target.is_symlink() or target.resolve() != target or not target.is_dir():
+        fail('binding_reconciliation_target')
+    expected_names = {'reservation.json', 'result.json', 'source'}
+    if set(p.name for p in target.iterdir()) != expected_names: fail('binding_reconciliation_request_present')
+    prior = parsed(target/'result.json'); reservation = parsed(target/'reservation.json')
+    prior_hash = hashlib.sha256(json.dumps(prior, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    if (prior_hash != profile['failed_canonical_sha256'] or prior.get('status') != 'unknown_no_replay'
+            or prior.get('supplier_calls') is not None
+            or any(obj.get('operation_id') != profile['parent_operation_id']
+                   or obj.get('source_sha') != profile['failed_source_sha']
+                   or obj.get('mode') != 'match-retained-acquire' for obj in (prior, reservation))
+            or any(type(prior.get(k)) is not int or prior[k] != 0
+                   for k in ('database_writes', 'mapping_writes', 'lead_calls', 'booking_calls'))):
+        fail('binding_reconciliation_failed_receipt')
+    current_manifest = parsed(stage/'manifest.json')
+    prior_manifest = parsed(target/'source/manifest.json')
+    if (current_manifest != prior_manifest or current_manifest.get('schema_version') != 1
+            or not isinstance(current_manifest.get('files'), dict) or len(current_manifest['files']) != 17):
+        fail('binding_reconciliation_manifest')
+    for relative, expected in current_manifest['files'].items():
+        pure = pathlib.PurePosixPath(relative)
+        if pure.is_absolute() or '..' in pure.parts or not re.fullmatch(r'[a-f0-9]{64}', str(expected)):
+            fail('binding_reconciliation_manifest')
+        if hashlib.sha256(read(target/'source'/relative)).hexdigest() != expected:
+            fail('binding_reconciliation_source')
+    home = pathlib.Path.home()/'.anytoour-match'
+    history = {}
+    for name in ('retained-selection-claims.json', 'retained-context-claims.json',
+                 'provider-quotas/tourvisor-anex-2026-10-20.json'):
+        history[name] = hashlib.sha256(read(home/name, 8*1024*1024)).hexdigest()
+    day = parsed(home/('provider-quotas/tourvisor-anex-'+profile['provider_day']+'.json'))
+    if (day.get('provider') != 'tourvisor-anex' or day.get('provider_day') != profile['provider_day']
+            or day.get('quota_policy') != 'physical-http-v1'
+            or type(day.get('physical_http_daily_limit')) is not int or day['physical_http_daily_limit'] != 5000
+            or any(type(day.get(k)) is not int or day[k] < 0 for k in ('physical_http_attempts', 'tariff_search_units'))
+            or not isinstance(day.get('operations'), dict)
+            or not isinstance(day.get('physical_http_reservations', {}), dict)
+            or profile['parent_operation_id'] in day['operations']
+            or any(k.startswith(profile['parent_operation_id']+':') for k in day.get('physical_http_reservations', {}))):
+        fail('binding_reconciliation_day_reservation')
+    for path, (digest, signature) in protected.items():
+        if (not safe_file(path, 8*1024*1024) or path.resolve() != path or path.stat().st_nlink != 1
+                or hashlib.sha256(path.read_bytes()).hexdigest() != digest
+                or (path.stat().st_dev, path.stat().st_ino, path.stat().st_size,
+                    path.stat().st_mtime_ns, path.stat().st_ctime_ns) != signature):
+            fail('binding_reconciliation_drift')
+    if set(p.name for p in target.iterdir()) != expected_names: fail('binding_reconciliation_request_present')
+    data = dict(state='binding_failure_reconciled_before_supplier_call', operation_id=operation, source_sha=source,
+        control_source_sha=payload['match_retained_control_sha'], cohort=payload['cohort'],
+        target_operation_id=profile['parent_operation_id'], failed_source_sha=profile['failed_source_sha'],
+        failed_canonical_sha256=prior_hash, prior_status='unknown_no_replay', prior_receipt_preserved=True,
+        prior_supplier_calls=None, proved_failed_operation_supplier_calls=0, request_files_absent=True,
+        failed_operation_day_reservations=0, staged_source_files_verified=17, provider_day=profile['provider_day'],
+        historical_ledger_sha256=history, protected_inputs_count=len(protected), protected_inputs_unchanged=True,
+        supplier_calls=0, database_writes=0, mapping_writes=0, new_database_reads=0, new_accepted_mappings=0,
+        native_hotel_authority=False, hotel_sales_access_proven=False, safe_to_write_now=False,
+        no_replay=True, global_usage='not_measured')
+    return {'data': data, 'evidence_sha256': hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}
+'''
+
+
+def completed_binding_reconciliation(command, result, control_sha):
+    try:
+        data = result['match_retained']['data']; profile = BINDING_RECONCILIATION
+        if (command.get('mode') != 'match-retained-readback' or command.get('cohort') != profile['cohort']
+                or command.get('operation_id') != profile['operation_id']
+                or command.get('target_operation_id') != profile['parent_operation_id']
+                or result.get('status') != 'complete' or result.get('production_unchanged') is not True
+                or data.get('state') != 'binding_failure_reconciled_before_supplier_call'
+                or data.get('control_source_sha') != control_sha
+                or data.get('failed_canonical_sha256') != profile['failed_canonical_sha256']
+                or data.get('failed_source_sha') != profile['failed_source_sha']
+                or data.get('provider_day') != profile['provider_day']
+                or data.get('prior_status') != 'unknown_no_replay' or data.get('prior_supplier_calls') is not None): return False
+        for key in ('mode', 'source_sha', 'operation_id'):
+            if result.get(key) != command.get(key): return False
+        for key in ('source_sha', 'operation_id', 'cohort', 'target_operation_id'):
+            if data.get(key) != command.get(key): return False
+        for obj in (result, data):
+            if any(type(obj.get(k)) is not int or obj[k] != 0 for k in ('supplier_calls','database_writes','mapping_writes')): return False
+        for key in ('new_database_reads','new_accepted_mappings','proved_failed_operation_supplier_calls','failed_operation_day_reservations'):
+            if type(data.get(key)) is not int or data[key] != 0: return False
+        if type(data.get('staged_source_files_verified')) is not int or data['staged_source_files_verified'] != 17: return False
+        if type(data.get('protected_inputs_count')) is not int or data['protected_inputs_count'] != 25: return False
+        if any(data.get(k) is not True for k in ('prior_receipt_preserved','request_files_absent','protected_inputs_unchanged','no_replay')): return False
+        if any(data.get(k) is not False for k in ('native_hotel_authority','hotel_sales_access_proven','safe_to_write_now')): return False
+        history = data.get('historical_ledger_sha256')
+        if (not isinstance(history,dict) or set(history) != {'retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-20.json'}
+                or any(not re.fullmatch(r'[a-f0-9]{64}',str(v)) for v in history.values())): return False
+        return result['match_retained'].get('evidence_sha256') == hashlib.sha256(canonical(data)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError):
+        return False
+
+
 def completed_operator_dictionary(command, result, control_sha):
     try:
         data = result['match_retained']['data']
@@ -1407,6 +1548,8 @@ def completed_operator_dictionary(command, result, control_sha):
 
 
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == BINDING_RECONCILIATION['cohort']:
+        return completed_binding_reconciliation(command, result, control_sha)
     if command.get('cohort') == OPERATOR_BINDING['cohort']:
         return completed_operator_dictionary(command, result, control_sha)
     try:
@@ -1513,10 +1656,16 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
+    reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort']
     binding = command.get('cohort') == OPERATOR_BINDING['cohort']
-    policy = OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
+    policy = BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
     handler = REMOTE_HANDLER
+    if reconciliation:
+        anchor = '    config=project/\'config.php\';dbhelper=project/\'data/db-v1.php\''
+        need(handler.count(anchor) == 1, 'binding_reconciliation_dispatch_anchor')
+        handler = handler.replace(anchor, "    if mode=='match-retained-readback':return retained_binding_reconciliation(stage)\n"+anchor, 1)
+        handler += BINDING_RECONCILIATION_HANDLER
     if binding:
         anchor = "    if mode=='match-retained-acquire':return acquire_retained_target(stage)"
         need(handler.count(anchor) == 1, 'operator_dictionary_dispatch_anchor')
