@@ -9,7 +9,7 @@ const window={
   if(action==='countries')return[{id:4,name:'Турция'}];
   if(action==='meals')return[];
   if(action==='search_start')return{searchId:123};
-  if(action==='tour')return structuredClone(reply);
+  if(action==='tour'){if(reply instanceof Error)throw reply;return structuredClone(reply);}
   if(action==='flights'){if(flightReply instanceof Error)throw flightReply;return flightReply;}
   throw Error('Unexpected fixture action '+action);
  }},
@@ -111,6 +111,66 @@ vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../v2/prototype-search/d
  data.leadSession({...offer,flightsLoading:false,flightsError:'',variants:[]});
  assert.equal(handoffs[1].flight,null,'The existing no-flight fallback remains explicit');
  for(const price of [undefined,null,0,-1]){reply={id:'exact-tour',price};await assert.rejects(data.quote(offer),/подтвердить/,'An unavailable exact-tour price cannot reuse the listing');}
+ // Use the actual selected-offer consumer: an explicit expiry must not turn
+ // a failed flight check into a manager-flight handoff at the old base price.
+ const app=fs.readFileSync(path.resolve(__dirname,'../v2/visual-search/app.js'),'utf8');
+ function appFunction(start,end){const from=app.indexOf(start),to=app.indexOf(end,from);assert.ok(from>=0&&to>from);return app.slice(from,to);}
+ function flightConsumer(selectedOffer){
+  const consumer=vm.createContext({data,selectedOffer,selectionGeneration:1,modalType:'offer',
+   $:()=>({open:true}),retainedProviderView:()=>null,renderRealOffer(){},
+   flightPairFor:()=>null,withFlightPair(){throw Error('No successful pair expected');},openFlightPicker(){}});
+  vm.runInContext(appFunction('function isCurrentOfferRequest(','async function quoteSelectedOffer(')
+   +appFunction('async function loadRealFlights(','async function openLeadWithQuote('),consumer);
+  return consumer;
+ }
+ const httpError=status=>Object.assign(new Error('Fixture HTTP '+status),{code:'HTTP_ERROR',status,
+  data:{ok:false,upstreamStatus:status,diagnostics:{provider:'tourvisor',stage:'flights',category:'http',httpStatus:status,elapsedMs:17}}});
+ reply={id:'exact-tour',price:120000};flightReply=[];
+ const expiring={...offer,tour:await data.quote(offer)};
+ const priorSession=data.leadSession(expiring);
+ const other={...offer,raw:{id:'other-tour'}};reply={id:'other-tour',price:95000};other.tour=await data.quote(other);
+ const otherSession=data.leadSession(other);
+ const gone=httpError(410);flightReply=gone;
+ const consumer=flightConsumer(expiring),beforeExpiryCalls=calls.length;
+ await consumer.loadRealFlights();
+ assert.equal(consumer.selectedOffer.quoteErrorCode,'offer_expired','HTTP410 enters the existing terminal offer path');
+ assert.equal(consumer.selectedOffer.quoteErrorTerminal,true);
+ assert.equal(consumer.selectedOffer.tour,null,'Expired flights revoke the old base tour in the actual consumer');
+ assert.equal(consumer.leadReadyOffer(consumer.selectedOffer),null,'Known expiry cannot fall back to the old price through a manager');
+ assert.equal(calls.length,beforeExpiryCalls+1,'Expiry handling makes only the original flight intent, with no automatic retry');
+ const expired=error=>error===gone&&error.code==='offer_expired'&&error.retryable===false&&error.status===410&&error.data===gone.data;
+ assert.throws(()=>data.leadSession(expiring),expired,'The exact failed quote cannot create another session');
+ assert.throws(()=>priorSession.payload({}),expired,'An existing session loses its expired quote authority');
+ assert.throws(()=>priorSession.submit({}),expired,'Expiry rejects before invoking the delivery owner');
+ const sealedCalls=calls.length;
+ await assert.rejects(data.flights(expiring.tour),expired,'The known-expired exact receipt is not requested again');
+ assert.equal(calls.length,sealedCalls,'A repeated expired flight intent performs no supplier call');
+ assert.equal(otherSession.payload({}).tour,other.tour,'Another exact offer receipt remains current');
+ data.leadSession(other);
+ reply=httpError(410);reply.data.diagnostics.stage='tour';
+ const quoteFailure=reply;
+ await assert.rejects(data.quote(other),error=>error===quoteFailure&&error.code==='offer_expired'&&error.retryable===false&&error.status===410&&error.data===quoteFailure.data);
+ assert.throws(()=>otherSession.payload({}),error=>error.code==='offer_expired','Failed revalidation revokes only its previous exact quote');
+ for(const status of [404,429,500,502,503,504]){
+  const original=httpError(status);reply=original;
+  await assert.rejects(data.quote(offer),error=>error===original,'Unproven/transient quote failures retain their original contract');
+  flightReply=original;
+  await assert.rejects(data.flights(offer.tour),error=>error===original,'Unproven/transient flight failures retain their original contract');
+ }
+ // A new successful receipt for the same ID is independent of the revoked one.
+ reply={id:'exact-tour',price:121000};flightReply=[];
+ const fresh={...offer,tour:await data.quote(offer)};
+ assert.equal(data.leadSession(fresh).payload({}).tour.price,121000);
+ const freshSession=data.leadSession(fresh);
+ reply=httpError(410);
+ await assert.rejects(data.quote({...fresh,raw:{id:'foreign-tour'}}),error=>error.code==='offer_expired');
+ assert.equal(freshSession.payload({}).tour,fresh.tour,'A mismatched previous-tour ID cannot revoke another quote');
+ for(const original of [Object.assign(httpError(410),{status:'410'}),Object.assign(httpError(410),{code:'NETWORK_ERROR'})]){
+  reply=original;
+  await assert.rejects(data.quote(fresh),error=>error===original&&error.retryable===undefined,'Only a native numeric HTTP410 is terminalized');
+ }
+ assert.equal(freshSession.payload({}).tour,fresh.tour,'Other failure kinds leave the current exact receipt untouched');
+ assert.equal(offer.tour.price,120000,'Revocation never changes the old supplier price');
  data.stop();assert.throws(()=>session.payload({}),/изменились/);
- console.log('Prototype flight handoff: Coral/Sunmar zero-call policy; allowed contracts and pending/failed/malformed guards preserved. Supplier/lead calls: 0.');
+ console.log('Prototype flight handoff: explicit410 terminal/receipt revocation; Coral/Sunmar, transient errors, empty flights and whole prices preserved. Supplier/lead calls: 0.');
 })().catch(error=>{console.error(error);process.exitCode=1;});
