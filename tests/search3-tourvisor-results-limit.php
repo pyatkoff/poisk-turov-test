@@ -108,9 +108,10 @@ final class Probe
     public static int $calls = 0;
     public static int $decodes = 0;
     public static float $seconds = 1.234;
+    public static string $url = '';
 }
 function jwt() { return 'offline-fixture-token'; }
-function curl_init($url) { ++Probe::$calls; return (object)['url' => $url]; }
+function curl_init($url) { ++Probe::$calls; Probe::$url = $url; return (object)['url' => $url]; }
 function curl_setopt_array($handle, $options) { return true; }
 function curl_exec($handle) { return Probe::$body; }
 function curl_errno($handle) { return Probe::$errno; }
@@ -130,6 +131,60 @@ ERROR_FIXTURE);
 foreach (['query_string', 'short_text', 'tv_failure_diagnostics', 'tv_get'] as $function) {
     eval("namespace Search3GatewayErrorFixture;\n" . source_function($gateway, $function));
 }
+
+// Repeated child ages are separate travellers at the actual query boundary.
+// These namespaced cURL stubs cannot send a request, even with cURL installed.
+foreach (['request_array', 'child_ages'] as $function) {
+    eval("namespace Search3GatewayErrorFixture;\n" . source_function($gateway, $function));
+}
+$partyCases = [
+    [[], [], 'adults=2'],
+    [null, [], 'adults=2'],
+    ['5', [5], 'adults=2&childs=5'],
+    [['5', '5'], [5, 5], 'adults=2&childs=5&childs=5'],
+    [[0, 0], [0, 0], 'adults=2&childs=0&childs=0'],
+    [[0, 5, 5], [0, 5, 5], 'adults=2&childs=0&childs=5&childs=5'],
+    [[17, 17, 17], [17, 17, 17], 'adults=2&childs=17&childs=17&childs=17'],
+    [[5, 5, 5, 17], [5, 5, 5], 'adults=2&childs=5&childs=5&childs=5'],
+    [['', 5, 5], [5, 5], 'adults=2&childs=5&childs=5'],
+];
+foreach ($partyCases as [$input, $expectedAges, $expectedQuery]) {
+    $_GET = ['childs' => $input];
+    $ages = \Search3GatewayErrorFixture\child_ages();
+    if ($ages !== $expectedAges) throw new RuntimeException('Child traveller multiplicity changed');
+    \Search3GatewayErrorFixture\Probe::$status = 200;
+    \Search3GatewayErrorFixture\Probe::$errno = 0;
+    \Search3GatewayErrorFixture\Probe::$body = '[]';
+    \Search3GatewayErrorFixture\Probe::$calls = 0;
+    \Search3GatewayErrorFixture\Probe::$decodes = 0;
+    \Search3GatewayErrorFixture\tv_get('/tours/search', ['adults' => 2, 'childs' => $ages]);
+    if (\Search3GatewayErrorFixture\Probe::$url !== 'https://api.tourvisor.ru/search/api/v1/tours/search?' . $expectedQuery
+        || \Search3GatewayErrorFixture\Probe::$calls !== 1
+        || \Search3GatewayErrorFixture\Probe::$decodes !== 1) {
+        throw new RuntimeException('Supplier query lost a child or repeated transport');
+    }
+}
+foreach ([[-1], [18], ['5.5'], ['invalid']] as $input) {
+    $_GET = ['childs' => $input];
+    \Search3GatewayErrorFixture\Probe::$calls = 0;
+    try {
+        \Search3GatewayErrorFixture\child_ages();
+        throw new RuntimeException('Invalid child age accepted');
+    } catch (Search3GatewayOutput $error) {
+        if ($error->httpStatus !== 400
+            || $error->payload !== ['ok' => false, 'error' => 'child age must be between 0 and 17']
+            || \Search3GatewayErrorFixture\Probe::$calls !== 0) {
+            throw new RuntimeException('Invalid child age did not stop before transport');
+        }
+    }
+}
+$_GET = ['hotelIds' => ['1', '1', '2']];
+if (\Search3GatewayErrorFixture\request_array('hotelIds', 50) !== ['1', '2']) {
+    throw new RuntimeException('Set filter deduplication changed');
+}
+$_GET = [];
+echo 'SEARCH3_TOURVISOR_PARTY_TRANSPORT_OK cases=' . count($partyCases)
+    . " invalid=4 filter_dedup=preserved supplier_http=0\n";
 
 $errorCases = 0;
 foreach ([429, 500, 503, 404, 302, 0, 700] as $status) {

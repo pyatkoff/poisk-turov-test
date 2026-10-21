@@ -94,7 +94,7 @@ function short_text($value, int $max = 200)
     return mb_substr(trim((string)$value), 0, $max, 'UTF-8');
 }
 
-function request_array(string $key, int $maxItems = 100)
+function request_array(string $key, int $maxItems = 100, bool $deduplicate = true)
 {
     $value = $_GET[$key] ?? [];
     if ($value === '' || $value === null) return [];
@@ -104,12 +104,13 @@ function request_array(string $key, int $maxItems = 100)
         $v = short_text($v, 80);
         if ($v !== '') $out[] = $v;
     }
-    return array_values(array_unique($out));
+    return $deduplicate ? array_values(array_unique($out)) : $out;
 }
 
 function child_ages()
 {
-    $ages = request_array('childs', 3);
+    // Each age represents one child, including siblings of the same age.
+    $ages = request_array('childs', 3, false);
     $out = [];
     foreach ($ages as $age) {
         $v = filter_var($age, FILTER_VALIDATE_INT);
