@@ -65,6 +65,12 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+test('stop preserves cleanup and the positive int31 generation contract at exhaustion',()=>{
+ const h=harness();h.t.epoch(2147483647);
+ const next=h.t.stop();assert(Number.isInteger(next)&&next>0&&next<=2147483647);
+ assert(h.run.controller.signal.aborted);
+ assert.equal(h.t.stop(),next+1,'ordinary within-page invalidation remains monotonic');
+});
 async function expansionHarness(ids=[1]){
  const h=harness(),p=page(1,'available',ids);h.run.anexSessionCurrent=true;h.t.expansionCatalog();
  p.hotels[0].tours.forEach(t=>t.kind='group_minimum');await h.initial(p);

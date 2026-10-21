@@ -12,7 +12,7 @@
   const anexPackageReceipts=new Map(),anexExpansionAttempts=new Map();
   const calendarWindows=new Map(),CALENDAR_REUSE_MS=30000,CALENDAR_CACHE_BYTES=4*1024*1024;
   let calendarWindowBytes=0,calendarVersion=0;
-  let generation = 0, searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
+  let generation = searchGenerationSeed(), searchId = 0, timer = null, notify = () => {}, raw = [], context = null, searchParams = null, activeSearch = null, activeVerification = null, currentSupplierScope = null;
   const owner = root.Search3CanonicalProfilesV1.create(() => publish());
   const localContents=new Map(),localContentReads=new Map(),localContentAttempted=new Set();
   const localContentQueue=[];let localContentWorkers=0;
@@ -523,10 +523,18 @@
   }
   function publish() {if(owner&&context&&activeSearch&&current(activeSearch)){const rows=project(owner.read(raw,{}),context);notify({type:'results',hotels:rows});queueHotelContent(rows);}}
   function current(run){return activeSearch===run&&run.generation===generation;}
+  function searchGenerationSeed(){
+    // The supplier session is shared across pages; a page-local zero restarts its
+    // first-week identity. Random lower30 bits keep the int31 ABI and increment headroom.
+    const entropy=new Uint32Array(1);
+    if(root.crypto?.getRandomValues)root.crypto.getRandomValues(entropy);
+    else entropy[0]=Math.floor(Math.random()*0x100000000);
+    return entropy[0]>>>2;
+  }
   function stop(){
     localContentAttempted.clear();
     localContentQueue.length=0;
-    clearCalendarWindows();generation++;clearTimeout(timer);timer=null;
+    clearCalendarWindows();generation=generation<2147483647?generation+1:searchGenerationSeed()+1;clearTimeout(timer);timer=null;
     activeSearch?.controller.abort();activeSearch=null;
     activeVerification?.abort();activeVerification=null;andromedaQuoteChoices.clear();andromedaQuoteAttempts.clear();anexCurrentReceipts.clear();anexAdditionalAttempts.clear();anexFlightAttempts.clear();anexFlightReceipts.clear();anexPackageReceipts.clear();anexExpansionAttempts.clear();
     return generation;
