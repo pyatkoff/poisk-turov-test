@@ -1287,19 +1287,19 @@
   "current_task": {
     "id": "S3_PRODUCT_CURRENT_ACCEPTANCE",
     "title": "Search3: цельная поставка выбора тура/рейсов/цены/контакта в original design-lab и existing NEXT",
-    "status": "PUBLISHED_9977_ANEX_CLIENT_PROJECTION_HANDOFF_PENDING",
+    "status": "PUBLISHED_41FBE_ANEX_ENVELOPE_CONTRACT_HANDOFF_PENDING",
     "issue": 1646,
     "coordinator_issue": 4709,
     "design_issue": 1719,
     "branch": "release/search3-production-ready-v1",
     "roadmap": "docs/project/search3-product-development-plan.md",
-    "updated_at": "2026-10-21T00:51:08+00:00",
+    "updated_at": "2026-10-21T01:55:00+00:00",
     "owner_request": "10.10.2026: поисковик9,5–10 визуально и по юзабилити, минимум полноценные макеты. 19.10.2026: «давай сделаем оптимальный план и оптимально выстроим всю работу» — законченные пользовательские пакеты, без повторов завершённого и накопления непроверенных черновиков. 19.10.2026 13:55: «изменяй» — заранее определить проверяемость exact пакета и отделять блокер unpublished Sites от доступных installed NEXT проверок. 19.10.2026 23:06 «давай сначала выстроим и оптимизируем всю работу»: один конечный остаток, переиспользование неизменённых инструкций/evidence по SHA, один writer и независимый review, готовый пакет перед полными проверками. 20.10.2026: «исправил? как ты теперь оцениваешь существующий план?» — устранить фактическое противоречие завершённого пакета/старого статуса, закрепить один следующий результат и точные условия зависимостей. 20.10.2026 00:52: «оставим два самых ходовых разрешения,430 и1280… доведем поиск до9.5/10, тогда… к остальным» — текущая UI-матрица430/1280, остальные размеры deferred до завершения цельного UI-этапа. 20.10.2026: «Запрет на проход клавиатурой» и повторное требование вернуться к основной поставке: обычный цельный путь мышью/тапами в NEXT; прекратить отдельные keyboard/A11y/focus микрозадачи и дробление на частные оценки. 20.10.2026 02:15: «исправил? …план оптимальный?» — записать завершённую демо-приёмку и один конкретный следующий admission-результат; для каждой внешней зависимости указать текущего ответственного, действие и условие закрытия, без круговых блокировок и повышения общей оценки. 20.10.2026 02:34: прямо разрешён один конкретный live поиск/TVquote без предварительного подтверждённого резерва, owner сообщил5000/сутки; этот допуск consumed6280546977. 02:43 «делай» — опубликовать просмотр установленного NEXT430 в том же Sitesproject и убрать устаревшее ожидание admission. 20.10.2026: «можешь не спрашивать разрешения на разовые поиски» — standing permission для нового обоснованного обычного one-off/quote в прежних лимитах/штатном UI; #4217/6286202365, без bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production или изменения квот.",
-    "acceptance_status": "INSTALLED_TERMINAL_AND_RETURN_ACCEPTED_EXACT_ANEX_PATH_PENDING",
-    "last_fully_checked_release_sha": "7d7a7690170a70249c0400e7344d83d5f305df99",
-    "published_source_sha": "9977cd95465f02ad0d329160715941c344a7b3a7",
-    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305157291",
-    "planning_base_release_sha": "7d7a7690170a70249c0400e7344d83d5f305df99",
+    "acceptance_status": "INSTALLED_CLIENT_GUARD_AND_TERMINAL_RETURN_ACCEPTED_EXACT_ANEX_PATH_PENDING",
+    "last_fully_checked_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
+    "published_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
+    "published_receipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305962224",
+    "planning_base_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
     "quality": {
       "rubric": "SEARCH-QUALITY-1",
       "mandatory_rows": 11,
@@ -1314,14 +1314,14 @@
         "physical",
         "real supplier"
       ],
-      "score_status": "Current9977: controlled receiving terminal/noReplay/JSDOM+compiled430/1280 and actual installed ANEX14–20Dec client_projection HTTP200 terminal/retained-return430x932↔1280x720 accepted in audit6305315828. No new complete five-criterion row or numeric uplift. WholeANEX exactprice/pair/contact N at projection boundary. Old5e1 Rix manager/familySelectedtour10 and historicalcompiledDesktop/Calendar9.5 retain exact oldscopes, not retagged. WholeSearch/mobile-native/physical/real delivery/fullleadvalidation N/deferred."
+      "score_status": "Current41fbe diagnostics source/CI/artifact/install accepted; actual oneordinary4–10Nov ANEX first-envelope HTTP200 rejection/terminal+retainedreturn430x932↔1280x720 accepted audit6306085730. Fixed8localguard narrows actualboundary, no price/schema/suppliercause proven. No complete new5criterionrow/numericuplift; app/UI unchanged0. Old9977/5e1/compiled9.5 evidence exactscopes/noReplay retained, not retagged. WholeANEXexactprice/pair/contact N; wholeSearch9.5/physical/real delivery/fullleadvalidation N/deferred."
     },
-    "next_action": "Принять bounded retained safe PUBLIC envelope/projection facts оригинального ANEX POST200 21Oct00:47:43.821Z по #2506/6305290603 и #4709/6305290836. SEARCH owns receiving adapter/app; INT owns authoritative producer shape. Различить existing identity/kind/date+nights/normalization/projection guard только по сохранённым фактам; если отсутствуют — NOT_RETAINED. Исправлять только подтверждённое несоответствие в existing owner; без нового Find/expand/probe/reader и без угадывания supplier cause. PR4775/source9977 реально установлен и affected terminal/return430↔1280 проверен; его source/CI/stock/ordinary control CONSUMED/no-replay. Старые Rix/family/FUNSUN/7–13Dec контексты не повторять; keyboard запрещён, остальные deferred/external gates не превращать в очередь.",
+    "next_action": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
     "next_task": {
-      "scope": "Тот же ORIGINAL NEXT/source9977; receiving/terminal/ordinaryreturn пакет установлен и принят. Один следующий ANEX input — retained original200 PUBLIC shape по #2506/6305290603 для подтверждённого producer/receiver mismatch, без повторного запроса.",
+      "scope": "Тот же ORIGINAL NEXT/source41fbe; fixedlocal8guard diagnostics installed/verified. Один следующий input — authoritative producer/receiver first-envelopecontract/facts по #2506/6306074777; exactfailedclause неизвестна, без повторного запроса/нового reader/спекулятивного ослабления.",
       "design_owner": "Тот же PUBLIC projectappgprj_6abcd9299ef88191bbce1fc1bf8c767a/history/public; Site203 уже перенесён. SEARCH только originalNEXT/release/search3-production-ready-v1. Один writer/integrator, независимый read-only review, отдельный publisher после готовности изменённого artifact. Foreign design-v2 исключён. Site204/source d71b84ca — только NEXT-viewer/общий width-controller, не новый productdesign; Site203 остаётся согласованным визуальным reference.",
-      "acceptance": "PR4775 source+all7exactCI+actual843SOURCEartifact+2compiledframes+READY+DEPLOY/readback accepted separately. Actual one new14–20Dec2A/AI:46hotels364variants/partial; ownSEHER/EconomyRoom/14–21Dec/listing92055 unconfirmed; ONEexpand→HTTP200client_projection_unconfirmed beforequote. Humanterminal/noRetry/localreturn/reopen/430x932↔1280x720 retained; 2actualJPG independentlyaccepted, return reported22DOM/no independentfulltrace. Audit6305315828; wholeANEXprice/pair/contact/global9.5/physical/delivery N.",
-      "execution": "Принять bounded retained safe PUBLIC envelope/projection facts оригинального ANEX POST200 21Oct00:47:43.821Z по #2506/6305290603 и #4709/6305290836. SEARCH owns receiving adapter/app; INT owns authoritative producer shape. Различить existing identity/kind/date+nights/normalization/projection guard только по сохранённым фактам; если отсутствуют — NOT_RETAINED. Исправлять только подтверждённое несоответствие в existing owner; без нового Find/expand/probe/reader и без угадывания supplier cause. PR4775/source9977 реально установлен и affected terminal/return430↔1280 проверен; его source/CI/stock/ordinary control CONSUMED/no-replay. Старые Rix/family/FUNSUN/7–13Dec контексты не повторять; keyboard запрещён, остальные deferred/external gates не превращать в очередь.",
+      "acceptance": "PR4778 source+6applicableworkflows/7checks firstattempt+actual843SOURCE/READY/DEPLOY/readback independently accepted. Newordinary4–10Nov/7n/2A/AI:75hotels294UIvariants/partial; DG HOTELS ROSE RESORT/EconomyRoom/AI/4–11Nov/listing96117unconfirmed; ONEexpand→HTTP200/projection/clientGuardenvelope01:47:26.498Z beforequote. Terminal/ordinaryreturn430x932↔1280x720↔430 preserved/sameONEwarn. TwoactualterminalJPG independentlyaccepted; return is ROOTreportedDOMtrace. Audit6306085730. NumericalUI0, wholeANEXprice/pair/contact/global9.5/physical/delivery N.",
+      "execution": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
       "protected": "Live Tourvisor+direct ANEX; SAMO paused. Только существующая authority/bounded contract, missing/pending/expired не0/final; не цена чужой пары, не повторное fuel/markup/APD, не caps3/8/9 из proposal. Сохранять exact offer/pair/party/search/generation, draft/consent/focus/scroll/history, passive no-replay, mobilephoto1.8/текущую форму/календарь/бренд. Owner6286202365 permits justified ordinary one-off searches/normalquotes within existinglimits/stockUI without repeatedpermission; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/prod expansion. Other protected operations still require their exact allowance/budget/stockexecutor; no API URL/payload/auth, price/fuel/FX, DB/LOCAL/MATCH, lead/CRM/Metrika/goals, main/production/siblings/workflows/allowlists/secrets/schedule/enabled/paused изменения.200%deferred."
     },
     "existing_unapproved_drafts": [
@@ -1905,9 +1905,36 @@
         ],
         "full_trace_file": "browser JSON did not materialize; no hash claimed",
         "external": "exactANEXwholeprice/pair/contact, physicalHTTP/globalbalance, physical/real delivery N; no globalscorepromotion"
+      },
+      "current_live_anex_guard": {
+        "operation": "next-anex-ordinary-default-20261104-20261021-v1",
+        "status": "COMPLETED_CONSUMED_NO_REPLAY",
+        "source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17",
+        "release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
+        "stock_run": 39528574999,
+        "terminal": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6306078713",
+        "audit": "https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6306085730",
+        "handoff": "https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6306074777",
+        "observed": "ONEFind01:46:28.632Z Moscow→Turkey4/fullcountry/default4–10Nov2026/7n/2A/AI→75hotels294UIvariants partial. OwnDG HOTELS ROSE RESORT/EconomyRoom/AI/4–11Nov/listing96117RUBunconfirmed; ONEexpand01:47:26.043Z→originalwarn01:47:26.498Z client_projection_unconfirmed/httpStatus200/clientPhaseprojection/clientGuardenvelope.",
+        "preserved": "Other-tour→same75/294/AI/date/recommended→samecardContinue→selectedANEXrowreopen→terminal1280short→430 retains hotel/room/meal/stay/party/unconfirmed96117/error and sameONEwarning. Actual2terminalJPG independentlyviewed/hashverified; returnROOTreportedDOMtrace, not independentlyinspectedfulltrace. No extraFind/expand/quote/pair/contact/retry/Continue/realLead intents; physicalHTTP/globalremainingN.",
+        "cause": "Firstcompoundbound-envelope/hotel/toursguard proven; individualclause NOT_ESTABLISHED. Expandedemptyhotels possiblecontract, not actualbodyproof. Old14–20Dec PUBLICbody NOT_RETAINED; newbody notread. No private-session/reader/replay/guardrelaxation.",
+        "evidence_files": [
+          {
+            "name": "original-next-41fbe-anex-envelope430-1792547318915.jpg",
+            "bytes": 55627,
+            "sha256": "3065c70d85842b13835c382277219d3940dbdd505a5be7b76e5a47907c4ebb79"
+          },
+          {
+            "name": "original-next-41fbe-anex-envelope1280-settled-1792547610061.jpg",
+            "bytes": 96555,
+            "sha256": "4fcbe55c5332340526253a5cd78567cc5edce47f97414f92eb5c11dec2f9022b"
+          }
+        ],
+        "excluded": "Earliertransitional1280alloffers frame excluded fromterminalmatchedscope.",
+        "external": "ExactANEXwholeprice/pair/contact/global9.5/physical/real delivery notestablished; numericUI0."
       }
     },
-    "published_release_sha": "7d7a7690170a70249c0400e7344d83d5f305df99",
+    "published_release_sha": "93914a8a523e13fa315c578bc874f0e037c3a57f",
     "execution_policy": {
       "product_wip_limit": 1,
       "unreviewed_visual_candidates_limit": 1,
@@ -1917,20 +1944,17 @@
       "reporting": "One terminal/RELEASE/nextstep in4709; changed rubric reasons/evidence in1646; stage/link in1719. Concise user effect/new exact blocker; no copied full report/unchanged notification or points for plan/CI/version.",
       "verification_preflight": "Fresh active section/current_task/heads/claims/messages; compare SHA for already-read instructions/consumer map and read changed/new scoped instructions before action. Retain exact source/artifact/runtime, supported route, missing actions/frames and limits in existing claim/PR; reuse evidence without paid/live routing probe.",
       "blocker_scope": "Keyboard walkthroughs/Tab/A11y-only/focus tasks forbidden by owner20Oct; keep history/N/deferred without making them an ordinary-UI blocker or inventing scores. Native430/physical and external INT/data/delivery/production retain exact gates separately. Missing resize or everyN is not a new task; no cosmetic/coverage/paid retry loop.",
-      "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. Current4729 productrepair necessaryregression followed allgates; no newQA-only/score/cosmeticqueue. Ordinary justified oneoffs/quotes allowed6286202365 withinexistinglimits/stockUI, without repeatedpermission; no bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
+      "qa_only_authority": "Completed oldQA/publish/live operations remain consumed. PR4778 necessary minimal diagnostic+focusedexistingfixtures followed all applicable gates and one justified affectedordinarycase; no newQA-only/score/cosmeticqueue. Standing ordinaryoneoff/normalquote permission6286202365 withinexistinglimits/stockUI; no replay/bulk/auto-drain/paidbrowser/repeatedANEX/realLead/production expansion.",
       "validation": "Control-only four-path repair: JSON/diff/current_task-only/protected and historical equality, independent read-only review, existing owner-policy/security final-source CI. No UI/browser/build/publish solely for docs or policy/draft/ready weakening.",
-      "verification_pin": "Installed ORIGINAL NEXT product source9977cd95465f02ad0d329160715941c344a7b3a7/app380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072/data49a10fdd839f67c56d75ae89efa9a8fbbe9682545617bd56df0fe020e969f6c5/published release7d7a7690170a70249c0400e7344d83d5f305df99/stock39522780671/receipt https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305157291. Source4775 gates and compiled fictional430/1280 evidence are distinct from installed-byte readback and actual ordinary ANEX case next-anex-receiving-20261214-20261021-v1 (terminal6305290836, audit6305315828, frames6305380284). Actual iframe430×932↔1280×720 terminal/return accepted; post200 projection rejection retained, exact tour/price/pair/contact not established. No native/physical or predecessor evidence retagging; source/stock/ordinary operation consumed/noReplay.",
-      "closeout": "Принять bounded retained safe PUBLIC envelope/projection facts оригинального ANEX POST200 21Oct00:47:43.821Z по #2506/6305290603 и #4709/6305290836. SEARCH owns receiving adapter/app; INT owns authoritative producer shape. Различить existing identity/kind/date+nights/normalization/projection guard только по сохранённым фактам; если отсутствуют — NOT_RETAINED. Исправлять только подтверждённое несоответствие в existing owner; без нового Find/expand/probe/reader и без угадывания supplier cause. PR4775/source9977 реально установлен и affected terminal/return430↔1280 проверен; его source/CI/stock/ordinary control CONSUMED/no-replay. Старые Rix/family/FUNSUN/7–13Dec контексты не повторять; keyboard запрещён, остальные deferred/external gates не превращать в очередь.",
+      "verification_pin": "Installed ORIGINAL NEXT PR4778 source41fbe711e11bede04890b9150a41220e3bb24a17/app380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072/data00ac6716b43c3837dca0ce9b36f680e90b7655c9fb4e943b5401c697e0a45d95/runtime release93914a8a523e13fa315c578bc874f0e037c3a57f/stock39528574999/receipt4709/6305962224. SOURCE12312993243/READY12315030107/DEPLOY12314650725 independently accepted separately. Actual next-anex-ordinary-default-20261104-20261021-v1 terminal6306078713/audit6306085730:75hotels294variants partial, DG/EconomyRoom/AI/4–11Nov/2A/96117unconfirmed, ONEexpand→HTTP200/clientprojection/envelope. Actual2terminalJPG independent ACCEPT; ordinaryreturn/resize ROOTreportedDOM, not independentfulltrace. No native/physical/pair/price/contact promotion; source/stock/ordinary consumed/noReplay. Latest exactINT6306074777 first-envelopecontract; individualclause NOT_ESTABLISHED.",
+      "closeout": "Принять bounded authoritative INT→SEARCH envelope contract/facts по #2506/6306074777 и #4709/6306078713. Installed PR4778/source41fbe фактически зафиксировал clientGuardenvelope в новом original POST20021Oct01:47:26.498Z, до цены и остальных guards. Read-only сверить producer/receiver provider/generation/search_ref/offer_ref/status/hotels/local_id/tours; отдельная неверная clause NOT_ESTABLISHED, не угадывать emptyhotels или suppliercause. Исправлять только подтверждённое несоответствие в existing owner. Если safe facts не сохранены — NOT_RETAINED; без private-session/body/newreader/endpoint/replay/Find/expand/probe/guardrelaxation и без ещё одного общего diagnosticloop. Source/CI/stock/newordinary4–10Nov context COMPLETED/CONSUMED/noReplay; old14–20Dec/7–13Dec/Rix/family/FUNSUN sealed. Только430/1280 ordinaryUI; keyboard запрещён, deferred/external gates не новая очередь/причина паузы.",
       "viewport_scope": {
         "owner_direction": "20.10.2026 00:52",
         "current_widths_px": [
-          360,
-          390,
           430,
-          768,
           1280
         ],
-        "other_widths": "Finite360/390/768 retained adaptive remainder accepted6282656840;430/1280 accepted6282417033. No new manual/paid/device/browser/CIcoverage run. Installed/native/physicalwidths remainseparate.",
+        "other_widths": "Deferred for current ordinaryUI scope perowner20Oct. Existing retained360/390/768 evidence6282656840 remains historicalexactscope, not a new manual/paid/device/CIcoverage task. Native/physical remain separateexternalgates.",
         "heights": "reuse retained matching heights/short1280x720; no extra dimensions for coverage",
         "ci": "preserve existing required final-source CI/workflows even if broader; no additional manual/paid passes for deferred widths",
         "score": "Exactmeasuredscopesonly; responsivefirstbaselinesUI0, no wholeSearch9.5/globalDONE."
@@ -1941,9 +1965,9 @@
         "focus_changes": "Only a confirmed substantial ordinary-click/tap defect in the coherent product repair; no cosmetic task from keyboard screenshot",
         "existing_ci": "Preserve applicable existing mandatory workflows/gates; no additional keyboard QA run"
       },
-      "autopilot_boundary": "Existing ownAutomation_395ea9035ab8819188dadef16b09085d verified ENABLED per4709/6292922298; historical paused6282740056 is not a current command. This factual checkpoint does not mutate enabled/schedule/timezone/prompt or other tasks. Physical/iPhone/Safari scope is deferred, not a universal predecessor or pause condition; applicable independent authorized work continues within its own ownership/gates, with no consumed-operation replay."
+      "autopilot_boundary": "OwnAutomation_395ea9035ab8819188dadef16b09085d freshpeek21Oct enabledtrue; no settings/schedule/timezone/prompt mutation. ExistingINT first-envelopecontract handoff is progressing, not a permanentabsenceofsafeaction. Physical/iPhone/Safari deferred, not globalpause/predecessor. No consumedoperation replay or foreign task change."
     },
-    "last_fully_checked_source_sha": "9977cd95465f02ad0d329160715941c344a7b3a7"
+    "last_fully_checked_source_sha": "41fbe711e11bede04890b9150a41220e3bb24a17"
   },
   "local_filter_zero_match_recovery_20260910": {
     "schema_version": 1,
