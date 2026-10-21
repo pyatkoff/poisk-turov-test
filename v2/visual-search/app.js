@@ -711,7 +711,12 @@ function updateDrawerPreview(knownCount){
   if(!button.disabled)button.textContent='Сохранить условия';
  }
 }
-function filterEdited(rebuild=false){if(filterDraft){if(rebuild){renderFilters();updateDrawerPreview()}else updateDrawerPreview(updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));}
+function revealFilteredResults(){
+ if(innerWidth<=1100||!state.hasSearched||searchEditSession||filterDraft)return;
+ const results=$('#results');
+ if(results.getBoundingClientRect().top<0)results.scrollIntoView({behavior:scrollBehavior(),block:'start'});
+}
+function filterEdited(rebuild=false){if(filterDraft){if(rebuild){renderFilters();updateDrawerPreview()}else updateDrawerPreview(updateFacetCounts());rememberUIRoute();settleFilterRoots($('#filters'));return}if(rebuild)syncFilters();else{renderResults({keepFilters:true});updateSearchUI()}settleFilterRoots($('#filters'));revealFilteredResults();}
 const {facetQueries,expandedFilterSections,compareMealLabels,syncFilterSections,setFilterSectionOpen,applyFacetSearch,updateFacetCounts,settleFilterRoots,renderFilterNavigation,jumpToFilterSection,renderFilters}=window.AnyTourFilterPanelV1.create({
  $,$$,esc,icon,state,data,editingFilterModel,currentFilterBudgetEdit,readBudgetFields,budgetLabel,normalizeSearch,hotelCountText,countMatchingHotels,countFacetOptions,countFacetOptionGroups,amenityNames,searchKey,budgetScale,mealNames,ratingValue,hotelPlaces,operators,syncFilterResetState,showFilterBudgetValidity,
  getHotels:()=>hotels,getFilterDraft:()=>filterDraft,getViewportWidth:()=>innerWidth
@@ -2460,11 +2465,12 @@ function closeFilters({apply=false,fromHistory=false,adapt=false}={}){const wasO
 $('#filter-backdrop').addEventListener('click',closeFilters);
 function selectDate(day,fromMonth=false){if(fromMonth&&(day<state.search.from||day>state.search.to)){state.search.from=day;state.search.to=day;draft.from=day;draft.to=day}state.selectedDate=!fromMonth&&state.selectedDate===day?null:day;updateSearchUI();renderResults({keepFilters:true});updateURL();if(fromMonth)closeModal();else $(`#price-strip [data-date="${day}"]`)?.focus({preventScroll:true});}
 function resetFilters(){
- const restoreResults=document.activeElement?.matches('#cards [data-action="reset"]'),returnScroll=scrollY;
+ const restoreResults=document.activeElement?.matches('#cards [data-action="reset"]'),fromRail=!!document.activeElement?.closest('#filter-panel'),returnScroll=scrollY;
  state.filters=defaultFilters();state.onlyFavorites=false;state.selectedDate=null;syncFilters();updateURL();
  // Removing active chips can temporarily clamp bottom-of-page scroll before
  // cards appear. Restore that position and the removed action's keyboard destination.
  if(restoreResults&&document.activeElement===document.body){$('#results').focus({preventScroll:true});if(scrollY!==returnScroll)window.scrollTo({top:returnScroll,behavior:'instant'});}
+ if(fromRail)revealFilteredResults();
 }
 function clearSearchTimers(){data.stop();clearTimeout(searchTimer);clearTimeout(searchStageTimer);}
 function terminalizeSearchForVerification(reason='verification'){

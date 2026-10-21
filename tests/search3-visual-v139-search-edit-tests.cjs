@@ -83,6 +83,45 @@ const edit=()=>click('#applied-search [data-action="edit-search"]');
 const cancel=()=>click('#search-return');
 (async()=>{
  await settle();
+ // A desktop facet changes the result set, so a reader deep in the old list
+ // must see the new heading/first matches. Mobile keeps its explicit Apply.
+ {
+  const results=q('#results'),navigation=[],scrollIntoView=results.scrollIntoView;
+  let resultsTop=-2600;
+  results.getBoundingClientRect=()=>({top:resultsTop});
+  results.scrollIntoView=options=>navigation.push(options);
+  const requestCount=requests.length;
+  w.innerWidth=1280;
+  click('[data-filter="meals"][value="Всё включено"]');
+  assert.equal(navigation.length,1,'a desktop facet reveals the new result set after reading deep in the old one');
+  assert.equal(navigation[0].block,'start');
+  assert.match(q('#results-summary').textContent,/291/);
+  assert.equal(new URLSearchParams(w.location.search).get('meals'),'Всё включено');
+  resultsTop=120;
+  click('[data-filter="meals"][value="Всё включено"]');
+  assert.equal(navigation.length,1,'a visible result heading does not cause a page jump');
+  click('[data-filter="meals"][value="Всё включено"]');
+  resultsTop=-1400;
+  q('#filter-panel [data-action="reset"]').focus();
+  click('#filter-panel [data-action="reset"]');
+  assert.equal(navigation.length,2,'desktop rail Reset reveals the restored result set');
+  assert.match(q('#results-summary').textContent,/1047/);
+  edit();click('#quick-stars [data-value="5"]');
+  assert.equal(navigation.length,2,'draft search edits do not navigate the retained results');
+  cancel();await settle();
+  w.innerWidth=430;
+  const appliedURL=w.location.search;
+  click('.mobile-bottom [data-action="filters"]');
+  click('[data-filter="meals"][value="Всё включено"]');
+  assert.equal(navigation.length,2,'an unapplied mobile filter draft does not move the page');
+  assert.equal(w.location.search,appliedURL);
+  click('[data-action="close-filters"]');await settle();
+  assert.equal(navigation.length,2,'mobile Cancel keeps the result position');
+  assert.equal(w.location.search,appliedURL);
+  assert.equal(requests.length,requestCount,'filter navigation never starts a supplier search');
+  results.scrollIntoView=scrollIntoView;delete results.getBoundingClientRect;w.innerWidth=390;
+  console.log('PASS local filter navigation: deep desktop change/reset, shallow no-jump, frozen search draft, mobile Cancel, no requests');
+ }
  // The result drawer must use the same stable meal order as the search picker.
  click('.mobile-bottom [data-action="filters"]');
  const resortRows=()=>[...d.querySelectorAll('[data-facet-options="resorts"] .check-row')];
