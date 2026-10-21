@@ -122,6 +122,17 @@ BG_IDENTITY_SCOPE = {
              'currency': 'RUB', 'onlyCharter': False, 'operatorIds': [18], 'hotelIds': [321]},
 }
 
+OPERATOR_ALIAS_AUDIT = {
+    'cohort': 'common4-funsun-dictionary-alias-20261022',
+    'operation_id': 'int-andromeda-match-retained-readback-20261022-v1',
+    'parent_operation_id': OPERATOR_BINDING_FULL['operation_id'],
+    'parent_evidence_sha256': BG_IDENTITY_SCOPE['parent_evidence_sha256'],
+    'captured_source_sha': '6cdf8ae1720d6336e677eabc13659b0b8ce1cd60',
+    'raw_sha256': '3f915ea52e17f12eb036a2dd4835418d78c0b387551b689884b593b3d18bd905',
+}
+_ALIAS_BRAND = r'(?:FUN[ ]*&[ ]*SUN|FUN[ ]+AND[ ]+SUN|ФАН[ ]*&[ ]*САН|TUI|ТУИ)'
+OPERATOR_ALIAS_LABEL_PATTERN = _ALIAS_BRAND + r'(?:[ ]*(?:[/\-][ ]*(?:ex[.]?[ ]+)?' + _ALIAS_BRAND + r'|\((?:ex[.]?[ ]+)?' + _ALIAS_BRAND + r'\)))?'
+
 
 def need(value, reason):
     if not value:
@@ -248,8 +259,8 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
-        if len(parts) >= 4 and parts[3] in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort']):
-            profile = BINDING_RECONCILIATION_V2 if parts[3] == BINDING_RECONCILIATION_V2['cohort'] else BINDING_RECONCILIATION
+        if len(parts) >= 4 and parts[3] in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort'], OPERATOR_ALIAS_AUDIT['cohort']):
+            profile = OPERATOR_ALIAS_AUDIT if parts[3] == OPERATOR_ALIAS_AUDIT['cohort'] else BINDING_RECONCILIATION_V2 if parts[3] == BINDING_RECONCILIATION_V2['cohort'] else BINDING_RECONCILIATION
             need(len(parts) == 5 and parts[1] == 'match-retained-readback'
                  and parts[2] == profile['operation_id']
                  and parts[4] == profile['parent_operation_id'], 'binding_reconciliation_scope')
@@ -1406,6 +1417,92 @@ def retained_operator_dictionary(stage):
 '''
 
 
+OPERATOR_ALIAS_AUDIT_HANDLER = r'''
+def retained_operator_alias_audit(stage):
+    import re
+    profile = NEXT_SCOPE
+    def canonical(value): return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+    def digest(value): return hashlib.sha256(canonical(value)).hexdigest()
+    def unique(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out: raise ValueError('alias_duplicate_json_key')
+            out[key] = value
+        return out
+    protected = {}
+    def read(path, limit=16*1024*1024):
+        if not safe_file(path, limit) or path.resolve() != path or path.stat().st_nlink != 1: fail('alias_input_path')
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            before = os.fstat(fd)
+            with os.fdopen(os.dup(fd), 'rb') as handle: body = handle.read(limit+1)
+            after = os.fstat(fd)
+        finally: os.close(fd)
+        signature = lambda s: (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns)
+        if signature(before) != signature(after) or len(body) > limit or len(body) != after.st_size: fail('alias_input_drift')
+        protected[path] = (hashlib.sha256(body).hexdigest(), signature(after))
+        return body
+    if (mode != 'match-retained-readback' or operation != profile['operation_id']
+            or payload.get('cohort') != profile['cohort'] or payload.get('target_operation_id') != profile['parent_operation_id']): fail('alias_fixed_scope')
+    directory = private/profile['parent_operation_id']
+    if directory.is_symlink() or directory.resolve() != directory: fail('alias_parent_path')
+    parent = json.loads(read(directory/'result.json'), object_pairs_hook=unique)
+    reservation = json.loads(read(directory/'reservation.json', 65536), object_pairs_hook=unique)
+    data = parent.get('match_retained', {}).get('data', {})
+    if (parent.get('status') != 'complete' or parent.get('mode') != 'match-retained-acquire'
+            or parent.get('production_unchanged') is not True or data.get('state') != 'operator_dictionary_captured'
+            or digest(data) != profile['parent_evidence_sha256'] or parent['match_retained'].get('evidence_sha256') != digest(data)
+            or any(x.get('operation_id') != profile['parent_operation_id'] or x.get('source_sha') != profile['captured_source_sha'] for x in (parent,reservation,data))
+            or data.get('dictionary_scope') != {'kind':'all_active_operators'}
+            or data.get('raw_response') != {'response_number':1,'raw_sha256':profile['raw_sha256']}): fail('alias_parent_binding')
+    manifest = json.loads(read(stage/'manifest.json', 65536), object_pairs_hook=unique)
+    installed = json.loads(read(directory/'installed-source.json', 65536), object_pairs_hook=unique)
+    if (not isinstance(manifest.get('files'),dict) or len(manifest['files']) != 17
+            or installed != {'source_sha':profile['captured_source_sha'],'files':manifest['files']}): fail('alias_installed_binding')
+    raw = read(directory/'response-0001.bin')
+    if hashlib.sha256(raw).hexdigest() != profile['raw_sha256']: fail('alias_raw_digest')
+    rows = json.loads(raw, object_pairs_hook=unique)
+    if operator_dictionary_projection(rows) != data.get('bindings'): fail('alias_existing_projection')
+    candidates = []
+    for row in rows:
+        labels = [(key,row[key]) for key in ('name','fullName','russianName') if key in row]
+        normalized = ' '.join(label.casefold() for _,label in labels)
+        if not ('tui' in normalized or 'туи' in normalized or ('fun' in normalized and 'sun' in normalized)
+                or ('фан' in normalized and 'сан' in normalized)): continue
+        candidates.append({'operator_id':row['id'],'candidate_only':True,'labels':[
+            {'field':key,'value':label if len(label)<=100 and re.fullmatch(OPERATOR_ALIAS_LABEL_PATTERN,label,re.I) else None,
+             'sha256':hashlib.sha256(label.encode()).hexdigest()} for key,label in labels]})
+    if len(candidates) > 8: fail('alias_candidate_bound')
+    home = pathlib.Path.home()/'.anytoour-match'
+    for relative in ('retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-22.json'):
+        read(home/relative, 8*1024*1024)
+    for path,(expected,signature) in protected.items():
+        st = path.stat()
+        if (not safe_file(path,16*1024*1024) or path.resolve() != path or st.st_nlink != 1
+                or hashlib.sha256(path.read_bytes()).hexdigest() != expected
+                or (st.st_dev,st.st_ino,st.st_size,st.st_mtime_ns,st.st_ctime_ns) != signature): fail('alias_input_drift')
+    outcome = dict(state='retained_operator_alias_audit_completed',operation_id=operation,source_sha=source,
+        control_source_sha=payload['match_retained_control_sha'],cohort=payload['cohort'],target_operation_id=profile['parent_operation_id'],
+        parent_evidence_sha256=profile['parent_evidence_sha256'],captured_source_sha=profile['captured_source_sha'],
+        raw_sha256=profile['raw_sha256'],alias_candidates=candidates,candidate_count=len(candidates),
+        prior_bindings_preserved=True,installed_metadata_verified=True,protected_inputs_count=len(protected),protected_inputs_unchanged=True,
+        supplier_calls=0,physical_http_reservations=0,tariff_search_units=0,unknown_http_calls=0,
+        new_database_reads=0,database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,new_accepted_mappings=0,
+        account_sales_authority=False,operator_family_binding_authority=False,native_hotel_authority=False,safe_to_write_now=False,
+        global_usage='not_measured',no_replay=True)
+    evidence = canonical(outcome)
+    fd = os.open(op/'retained-evidence.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as handle: handle.write(evidence); handle.flush(); os.fsync(handle.fileno())
+    return {'data':outcome,'evidence_sha256':hashlib.sha256(evidence).hexdigest()}
+'''
+
+
+def operator_alias_audit_handler():
+    anchor = '\ndef retained_operator_dictionary(stage):'
+    need(OPERATOR_BINDING_HANDLER.count(anchor) == 1, 'alias_projection_anchor')
+    return 'OPERATOR_ALIAS_LABEL_PATTERN='+repr(OPERATOR_ALIAS_LABEL_PATTERN)+'\n'+OPERATOR_BINDING_HANDLER.split(anchor, 1)[0] + OPERATOR_ALIAS_AUDIT_HANDLER
+
+
 BG_IDENTITY_HANDLER = r'''
 def retained_bg_identity(stage):
     import importlib.util
@@ -1866,7 +1963,50 @@ def completed_bg_identity(command, result, control_sha):
     except (KeyError,TypeError,ValueError,AttributeError): return False
 
 
+def completed_operator_alias_audit(command, result, control_sha):
+    try:
+        p = OPERATOR_ALIAS_AUDIT; d = result['match_retained']['data']
+        if (command.get('mode') != 'match-retained-readback' or command.get('cohort') != p['cohort']
+                or command.get('operation_id') != p['operation_id'] or command.get('target_operation_id') != p['parent_operation_id']
+                or result.get('status') != 'complete' or result.get('production_unchanged') is not True
+                or d.get('state') != 'retained_operator_alias_audit_completed' or d.get('control_source_sha') != control_sha): return False
+        for key in ('mode','source_sha','operation_id'):
+            if result.get(key) != command.get(key): return False
+        for key in ('source_sha','operation_id','cohort','target_operation_id'):
+            if d.get(key) != command.get(key): return False
+        if any(d.get(k) != p[k] for k in ('parent_evidence_sha256','captured_source_sha','raw_sha256')): return False
+        for obj in (result,d):
+            for key in ('supplier_calls','database_writes','mapping_writes','booking_calls','lead_calls'):
+                if type(obj.get(key)) is not int or obj[key] != 0: return False
+        for key in ('physical_http_reservations','tariff_search_units','unknown_http_calls','new_database_reads','new_accepted_mappings'):
+            if type(d.get(key)) is not int or d[key] != 0: return False
+        if type(d.get('protected_inputs_count')) is not int or d['protected_inputs_count'] != 8: return False
+        for key in ('prior_bindings_preserved','installed_metadata_verified','protected_inputs_unchanged','no_replay'):
+            if d.get(key) is not True: return False
+        for key in ('account_sales_authority','operator_family_binding_authority','native_hotel_authority','safe_to_write_now'):
+            if d.get(key) is not False: return False
+        rows = d.get('alias_candidates')
+        if not isinstance(rows,list) or len(rows) > 8 or type(d.get('candidate_count')) is not int or d['candidate_count'] != len(rows): return False
+        seen = set()
+        for row in rows:
+            if (not isinstance(row,dict) or set(row) != {'operator_id','candidate_only','labels'} or row['candidate_only'] is not True
+                    or type(row['operator_id']) is not int or not 1 <= row['operator_id'] <= 2147483647 or row['operator_id'] in seen
+                    or not isinstance(row['labels'],list) or not 1 <= len(row['labels']) <= 3): return False
+            seen.add(row['operator_id']); fields = set()
+            for label in row['labels']:
+                if (not isinstance(label,dict) or set(label) != {'field','value','sha256'} or label['field'] not in ('name','fullName','russianName')
+                        or label['field'] in fields or not re.fullmatch('[a-f0-9]{64}',str(label['sha256']))): return False
+                fields.add(label['field'])
+                value = label['value']
+                if value is not None and (not isinstance(value,str) or len(value)>100 or not re.fullmatch(OPERATOR_ALIAS_LABEL_PATTERN,value,re.I)
+                    or hashlib.sha256(value.encode()).hexdigest() != label['sha256']): return False
+        return d.get('global_usage') == 'not_measured' and result['match_retained'].get('evidence_sha256') == hashlib.sha256(canonical(d)).hexdigest()
+    except (KeyError,TypeError,ValueError,AttributeError): return False
+
+
 def completed_result(command, result, control_sha):
+    if command.get('cohort') == OPERATOR_ALIAS_AUDIT['cohort']:
+        return completed_operator_alias_audit(command, result, control_sha)
     if command.get('cohort') == BG_IDENTITY_SCOPE['cohort']:
         return completed_bg_identity(command, result, control_sha)
     if command.get('cohort') in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort']):
@@ -1981,12 +2121,18 @@ def activate(core, command):
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
     reconciliation_v2 = command.get('cohort') == BINDING_RECONCILIATION_V2['cohort']
     reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort'] or reconciliation_v2
+    alias_audit = command.get('cohort') == OPERATOR_ALIAS_AUDIT['cohort']
     bg_identity = command.get('cohort') == BG_IDENTITY_SCOPE['cohort']
     binding_full = command.get('cohort') == OPERATOR_BINDING_FULL['cohort']
     binding = command.get('cohort') == OPERATOR_BINDING['cohort'] or binding_full
-    policy = BG_IDENTITY_SCOPE if bg_identity else BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING_FULL if binding_full else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
+    policy = OPERATOR_ALIAS_AUDIT if alias_audit else BG_IDENTITY_SCOPE if bg_identity else BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING_FULL if binding_full else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
     handler = REMOTE_HANDLER
+    if alias_audit:
+        anchor = '    config=project/\'config.php\';dbhelper=project/\'data/db-v1.php\''
+        need(handler.count(anchor) == 1, 'alias_audit_dispatch_anchor')
+        handler = handler.replace(anchor, "    if mode=='match-retained-readback':return retained_operator_alias_audit(stage)\n"+anchor, 1)
+        handler += operator_alias_audit_handler()
     if reconciliation:
         anchor = '    config=project/\'config.php\';dbhelper=project/\'data/db-v1.php\''
         need(handler.count(anchor) == 1, 'binding_reconciliation_dispatch_anchor')

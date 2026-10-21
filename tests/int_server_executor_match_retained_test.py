@@ -2289,6 +2289,108 @@ class BiblioIdentityTest(unittest.TestCase):
         self.run_case(bad_parent=True);self.run_case('already');self.run_case('wrong_party')
 
 
+class OperatorAliasAuditTest(unittest.TestCase):
+    def command(self):
+        p=m.OPERATOR_ALIAS_AUDIT
+        return dict(source_sha=SHA,mode='match-retained-readback',operation_id=p['operation_id'],
+                    cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
+
+    def fixture(self,root,rows=None):
+        profile=copy.deepcopy(m.OPERATOR_ALIAS_AUDIT);private=root/'private';private.mkdir()
+        target=private/profile['parent_operation_id'];target.mkdir();op=private/profile['operation_id'];op.mkdir()
+        stage=root/'stage';stage.mkdir();manifest={'schema_version':1,'files':m.SOURCE_HASHES}
+        (stage/'manifest.json').write_bytes(m.canonical(manifest))
+        (target/'installed-source.json').write_bytes(m.canonical({'source_sha':profile['captured_source_sha'],'files':manifest['files']}))
+        rows=rows if rows is not None else [{'id':13,'name':'ANEX Tour'},{'id':18,'name':'Библио-Глобус'},
+            {'id':43,'name':'Интурист'},{'id':77,'name':'TUI / FUN and SUN','fullName':'FUN&SUN (TUI)'}]
+        body=m.canonical(rows);(target/'response-0001.bin').write_bytes(body);profile['raw_sha256']=hashlib.sha256(body).hexdigest()
+        space={};exec(m.operator_alias_audit_handler(),space)
+        data=dict(state='operator_dictionary_captured',operation_id=target.name,source_sha=profile['captured_source_sha'],
+            dictionary_scope={'kind':'all_active_operators'},bindings=space['operator_dictionary_projection'](rows),
+            raw_response={'response_number':1,'raw_sha256':profile['raw_sha256']})
+        profile['parent_evidence_sha256']=hashlib.sha256(m.canonical(data)).hexdigest()
+        parent=dict(status='complete',mode='match-retained-acquire',production_unchanged=True,source_sha=profile['captured_source_sha'],
+            operation_id=target.name,match_retained=dict(data=data,evidence_sha256=profile['parent_evidence_sha256']))
+        (target/'result.json').write_bytes(m.canonical(parent))
+        (target/'reservation.json').write_bytes(m.canonical(dict(operation_id=target.name,source_sha=profile['captured_source_sha'])))
+        home=root/'home';ledgers=home/'.anytoour-match';(ledgers/'provider-quotas').mkdir(parents=True)
+        for name in ['retained-selection-claims.json','retained-context-claims.json','provider-quotas/tourvisor-anex-2026-10-22.json']:
+            (ledgers/name).write_text('{"preserved":true}')
+        space.update(NEXT_SCOPE=profile,private=private,op=op,mode='match-retained-readback',operation=op.name,source=SHA,
+            payload=dict(self.command(),match_retained_control_sha=CONTROL),pathlib=__import__('pathlib'),hashlib=hashlib,
+            json=json,os=os,fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)),
+            safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound)
+        return profile,space,home,stage,target,op
+
+    def test_fixed_mode_dispatches_before_config_db_and_has_no_client(self):
+        c=core();m.register_parser(c);cmd=self.command();text=c.PREFIX+' '.join(cmd.values())
+        self.assertEqual(cmd,c.parse_command(text))
+        for key in ('mode','operation_id','target_operation_id'):
+            bad=dict(cmd);bad[key]+='x'
+            with self.subTest(key=key),self.assertRaises(ValueError):c.parse_command(c.PREFIX+' '.join(bad.values()))
+        with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(text)
+        with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
+        ast.parse(c.REMOTE)
+        self.assertLess(c.REMOTE.index('return retained_operator_alias_audit(stage)'),c.REMOTE.index("config=project/'config.php';dbhelper=project/'data/db-v1.php'"))
+        self.assertNotIn('Client(',m.operator_alias_audit_handler())
+        self.assertEqual(m.SOURCE_HASHES,c.bundle_source(SOURCE)[1])
+
+    def test_typed_literal_candidates_preserve_all_inputs_without_http_token_or_db(self):
+        for rows in (None,[{'id':18,'name':'Библио-Глобус'}]):
+            with self.subTest(rows=rows),tempfile.TemporaryDirectory() as td:
+                p,s,home,stage,target,op=self.fixture(Path(td),rows)
+                before={f:f.read_bytes() for f in Path(td).rglob('*') if f.is_file()}
+                with mock.patch.object(Path,'home',return_value=home),mock.patch.object(subprocess,'run',side_effect=AssertionError('no token/PHP/DB')), \
+                     mock.patch('urllib.request.build_opener',side_effect=AssertionError('no HTTP')):
+                    out=s['retained_operator_alias_audit'](stage)
+                self.assertEqual(before,{f:f.read_bytes() for f in before})
+                self.assertEqual(8,out['data']['protected_inputs_count'])
+                self.assertFalse(out['data']['operator_family_binding_authority']);self.assertFalse(out['data']['native_hotel_authority'])
+                if rows is None:
+                    self.assertEqual(77,out['data']['alias_candidates'][0]['operator_id'])
+                    self.assertEqual('FUN&SUN (TUI)',out['data']['alias_candidates'][0]['labels'][1]['value'])
+                else:self.assertEqual([],out['data']['alias_candidates'])
+                result=dict(self.command(),status='complete',production_unchanged=True,supplier_calls=0,
+                    database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,match_retained=out)
+                with mock.patch.dict(m.OPERATOR_ALIAS_AUDIT,p):
+                    self.assertTrue(m.completed_result(self.command(),result,CONTROL))
+                    for key,value in [('supplier_calls',True),('candidate_count',True),('protected_inputs_count',7),
+                        ('operator_family_binding_authority',True),('native_hotel_authority',True),('safe_to_write_now',True),
+                        ('raw_sha256','0'*64),('captured_source_sha','0'*40),('prior_bindings_preserved',False),('lead_calls',1)]:
+                        bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
+                        bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
+                        with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
+
+    def test_parent_raw_metadata_and_duplicate_or_typed_bad_rows_fail_closed(self):
+        for variant in ('parent','raw','metadata','symlink','duplicate','bool_id'):
+            with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+                p,s,home,stage,target,op=self.fixture(Path(td))
+                if variant=='parent':p['parent_evidence_sha256']='0'*64
+                elif variant=='raw':(target/'response-0001.bin').write_text('[]')
+                elif variant=='metadata':(target/'installed-source.json').write_text('{}')
+                elif variant=='symlink':
+                    raw=target/'response-0001.bin';raw.rename(target/'other.bin');raw.symlink_to(target/'other.bin')
+                else:
+                    body=b'[{"id":77,"id":78,"name":"TUI"}]' if variant=='duplicate' else b'[{"id":true,"name":"TUI"}]'
+                    (target/'response-0001.bin').write_bytes(body);p['raw_sha256']=hashlib.sha256(body).hexdigest()
+                    parent=json.loads((target/'result.json').read_bytes());parent['match_retained']['data']['raw_response']['raw_sha256']=p['raw_sha256']
+                    p['parent_evidence_sha256']=hashlib.sha256(m.canonical(parent['match_retained']['data'])).hexdigest()
+                    parent['match_retained']['evidence_sha256']=p['parent_evidence_sha256'];(target/'result.json').write_bytes(m.canonical(parent))
+                with mock.patch.object(Path,'home',return_value=home),self.assertRaises(ValueError):s['retained_operator_alias_audit'](stage)
+                self.assertFalse((op/'retained-evidence.json').exists())
+
+    def test_unsafe_literal_is_hashed_and_candidate_roster_is_bounded(self):
+        for label in ('TUI https://private.example/?token=sentinel','TUI eyJhbGci.sentinel.signature','TUI token sentinel'):
+            with self.subTest(label=label),tempfile.TemporaryDirectory() as td:
+                p,s,home,stage,target,op=self.fixture(Path(td),[{'id':77,'name':label}])
+                with mock.patch.object(Path,'home',return_value=home):out=s['retained_operator_alias_audit'](stage)
+                self.assertIsNone(out['data']['alias_candidates'][0]['labels'][0]['value'])
+                self.assertNotIn('sentinel',json.dumps(out));self.assertNotIn('https://',json.dumps(out))
+        with tempfile.TemporaryDirectory() as td:
+            p,s,home,stage,target,op=self.fixture(Path(td),[{'id':i+1,'name':'TUI variant '+str(i)} for i in range(9)])
+            with mock.patch.object(Path,'home',return_value=home),self.assertRaisesRegex(ValueError,'alias_candidate_bound'):s['retained_operator_alias_audit'](stage)
+
+
 if __name__=='__main__':unittest.main()
 
 
