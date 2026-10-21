@@ -627,3 +627,69 @@ foreach ([[], [999, 998]] as $selection) {
         'unmapped first-page evidence survives broad fallback without public numeric-ID guessing');
 }
 echo "ANEX selected hotel upstream smoke passed\n";
+
+
+// Current first-page rejection facts, synthetic transport only; existing receipt does no I/O.
+$diagCalls = 0; $diagFail = false;
+$diagRows = [array_replace($nativeRow, ['child' => 1, 'infant' => 0]),
+    array_replace($nativeRow, ['child' => 0]), array_replace($nativeRow, ['child' => 0, 'infant' => 1])];
+$diagCriteria = array_replace($savedCriteria, ['children' => 1, 'child_ages' => [0], 'hotel_ids' => [2]]);
+$diagFactory = static function () use (&$diagCalls, &$diagRows, &$diagFail): AnyTourAnexClient {
+    return new AnyTourAnexClient('test-secret', static function () use (&$diagCalls, &$diagRows, &$diagFail): array {
+        ++$diagCalls;
+        if ($diagFail) return ['status' => 500, 'body' => '{}'];
+        return ['status' => 200, 'body' => json_encode(['SearchTour_PRICES' => ['prices' => $diagRows]])];
+    });
+};
+$diagGateway = new AnyTourAnexPreviewGateway($diagFactory, null, [], $clock);
+$diagSession = [];
+$diagPublic = $diagGateway->handle(['action' => 'search', 'criteria' => $diagCriteria], $diagSession);
+$diagState = ['offer_context' => ['generation' => 1, 'gateway' => $diagSession]];
+$beforeReceipt = $diagState;
+$diagReceipt = anytour_anex_search3_quote_receipt($diagState);
+$expectedCounts = ['rows_seen' => 3, 'normalized_rows' => 1, 'rejected_rows' => 2,
+    'rejections' => ['child' => 1, 'infant' => 1],
+    'party_counts' => ['2/1/0' => 1, '2/0/missing' => 1, '2/0/1' => 1],
+    'hotel_filtered_rows' => 1, 'retained_offers' => 0];
+search3_check(($diagReceipt['retained_first_page']['normalization'] ?? null) === $expectedCounts,
+    'receipt distinguishes party rejection from requested-hotel filtering');
+search3_check($diagCalls === 1 && $diagState === $beforeReceipt && $diagPublic['offers'] === []
+    && !isset($diagPublic['first_page_diagnostics']) && $diagReceipt['supplier_calls'] === 0,
+    'diagnostics use existing single request, read-only receipt and unchanged public result');
+foreach (['supplier-private', 'search_ref', 'page_digest', 'test-secret'] as $private) {
+    search3_check(strpos(json_encode($diagReceipt), $private) === false, 'receipt excludes private data: ' . $private);
+}
+foreach (['search_ref', 'page_digest'] as $binding) {
+    $wrong = $diagState; $wrong['offer_context']['gateway']['first_page_diagnostics'][$binding] = str_repeat('a', 64);
+    search3_check(!isset(anytour_anex_search3_quote_receipt($wrong)['retained_first_page']['normalization']),
+        'foreign diagnostic binding omitted: ' . $binding);
+}
+foreach ([['rows_seen' => 301], ['rejected_rows' => 1], ['retained_offers' => 1],
+    ['hotel_filtered_rows' => 2], ['rejections' => ['raw-secret' => 2]],
+    ['rejections' => ['child' => '2']], ['party_counts' => ['2/0/private' => 3]],
+    ['party_counts' => ['2/0/1' => 2]], ['unapproved' => 1]] as $change) {
+    $wrong = $diagState;
+    $wrong['offer_context']['gateway']['first_page_diagnostics']['counts'] = array_replace($expectedCounts, $change);
+    search3_check(!isset(anytour_anex_search3_quote_receipt($wrong)['retained_first_page']['normalization']),
+        'malformed counts omitted: ' . implode(',', array_keys($change)));
+}
+$legacy = $diagState; unset($legacy['offer_context']['gateway']['first_page_diagnostics']);
+search3_check(!isset(anytour_anex_search3_quote_receipt($legacy)['retained_first_page']['normalization']), 'legacy facts not invented');
+$continued = $diagState; $continued['offer_context']['gateway']['search']['pagination']['pages_read'] = 2;
+search3_check(!isset(anytour_anex_search3_quote_receipt($continued)['retained_first_page']), 'continued first-page facts omitted');
+$diagRows = [];
+$emptyPublic = $diagGateway->handle(['action' => 'search', 'criteria' => $diagCriteria], $diagSession);
+$emptyState = ['offer_context' => ['generation' => 2, 'gateway' => $diagSession]];
+search3_check(anytour_anex_search3_quote_receipt($emptyState)['retained_first_page']['normalization']['rows_seen'] === 0
+    && $diagSession['saved_offers']['search_ref'] !== $beforeReceipt['offer_context']['gateway']['saved_offers']['search_ref'],
+    'new search replaces diagnostics with its own empty fact');
+search3_check(!isset($backgroundSession['first_page_diagnostics']), 'background collector gets no foreground diagnostics');
+$diagFail = true;
+try {
+    $diagGateway->handle(['action' => 'search', 'criteria' => $diagCriteria], $diagSession);
+    throw new LogicException('failed replacement should not succeed');
+} catch (RuntimeException $expected) {
+    search3_check(!isset($diagSession['first_page_diagnostics']) && !isset($diagSession['search']) && !isset($diagSession['saved_offers']),
+        'failed replacement leaves no old diagnostics or references');
+}
+echo "ANEX safe normalization receipt passed\n";

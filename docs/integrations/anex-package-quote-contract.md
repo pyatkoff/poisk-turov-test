@@ -142,3 +142,31 @@ Target: NEXT visual-search -> shared prototype-search/data.js -> existing
 isolated ANEX endpoint. This source package alone does not publish UI or establish
 live acceptance. Installation must use the existing checked INT install-runtime
 and install-anex-preview mechanisms, each with its own reservation and receipt.
+
+
+## First-page normalization diagnostics (21 October 2026)
+
+The existing own-session `quote_receipt.retained_first_page` may additionally contain
+`normalization`: at most300 processed rows, accepted/rejected row counts, the first
+failed existing predicate per rejected row, requested-hotel filtered rows and the
+retained unique offer count. Fixed rejection codes distinguish row/reference,
+hotel/date/night/package fields, adult/child/infant, grouping, price and currency.
+The bounded `party_counts` histogram contains only parsed adult/child/infant counts
+(e.g. `2/0/1`); absent and malformed values remain `missing` and `invalid`, never0.
+Rows can fail multiple predicates: the first-failure partition does not claim that
+all other fields are valid. Duplicate accepted rows may reduce retained offers.
+
+These facts are captured during the existing successful foreground first-page
+request, bound to its private search reference and raw-page digest, and kept in the
+existing gateway session outside the authoritative snapshot. Neither binding,
+raw rows/identifiers, labels, prices, credentials nor response bodies are returned.
+The regular public search result is unchanged. Receipt validation rejects unknown
+codes, malformed/inconsistent counters or foreign bindings; legacy sessions do
+not gain invented facts. Existing first-page-only eligibility still applies.
+The read neither requests supplier data nor mutates the session/expiry/authority.
+
+This is observability, not a relaxation of party validation or final-price proof.
+Existing family case6325407802 is consumed/no-replay; its missing historical fields
+cannot be reconstructed by this addition. Only a future justified new ordinary
+case can establish actual supplier counter semantics. Source, CI, independent
+review, stock installation and that future live acceptance remain separate stages.

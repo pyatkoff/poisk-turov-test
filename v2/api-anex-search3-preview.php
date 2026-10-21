@@ -1148,9 +1148,47 @@ function anytour_anex_search3_retained_page_receipt(array $session): ?array
     $empty = hash_equals(hash('sha256', '[]'), $page['page_digests'][0]);
     $count = count($snapshot['offers']);
     if ($empty && ($count !== 0 || $page['state'] !== 'exhausted')) return null;
-    return ['raw_rows' => $empty ? 'empty' : 'nonempty', 'retained_offers' => $count,
+    $receipt = ['raw_rows' => $empty ? 'empty' : 'nonempty', 'retained_offers' => $count,
         'interpretation' => $empty ? 'empty_supplier_page'
             : ($count === 0 ? 'rows_rejected_or_filtered' : 'offers_retained')];
+    $diagnostics = $state['gateway']['first_page_diagnostics'] ?? null;
+    if (is_array($diagnostics) && ($diagnostics['search_ref'] ?? null) === $saved['search_ref']
+        && ($diagnostics['page_digest'] ?? null) === $page['page_digests'][0]
+        && anytour_anex_search3_valid_normalization_counts($diagnostics['counts'] ?? null, $count, $empty)) {
+        $receipt['normalization'] = $diagnostics['counts'];
+    }
+    return $receipt;
+}
+
+/** Fixed field codes and bounded counters only; malformed/legacy facts remain absent. */
+function anytour_anex_search3_valid_normalization_counts($counts, int $retained, bool $empty): bool
+{
+    $keys = ['rows_seen', 'normalized_rows', 'rejected_rows', 'rejections', 'party_counts',
+        'hotel_filtered_rows', 'retained_offers'];
+    if (!is_array($counts) || count($counts) !== count($keys) || array_diff($keys, array_keys($counts))) return false;
+    foreach (['rows_seen', 'normalized_rows', 'rejected_rows', 'hotel_filtered_rows', 'retained_offers'] as $key) {
+        if (!is_int($counts[$key]) || $counts[$key] < 0 || $counts[$key] > 300) return false;
+    }
+    if ($counts['rows_seen'] !== $counts['normalized_rows'] + $counts['rejected_rows']
+        || $counts['retained_offers'] !== $retained
+        || $counts['hotel_filtered_rows'] + $retained > $counts['normalized_rows']
+        || ($counts['rows_seen'] === 0) !== $empty) return false;
+    $fields = ['row_type', 'supplier_reference', 'hotel_id', 'hotel_label', 'checkin', 'checkout',
+        'nights', 'adult', 'child', 'date_scope', 'night_scope', 'packet_type', 'infant', 'grouped', 'price', 'currency'];
+    if (!is_array($counts['rejections']) || count($counts['rejections']) > count($fields)
+        || !is_array($counts['party_counts']) || count($counts['party_counts']) > 300) return false;
+    $rejected = 0;
+    foreach ($counts['rejections'] as $field => $number) {
+        if (!in_array($field, $fields, true) || !is_int($number) || $number < 1 || $number > 300) return false;
+        $rejected += $number;
+    }
+    $seen = 0;
+    foreach ($counts['party_counts'] as $tuple => $number) {
+        if (!is_string($tuple) || preg_match('~\A(?:[1-9]|missing|invalid)/(?:[0-8]|missing|invalid)/(?:[0-8]|missing|invalid)\z~D', $tuple) !== 1
+            || !is_int($number) || $number < 1 || $number > 300) return false;
+        $seen += $number;
+    }
+    return $rejected === $counts['rejected_rows'] && $seen === $counts['rows_seen'];
 }
 
 /** Read regular own-session aggregates only; never return supplier/session identifiers. */
