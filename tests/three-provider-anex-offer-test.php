@@ -122,6 +122,23 @@ foreach ($variants as $change) {
 $childPage = bridge_page(['child' => 2], ['children' => 2, 'child_ages' => [7, 11]]);
 bridge_check(bridge_offer($childPage)['party'] === ['adults' => 2, 'children' => 2, 'child_ages' => [7, 11]]);
 
+foreach ([[0], [1], [0, 8], [0, 0]] as $ages) {
+    $infants = count(array_filter($ages, static fn($age) => $age < 2));
+    $family = bridge_page(['child' => count($ages) - $infants, 'infant' => $infants],
+        ['children' => count($ages), 'child_ages' => $ages]);
+    $familyDto = bridge_offer($family);
+    bridge_check($familyDto['party'] === ['adults' => 2, 'children' => count($ages), 'child_ages' => $ages]);
+    bridge_check($familyDto['money']['search_price'] === $dto['money']['search_price']
+        && $familyDto['money']['fuel_charge_reported'] === null
+        && $familyDto['money']['additional_prices_reported'] === []
+        && $familyDto['money']['arithmetic_applied'] === false
+        && $familyDto['quote_state'] === 'unknown' && $familyDto['final_price_verified'] === false);
+    foreach ([null, 0, $infants + 1, (string) $infants, false] as $badInfants) {
+        $bad = $family; $bad['offers'][0]['infants'] = $badInfants;
+        bridge_reject(static fn () => bridge_offer($bad), 'THREE_PROVIDER_ANEX_SEARCH_CONTEXT');
+    }
+}
+
 bridge_reject(static fn () => bridge_offer(bridge_page(['grouped' => 1])),
     'THREE_PROVIDER_ANEX_CONCRETE_REQUIRED', DomainException::class);
 foreach ([-1, 1, 300] as $index) bridge_reject(static fn () => bridge_offer($page, null, $index), 'THREE_PROVIDER_ANEX_PAGE');

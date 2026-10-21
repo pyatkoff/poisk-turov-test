@@ -100,6 +100,12 @@ function anytour_anex_normalizer_context(array $context): array
     return $search;
 }
 
+/** The public party keeps every requested child, including ages zero and one. */
+function anytour_anex_normalizer_infant_count(array $ages): int
+{
+    return count(array_filter($ages, static function ($age): bool { return $age < 2; }));
+}
+
 function anytour_anex_normalizer_offer(array $row, array $search, ?callable $resolver, array $sensitive): ?array
 {
     $supplierId = $row['id'] ?? null;
@@ -118,18 +124,22 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
     $nights = anytour_anex_normalizer_integer($row['nights'] ?? null, 1, 60);
     $adults = anytour_anex_normalizer_integer($row['adult'] ?? null, 1, 9);
     $children = anytour_anex_normalizer_integer($row['child'] ?? null, 0, 8);
+    $expectedInfants = anytour_anex_normalizer_infant_count($search['child_ages']);
+    $infants = array_key_exists('infant', $row)
+        ? anytour_anex_normalizer_integer($row['infant'], 0, 8) : null;
     $grouped = anytour_anex_normalizer_flag($row['grouped'] ?? null);
     $amount = anytour_anex_normalizer_decimal($row['price'] ?? null);
     $currency = $row['currency'] ?? null;
     if ($hotelId === null || $hotel === null || $checkin === null || $checkout === null
-        || $nights === null || $adults !== $search['adults'] || $children !== $search['children']
+        || $nights === null || $adults !== $search['adults']
+        || $children !== $search['children'] - $expectedInfants
         || $checkin->format('Y-m-d') < $search['checkin_begin']
         || $checkin->format('Y-m-d') > $search['checkin_end'] || $checkin >= $checkout
         || $nights < $search['nights_from'] || $nights > $search['nights_till']
         || anytour_anex_normalizer_integer($row['packetType'] ?? null, 0, 0) !== 0
-        // Nonzero infants need a separately verified traveller contract.
-        || (array_key_exists('infant', $row)
-            && anytour_anex_normalizer_integer($row['infant'], 0, 0) !== 0)
+        // A nonzero infant is a separate supplier count, never a missing/assumed zero.
+        || ($expectedInfants > 0 && $infants !== $expectedInfants)
+        || ($expectedInfants === 0 && array_key_exists('infant', $row) && $infants !== 0)
         || $grouped === null || $amount === null || !is_string($currency)
         || !preg_match('/\A[A-Z]{3}\z/D', $currency)) {
         return null;
@@ -176,8 +186,8 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
         'checkout' => $checkout->format('Y-m-d'),
         'nights' => $nights,
         'adults' => $adults,
-        'children' => $children,
-        'infants' => array_key_exists('infant', $row) ? 0 : null,
+        'children' => $search['children'],
+        'infants' => $infants,
         'meal' => anytour_anex_normalizer_label($row['meal'] ?? null, $sensitive, 80),
         'external_meal_id' => anytour_anex_normalizer_id($row['mealKey'] ?? null),
         'room' => anytour_anex_normalizer_label($row['room'] ?? null, $sensitive),

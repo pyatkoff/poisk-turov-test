@@ -6,7 +6,7 @@ require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 // Synthetic contract fixtures, NOT retained supplier/live acceptance evidence.
 $checks = 0;
 function qp_assert(bool $ok, string $message): void { global $checks; ++$checks; if (!$ok) throw new RuntimeException($message); }
-function qp_fixture(string $mode = ''): array
+function qp_fixture(string $mode = '', ?array $familyAges = null): array
 {
     $key = 'anex_online:' . str_repeat('b', 64); $ref = str_repeat('a', 32);
     $offer = ['offer_key' => $key, 'provider' => 'anex', 'supplier_namespace' => 'anex_online', 'kind' => 'concrete',
@@ -15,15 +15,21 @@ function qp_fixture(string $mode = ''): array
         'meal' => 'AI', 'room' => 'STANDARD', 'external_room_id' => '10', 'hotel_place' => 'DBL',
         'price' => ['amount' => '100000', 'currency' => 'RUB'], 'converted_price' => null,
         'availability' => [], 'supplier_booking_flag' => true, 'final_price_verified' => false];
+    if ($familyAges !== null) {
+        $offer['children'] = count($familyAges);
+        $offer['infants'] = count(array_filter($familyAges, static fn($age) => $age < 2));
+    }
     $known = ['offer_key' => $key, 'kind' => 'concrete', 'hotel_external_id' => '469', 'supplier_offer_id' => 'private-catclaim'];
     $entry = ['offer' => $offer, 'observed_at' => 1001, 'supplier_currency_id' => '1'];
     $state = ['generation' => 7, 'params' => ['countryId' => 4], 'gateway' => [
         'saved_offers' => ['search_ref' => $ref, 'created_at' => 1000, 'expires_at' => 1900, 'offers' => [$key => $entry]],
         'search' => ['context' => ['currency_id' => 3], 'offers' => [$known]]]];
+    if ($familyAges !== null) $state['gateway']['search']['context']['child_ages'] = $familyAges;
     $request = ['action' => 'quote_start', 'generation' => 7, 'search_ref' => $ref, 'offer_ref' => $key, 'local_hotel_id' => 245];
     $facts = (object) ['calls' => [], 'persisted' => [], 'snapshots' => [], 'checkpoints' => 0, 'factory_calls' => 0,
         'selection' => ['0' => 'private-out', '1' => 'private-back'], 'id' => null, 'mode' => $mode,
-        'multiple' => $mode === 'multiple', 'before_checkpoint' => null, 'after_checkpoint' => null, 'after_http' => null];
+        'multiple' => $mode === 'multiple', 'before_checkpoint' => null, 'after_checkpoint' => null, 'after_http' => null,
+        'family_ages' => $familyAges, 'transform_doc' => null];
     $checkpoint = static function (array &$s) use ($facts): void {
         ++$facts->checkpoints;
         if ($facts->mode === 'checkpoint') throw new RuntimeException('checkpoint_failed');
@@ -57,6 +63,17 @@ function qp_fixture(string $mode = ''): array
                 'transports' => ['transport' => [$leg(0, $facts->selection[0]), $leg(1, $facts->selection[1])]],
                 'moneys' => ['money' => [['currency' => 'EUR', 'price' => '1234', 'net' => '1000'], ['currency' => 'RUB', 'price' => '123456.78', 'net' => '100000']]],
                 'peoples' => ['people' => [['name' => 'PRIVATE_NAME', 'passport' => 'PRIVATE_PASSPORT']]]];
+            if ($facts->family_ages !== null) {
+                $infants = count(array_filter($facts->family_ages, static fn($age) => $age < 2));
+                $doc['child'] = (string) (count($facts->family_ages) - $infants);
+                $doc['infant'] = (string) $infants;
+                $people = [['key' => '1', 'age' => 'ADL'], ['key' => '2', 'age' => 'ADL']];
+                foreach ($facts->family_ages as $age) {
+                    $people[] = ['key' => (string) (count($people) + 1), 'age' => $age < 2 ? 'INF' : 'CHD',
+                        'name' => 'PRIVATE_INFANT_NAME', 'born' => 'PRIVATE_INFANT_BIRTH'];
+                }
+                $doc['peoples']['people'] = $people;
+            }
             if ($mode === 'hotel') $doc['hotels']['hotel'][0]['key'] = '470';
             if ($mode === 'party') $doc['adult'] = '3';
             if ($mode === 'infant-counter') $doc['infant'] = '1';
@@ -111,6 +128,7 @@ function qp_fixture(string $mode = ''): array
                     'private-third-out' => '345678.90', 'private-fourth-out' => '456789.01'];
                 $doc['moneys']['money'][1]['price'] = $totals[$facts->selection[0]];
             }
+            if (is_callable($facts->transform_doc)) $doc = ($facts->transform_doc)($doc, $stage);
             $body = ['bron' => ['claim' => ['claimDocument' => $doc,
                 'variants' => ['transports' => ['transport' => $variants]]]]];
             if ($mode === 'supplier') $body['error'] = 1108;
@@ -628,4 +646,92 @@ $safe = anytour_anex_search3_quote_receipt(['offer_context' => ['package_quotes'
 qp_assert(count($safe['records']) === 40 && $safe['records'][0] === ['status' => 'quote_unknown', 'reason' => null,
     'stages' => [['stage' => 'start', 'state' => 'complete']]], 'bounded allowlist handles malformed retained values');
 qp_assert(anytour_anex_search3_quote_receipt([])['records'] === [], 'missing session never triggers a fresh quote');
+// Infant party fixtures exercise the inferred source contract, NOT live acceptance.
+foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9], [2]] as $ages) {
+    [$s, $r, , , , $f, $make, $save] = qp_fixture('', $ages);
+    $inventory = qp_run($r, $s, $make, $save);
+    qp_assert($inventory['status'] === 'quote_choices', 'full family gets unpriced choices');
+    $pair = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $inventory['choices'][0]['choice_ref']]);
+    $priced = qp_run($pair, $s, $make, $save);
+    qp_assert($priced['status'] === 'quote_verified' && $priced['price'] === [
+        'amount' => '123456.78', 'currency' => 'RUB', 'basis' => 'supplier_gross_package'],
+        'only supplier gross verifies the whole family, no infant/fuel estimate added');
+    qp_assert($f->calls === ['start', 'transports', 'SetTransport', 'calcfull'], 'one family uses four reserved stages');
+    $before = serialize($s);
+    qp_assert(qp_tuple(qp_no_work($pair, $s, 1110)) === qp_tuple($priced)
+        && serialize($s) === $before, 'family cached quote keeps exact money and expiry without work');
+    qp_unverified(qp_no_work($pair, $s, $priced['expires_at']), 'family expires on original deadline');
+    $publicAndRetained = json_encode([$s, $priced], JSON_THROW_ON_ERROR);
+    qp_assert(strpos($publicAndRetained, 'PRIVATE_INFANT_NAME') === false
+        && strpos($publicAndRetained, 'PRIVATE_INFANT_BIRTH') === false, 'no personal infant fields retained or projected');
+    if ($ages === [0]) {
+        foreach ([[1], [], [8]] as $differentAges) {
+            $changed = unserialize($before);
+            $changed['gateway']['search']['context']['child_ages'] = $differentAges;
+            qp_unverified(qp_no_work($pair, $changed), 'age0 binding cannot reuse price for another age or missing infant');
+        }
+    }
+}
+foreach (['without-summaries', 'human-infant'] as $variant) {
+    [$s, $r, , , , $f, $make, $save] = qp_fixture('', [0]);
+    $f->transform_doc = static function (array $doc) use ($variant): array {
+        if ($variant === 'without-summaries') unset($doc['adult'], $doc['child'], $doc['infant']);
+        else {
+            unset($doc['peoples']['people'][2]['age']);
+            $doc['peoples']['people'][2]['human'] = 'INF';
+        }
+        return $doc;
+    };
+    $inventory = qp_run($r, $s, $make, $save);
+    $pair = array_replace($r, ['action' => 'quote_calculate', 'choice_ref' => $inventory['choices'][0]['choice_ref']]);
+    qp_assert(qp_run($pair, $s, $make, $save)['status'] === 'quote_verified', 'explicit typed family handles ' . $variant);
+}
+$familyStages = ['start', 'transports', 'SetTransport', 'calcfull'];
+foreach ($familyStages as $stageIndex => $badStage) {
+    foreach (['missing-people', 'missing-infant', 'duplicate-key', 'missing-key', 'unknown-class',
+        'conflicting-class', 'wrong-adult', 'child-includes-infant', 'wrong-infant',
+        'null-infant', 'bool-infant', 'array-infant'] as $variant) {
+        [$s, $r, , , , $f, $make, $save] = qp_fixture('', [0]);
+        $f->transform_doc = static function (array $doc, string $stage) use ($variant, $badStage): array {
+            if ($stage !== $badStage) return $doc;
+            if ($variant === 'missing-people') unset($doc['peoples']);
+            elseif ($variant === 'missing-infant') array_pop($doc['peoples']['people']);
+            elseif ($variant === 'duplicate-key') $doc['peoples']['people'][2]['key'] = '2';
+            elseif ($variant === 'missing-key') unset($doc['peoples']['people'][2]['key']);
+            elseif ($variant === 'unknown-class') $doc['peoples']['people'][2]['age'] = 'UNKNOWN';
+            elseif ($variant === 'conflicting-class') $doc['peoples']['people'][2]['human'] = 'CHD';
+            elseif ($variant === 'wrong-adult') $doc['adult'] = '3';
+            elseif ($variant === 'child-includes-infant') $doc['child'] = '1';
+            elseif ($variant === 'wrong-infant') $doc['infant'] = '2';
+            elseif ($variant === 'null-infant') $doc['infant'] = null;
+            elseif ($variant === 'bool-infant') $doc['infant'] = true;
+            elseif ($variant === 'array-infant') $doc['infant'] = ['PRIVATE_INFANT_COUNTER'];
+            return $doc;
+        };
+        $failed = qp_run($r, $s, $make, $save);
+        $attemptedRequest = $r;
+        if ($stageIndex > 1) {
+            $attemptedRequest = array_replace($r, ['action' => 'quote_calculate',
+                'choice_ref' => $failed['choices'][0]['choice_ref']]);
+            $failed = qp_run($attemptedRequest, $s, $make, $save);
+        }
+        qp_unverified($failed, 'bad family never verifies: ' . $badStage . '/' . $variant);
+        qp_assert($failed['status'] === 'quote_failed' && $f->calls === array_slice($familyStages, 0, $stageIndex + 1),
+            'family identity failure stops exact stage and further spend: ' . $badStage . '/' . $variant);
+        $before = count($f->calls);
+        $f->transform_doc = null;
+        qp_unverified(qp_run($attemptedRequest, $s, $make, $save), 'sealed family cannot replay restored response');
+        qp_assert(count($f->calls) === $before, 'restored response grants no family retry');
+    }
+}
+foreach ([null, 0, 2, '1', false] as $badInfants) {
+    [$s, $r, , , , $f, $make, $save] = qp_fixture('', [0]);
+    $s['gateway']['saved_offers']['offers'][$r['offer_ref']]['offer']['infants'] = $badInfants;
+    // Null/zero still follow the old no-infant contract and cannot verify the returned INF.
+    $reply = qp_run($r, $s, $make, $save);
+    qp_unverified($reply, 'foreign infant binding cannot verify');
+    if (!in_array($badInfants, [null, 0], true)) {
+        qp_assert($f->calls === [] && $f->factory_calls === 0, 'invalid infant binding rejected before client creation');
+    }
+}
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";

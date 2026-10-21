@@ -55,6 +55,35 @@ Returned package identity and selected transport UIDs must match at every stage.
 Only calcfull can produce quote_verified, with expiry no later than the search
 context. Personal/raw supplier documents are neither persisted nor projected.
 
+## Infant family binding — source contract 2026-10-21
+
+The original request keeps every child in CHILD/AGES, including ages0/1. The
+internal/public `children` count continues to mean that entire requested list;
+`infants` is a subset, not an extra passenger or a separate calculated charge.
+For a requested infant family, this normalizer requires explicit supplier infant
+count matching ages below2 and supplier child count equal to the remaining ages.
+Missing or contradictory counts stay rejected. This SearchTour count decomposition
+is a source-contract inference from the documented separate fields; a nonzero
+SearchTour wire specimen and ordinary live acceptance remain separate evidence.
+
+Primary public sources retrieved on2026-10-21 without supplier API/auth calls:
+- https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:prices
+  (68139B; SHA256 `9ee4123ae1e2dc42fff16b74e7a2976844f4ede8016f95f79f2f63fea7ad57ed`).
+- https://agent.anextour.ru/_next/static/chunks/3j9cb9-tia3ma.js
+  (380799B; SHA256 `3e66ab84677135c2d5c33a57a97de85247838ad723e348fe46696e31a8a5d143`):
+  module474441 `_formatBookingHotels` independently counts typed claim participants.
+- https://agent.anextour.ru/_next/static/chunks/32kpnbkz1bf7b.js
+  (SHA256 `15e637a35f19e4eee9484bd0744906956a70431c211c66b1de9c5b943eb0a2ac`):
+  module559458 defines ADL, CHD and INF as separate classes.
+
+Every infant quote stage must prove all requested adults, non-infant children and
+infants from explicit typed participants with distinct keys. Missing/unknown types,
+contradictory age/human classes or disagreeing present summary counters fail closed.
+The saved full ages and infant count must agree before client construction. Legacy
+non-infant behavior is preserved. Only the existing explicit RUB gross calcfull
+total can verify the entire party; separate infant fee remains unknown. No APD,
+fuel, currency, booking, personal-data write or additional endpoint is introduced.
+
 ## Bounded repeated pricing — owner authorization 2026-10-07
 
 Only newly created version-2 attempts have repeated-pricing capability. The same

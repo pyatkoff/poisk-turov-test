@@ -24,11 +24,12 @@ function anytour_anex_quote_identity_date($value): ?string
 }
 
 /** Only explicit supplier age classes; no names, birth dates or inferred zero counts. */
-function anytour_anex_quote_participant_counts(array $doc): ?array
+function anytour_anex_quote_participant_counts(array $doc, bool $withInfants = false): ?array
 {
     $people = anytour_anex_quote_rows($doc['peoples']['people'] ?? null);
     if ($people === [] || count($people) > 17) return null;
     $counts = ['adults' => 0, 'children' => 0];
+    if ($withInfants) $counts['infants'] = 0;
     $keys = [];
     foreach ($people as $person) {
         if (!is_array($person)) return null;
@@ -37,14 +38,15 @@ function anytour_anex_quote_participant_counts(array $doc): ?array
             $value = $person[$field] ?? null;
             if (in_array($value, ['ADL', 'CHD', 'INF'], true)) $classes[$value] = true;
         }
-        if (count($classes) !== 1 || isset($classes['INF'])) return null;
+        if (count($classes) !== 1 || (!$withInfants && isset($classes['INF']))) return null;
+        if ($withInfants && !array_key_exists('key', $person)) return null;
         if (isset($person['key'])) {
             if (!is_string($person['key']) && !is_int($person['key'])) return null;
             $key = (string) $person['key'];
             if ($key === '' || isset($keys[$key])) return null;
             $keys[$key] = true;
         }
-        ++$counts[isset($classes['ADL']) ? 'adults' : 'children'];
+        ++$counts[isset($classes['ADL']) ? 'adults' : (isset($classes['INF']) ? 'infants' : 'children')];
     }
     return $counts;
 }
@@ -68,27 +70,51 @@ function anytour_anex_quote_identity(array $response, array $offer, ?array &$mis
             }
         }
     }
-    // The public ANEX client derives party from peoples.people. Some matching
-    // documents omit the summary counters; every participant must then be explicit.
-    $party = isset($doc['adult'], $doc['child']) ? null : anytour_anex_quote_participant_counts($doc);
-    foreach (['adult' => 'adults', 'child' => 'children'] as $from => $to) {
-        $actual = $doc[$from] ?? ($party[$to] ?? null);
-        if ($actual === null || !isset($offer[$to])) $mismatches[$to] = 'missing';
-        elseif ((string) $actual !== (string) $offer[$to]
-            || ($party !== null && (string) $actual !== (string) $party[$to])) $mismatches[$to] = 'mismatch';
-    }
-    // Nonzero infants have no verified traveller contract in the search normalizer.
-    // Matching adult/child counters must not hide an explicit supplier infant.
-    if (array_key_exists('infant', $doc)) {
-        $infants = $doc['infant'];
-        if ((!is_string($infants) && !is_int($infants))
-            || preg_match('/\A[0-9]+\z/D', (string) $infants) !== 1) $mismatches['infants'] = 'format';
-        elseif ((string) $infants !== '0') $mismatches['infants'] = 'mismatch';
-    }
-    foreach (anytour_anex_quote_rows($doc['peoples']['people'] ?? null) as $person) {
-        if (is_array($person)
-            && (($person['age'] ?? null) === 'INF' || ($person['human'] ?? null) === 'INF')) {
-            $mismatches['infants'] = 'mismatch';
+    $infantCount = $offer['infants'] ?? 0;
+    if (is_int($infantCount) && $infantCount > 0) {
+        // Current public ANEX _formatBookingHotels counts ADL/CHD/INF separately.
+        // Every stage must prove the complete typed party; summaries alone cannot.
+        $party = anytour_anex_quote_participant_counts($doc, true);
+        $expected = ['adults' => $offer['adults'] ?? null,
+            'children' => is_int($offer['children'] ?? null) ? $offer['children'] - $infantCount : null,
+            'infants' => $infantCount];
+        foreach (['adult' => 'adults', 'child' => 'children', 'infant' => 'infants'] as $from => $to) {
+            if (!is_int($expected[$to]) || $expected[$to] < ($to === 'adults' ? 1 : 0)
+                || $party === null || $party[$to] !== $expected[$to]) {
+                $mismatches[$to] = $party === null ? 'missing' : 'mismatch';
+            }
+            if (array_key_exists($from, $doc)) {
+                $count = $doc[$from];
+                if ((!is_string($count) && !is_int($count))
+                    || preg_match('/\A(?:0|[1-9][0-9]?)\z/D', (string) $count) !== 1) {
+                    $mismatches[$to] = 'format';
+                } elseif ((int) $count !== $expected[$to]) {
+                    $mismatches[$to] = 'mismatch';
+                }
+            }
+        }
+    } else {
+        // The public ANEX client derives party from peoples.people. Some matching
+        // documents omit the summary counters; every participant must then be explicit.
+        $party = isset($doc['adult'], $doc['child']) ? null : anytour_anex_quote_participant_counts($doc);
+        foreach (['adult' => 'adults', 'child' => 'children'] as $from => $to) {
+            $actual = $doc[$from] ?? ($party[$to] ?? null);
+            if ($actual === null || !isset($offer[$to])) $mismatches[$to] = 'missing';
+            elseif ((string) $actual !== (string) $offer[$to]
+                || ($party !== null && (string) $actual !== (string) $party[$to])) $mismatches[$to] = 'mismatch';
+        }
+        // A non-infant offer must never hide an unrequested supplier infant.
+        if (array_key_exists('infant', $doc)) {
+            $infants = $doc['infant'];
+            if ((!is_string($infants) && !is_int($infants))
+                || preg_match('/\A[0-9]+\z/D', (string) $infants) !== 1) $mismatches['infants'] = 'format';
+            elseif ((string) $infants !== '0') $mismatches['infants'] = 'mismatch';
+        }
+        foreach (anytour_anex_quote_rows($doc['peoples']['people'] ?? null) as $person) {
+            if (is_array($person)
+                && (($person['age'] ?? null) === 'INF' || ($person['human'] ?? null) === 'INF')) {
+                $mismatches['infants'] = 'mismatch';
+            }
         }
     }
     $hotels = anytour_anex_quote_rows($doc['hotels']['hotel'] ?? null);
@@ -260,6 +286,20 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     $key = $request['offer_ref'];
     $base = ['status' => 'quote_unavailable', 'final_price_verified' => false, 'selection_state' => 'disabled'];
     if (($offer['kind'] ?? null) !== 'concrete') return $base;
+    if (($offer['infants'] ?? 0) !== 0) {
+        $ages = $state['gateway']['search']['context']['child_ages'] ?? null;
+        $infants = $offer['infants'];
+        if (!is_int($infants) || $infants < 1 || !is_int($offer['children'] ?? null)
+            || !is_array($ages) || !array_is_list($ages) || count($ages) !== $offer['children']) {
+            return array_replace($base, ['status' => 'quote_unknown']);
+        }
+        $expectedInfants = 0;
+        foreach ($ages as $age) {
+            if (!is_int($age) || $age < 0 || $age > 17) return array_replace($base, ['status' => 'quote_unknown']);
+            if ($age < 2) ++$expectedInfants;
+        }
+        if ($infants !== $expectedInfants) return array_replace($base, ['status' => 'quote_unknown']);
+    }
     $attempt = $state['package_quotes'][$key] ?? null;
     if ($attempt !== null && (!is_array($attempt) || ($attempt['expires_at'] ?? 0) <= $now)) {
         return is_array($attempt) ? anytour_anex_quote_reply(array_replace($base, ['status' => 'quote_expired']), $attempt, false)
