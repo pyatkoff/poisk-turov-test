@@ -1,0 +1,17 @@
+{
+  "schema": "match_precurrent83_review_v1",
+  "date": "2026-09-27",
+  "counts": {
+    "anex_ambiguous_single_positive": 45,
+    "samo_strict": 38,
+    "total": 83
+  },
+  "anex_finding": "v41 parser marks captured_single_native only when raw HOTELLIST token count equals unique numeric ID count equals1. For the45 current rows positive_native_candidates has one ID but link_state is ambiguous, therefore raw token list had duplicate/extra/invalid content. Raw operatorLink itself is intentionally not retained in terminal artifact; only hash/query keys/parsed candidates are retained. Cannot safely promote these45 from retained projection alone.",
+  "samo_finding": "38 current missing-SAMO rows have strict_multi_lane_candidate in v65. 19 exact candidate mode; 29 are exact-mode or have direct ANEX/operator_5 agreement. One explicit target collision catalog37255 between local1772/1773; local1773 MARHABA SALEM has exact mode and matching ANEX/operator_5=13586, local1772 is weaker and remains HOLD.",
+  "historical_anex": "47 true captured_single_native rows from v41/v45/v49/v59 were separately CURRENT-audited/written historically (16+17+12+2) and none remains in current728.",
+  "execution": {
+    "provider_calls": 0,
+    "db_writes": 0
+  },
+  "boundary": "No row is writer-ready without fresh CURRENT. Do not collapse the45 parser-ambiguous rows solely because their sanitized positive ID set has cardinality1."
+}
