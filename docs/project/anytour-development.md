@@ -1,6 +1,22 @@
 # AnyTour — единая организация разработки
 
-## Текущий проверенный checkpoint — 20.10.2026, ORIGINAL NEXT
+## Текущий проверенный checkpoint — 21.10.2026, ORIGINAL NEXT
+
+Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, очередь #1646 и координация [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709). Ниже сохранена история/no-replay; её старые pins/next_action не являются очередью. Один текущий результат — принятый receiving-пакет PR4775 и точный оставшийся ANEX projection handoff.
+
+| Состояние | Проверенный результат |
+| --- | --- |
+| Фактически установлен PR4775 | source `9977cd95465f02ad0d329160715941c344a7b3a7`, runtime release `7d7a7690170a70249c0400e7344d83d5f305df99`; appSHA256 `380b45b506ae946e61dcada8e7ad17ce7d106c1c5a1f00b24fbcfe391345f072`, dataSHA256 `49a10fdd839f67c56d75ae89efa9a8fbbe9682545617bd56df0fe020e969f6c5` |
+| Проверки и штатная публикация | Все 7 exact-source workflows/8 checks SUCCESS. Build `39521129732`/SOURCE artifact `12310949090`; full visual `39521129826`, один повтор только cancelled focused-job завершён SUCCESS. Один stock `39522780671`/READY `12312291540`/DEPLOY `12312071811`: 843 файла, 9 routes200, 43 visualassets/readback; [terminal6305157291](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305157291). SOURCE, compiled, READY и DEPLOY независимо приняты раздельно; predecessor5e1/rollback сохранён |
+| Работающий эффект и scope | ANEX terminal/noReplay и все22 safe producer codes сохраняются; pending duplicate — один attempt, локальная ошибка не заимствует supplier cause/price. Цена выдачи остаётся неподтверждённой, CTA предлагает другой тур, возврат/reopen/resize сохраняет условия и ошибку. Существующие owners/composition; без нового CSS/renderer/design. Controlled canonical51/inventory160/JSDOM430/1280 и 2 compiled frames отдельно от installed live |
+| Новый установленный affected control | [terminal6305290836](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6305290836), [audit6305315828](https://github.com/pyatkoff/poisk-turov-test/issues/1646#issuecomment-6305315828): один Find14–20Dec/7n/2A/AI, 46отелей/364варианта, partial. Свой SEHER SUN PALACE/Economy Room/14–21Dec/92055RUB: один expand → `HTTP200/client_projection_unconfirmed/clientPhase=projection` до quote. Actual iframe430×932↔1280×720: honest terminal/возврат/reopen и 2 actualJPG приняты; full independent trace отсутствует. Контекст CONSUMED/no-replay; quote/pair/contact/retry/lead intents0 |
+| Одна оставшаяся граница | [INT→SEARCH6305290603](https://github.com/pyatkoff/poisk-turov-test/issues/2506#issuecomment-6305290603): только retained safe PUBLIC shape оригинального200 ответа для различения existing envelope/identity/kind/date+nights/normalization/projection guards. SEARCH владеет receiving adapter; INT — authoritative producer shape. Какой guard отклонил этот body — NOT_ESTABLISHED. Если facts не сохранены — NOT_RETAINED; не повторять Find/expand/probe, не создавать reader и не угадывать supplier cause |
+
+Следующее действие — принять этот bounded retained200 handoff и исправлять только подтверждённое несоответствие в существующем owner. Нового supplier запроса/переигрывания законченной UI/CI/publication ради статуса нет. Source/runtime/обычный контроль PR4775 завершены и claims RELEASED; это не новая per-N/keyboard/device/cosmetic очередь. Новая независимая разрешённая работа допустима в своём ownership.
+
+Exact ANEX tour→verified whole-party price→optional pair→contact остаётся N на projection boundary, не HTTP502/outage и не подтверждённая цена. Старые5e1 Rix manager/family TVpair/возврат и их баллы сохраняют собственные exact scopes, не перенесены на9977. Полная lead-validation/wholeSearch9.5/physical/real delivery N; keyboard запрещён,200%/Compare deferred. Чужой design-v2 и его оценки исключены. Site204/PUBLICproject/history, production и настройки автоматизаций не менялись. Этот factual checkpoint не меняет843 runtime payload; control UI delta0, повторная публикация не нужна.
+
+## История checkpoint PR4729 — 20.10.2026, до PR4775
 
 Тот же `S3_PRODUCT_CURRENT_ACCEPTANCE`, очередь #1646; текущая координация [#4709](https://github.com/pyatkoff/poisk-turov-test/issues/4709).
 Датированные версии и прежние следующие действия ниже сохранены как история/no-replay;
