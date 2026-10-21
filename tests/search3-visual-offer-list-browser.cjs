@@ -260,6 +260,7 @@ const server=http.createServer((req,res)=>{
      await page.setViewportSize({width,height});
      const meal=page.locator('#filter-panel [data-filter="meals"][value="Всё включено"]');
      await page.evaluate(()=>scrollTo({top:2800,behavior:'instant'}));
+     await meal.scrollIntoViewIfNeeded();
      const before=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top,summary:document.querySelector('#results-summary').textContent}));
      assert(before.y>2000&&before.heading<0,'reader starts deep in the old result list');
      await shot('desktop-filter-deep-'+height);
@@ -271,11 +272,14 @@ const server=http.createServer((req,res)=>{
      assert.equal(after.meal,true);assert.equal(new URLSearchParams(after.url).get('meals'),'Всё включено');assert.equal(after.overflow,false);
      await shot('desktop-filter-revealed-'+height);
      await page.evaluate(()=>scrollTo({top:2800,behavior:'instant'}));
-     await page.locator('#filter-panel [data-action="reset"]').click();
+     const resetButton=page.locator('#filter-panel [data-action="reset"]');await resetButton.scrollIntoViewIfNeeded();
+     const beforeReset=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top}));
+     assert(beforeReset.y>2000&&beforeReset.heading<0,'reset control preparation leaves the reader deep in the result list');
+     await resetButton.click();
      await page.waitForFunction(()=>document.querySelector('#results-title').getBoundingClientRect().top>=0);
      const reset=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top,summary:document.querySelector('#results-summary').textContent,meal:document.querySelector('#filter-panel [data-filter="meals"][value="Всё включено"]').checked}));
      assert(reset.heading<height-100&&reset.y<1000);assert.match(reset.summary,/1047 отелей/);assert.equal(reset.meal,false);
-     navigation.push({width,height,before,after,reset,supplier_requests:0,real_leads:0,physicalSafari:false});
+     navigation.push({width,height,before,after,beforeReset,reset,supplier_requests:0,real_leads:0,physicalSafari:false});
     }
     fs.writeFileSync(path.join(evidence,'desktop-filter-navigation.json'),JSON.stringify(navigation,null,2));
    }
