@@ -111,7 +111,9 @@
     }
     return cleanAnexSearchDiagnostics(values);
   }
-  function anexSearchError(response,payload,stage,clientPhase=''){
+  const anexClientGuards=new Set(['envelope','tour_identity','amount','offer_scope','selected_meal','exact_stay','projected_identity','unknown']);
+  function anexProjectionError(clientGuard,message){return Object.assign(new Error(message),{anexClientGuard:clientGuard});}
+  function anexSearchError(response,payload,stage,clientPhase='',clientGuard=''){
     const expansion=stage==='expand',status=expansion?payload?.data?.status:null;
     const failure={stage,code:expansion&&clientPhase?'client_'+clientPhase+'_unconfirmed'
       :expansion&&['expansion_unknown','expired','not_loaded'].includes(status)?status:anexSearchFailureCodes.has(payload?.error)?payload.error:'unknown'};
@@ -121,6 +123,7 @@
       const diagnostic=anexSearchDiagnostics(response,expansion?(payload?.diagnostics||payload?.data?.diagnostics):undefined);
       if(!expansion||diagnostic.backendStage==='expand')Object.assign(failure,diagnostic);
     }
+    if(expansion&&clientPhase==='projection')failure.clientGuard=anexClientGuards.has(clientGuard)?clientGuard:'unknown';
     // Public enums and bounded numeric facts only; never response text or identities.
     try{root.console?.warn?.('[AnyTour search] '+JSON.stringify({provider:'anex',...failure}));}catch{}
     const error=Object.assign(new Error(expansion?'Не удалось подтвердить конкретные варианты тура.':stage==='continue'?'ANEX continuation unavailable':'ANEX search unavailable'),{searchFailure:failure});
@@ -550,20 +553,20 @@
     const bytes=await subtle.digest('SHA-256',new Encoder().encode(value));
     return Array.from(new Uint8Array(bytes),byte=>byte.toString(16).padStart(2,'0')).join('');
   }
-  async function directAnexOffer(hotel,tour,run,p,seen){
+  async function directAnexOffer(hotel,tour,run,p,seen,onReject){
     if(!tour||typeof tour!=='object'||!tour.price||tour.price.currency!=='RUB'
       ||typeof tour.price.amount!=='string'||!(/^(?:0|[1-9][0-9]{0,11})(?:\.[0-9]{1,2})?$/).test(tour.price.amount)
-      ||Number(tour.price.amount)<=0)throw new Error('Invalid ANEX price');
+      ||Number(tour.price.amount)<=0)throw anexProjectionError('amount','Invalid ANEX price');
     const day=date(tour.checkin),nights=Number(tour.nights),searchRef=String(tour.search_ref||''),offerRef=String(tour.offer_ref||'');
     if(!day||day<p.dateFrom||day>p.dateTo||!Number.isInteger(nights)||nights<Number(p.nightsFrom)||nights>Number(p.nightsTo)
       ||Number(tour.adults)!==Number(p.adults)||Number(tour.children)!==p.childs.length
       ||!(/^[a-f0-9]{32}$/).test(searchRef)||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)
-      ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw new Error('Invalid ANEX offer');
+      ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw anexProjectionError('offer_scope','Invalid ANEX offer');
     seen.add(offerRef);
     const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется',plan=providerMealPlan(tour.meal,'anex');
-    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo))return null;
+    if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo)){onReject?.('amount');return null;}
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
-    if(selectedMeals.length&&!selectedMeals.includes(mealName))return null;
+    if(selectedMeals.length&&!selectedMeals.includes(mealName)){onReject?.('selected_meal');return null;}
     const flight=String(tour.flight_type||'').toLowerCase(),offerIdentityDigest=await digestRef(offerRef);
     return {id:offerRef,offerRef,offerIdentityDigest,searchRef,provider:'anex',price:total,date:day,nights,
       meal:{name:mealName},roomType:text(tour.room)||'Номер уточняется',placement:'',
@@ -1391,19 +1394,20 @@
       if(expanded.provider!=='anex'||expanded.generation!==epoch||expanded.search_ref!==searchRef||expanded.offer_ref!==targetRef
         ||expanded.status!=='expanded'||!Array.isArray(expanded.hotels)||expanded.hotels.length!==1
         ||Number(expanded.hotels[0]?.local_id)!==localHotelId||!Array.isArray(expanded.hotels[0]?.tours)||!expanded.hotels[0].tours.length) {
-        throw new Error('ANEX не вернул конкретные варианты выбранного тура.');
+        throw anexProjectionError('envelope','ANEX не вернул конкретные варианты выбранного тура.');
       }
-      const seen=new Set(),normalized=[];
+      const seen=new Set(),normalized=[],rejected=new Set();
       for(const tour of expanded.hotels[0].tours){
-        if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw new Error('ANEX вернул некорректный конкретный вариант.');
-        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen);
+        if(tour?.kind!=='concrete'||tour?.search_ref!==searchRef)throw anexProjectionError('tour_identity','ANEX вернул некорректный конкретный вариант.');
+        const item=await directAnexOffer(expanded.hotels[0],tour,{filters,generation:epoch,anexSessionCurrent:true},p,seen,guard=>rejected.add(guard));
         if(item&&item.date===o.day&&item.nights===o.nights)normalized.push(item);
+        else if(item)rejected.add('exact_stay');
       }
       if(controller.signal.aborted||epoch!==generation)throw new Error('Условия поиска изменились. Выберите тур заново.');
-      if(!normalized.length)throw new Error('Конкретные варианты ANEX больше недоступны.');
+      if(!normalized.length)throw anexProjectionError(rejected.size===1?[...rejected][0]:'unknown','Конкретные варианты ANEX больше недоступны.');
       const projected=project([{anytourHotelId:o.hotelId,canonicalLegacyIds:[String(localHotelId)],name:'ANEX',tours:normalized}],exact)[0]?.offers||[];
       if(projected.length!==normalized.length||projected.some(item=>item.provider!=='anex'||item.raw?.anexKind!=='concrete'||Number(item.raw?.anexLocalHotelId)!==localHotelId)) {
-        throw new Error('Не удалось подготовить конкретные варианты ANEX.');
+        throw anexProjectionError('projected_identity','Не удалось подготовить конкретные варианты ANEX.');
       }
       return Object.freeze({hotelId:o.hotelId,offers:projected.map(item=>structuredClone(item))});
     }catch(error){
@@ -1411,7 +1415,7 @@
       // Switching offers can abort this POST without changing the search. Its
       // unknown outcome still belongs to this offer; only a new generation clears it.
       const failure=controller.signal.aborted?anexSearchError(response,null,'expand','transport')
-        :error?.searchFailure?error:anexSearchError(response,null,'expand',response?'projection':'transport');
+        :error?.searchFailure?error:anexSearchError(response,null,'expand',response?'projection':'transport',error?.anexClientGuard);
       if(failure.retryable===false)attempt.error=failure;
       throw failure;
     }finally{

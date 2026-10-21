@@ -49,6 +49,7 @@ offers(){return project(owner.read(raw,{}),context).flatMap(h=>h.offers);},
 receipt(o){const key=anexConcreteKey(o);return key&&anexPackageReceipts.get(key.key);},
 applied(value){context=structuredClone(value);},
 expansionCatalog(){catalog.departures=[{id:1,name:'Москва'}];catalog.countries=[{id:'4',name:'Турция',tourvisorIds:['4']}];},
+dropProjectedOffer(){const actual=project;project=(list,s)=>{const rows=actual(list,s);rows[0]?.offers.pop();return rows;};},
 epoch(value){generation=value;activeSearch.generation=value;},
 search(value){searchId=value;activeSearch.searchId=value;},
 snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCurrentReceipts],receipts:[...anexPackageReceipts].map(([key,r])=>({key,...r,pending:Boolean(r.pending),quotes:[...r.quotes]})),active:Boolean(activeVerification),deadline:activeSearch.deadline});},
@@ -112,16 +113,39 @@ test('HTTP status alone does not invent a producer retry policy',async()=>{
   await assert.rejects(h.expand(),e=>e.retryable===true);assert.equal(h.calls.length,2,'an explicit unsealed retry remains possible');
  }
 });
-test('post200 client rejection is classified locally and cannot borrow supplied upstream diagnostics',async()=>{
- for(const fault of ['identity','empty','kind']){
-  const h=await expansionHarness();h.setFetch(async(url,body)=>{
-   const p=page();p.hotels[0].tours[0].kind=fault==='kind'?'group_minimum':'concrete';
-   return {ok:true,data:{...expandIdentity(body),status:'expanded',diagnostics:expandDiagnostic,
+test('post200 rejection retains only the actual fixed client guard and cannot borrow supplied diagnostics',async()=>{
+ const cases=[['identity','envelope'],['empty','envelope'],['kind','tour_identity'],['search_ref','tour_identity'],
+  ['amount','amount'],['offer_ref','offer_scope'],['meal','selected_meal'],['stay','exact_stay'],
+  ['projection','projected_identity'],['mixed','unknown'],['unknown','unknown']];
+ for(const [fault,guard] of cases){
+  const h=await expansionHarness();
+  if(fault==='projection')h.t.dropProjectedOffer();
+  if(fault==='unknown')h.root.crypto={subtle:{digest(){throw Object.assign(new Error('PRIVATE_INTERNAL_URL'),{anexClientGuard:'PRIVATE_GUARD'});}}};
+  h.setFetch(async(url,body)=>{
+   const p=page(1,'available',fault==='mixed'?[2,3]:[2]),tour=p.hotels[0].tours[0];
+   if(fault==='kind')tour.kind='group_minimum';
+   if(fault==='search_ref')tour.search_ref='f'.repeat(32);
+   if(fault==='amount')tour.price.amount='1e9';
+   if(fault==='offer_ref')tour.offer_ref='PRIVATE_OFFER';
+   if(fault==='meal'||fault==='mixed')tour.meal='BB';
+   if(fault==='stay')tour.checkin='2026-10-11';
+   if(fault==='mixed')p.hotels[0].tours[1].checkin='2026-10-11';
+   return {ok:true,data:{...expandIdentity(body),status:'expanded',diagnostics:expandDiagnostic,clientGuard:'PRIVATE_PAYLOAD_GUARD',
     ...(fault==='identity'?{generation:999}:{}),hotels:fault==='empty'?[]:p.hotels}};
   });
-  await assert.rejects(h.expand(),e=>e.retryable===false&&e.searchFailure.clientPhase==='projection');await assert.rejects(h.expand());
-  assert.equal(h.calls.length,1);assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',httpStatus:200,clientPhase:'projection'}]);
+  let failure;await assert.rejects(h.expand(),e=>{failure=e;return e.retryable===false&&e.searchFailure.clientPhase==='projection'&&e.searchFailure.clientGuard===guard;},fault);
+  await assert.rejects(h.expand(),e=>e===failure);assert.equal(h.calls.length,1);
+  assert.deepEqual(h.warnings.map(searchWarning),[{provider:'anex',stage:'expand',code:'client_projection_unconfirmed',httpStatus:200,clientPhase:'projection',clientGuard:guard}],fault);
+  assert(!JSON.stringify(h.warnings).includes('PRIVATE_'));assert.equal(h.apiCalls.length,0);assert.equal(h.o.raw.finalPriceVerified,false);
  }
+});
+test('local guard hints do not reject an expansion with an exact surviving concrete offer',async()=>{
+ const h=await expansionHarness();h.setFetch(async(url,body)=>{
+  const p=page(1,'available',[2,3,4]);p.hotels[0].tours[1].meal='BB';p.hotels[0].tours[2].checkin='2026-10-11';
+  return {ok:true,data:{...expandIdentity(body),status:'expanded',clientGuard:'PRIVATE_PAYLOAD_GUARD',hotels:p.hotels}};
+ });
+ const expanded=await h.expand();assert.equal(expanded.offers.length,1);assert.equal(expanded.offers[0].raw.offerRef,offerRef(2));
+ assert.equal(expanded.offers[0].raw.finalPriceVerified,false);assert.equal(h.calls.length,1);assert.deepEqual(h.warnings,[]);assert.equal(h.apiCalls.length,0);
 });
 test('unreadable success and lost transport remain local unknown with no raw error or fake backend status',async()=>{
  for(const response of [null,{ok:true}]){
