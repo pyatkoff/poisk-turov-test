@@ -59,7 +59,7 @@ final class AnyTourAnexPreviewGateway
                 throw new InvalidArgumentException('ANEX_INVALID_REQUEST');
             }
             // A failed replacement search invalidates earlier supplier references.
-            unset($session['search'], $session['saved_offers']);
+            unset($session['search'], $session['saved_offers'], $session['first_page_diagnostics']);
             $search = $this->newSearch();
             // Foreground retains at most 300 offers: do not drain collector pages
             // before returning that first page. Explicit background mode keeps 12.
@@ -70,6 +70,11 @@ final class AnyTourAnexPreviewGateway
                 'created_at' => $now, 'expires_at' => $now + self::SESSION_TTL,
                 'search' => $result['search'], 'offers' => [],
             ];
+            if (isset($result['first_page_diagnostics'])) {
+                $session['first_page_diagnostics'] = ['search_ref' => $session['saved_offers']['search_ref'],
+                    'page_digest' => $session['search']['pagination']['page_digests'][0],
+                    'counts' => $result['first_page_diagnostics']];
+            }
             $this->rememberOffers($result, $session, $now);
         } else {
             if (!self::exactKeys($request, ['action', 'offer_key'])
@@ -277,6 +282,7 @@ final class AnyTourAnexPreviewGateway
 
     private function publicResult(array $result): array
     {
+        unset($result['first_page_diagnostics']);
         if (isset($result['offers']) && is_array($result['offers'])) {
             foreach ($result['offers'] as &$offer) {
                 if (!is_array($offer)) {

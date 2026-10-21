@@ -45,7 +45,9 @@ final class AnyTourAnexSearch
             if (isset($seenPages[$pageDigest])) break;
             $seenPages[$pageDigest] = true;
 
-            $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive);
+            $diagnostics = $maxPages === 1 ? [] : null;
+            $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive, $diagnostics);
+            $hotelFiltered = 0;
             if (isset($criteria['hotel_ids'])) {
                 $requestedHotels = array_map('strval', $criteria['hotel_ids']);
                 $accepted = [];
@@ -54,6 +56,7 @@ final class AnyTourAnexSearch
                         $accepted[] = $offer;
                     } else {
                         $result['rejected_count']++;
+                        ++$hotelFiltered;
                     }
                 }
                 $result['offers'] = $accepted;
@@ -91,6 +94,8 @@ final class AnyTourAnexSearch
                 'state' => count($rows) >= 300 ? 'available' : 'exhausted',
                 'page_digests' => array_keys($seenPages)];
             $combined['continuation'] = $this->continuationStatus();
+            $combined['first_page_diagnostics'] = $diagnostics + ['hotel_filtered_rows' => $hotelFiltered,
+                'retained_offers' => count($combined['offers'])];
         }
         return $combined;
     }

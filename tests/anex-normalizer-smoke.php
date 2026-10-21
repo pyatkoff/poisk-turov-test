@@ -181,3 +181,33 @@ foreach ([2, 17] as $age) {
 }
 
 echo "ANEX normalizer smoke: passed\n";
+
+// Diagnostics use the same rejection predicates, with no acceptance or amount changes.
+$familyContext = array_replace($context, ['children' => 1, 'child_ages' => [0]]);
+$good = array_replace($row, ['adult' => 2, 'child' => 0, 'infant' => 1]);
+$missing = $good; unset($missing['infant']);
+$diagnostics = [];
+$rows = [$good, $missing, array_replace($good, ['child' => 1]),
+    array_replace($good, ['infant' => null]), array_replace($good, ['adult' => 3]),
+    array_replace($good, ['id' => 'https://secret.invalid']), 'private-raw-value'];
+$with = anytour_anex_normalize_prices(['prices' => $rows], $familyContext, null, [], $diagnostics);
+$without = anytour_anex_normalize_prices(['prices' => $rows], $familyContext);
+anex_normalizer_check($with === $without, 'diagnostics do not change normalized response');
+anex_normalizer_check($diagnostics['rows_seen'] === 7 && $diagnostics['normalized_rows'] === 1
+    && $diagnostics['rejected_rows'] === 6 && $diagnostics['rejections'] ===
+    ['infant' => 2, 'child' => 1, 'adult' => 1, 'supplier_reference' => 1, 'row_type' => 1], 'exact first-failed-field partition');
+anex_normalizer_check($diagnostics['party_counts'] === ['2/0/1' => 2, '2/0/missing' => 1,
+    '2/1/1' => 1, '2/0/invalid' => 1, '3/0/1' => 1, 'missing/missing/missing' => 1], 'bounded parsed party facts preserve missing vs invalid');
+anex_normalizer_check(strpos(json_encode($diagnostics), 'private') === false
+    && strpos(json_encode($diagnostics), 'secret') === false, 'no raw identifiers or row text retained');
+$diagnostics = [];
+anytour_anex_normalize_prices(['prices' => array_fill(0, 301, $missing)], $familyContext, null, [], $diagnostics);
+anex_normalizer_check($diagnostics['rows_seen'] === 300 && $diagnostics['rejections'] === ['infant' => 300], 'existing300 row cap also bounds diagnostics');
+foreach (['hotelKey' => null, 'hotel' => null, 'checkIn' => null, 'checkOut' => null,
+    'nights' => null, 'packetType' => 1, 'grouped' => null, 'price' => null, 'currency' => null] as $field => $value) {
+    $diagnostics = [];
+    anytour_anex_normalize_prices(['prices' => [array_replace($good, [$field => $value])]], $familyContext, null, [], $diagnostics);
+    anex_normalizer_check($diagnostics['rejected_rows'] === 1 && array_sum($diagnostics['rejections']) === 1,
+        'existing rejection classified: ' . $field);
+}
+echo "ANEX normalization diagnostics passed\n";

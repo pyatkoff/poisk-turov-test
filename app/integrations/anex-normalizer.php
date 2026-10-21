@@ -15,7 +15,8 @@ function anytour_anex_normalize_prices(
     array $payload,
     array $context,
     ?callable $resolver = null,
-    array $sensitiveValues = []
+    array $sensitiveValues = [],
+    ?array &$diagnostics = null
 ): array {
     $search = anytour_anex_normalizer_context($context);
     $sensitive = anytour_anex_normalizer_sensitive($sensitiveValues);
@@ -41,14 +42,33 @@ function anytour_anex_normalize_prices(
         'rejected_count' => 0,
         'truncated_count' => max(0, count($data['prices']) - 300),
     ];
+    if ($diagnostics !== null) $diagnostics = ['rows_seen' => min(300, count($data['prices'])),
+        'normalized_rows' => 0, 'rejected_rows' => 0, 'rejections' => [], 'party_counts' => []];
     foreach (array_slice($data['prices'], 0, 300) as $row) {
+        $reason = 'row_type';
+        if ($diagnostics !== null) {
+            $parts = [];
+            foreach (['adult', 'child', 'infant'] as $field) {
+                $value = is_array($row) && array_key_exists($field, $row)
+                    ? anytour_anex_normalizer_integer($row[$field], $field === 'adult' ? 1 : 0, $field === 'adult' ? 9 : 8) : null;
+                $parts[] = $value !== null ? (string) $value
+                    : (is_array($row) && array_key_exists($field, $row) ? 'invalid' : 'missing');
+            }
+            $key = implode('/', $parts);
+            $diagnostics['party_counts'][$key] = ($diagnostics['party_counts'][$key] ?? 0) + 1;
+        }
         $offer = is_array($row)
-            ? anytour_anex_normalizer_offer($row, $search, $resolver, $sensitive)
+            ? anytour_anex_normalizer_offer($row, $search, $resolver, $sensitive, $reason)
             : null;
         if ($offer === null) {
             ++$result['rejected_count'];
+            if ($diagnostics !== null) {
+                ++$diagnostics['rejected_rows'];
+                $diagnostics['rejections'][$reason] = ($diagnostics['rejections'][$reason] ?? 0) + 1;
+            }
         } else {
             $result['offers'][] = $offer;
+            if ($diagnostics !== null) ++$diagnostics['normalized_rows'];
         }
     }
     return $result;
@@ -106,8 +126,9 @@ function anytour_anex_normalizer_infant_count(array $ages): int
     return count(array_filter($ages, static function ($age): bool { return $age < 2; }));
 }
 
-function anytour_anex_normalizer_offer(array $row, array $search, ?callable $resolver, array $sensitive): ?array
+function anytour_anex_normalizer_offer(array $row, array $search, ?callable $resolver, array $sensitive, ?string &$reason = null): ?array
 {
+    $reason = 'supplier_reference';
     $supplierId = $row['id'] ?? null;
     if (is_int($supplierId) && $supplierId > 0) {
         $supplierId = (string) $supplierId;
@@ -130,20 +151,30 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
     $grouped = anytour_anex_normalizer_flag($row['grouped'] ?? null);
     $amount = anytour_anex_normalizer_decimal($row['price'] ?? null);
     $currency = $row['currency'] ?? null;
-    if ($hotelId === null || $hotel === null || $checkin === null || $checkout === null
-        || $nights === null || $adults !== $search['adults']
-        || $children !== $search['children'] - $expectedInfants
-        || $checkin->format('Y-m-d') < $search['checkin_begin']
-        || $checkin->format('Y-m-d') > $search['checkin_end'] || $checkin >= $checkout
-        || $nights < $search['nights_from'] || $nights > $search['nights_till']
-        || anytour_anex_normalizer_integer($row['packetType'] ?? null, 0, 0) !== 0
-        // A nonzero infant is a separate supplier count, never a missing/assumed zero.
-        || ($expectedInfants > 0 && $infants !== $expectedInfants)
-        || ($expectedInfants === 0 && array_key_exists('infant', $row) && $infants !== 0)
-        || $grouped === null || $amount === null || !is_string($currency)
-        || !preg_match('/\A[A-Z]{3}\z/D', $currency)) {
-        return null;
+    // Record the first failed existing predicate only; this does not relax acceptance.
+    $checks = [
+        'hotel_id' => $hotelId !== null,
+        'hotel_label' => $hotel !== null,
+        'checkin' => $checkin !== null,
+        'checkout' => $checkout !== null,
+        'nights' => $nights !== null,
+        'adult' => $adults === $search['adults'],
+        'child' => $children === $search['children'] - $expectedInfants,
+        'date_scope' => $checkin !== null && $checkout !== null
+            && $checkin->format('Y-m-d') >= $search['checkin_begin']
+            && $checkin->format('Y-m-d') <= $search['checkin_end'] && $checkin < $checkout,
+        'night_scope' => $nights !== null && $nights >= $search['nights_from'] && $nights <= $search['nights_till'],
+        'packet_type' => anytour_anex_normalizer_integer($row['packetType'] ?? null, 0, 0) === 0,
+        'infant' => $expectedInfants > 0 ? $infants === $expectedInfants
+            : (!array_key_exists('infant', $row) || $infants === 0),
+        'grouped' => $grouped !== null,
+        'price' => $amount !== null,
+        'currency' => is_string($currency) && preg_match('/\A[A-Z]{3}\z/D', $currency) === 1,
+    ];
+    foreach ($checks as $field => $valid) {
+        if (!$valid) { $reason = $field; return null; }
     }
+    $reason = null;
     $localId = null;
     if ($resolver !== null) {
         // Resolver failures carry no provider/DB error detail across this boundary.
