@@ -93,6 +93,13 @@ BINDING_RECONCILIATION = {
     'provider_day': '2026-10-21',
 }
 
+BINDING_RECONCILIATION_V2 = dict(BINDING_RECONCILIATION,
+    cohort='common4-binding-two-failures-20261021',
+    operation_id='int-andromeda-match-retained-readback-20261021-v2',
+    prior_reconciliation_id='int-andromeda-match-retained-readback-20261021-v1',
+    prior_reconciliation_source='2f12d0f45c0ce5adad2475cb48fb38ffa64bdc44',
+    prior_reconciliation_digest='e4d082c58a7e9bf6fb61abf01372453989b629ab13855b8b7fc30c2f91dc0834')
+
 
 def need(value, reason):
     if not value:
@@ -219,10 +226,11 @@ def register_parser(core):
         parts = body[len(core.PREFIX):].split()
         if len(parts) < 2 or parts[1] not in MODES:
             return original(body)
-        if len(parts) >= 4 and parts[3] == BINDING_RECONCILIATION['cohort']:
+        if len(parts) >= 4 and parts[3] in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort']):
+            profile = BINDING_RECONCILIATION_V2 if parts[3] == BINDING_RECONCILIATION_V2['cohort'] else BINDING_RECONCILIATION
             need(len(parts) == 5 and parts[1] == 'match-retained-readback'
-                 and parts[2] == BINDING_RECONCILIATION['operation_id']
-                 and parts[4] == BINDING_RECONCILIATION['parent_operation_id'], 'binding_reconciliation_scope')
+                 and parts[2] == profile['operation_id']
+                 and parts[4] == profile['parent_operation_id'], 'binding_reconciliation_scope')
             need(core.SHA_RE.fullmatch(parts[0]) is not None, 'retained_source_sha')
             need(os.environ.get('GITHUB_RUN_ATTEMPT', '1') == '1', 'retained_first_attempt_only')
             return dict(source_sha=parts[0], mode=parts[1], operation_id=parts[2],
@@ -1468,9 +1476,53 @@ def retained_binding_reconciliation(stage):
 '''
 
 
+def binding_reconciliation_v2_handler():
+    handler = BINDING_RECONCILIATION_HANDLER
+    names = "    expected_names = {'reservation.json', 'result.json', 'source'}"
+    anchor = "    home = pathlib.Path.home()/'.anytoour-match'"
+    return_anchor = "    return {'data': data, 'evidence_sha256':"
+    need(handler.count(names) == handler.count(anchor) == handler.count(return_anchor) == 1,
+         'binding_reconciliation_v2_anchors')
+    handler = handler.replace(names, "    expected_names = {'reservation.json', 'result.json', 'source', 'installed-source.json'}", 1)
+    validation = r'''
+    installed = parsed(target/'installed-source.json')
+    if installed != {'source_sha': profile['failed_source_sha'], 'files': current_manifest['files']}:
+        fail('binding_reconciliation_installed_metadata')
+    previous = private/profile['prior_reconciliation_id']
+    if previous.is_symlink() or previous.resolve() != previous or not previous.is_dir():
+        fail('binding_reconciliation_previous_path')
+    if set(p.name for p in previous.iterdir()) != expected_names:
+        fail('binding_reconciliation_previous_members')
+    previous_result = parsed(previous/'result.json')
+    previous_reservation = parsed(previous/'reservation.json')
+    previous_installed = parsed(previous/'installed-source.json')
+    previous_digest = hashlib.sha256(json.dumps(previous_result, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    if (previous_digest != profile['prior_reconciliation_digest']
+            or previous_result.get('status') != 'unknown_no_replay'
+            or previous_result.get('reason') != 'binding_reconciliation_request_present'
+            or any(obj.get('operation_id') != profile['prior_reconciliation_id']
+                   or obj.get('source_sha') != profile['prior_reconciliation_source']
+                   or obj.get('mode') != 'match-retained-readback' for obj in (previous_result, previous_reservation))
+            or any(type(previous_result.get(k)) is not int or previous_result[k] != 0
+                   for k in ('supplier_calls','database_writes','mapping_writes','lead_calls','booking_calls'))
+            or previous_installed != {'source_sha': profile['prior_reconciliation_source'], 'files': current_manifest['files']}):
+        fail('binding_reconciliation_previous_receipt')
+'''
+    handler = handler.replace(anchor, validation+'\n'+anchor, 1)
+    handler = handler.replace(return_anchor,
+        "    if set(p.name for p in previous.iterdir()) != expected_names: fail('binding_reconciliation_previous_members')\n"
+        "    data.update(installed_metadata_verified=True, prior_reconciliation_preserved=True,\n"
+        "        prior_reconciliation_operation_id=profile['prior_reconciliation_id'],\n"
+        "        prior_reconciliation_canonical_sha256=previous_digest)\n"+return_anchor, 1)
+    ast.parse(handler)
+    return handler
+
+
 def completed_binding_reconciliation(command, result, control_sha):
     try:
-        data = result['match_retained']['data']; profile = BINDING_RECONCILIATION
+        data = result['match_retained']['data']
+        v2 = command.get('cohort') == BINDING_RECONCILIATION_V2['cohort']
+        profile = BINDING_RECONCILIATION_V2 if v2 else BINDING_RECONCILIATION
         if (command.get('mode') != 'match-retained-readback' or command.get('cohort') != profile['cohort']
                 or command.get('operation_id') != profile['operation_id']
                 or command.get('target_operation_id') != profile['parent_operation_id']
@@ -1490,7 +1542,10 @@ def completed_binding_reconciliation(command, result, control_sha):
         for key in ('new_database_reads','new_accepted_mappings','proved_failed_operation_supplier_calls','failed_operation_day_reservations'):
             if type(data.get(key)) is not int or data[key] != 0: return False
         if type(data.get('staged_source_files_verified')) is not int or data['staged_source_files_verified'] != 17: return False
-        if type(data.get('protected_inputs_count')) is not int or data['protected_inputs_count'] != 25: return False
+        if type(data.get('protected_inputs_count')) is not int or data['protected_inputs_count'] != (29 if v2 else 25): return False
+        if v2 and (data.get('installed_metadata_verified') is not True or data.get('prior_reconciliation_preserved') is not True
+                   or data.get('prior_reconciliation_operation_id') != profile['prior_reconciliation_id']
+                   or data.get('prior_reconciliation_canonical_sha256') != profile['prior_reconciliation_digest']): return False
         if any(data.get(k) is not True for k in ('prior_receipt_preserved','request_files_absent','protected_inputs_unchanged','no_replay')): return False
         if any(data.get(k) is not False for k in ('native_hotel_authority','hotel_sales_access_proven','safe_to_write_now')): return False
         if data.get('global_usage') != 'not_measured': return False
@@ -1551,7 +1606,7 @@ def completed_operator_dictionary(command, result, control_sha):
 
 
 def completed_result(command, result, control_sha):
-    if command.get('cohort') == BINDING_RECONCILIATION['cohort']:
+    if command.get('cohort') in (BINDING_RECONCILIATION['cohort'], BINDING_RECONCILIATION_V2['cohort']):
         return completed_binding_reconciliation(command, result, control_sha)
     if command.get('cohort') == OPERATOR_BINDING['cohort']:
         return completed_operator_dictionary(command, result, control_sha)
@@ -1659,16 +1714,17 @@ def activate(core, command):
              'manifest':"    if not isinstance(files,dict) or len(files)<20: fail('manifest')"}
     for key, anchor in anchors.items():
         need(remote.count(anchor)==(2 if key=='collector' else 1),'retained_registration_drift_'+key)
-    reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort']
+    reconciliation_v2 = command.get('cohort') == BINDING_RECONCILIATION_V2['cohort']
+    reconciliation = command.get('cohort') == BINDING_RECONCILIATION['cohort'] or reconciliation_v2
     binding = command.get('cohort') == OPERATOR_BINDING['cohort']
-    policy = BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
+    policy = BINDING_RECONCILIATION_V2 if reconciliation_v2 else BINDING_RECONCILIATION if reconciliation else OPERATOR_BINDING if binding else continuation_policy(command.get('cohort'))
     catalogue='catalogue_sha256' in policy
     handler = REMOTE_HANDLER
     if reconciliation:
         anchor = '    config=project/\'config.php\';dbhelper=project/\'data/db-v1.php\''
         need(handler.count(anchor) == 1, 'binding_reconciliation_dispatch_anchor')
         handler = handler.replace(anchor, "    if mode=='match-retained-readback':return retained_binding_reconciliation(stage)\n"+anchor, 1)
-        handler += BINDING_RECONCILIATION_HANDLER
+        handler += binding_reconciliation_v2_handler() if reconciliation_v2 else BINDING_RECONCILIATION_HANDLER
     if binding:
         anchor = "    if mode=='match-retained-acquire':return acquire_retained_target(stage)"
         need(handler.count(anchor) == 1, 'operator_dictionary_dispatch_anchor')
