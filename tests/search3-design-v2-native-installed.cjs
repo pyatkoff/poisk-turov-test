@@ -7,7 +7,11 @@ const path=require('node:path');
 const {chromium,request:playwrightRequest}=require('playwright');
 const {fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest:compiledManifest,sourceSHA,hash,base,retainedMedia,mediaByURL}=require('./search3-design-v2-native-browser.cjs');
 const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/';
-const INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
+const mealOnly=process.argv.includes('--meal-only');
+const PRIOR_INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
+// ROOT fills these only from the actual one-shot publication terminal receipt.
+const MEAL_INSTALLED=Object.freeze({source:'4442cec9921d0888b43cc7a7137385f1e6223c48',release:'43c6a56e06a7fd634a603e24a890f745c5e49773',publishRun:39518137791,manifestSHA256:'839d40fef279afee958d447858eada8bfac5e536b99b7b76d7bf34d22f8f1d67'});
+const INSTALLED=mealOnly?MEAL_INSTALLED:PRIOR_INSTALLED;
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
 assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
@@ -16,11 +20,13 @@ const origin=new URL(TARGET).origin;
 const forbidden=/\/(?:api(?:[^/]*)|lead-(?:adapter|bridge|receiver)[^/]*)\.(?:php|json)(?:$|\?)/i;
 const nativePrefix=base+'/visual-search/native-v2/';
 const bridgePath=nativePrefix+'bridge.js';
+const localHelperPath=base+'/search3-local-db-provider-v1.js';
+const MEAL_HELPER_SHA256='83dc1add39bde2e5d5360d52e36387a0197b71859b9e2a6a8a6324a641207036';
 const noOp=Buffer.from('/* Controlled installed presentation evidence: canonical transport disabled. */\n');
 const fixtureScript=Buffer.from('('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');');
 const terminalScript=Buffer.from('('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');');
-const report={schema:1,status:'running',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
-  scope:'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
+const report={schema:1,status:'running',mode:mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
+  scope:mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
   fixture:fixture.label,clock:'2026-10-12T08:00:00Z',widths:[430,1280],height:900,textPercent:100,
   manifest:null,graph:[],publicGETs:[],replacements:[],network:[],cases:[],unexpectedRequests:[],
   exclusions:{supplierSearches:0,supplierQuotes:0,canonicalAPIRequests:0,realLeadSubmissions:0,analyticsRequests:0,physicalSafari:'not_measured',liveAuthority:'not_measured'}};
@@ -49,6 +55,11 @@ function installGraph(manifest){
     assert.equal(url.pathname,base+'/'+row.path);assert(!forbidden.test(url.pathname));assert(!paths.has(url.pathname));paths.add(url.pathname);
     assert(row.kind==='script'?url.pathname.endsWith('.js'):url.pathname.endsWith('.css'));
     allowed.set(url.pathname,row);
+  }
+  if(mealOnly){
+    const actual=rows.find(row=>base+'/'+row.path===localHelperPath),compiled=compiledManifest.graph.scripts.find(row=>base+'/'+row.path===localHelperPath);
+    assert(actual&&compiled,'LOCAL meal helper belongs to both exact graphs');
+    assert.equal(actual.sha256,MEAL_HELPER_SHA256,'Exact reviewed LOCAL meal helper hash');assert.equal(actual.bytes,12283,'Exact reviewed LOCAL meal helper bytes');assert.equal(actual.sha256,compiled.sha256);assert.equal(actual.bytes,compiled.bytes);
   }
   report.graph=rows;return rows;
 }
@@ -138,7 +149,103 @@ async function capture(page,row,name){
   if(contact){row.proof.contactFeedback||={};row.proof.contactFeedback[name]={before:contactBefore,after:await contactFeedback()};}
   const bytes=fs.readFileSync(file);row.frames.push({file:nameFile,sha256:hash(bytes),bytes:bytes.length});
 }
+async function acceptMealFamilies(page,row,product,screen,installedManifest){
+  const width=row.width;
+  // One explicit fictional search and one exact fictional quote establish an
+  // existing receipt. No contact validation or submission is part of this mode.
+  await screen('search').locator('button[type="submit"]').click();await screen('results').waitFor({state:'visible'});
+  assert.equal((await calls(page)).search,1);assert.equal(await product.locator('.st-hotel-card').count(),4);
+  await product.locator('[data-favorite="1"]').click();
+  await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
+  assert.equal((await calls(page)).quote,0,'Installed hotel opening is passive');
+  await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();await screen('tour').waitFor({state:'visible'});
+  await product.locator('[data-native-tour-flight="0"]').click();await product.locator('[data-action="accept-price"]:visible').first().click();
+  const businessState=()=>page.evaluate(()=>{
+    const c=window.__nativeFixture.calls,s=window.__nativeFixture.getSelection();
+    return{search:c.search,quote:c.quote,expand:c.expand,flight:[...c.flight],preview:c.preview,submit:c.submit,
+      key:s.key,total:s.total,choice:s.flightChoiceId,accepted:s.priceAccepted,exactOffer:s.offer===window.__nativeFixture.hotels[0].offers[0]};
+  });
+  const baseline=await businessState();
+  assert.deepEqual(baseline,{search:1,quote:1,expand:0,flight:[0],preview:0,submit:0,key:'fixture:offer:1',total:112000,choice:0,accepted:true,exactOffer:true});
+  await screen('tour').locator('[data-action="hotel"]').click();await screen('hotel').waitFor({state:'visible'});
+  await screen('hotel').locator('[data-action="results"]').click();await screen('results').waitFor({state:'visible'});
+  const reset=product.locator('[data-action="reset-filters"]:visible').first();if(await reset.isVisible())await reset.click();
+  const priorDate=product.locator('[data-native-remove-constraint="date"]:visible').first();if(await priorDate.isVisible())await priorDate.click();
+  const onlyFavorite=product.locator('[data-action="favorites"][aria-pressed="true"]:visible').first();if(await onlyFavorite.isVisible())await onlyFavorite.click();
+  await page.evaluate(()=>window.__nativeFixture.installMealFamilies());
+  if(width===430&&await product.locator('[data-native-calendar]').getAttribute('aria-expanded')!=='true')await product.locator('[data-native-calendar]').click();
+  await product.locator('[data-native-day="'+fixture.trip.from+'"]:visible').click();
+  if(width===430&&await product.locator('[data-native-calendar]').getAttribute('aria-expanded')==='true')await product.locator('[data-native-calendar]').click();
+  if(width===430)await product.locator('[data-action="filters"]').first().click();
+  const mealPanel=product.locator(width===430?'[data-filter-form]':'[data-filter-sidebar]');
+  const family=()=>mealPanel.locator('[data-native-meal-group-toggle="meal-family:all-inclusive"]');
+  const refine=mealPanel.locator('[data-native-meal-expand="meal-family:all-inclusive"]');if(await refine.getAttribute('aria-expanded')==='true')await refine.click();
+  await mealPanel.locator('input[type="number"][data-native-budget="max"]').fill('125000');
+  if(width===1280)await mealPanel.locator('input[type="number"][data-native-budget="max"]').press('Tab');
+  assert.equal(await family().locator('..').locator('.st-filter-count').innerText(),'3','Distinct matching hotel union, not sum of child counts');
+  assert.equal(await mealPanel.locator('[data-native-meal-members] .st-filter-count').evaluateAll(nodes=>nodes.reduce((sum,node)=>sum+Number(node.textContent),0)),4);
+  assert.match(await family().locator('..').innerText(),/Все варианты \(4\)/);
+  assert.equal(await mealPanel.locator('[data-native-meal-members]:visible').count(),0);
+  await capture(page,row,'meal-families');
+  await family().check();await mealPanel.locator('[data-native-meal-expand="meal-family:all-inclusive"]').click();
+  await mealPanel.locator('[data-native-filter="meals"][value="Ультра всё включено"]').uncheck();
+  assert.equal(await family().evaluate(node=>node.indeterminate),true);assert.equal(await family().getAttribute('aria-checked'),'mixed');
+  const exactChildren=await mealPanel.locator('[data-native-meal-members] [data-native-filter="meals"]').evaluateAll(nodes=>nodes.map(node=>({name:node.value,checked:node.checked})));
+  assert.deepEqual(exactChildren,[{name:'Всё включено',checked:true},{name:'Ультра всё включено',checked:false},{name:'Софт всё включено',checked:true},{name:'Всё включено без алкоголя',checked:true}]);
+  assert.match(await mealPanel.locator('[data-native-meal-selection]').innerText(),/Всё включено без алкоголя/);
+  if(width===430)assert.equal(await product.locator('[data-filter-apply]').innerText(),'Показать 2 отеля');
+  else assert.deepEqual(await product.locator('.st-hotel-card').evaluateAll(nodes=>nodes.map(node=>Number(node.dataset.hotelCard))),[911,914]);
+  const fit=await mealPanel.locator('[data-native-meal-family]').evaluate(node=>({overflow:node.scrollWidth>node.clientWidth+1,
+    targets:[...node.querySelectorAll('label,button')].filter(control=>control.getClientRects().length).map(control=>({height:control.getBoundingClientRect().height,overflow:control.scrollWidth>control.clientWidth+1}))}));
+  assert.equal(fit.overflow,false);assert(fit.targets.length>=6&&fit.targets.every(target=>target.height>=44&&!target.overflow));
+  await capture(page,row,'meal-family-details');
+  await family().check();if(width===430)await product.locator('[data-action="apply-filters"]').click();
+  const resultIds=()=>product.locator('.st-hotel-card').evaluateAll(nodes=>nodes.map(node=>Number(node.dataset.hotelCard)));
+  assert.deepEqual(await resultIds(),[911,912,914],'Same-offer date + meal + budget predicate excludes mismatched offers');
+  assert.equal((await product.locator('[data-hotel-card="911"] .st-price').innerText()).replace(/\s+/g,''),'от120000₽');
+  assert.equal(await product.locator('[data-active-chips] [data-native-remove-constraint="mealFamily"]').count(),1);
+  assert.equal(await product.locator('[data-active-chips] [data-native-remove-constraint="meals"]').count(),0);
+  const url=new URL(page.url());assert.equal(url.searchParams.get('meals').split('|').length,4);assert(!url.searchParams.get('meals').includes('meal-family:'));
+  await product.locator('[data-action="search"]:visible').first().click();await screen('search').waitFor({state:'visible'});
+  await product.locator('[data-conditions-open="food"]').click();
+  const popup=product.locator('[data-native-form-popup][open]');
+  const foodFamily=()=>popup.locator('[data-native-meal-group-toggle="meal-family:all-inclusive"]');
+  await popup.locator('[data-native-meal-expand="meal-family:all-inclusive"]').click();await foodFamily().uncheck();
+  await popup.locator('[data-native-form-meal="Ультра всё включено"]').check();
+  assert.equal(await foodFamily().evaluate(node=>node.indeterminate),true);assert.equal(await product.locator('[data-search-food-value]').innerText(),'Ультра всё включено');
+  await page.setViewportSize({width:width===430?1280:430,height:900});await popup.waitFor({state:'visible'});
+  await page.setViewportSize({width,height:900});await popup.waitFor({state:'visible'});
+  assert.equal(await foodFamily().evaluate(node=>node.indeterminate),true);assert.equal(await popup.locator('[data-native-form-meal="Ультра всё включено"]').isChecked(),true);
+  assert.equal(await popup.locator('[data-native-meal-members]').isVisible(),true);
+  const popupFit=await popup.evaluate(node=>{
+    const apply=node.querySelector('.st-popup-actions [data-conditions-apply="food"]'),box=apply.getBoundingClientRect(),form=node.closest('[data-search-form]');
+    return{modal:node.matches(':modal'),applyCount:node.querySelectorAll('[data-conditions-apply="food"]').length,applyHeight:box.height,
+      applyEnabled:!apply.disabled,findInside:node.contains(form.querySelector('[type="submit"]')),submitCount:form.querySelectorAll('[type="submit"]').length};
+  });
+  assert(popupFit.modal&&popupFit.applyCount===1&&popupFit.applyHeight>=44&&popupFit.applyEnabled&&!popupFit.findInside&&popupFit.submitCount===1);
+  await capture(page,row,'popup-food-families');
+  await product.locator('[data-conditions-cancel="food"]').click();assert.match(await product.locator('[data-search-food-value]').innerText(),/все варианты/);
+  // Applying the exact child changes only the pending form, without Find.
+  await product.locator('[data-conditions-open="food"]').click();
+  if(await popup.locator('[data-native-meal-expand="meal-family:all-inclusive"]').getAttribute('aria-expanded')!=='true')await popup.locator('[data-native-meal-expand="meal-family:all-inclusive"]').click();
+  await foodFamily().uncheck();await popup.locator('[data-native-form-meal="Ультра всё включено"]').check();
+  await popup.locator('[data-conditions-apply="food"]').click();await popup.waitFor({state:'hidden'});
+  assert.equal(await product.locator('[data-search-food-value]').innerText(),'Ультра всё включено');
+  assert.deepEqual(await businessState(),baseline,'Group/refinement/Cancel/Apply/resize never changes operations or selected receipt');
+  await screen('search').locator('[data-action="results"]:visible').first().click();await screen('results').waitFor({state:'visible'});
+  assert.deepEqual(await resultIds(),[911,912,914],'Returning without Find keeps the actual applied result context');
+  await page.goBack();await screen('search').waitFor({state:'visible'});await page.goForward();await screen('results').waitFor({state:'visible'});
+  assert.deepEqual(await resultIds(),[911,912,914]);assert.deepEqual(await businessState(),baseline);
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anytour.prototype.v18.favorites.v1'))),[1]);
+  const helper=installedManifest.graph.scripts.find(row=>base+'/'+row.path===localHelperPath);
+  assert.equal(helper.sha256,MEAL_HELPER_SHA256);assert.equal(await page.evaluate(()=>typeof window.AnyTourLocalDbProviderV1?.mealFilterGroups),'function');
+  row.proof.mealFamilies={localHelperSHA256:helper.sha256,localHelperBytes:helper.bytes,familyHotelCount:3,memberHotelCountSum:4,partialHotelCount:2,
+    memberPlans:exactChildren.map(member=>member.name),distinctHotelUnion:true,sameOfferDateMealBudget:true,matchingDisplayedMinimum:120000,
+    canonicalLabelsOnlyURL:true,oneFamilyChip:true,partialExactSelection:true,formCancelAndResponsiveRetained:true,applyExtraOperations:0,
+    extraOperations:0,selectedReceiptRetained:true,selectedFullTotal:112000,originalFlightChoiceIndex:0,backForwardRetained:true,favorites:[1],fit,popupFit,calls:await calls(page)};
+}
 async function run(){
+  assert(/^[0-9a-f]{40}$/.test(INSTALLED.source)&&/^[0-9a-f]{40}$/.test(INSTALLED.release)&&Number.isSafeInteger(INSTALLED.publishRun)&&INSTALLED.publishRun>0&&/^[0-9a-f]{64}$/.test(INSTALLED.manifestSHA256),'Actual terminal publication pins required before installed evidence');
   fs.mkdirSync(out,{recursive:true});
   const cache=new Map();let installedManifest;
   const api=await playwrightRequest.newContext({ignoreHTTPSErrors:false,timeout:20000});
@@ -184,7 +291,7 @@ async function run(){
             entry.action=terminalJourney?'verified-installed-bridge-instrumentation':'fixture-bridge';
           }
           else if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){body=terminalScript;entry.action='fictional-canonical-data';}
-          else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')){body=noOp;entry.action='canonical-script-disabled';}
+          else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')&&!(mealOnly&&url.pathname===localHelperPath)){body=noOp;entry.action='canonical-script-disabled';}
           else entry.action='verified-installed-bytes';
           if(body!==actual.body){const change={path:url.pathname,originalSHA256:actual.sha256,replacementSHA256:hash(body),reason:entry.action};if(!report.replacements.some(r=>r.path===change.path&&r.replacementSHA256===change.replacementSHA256))report.replacements.push(change);}
           entry.servedSHA256=hash(body);
@@ -200,6 +307,11 @@ async function run(){
         await page.goto(TARGET,{waitUntil:'networkidle'});
         row.initialURL=verifyInitialURL(page.url());const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});assert.equal((await calls(page)).search,0);
+        if(mealOnly){
+          await acceptMealFamilies(page,row,product,screen,installedManifest);
+          assert.equal(row.frames.length,3,'Only the three changed installed meal states per width');
+          assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';continue;
+        }
         await capture(page,row,'search');
         await product.locator('[data-search-nights-toggle]').click();await product.locator('[data-native-night="10"]').click();
         await product.locator('[data-search-editor-cancel="nights"]').click();assert.equal(await product.locator('[data-search-night-value]').innerText(),'7 ночей');
@@ -346,12 +458,19 @@ async function run(){
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
     }
-    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),24);report.status='passed';
+    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),mealOnly?6:24);report.status='passed';
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
 if(process.argv.includes('--policy-only')){
-  installGraph(compiledManifest);assert.throws(()=>safeURL(origin+'/api.php?action=search_start'));assert.throws(()=>safeURL('https://example.com/x.js'));assert.throws(()=>safeURL(TARGET+'native-v2/frontend.js?unknown=1'));safeURL(TARGET);safeURL(MANIFEST_URL);
+  installGraph(compiledManifest);
+  if(mealOnly){
+    const wrong=structuredClone(compiledManifest);wrong.graph.scripts.find(row=>base+'/'+row.path===localHelperPath).sha256='0'.repeat(64);
+    assert.throws(()=>installGraph(wrong),/Exact reviewed LOCAL meal helper hash/,'The helper cannot execute after graph hash drift');
+    const missing=structuredClone(compiledManifest);missing.graph.scripts=missing.graph.scripts.filter(row=>base+'/'+row.path!==localHelperPath);
+    assert.throws(()=>installGraph(missing),'The helper must belong to the exact public script graph');installGraph(compiledManifest);
+  }
+  assert.throws(()=>safeURL(origin+'/api.php?action=search_start'));assert.throws(()=>safeURL('https://example.com/x.js'));assert.throws(()=>safeURL(TARGET+'native-v2/frontend.js?unknown=1'));safeURL(TARGET);safeURL(MANIFEST_URL);
   const rendered=renderedEntry(compiledManifest).body;verifyEntry(rendered,compiledManifest);
   const drift=Buffer.from(rendered.toString('utf8').replace('</body>','<div>UNREVIEWED ENTRY DRIFT</div></body>'));
   assert(!drift.equals(rendered));assert.throws(()=>verifyEntry(drift,compiledManifest),/Exact installed entry DOM/,'Changed static body must fail despite its unchanged script graph');
