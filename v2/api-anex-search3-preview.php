@@ -25,6 +25,12 @@ $packageQuoteFile = is_file(__DIR__ . '/app/integrations/anex-package-quote-runt
 require_once $packageQuoteFile;
 unset($packageQuoteFile);
 
+$normalizerFile = is_file(__DIR__ . '/app/integrations/anex-normalizer.php')
+    ? __DIR__ . '/app/integrations/anex-normalizer.php'
+    : __DIR__ . '/../app/integrations/anex-normalizer.php';
+require_once $normalizerFile;
+unset($normalizerFile);
+
 /** Preview Search3 supplier boundary. No booking or Tourvisor transport. */
 function anytour_anex_search3_name(string $name): string
 {

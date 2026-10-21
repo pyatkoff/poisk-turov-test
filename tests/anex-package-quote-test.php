@@ -1,11 +1,12 @@
 <?php
 declare(strict_types=1);
-require_once __DIR__ . '/../app/integrations/anex-normalizer.php';
+// Standalone endpoint import must load its GET receipt dependencies itself.
 require_once __DIR__ . '/../v2/api-anex-search3-preview.php';
 
 // Synthetic contract fixtures, NOT retained supplier/live acceptance evidence.
 $checks = 0;
 function qp_assert(bool $ok, string $message): void { global $checks; ++$checks; if (!$ok) throw new RuntimeException($message); }
+qp_assert(function_exists('anytour_anex_normalizer_context'), 'standalone receipt import loads the normalizer without a POST bootstrap');
 function qp_fixture(string $mode = '', ?array $familyAges = null): array
 {
     $key = 'anex_online:' . str_repeat('b', 64); $ref = str_repeat('a', 32);
