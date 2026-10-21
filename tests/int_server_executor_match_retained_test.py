@@ -2214,6 +2214,7 @@ class BiblioIdentityTest(unittest.TestCase):
             values=[{'searchId':999},{'progress':100},[] if kind=='empty' else [{'id':321,'tours':[{'id':9991,'operatorId':18}]}],
                     {'hotelId':321,'operatorId':13 if kind=='mismatch' else 18,
                      'operatorLink':'https://www.bgoperator.ru/price.shtml?f4=10212345'}]
+            if kind=='pending':values=[{'searchId':999}]+[{'progress':0}]*3
             calls=[];self_case=self;real_loads=json.loads
             class Response:
                 code=200
@@ -2243,6 +2244,9 @@ class BiblioIdentityTest(unittest.TestCase):
                 out=space['retained_bg_identity'](SOURCE)
                 count=3 if kind=='empty' else 2 if kind=='timeout' else 4
                 self.assertEqual(count,len(calls))
+                if kind=='pending':
+                    self.assertEqual('bg_search_not_complete',out['data']['stop_reason'])
+                    self.assertEqual({'search_start':1,'search_status':3},out['data']['actions'])
                 query=__import__('urllib.parse',fromlist=['parse_qs','urlsplit'])
                 params=query.parse_qs(query.urlsplit(calls[0][0]).query)
                 for key,value in {'childs':['13'],'adults':['1'],'operatorIds':['18'],'hotelIds':['321'],
@@ -2280,7 +2284,7 @@ class BiblioIdentityTest(unittest.TestCase):
     def test_real_client_exact_family_wire_raw_first_and_candidate_namespace(self):self.run_case()
     def test_zero_results_completes_without_detail_or_write(self):self.run_case('empty')
     def test_unknown_stops_without_retry_and_wrong_detail_never_completes(self):
-        self.run_case('timeout');self.run_case('mismatch')
+        self.run_case('timeout');self.run_case('mismatch');self.run_case('pending')
     def test_bad_parent_existing_bg_and_changed_party_stop_before_network(self):
         self.run_case(bad_parent=True);self.run_case('already');self.run_case('wrong_party')
 

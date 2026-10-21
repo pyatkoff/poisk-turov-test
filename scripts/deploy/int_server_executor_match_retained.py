@@ -1412,6 +1412,7 @@ def retained_bg_identity(stage):
     import sys
     import fcntl
     import datetime
+    from zoneinfo import ZoneInfo
     profile = NEXT_SCOPE
     def canonical(value): return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
     def digest(value): return hashlib.sha256(canonical(value)).hexdigest()
@@ -1461,7 +1462,7 @@ def retained_bg_identity(stage):
     if (context != {'adults': 1, 'child_ages_signature': '13', 'children_count': 1, 'country_id': 1,
                     'departure_date': '2026-10-24', 'departure_id': 11, 'hotel_id': 321, 'nights': 6,
                     'observed_at': '2026-10-08 00:57:29', 'source': 'user_search'}
-            or datetime.datetime.now(datetime.timezone.utc).date().isoformat() > wire['dateFrom']): fail('bg_saved_party_or_date')
+            or datetime.datetime.now(ZoneInfo('Europe/Moscow')).date().isoformat() > wire['dateFrom']): fail('bg_saved_party_or_date')
     home = pathlib.Path.home()
     retained(project/'config.php', 1048576)
     retained(home/'.anytoour-match/retained-selection-claims.json', 8*1024*1024)
