@@ -99,7 +99,7 @@ function unmappedAnexMealCatalogue(){
  return {source:'anytour-search-meal-v1',provider:'anex',scopeKey:'global',available:false,revision:hash('unmapped-anex-catalogue-fixture'),
   plans:definitions.map(([code,nameRu],index)=>({id:index+1,code,nameRu,nativeIds:[]}))};
 }
-function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,mealCatalogue,clock=()=>Date.now()}={}){
+function harness({database,api,onEvent,native,anex,andromedaQuote,observations,destinations,mealCatalogue,clock=()=>Date.now(),browserCrypto=crypto.webcrypto}={}){
  const events=[],calls=[],dbBodies=[],nativeCalls=[],anexCalls=[],andromedaQuoteCalls=[],quoteFailures=[],quoteWarnings=[],searchLogs=[],observationCalls=[],mealCatalogCalls=[],destinationCalls=[],timers=new Map();let timerId=0,readIndex=0,currentId=0;
  const fetch=async(url,options={})=>{
   const target=new URL(url,'https://anytoour.ru/');
@@ -177,7 +177,7 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
   if(action==='search_results')return live();
   throw Error('unexpected API '+action);
  }};
- const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:crypto.webcrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
+ const win={V2Runtime:runtime,location:new URL('https://anytoour.ru/_preview/search3-local-candidate/prototype-search/'),fetch,crypto:browserCrypto,TextEncoder,setTimeout:(fn,delay)=>{const id=++timerId;timers.set(id,{fn,delay});return id;},clearTimeout:id=>timers.delete(id)};
  if(native||anex||andromedaQuote){win.V2_CONFIG={};if(native)win.V2_CONFIG.andromedaApi='/_preview/search3-anex-candidate/api-andromeda-search3-preview.php';if(anex)win.V2_CONFIG.anexApi='/_preview/search3-anex-candidate/api-anex-search3-preview.php';if(andromedaQuote)win.V2_CONFIG.andromedaQuoteApi='/_preview/search3-anex-candidate/api-andromeda-quote-preview.php';}
  const bus=new EventTarget();win.addEventListener=bus.addEventListener.bind(bus);win.removeEventListener=bus.removeEventListener.bind(bus);win.dispatchEvent=bus.dispatchEvent.bind(bus);
  win.CustomEvent=class extends Event{constructor(type,{detail}){super(type);this.detail=detail;}};
@@ -195,6 +195,45 @@ function harness({database,api,onEvent,native,anex,andromedaQuote,observations,d
  return {data,start,resume,poll,events,calls,dbBodies,nativeCalls,anexCalls,andromedaQuoteCalls,quoteFailures,quoteWarnings,searchLogs,observationCalls,mealCatalogCalls,destinationCalls,latest,providers,timers,get searchId(){return currentId;}};
 }
 const tests=[];const test=(name,fn)=>tests.push([name,fn]);
+test('independent pages do not restart the same ANEX search identity at an identical clock',async()=>{
+ // One shared-session fixture models the accepted integer/window contract, not
+ // PHP execution. Distinct entropy makes the old page-local counter fail reliably.
+ let initial;const admitted=[],skipped=[];
+ const anex=async body=>{
+  assert.equal(body.action,'search');assert(Number.isInteger(body.generation)&&body.generation>0&&body.generation<=2147483647);
+  const window=body.params.dateFrom+':'+body.params.dateTo;
+  if(initial?.generation===body.generation&&initial.window!==window){
+   skipped.push(body);return {response:{ok:true,json:async()=>({ok:true,data:{provider:'anex',generation:body.generation,
+    date_range:{from:body.params.dateFrom,to:body.params.dateTo},hotels:[],pages_read:0,first_page_only:true,skipped:true,skip_reason:'initial_week_only'}})}};
+  }
+  initial={generation:body.generation,window};admitted.push(body);
+  return {response:{ok:true,json:async()=>directAnex(body)}};
+ };
+ const page=entropy=>harness({anex,clock:()=>1792590000000,browserCrypto:{subtle:crypto.webcrypto.subtle,
+  getRandomValues(values){values.fill(entropy);return values;}}});
+ const a=page(0),b=page(0xffffffff);
+ await a.start();await a.poll();assert(a.providers().includes('anex'));
+ const next={...trip,from:'2026-10-06',to:'2026-10-12'};
+ await b.data.search(next,event=>b.events.push(event));await flush();await b.poll();
+ assert.notEqual(a.anexCalls[0].generation,b.anexCalls[0].generation,'independent pages need independent namespaces');
+ assert(b.providers().includes('anex'),'the second page retains its own initial ANEX offers');
+ assert.equal(admitted.length,2);assert.equal(skipped.length,0);
+ assert.deepEqual(Object.keys(b.anexCalls[0]).sort(),['action','generation','params'],'no new backend contract field');
+});
+for(const entropy of [0,0xffffffff])test('page search lifecycle stays positive int31 and invalidates prior offers: entropy '+entropy,async()=>{
+ const h=harness({anex:body=>({response:{ok:true,json:async()=>directAnex(body)}}),
+  browserCrypto:{subtle:crypto.webcrypto.subtle,getRandomValues(values){values.fill(entropy);return values;}}});
+ await h.start();await h.poll();const previous=h.latest().flatMap(row=>row.offers).find(o=>o.provider==='anex');
+ h.data.stop();await h.start();await h.poll();
+ const generations=h.anexCalls.map(body=>body.generation);assert.equal(new Set(generations).size,2);
+ assert(generations.every(value=>Number.isInteger(value)&&value>0&&value<=2147483647));
+ const sent=h.anexCalls.length;await assert.rejects(h.data.expandAnexGroup(previous),/нельзя конкретизировать/);
+ assert.equal(h.anexCalls.length,sent,'previous-page-lifecycle selection cannot authorize supplier work');
+});
+test('TV-only pages remain usable without Web Crypto',async()=>{
+ const h=harness({browserCrypto:null});await h.start();await h.poll();
+ assert.deepEqual(h.providers(),['tourvisor']);assert.equal(h.anexCalls.length,0);
+});
 for(const mode of ['http','quota','invalid-json','missing-data','false-data','injection','transport','projection','empty','success','aborted'])test('SAMO ordinary search diagnostic '+mode,async()=>{
  const secret='PRIVATE-RESPONSE-AND-URL';
  const h=harness({native:async body=>{
