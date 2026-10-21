@@ -205,8 +205,9 @@ quote, Continue or retry); retained DOM/receipt JSON SHA256
 
 ### Official search-to-quote boundary inspected 22 October 2026
 
-Public assets linked by the official [agent search page](https://agent.anextour.ru/search/tour)
-provide these narrower, independently checkable source facts:
+The first two assets are linked by the official [agent search page](https://agent.anextour.ru/search/tour).
+The third is the previously retained official booking asset with the same pinned
+hash. They provide these narrower, independently checkable source facts:
 
 | Official asset / module | Observed behavior | Limit of this evidence |
 | --- | --- | --- |
