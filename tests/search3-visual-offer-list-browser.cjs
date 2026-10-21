@@ -272,7 +272,7 @@ const server=http.createServer((req,res)=>{
      assert.equal(after.meal,true);assert.equal(new URLSearchParams(after.url).get('meals'),'Всё включено');assert.equal(after.overflow,false);
      await shot('desktop-filter-revealed-'+height);
      await page.evaluate(()=>scrollTo({top:2800,behavior:'instant'}));
-     const resetButton=page.locator('#filter-panel [data-action="reset"]');await resetButton.scrollIntoViewIfNeeded();
+     const resetButton=page.locator('#filter-panel .filter-desktop-reset');await resetButton.scrollIntoViewIfNeeded();
      const beforeReset=await page.evaluate(()=>({y:scrollY,heading:document.querySelector('#results-title').getBoundingClientRect().top}));
      assert(beforeReset.y>2000&&beforeReset.heading<0,'reset control preparation leaves the reader deep in the result list');
      await resetButton.click();
