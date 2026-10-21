@@ -2016,12 +2016,22 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     })();
     return attempt.promise;
   }
+  function tourvisorQuoteFailure(error,tour){
+    if(error?.code!=='HTTP_ERROR'||error.status!==410)return error;
+    const failure=Object.assign(error,{message:'Срок предложения истёк. Выполните новый поиск.',code:'offer_expired',retryable:false});
+    // A provider-confirmed expiry revokes this exact receipt, including sessions
+    // already created from it. Search TTL is not a supplier quote deadline.
+    const receipt=quoteReceipts.get(tour);if(receipt)receipt.failure=failure;
+    return failure;
+  }
   async function quote(o) {
     if(o.cached||o.provider!=='tourvisor'||o.raw.selectionEnabled===false)throw new Error('Сначала обновите предложения отеля.');
     assertTourvisorRecalculationSupported(o.raw.operator,o.raw.operatorName);
     const run=generation,id=searchId;
     const sourceOperators=[o.raw.operator,o.raw.operatorName];
-    const t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});
+    let t;
+    try{t=await rt.api('tour',{tourId:o.raw.id,currency:'RUB'});}
+    catch(error){throw tourvisorQuoteFailure(error,String(o.tour?.id)===String(o.raw.id)?o.tour:null);}
     if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');
     if(!t||String(t.id)!==String(o.raw.id)||!amount(t.price))throw new Error('Не удалось подтвердить цену выбранного тура.');
     assertTourvisorRecalculationSupported(...sourceOperators,t.operator,t.operatorName);
@@ -2029,8 +2039,12 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     return t;
   }
   async function flights(t) {
-    assertTourvisorRecalculationSupported(...(quoteReceipts.get(t)?.sourceOperators||[]),t?.operator,t?.operatorName);
-    const data=await rt.api('flights',{tourId:t.id,currency:'RUB'});
+    const receipt=quoteReceipts.get(t);
+    assertTourvisorRecalculationSupported(...(receipt?.sourceOperators||[]),t?.operator,t?.operatorName);
+    if(receipt?.failure)throw receipt.failure;
+    let data;
+    try{data=await rt.api('flights',{tourId:t.id,currency:'RUB'});}
+    catch(error){throw tourvisorQuoteFailure(error,t);}
     if(Array.isArray(data))return data;
     if(Array.isArray(data?.flights))return data.flights;
     throw new Error('Не удалось загрузить рейсы. Попробуйте ещё раз.');
@@ -2040,6 +2054,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
     const run=generation,id=searchId;
     const receipt=quoteReceipts.get(o.tour);
     if(!receipt||receipt.generation!==run||receipt.searchId!==id)throw new Error('Предложение устарело. Откройте условия тура и проверьте цену заново.');
+    if(receipt.failure)throw receipt.failure;
     if(o.flightsLoading||o.flightsError)throw new Error(o.flightsLoading?'Дождитесь загрузки рейсов.':'Не удалось загрузить рейсы. Повторите загрузку перед выбором тура.');
     if(o.pricePending||!amount(o.tour.price))throw new Error('Цена тура пока не подтверждена. Проверьте условия заново.');
     let flight=null;
@@ -2049,7 +2064,7 @@ flightSelectionRequired:pending,flights:Object.freeze(flights),expiresAt:value.e
       if(!flight||!variantPrice(o.tour,flight))throw new Error('Цена выбранного перелёта пока не подтверждена. Выберите другой вариант.');
     }
     const session=root.V2TourController.createLeadSession({tour:o.tour,flight,searchId:id,search:searchParams});
-    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');};
+    const current=()=>{if(run!==generation||id!==searchId)throw new Error('Условия поиска изменились. Выберите тур заново.');if(receipt.failure)throw receipt.failure;};
     return Object.freeze({payload(fd){current();return session.payload(fd);},submit(form,controls){current();return session.submit(form,controls);}});
   }
   function variantPrice(t,v){return amount(v?.price);}
