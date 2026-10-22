@@ -8,6 +8,23 @@ function tvpf_ok(bool $value, string $message): void
     if (!$value) throw new RuntimeException($message);
 }
 
+function tvpf_diagnostic(string $directory, string $stage, string $id): array
+{
+    $path = $directory.'/tourvisor-fuel-intake-receipt-v1-'.$stage.'-'.hash('sha256',$id).'.json';
+    tvpf_ok(is_file($path) && filesize($path)<=2048, 'bounded diagnostic exists');
+    tvpf_ok((fileperms($path)&0777)===0600, 'diagnostic stays private');
+    $value = json_decode((string)file_get_contents($path),true,8,JSON_THROW_ON_ERROR);
+    $keys = array_keys($value); sort($keys);
+    $expected = ['schema_version','source','stage','outcome','code','observed_at','expires_at',
+        'elapsed_ms','offer_ref_digest','normalized_response_sha256','observation_count','rule_confirmed'];
+    sort($expected);
+    tvpf_ok($keys===$expected && $value['schema_version']===1, 'only safe diagnostic fields retained');
+    tvpf_ok($value['stage']===$stage && $value['offer_ref_digest']===hash('sha256','tourvisor:tour:'.$id), 'diagnostic bound to own stage and offer');
+    tvpf_ok(is_int($value['elapsed_ms']) && $value['elapsed_ms']>=0, 'local intake duration retained');
+    tvpf_ok($value['expires_at']===$value['observed_at']+86400, 'diagnostic freshness explicit');
+    return $value;
+}
+
 function tvpf_segment(string $from, string $to, string $date, string $flight): array
 {
     return [
@@ -83,6 +100,15 @@ $tour2 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id2,tvpf_tour
 tvpf_ok(($tour2['status']??null)==='tour_retained','second tour retained');
 $fuel2 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,tvpf_flights(),$directory,$now->modify('+30 seconds'));
 tvpf_ok(($fuel2['observationCount']??null)===2 && ($fuel2['ruleConfirmed']??null)===true,'two hotels/nights confirm one rule');
+$tourDiagnostic = tvpf_diagnostic($directory,'tour',$id1);
+tvpf_ok($tourDiagnostic['code']==='tour_retained' && $tourDiagnostic['outcome']==='retained', 'successful tour diagnostic');
+tvpf_ok($tourDiagnostic['observed_at']===$now->getTimestamp(), 'diagnostic observation time retained');
+tvpf_ok($tourDiagnostic['observation_count']===null && $tourDiagnostic['rule_confirmed']===null, 'tour-only diagnostic does not invent a rule result');
+$oneDiagnostic = tvpf_diagnostic($directory,'flights',$id1);
+tvpf_ok($oneDiagnostic['observation_count']===1 && $oneDiagnostic['rule_confirmed']===false, 'one actual observation stays unconfirmed');
+$twoDiagnostic = tvpf_diagnostic($directory,'flights',$id2);
+tvpf_ok($twoDiagnostic['observation_count']===2 && $twoDiagnostic['rule_confirmed']===true, 'actual persisted count and rule result retained');
+tvpf_ok($twoDiagnostic['normalized_response_sha256']===AnyTourOperatorFuelRuleEvidenceV1::hash(tvpf_flights()), 'normalized response provenance retained');
 
 $rules = glob($directory.'/operator-fuel-rule-v2-*.json');
 tvpf_ok(is_array($rules) && count($rules)===1,'one existing rule-store envelope');
@@ -100,6 +126,64 @@ $missing = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour('999999',tvp
 tvpf_ok(($missing['reason']??null)==='offer_context_missing','unknown offer fails closed');
 $unpaired = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights('999999',tvpf_flights(),$directory,$now);
 tvpf_ok(($unpaired['reason']??null)==='tour_pair_missing','unpaired flights fail closed');
+$skipDiagnostic = tvpf_diagnostic($directory,'flights','999999');
+tvpf_ok($skipDiagnostic['code']==='tour_pair_missing' && $skipDiagnostic['outcome']==='skipped', 'skip reason retained');
+tvpf_ok($skipDiagnostic['observation_count']===null && $skipDiagnostic['rule_confirmed']===null, 'missing result is not zero/false');
+
+$id3 = '43282575574006'; $add($id3);
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id3,tvpf_tour($id3,1011,7),$db,$directory,$now);
+$invalidFlights = tvpf_flights();
+$invalidFlights['flights'][0]['forward'] = [];
+$invalidFlights['private_marker'] = 'must not be copied to diagnostic';
+try {
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id3,$invalidFlights,$directory,$now);
+    throw new RuntimeException('Missing expected default-flight rejection');
+} catch (InvalidArgumentException $error) {
+    tvpf_ok($error->getMessage()==='TV_FUEL_FORWARD', 'original validation exception preserved');
+}
+$rejected = tvpf_diagnostic($directory,'flights',$id3);
+tvpf_ok($rejected['outcome']==='rejected' && $rejected['code']==='TV_FUEL_FORWARD', 'exact intake rejection retained');
+tvpf_ok($rejected['observation_count']===null && $rejected['rule_confirmed']===null, 'rejected capture cannot mint a rule result');
+tvpf_ok(!str_contains(json_encode($rejected,JSON_THROW_ON_ERROR),'private_marker'), 'raw response not retained in diagnostic');
+tvpf_ok(json_decode((string)file_get_contents($rules[0]),true,64,JSON_THROW_ON_ERROR)===$stored, 'rejected capture leaves rule evidence unchanged');
+
+$privateError = new RuntimeException('opaque database detail must not be retained');
+$brokenDb = new class($privateError) extends PDO {
+    public function __construct(private Throwable $error) {}
+    public function setAttribute(int $attribute, mixed $value): bool { return true; }
+    public function prepare(string $query, array $options = []): PDOStatement|false { throw $this->error; }
+};
+try {
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour('999998',tvpf_tour('999998',1111,7),$brokenDb,$directory,$now);
+    throw new RuntimeException('Missing expected database error');
+} catch (RuntimeException $error) {
+    tvpf_ok($error===$privateError, 'original exception object preserved');
+}
+$redacted = tvpf_diagnostic($directory,'tour','999998');
+tvpf_ok($redacted['outcome']==='rejected' && $redacted['code']==='unclassified_error', 'unrecognized exception redacted');
+tvpf_ok(!str_contains(json_encode($redacted,JSON_THROW_ON_ERROR),$privateError->getMessage()), 'exception text not persisted');
+
+$sentinel = $root.'/sentinel'; file_put_contents($sentinel,'unchanged');
+$blockedPath = $directory.'/tourvisor-fuel-intake-receipt-v1-tour-'.hash('sha256',$id1).'.json';
+unlink($blockedPath); symlink($sentinel,$blockedPath);
+$unchangedResult = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,tvpf_tour($id1,1006,7),$db,$directory,$now);
+tvpf_ok($unchangedResult===$tour1 && file_get_contents($sentinel)==='unchanged', 'diagnostic write failure cannot change success or follow a link');
+unlink($blockedPath);
+$blockedErrorPath = $directory.'/tourvisor-fuel-intake-receipt-v1-tour-'.hash('sha256','999998').'.json';
+unlink($blockedErrorPath); symlink($sentinel,$blockedErrorPath);
+try {
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour('999998',tvpf_tour('999998',1111,7),$brokenDb,$directory,$now);
+    throw new RuntimeException('Missing expected database error');
+} catch (RuntimeException $error) {
+    tvpf_ok($error===$privateError && file_get_contents($sentinel)==='unchanged', 'diagnostic write failure preserves original exception');
+}
+unlink($blockedErrorPath); unlink($sentinel);
+
+$expired = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,tvpf_flights(),$directory,$now->modify('+901 seconds'));
+tvpf_ok(($expired['reason']??null)==='tour_pair_expired','expired pending pair stays rejected');
+$expiryDiagnostic = tvpf_diagnostic($directory,'flights',$id1);
+tvpf_ok($expiryDiagnostic['code']==='tour_pair_expired' && $expiryDiagnostic['outcome']==='skipped', 'current expiry reason replaces the previous same-stage snapshot');
+tvpf_ok($expiryDiagnostic['rule_confirmed']===null && $expiryDiagnostic['observed_at']===$now->getTimestamp()+901, 'old success cannot be reused as current rule authority');
 
 $api = file_get_contents(__DIR__.'/../v2/api-v2.php');
 tvpf_ok(is_string($api)&&str_contains($api,'tourvisor_fuel_passive_tour($id, $data);'),'tour handoff wired');
@@ -156,4 +240,4 @@ unlink($gatewayDirectory.'/data/db-v1.php');rmdir($gatewayDirectory.'/data');rmd
 
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry\n";

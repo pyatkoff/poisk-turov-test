@@ -17,8 +17,36 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
     private const PENDING_TTL = 900;
     private const EVIDENCE_TTL = 86400;
     private const MAX_PENDING_BYTES = 262144;
+    private const DIAGNOSTIC_PREFIX = 'tourvisor-fuel-intake-receipt-v1-';
+    private const DIAGNOSTIC_CODES = [
+        'TV_PASSIVE_TOUR_ID', 'TV_PASSIVE_OPERATOR', 'TV_PASSIVE_OPERATOR_CONFLICT',
+        'TV_PASSIVE_DATE', 'TV_PASSIVE_DATE_CONFLICT', 'TV_PASSIVE_PARTY_CONFLICT',
+        'TV_PASSIVE_LOCK', 'TV_PASSIVE_PAYLOAD_INTEGRITY', 'TV_PASSIVE_CONTEXT_INTEGRITY',
+        'TV_PASSIVE_PARTY', 'TV_PASSIVE_CONTEXT_CONFLICT', 'TV_PASSIVE_PENDING_INVALID',
+        'TV_PASSIVE_FLIGHTS', 'TV_PASSIVE_MARKET', 'TV_PASSIVE_DIRECTORY', 'TV_PASSIVE_WRITE',
+        'TV_FUEL_TOUR', 'TV_FUEL_FLIGHTS', 'TV_FUEL_TOUR_ID', 'TV_FUEL_OPERATOR',
+        'TV_FUEL_PARTY', 'TV_FUEL_RESPONSE_ERROR', 'TV_FUEL_COMBINATIONS', 'TV_FUEL_DEFAULT',
+        'TV_FUEL_FORWARD', 'TV_FUEL_BACKWARD', 'TV_FUEL_DATE', 'TV_FUEL_AMOUNT',
+        'TV_FUEL_AMOUNT_CONFLICT', 'TV_FUEL_CURRENCY_CONFLICT', 'TV_FUEL_INFO', 'TV_FUEL_FLAGS',
+        'TV_FUEL_REQUIRED_CHARGES', 'TV_FUEL_SOURCE_DIGEST', 'TV_FUEL_TIME', 'TV_FUEL_MARKET',
+        'TV_FUEL_PERIOD', 'TV_FUEL_LEG', 'TV_FUEL_PORT', 'TV_FUEL_CARRIER', 'TV_FUEL_FLIGHT',
+        'TV_FUEL_CURRENCY', 'OPERATOR_FUEL_STORE_CONFLICT', 'OPERATOR_FUEL_STORE_SIZE',
+        'OPERATOR_FUEL_STORE_WRITE', 'OPERATOR_FUEL_STORE_READBACK', 'OPERATOR_FUEL_STORE_INVALID',
+        'OPERATOR_FUEL_STORE_ROOT', 'OPERATOR_FUEL_STORE_DIGEST',
+    ];
 
     public static function captureTour(
+        string $tourId,
+        array $tour,
+        PDO $db,
+        string $directory,
+        DateTimeImmutable $now
+    ): array {
+        return self::withDiagnostic($tourId, 'tour', $tour, $directory, $now,
+            static fn(): array => self::retainTour($tourId, $tour, $db, $directory, $now));
+    }
+
+    private static function retainTour(
         string $tourId,
         array $tour,
         PDO $db,
@@ -71,6 +99,16 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
     }
 
     public static function captureFlights(
+        string $tourId,
+        array $flights,
+        string $directory,
+        DateTimeImmutable $now
+    ): array {
+        return self::withDiagnostic($tourId, 'flights', $flights, $directory, $now,
+            static fn(): array => self::retainFlights($tourId, $flights, $directory, $now));
+    }
+
+    private static function retainFlights(
         string $tourId,
         array $flights,
         string $directory,
@@ -129,6 +167,56 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
+        }
+    }
+
+    /** Last per-stage snapshot, not a rule, request ledger or replay authorization. */
+    private static function withDiagnostic(
+        string $tourId,
+        string $stage,
+        array $response,
+        string $directory,
+        DateTimeImmutable $now,
+        callable $capture
+    ): array {
+        $started = hrtime(true);
+        $result = null;
+        $error = null;
+        try {
+            return $result = $capture();
+        } catch (Throwable $failed) {
+            $error = $failed;
+            throw $failed;
+        } finally {
+            // Best effort only: never replace the original capture result/exception.
+            try {
+                self::directory($directory);
+                $id = self::tourId($tourId);
+                $code = $error === null ? ($result['status'] ?? $result['reason'] ?? null) : $error->getMessage();
+                $allowed = $error === null
+                    ? ['tour_retained', 'created', 'appended', 'unchanged', 'operator_not_target',
+                       'offer_context_missing', 'tour_pair_missing', 'tour_pair_expired']
+                    : self::DIAGNOSTIC_CODES;
+                $observed = $now->setTimezone(new DateTimeZone('UTC'))->getTimestamp();
+                $snapshot = [
+                    'schema_version'=>1,
+                    'source'=>'tourvisor-operator-fuel-passive-intake-v1',
+                    'stage'=>$stage,
+                    'outcome'=>$error !== null ? 'rejected' : (($result['ok'] ?? false) === true ? 'retained' : 'skipped'),
+                    'code'=>in_array($code, $allowed, true) ? $code : 'unclassified_error',
+                    'observed_at'=>$observed,
+                    'expires_at'=>$observed + self::EVIDENCE_TTL,
+                    // Local processing only; never supplier transport latency.
+                    'elapsed_ms'=>max(0, (int)ceil((hrtime(true) - $started) / 1000000)),
+                    'offer_ref_digest'=>hash('sha256', 'tourvisor:tour:' . $id),
+                    'normalized_response_sha256'=>AnyTourOperatorFuelRuleEvidenceV1::hash($response),
+                    'observation_count'=>is_int($result['observationCount'] ?? null) ? $result['observationCount'] : null,
+                    'rule_confirmed'=>is_bool($result['ruleConfirmed'] ?? null) ? $result['ruleConfirmed'] : null,
+                ];
+                $path = rtrim($directory, '/') . '/' . self::DIAGNOSTIC_PREFIX . $stage . '-' . hash('sha256', $id) . '.json';
+                self::atomicWrite($path, $snapshot, 2048);
+            } catch (Throwable $ignored) {
+            }
         }
     }
 
