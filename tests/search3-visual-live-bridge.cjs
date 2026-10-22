@@ -722,7 +722,9 @@ async function pickerRetainedDraftRegressions(){
     // The next independent entry-point case needs a new real search identity,
     // rather than clearing the retained terminal result behind the UI owner.
     const beforeFresh=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
-    await wait(()=>starts()===beforeFresh+1&&!q('[data-action="stop-search"]')&&q('[data-action="all-offers"][data-id="501"]'));
+    // Healthy completion hides its retained loading markup; node removal is not
+    // the status owner's contract. Require the positive complete presentation.
+    await wait(()=>starts()===beforeFresh+1&&q('#search-status').hidden&&!q('#modal').open&&q('[data-action="all-offers"][data-id="501"]'));
    }
   }
  }
