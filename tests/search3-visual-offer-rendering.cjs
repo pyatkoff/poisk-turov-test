@@ -104,7 +104,7 @@ async function flightRecovery(){
  const loading=checkSource.slice(checkSource.indexOf('async function openOffer('),checkSource.indexOf('function leadReadyOffer('));
  function setup(){
   let resolve,reject;const response=new Promise((a,b)=>{resolve=a;reject=b;}),events=[],modal={open:true};
-  const ctx={selectedOffer:{key:'exact-tour',provider:'tourvisor',tour:{price:115764},total:115764,room:'standard room without balcony',variants:[]},selectionGeneration:7,modalType:'offer',andromedaApplicationDraft:null,
+  const ctx={hotelDetailsView:null,selectedOffer:{key:'exact-tour',provider:'tourvisor',tour:{price:115764},total:115764,room:'standard room without balcony',variants:[]},selectionGeneration:7,modalType:'offer',andromedaApplicationDraft:null,
    data:{flights:()=>{events.push('request');return response;},text:String,amount:v=>Number(v)||null},$:()=>modal,Math,String,esc,retainedProviderView:()=>null,
    icon:()=>'',flightPairFor:o=>o.variants?.[Number(o.flightChoiceId)]||null,
    window:{AnyTourFlightPickerV18:{pairSummary:()=>'<pair>'}},legHTML:()=>'',savedFlightSummaryHTML:()=>'',

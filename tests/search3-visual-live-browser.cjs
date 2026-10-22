@@ -1431,7 +1431,7 @@ const inlineHotelContactJourney=async(browser,origin,base,evidence)=>{
    await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
    await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
    const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]');
-   const groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")]');
+   const groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
    if(await groupRoom.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await groupRoom.locator(':scope>summary').click();
    await group.click();await page.locator('[data-action="continue-hotel-offer"]').click();await bounded(expanding,'inline group expansion');
    assert.equal(await page.locator('.hotel-details-dialog').count(),1);assert.equal(await page.locator('#all-offers-list').count(),0);assert.equal(await page.locator('#hotel-detail-offers').isDisabled(),true);await capture('rooms-pending');
