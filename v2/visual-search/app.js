@@ -980,6 +980,7 @@ function renderHotelDetails(){
   rememberUIRoute();
   if(restored?.entryOfferKey){
    const entry=initialOffers.find(o=>o.key===restored.entryOfferKey);
+   view.roomEntryPending=true;
    positionHotelRooms();
    if(entry?.provider==='anex'&&entry.raw?.anexKind==='group_minimum'){
     hotelOfferDraft={hotelId:view.id,key:entry.key};selectedOffer={...entry};view.checkKey=entry.key;
@@ -2386,7 +2387,7 @@ async function refreshLiveHotel(id,{selectFlights=false,continueSoleFlight=false
    const keys=new Set(expanded.offers.map(item=>item.key));
    h.offers=[...h.offers.filter(item=>item.key!==o.key&&!keys.has(item.key)),...expanded.offers];
    selectedOffer={...o,loading:false};renderResults({keepFilters:true});
-   if(inline){view.checkKey=null;hotelOfferDraft=null;refreshOpenHotelRooms();positionHotelRooms();}
+   if(inline){view.checkKey=null;hotelOfferDraft=null;refreshOpenHotelRooms();if(view.roomEntryPending){view.roomEntryPending=false;positionHotelRooms();}}
    else if(expanded.offers.length===1&&expanded.offers[0].raw?.anexKind==='concrete')openOffer(expanded.offers[0].key);
    else openAllOffers(id,{flight:'',room:'',meal:'',sort:'price'});
    toast('ANEX вернул конкретные варианты тура');
@@ -2775,7 +2776,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-action]');
  case 'hotel-gallery':openGallery(id,+b.dataset.value);break;
  case 'hotel-room-offers':openAllOffers(id);offerView.room=b.dataset.room;offerView.meal=b.dataset.meal||'';renderOfferList(true);break;
  case 'hotel-detail-offers':openAllOffers(id);offerView.meal=b.dataset.meal||'';renderOfferList(true);break;
- case 'hotel-section':{const body=$('#modal-body'),target=body.querySelector('#'+CSS.escape(b.dataset.target));if(target){target.focus({preventScroll:true});const top=target.getBoundingClientRect().top-body.getBoundingClientRect().top+body.scrollTop-($('.hotel-section-nav')?.offsetHeight||0)-16;body.scrollTo({top:Math.max(0,top),behavior:scrollBehavior()});}break;}
+ case 'hotel-section':{if(hotelDetailsView)hotelDetailsView.roomEntryPending=false;const body=$('#modal-body'),target=body.querySelector('#'+CSS.escape(b.dataset.target));if(target){target.focus({preventScroll:true});const top=target.getBoundingClientRect().top-body.getBoundingClientRect().top+body.scrollTop-($('.hotel-section-nav')?.offsetHeight||0)-16;body.scrollTo({top:Math.max(0,top),behavior:scrollBehavior()});}break;}
  case 'card-photo-index':case 'card-photo':{const h=hotels.find(h=>h.id===id);if(!h?.photos.length)break;const idx=action==='card-photo-index'?+b.dataset.value:((state.photoIndexes[id]||0)+(+b.dataset.dir)+h.photos.length)%h.photos.length;state.photoIndexes[id]=idx;const photos=$('#hotel-'+id+' .hotel-photos'),image=photos.querySelector('.hotel-image'),wrap=photos.querySelector('.hotel-image-wrap');photos.classList.remove('photo-failed');photos.classList.add('photo-loading');wrap.setAttribute('aria-busy','true');photos.querySelector('.photo-missing-label').innerHTML=icon('image')+'Загружаем фото…';image.src=photoUrl(h,idx);if(image.complete&&image.naturalWidth>0){photos.classList.remove('photo-loading');wrap.setAttribute('aria-busy','false');}$('#hotel-'+id+' .photo-index').textContent=idx+1;$$('#hotel-'+id+' .card-thumb').forEach((el,i)=>{el.classList.toggle('active',i===idx);el.setAttribute('aria-pressed',i===idx)});break;}
 
  case 'all-offers':{

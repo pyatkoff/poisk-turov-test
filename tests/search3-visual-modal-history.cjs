@@ -14,7 +14,7 @@ function owner(source){
  const a=source.indexOf('function updateModalBack(){'),b=source.indexOf("$('#modal').addEventListener('cancel'",a),guard=source.indexOf('function terminalOfferQuote('),guardEnd=source.indexOf('function offerQuoteFailure(',guard);assert(a>=0&&b>a&&guard>=0&&guardEnd>guard);
  // The modal corpus intercepts the provider-view collaborator separately.
  // Load the actual guard with a read-only empty view for these original cases.
- return 'const terminalOfferQuote=(()=>{const retainedProviderView=()=>null;'+source.slice(guard,guardEnd)+'return terminalOfferQuote;})();\n'+source.slice(a,b);
+ return source.slice(source.indexOf('function hotelOfferCheckActive('),source.indexOf('function renderOfferProgress('))+'\nconst terminalOfferQuote=(()=>{const retainedProviderView=()=>null;'+source.slice(guard,guardEnd)+'return terminalOfferQuote;})();\n'+source.slice(a,b);
 }
 function observe(source,s){
  const trace=[],tasks=[],expiry=[],nodes=new Map(),savedOffer={key:'offer-7',hotelId:7,raw:{native:'same'}},savedGallery={id:7,index:2};let ctx;
@@ -30,7 +30,7 @@ function observe(source,s){
  };nodes.set(key,n);return n;}
  const collaborators=['cancelVerification','enterUIHistory','hydrate','syncDestinationViewport','rememberUIRoute','leaveUIHistory','cancelDestinationLookup','restorePageReturn','renderResultCards','renderRealOffer','restoreProviderView','openAndromedaApplicationPreview','openAnexApplicationPreview','renderHotelRooms','renderOfferList','renderFavorites','refreshSavedTourControls','syncHotelSectionNavigation'];
  ctx={$:node,$$:selector=>[node(selector+'[0]'),node(selector+'[1]')],Math,Number,String,Array,Set,JSON,
-  renderedResultItems:[],hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
+  renderedResultItems:[],hotelDetailsView:null,hotelOfferDraft:null,modalType:s.current||'offer',modalHistory:[],restoringModal:!!s.restoring,selectedOffer:savedOffer,gallery:savedGallery,actionTrigger:node('trigger'),selectionGeneration:10,offerView:s.noOfferView?null:{id:7},
   calendarRequest:{abort:()=>record('calendarAbort')},calendarObserver:{disconnect:()=>record('calendarDisconnect')},hotelRoomObserver:{disconnect:()=>record('roomDisconnect')},
   hotels:[{id:7}],hotelOffers:()=>[{meal:'AI'}],
   document:{activeElement:node('active'),body:{style:{overflow:'initial'}}},
@@ -188,10 +188,10 @@ const exactRows=[0,1].map(i=>({key:'exact-room-'+i,hotelId:7,raw:{id:i},room:'Fa
 for(const initial of [null,exactRows[0],exactRows[1]]){
  const makeNode=()=>{const attributes=new Map(),classes=new Set();return{dataset:{},textContent:'',classList:{toggle:(key,on)=>on?classes.add(key):classes.delete(key),contains:key=>classes.has(key)},setAttribute:(key,value)=>attributes.set(key,String(value)),getAttribute:key=>attributes.get(key),removeAttribute:key=>attributes.delete(key)};};
  const footer=Object.fromEntries(['#hotel-detail-min','#hotel-detail-price-status','#hotel-detail-offers'].map(key=>[key,makeNode()]));let rows=[],remembered=0;
- const ctx={context:{selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null},selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null,hotels:[{id:7}],state:{search:{}},
+ const ctx={modalType:'hotel-details',hotelDetailsView:null,selectionGeneration:0,context:{selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null},selectedOffer:null,hotelOfferDraft:initial?{hotelId:7,key:initial.key}:null,hotels:[{id:7}],state:{search:{}},
   esc:String,displayMealLabel:o=>o.meal,mealLabel:o=>o.meal,dateText:String,nightsText:String,flightLabel:()=>'',guestsText:()=> '2 взрослых',money:value=>value+' ₽',operatorBadge:String,sameSelectedTourConditions:()=>false,needsRefresh:()=>false,selectedPriceStatus:()=>'',cardPriceNote:()=>'Цена из выдачи · требует проверки',
   hotelOffers:()=>exactRows,offerFromKey:key=>exactRows.find(o=>o.key===key),rememberUIRoute:()=>remembered++,$:key=>key==='.hotel-section-nav'?{dataset:{hotelId:'7'}}:footer[key],$$:()=>rows,document:{activeElement:null}};
- vm.createContext(ctx);vm.runInContext(hotelSource.slice(choiceStart,choiceEnd)+source.slice(selectionStart,selectionEnd)+"function dispatchChoice(b){const action='select-hotel-offer';switch(action){"+source.slice(dispatchStart,dispatchEnd)+'}}',ctx);
+ vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('function hotelOfferCheckActive('),source.indexOf('function cancelHotelOfferCheck('))+hotelSource.slice(choiceStart,choiceEnd)+source.slice(selectionStart,selectionEnd)+"function dispatchChoice(b){const action='select-hotel-offer';switch(action){"+source.slice(dispatchStart,dispatchEnd)+'}}',ctx);
  rows=exactRows.map(offer=>{const html=ctx.roomOfferChoiceHTML(offer),row=makeNode(),button=makeNode(),tag=html.match(/<button\b[^>]*>/)[0];row.dataset.offerKey=offer.key;row.querySelector=()=>button;button.dataset.key=offer.key;for(const name of ['aria-label','aria-pressed'])button.setAttribute(name,tag.match(new RegExp(name+'="([^"]*)"'))[1]);button.textContent=initial?.key===offer.key?'Выбрано':'Выбрать';return row;});
  const names=rows.map(row=>row.querySelector().getAttribute('aria-label'));
  names.forEach((name,i)=>{const o=exactRows[i];assert.equal(name,`Выбрать: ${o.room}, ${o.meal}, ${o.day}, ${o.operator}, ${o.total} ₽`,'stable accessible name includes exact conditions even when initially selected');});
