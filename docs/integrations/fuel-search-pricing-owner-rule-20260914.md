@@ -1,5 +1,13 @@
 # Search fuel surcharge owner rule — 2026-09-14
 
+## Owner clarification — 2026-10-22: monitor first, evaluate accuracy later
+
+- Retain Tourvisor tour/search-stage and default-flight fuel amounts separately, including differences. Exact equality is not an intake requirement. Missing tour fuel stays null; explicit zero remains a separate fact.
+- New Tourvisor observations carry private `monitoring` facts in the existing direction store. They cannot automatically confirm a reusable pricing rule, even when two or more samples match. Legacy observations remain unchanged.
+- The 80% accuracy objective is evaluated later on the accumulated cohort, including differing samples. It is neither a 20% per-sample tolerance nor a requirement to discard disagreements. This change does not claim an achieved accuracy score or define a new error tolerance.
+- A differing fuel observation does not invalidate Tourvisor actualization. The existing tour/flights responses and money remain unchanged; no extra supplier requests are added. SAMO listing estimates, direct ANEX/APD and final-price verification remain separate.
+- Biblio-Globus fuel=0 applies only to SAMO search listings. It must not override Tourvisor or direct ANEX amounts. SAMO/Andromeda remain paused.
+
 Owner clarification for INT pricing:
 
 - Search result price must include the applicable fuel/air surcharge for every passenger in the package.

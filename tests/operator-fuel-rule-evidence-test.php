@@ -57,6 +57,7 @@ fuel_ok($obsA['direction'] === [
 ], 'canonical direction');
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::observation($obsA) === $obsA, 'observation idempotent');
 fuel_ok(!array_key_exists('exchange',$obsA),'pre-FX observation remains byte-compatible without exchange key');
+fuel_ok(!array_key_exists('monitoring',$obsA),'legacy observations gain no synthetic monitoring fields');
 
 $target = [
     'operator'=>'FUN&SUN',
@@ -70,6 +71,35 @@ fuel_ok(count($input['observations']) === 2, 'confirmed input retains two proven
 fuel_ok(!array_key_exists('flight_dates', $input), 'target dates removed from reusable rule');
 fuel_ok(!array_key_exists('scope', $input), 'exact flight scope removed from reusable rule input');
 fuel_ok($input['direction'] === $obsA['direction'], 'direction emitted');
+
+$monitor=$a;
+$monitor['monitoring']=['tour_amount'=>'160.00','flight_amount'=>'180.00','currency'=>'EUR'];
+$monitorObs=AnyTourOperatorFuelRuleEvidenceV1::observation($monitor);
+fuel_ok($monitorObs['monitoring']['comparison']==='different', 'different stage facts retained');
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::observation($monitorObs)===$monitorObs, 'monitoring canonical readback is idempotent');
+$monitorOther=$monitor; $monitorOther['offer_ref_digest']=fuel_h('monitor-other');
+$monitorOther['evidence_sha256']=fuel_h('monitor-other-evidence');
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$monitor,$monitorOther],2000)===null,
+    'two matching flight values in monitoring cannot promote a pricing rule');
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$a,$monitorOther],2000)===null,
+    'monitoring cannot supply the second legacy corroboration');
+fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target,[$a,$b,$monitor],2000)===$input,
+    'retaining monitoring facts cannot change an existing legacy pricing input');
+foreach (['binding','currency','classification','extra','shape','provider'] as $case) {
+    $bad=$monitorObs;
+    if ($case==='binding') $bad['monitoring']['flight_amount']='181.00';
+    if ($case==='currency') $bad['monitoring']['currency']='RUB';
+    if ($case==='classification') $bad['monitoring']['comparison']='matched';
+    if ($case==='extra') $bad['monitoring']['private']='must not be retained';
+    if ($case==='shape') $bad['monitoring']=null;
+    if ($case==='provider') {
+        $bad['provider']='andromeda'; $bad['scope']=$scopeB; $bad['source']='andromeda_claim_service';
+    }
+    try { AnyTourOperatorFuelRuleEvidenceV1::observation($bad); throw new RuntimeException('Missing invalid monitoring rejection: '.$case); }
+    catch (InvalidArgumentException $expected) {
+        fuel_ok($expected->getMessage()==='OPERATOR_FUEL_MONITORING','invalid monitoring cannot mint comparison facts: '.$case);
+    }
+}
 
 fuel_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$a], 2000) === null, 'one sample still not enough corroboration');
 $conflict = $b; $conflict['amount'] = '200.00';

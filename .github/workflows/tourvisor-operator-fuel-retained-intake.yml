@@ -5,6 +5,7 @@ on:
       - 'app/integrations/tourvisor-operator-fuel-retained-intake.php'
       - 'app/integrations/operator-fuel-rule-evidence.php'
       - 'tests/tourvisor-operator-fuel-retained-intake-test.php'
+      - 'tests/operator-fuel-rule-evidence-test.php'
       - '.github/workflows/tourvisor-operator-fuel-retained-intake.yml'
 permissions:
   contents: read
@@ -23,6 +24,7 @@ jobs:
           php -l app/integrations/tourvisor-operator-fuel-retained-intake.php
           php -l tests/tourvisor-operator-fuel-retained-intake-test.php
           php -d allow_url_fopen=0 tests/tourvisor-operator-fuel-retained-intake-test.php
+          php -d allow_url_fopen=0 tests/operator-fuel-rule-evidence-test.php
           python3 - <<'PY'
           from pathlib import Path
           src = Path('app/integrations/tourvisor-operator-fuel-retained-intake.php').read_text()
