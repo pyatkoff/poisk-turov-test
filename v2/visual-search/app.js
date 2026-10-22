@@ -1790,8 +1790,12 @@ async function quoteSelectedOffer(initial,run,{chooseFlight=false}={}){
    if(run===selectionGeneration&&selectedOffer?.variants?.length)openFlightPicker();
   }else openLeadPreview(selectedOffer);
  }catch(error){
+  const failed=offerQuoteFailure(initial,error),listing=offerFromKey(initial.key);
+  if(initial.provider==='tourvisor'&&(failed.quoteErrorTerminal||['offer_unavailable','offer_expired'].includes(failed.quoteErrorCode))
+   &&listing?.raw===initial.raw&&sameSelectedTourConditions(listing,initial)
+   &&searchKey(initial.search||{})===searchKey(state.search)&&listing.total===(initial.quoteListingTotal||initial.total))rememberProviderView(failed,'tourvisor-selection');
   if(isCurrentOfferRequest(run,initial.key)){
-   selectedOffer=offerQuoteFailure(initial,error);
+   selectedOffer=failed;
    renderOfferProgress();
   }
  }
@@ -1835,7 +1839,11 @@ function leadReadyOffer(o){
 async function openLeadWithQuote(key){
  const listing=offerFromKey(key);if(!listing)return;
  const retained=selectedOffer?.key===key&&selectedOffer.raw===listing.raw&&sameSelectedTourConditions(listing,selectedOffer)&&searchKey(selectedOffer.search||{})===searchKey(state.search)&&(selectedOffer.quoteListingTotal||selectedOffer.total)===listing.total?selectedOffer:null;
- const initial=retained||listing;if(needsRefresh(initial)||terminalOfferQuote(initial)||initial.loading||initial.flightsLoading)return;
+ const initial=retained||listing;if(needsRefresh(initial)||initial.loading||initial.flightsLoading)return;
+ if(terminalOfferQuote(initial)){
+  const failed=retainedProviderView(initial)?.offer;if(failed?.quoteErrorTerminal===true)selectedOffer=failed;
+  renderOfferProgress();return;
+ }
  if(leadReadyOffer(initial)){openLeadPreview(initial);return;}
  const run=++selectionGeneration;selectedOffer={...initial,loading:true,quoteError:''};renderOfferProgress();
  await quoteSelectedOffer(initial,run);

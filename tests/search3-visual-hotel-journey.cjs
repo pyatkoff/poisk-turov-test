@@ -41,20 +41,41 @@ async function run(){
   gate.resolve({price:199000});await pending;assert.equal(calls.contacts,0,'late quote after '+interrupt+' cannot navigate');if(interrupt==='close'){assert.equal(c.selectedOffer.loading,false);nodes['#modal'].open=true;c.data.quote=async()=>({price:199000});await c.openLeadWithQuote('one');assert.equal(calls.contacts,1,'explicit re-entry is usable after close');}
  }
  {const {c,calls}=setup();c.data.quote=async()=>{calls.quote++;throw Object.assign(Error('expired'),{code:'offer_expired',retryable:false});};await c.openLeadWithQuote('one');await c.openLeadWithQuote('one');assert.equal(calls.quote,1,'terminal quote is not replayed');assert.equal(calls.contacts,0);assert.equal(calls.offerScreens,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);}
- for(const outcome of ['retained','unknown']){
-  const {c,calls,listing,hotel}=setup(),gate=deferred(),quoted={price:199000};let wire=0,request;
+ for(const outcome of ['success','expired','unknown']){
+  const {c,calls,listing,hotel}=setup(),gate=deferred(),quoted={price:199000};let wire=0;
   hotel.offers.push({...listing,key:'two',room:'Other',raw:{...listing.raw}});
-  c.data.quote=()=>{calls.quote++;if(!request){wire++;request=gate.promise;}return request;};
+  if(outcome==='expired'){
+   const canonical=fs.readFileSync(path.join(__dirname,'../v2/prototype-search/data.js'),'utf8');
+   const take=(from,to)=>{const a=canonical.indexOf(from),b=canonical.indexOf(to,a+from.length);assert(a>=0&&b>a);return canonical.slice(a,b);};
+   Object.assign(listing.raw,{id:'123',operator:'Biblio-Globus',selectionEnabled:true});
+   Object.assign(c,{URL,URLSearchParams,AbortController,setTimeout,clearTimeout,location:{href:'https://example.invalid/preview/'},generation:1,searchId:123,quoteReceipts:new WeakMap(),amount:c.data.amount});
+   c.window={V2_CONFIG:{api:'https://example.invalid/api.php'},fetch:()=>{wire++;return gate.promise;}};
+   vm.runInContext(fs.readFileSync(path.join(__dirname,'../v2/runtime-v3.js'),'utf8'),c);c.rt=c.window.V2Runtime;
+   vm.runInContext(take('function assertTourvisorRecalculationSupported(','const image =')+take('function tourvisorQuoteFailure(','async function flights('),c);
+   c.data.quote=o=>{calls.quote++;return c.quote(o);};
+  }else c.data.quote=()=>{calls.quote++;wire++;return calls.quote===1?gate.promise:Promise.resolve(quoted);};
   vm.runInContext("function selectRoom(key){const b={dataset:{key}};switch('select-hotel-offer'){"+slice("case 'select-hotel-offer':","case 'continue-hotel-offer':")+'}}',c);
   const pending=c.openLeadWithQuote('one');assert.equal(c.selectedOffer.loading,true);
   c.selectRoom('two');assert.equal(c.selectedOffer.loading,false,'changing room cancels only abandoned presentation loading');assert.equal(calls.quote,1,'room selection does not automatically quote');
-  if(outcome==='retained')gate.resolve(quoted);else gate.reject(Object.assign(Error('uncertain result'),{code:'quote_unknown',retryable:false}));
+  if(outcome==='success')gate.resolve(quoted);
+  else if(outcome==='expired')gate.resolve({ok:false,status:410,json:async()=>({error:'expired'}),clone(){return this;}});
+  else gate.reject(Object.assign(Error('uncertain result'),{code:'quote_unknown',retryable:false}));
   await pending;assert.equal(calls.contacts,0,'old A completion cannot navigate from B');
   c.selectRoom('one');assert.equal(c.hotelOfferCheckActive('one'),true);assert.equal(c.selectedOffer.loading,false,'reselected A is not permanently disabled');assert.equal(calls.quote,1);
   c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(wire,1,'explicit recovery uses the same retained/coalesced data-owner attempt');assert.equal(calls.quote,2);assert.strictEqual(c.selectedOffer.raw,listing.raw);
-  if(outcome==='retained'){assert.equal(calls.contacts,1);assert.strictEqual(calls.contactOffer.tour,quoted);assert.equal(calls.contactOffer.total,199000);}
-  else{assert.equal(calls.contacts,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.quote,2,'UNKNOWN remains sealed without replay');}
+  assert.strictEqual(c.selectedOffer.raw,listing.raw);
+  if(outcome==='success'){assert.equal(wire,2,'explicit known-success recheck is not a retained-cache or HTTP saving claim');assert.equal(calls.quote,2);assert.equal(calls.contacts,1);assert.strictEqual(calls.contactOffer.tour,quoted);assert.equal(calls.contactOffer.total,199000);}
+  else{assert.equal(wire,1,'inactive terminal result cannot replay');assert.equal(calls.quote,1);assert.equal(calls.contacts,0);assert.equal(c.selectedOffer.quoteErrorTerminal,true);if(outcome==='expired')assert.equal(c.selectedOffer.quoteErrorCode,'offer_expired');c.continueHotelOffer('one');await new Promise(resolve=>setImmediate(resolve));assert.equal(calls.quote,1,'terminal/UNKNOWN remains sealed without replay');}
+ }
+ for(const changed of ['raw','search','price','room']){
+  const {c,calls,listing,hotel,views}=setup(),gate=deferred();c.data.quote=()=>{calls.quote++;return gate.promise;};
+  const pending=c.openLeadWithQuote('one');c.selectionGeneration++;
+  if(changed==='raw')hotel.offers[0]={...listing,raw:{...listing.raw}};
+  if(changed==='search')c.state.search={...listing.search,origin:'Казань'};
+  if(changed==='price')listing.total++;
+  if(changed==='room')listing.room='Other';
+  gate.reject(Object.assign(Error('expired old identity'),{code:'offer_expired',retryable:false}));await pending;
+  assert.equal(views.size,0,'late terminal result cannot seal changed '+changed);assert.equal(calls.contacts,0);
  }
  {const {c,calls,listing,hotel}=setup('anex'),gate=deferred();let wire=0,request;
   hotel.offers.push({...listing,key:'two',room:'Other',raw:{...listing.raw}});
@@ -71,6 +92,6 @@ async function run(){
  {const {c,calls,hotel,nodes}=setup('anex','group_minimum'),gate=deferred();c.data.expandAnexGroup=()=>{calls.expand++;return gate.promise;};const pending=c.refreshLiveHotel(1);nodes['#modal'].open=false;gate.resolve({offers:[]});await pending;assert.equal(hotel.offers.length,1);assert.equal(calls.rooms,0,'closed hotel is not replaced by a late expansion');}
  {const {c,calls}=setup('anex');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1);assert.equal(calls.offerScreens,0,'current/additional checks stay inline');assert.equal(calls.flights,0);assert.equal(c.anexApplicationDraft.price,199300);assert.equal(c.anexApplicationDraft.finalPriceVerified,false,'calculated estimate never becomes verified');assert.equal(calls.contacts,0,'changed estimate needs a deliberate continue');await c.refreshLiveHotel(1);assert.equal(calls.verify,1);assert.equal(calls.additional,1,'return reuses the retained result');}
  {const {c,calls,views,listing}=setup('anex');views.set('one',{offer:listing,type:'anex-current',result:{state:'current'},error:'UNKNOWN',pending:false});await c.refreshLiveHotel(1);assert.equal(calls.verify,0);assert.equal(calls.additional,0,'an UNKNOWN current result is never retried automatically');}
- console.log('PASS hotel journey: exact price/pair reuse, foreign raw/search/room/party/price rejection, double intent, late/closed selection, A-B-A retained/UNKNOWN recovery, terminal/retry, inline ANEX group/current/estimate and no mandatory flights; supplier/lead calls 0');
+ console.log('PASS hotel journey: exact price/pair reuse, foreign raw/search/room/party/price rejection, double intent, late/closed selection, A-B-A canonical TV/runtime deferred410 noReplay, explicit success recheck, terminal/UNKNOWN and retained ANEX recovery, inline group/current/estimate and no mandatory flights; supplier/lead calls 0');
 }
 module.exports=run;if(require.main===module)run().catch(error=>{console.error(error);process.exitCode=1;});
