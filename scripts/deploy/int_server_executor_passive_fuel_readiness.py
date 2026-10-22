@@ -67,7 +67,17 @@ DIAGNOSTIC_HELPER_SHA256 = 'b980c347d2644dfa86f383d4652fd1b1d0727afb174fe6972efd
 DIAGNOSTIC_CHECK_COMMIT = '80aa23987c8541a4c850436194f7c6ebec4d36a4'
 DIAGNOSTIC_CHECK_IDS = {119688289004,119688288755}
 DIAGNOSTIC_INSTALLED_AT = 1792654334
-MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE)
+# New ordinary case6343328785 after receiver+sender installation. Old4814 stays
+# consumed with its original source, operation, helper and time bounds.
+CONTEXT_DIAGNOSTIC_MODE = 'passive-fuel-context-diagnostic'
+CONTEXT_DIAGNOSTIC_SOURCE = 'd6599dc44e7fb1066272b6eab09a528498c3c55a'
+CONTEXT_DIAGNOSTIC_OPERATION = 'int-anex-passive-context-diagnostic-20261022-v1'
+CONTEXT_DIAGNOSTIC_IDS = ('25295685786553','25296808705983')
+CONTEXT_DIAGNOSTIC_HELPER_SHA256 = '7ae4c385f49bf9e994a073d3405564054e9e503da1d1e5f8c1ad4ee7cd9219ef'
+CONTEXT_DIAGNOSTIC_CHECK_COMMIT = '5d95ba40c32b7f6322a979cc8c9c74e2f53fb59e'
+CONTEXT_DIAGNOSTIC_CHECK_IDS = {119739791997,119739790960}
+CONTEXT_DIAGNOSTIC_MIN_TIME = 1792679137
+MODES = (*RELEASE_MODES, DIAGNOSTIC_MODE, CONTEXT_DIAGNOSTIC_MODE)
 SOURCE_CHECK_COMMIT = '990eb5859e1c8355337eb90351c655b604df8b39'
 CHECK_IDS = {118651685241, 118651684803, 118651684153, 118651683778, 118651682993}
 PRIVATE_SOURCE_CHECK_COMMIT = '65a802303afc3bedd6a8b674b9f5a9579ab4a38a'
@@ -95,6 +105,11 @@ def need(value, reason):
 
 
 def parse(parts):
+    if parts[1:2] == [CONTEXT_DIAGNOSTIC_MODE]:
+        need(parts == [CONTEXT_DIAGNOSTIC_SOURCE,CONTEXT_DIAGNOSTIC_MODE,
+                       CONTEXT_DIAGNOSTIC_OPERATION,*CONTEXT_DIAGNOSTIC_IDS],
+             'context_diagnostic_fixed_case')
+        return dict(source_sha=parts[0],mode=parts[1],operation_id=parts[2],tour_ids=parts[3:])
     if parts[1:2] == [DIAGNOSTIC_MODE]:
         need(len(parts) == 5 and parts[:3] == [DIAGNOSTIC_SOURCE,DIAGNOSTIC_MODE,DIAGNOSTIC_OPERATION],
              'diagnostic_fixed_scope')
@@ -118,7 +133,7 @@ def parse(parts):
 
 def policy(command=None):
     command = parse([SOURCE, MODE, OPERATION]) if command is None else command
-    if command.get('mode') == DIAGNOSTIC_MODE:
+    if command.get('mode') in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):
         ids = command.get('tour_ids')
         need(isinstance(ids,list) and command == parse(
             [command.get('source_sha'),command.get('mode'),command.get('operation_id'),*ids]),
@@ -142,6 +157,8 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
     check_ids = PRIVATE_CHECK_IDS if private else CHECK_IDS
     if command['mode'] == DIAGNOSTIC_MODE:
         check_commit,check_ids = DIAGNOSTIC_CHECK_COMMIT,DIAGNOSTIC_CHECK_IDS
+    if command['mode'] == CONTEXT_DIAGNOSTIC_MODE:
+        check_commit,check_ids = CONTEXT_DIAGNOSTIC_CHECK_COMMIT,CONTEXT_DIAGNOSTIC_CHECK_IDS
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE):
         check_commit, check_ids = PARTY_CHECK_COMMIT, PARTY_CHECK_IDS
     checks = api_get('/commits/' + check_commit + '/check-runs?per_page=100', token)
@@ -150,6 +167,11 @@ def admission(api_get, event, token, env, repo, issue, prefix, command=None):
          and all(c.get('status') == 'completed' and c.get('conclusion') == 'success'
                  and c.get('app', {}).get('slug') == 'github-actions' for c in checks['check_runs']),
          'passive_readiness_source_ci')
+    if command['mode'] == CONTEXT_DIAGNOSTIC_MODE:
+        rows=checks['check_runs']
+        need(type(checks.get('total_count')) is int and len(rows)==len(check_ids)
+             and all(c.get('head_sha')==check_commit for c in rows),
+             'context_diagnostic_source_ci')
     matched = []
     for page in range(1, 31):
         comments = api_get(f'/issues/{issue}/comments?per_page=100&page={page}', token)
@@ -169,8 +191,8 @@ def bundle_source(source_root, command=None):
     hashes = PRIVATE_SOURCE_HASHES if command['mode'] in (PRIVATE_MODE, PLAN_MODE, INSTALL_MODE, STOCK_MODE, CURRENT_MODE, REPAIRED_MODE) else SOURCE_HASHES
     if command['mode'] in (LOCK_MODE, LOCK_REPAIR_MODE): hashes = {}
     if command['mode'] in (PARTY_MODE, PARTY_CONTINUE_MODE): hashes = PARTY_SOURCE_HASHES
-    if command['mode'] == DIAGNOSTIC_MODE:
-        hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':DIAGNOSTIC_HELPER_SHA256}
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):
+        hashes = {'app/integrations/tourvisor-operator-fuel-passive-intake.php':_diagnostic_profile(command)['helper_sha256']}
     root = Path(source_root).resolve()
     output = io.BytesIO()
     with tarfile.open(fileobj=output, mode='w:gz', format=tarfile.PAX_FORMAT) as archive:
@@ -1136,7 +1158,7 @@ def publication_lock_mode_repair():
 
 def remote_program(remote, command=None):
     command = policy(command)
-    if command['mode'] == DIAGNOSTIC_MODE:return diagnostic_remote_program(remote,command)
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):return diagnostic_remote_program(remote,command)
     mode = command['mode']
     marker = 'def local_read(scopes):\n'
     dispatch = "    if mode=='local-readback':\n"
@@ -1196,7 +1218,7 @@ def remote_program(remote, command=None):
 
 def completed(command, result):
     command = policy(command)
-    if command['mode'] == DIAGNOSTIC_MODE:return diagnostic_completed(command,result)
+    if command['mode'] in (DIAGNOSTIC_MODE,CONTEXT_DIAGNOSTIC_MODE):return diagnostic_completed(command,result)
     if command['mode'] == LOCK_MODE:return lock_metadata_completed(command,result)
     if command['mode'] == LOCK_REPAIR_MODE:return lock_mode_repair_completed(command,result)
     if command['mode'] == REPAIRED_MODE:return repaired_completed(command,result)
@@ -1688,27 +1710,40 @@ def passive_fuel_diagnostic_readback():
 '''
 
 
+def _diagnostic_profile(command):
+    command=policy(command)
+    if command['mode']==DIAGNOSTIC_MODE:
+        return dict(mode=DIAGNOSTIC_MODE,source=DIAGNOSTIC_SOURCE,operation=DIAGNOSTIC_OPERATION,
+                    helper_sha256=DIAGNOSTIC_HELPER_SHA256,min_time=DIAGNOSTIC_INSTALLED_AT)
+    need(command['mode']==CONTEXT_DIAGNOSTIC_MODE,'diagnostic_profile')
+    return dict(mode=CONTEXT_DIAGNOSTIC_MODE,source=CONTEXT_DIAGNOSTIC_SOURCE,
+                operation=CONTEXT_DIAGNOSTIC_OPERATION,helper_sha256=CONTEXT_DIAGNOSTIC_HELPER_SHA256,
+                min_time=CONTEXT_DIAGNOSTIC_MIN_TIME)
+
+
 def diagnostic_reader(command):
+    profile=_diagnostic_profile(command)
     # Reuse only the descriptor-safe reader function; no legacy inventory/config reader runs.
     functions=[node for node in ast.parse(REMOTE_READER).body if isinstance(node,ast.FunctionDef) and node.name=='pf_read']
     need(len(functions)==1,'diagnostic_reader_registration')
     common=ast.get_source_segment(REMOTE_READER,functions[0]).replace("anchor=home/'www'",'anchor=home',1)
-    reader=('import hashlib,json,os,pathlib,re,time\nimport stat as pf_stat\nPD_HELPER_SHA='+repr(DIAGNOSTIC_HELPER_SHA256)
-            +'\nPD_MIN_TIME='+repr(DIAGNOSTIC_INSTALLED_AT)+'\nPD_IDS='+repr(command['tour_ids'])
+    reader=('import hashlib,json,os,pathlib,re,time\nimport stat as pf_stat\nPD_HELPER_SHA='+repr(profile['helper_sha256'])
+            +'\nPD_MIN_TIME='+repr(profile['min_time'])+'\nPD_IDS='+repr(command['tour_ids'])
             +'\nPD_ERROR_CODES=frozenset('+repr(sorted(DIAGNOSTIC_ERROR_CODES))+')\n'+common+'\n'
             +DIAGNOSTIC_VALIDATOR+'\n'+DIAGNOSTIC_READER)
     return reader
 
 
 def diagnostic_remote_program(remote,command):
+    profile=_diagnostic_profile(command)
     reader=diagnostic_reader(command)
     marker='def local_read(scopes):\n';dispatch="    if mode=='local-readback':\n"
     exclusion="    if mode not in ('reconcile',";size="if not isinstance(files,dict) or len(files)<20: fail('manifest')"
     gate="    if not re.fullmatch(r'int-(?:anex|andromeda)-[a-z0-9-]{8,80}-v[1-9][0-9]*',operation):"
     need(remote.count(marker)==remote.count(dispatch)==remote.count(size)==remote.count(gate)==1
          and remote.count(exclusion)==2,'diagnostic_registration_drift')
-    fixed="    if mode=="+repr(DIAGNOSTIC_MODE)+" and (source!="+repr(DIAGNOSTIC_SOURCE)+" or operation!="+repr(DIAGNOSTIC_OPERATION)+" or payload.get('tour_ids')!="+repr(command['tour_ids'])+"):fail('diagnostic_fixed_scope')\n"
-    registration="    if mode=="+repr(DIAGNOSTIC_MODE)+":\n"+"""        result['passive_fuel_diagnostics']=passive_fuel_diagnostic_readback()
+    fixed="    if mode=="+repr(profile['mode'])+" and (source!="+repr(profile['source'])+" or operation!="+repr(profile['operation'])+" or payload.get('tour_ids')!="+repr(command['tour_ids'])+"):fail('diagnostic_fixed_scope')\n"
+    registration="    if mode=="+repr(profile['mode'])+":\n"+"""        result['passive_fuel_diagnostics']=passive_fuel_diagnostic_readback()
         result['production_after']=fingerprints()
         result.update(status='complete',supplier_calls=0,database_reads=0,database_writes=0,
             runtime_writes=0,booking_calls=0,lead_calls=0,runtime_changed=False,
@@ -1716,14 +1751,15 @@ def diagnostic_remote_program(remote,command):
 """
     remote=remote.replace(marker,reader+'\n'+marker,1).replace(gate,fixed+gate,1)
     remote=remote.replace(dispatch,registration+dispatch,1)
-    remote=remote.replace(exclusion,"    if mode not in ("+repr(DIAGNOSTIC_MODE)+",'reconcile',")
-    hashes={'app/integrations/tourvisor-operator-fuel-passive-intake.php':DIAGNOSTIC_HELPER_SHA256}
+    remote=remote.replace(exclusion,"    if mode not in ("+repr(profile['mode'])+",'reconcile',")
+    hashes={'app/integrations/tourvisor-operator-fuel-passive-intake.php':profile['helper_sha256']}
     remote=remote.replace(size,"if not isinstance(files,dict) or files!="+repr(hashes)+": fail('diagnostic_manifest')",1)
     ast.parse(remote)
     return remote
 
 
 def diagnostic_completed(command,result):
+    profile=_diagnostic_profile(command)
     counters=('supplier_calls','database_reads','database_writes','runtime_writes','booking_calls','lead_calls')
     value=result.get('passive_fuel_diagnostics')
     fields={'schema_version','source','status','installed_helper_sha256','read_at','snapshots','observed_files',
@@ -1740,10 +1776,10 @@ def diagnostic_completed(command,result):
         or not isinstance(value,dict) or set(value)!=fields
         or type(value['schema_version']) is not int or value['schema_version']!=1
         or value['source']!='tourvisor-fuel-intake-diagnostic-readback-v1' or value['status']!='complete'
-        or value['installed_helper_sha256']!=DIAGNOSTIC_HELPER_SHA256 or value['final_price_verified'] is not False
-        or type(value['read_at']) is not int or not DIAGNOSTIC_INSTALLED_AT<=value['read_at']<=4102444800
+        or value['installed_helper_sha256']!=profile['helper_sha256'] or value['final_price_verified'] is not False
+        or type(value['read_at']) is not int or not profile['min_time']<=value['read_at']<=4102444800
         or not isinstance(value['snapshots'],list) or len(value['snapshots'])!=4):return False
-    namespace=dict(hashlib=hashlib,re=re,PD_MIN_TIME=DIAGNOSTIC_INSTALLED_AT,PD_ERROR_CODES=DIAGNOSTIC_ERROR_CODES)
+    namespace=dict(hashlib=hashlib,re=re,PD_MIN_TIME=profile['min_time'],PD_ERROR_CODES=DIAGNOSTIC_ERROR_CODES)
     exec(DIAGNOSTIC_VALIDATOR,namespace)
     observed=fresh=0
     try:

@@ -2721,6 +2721,121 @@ class PassiveFuelDiagnosticReadbackTest(unittest.TestCase):
             self.assertEqual(item['sha256'],hashlib.sha256(self.p.remote_program(m.REMOTE,command).encode()).hexdigest(),item['mode'])
 
 
+class PassiveFuelContextDiagnosticTest(unittest.TestCase):
+    fixture=PassiveFuelDiagnosticReadbackTest.fixture
+    read=PassiveFuelDiagnosticReadbackTest.read
+
+    def setUp(self):
+        self.p=m.passive_fuel_readiness
+        self.ids=list(self.p.CONTEXT_DIAGNOSTIC_IDS)
+        self.parts=[self.p.CONTEXT_DIAGNOSTIC_SOURCE,self.p.CONTEXT_DIAGNOSTIC_MODE,
+                    self.p.CONTEXT_DIAGNOSTIC_OPERATION,*self.ids]
+        self.body=m.PREFIX+' '.join(self.parts)
+        self.command=m.parse_command(self.body)
+        self.now=self.p.CONTEXT_DIAGNOSTIC_MIN_TIME+10
+
+    def snapshot(self,tour_id,stage,ordinal=0):
+        value=PassiveFuelDiagnosticReadbackTest.snapshot(self,tour_id,stage,ordinal)
+        value['observed_at']=self.p.CONTEXT_DIAGNOSTIC_MIN_TIME+1
+        value['expires_at']=value['observed_at']+86400
+        return value
+
+    def outer(self,value):
+        result=PassiveFuelDiagnosticReadbackTest.outer(self,value)
+        result['passive_fuel_diagnostics']['installed_helper_sha256']=self.p.CONTEXT_DIAGNOSTIC_HELPER_SHA256
+        return result
+
+    def test_only_two_actual_case_ids_and_current_source_operation_are_admitted(self):
+        self.assertEqual(['25295685786553','25296808705983'],self.command['tour_ids'])
+        self.assertEqual('d6599dc44e7fb1066272b6eab09a528498c3c55a',self.command['source_sha'])
+        for parts in ([*self.parts[:3]],self.parts+['1234567'],
+                      [*self.parts[:3],*reversed(self.ids)],
+                      [*self.parts[:3],'18296722175849','18296722175890'],
+                      ['b'*40,*self.parts[1:]],
+                      [self.parts[0],self.parts[1],self.p.DIAGNOSTIC_OPERATION,*self.ids],
+                      [*self.parts[:3],'../../config.php',self.ids[1]]):
+            with self.subTest(parts=parts),self.assertRaises(ValueError):self.p.parse(parts)
+        with self.assertRaises(ValueError):self.p.policy({**self.command,'target':'config.php'})
+        generated=self.p.remote_program(m.REMOTE,self.command)
+        self.assertIn("payload.get('tour_ids')!="+repr(self.ids),generated)
+        self.assertIn('PD_MIN_TIME=1792679137',generated)
+        self.assertIn('PD_HELPER_SHA='+repr(self.p.CONTEXT_DIAGNOSTIC_HELPER_SHA256),generated)
+        self.assertEqual(2,generated.count("if mode not in ('passive-fuel-context-diagnostic','reconcile',"))
+
+    def test_sealed_original_readback_and_every_old_profile_are_unchanged(self):
+        old=self.p.parse([self.p.DIAGNOSTIC_SOURCE,self.p.DIAGNOSTIC_MODE,self.p.DIAGNOSTIC_OPERATION,
+                          '18296722175849','18296722175890'])
+        self.assertEqual('0c456763d600e0682ba3cb8cd44bea301bdc5d652866d1cfdfe9b8c1526f9036',
+                         hashlib.sha256(self.p.remote_program(m.REMOTE,old).encode()).hexdigest())
+        self.assertEqual('f3c1328b1af5b38d4ffd4757f25b89e3ddf7c2bd',self.p.DIAGNOSTIC_SOURCE)
+        self.assertEqual('int-anex-passive-fuel-diagnostic-readback-20261022-v1',self.p.DIAGNOSTIC_OPERATION)
+        self.assertEqual('b980c347d2644dfa86f383d4652fd1b1d0727afb174fe6972efd0e2b18fbab42',self.p.DIAGNOSTIC_HELPER_SHA256)
+        self.assertEqual(1792654334,self.p.DIAGNOSTIC_INSTALLED_AT)
+
+    def test_fresh_four_safe_rows_no_pending_config_enumeration_or_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory)
+            before={p.relative_to(home).as_posix():p.read_bytes() for p in home.rglob('*') if p.is_file()}
+            value=self.read(ns)
+            self.assertEqual(4,value['observed_files']);self.assertEqual(4,value['fresh_files'])
+            self.assertFalse(value['final_price_verified'])
+            self.assertTrue(m.completed_result(self.command,self.outer(value)))
+            after={p.relative_to(home).as_posix():p.read_bytes() for p in home.rglob('*') if p.is_file()}
+            self.assertEqual(before,after)
+            # Same four fixed hashed receipt paths; no glob, raw/pending, SQL or PHP.
+            self.assertEqual(4,len(paths));reader=self.p.diagnostic_reader(self.command)
+            for forbidden in ('def pf_snapshot():','glob(','sqlite','PDO','subprocess','search3-preview.php'):
+                self.assertNotIn(forbidden,reader)
+            ns['PD_HELPER_SHA']=self.p.DIAGNOSTIC_HELPER_SHA256
+            with self.assertRaisesRegex(RuntimeError,'diagnostic_helper_pin'):self.read(ns)
+
+    def test_pre_case_or_wrong_identity_rejected_missing_and_skipped_stay_unknown(self):
+        for case in ('pre_case','foreign_offer','unknown_field'):
+            with self.subTest(case=case),tempfile.TemporaryDirectory() as directory:
+                ns,home,helper,paths=self.fixture(directory);value=json.loads(paths[0].read_text())
+                if case=='pre_case':value['observed_at']=self.p.CONTEXT_DIAGNOSTIC_MIN_TIME-1;value['expires_at']=value['observed_at']+86400
+                if case=='foreign_offer':value['offer_ref_digest']='f'*64
+                if case=='unknown_field':value['raw_payload']='SECRET'
+                paths[0].write_text(json.dumps(value));paths[0].chmod(0o600)
+                with self.assertRaisesRegex(RuntimeError,'diagnostic_schema'):self.read(ns)
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory,write=False);value=self.read(ns)
+            self.assertEqual(0,value['observed_files']);self.assertTrue(m.completed_result(self.command,self.outer(value)))
+            self.assertTrue(all(r['status']=='missing' and r['snapshot'] is None for r in value['snapshots']))
+        with tempfile.TemporaryDirectory() as directory:
+            ns,home,helper,paths=self.fixture(directory)
+            for path in paths:
+                value=json.loads(path.read_text());value.update(outcome='skipped',code='offer_context_missing' if value['stage']=='tour' else 'tour_pair_missing',observation_count=None,rule_confirmed=None)
+                path.write_text(json.dumps(value));path.chmod(0o600)
+            value=self.read(ns);self.assertTrue(m.completed_result(self.command,self.outer(value)))
+            self.assertTrue(all(r['snapshot']['observation_count'] is None and r['snapshot']['rule_confirmed'] is None for r in value['snapshots']))
+
+    def test_existing_owner_first_attempt_source_ci_and_single_reservation_remain_required(self):
+        comment={'id':900,'body':self.body,'user':{'id':226193297},'author_association':'OWNER'}
+        event={'action':'created','repository':{'full_name':m.REPO},'issue':{'number':4709},'comment':comment}
+        env={'GITHUB_EVENT_NAME':'issue_comment','GITHUB_REPOSITORY':m.REPO,'GITHUB_REF':'refs/heads/main',
+             'GITHUB_WORKFLOW_REF':m.REPO+'/.github/workflows/int-server-executor.yml@refs/heads/main',
+             'GITHUB_ACTOR':'pyatkoff','GITHUB_TRIGGERING_ACTOR':'pyatkoff','GITHUB_RUN_ATTEMPT':'1'}
+        ci='/commits/'+self.p.CONTEXT_DIAGNOSTIC_CHECK_COMMIT+'/check-runs?per_page=100'
+        rows=[{'id':i,'head_sha':self.p.CONTEXT_DIAGNOSTIC_CHECK_COMMIT,'status':'completed','conclusion':'success','app':{'slug':'github-actions'}} for i in self.p.CONTEXT_DIAGNOSTIC_CHECK_IDS]
+        replies={'/issues/comments/900':comment,'/git/ref/heads/main':{'object':{'sha':'a'*40}},
+                 '/git/ref/heads/'+m.FEATURE:{'object':{'sha':self.p.CONTEXT_DIAGNOSTIC_SOURCE}},
+                 ci:{'total_count':2,'check_runs':rows},'/issues/4709/comments?per_page=100&page=1':[comment]}
+        with patch.dict(os.environ,env),patch.object(m,'api_get',side_effect=lambda path,token:replies[path]):
+            self.assertEqual(self.command,m.checked_event('fixture',event,'a'*40))
+        for case in ('edited','rerun','feature','head','duplicate_ci','failed_ci','foreign_app','reservation'):
+            changed=copy.deepcopy(event);reply=copy.deepcopy(replies);environment=dict(env)
+            if case=='edited':changed['action']='edited'
+            if case=='rerun':environment['GITHUB_RUN_ATTEMPT']='2'
+            if case=='feature':reply['/git/ref/heads/'+m.FEATURE]['object']['sha']='b'*40
+            if case=='head':reply[ci]['check_runs'][0]['head_sha']='b'*40
+            if case=='duplicate_ci':reply[ci]['check_runs'].append(copy.deepcopy(rows[0]))
+            if case=='failed_ci':reply[ci]['check_runs'][0]['conclusion']='skipped'
+            if case=='foreign_app':reply[ci]['check_runs'][0]['app']['slug']='other'
+            if case=='reservation':reply['/issues/4709/comments?per_page=100&page=1'].append({**comment,'id':899})
+            with self.subTest(case=case),patch.dict(os.environ,environment),patch.object(m,'api_get',side_effect=lambda path,token:reply[path]),self.assertRaises(ValueError):m.checked_event('fixture',changed,'a'*40)
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
 
 
