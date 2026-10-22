@@ -691,7 +691,7 @@ def tv_diagnostic_event(event,env):
  need(comment.get('body')==f'{TV_DIAGNOSTIC_PREFIX} {control} {TV_DIAGNOSTIC_OPERATION}','command')
  return {'control_source_sha':control,'run_id':run_id,'command_comment_id':comment['id']}
 
-def tv_diagnostic_reviewed_control(control_sha):
+def _single_file_reviewed_control(control_sha,required_checks):
  def owned_blobs(head):
   values={}
   for path in TV_DIAGNOSTIC_CONTROL_PATHS:
@@ -712,13 +712,16 @@ def tv_diagnostic_reviewed_control(control_sha):
         and re.fullmatch(r'[a-f0-9]{40}',reviewed['tree']['sha']) is not None,'control_ancestry')
    if reviewed['tree']['sha']==tree and owned_blobs(reviewed_sha)==current:
     try:
-     for name in ('guard','contracts','tv-diagnostic-contracts'):dependency_green_check(reviewed_sha,name,'source_ci')
+     for name in required_checks:dependency_green_check(reviewed_sha,name,'source_ci')
     except RuntimeError as exc:
      if str(exc)!='source_ci':raise
     else:return {'merge_sha':head,'source_sha':reviewed_sha,'owned_blobs':current}
   if not parents:break
   head=parents[0]['sha']
  raise RuntimeError('reviewed_control_missing')
+
+def tv_diagnostic_reviewed_control(control_sha):
+ return _single_file_reviewed_control(control_sha,('guard','contracts','tv-diagnostic-contracts'))
 
 def tv_diagnostic_admission(identity):
  need(re.fullmatch(r'[a-f0-9]{40}',TV_DIAGNOSTIC_RELEASE) is not None and bool(TV_DIAGNOSTIC_CHECK_IDS),'diagnostic_pins_incomplete')
@@ -760,7 +763,7 @@ def tv_diagnostic_remote():
          'expected':TV_DIAGNOSTIC_EXPECTED,'protected':TV_DIAGNOSTIC_PROTECTED}
  return 'POLICY='+repr(policy)+'\n'+code+'\n'+REMOTE_CHECKED_INSTALL
 
-def tv_diagnostic_safe_receipt(identity,result,complete=False):
+def _single_file_safe_receipt(policy,identity,result,complete=False):
  try:
   counters=('supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls')
   required={'schema_version','operation_id','source_sha','release_sha','source_blob','status',*counters,
@@ -768,47 +771,50 @@ def tv_diagnostic_safe_receipt(identity,result,complete=False):
             'syntax_previous','syntax_candidate','syntax_installed','backup_retained',*identity}
   need(isinstance(result,dict) and required<=set(result)<=required|{'production_before','production_after','reason','error_type'},'receipt_fields')
   need(type(result['schema_version']) is int and result['schema_version']==1,'receipt_schema')
-  for key,value in {'operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,**identity}.items():need(result[key]==value,'receipt_identity')
+  for key,value in {'operation_id':policy['operation'],'source_sha':policy['source'],'release_sha':policy['release'],'source_blob':policy['blob'],**identity}.items():need(result[key]==value,'receipt_identity')
   for key in counters:need(type(result[key]) is int and result[key]==0,'receipt_counters')
   need(result['status'] in ('blocked_no_replay','unknown_no_replay','rolled_back_no_replay','installed_verified'),'receipt_status')
   for key in ('root_write_attempts','rollback_attempts'):need(type(result[key]) is int and result[key] in (0,1),'receipt_attempts')
   need(type(result['file_writes']) is int and 0<=result['file_writes']<=2,'receipt_writes')
-  need(result['written_files'] in ([],['api-v2.php']) and type(result['backup_retained']) is bool,'receipt_scope')
+  need(result['written_files'] in ([],[policy.get('target','api-v2.php')]) and type(result['backup_retained']) is bool,'receipt_scope')
   need(all(result['syntax_'+p] in ('not_run','ok') for p in ('previous','candidate','installed')),'receipt_syntax')
   for phase in ('before_files','after_files'):
-   values=result[phase];need(isinstance(values,dict) and set(values)<=set(TV_DIAGNOSTIC_EXPECTED),'receipt_inventory')
+   values=result[phase];need(isinstance(values,dict) and set(values)<=set(policy['expected']),'receipt_inventory')
    for record in values.values():
     need(isinstance(record,dict) and set(record)=={'sha256','bytes','mode'} and isinstance(record['sha256'],str)
          and re.fullmatch(r'[a-f0-9]{64}',record['sha256']) is not None,'receipt_record')
     need(type(record['bytes']) is int and 0<record['bytes']<=2*1024*1024 and type(record['mode']) is int and 0<=record['mode']<=0o7777,'receipt_metadata')
   for phase in ('production_before','production_after'):
    if phase in result:
-    need(isinstance(result[phase],dict) and set(result[phase])==set(TV_DIAGNOSTIC_PROTECTED),'receipt_public')
+    need(isinstance(result[phase],dict) and set(result[phase])==set(policy['protected']),'receipt_public')
     need(all(v is None or isinstance(v,str) and re.fullmatch(r'[a-f0-9]{64}',v) is not None for v in result[phase].values()),'receipt_public_hashes')
   if 'reason' in result:need(result['reason'] in ('payload_limit','payload_fields','payload_identity','candidate_bytes','unsafe_private_parent','operation_exists_no_replay','predecessor_drift','different_filesystem','syntax_failed','file_changed','installed_readback','unsafe_parent','operation_failed','private_receipt_failed'),'receipt_reason')
   if 'error_type' in result:need(result['error_type'] in ('RuntimeError','FileNotFoundError','PermissionError','OSError','TimeoutExpired','JSONDecodeError','Error','ValueError'),'receipt_error_type')
   if complete:
    need(result['status']=='installed_verified' and result['root_write_attempts']==result['file_writes']==1 and result['rollback_attempts']==0,'receipt_status')
-   need(result['written_files']==['api-v2.php'] and result['backup_retained'] and all(result['syntax_'+p]=='ok' for p in ('previous','candidate','installed')),'receipt_scope')
-   before,after=result['before_files'],result['after_files'];need(set(before)==set(after)==set(TV_DIAGNOSTIC_EXPECTED),'receipt_inventory')
-   need(all(before[p]['sha256']==h and before[p]['mode']==0o644 and after[p]['mode']==0o644 for p,h in TV_DIAGNOSTIC_EXPECTED.items()),'receipt_predecessor')
-   expected=dict(before);expected['api-v2.php']={'sha256':TV_DIAGNOSTIC_HASH,'bytes':TV_DIAGNOSTIC_BYTES,'mode':0o644};need(after==expected,'receipt_after')
+   need(result['written_files']==[policy.get('target','api-v2.php')] and result['backup_retained'] and all(result['syntax_'+p]=='ok' for p in ('previous','candidate','installed')),'receipt_scope')
+   before,after=result['before_files'],result['after_files'];need(set(before)==set(after)==set(policy['expected']),'receipt_inventory')
+   need(all(before[p]['sha256']==h and before[p]['mode']==0o644 and after[p]['mode']==0o644 for p,h in policy['expected'].items()),'receipt_predecessor')
+   expected=dict(before);expected[policy.get('target','api-v2.php')]={'sha256':policy['sha256'],'bytes':policy['bytes'],'mode':0o644};need(after==expected,'receipt_after')
    need(result['production_before']==result['production_after'] and 'reason' not in result and 'error_type' not in result,'receipt_public')
   return True
  except (RuntimeError,AttributeError,KeyError,TypeError,ValueError):return False
 
-def tv_diagnostic_install():
+def tv_diagnostic_safe_receipt(identity,result,complete=False):
+ return _single_file_safe_receipt(_tv_diagnostic_policy(),identity,result,complete)
+
+def _single_file_install(policy,work_name,event_check,admission_check,remote_program,receipt_check):
  import shlex
- work=pathlib.Path(os.environ['RUNNER_TEMP'])/'search3-root-tv-diagnostics';work.mkdir()
- evidence={'status':'blocked_no_replay','operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,'failure_phase':'identity','ssh_started':False}
+ work=pathlib.Path(os.environ['RUNNER_TEMP'])/work_name;work.mkdir()
+ evidence={'status':'blocked_no_replay','operation_id':policy['operation'],'source_sha':policy['source'],'release_sha':policy['release'],'source_blob':policy['blob'],'failure_phase':'identity','ssh_started':False}
  key,known=work/'key',work/'known';completed=False
  try:
-  identity=tv_diagnostic_event(json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
-  evidence.update(identity);evidence['failure_phase']='admission';candidate=tv_diagnostic_admission(identity)
+  identity=event_check(json.loads(pathlib.Path(os.environ['GITHUB_EVENT_PATH']).read_text()),os.environ)
+  evidence.update(identity);evidence['failure_phase']='admission';candidate=admission_check(identity)
   evidence['failure_phase']='prepare'
-  (work/'api-v2.php').write_bytes(candidate)
-  (work/'request.json').write_text(json.dumps({**identity,'operation_id':TV_DIAGNOSTIC_OPERATION,'source_sha':TV_DIAGNOSTIC_SOURCE,'release_sha':TV_DIAGNOSTIC_RELEASE,'source_blob':TV_DIAGNOSTIC_BLOB,'candidate_sha256':TV_DIAGNOSTIC_HASH},sort_keys=True))
-  payload={**identity,'candidate_b64':base64.b64encode(candidate).decode()};program=tv_diagnostic_remote()
+  (work/policy.get('candidate_name','api-v2.php')).write_bytes(candidate)
+  (work/'request.json').write_text(json.dumps({**identity,'operation_id':policy['operation'],'source_sha':policy['source'],'release_sha':policy['release'],'source_blob':policy['blob'],'candidate_sha256':policy['sha256']},sort_keys=True))
+  payload={**identity,'candidate_b64':base64.b64encode(candidate).decode()};program=remote_program()
   host,user=os.environ['PREVIEW_HOST'],os.environ['PREVIEW_USER']
   need(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9.-]*',host) and re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}',user),'ssh_identity')
   raw=os.environ['PREVIEW_KEY'].replace('\r','')
@@ -820,13 +826,142 @@ def tv_diagnostic_install():
   response=run(['ssh',*opts,user+'@'+host,'python3 -c '+shlex.quote(program)],input=json.dumps(payload).encode(),timeout=90)
   evidence['failure_phase']='readback'
   need(len(response)<=16384,'receipt_limit');result=json.loads(response)
-  need(tv_diagnostic_safe_receipt(identity,result),'receipt_unsafe');evidence['remote']=result
-  completed=tv_diagnostic_safe_receipt(identity,result,complete=True);need(completed,'install_not_verified');evidence.update(status='installed_verified',failure_phase=None)
+  need(receipt_check(identity,result),'receipt_unsafe');evidence['remote']=result
+  completed=receipt_check(identity,result,complete=True);need(completed,'install_not_verified');evidence.update(status='installed_verified',failure_phase=None)
  except Exception as exc:evidence['error_type']=type(exc).__name__
  finally:
   try:(work/'evidence.json').write_text(json.dumps(evidence,sort_keys=True))
   finally:key.unlink(missing_ok=True);known.unlink(missing_ok=True)
  print(json.dumps(evidence,sort_keys=True));need(completed,'install_not_verified')
 
+def _tv_diagnostic_policy():
+ return {'operation':TV_DIAGNOSTIC_OPERATION,'source':TV_DIAGNOSTIC_SOURCE,'release':TV_DIAGNOSTIC_RELEASE,
+         'blob':TV_DIAGNOSTIC_BLOB,'sha256':TV_DIAGNOSTIC_HASH,'bytes':TV_DIAGNOSTIC_BYTES,
+         'expected':TV_DIAGNOSTIC_EXPECTED,'protected':TV_DIAGNOSTIC_PROTECTED}
+
+def tv_diagnostic_install():
+ return _single_file_install(_tv_diagnostic_policy(),'search3-root-tv-diagnostics',
+     tv_diagnostic_event,tv_diagnostic_admission,tv_diagnostic_remote,tv_diagnostic_safe_receipt)
+
+# A separate fixed contract for the existing shared search helper. It never
+# reopens an older gateway operation or accepts a destination from the command.
+CONTEXT_SENDER_PREFIX='/install-search3-tv-search-context'
+CONTEXT_SENDER_OPERATION='install-20261022-tv-search-context-v1'
+CONTEXT_SENDER_SOURCE='20e669cfbc7d99d9463a87fd9aee257f188df7ab'
+CONTEXT_SENDER_RELEASE='764c1096d641e0387df5d472c494158526977a00'
+CONTEXT_SENDER_PARENT='4d1486eb9a8949a84adf11c0cfdf6d680897dacb'
+CONTEXT_SENDER_TREE='a202a08569decd3f73138c124c4aa6a035286121'
+CONTEXT_SENDER_PATH='app/integrations/tourvisor-anytour-offer-autosave.php'
+CONTEXT_SENDER_BLOB='54898eb773c12fd449a9b3bd23625fc3d73dc043'
+CONTEXT_SENDER_HASH='0c0e623f8e923e61f4ac8436d7eac4e8671dcb7114195054456537f900f83271'
+CONTEXT_SENDER_BYTES=21672
+CONTEXT_SENDER_CHECK_IDS={119740007205,119740006238,119740005358}
+CONTEXT_RECEIVER_SOURCE='5d95ba40c32b7f6322a979cc8c9c74e2f53fb59e'
+CONTEXT_RECEIVER_FEATURE='d6599dc44e7fb1066272b6eab09a528498c3c55a'
+CONTEXT_RECEIVER_PATH='app/integrations/tourvisor-operator-fuel-passive-intake.php'
+CONTEXT_RECEIVER_BLOB='2e529cd25ddbe5c2eac8f20ada61cfc20213b9d6'
+CONTEXT_RECEIVER_CHECK_IDS={119739791997,119739790960}
+CONTEXT_SENDER_EXPECTED={
+ CONTEXT_SENDER_PATH:'0291c16056be5b1a490e687f33d871e03e9f77a6b19d07f0cfcb0da9ad63893c',
+ 'anytoour.ru/api-v2.php':'04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15',
+ 'anytoour.ru/_preview/search3-anex-candidate/'+CONTEXT_RECEIVER_PATH:
+   '7ae4c385f49bf9e994a073d3405564054e9e503da1d1e5f8c1ad4ee7cd9219ef',
+}
+# All previous gateway protected paths remain unchanged; no old UI byte pin is
+# reused as a current predecessor. Only the shared helper can be replaced.
+CONTEXT_SENDER_PROTECTED=tuple(sorted({'anytoour.ru/'+p for p in
+ (*TV_DIAGNOSTIC_EXPECTED,*TV_DIAGNOSTIC_PROTECTED)}))
+
+def context_sender_policy():
+ return {'operation':CONTEXT_SENDER_OPERATION,'source':CONTEXT_SENDER_SOURCE,
+         'release':CONTEXT_SENDER_RELEASE,'blob':CONTEXT_SENDER_BLOB,
+         'sha256':CONTEXT_SENDER_HASH,'bytes':CONTEXT_SENDER_BYTES,
+         'expected':CONTEXT_SENDER_EXPECTED,'protected':CONTEXT_SENDER_PROTECTED,
+         'target':CONTEXT_SENDER_PATH,'candidate_name':'tourvisor-anytour-offer-autosave.php'}
+
+def context_sender_event(event,env):
+ # Same actor/workflow/created-only/first-attempt gate as the existing carrier.
+ need(env.get('GITHUB_REPOSITORY')==REPO and event.get('repository',{}).get('full_name')==REPO,'repository')
+ need(env.get('GITHUB_REF')=='refs/heads/main' and env.get('GITHUB_WORKFLOW_REF')==f'{REPO}/{CHECKED_WORKFLOW}@refs/heads/main','workflow')
+ need(env.get('GITHUB_ACTOR')==env.get('GITHUB_TRIGGERING_ACTOR')=='pyatkoff','actor')
+ need(env.get('GITHUB_EVENT_NAME')=='issue_comment' and event.get('action')=='created' and env.get('GITHUB_RUN_ATTEMPT')=='1','event')
+ issue,comment=event.get('issue',{}),event.get('comment',{})
+ need(issue.get('number')==4709 and 'pull_request' not in issue,'issue')
+ need(comment.get('user',{}).get('id')==226193297 and comment.get('author_association')=='OWNER','owner')
+ control,run_id=env.get('GITHUB_SHA',''),env.get('GITHUB_RUN_ID','')
+ need(re.fullmatch(r'[a-f0-9]{40}',control) is not None and re.fullmatch(r'[1-9][0-9]{0,19}',run_id) is not None,'identity')
+ need(type(comment.get('id')) is int and comment['id']>0,'comment_id')
+ need(comment.get('body')==f'{CONTEXT_SENDER_PREFIX} {control} {CONTEXT_SENDER_OPERATION}','command')
+ return {'control_source_sha':control,'run_id':run_id,'command_comment_id':comment['id']}
+
+def context_sender_admission(identity):
+ need(checked_api('/git/ref/heads/main')['object']['sha']==identity['control_source_sha'],'main_moved')
+ need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==CONTEXT_SENDER_RELEASE,'release_moved')
+ need(checked_api('/git/ref/heads/feature/anex-search-adapter-20260907')['object']['sha']==CONTEXT_RECEIVER_FEATURE,'receiver_moved')
+ dependency_green_check(identity['control_source_sha'],'guard','main_ci')
+ _single_file_reviewed_control(identity['control_source_sha'],
+     ('guard','contracts','live-check-contracts','tv-diagnostic-contracts','context-sender-contracts'))
+ release=checked_api('/git/commits/'+CONTEXT_SENDER_RELEASE)
+ need(release.get('sha')==CONTEXT_SENDER_RELEASE
+      and [p.get('sha') for p in release.get('parents',[])]==[CONTEXT_SENDER_PARENT,CONTEXT_SENDER_SOURCE]
+      and release.get('tree',{}).get('sha')==CONTEXT_SENDER_TREE,'release_merge')
+ item=checked_api('/contents/'+CONTEXT_SENDER_PATH+'?ref='+CONTEXT_SENDER_SOURCE)
+ candidate=base64.b64decode(item['content'],validate=False)
+ need(item['sha']==CONTEXT_SENDER_BLOB and blob(candidate)==CONTEXT_SENDER_BLOB
+      and sha(candidate)==CONTEXT_SENDER_HASH and len(candidate)==CONTEXT_SENDER_BYTES,'candidate_bytes')
+ need(checked_api('/contents/'+CONTEXT_SENDER_PATH+'?ref='+CONTEXT_SENDER_RELEASE)['sha']==CONTEXT_SENDER_BLOB,'release_candidate')
+ need(checked_api('/contents/'+CONTEXT_RECEIVER_PATH+'?ref='+CONTEXT_RECEIVER_FEATURE)['sha']==CONTEXT_RECEIVER_BLOB,'receiver_candidate')
+ for head,ids in ((CONTEXT_SENDER_SOURCE,CONTEXT_SENDER_CHECK_IDS),(CONTEXT_RECEIVER_SOURCE,CONTEXT_RECEIVER_CHECK_IDS)):
+  checks=checked_api('/commits/'+head+'/check-runs?per_page=100');rows=checks.get('check_runs')
+  need(type(checks.get('total_count')) is int and checks['total_count']==len(ids)
+       and isinstance(rows,list) and len(rows)==checks['total_count']
+       and {c.get('id') for c in rows}==ids,'source_checks')
+  need(all(c.get('head_sha')==head and c.get('status')=='completed' and c.get('conclusion')=='success'
+           and c.get('app',{}).get('slug')=='github-actions' for c in rows),'source_checks')
+ command=f'{CONTEXT_SENDER_PREFIX} '+identity['control_source_sha']+' '+CONTEXT_SENDER_OPERATION
+ fresh=checked_api('/issues/comments/'+str(identity['command_comment_id']))
+ need(fresh.get('body')==command and fresh.get('user',{}).get('id')==226193297
+      and fresh.get('author_association')=='OWNER','command_changed')
+ matched=[]
+ for page in range(1,31):
+  comments=checked_api(f'/issues/4709/comments?per_page=100&page={page}');need(isinstance(comments,list),'comments_shape')
+  matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(CONTEXT_SENDER_PREFIX+' '))
+  if len(comments)<100:
+   need(matched==[identity['command_comment_id']],'operation_already_reserved');return candidate
+ raise RuntimeError('comment_history_incomplete')
+
+def context_sender_remote():
+ # Reuse the existing reviewed single-file transaction/reader, with a fixed
+ # target under www/app. Neither the command nor payload can choose a path.
+ import ast
+ template=tv_diagnostic_remote();first,program=template.split('\n',1)
+ need(first.startswith('POLICY=') and ast.literal_eval(first[7:])==_tv_diagnostic_policy(),'sender_template')
+ need(program.count("project=pathlib.Path.home()/'www/anytoour.ru'")==1
+      and program.count('sync_directory(project)')==2
+      and program.count('if project.stat().st_dev!=op.stat().st_dev:')==1,'sender_template')
+ program=program.replace("'api-v2.php'",repr(CONTEXT_SENDER_PATH))
+ guard="""project=pathlib.Path.home()/'www'
+def sender_target_guard():
+ target=project/POLICY['target']
+ for parent in (pathlib.Path.home(),project,target.parent.parent,target.parent):
+  s=parent.lstat()
+  if (parent.resolve()!=parent or not stat.S_ISDIR(s.st_mode)
+      or s.st_uid!=os.getuid() or stat.S_IMODE(s.st_mode)&0o022):fail('unsafe_parent')
+ if target.lstat().st_uid!=os.getuid():fail('unsafe_parent')
+"""
+ program=program.replace("project=pathlib.Path.home()/'www/anytoour.ru'",guard)
+ program=program.replace(" data['production_before']=public_fingerprints()"," sender_target_guard()\n data['production_before']=public_fingerprints()")
+ program=program.replace(' current,current_ids,_=snapshot()',' sender_target_guard()\n current,current_ids,_=snapshot()')
+ program=program.replace('sync_directory(project)',"sync_directory((project/POLICY['target']).parent)")
+ program=program.replace('if project.stat().st_dev!=op.stat().st_dev:',"if (project/POLICY['target']).parent.stat().st_dev!=op.stat().st_dev:")
+ return 'POLICY='+repr(context_sender_policy())+'\n'+program
+
+def context_sender_safe_receipt(identity,result,complete=False):
+ return _single_file_safe_receipt(context_sender_policy(),identity,result,complete)
+
+def context_sender_install():
+ return _single_file_install(context_sender_policy(),'search3-tv-context-sender',
+     context_sender_event,context_sender_admission,context_sender_remote,context_sender_safe_receipt)
+
 if __name__=='__main__':
- need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install','tv_diagnostic_install'),'usage');globals()[sys.argv[1]]()
+ need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install','tv_diagnostic_install','context_sender_install'),'usage');globals()[sys.argv[1]]()
