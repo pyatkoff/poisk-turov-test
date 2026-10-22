@@ -2149,8 +2149,22 @@ class FullOperatorDictionaryTest(OperatorDictionaryTest):
 
 
 class BiblioIdentityTest(unittest.TestCase):
+    profile_name = 'BG_IDENTITY_SCOPE'
+    operator_id = 18
+    accepted_namespace = 'bgoperator'
+    native_namespace = 'operator_url:bgoperator.ru:f4'
+    native_url = 'https://www.bgoperator.ru/price.shtml?f4=10212345'
+    candidate_file = 'bg-native-candidate.json'
+    reason_prefix = 'bg_'
+
+    def profile(self): return getattr(m,self.profile_name)
+    def handler(self): return m.BG_IDENTITY_HANDLER
+    def binding(self,parent,profile,kind):
+        return parent(profile['parent_operation_id'],'match-retained-acquire',dict(state='operator_dictionary_captured',
+            account='TOURVISOR_ANEX_JWT',bindings=[{'family':'biblio','operator_id':18}],unknown_http_calls=0))
+
     def command(self):
-        p=m.BG_IDENTITY_SCOPE
+        p=self.profile()
         return dict(source_sha=SHA,mode='match-retained-acquire',operation_id=p['operation_id'],
                     cohort=p['cohort'],target_operation_id=p['parent_operation_id'])
 
@@ -2163,8 +2177,8 @@ class BiblioIdentityTest(unittest.TestCase):
         with mock.patch.dict(os.environ,{'GITHUB_RUN_ATTEMPT':'2'}),self.assertRaises(ValueError):c.parse_command(text)
         with mock.patch.dict(os.environ,{'GITHUB_SHA':CONTROL}):m.activate(c,cmd)
         ast.parse(c.REMOTE)
-        self.assertIn("return retained_bg_identity(stage)",c.REMOTE)
-        self.assertIn('NEXT_SCOPE='+repr(m.BG_IDENTITY_SCOPE),c.REMOTE)
+        self.assertIn('return retained_'+self.reason_prefix+'identity(stage)',c.REMOTE)
+        self.assertIn('NEXT_SCOPE='+repr(self.profile()),c.REMOTE)
         self.assertEqual(m.SOURCE_HASHES,c.bundle_source(SOURCE)[1])
 
     def run_case(self,kind='candidate',bad_parent=False):
@@ -2172,7 +2186,7 @@ class BiblioIdentityTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td, mock.patch('datetime.datetime',wraps=dt.datetime) as clock:
             clock.now.return_value=fixed_now
             home=Path(td);project=home/'project';project.mkdir();(project/'config.php').write_text('private-config')
-            private=home/'private';private.mkdir();profile=copy.deepcopy(m.BG_IDENTITY_SCOPE)
+            private=home/'private';private.mkdir();profile=copy.deepcopy(self.profile())
             op=private/profile['operation_id'];op.mkdir()
             def parent(name,mode,data):
                 data=dict(data,operation_id=name,source_sha=SHA)
@@ -2181,15 +2195,17 @@ class BiblioIdentityTest(unittest.TestCase):
                 directory=private/name;directory.mkdir();(directory/'result.json').write_bytes(m.canonical(value))
                 (directory/'reservation.json').write_bytes(m.canonical(dict(operation_id=name,source_sha=SHA)))
                 return value
-            binding=parent(profile['parent_operation_id'],'match-retained-acquire',dict(state='operator_dictionary_captured',
-                account='TOURVISOR_ANEX_JWT',bindings=[{'family':'biblio','operator_id':18}],unknown_http_calls=0))
+            binding=self.binding(parent,profile,kind)
             profile['parent_evidence_sha256']=binding['match_retained']['evidence_sha256']
+            if self.operator_id==25:
+                profile['parent_receipt_sha256']=hashlib.sha256(m.canonical(binding)).hexdigest()
+                profile['alias_source_sha']=SHA if kind!='alias_source' else '0'*40
             context={'adults':1,'child_ages_signature':'13','children_count':1,'country_id':1,
                 'departure_date':'2026-10-24','departure_id':11,'hotel_id':321,'nights':6,
                 'observed_at':'2026-10-08 00:57:29','source':'user_search'}
             row=dict(tv_hotel_id=321,anchor_state='canonical_anchor_ok',target={'country_id':1,'is_active':1},
                      accepted_provider_ids={'operator_5':['17678']},future_context=context)
-            if kind=='already':row['accepted_provider_ids']['bgoperator']=['old']
+            if kind=='already':row['accepted_provider_ids'][self.accepted_namespace]=['old']
             if kind=='wrong_party':row['future_context']['adults']=2
             profile['target_row_sha256']=hashlib.sha256(m.canonical(row)).hexdigest()
             current=parent(profile['current_operation_id'],'match-retained-current',dict(state='current_retained_read_only',rows=[row]))
@@ -2202,18 +2218,20 @@ class BiblioIdentityTest(unittest.TestCase):
             hotel=home/'.anytoour-match/retained-selection-claims.json';hotel.write_text('{"old":"preserve"}')
             ledger=home/'.anytoour-match/retained-context-claims.json'
             oldclaim={'context':{'account':'TOURVISOR_ANEX_JWT','namespace':'anex_online','operator_id':13,'tv_hotel_id':321}}
+            if kind=='prior_context':oldclaim['context'].update(operator_id=self.operator_id,namespace='tourvisor_operator:'+str(self.operator_id))
+            if kind=='other_operator':oldclaim['context'].update(operator_id=18,namespace='tourvisor_operator:18')
             ledger.write_bytes(m.canonical({'schema_version':1,'claims':{'old':oldclaim}}))
             protected={p:p.read_bytes() for p in private.rglob('*') if p.is_file()}
             protected[hotel]=hotel.read_bytes();protected[project/'config.php']=(project/'config.php').read_bytes()
-            space={};exec(m.BG_IDENTITY_HANDLER,space)
+            space={};exec(self.handler(),space)
             space.update(NEXT_SCOPE=profile,private=private,project=project,op=op,operation=op.name,
                 mode='match-retained-acquire',source=SHA,payload=dict(self.command(),match_retained_control_sha=CONTROL),
                 pathlib=__import__('pathlib'),hashlib=hashlib,json=json,time=__import__('time'),os=os,
                 fail=lambda reason:(_ for _ in ()).throw(ValueError(reason)),
                 safe_file=lambda path,bound:path.is_file() and not path.is_symlink() and path.stat().st_size<=bound)
-            values=[{'searchId':999},{'progress':100},[] if kind=='empty' else [{'id':321,'tours':[{'id':9991,'operatorId':18}]}],
-                    {'hotelId':321,'operatorId':13 if kind=='mismatch' else 18,
-                     'operatorLink':'https://www.bgoperator.ru/price.shtml?f4=10212345'}]
+            values=[{'searchId':999},{'progress':100},[] if kind=='empty' else [{'id':321,'tours':[{'id':9991,'operatorId':self.operator_id}]}],
+                    {'hotelId':321,'operatorId':13 if kind=='mismatch' else self.operator_id,
+                     'operatorLink':self.native_url}]
             if kind=='pending':values=[{'searchId':999}]+[{'progress':0}]*3
             calls=[];self_case=self;real_loads=json.loads
             class Response:
@@ -2237,48 +2255,50 @@ class BiblioIdentityTest(unittest.TestCase):
                 return real_loads(body,*args,**kwargs)
             with mock.patch.object(Path,'home',return_value=home),mock.patch.object(subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'token',b'')), \
                  mock.patch('urllib.request.build_opener',return_value=Opener()),mock.patch('time.sleep'),mock.patch.object(json,'loads',parse_check):
-                if bad_parent or kind in ('already','wrong_party'):
+                run=space['retained_'+self.reason_prefix+'identity']
+                if bad_parent or kind in ('already','wrong_party','alias_label','alias_foreign','alias_bool','alias_source','prior_context'):
                     before=ledger.read_bytes()
-                    with self.assertRaises(ValueError):space['retained_bg_identity'](SOURCE)
+                    with self.assertRaises(ValueError):run(SOURCE)
                     self.assertEqual([],calls);self.assertEqual(before,ledger.read_bytes());return
-                out=space['retained_bg_identity'](SOURCE)
+                out=run(SOURCE)
                 count=3 if kind=='empty' else 2 if kind=='timeout' else 4
                 self.assertEqual(count,len(calls))
                 if kind=='pending':
-                    self.assertEqual('bg_search_not_complete',out['data']['stop_reason'])
+                    self.assertEqual(self.reason_prefix+'search_not_complete',out['data']['stop_reason'])
                     self.assertEqual({'search_start':1,'search_status':3},out['data']['actions'])
                 query=__import__('urllib.parse',fromlist=['parse_qs','urlsplit'])
                 params=query.parse_qs(query.urlsplit(calls[0][0]).query)
-                for key,value in {'childs':['13'],'adults':['1'],'operatorIds':['18'],'hotelIds':['321'],
+                for key,value in {'childs':['13'],'adults':['1'],'operatorIds':[str(self.operator_id)],'hotelIds':['321'],
                                   'dateFrom':['2026-10-24'],'dateTo':['2026-10-24'],'departureId':['11'],'countryId':['1']}.items():
                     self.assertEqual(value,params[key])
                 self.assertTrue(all(0<t<=60 for _,t in calls))
                 self.assertEqual(protected,{p:p.read_bytes() for p in protected})
                 claims=real_loads(ledger.read_bytes());self.assertEqual(oldclaim,claims['claims']['old']);self.assertEqual(2,len(claims['claims']))
-                self.assertEqual('tourvisor_operator:18',next(v['context']['namespace'] for k,v in claims['claims'].items() if k!='old'))
+                self.assertEqual('tourvisor_operator:'+str(self.operator_id),next(v['context']['namespace'] for k,v in claims['claims'].items() if k!='old'))
                 self.assertNotIn('private-url-secret-sentinel',json.dumps(out))
                 self.assertNotIn('f4=',json.dumps(out))
                 self.assertFalse(out['data']['native_hotel_authority']);self.assertFalse(out['data']['safe_to_write_now'])
                 result=dict(self.command(),status='complete',production_unchanged=True,supplier_calls=count,
                             database_writes=0,mapping_writes=0,booking_calls=0,lead_calls=0,match_retained=out)
-                with mock.patch.dict(m.BG_IDENTITY_SCOPE,profile):
-                    good=kind in ('candidate','empty')
+                with mock.patch.dict(self.profile(),profile):
+                    good=kind in ('candidate','empty','other_operator')
                     self.assertEqual(good,m.completed_result(self.command(),result,CONTROL))
-                    if kind=='candidate':
+                    if kind in ('candidate','other_operator'):
                         self.assertEqual(1,out['data']['native_candidate_count'])
-                        candidate=real_loads((op/'bg-native-candidate.json').read_bytes())
-                        self.assertEqual('operator_url:bgoperator.ru:f4',candidate['namespace'])
+                        candidate=real_loads((op/self.candidate_file).read_bytes())
+                        self.assertEqual(self.native_namespace,candidate['namespace'])
                         self.assertTrue(candidate['independent_namespace_bridge_required'])
                     if good:
                         for key,value in [('supplier_calls',True),('physical_http_reservations',0),('unknown_http_calls',1),
                             ('operator_id',13),('tv_hotel_id',129),('native_hotel_authority',True),('hotel_sales_access_proven',True),
                             ('parent_evidence_sha256','0'*64),('context_claim_namespace','anex_online'),('target_row_sha256','0'*64),
                             ('booking_calls',1),('lead_calls',1),
-                            ('actions',{'search_start':True,'search_status':1,'search_results':1}),('native_candidate_count',True)]:
+                            ('actions',{'search_start':True,'search_status':1,'search_results':1}),('native_candidate_count',True),
+                            ('alias_literal_sha256','0'*64) if self.operator_id==25 else ('operator_id',25)]:
                             bad=copy.deepcopy(result);bad['match_retained']['data'][key]=value
                             bad['match_retained']['evidence_sha256']=hashlib.sha256(m.canonical(bad['match_retained']['data'])).hexdigest()
                             with self.subTest(key=key):self.assertFalse(m.completed_result(self.command(),bad,CONTROL))
-                with self.assertRaisesRegex(ValueError,'bg_context_consumed_no_replay'):space['retained_bg_identity'](SOURCE)
+                with self.assertRaisesRegex(ValueError,self.reason_prefix+'context_consumed_no_replay'):run(SOURCE)
                 self.assertEqual(count,len(calls))
 
     def test_real_client_exact_family_wire_raw_first_and_candidate_namespace(self):self.run_case()
@@ -2287,6 +2307,32 @@ class BiblioIdentityTest(unittest.TestCase):
         self.run_case('timeout');self.run_case('mismatch');self.run_case('pending')
     def test_bad_parent_existing_bg_and_changed_party_stop_before_network(self):
         self.run_case(bad_parent=True);self.run_case('already');self.run_case('wrong_party')
+
+
+class FunsunRuIdentityTest(BiblioIdentityTest):
+    profile_name='FUNSUN_RU_IDENTITY_SCOPE'
+    operator_id=25
+    accepted_namespace='operator_315'
+    native_namespace='operator_url:fun-sun.ru:hotel-path'
+    native_url='https://fun-sun.ru/hotel/12345'
+    candidate_file='funsun-ru-native-candidate.json'
+    reason_prefix='funsun_ru_'
+
+    def handler(self): return m.funsun_ru_identity_handler()
+    def binding(self,parent,profile,kind):
+        labels=[dict(field=k,value=None,sha256=profile['alias_literal_sha256']) for k in ('name','fullName','russianName')]
+        if kind=='alias_label':labels[0]['sha256']='0'*64
+        row=dict(operator_id=93 if kind=='alias_foreign' else True if kind=='alias_bool' else 25,candidate_only=True,labels=labels)
+        return parent(profile['parent_operation_id'],'match-retained-readback',dict(state='retained_operator_alias_audit_completed',
+            parent_evidence_sha256=m.OPERATOR_ALIAS_AUDIT['parent_evidence_sha256'],raw_sha256=m.OPERATOR_ALIAS_AUDIT['raw_sha256'],
+            protected_inputs_unchanged=True,unknown_http_calls=0,alias_candidates=[row]))
+
+    def test_exact_ru_digest_and_other_regions_do_not_authorize_http(self):
+        self.assertEqual(self.profile()['alias_literal_sha256'],hashlib.sha256(b'Fun&Sun (RU)').hexdigest())
+        for kind in ('alias_label','alias_foreign','alias_bool','alias_source','prior_context'):
+            with self.subTest(kind=kind):self.run_case(kind)
+
+    def test_sealed_bg_context_is_preserved_and_disjoint(self):self.run_case('other_operator')
 
 
 class OperatorAliasAuditTest(unittest.TestCase):
