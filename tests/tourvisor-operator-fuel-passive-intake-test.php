@@ -238,6 +238,86 @@ CHILD;
 }
 unlink($gatewayDirectory.'/data/db-v1.php');rmdir($gatewayDirectory.'/data');rmdir($gatewayDirectory);unlink($preloadedDb);
 
+// A resolved search offer can retain exact identity/party before its fuel is
+// known, without inserting an unpriced row or inventing a quote participant.
+function tvpf_search_entry(string $id, int $hotel, DateTimeImmutable $now,
+    array $party = ['adults'=>2,'children'=>0,'child_ages'=>[]]): array
+{
+    return ['anytour_hotel_id'=>77,'offer'=>[
+        'provider'=>'tourvisor','operator'=>['raw'=>'Интурист'],
+        'identity'=>[
+            'offer_ref_digest'=>hash('sha256','tourvisor:tour:'.$id),
+            'search_ref_digest'=>hash('sha256','tourvisor:search:123456'),
+            'provider_hotel_ref_digest'=>hash('sha256','tourvisor:hotel:'.$hotel),
+        ],
+        'checkin'=>'2026-10-11','party'=>$party,'observed_at'=>$now->format('Y-m-d\\TH:i:s\\Z'),
+        'money'=>['must_not_be_copied'=>'150824'],'final_price_verified'=>false,
+    ]];
+}
+$contextDirectory = $root.'/context/searches'; mkdir($contextDirectory,0700,true);
+$contextId = '73333333333331';
+$contextEntry = tvpf_search_entry($contextId,1111,$now);
+$contextResult = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$contextEntry],$contextDirectory,$now);
+tvpf_ok($contextResult['contextCount']===1,'one exact resolved search context retained');
+$contextPath = $contextDirectory.'/tourvisor-fuel-search-context-v1-'.hash('sha256','tourvisor:tour:'.$contextId).'.json';
+$contextRaw = (string)file_get_contents($contextPath);
+tvpf_ok((fileperms($contextPath)&0777)===0600 && strlen($contextRaw)<=16384,'bounded private context');
+tvpf_ok(!str_contains($contextRaw,'must_not_be_copied')&&!str_contains($contextRaw,'150824')
+    &&!str_contains($contextRaw,'final_price_verified'),'context carries no money or price authority');
+$contextTour = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($contextId,tvpf_tour($contextId,1111,7),$db,$contextDirectory,$now);
+tvpf_ok(($contextTour['status']??null)==='tour_retained','search context supplies exact party without ready-price DB row');
+$contextFlights = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($contextId,tvpf_flights(),$contextDirectory,$now);
+tvpf_ok(($contextFlights['observationCount']??null)===1 && ($contextFlights['ruleConfirmed']??null)===false,
+    'existing strict default-flight intake retains one observation only');
+tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===3,'context bridge makes no offer DB writes');
+$unresolved = tvpf_search_entry('73333333333332',1111,$now);$unresolved['anytour_hotel_id']=null;
+tvpf_ok(AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$unresolved],$contextDirectory,$now)['contextCount']===0,
+    'unresolved hotel cannot create context');
+$expiredContext = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($contextId,tvpf_tour($contextId,1111,7),$db,$contextDirectory,$now->modify('+901 seconds'));
+tvpf_ok(($expiredContext['reason']??null)==='offer_context_missing','expired context is not renewed by quote');
+
+$infantContextId='73333333333333';
+$infantEntry=tvpf_search_entry($infantContextId,1111,$now,['adults'=>2,'children'=>1,'child_ages'=>[0]]);
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$infantEntry],$contextDirectory,$now);
+$infantTour=tvpf_tour($infantContextId,1111,7);$infantTour['childs']=1;
+tvpf_ok((AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($infantContextId,$infantTour,$db,$contextDirectory,$now)['status']??null)==='tour_retained',
+    'explicit age zero from search remains exact; no infant price is asserted');
+$badAges=$infantEntry;$badAges['offer']['party']['child_ages']=[];
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$badAges],$contextDirectory,$now); throw new RuntimeException('Missing age rejection'); }
+catch (InvalidArgumentException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY','missing ages never become an empty party'); }
+$alone=$infantEntry;$alone['offer']['party']['adults']=0;
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$alone],$contextDirectory,$now); throw new RuntimeException('Missing accompanying adult rejection'); }
+catch (InvalidArgumentException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY','infant context requires an accompanying adult'); }
+$conflictId='73333333333334';
+$conflictEntry=tvpf_search_entry($conflictId,1111,$now);
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$conflictEntry],$contextDirectory,$now);
+$conflictEntry['offer']['party']['adults']=3;
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$conflictEntry],$contextDirectory,$now);
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($conflictId,tvpf_tour($conflictId,1111,7),$db,$contextDirectory,$now); throw new RuntimeException('Missing context conflict'); }
+catch (DomainException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_CONFLICT','ambiguous search party fails closed'); }
+$dbConflict=tvpf_search_entry($id3,1011,$now,['adults'=>3,'children'=>0,'child_ages'=>[]]);
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$dbConflict],$contextDirectory,$now);
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id3,tvpf_tour($id3,1011,7),$db,$contextDirectory,$now); throw new RuntimeException('Missing DB/context conflict'); }
+catch (DomainException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_CONFLICT','search cache cannot override a conflicting active DB context'); }
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($contextId,tvpf_tour($contextId,1112,7),$db,$contextDirectory,$now); throw new RuntimeException('Missing hotel conflict'); }
+catch (DomainException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_CONFLICT','quoted provider hotel must match its retained search identity'); }
+$foreign=$contextEntry;$foreign['offer']['provider']='anex';
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$foreign],$contextDirectory,$now); throw new RuntimeException('Missing provider rejection'); }
+catch (InvalidArgumentException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY','foreign provider cannot create TV context'); }
+chmod($contextPath,0644);clearstatcache(true,$contextPath);
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($contextId,tvpf_tour($contextId,1111,7),$db,$contextDirectory,$now); throw new RuntimeException('Missing mode rejection'); }
+catch (RuntimeException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY','unsafe context file fails closed'); }
+chmod($contextPath,0600);clearstatcache(true,$contextPath);
+$held=$contextPath.'.held';rename($contextPath,$held);symlink($held,$contextPath);
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$contextEntry],$contextDirectory,$now); throw new RuntimeException('Missing context link rejection'); }
+catch (RuntimeException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY'&&file_get_contents($held)===$contextRaw,'context writer rejects links without touching their target'); }
+unlink($contextPath);rename($held,$contextPath);link($contextPath,$held);clearstatcache(true,$contextPath);
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($contextId,tvpf_tour($contextId,1111,7),$db,$contextDirectory,$now); throw new RuntimeException('Missing context hardlink rejection'); }
+catch (RuntimeException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY','context reader rejects hardlinks'); }
+unlink($held);clearstatcache(true,$contextPath);
+array_map('unlink',array_filter(glob($contextDirectory.'/*')?:[], 'is_file'));
+rmdir($contextDirectory);rmdir(dirname($contextDirectory));
+
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money\n";

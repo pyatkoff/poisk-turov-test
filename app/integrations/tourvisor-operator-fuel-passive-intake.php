@@ -64,7 +64,7 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             return self::receipt(false, 'operator_not_target');
         }
 
-        $context = self::offerContext($db, $tourId, $now);
+        $context = self::offerContext($db, $tourId, $now, $directory, $tour);
         if ($context === null) return self::receipt(false, 'offer_context_missing');
         if ($context['operator_family'] !== AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($operator)) {
             throw new DomainException('TV_PASSIVE_OPERATOR_CONFLICT');
@@ -220,7 +220,171 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         }
     }
 
-    private static function offerContext(PDO $db, string $tourId, DateTimeImmutable $now): ?array
+    /** Retain identity/party only; this never makes a listing price ready. */
+    public static function captureSearchContexts(array $entries, string $directory, DateTimeImmutable $now): array
+    {
+        self::directory($directory);
+        if (!array_is_list($entries) || count($entries) > 5000) {
+            throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        $at = $now->getTimestamp();
+        $records = [];
+        foreach ($entries as $entry) {
+            if (!is_array($entry) || !array_key_exists('anytour_hotel_id', $entry)) {
+                throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            }
+            if ($entry['anytour_hotel_id'] === null) continue;
+            if (!is_int($entry['anytour_hotel_id']) || $entry['anytour_hotel_id'] < 1) {
+                throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            }
+            $offer = $entry['offer'] ?? null;
+            if (!is_array($offer) || ($offer['provider'] ?? null) !== 'tourvisor'
+                || ($offer['observed_at'] ?? null) !== gmdate('Y-m-d\\TH:i:s\\Z', $at)) {
+                throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            }
+            $family = AnyTourOperatorFuelRuleEvidenceV1::operatorFamily($offer['operator']['raw'] ?? null);
+            if ($family === null) continue;
+            $identity = $offer['identity'] ?? null;
+            if (!is_array($identity) || !self::contextKeys($identity,
+                ['search_ref_digest','offer_ref_digest','provider_hotel_ref_digest'])) {
+                throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            }
+            foreach ($identity as $digest) {
+                if (!is_string($digest) || preg_match('/\A[a-f0-9]{64}\z/D', $digest) !== 1) {
+                    throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+                }
+            }
+            $context = self::searchContext([
+                'operator_family'=>$family,'checkin'=>$offer['checkin'] ?? null,
+                'party'=>$offer['party'] ?? null,
+            ]);
+            $records[] = [
+                'offer_ref_digest'=>$identity['offer_ref_digest'],
+                'context'=>$context,'search_ref_digest'=>$identity['search_ref_digest'],
+                'provider_hotel_ref_digest'=>$identity['provider_hotel_ref_digest'],
+                'observed_at'=>$at,'expires_at'=>$at+self::PENDING_TTL,
+            ];
+        }
+        if ($records === []) return self::receipt(true, null, ['status'=>'search_contexts_retained','contextCount'=>0]);
+        $lockPath = rtrim($directory, '/') . '/tourvisor-fuel-passive-v1.lock';
+        if (is_link($lockPath)) throw new RuntimeException('TV_PASSIVE_LOCK');
+        $lock = fopen($lockPath, 'c');
+        if ($lock === false || !flock($lock, LOCK_EX)) throw new RuntimeException('TV_PASSIVE_LOCK');
+        try {
+            foreach ($records as $record) {
+                $digest = $record['offer_ref_digest'];
+                $cohort = [];
+                foreach (self::searchContexts($directory, $digest, $at) as $prior) {
+                    $cohort[self::searchContextKey($prior)] = $prior;
+                }
+                $cohort[self::searchContextKey($record)] = $record;
+                if (count($cohort) > 8) throw new DomainException('TV_PASSIVE_CONTEXT_CONFLICT');
+                self::atomicWrite(self::searchContextPath($directory, $digest), [
+                    'version'=>1,'offer_ref_digest'=>$digest,'contexts'=>array_values($cohort),
+                ], 16384);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+        return self::receipt(true, null, ['status'=>'search_contexts_retained','contextCount'=>count($records)]);
+    }
+
+    private static function contextKeys(array $value, array $expected): bool
+    {
+        return count($value) === count($expected) && array_diff($expected, array_keys($value)) === [];
+    }
+
+    private static function searchContext(mixed $value): array
+    {
+        if (!is_array($value) || !self::contextKeys($value, ['operator_family','checkin','party'])
+            || !in_array($value['operator_family'] ?? null, ['intourist','fun_and_sun','biblio_globus'], true)) {
+            throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        $party = $value['party'];
+        if (!is_array($party) || !self::contextKeys($party, ['adults','children','child_ages'])
+            || !is_int($party['adults']) || !is_int($party['children'])
+            || !is_array($party['child_ages']) || !array_is_list($party['child_ages'])
+            || count($party['child_ages']) !== $party['children']) {
+            throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        self::smallInt($party['adults'], 1, 9, 'TV_PASSIVE_CONTEXT_INTEGRITY');
+        self::smallInt($party['children'], 0, 9, 'TV_PASSIVE_CONTEXT_INTEGRITY');
+        foreach ($party['child_ages'] as $age) {
+            if (!is_int($age)) throw new InvalidArgumentException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            self::smallInt($age, 0, 17, 'TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        sort($party['child_ages'], SORT_NUMERIC);
+        return ['operator_family'=>$value['operator_family'],
+            'checkin'=>self::date($value['checkin'], 'TV_PASSIVE_CONTEXT_INTEGRITY'),'party'=>$party];
+    }
+
+    private static function searchContextKey(array $record): string
+    {
+        return AnyTourOperatorFuelRuleEvidenceV1::hash([
+            $record['context'], $record['provider_hotel_ref_digest'],
+        ]);
+    }
+
+    private static function searchContextPath(string $directory, string $digest): string
+    {
+        return rtrim($directory, '/') . '/tourvisor-fuel-search-context-v1-' . $digest . '.json';
+    }
+
+    private static function searchContexts(string $directory, string $digest, int $now): array
+    {
+        $path = self::searchContextPath($directory, $digest);
+        if (is_link($path)) throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        if (!file_exists($path)) return [];
+        $before = lstat($path);
+        if (!is_array($before) || ($before['mode'] & 0170000) !== 0100000
+            || ($before['mode'] & 0777) !== 0600 || $before['nlink'] !== 1
+            || $before['uid'] !== fileowner($directory) || $before['size'] < 2 || $before['size'] > 16384) {
+            throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        $handle = fopen($path, 'rb');
+        if ($handle === false) throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        try {
+            $opened = fstat($handle);
+            $raw = stream_get_contents($handle, 16385);
+            $after = fstat($handle);
+        } finally {
+            fclose($handle);
+        }
+        clearstatcache(true, $path);
+        $entry = lstat($path);
+        foreach (['dev','ino','mode','nlink','uid','size','mtime','ctime'] as $key) {
+            if (($opened[$key] ?? null) !== $before[$key] || ($after[$key] ?? null) !== $before[$key]
+                || ($entry[$key] ?? null) !== $before[$key]) throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        if (!is_string($raw) || strlen($raw) !== $before['size']) throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        $value = json_decode($raw, true, 16, JSON_THROW_ON_ERROR);
+        if (!is_array($value) || !self::contextKeys($value, ['version','offer_ref_digest','contexts'])
+            || $value['version'] !== 1 || $value['offer_ref_digest'] !== $digest
+            || !is_array($value['contexts']) || !array_is_list($value['contexts']) || count($value['contexts']) > 8) {
+            throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+        }
+        $result = [];
+        foreach ($value['contexts'] as $record) {
+            if (!is_array($record) || !self::contextKeys($record, ['offer_ref_digest','context',
+                'search_ref_digest','provider_hotel_ref_digest','observed_at','expires_at'])
+                || $record['offer_ref_digest'] !== $digest || !is_int($record['observed_at'])
+                || !is_int($record['expires_at']) || $record['observed_at'] < 1 || $record['observed_at'] > $now
+                || $record['expires_at'] !== $record['observed_at'] + self::PENDING_TTL) {
+                throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+            }
+            foreach (['search_ref_digest','provider_hotel_ref_digest'] as $key) {
+                if (!is_string($record[$key]) || preg_match('/\A[a-f0-9]{64}\z/D', $record[$key]) !== 1) {
+                    throw new RuntimeException('TV_PASSIVE_CONTEXT_INTEGRITY');
+                }
+            }
+            $record['context'] = self::searchContext($record['context']);
+            if ($record['expires_at'] > $now) $result[] = $record;
+        }
+        return $result;
+    }
+
+    private static function offerContext(PDO $db, string $tourId, DateTimeImmutable $now, string $directory, array $tour): ?array
     {
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $query = $db->prepare(
@@ -255,6 +419,14 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
                 'checkin' => self::date($row['checkin'] ?? null, 'TV_PASSIVE_DATE'),
                 'party' => ['adults'=>$adults,'children'=>$children,'child_ages'=>$ages],
             ];
+            $contexts[AnyTourOperatorFuelRuleEvidenceV1::hash($context)] = $context;
+        }
+        foreach (self::searchContexts($directory, hash('sha256', 'tourvisor:tour:' . $tourId), $now->getTimestamp()) as $record) {
+            $hotel = self::smallInt($tour['hotel']['id'] ?? null, 1, 999999999, 'TV_PASSIVE_CONTEXT_INTEGRITY');
+            if (!hash_equals($record['provider_hotel_ref_digest'], hash('sha256', 'tourvisor:hotel:' . $hotel))) {
+                throw new DomainException('TV_PASSIVE_CONTEXT_CONFLICT');
+            }
+            $context = $record['context'];
             $contexts[AnyTourOperatorFuelRuleEvidenceV1::hash($context)] = $context;
         }
         if ($contexts === []) return null;
