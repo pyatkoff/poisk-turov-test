@@ -879,7 +879,7 @@ def context_sender_policy():
          'expected':CONTEXT_SENDER_EXPECTED,'protected':CONTEXT_SENDER_PROTECTED,
          'target':CONTEXT_SENDER_PATH,'candidate_name':'tourvisor-anytour-offer-autosave.php'}
 
-def context_sender_event(event,env):
+def _context_sender_event(event,env,prefix,operation):
  # Same actor/workflow/created-only/first-attempt gate as the existing carrier.
  need(env.get('GITHUB_REPOSITORY')==REPO and event.get('repository',{}).get('full_name')==REPO,'repository')
  need(env.get('GITHUB_REF')=='refs/heads/main' and env.get('GITHUB_WORKFLOW_REF')==f'{REPO}/{CHECKED_WORKFLOW}@refs/heads/main','workflow')
@@ -891,10 +891,13 @@ def context_sender_event(event,env):
  control,run_id=env.get('GITHUB_SHA',''),env.get('GITHUB_RUN_ID','')
  need(re.fullmatch(r'[a-f0-9]{40}',control) is not None and re.fullmatch(r'[1-9][0-9]{0,19}',run_id) is not None,'identity')
  need(type(comment.get('id')) is int and comment['id']>0,'comment_id')
- need(comment.get('body')==f'{CONTEXT_SENDER_PREFIX} {control} {CONTEXT_SENDER_OPERATION}','command')
+ need(comment.get('body')==f'{prefix} {control} {operation}','command')
  return {'control_source_sha':control,'run_id':run_id,'command_comment_id':comment['id']}
 
-def context_sender_admission(identity):
+def context_sender_event(event,env):
+ return _context_sender_event(event,env,CONTEXT_SENDER_PREFIX,CONTEXT_SENDER_OPERATION)
+
+def _context_sender_admission(identity,prefix,operation):
  need(checked_api('/git/ref/heads/main')['object']['sha']==identity['control_source_sha'],'main_moved')
  need(checked_api('/git/ref/heads/release/search3-production-ready-v1')['object']['sha']==CONTEXT_SENDER_RELEASE,'release_moved')
  need(checked_api('/git/ref/heads/feature/anex-search-adapter-20260907')['object']['sha']==CONTEXT_RECEIVER_FEATURE,'receiver_moved')
@@ -918,17 +921,20 @@ def context_sender_admission(identity):
        and {c.get('id') for c in rows}==ids,'source_checks')
   need(all(c.get('head_sha')==head and c.get('status')=='completed' and c.get('conclusion')=='success'
            and c.get('app',{}).get('slug')=='github-actions' for c in rows),'source_checks')
- command=f'{CONTEXT_SENDER_PREFIX} '+identity['control_source_sha']+' '+CONTEXT_SENDER_OPERATION
+ command=f'{prefix} '+identity['control_source_sha']+' '+operation
  fresh=checked_api('/issues/comments/'+str(identity['command_comment_id']))
  need(fresh.get('body')==command and fresh.get('user',{}).get('id')==226193297
       and fresh.get('author_association')=='OWNER','command_changed')
  matched=[]
  for page in range(1,31):
   comments=checked_api(f'/issues/4709/comments?per_page=100&page={page}');need(isinstance(comments,list),'comments_shape')
-  matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(CONTEXT_SENDER_PREFIX+' '))
+  matched.extend(c['id'] for c in comments if c.get('body','').strip().startswith(prefix+' '))
   if len(comments)<100:
    need(matched==[identity['command_comment_id']],'operation_already_reserved');return candidate
  raise RuntimeError('comment_history_incomplete')
+
+def context_sender_admission(identity):
+ return _context_sender_admission(identity,CONTEXT_SENDER_PREFIX,CONTEXT_SENDER_OPERATION)
 
 def context_sender_remote():
  # Reuse the existing reviewed single-file transaction/reader, with a fixed
@@ -963,5 +969,148 @@ def context_sender_install():
  return _single_file_install(context_sender_policy(),'search3-tv-context-sender',
      context_sender_event,context_sender_admission,context_sender_remote,context_sender_safe_receipt)
 
+# The consumed v1 remains UNKNOWN/no-replay. This continuation is admissible
+# ONLY for its immutable, independently retained remote zero-write rejection.
+# No other UNKNOWN, reserved, failed or partially written operation qualifies.
+CONTEXT_CONTINUE_PREFIX='/continue-search3-tv-search-context'
+CONTEXT_CONTINUE_OPERATION='install-20261022-tv-search-context-verified-continuation-v1'
+CONTEXT_BLOCKED_CONTROL='94513562eb4d34f2b8cf1b3f19cb7f9380824719'
+CONTEXT_BLOCKED_COMMAND=6340672087
+CONTEXT_BLOCKED_RUN=39778144763
+CONTEXT_BLOCKED_JOB=119822247970
+CONTEXT_BLOCKED_ARTIFACT=12425696887
+CONTEXT_BLOCKED_ZIP=(7539,'be6b9b2c4cef3ed65b9c25e40702f9ebe4092a385985c8d3ac2fc8b518cc260c')
+CONTEXT_BLOCKED_MEMBERS={
+ 'evidence.json':(3140,'f016678c6eeb3b401dc1f706cbbd0977b22450a8a76d219abaac6bbd1d8cee85'),
+ 'request.json':(446,'49779b39de45e8b38ed8d7f7f46727ce35eb72886bf97053b66045755021a48a'),
+ 'tourvisor-anytour-offer-autosave.php':(CONTEXT_SENDER_BYTES,CONTEXT_SENDER_HASH),
+}
+CONTEXT_ROOT_RECEIPT=6321088502
+CONTEXT_ROOT_RECEIPT_HASH='5edeca1294c71cee8a4e87aec5c56558956865889be9c7ca79ad0b83355c8e2b'
+CONTEXT_ROOT_SOURCE='28441a96a537e168e2bdc43d9c94e7371c14092e'
+CONTEXT_ROOT_BLOB='3c57ff7c309b07677b1d36eae7f97574970edb1f'
+CONTEXT_ROOT_HASH='90ddd43020aff509430b6ff85887a267ea4f0b30acc2213c82d7dcce0eb862f2'
+CONTEXT_ROOT_BYTES=20362
+
+def context_continue_policy():
+ policy=context_sender_policy()
+ return {**policy,'operation':CONTEXT_CONTINUE_OPERATION,
+         'expected':{**policy['expected'],'anytoour.ru/api-v2.php':CONTEXT_ROOT_HASH}}
+
+def context_blocked_identity():
+ return {'control_source_sha':CONTEXT_BLOCKED_CONTROL,'run_id':str(CONTEXT_BLOCKED_RUN),
+         'command_comment_id':CONTEXT_BLOCKED_COMMAND}
+
+def context_blocked_archive(data):
+ # Hash/CRC/strict member checks precede parsing; never extract paths or execute PHP.
+ need((len(data),sha(data))==CONTEXT_BLOCKED_ZIP,'blocked_zip_proof')
+ with zipfile.ZipFile(io.BytesIO(data)) as archive:
+  infos=archive.infolist()
+  need(len(infos)==len(CONTEXT_BLOCKED_MEMBERS)
+       and {i.filename for i in infos}==set(CONTEXT_BLOCKED_MEMBERS),'blocked_members_proof')
+  need(all(not i.is_dir() and i.file_size==CONTEXT_BLOCKED_MEMBERS[i.filename][0]
+           and i.file_size<=32768 and not i.flag_bits&1 for i in infos),'blocked_members_proof')
+  need(archive.testzip() is None,'blocked_crc_proof')
+  members={i.filename:archive.read(i) for i in infos}
+ for name,body in members.items():
+  need((len(body),sha(body))==CONTEXT_BLOCKED_MEMBERS[name],'blocked_member_proof')
+ candidate=members['tourvisor-anytour-offer-autosave.php']
+ need(len(candidate)==CONTEXT_SENDER_BYTES and sha(candidate)==CONTEXT_SENDER_HASH
+      and blob(candidate)==CONTEXT_SENDER_BLOB,'blocked_candidate_proof')
+ identity=context_blocked_identity()
+ request={**identity,'operation_id':CONTEXT_SENDER_OPERATION,'source_sha':CONTEXT_SENDER_SOURCE,
+          'release_sha':CONTEXT_SENDER_RELEASE,'source_blob':CONTEXT_SENDER_BLOB,'candidate_sha256':CONTEXT_SENDER_HASH}
+ need(json.loads(members['request.json'])==request,'blocked_request_proof')
+ evidence=json.loads(members['evidence.json']);remote=evidence.get('remote')
+ need(set(evidence)=={'status','failure_phase','ssh_started','error_type','remote',*request}-{'candidate_sha256'},'blocked_evidence_proof')
+ need(all(evidence[k]==v for k,v in request.items() if k!='candidate_sha256')
+      and evidence['status']=='unknown_no_replay' and evidence['failure_phase']=='readback'
+      and evidence['ssh_started'] is True and evidence['error_type']=='RuntimeError','blocked_evidence_proof')
+ need(_single_file_safe_receipt(context_sender_policy(),identity,remote),'blocked_receipt_proof')
+ need(remote['status']=='blocked_no_replay' and remote.get('reason')=='predecessor_drift'
+      and remote.get('error_type')=='RuntimeError' and remote['backup_retained'] is False
+      and remote['after_files']=={} and remote['written_files']==[]
+      and 'production_after' not in remote
+      and all(remote[k]==0 for k in ('root_write_attempts','file_writes','rollback_attempts'))
+      and all(remote['syntax_'+p]=='not_run' for p in ('previous','candidate','installed')),'blocked_zero_write_proof')
+ sizes={CONTEXT_SENDER_PATH:20579,'anytoour.ru/api-v2.php':CONTEXT_ROOT_BYTES,
+        'anytoour.ru/_preview/search3-anex-candidate/'+CONTEXT_RECEIVER_PATH:28074}
+ expected={p:{'sha256':h,'bytes':sizes[p],'mode':0o644} for p,h in context_continue_policy()['expected'].items()}
+ need(remote['before_files']==expected and remote['production_before']['anytoour.ru/api-v2.php']==CONTEXT_ROOT_HASH,'blocked_predecessor_proof')
+
+def context_blocked_download():
+ # GitHub-only authenticated GET. Never forward the token to a storage redirect.
+ import urllib.error,urllib.parse
+ class NoRedirect(urllib.request.HTTPRedirectHandler):
+  def redirect_request(self,*args,**kwargs):return None
+ opener=urllib.request.build_opener(NoRedirect())
+ request=urllib.request.Request('https://api.github.com/repos/'+REPO+'/actions/artifacts/'+str(CONTEXT_BLOCKED_ARTIFACT)+'/zip',
+     headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+ try:response=opener.open(request,timeout=30)
+ except urllib.error.HTTPError as exc:
+  need(exc.code==302,'blocked_archive_redirect')
+  location=exc.headers.get('Location','');parts=urllib.parse.urlsplit(location)
+  need(parts.scheme=='https' and parts.hostname is not None and parts.port in (None,443)
+       and parts.username is None and parts.password is None and not parts.fragment
+       and (parts.hostname.endswith('.blob.core.windows.net') or parts.hostname.endswith('.actions.githubusercontent.com')),'blocked_archive_redirect')
+  response=opener.open(urllib.request.Request(location),timeout=30)
+ with response:data=response.read(65537)
+ need(len(data)<=65536,'blocked_archive_limit')
+ return data
+
+def context_continue_proof():
+ old=checked_api('/issues/comments/'+str(CONTEXT_BLOCKED_COMMAND))
+ need(old.get('id')==CONTEXT_BLOCKED_COMMAND and old.get('user',{}).get('id')==226193297
+      and old.get('author_association')=='OWNER'
+      and old.get('body')==f'{CONTEXT_SENDER_PREFIX} {CONTEXT_BLOCKED_CONTROL} {CONTEXT_SENDER_OPERATION}','blocked_command_proof')
+ run=checked_api('/actions/runs/'+str(CONTEXT_BLOCKED_RUN))
+ need(run.get('id')==CONTEXT_BLOCKED_RUN and type(run.get('run_attempt')) is int and run['run_attempt']==1
+      and run.get('event')=='issue_comment' and run.get('path')==CHECKED_WORKFLOW
+      and run.get('head_sha')==CONTEXT_BLOCKED_CONTROL
+      and run.get('status')=='completed' and run.get('conclusion')=='failure','blocked_run_proof')
+ job=checked_api('/actions/jobs/'+str(CONTEXT_BLOCKED_JOB))
+ need(job.get('id')==CONTEXT_BLOCKED_JOB and job.get('run_id')==CONTEXT_BLOCKED_RUN
+      and type(job.get('run_attempt')) is int and job['run_attempt']==1
+      and job.get('name')=='context-sender-install' and job.get('head_sha')==CONTEXT_BLOCKED_CONTROL
+      and job.get('status')=='completed' and job.get('conclusion')=='failure','blocked_job_proof')
+ artifact=checked_api('/actions/artifacts/'+str(CONTEXT_BLOCKED_ARTIFACT))
+ need(artifact.get('id')==CONTEXT_BLOCKED_ARTIFACT
+      and artifact.get('name')=='search3-tv-context-sender-39778144763-1'
+      and type(artifact.get('size_in_bytes')) is int and artifact['size_in_bytes']==CONTEXT_BLOCKED_ZIP[0]
+      and artifact.get('digest')=='sha256:'+CONTEXT_BLOCKED_ZIP[1] and artifact.get('expired') is False
+      and artifact.get('workflow_run',{}).get('id')==CONTEXT_BLOCKED_RUN
+      and artifact.get('workflow_run',{}).get('head_sha')==CONTEXT_BLOCKED_CONTROL,'blocked_artifact_proof')
+ receipt=checked_api('/issues/comments/'+str(CONTEXT_ROOT_RECEIPT))
+ need(receipt.get('id')==CONTEXT_ROOT_RECEIPT and receipt.get('user',{}).get('id')==226193297
+      and receipt.get('author_association')=='OWNER'
+      and sha(receipt.get('body','').encode())==CONTEXT_ROOT_RECEIPT_HASH,'root_install_proof')
+ for ref in (CONTEXT_ROOT_SOURCE,CONTEXT_SENDER_RELEASE):
+  item=checked_api('/contents/v2/api-v2.php?ref='+ref)
+  data=base64.b64decode(item['content'],validate=False)
+  need(item.get('sha')==CONTEXT_ROOT_BLOB and blob(data)==CONTEXT_ROOT_BLOB
+       and sha(data)==CONTEXT_ROOT_HASH and len(data)==CONTEXT_ROOT_BYTES,'root_source_proof')
+ context_blocked_archive(context_blocked_download())
+
+def context_continue_event(event,env):
+ return _context_sender_event(event,env,CONTEXT_CONTINUE_PREFIX,CONTEXT_CONTINUE_OPERATION)
+
+def context_continue_admission(identity):
+ candidate=_context_sender_admission(identity,CONTEXT_CONTINUE_PREFIX,CONTEXT_CONTINUE_OPERATION)
+ context_continue_proof()
+ return candidate
+
+def context_continue_remote():
+ import ast
+ first,program=context_sender_remote().split('\n',1)
+ need(first.startswith('POLICY=') and ast.literal_eval(first[7:])==context_sender_policy(),'continuation_template')
+ return 'POLICY='+repr(context_continue_policy())+'\n'+program
+
+def context_continue_safe_receipt(identity,result,complete=False):
+ return _single_file_safe_receipt(context_continue_policy(),identity,result,complete)
+
+def context_sender_continue():
+ return _single_file_install(context_continue_policy(),'search3-tv-context-continuation',
+     context_continue_event,context_continue_admission,context_continue_remote,context_continue_safe_receipt)
+
 if __name__=='__main__':
- need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install','tv_diagnostic_install','context_sender_install'),'usage');globals()[sys.argv[1]]()
+ need(len(sys.argv)==2 and sys.argv[1] in ('prepare','install','checked_install','dependency_install','tv_diagnostic_install','context_sender_install','context_sender_continue'),'usage');globals()[sys.argv[1]]()

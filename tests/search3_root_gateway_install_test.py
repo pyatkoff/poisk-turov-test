@@ -1136,6 +1136,204 @@ class ContextSenderInstall(unittest.TestCase):
    self.assertEqual(len(calls),3);self.assertTrue(m.context_sender_safe_receipt(identity,result,complete=True));self.assertEqual((project/m.CONTEXT_SENDER_PATH).read_bytes(),body)
    self.assertFalse(list(project.rglob('MUST_NOT_EXECUTE')))
 
+class ContextSenderContinue(unittest.TestCase):
+ module=CheckedInstall.module
+ execute=CheckedInstall.execute
+ def event(self,m):
+  event,env=ContextSenderInstall.event(self,m)
+  event['comment']['body']=f'{m.CONTEXT_CONTINUE_PREFIX} '+env['GITHUB_SHA']+' '+m.CONTEXT_CONTINUE_OPERATION
+  return event,env
+ def fixture(self,m,home,candidate=None):
+  # Reuse the old single-file transaction fixture; only the read-only root pin
+  # and new operation differ. The historical v1 private directory is retained.
+  project,candidate,_,_,_=ContextSenderInstall.fixture(ContextSenderInstall(),m,home,candidate)
+  m.CONTEXT_ROOT_HASH=m.CONTEXT_SENDER_EXPECTED['anytoour.ru/api-v2.php']
+  event,env=self.event(m);identity=m.context_continue_event(event,env)
+  import base64
+  return project,candidate,identity,{**identity,'candidate_b64':base64.b64encode(candidate).decode()},m.context_continue_remote()
+ def proof_fixture(self,m,variant=None):
+  import zipfile
+  candidate=b'<?php /* synthetic public candidate */ ?>'
+  m.CONTEXT_SENDER_HASH=m.sha(candidate);m.CONTEXT_SENDER_BLOB=m.blob(candidate);m.CONTEXT_SENDER_BYTES=len(candidate)
+  identity=m.context_blocked_identity()
+  request={**identity,'operation_id':m.CONTEXT_SENDER_OPERATION,'source_sha':m.CONTEXT_SENDER_SOURCE,
+           'release_sha':m.CONTEXT_SENDER_RELEASE,'source_blob':m.CONTEXT_SENDER_BLOB,'candidate_sha256':m.CONTEXT_SENDER_HASH}
+  sizes={m.CONTEXT_SENDER_PATH:20579,'anytoour.ru/api-v2.php':m.CONTEXT_ROOT_BYTES,
+         'anytoour.ru/_preview/search3-anex-candidate/'+m.CONTEXT_RECEIVER_PATH:28074}
+  remote={**{k:v for k,v in request.items() if k!='candidate_sha256'},'schema_version':1,
+          'status':'blocked_no_replay','reason':'predecessor_drift','error_type':'RuntimeError',
+          'before_files':{p:{'sha256':h,'bytes':sizes[p],'mode':0o644} for p,h in m.context_continue_policy()['expected'].items()},
+          'after_files':{},'written_files':[],'backup_retained':False,
+          **{k:0 for k in ('root_write_attempts','file_writes','rollback_attempts','supplier_calls','database_writes','profile_writes','mapping_writes','schema_writes','lead_calls','booking_calls')},
+          **{'syntax_'+p:'not_run' for p in ('previous','candidate','installed')},
+          'production_before':{p:m.CONTEXT_ROOT_HASH if p=='anytoour.ru/api-v2.php' else None for p in m.CONTEXT_SENDER_PROTECTED}}
+  evidence={**{k:v for k,v in request.items() if k!='candidate_sha256'},'status':'unknown_no_replay',
+            'failure_phase':'readback','ssh_started':True,'error_type':'RuntimeError','remote':remote}
+  if variant=='outer':evidence['status']='installed_verified'
+  if variant=='phase':evidence['failure_phase']='ssh'
+  if variant=='extra':evidence['raw']='not allowed'
+  if variant=='request':request['command_comment_id']+=1
+  if variant=='identity':remote['operation_id']='other-operation'
+  if variant=='unknown':remote['status']='unknown_no_replay'
+  if variant=='reason':remote['reason']='operation_exists_no_replay'
+  if variant=='writes':remote['root_write_attempts']=1
+  if variant=='rollback':remote['rollback_attempts']=1
+  if variant=='supplier':remote['supplier_calls']=1
+  if variant=='syntax':remote['syntax_candidate']='ok'
+  if variant=='backup':remote['backup_retained']=True
+  if variant=='after':remote['after_files']=remote['before_files']
+  if variant=='publicafter':remote['production_after']=remote['production_before']
+  if variant=='pin':remote['before_files']['anytoour.ru/api-v2.php']['sha256']='f'*64
+  if variant=='size':remote['before_files'][m.CONTEXT_SENDER_PATH]['bytes']+=1
+  if variant=='mode':remote['before_files'][m.CONTEXT_SENDER_PATH]['mode']=0o666
+  if variant=='partial':remote['before_files'].pop(m.CONTEXT_SENDER_PATH)
+  members={'evidence.json':json.dumps(evidence,sort_keys=True).encode(),'request.json':json.dumps(request,sort_keys=True).encode(),
+           'tourvisor-anytour-offer-autosave.php':candidate}
+  m.CONTEXT_BLOCKED_MEMBERS={p:(len(b),m.sha(b)) for p,b in members.items()}
+  out=io.BytesIO()
+  with zipfile.ZipFile(out,'w') as archive:
+   for path,body in members.items():archive.writestr(path,body)
+   if variant=='duplicate':archive.writestr('request.json',members['request.json'])
+   if variant=='traversal':archive.writestr('../escape',b'not allowed')
+  data=out.getvalue();m.CONTEXT_BLOCKED_ZIP=(len(data),m.sha(data))
+  return data
+ def proof_api(self,m,data,body):
+  import base64
+  root=b'<?php /* previously reviewed root dependency fixture */ ?>'
+  m.CONTEXT_ROOT_BLOB=m.blob(root);m.CONTEXT_ROOT_HASH=m.sha(root);m.CONTEXT_ROOT_BYTES=len(root)
+  m.CONTEXT_ROOT_RECEIPT_HASH=m.sha(b'retained receipt')
+  def api(path):
+   if path=='/issues/comments/'+str(m.CONTEXT_BLOCKED_COMMAND):return {'id':m.CONTEXT_BLOCKED_COMMAND,'user':{'id':226193297},'author_association':'OWNER','body':f'{m.CONTEXT_SENDER_PREFIX} {m.CONTEXT_BLOCKED_CONTROL} {m.CONTEXT_SENDER_OPERATION}'}
+   if path=='/actions/runs/'+str(m.CONTEXT_BLOCKED_RUN):return {'id':m.CONTEXT_BLOCKED_RUN,'run_attempt':1,'event':'issue_comment','path':m.CHECKED_WORKFLOW,'head_sha':m.CONTEXT_BLOCKED_CONTROL,'status':'completed','conclusion':'failure'}
+   if path=='/actions/jobs/'+str(m.CONTEXT_BLOCKED_JOB):return {'id':m.CONTEXT_BLOCKED_JOB,'run_id':m.CONTEXT_BLOCKED_RUN,'run_attempt':1,'name':'context-sender-install','head_sha':m.CONTEXT_BLOCKED_CONTROL,'status':'completed','conclusion':'failure'}
+   if path=='/actions/artifacts/'+str(m.CONTEXT_BLOCKED_ARTIFACT):return {'id':m.CONTEXT_BLOCKED_ARTIFACT,'name':'search3-tv-context-sender-39778144763-1','size_in_bytes':m.CONTEXT_BLOCKED_ZIP[0],'digest':'sha256:'+m.CONTEXT_BLOCKED_ZIP[1],'expired':False,'workflow_run':{'id':m.CONTEXT_BLOCKED_RUN,'head_sha':m.CONTEXT_BLOCKED_CONTROL}}
+   if path=='/issues/comments/'+str(m.CONTEXT_ROOT_RECEIPT):return {'id':m.CONTEXT_ROOT_RECEIPT,'user':{'id':226193297},'author_association':'OWNER','body':'retained receipt'}
+   if path.startswith('/contents/v2/api-v2.php?ref='):return {'sha':m.CONTEXT_ROOT_BLOB,'content':base64.b64encode(root).decode()}
+   raise AssertionError(path)
+  return api
+ def test_old_operation_and_pin_frozen_new_event_cannot_use_old_command(self):
+  import copy
+  m=self.module();event,env=self.event(m)
+  self.assertEqual(m.context_continue_event(event,env)['command_comment_id'],987)
+  with self.assertRaises(RuntimeError):m.context_sender_event(event,env)
+  old,oldenv=ContextSenderInstall.event(self,m)
+  with self.assertRaises(RuntimeError):m.context_continue_event(old,oldenv)
+  for key,value in {'GITHUB_RUN_ATTEMPT':'2','GITHUB_SHA':'c'*40,'GITHUB_ACTOR':'other','GITHUB_REF':'refs/heads/other'}.items():
+   with self.subTest(key=key),self.assertRaises(RuntimeError):m.context_continue_event(event,{**env,key:value})
+  bad=copy.deepcopy(event);bad['comment']['body']+=' '
+  with self.assertRaises(RuntimeError):m.context_continue_event(bad,env)
+  self.assertEqual(m.CONTEXT_SENDER_OPERATION,'install-20261022-tv-search-context-v1')
+  self.assertEqual(m.CONTEXT_SENDER_EXPECTED['anytoour.ru/api-v2.php'],'04cddd8c112bcdd70438a2e58e4935e1eae115057b218780f2f845bbfd83fd15')
+  oldpolicy=m.context_sender_policy();newpolicy=m.context_continue_policy()
+  self.assertEqual({k:v for k,v in oldpolicy.items() if k not in ('expected','operation')},{k:v for k,v in newpolicy.items() if k not in ('expected','operation')})
+  self.assertEqual([p for p in oldpolicy['expected'] if oldpolicy['expected'][p]!=newpolicy['expected'][p]],['anytoour.ru/api-v2.php'])
+  self.assertEqual(m.context_sender_remote().split('\n',1)[1],m.context_continue_remote().split('\n',1)[1])
+ def test_archive_requires_exact_hash_crc_members_identity_and_zero_write_rejection(self):
+  m=self.module();data=self.proof_fixture(m);m.context_blocked_archive(data)
+  with self.assertRaisesRegex(RuntimeError,'blocked_zip_proof'):m.context_blocked_archive(data+b'extra')
+  for variant in ('outer','phase','extra','request','identity','unknown','reason','writes','rollback','supplier','syntax','backup','after','publicafter','pin','size','mode','partial','duplicate','traversal'):
+   m=self.module();data=self.proof_fixture(m,variant)
+   with self.subTest(variant=variant),self.assertRaises(RuntimeError):m.context_blocked_archive(data)
+ def test_proof_checks_original_command_run_job_archive_and_prior_root_install(self):
+  import copy
+  m=self.module();api=self.proof_api(m,None,None);data=self.proof_fixture(m)
+  with mock.patch.object(m,'checked_api',side_effect=api),mock.patch.object(m,'context_blocked_download',return_value=data):m.context_continue_proof()
+  variants=[('comment_owner','/issues/comments/'+str(m.CONTEXT_BLOCKED_COMMAND)),('comment_body','/issues/comments/'+str(m.CONTEXT_BLOCKED_COMMAND)),('run_attempt','/actions/runs/'+str(m.CONTEXT_BLOCKED_RUN)),('run_pending','/actions/runs/'+str(m.CONTEXT_BLOCKED_RUN)),('run_head','/actions/runs/'+str(m.CONTEXT_BLOCKED_RUN)),('job_name','/actions/jobs/'+str(m.CONTEXT_BLOCKED_JOB)),('job_attempt','/actions/jobs/'+str(m.CONTEXT_BLOCKED_JOB)),('job_run','/actions/jobs/'+str(m.CONTEXT_BLOCKED_JOB)),('artifact_digest','/actions/artifacts/'+str(m.CONTEXT_BLOCKED_ARTIFACT)),('artifact_expired','/actions/artifacts/'+str(m.CONTEXT_BLOCKED_ARTIFACT)),('artifact_head','/actions/artifacts/'+str(m.CONTEXT_BLOCKED_ARTIFACT)),('root_receipt','/issues/comments/'+str(m.CONTEXT_ROOT_RECEIPT)),('root_source','/contents/v2/api-v2.php?ref='+m.CONTEXT_ROOT_SOURCE)]
+  for variant,target in variants:
+   def bad(path):
+    value=copy.deepcopy(api(path))
+    if path==target:
+     if variant=='comment_owner':value['user']['id']=1
+     if variant in ('comment_body','root_receipt'):value['body']+=' '
+     if variant in ('run_attempt','job_attempt'):value['run_attempt']=2
+     if variant=='run_pending':value['status']='in_progress'
+     if variant=='run_head':value['head_sha']='f'*40
+     if variant=='job_name':value['name']='other'
+     if variant=='job_run':value['run_id']+=1
+     if variant=='artifact_digest':value['digest']='sha256:'+('f'*64)
+     if variant=='artifact_expired':value['expired']=True
+     if variant=='artifact_head':value['workflow_run']['head_sha']='f'*40
+     if variant=='root_source':value['content']='Zm9yZWlnbg=='
+    return value
+   with self.subTest(variant=variant),mock.patch.object(m,'checked_api',side_effect=bad),mock.patch.object(m,'context_blocked_download') as download,self.assertRaises(RuntimeError):m.context_continue_proof()
+   download.assert_not_called()
+ def test_archive_download_is_bounded_fixed_and_never_forwards_token(self):
+  import urllib.error
+  m=self.module();response=mock.MagicMock();response.__enter__.return_value=response;response.read.return_value=b'proof'
+  opener=mock.Mock();opener.open.side_effect=[urllib.error.HTTPError('https://api.github.com/fixed',302,'Found',{'Location':'https://artifact.blob.core.windows.net/fixed?signature=synthetic'},None),response]
+  with mock.patch.dict(os.environ,{'GH_TOKEN':'synthetic-token'}),mock.patch.object(m.urllib.request,'build_opener',return_value=opener):self.assertEqual(m.context_blocked_download(),b'proof')
+  first,second=[call.args[0] for call in opener.open.call_args_list]
+  self.assertEqual(first.full_url,'https://api.github.com/repos/'+m.REPO+'/actions/artifacts/'+str(m.CONTEXT_BLOCKED_ARTIFACT)+'/zip')
+  self.assertEqual(first.get_header('Authorization'),'Bearer synthetic-token');self.assertIsNone(second.get_header('Authorization'))
+  response.read.assert_called_once_with(65537)
+  for location in ('http://artifact.blob.core.windows.net/fixed','https://attacker.test/fixed','https://user@artifact.blob.core.windows.net/fixed','https://artifact.blob.core.windows.net:444/fixed','https://artifact.blob.core.windows.net/fixed#fragment'):
+   opener=mock.Mock();opener.open.side_effect=urllib.error.HTTPError('https://api.github.com/fixed',302,'Found',{'Location':location},None)
+   with self.subTest(location=location),mock.patch.dict(os.environ,{'GH_TOKEN':'synthetic-token'}),mock.patch.object(m.urllib.request,'build_opener',return_value=opener),self.assertRaises(RuntimeError):m.context_blocked_download()
+   self.assertEqual(opener.open.call_count,1)
+  response.read.return_value=b'x'*65537;opener=mock.Mock();opener.open.return_value=response
+  with mock.patch.dict(os.environ,{'GH_TOKEN':'synthetic-token'}),mock.patch.object(m.urllib.request,'build_opener',return_value=opener),self.assertRaisesRegex(RuntimeError,'blocked_archive_limit'):m.context_blocked_download()
+ def test_admission_keeps_source_ci_comment_history_and_requires_proof_before_transport(self):
+  m=self.module();event,env=self.event(m);identity=m.context_continue_event(event,env)
+  body=b'<?php /* synthetic sender */ ?>';m.CONTEXT_SENDER_HASH=m.sha(body);m.CONTEXT_SENDER_BLOB=m.blob(body);m.CONTEXT_SENDER_BYTES=len(body)
+  api=ContextSenderInstall.admission_api(self,m,event,identity,body)
+  with mock.patch.object(m,'checked_api',side_effect=api),mock.patch.object(m,'context_continue_proof') as proof:self.assertEqual(m.context_continue_admission(identity),body)
+  proof.assert_called_once_with()
+  def bad(path):
+   value=api(path)
+   if 'check_name=context-sender-contracts' in path:return {'total_count':0,'check_runs':[]}
+   return value
+  with mock.patch.object(m,'checked_api',side_effect=bad),mock.patch.object(m,'context_continue_proof') as proof,self.assertRaises(RuntimeError):m.context_continue_admission(identity)
+  proof.assert_not_called()
+  with tempfile.TemporaryDirectory() as td:
+   eventfile=pathlib.Path(td)/'event.json';eventfile.write_text(json.dumps(event))
+   with mock.patch.dict(os.environ,{**env,'GITHUB_EVENT_PATH':str(eventfile),'RUNNER_TEMP':td}),mock.patch.object(m,'checked_api',side_effect=api),mock.patch.object(m,'context_continue_proof',side_effect=RuntimeError('blocked_zero_write_proof')),mock.patch.object(m,'run') as run,contextlib.redirect_stdout(io.StringIO()),self.assertRaises(RuntimeError):m.context_sender_continue()
+   run.assert_not_called();work=pathlib.Path(td)/'search3-tv-context-continuation';evidence=json.loads((work/'evidence.json').read_text())
+   self.assertFalse(evidence['ssh_started']);self.assertEqual(evidence['failure_phase'],'admission');self.assertEqual(evidence['status'],'blocked_no_replay')
+   self.assertEqual([p.name for p in work.iterdir()],['evidence.json'])
+ def test_corrected_transaction_retains_old_marker_and_never_writes_root_api(self):
+  m=self.module()
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,candidate,identity,payload,program=self.fixture(m,home)
+   old=home/'.anytoour-search3-root-gateway'/m.CONTEXT_SENDER_OPERATION;old.mkdir(parents=True,mode=0o700);old.parent.chmod(0o700);(old/'result.json').write_bytes(b'original UNKNOWN retained')
+   before={p.relative_to(project).as_posix():p.read_bytes() for p in project.rglob('*') if p.is_file()}
+   result,calls=self.execute(m,home,payload,program)
+   self.assertEqual(len(calls),3);self.assertTrue(m.context_continue_safe_receipt(identity,result,complete=True))
+   self.assertEqual((old/'result.json').read_bytes(),b'original UNKNOWN retained')
+   after={p.relative_to(project).as_posix():p.read_bytes() for p in project.rglob('*') if p.is_file()}
+   self.assertEqual([p for p in before if before[p]!=after[p]],[m.CONTEXT_SENDER_PATH]);self.assertEqual(set(before),set(after))
+   second,calls=self.execute(m,home,payload,program);self.assertEqual(calls,[]);self.assertEqual(second['reason'],'operation_exists_no_replay')
+   self.assertEqual((old/'result.json').read_bytes(),b'original UNKNOWN retained')
+ def test_current_root_or_public_drift_still_blocks_before_any_write(self):
+  for variant in ('root','public','link'):
+   m=self.module()
+   with self.subTest(variant=variant),tempfile.TemporaryDirectory() as td:
+    home=pathlib.Path(td);project,_,identity,payload,program=self.fixture(m,home);target=project/m.CONTEXT_SENDER_PATH;previous=target.read_bytes()
+    if variant=='root':(project/'anytoour.ru/api-v2.php').write_bytes(b'newer foreign dependency')
+    if variant=='link':target.unlink();target.symlink_to(project/'anytoour.ru/api-v2.php')
+    def callback(args,n):
+     if variant=='public' and n==1:(project/'anytoour.ru/index.php').write_bytes(b'foreign public change')
+    result,calls=self.execute(m,home,payload,program,callback)
+    self.assertEqual(result['root_write_attempts'],0);self.assertEqual(result['file_writes'],0)
+    self.assertFalse(m.context_continue_safe_receipt(identity,result,complete=True))
+    if variant!='link':self.assertEqual(target.read_bytes(),previous)
+ def test_workflow_adds_only_fixed_continuation_to_same_lock_and_safe_artifact(self):
+  m=self.module();workflow=(R/'.github/workflows/search3-root-gateway-install.yml').read_text()
+  job=workflow.split('  context-sender-continuation:',1)[1].split('  context-sender-install:',1)[0]
+  for guard in ('group: deploy-anytoour-production','cancel-in-progress: false','github.run_attempt == 1','github.event.issue.number == 4709',"github.event.action == 'created'",'!github.event.issue.pull_request',"github.actor == 'pyatkoff'","github.triggering_actor == 'pyatkoff'",'github.event.comment.user.id == 226193297',"github.event.comment.author_association == 'OWNER'",m.CONTEXT_CONTINUE_PREFIX,m.CONTEXT_CONTINUE_OPERATION,m.CONTEXT_SENDER_SOURCE,'actions: read','scripts/deploy/search3_root_gateway_install.py context_sender_continue','test.py ContextSenderInstall ContextSenderContinue'):
+   self.assertIn(guard,job)
+  paths=job.split('          path: |',1)[1].split('          if-no-files-found:',1)[0]
+  self.assertEqual(len(paths.strip().splitlines()),3);self.assertNotIn('*',paths);self.assertNotIn('/key',paths);self.assertNotIn('/known',paths)
+  self.assertNotIn('workflow_dispatch',job)
+ @unittest.skipUnless(os.environ.get('TV_CONTEXT_SENDER_NATIVE_CI')=='1','native reviewed sender PHP CI required')
+ def test_native_same_actual_sender_only_linted_and_old_operation_preserved(self):
+  m=self.module();body=(pathlib.Path(os.environ['TV_CONTEXT_SENDER_SOURCE_ROOT'])/m.CONTEXT_SENDER_PATH).read_bytes()
+  self.assertEqual(m.sha(body),m.CONTEXT_SENDER_HASH);self.assertEqual(m.blob(body),m.CONTEXT_SENDER_BLOB);self.assertEqual(len(body),21672)
+  with tempfile.TemporaryDirectory() as td:
+   home=pathlib.Path(td);project,_,identity,payload,program=self.fixture(m,home,body)
+   result,calls=self.execute(m,home,payload,program,native=True)
+   self.assertEqual(len(calls),3);self.assertTrue(m.context_continue_safe_receipt(identity,result,complete=True))
+   self.assertEqual((project/m.CONTEXT_SENDER_PATH).read_bytes(),body);self.assertFalse(list(project.rglob('MUST_NOT_EXECUTE')))
+
 if __name__=='__main__':unittest.main()
 
 
