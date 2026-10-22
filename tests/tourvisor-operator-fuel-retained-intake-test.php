@@ -136,6 +136,41 @@ $nullSearchFuel = $base;
 $nullSearchFuel['tour']['fuelCharge'] = null;
 tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($nullSearchFuel)['amount'] === '33748', 'flights source fills absent detail fuel');
 
+// Branch tags are diagnostic metadata; all these original amount guards still reject.
+$amountCases = [
+    'flight-absent'=>[null,7101,'TV_FUEL_AMOUNT_FLIGHT_MISSING'],
+    'flight-null'=>[null,7101,'TV_FUEL_AMOUNT_FLIGHT_MISSING'],
+    'flight-shape'=>[['private-amount-canary'],7102,'TV_FUEL_AMOUNT_FLIGHT_SHAPE'],
+    'value-absent'=>[['currency'=>'RUB'],7103,'TV_FUEL_AMOUNT_VALUE_MISSING'],
+    'value-null'=>[['value'=>null,'currency'=>'RUB'],7103,'TV_FUEL_AMOUNT_VALUE_MISSING'],
+    'value-format'=>[['value'=>'private-amount-canary','currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
+    'value-bool'=>[['value'=>false,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
+    'value-negative'=>[['value'=>-1,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
+    'value-precision'=>[['value'=>1.001,'currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
+    'value-zero'=>[['value'=>0,'currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
+    'value-string-zero'=>[['value'=>'0.00','currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
+    'tour-format'=>[$base['flights']['flights'][0]['fuelCharge'],7106,'TV_FUEL_AMOUNT_TOUR_VALUE'],
+];
+foreach ($amountCases as $kind=>[$fuel,$tag,$diagnostic]) {
+    $bad = $base;
+    $bad['flights']['flights'][0]['fuelCharge'] = $fuel;
+    if ($kind === 'flight-absent') unset($bad['flights']['flights'][0]['fuelCharge']);
+    if ($kind === 'tour-format') $bad['tour']['fuelCharge'] = 'private-amount-canary';
+    $before = serialize($bad);
+    try {
+        AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($bad);
+        throw new RuntimeException('Missing original amount rejection: '.$kind);
+    } catch (InvalidArgumentException $error) {
+        tvfi_ok($error->getMessage()==='TV_FUEL_AMOUNT' && $error->getCode()===$tag, 'outward original amount rejection retained: '.$kind);
+        tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::amountDiagnostic($error)===$diagnostic, 'safe exact branch: '.$kind);
+    }
+    tvfi_ok(serialize($bad)===$before, 'diagnostic classification cannot mutate money or raw response: '.$kind);
+}
+foreach ([new RuntimeException('TV_FUEL_AMOUNT',7101),new InvalidArgumentException('private-amount-canary',7101),
+          new InvalidArgumentException('TV_FUEL_AMOUNT',7999)] as $foreignError) {
+    tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::amountDiagnostic($foreignError)===null, 'foreign exception cannot forge safe amount classification');
+}
+
 $conflict = $base; $conflict['tour']['fuelCharge'] = 30000;
 tvfi_reject($conflict, 'conflicting tour and flights fuel must reject');
 $multiLeg = $base; $multiLeg['flights']['flights'][0]['forward'][] = $segment('IST','AYT','2026-10-11','TK2');

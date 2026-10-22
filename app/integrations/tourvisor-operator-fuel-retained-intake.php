@@ -97,16 +97,28 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
             throw new InvalidArgumentException('TV_FUEL_DATE');
         }
 
-        $fuel = self::map($selected['fuelCharge'] ?? null, 'TV_FUEL_AMOUNT');
-        $amount = self::money($fuel['value'] ?? null);
-        if ((float)$amount <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT');
+        try {
+            $fuel = self::map($selected['fuelCharge'] ?? null, 'TV_FUEL_AMOUNT');
+        } catch (InvalidArgumentException $error) {
+            throw new InvalidArgumentException('TV_FUEL_AMOUNT', ($selected['fuelCharge'] ?? null) === null ? 7101 : 7102, $error);
+        }
+        try {
+            $amount = self::money($fuel['value'] ?? null);
+        } catch (InvalidArgumentException $error) {
+            throw new InvalidArgumentException('TV_FUEL_AMOUNT', ($fuel['value'] ?? null) === null ? 7103 : 7104, $error);
+        }
+        if ((float)$amount <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT', 7105);
         $currency = self::currency($fuel['currency'] ?? null);
 
         /* A positive tour-level value is a second statement about the same party
          * amount. Null/zero means the search/detail response did not expose it;
          * the newer flights actualization remains the source of this observation. */
         if (array_key_exists('fuelCharge', $tour) && $tour['fuelCharge'] !== null) {
-            $tourFuel = self::money($tour['fuelCharge']);
+            try {
+                $tourFuel = self::money($tour['fuelCharge']);
+            } catch (InvalidArgumentException $error) {
+                throw new InvalidArgumentException('TV_FUEL_AMOUNT', 7106, $error);
+            }
             if ((float)$tourFuel > 0.0 && $tourFuel !== $amount) {
                 throw new DomainException('TV_FUEL_AMOUNT_CONFLICT');
             }
@@ -251,6 +263,21 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
         if (is_int($value) && $value > 0) return (string)$value;
         if (!is_string($value) || preg_match('/\A[1-9][0-9]{0,31}\z/D', $value) !== 1) throw new InvalidArgumentException($reason);
         return $value;
+    }
+
+    /** Safe branch identity only; outward exception messages and money validation stay unchanged. */
+    public static function amountDiagnostic(Throwable $error): ?string
+    {
+        if (!$error instanceof InvalidArgumentException || $error->getMessage() !== 'TV_FUEL_AMOUNT') return null;
+        return match ($error->getCode()) {
+            7101 => 'TV_FUEL_AMOUNT_FLIGHT_MISSING',
+            7102 => 'TV_FUEL_AMOUNT_FLIGHT_SHAPE',
+            7103 => 'TV_FUEL_AMOUNT_VALUE_MISSING',
+            7104 => 'TV_FUEL_AMOUNT_VALUE_FORMAT',
+            7105 => 'TV_FUEL_AMOUNT_NONPOSITIVE',
+            7106 => 'TV_FUEL_AMOUNT_TOUR_VALUE',
+            default => null,
+        };
     }
 
     private static function money(mixed $value): string
