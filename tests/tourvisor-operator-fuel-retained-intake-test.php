@@ -177,4 +177,45 @@ $differentFlight = $otherHotel; $differentFlight['flights']['flights'][0]['forwa
 $obs3 = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($differentFlight);
 tvfi_ok($obs3['scope'] !== $obs['scope'], 'different flight must form different scope');
 
+
+ // Supplier dates use the same two exact calendar formats as the search adapter.
+ // The raw response and its source hashes are retained, never rewritten.
+$dotted = $base;
+$dotted['tour']['date'] = '11.10.2026';
+$dotted['flights']['flights'][0]['dateForward'] = '11.10.2026';
+$dotted['flights']['flights'][0]['dateBackward'] = '18.10.2026';
+foreach (['forward'=>'11.10.2026','backward'=>'18.10.2026'] as $leg=>$day) {
+    foreach (['departure','arrival'] as $point) $dotted['flights']['flights'][0][$leg][0][$point]['date'] = $day;
+}
+$dotted['tour_response_sha256'] = AnyTourOperatorFuelRuleEvidenceV1::hash($dotted['tour']);
+$dotted['flights_response_sha256'] = AnyTourOperatorFuelRuleEvidenceV1::hash($dotted['flights']);
+$beforeDotted = $dotted;
+$dottedObs = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($dotted);
+tvfi_ok($dotted === $beforeDotted, 'raw dotted supplier responses remain byte-equivalent inputs');
+tvfi_ok($dottedObs['scope'] === $obs['scope'] && $dottedObs['amount'] === $obs['amount']
+    && $dottedObs['base_relation'] === $obs['base_relation'], 'date notation changes neither flight scope nor money');
+tvfi_ok($dottedObs['source_response_sha256'] === AnyTourOperatorFuelRuleEvidenceV1::hash([
+    'tour'=>$dotted['tour_response_sha256'],'flights'=>$dotted['flights_response_sha256'],
+]), 'date normalization retains original response provenance');
+
+foreach ([null, [], 20261011, '', '31.02.2026', '2026-02-30', '1.10.2026',
+    '11/10/2026', ' 11.10.2026', "11.10.2026\n", '2026-10-11T00:00:00Z'] as $invalid) {
+    foreach (['tour','pair','segment'] as $field) {
+        $badDate = $dotted;
+        if ($field === 'tour') $badDate['tour']['date'] = $invalid;
+        if ($field === 'pair') $badDate['flights']['flights'][0]['dateForward'] = $invalid;
+        if ($field === 'segment') $badDate['flights']['flights'][0]['forward'][0]['departure']['date'] = $invalid;
+        tvfi_reject($badDate, 'invalid raw calendar date rejected at '.$field, 'TV_FUEL_DATE');
+    }
+}
+$wrongDate = $dotted; $wrongDate['tour']['date'] = '12.10.2026';
+tvfi_reject($wrongDate, 'different calendar day cannot match after normalization', 'TV_FUEL_DATE');
+$reverseDate = $dotted; $reverseDate['flights']['flights'][0]['dateBackward'] = '10.10.2026';
+$reverseDate['flights']['flights'][0]['backward'][0]['departure']['date'] = '10.10.2026';
+tvfi_reject($reverseDate, 'normalized return before departure is rejected', 'TV_FUEL_DATE');
+$badPeriod = $dotted; $badPeriod['valid_from'] = '01.10.2026';
+tvfi_reject($badPeriod, 'internal validity dates remain strict ISO', 'TV_FUEL_PERIOD');
+$badSearchDate = $searchBase; $badSearchDate['search_row']['date'] = '11.10.2026';
+tvfi_search_reject($badSearchDate, 'normalized internal search row remains strict ISO', 'TV_FUEL_DATE');
+
 echo "PASS retained Tourvisor operator fuel intake\n";

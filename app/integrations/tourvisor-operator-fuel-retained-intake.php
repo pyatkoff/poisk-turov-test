@@ -88,11 +88,11 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
 
         $forward = self::singleSegment($selected['forward'] ?? null, 'TV_FUEL_FORWARD');
         $backward = self::singleSegment($selected['backward'] ?? null, 'TV_FUEL_BACKWARD');
-        $dateForward = self::date($selected['dateForward'] ?? null, 'TV_FUEL_DATE');
-        $dateBackward = self::date($selected['dateBackward'] ?? null, 'TV_FUEL_DATE');
-        if (self::date($tour['date'] ?? null, 'TV_FUEL_DATE') !== $dateForward
-            || self::date($forward['departure']['date'] ?? null, 'TV_FUEL_DATE') !== $dateForward
-            || self::date($backward['departure']['date'] ?? null, 'TV_FUEL_DATE') !== $dateBackward
+        $dateForward = self::supplierDate($selected['dateForward'] ?? null, 'TV_FUEL_DATE');
+        $dateBackward = self::supplierDate($selected['dateBackward'] ?? null, 'TV_FUEL_DATE');
+        if (self::supplierDate($tour['date'] ?? null, 'TV_FUEL_DATE') !== $dateForward
+            || self::supplierDate($forward['departure']['date'] ?? null, 'TV_FUEL_DATE') !== $dateForward
+            || self::supplierDate($backward['departure']['date'] ?? null, 'TV_FUEL_DATE') !== $dateBackward
             || $dateForward > $dateBackward) {
             throw new InvalidArgumentException('TV_FUEL_DATE');
         }
@@ -267,6 +267,24 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
     {
         if (!is_string($value) || preg_match('/\A[A-Z]{3}\z/D', $value) !== 1) throw new InvalidArgumentException('TV_FUEL_CURRENCY');
         return $value;
+    }
+
+    /** Normalize only supplier calendar dates; internal context/period dates stay ISO. */
+    public static function supplierDate(mixed $value, string $reason): string
+    {
+        if (is_string($value) && preg_match('/\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/D', $value) === 1) {
+            return self::date($value, $reason);
+        }
+        if (!is_string($value) || preg_match('/\A[0-9]{2}\.[0-9]{2}\.[0-9]{4}\z/D', $value) !== 1) {
+            throw new InvalidArgumentException($reason);
+        }
+        $date = DateTimeImmutable::createFromFormat('!d.m.Y', $value, new DateTimeZone('UTC'));
+        $errors = DateTimeImmutable::getLastErrors();
+        if (!$date || $date->format('d.m.Y') !== $value
+            || ($errors !== false && ($errors['warning_count'] !== 0 || $errors['error_count'] !== 0))) {
+            throw new InvalidArgumentException($reason);
+        }
+        return $date->format('Y-m-d');
     }
 
     private static function date(mixed $value, string $reason): string
