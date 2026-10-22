@@ -1,5 +1,15 @@
 # Search3 approved Sites100 transfer — NEXT implementation checkpoint
 
+## Draft short hotel-to-contact source preparation — 22 October 2026
+
+Preparation claim [6345148273](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6345148273), narrowed test/hash extension6345239100. Base release764c1096; installed ORIGINAL NEXT remains source15d1/runtime0683. Site209/bf2f8f9 is the same published PUBLIC design-lab candidate, not a whole-version owner approval or a NEXT publication receipt. This draft is reviewable source preparation only.
+
+The existing hotel owner keeps a live ANEX group expansion inside its rooms section instead of opening a second offer list. Selecting a room and using the existing footer starts the same provider checks inline. The Tourvisor path checks its exact tour and opens canonical contacts without requesting flight alternatives; an identity-matched current tour/pair is reused. ANEX current-context and additional-price operations stay in the existing controller and safe retained-result contract. Their calculated total remains an estimate, visibly labelled; an explicit continue opens the existing estimated-price contact form. No final-price, supplier latency or HTTP reduction is claimed. Each room retains an optional Conditions and flights action through the original details/package route.
+
+The quote-generation owner rejects late responses after Close or a changed selection. Foreign raw/search/room/party/listing-price facts cannot lend a prior quote; terminal and UNKNOWN results are not retried automatically. Contact drafts and consent are still owned by the unchanged canonical lead modules. No donor fixture, provider adapter, price formula, lead contract, analytics, workflow or runtime file is transferred.
+
+Local dependency-free actual-owner deferred regressions and JS syntax/whitespace checks pass. Local jsdom and Chromium executables are unavailable; normal final-head CI and affected compiled430/1280 frames are still required and have not yet been accepted. No UI score change, real supplier/lead/delivery acceptance, physical browser acceptance, merge or publication follows from this draft.
+
 ## Approved whole Site203 journey — 19 October 2026
 
 Whole-version owner approval: [#4217/6270421744](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744). Original PUBLIC project `appgprj_6abcd9299ef88191bbce1fc1bf8c767a`, product `8c826b44bce5713adc04b5d06db19c4f6f3d67cd`, acceptance evidence `dd7a48c0b018bd3b55a69a584de1f50d68b617fd` / [6270378393](https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393). Preserve project, history and public audience. This receiver adaptation starts from `c0be08868a9e940860bf7a5b7e5490b58f05aee9`, original NEXT installed source `55fbf6d98db877933ccf63ee2eb67dab2eb82b38`; source claim6270542519 plus controlled test-corpus extension6270605391.

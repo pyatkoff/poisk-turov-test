@@ -430,6 +430,7 @@ async function pickerRetainedDraftRegressions(){
  console.log('PASS retained picker lifecycle: '+records.family+' family/history/index/boundary cases, '+records.destination+' nested canonical completion/error/retry/late cases at390/1280; supplier/lead0; geometry/physical not modelled');
 }
 (async()=>{
+ await require('./search3-visual-hotel-journey.cjs')();
  // Each complete matrix owns its windows, fixtures and errors. Keep the
  // retained corpus ordered and settle both before closing their shared CSS host.
  const completed=await Promise.allSettled([
