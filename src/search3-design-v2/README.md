@@ -60,6 +60,17 @@ rendered-матрица, независимый просмотр кадров и
 
 ### Текущая точка и выполненная работа
 
+Конечный QA-only проход `native-keyboard-c1-20261022-v1` измеряет только11.C1
+keyboard/focus в существующем CIChromium430/1280@100;
+[паспорт6334805270](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334805270).
+Шесть field editors: Tab/ShiftTab containment, Escape/EnterApply и opener focus;
+keyboardFind → local filters/calendar → hotel/gallery → exact offer/flight/price
+→ contact/Back. Только четыре новых keyboard-focus viewport PNG, без повторного
+полного аудита или прежних кадров. Все реальные API/supplier/lead/analytics —0;
+physical keyboard/Safari/assistive technology/delivery не принимаются этим проходом.
+Product4442/publish39518137791 неизменны; оценка11.C1 — лишь послеactualevidence
+и независимогоsource/visualreview; отсутствие полного доказательства остаётсяN.
+
 Точечный QA-only проход `native-lead-c2-20261022-v1` закрывает только заранее
 названное недостающее evidence10.C2 «понятное действие и фокус»;
 [паспорт/claim6334223508](https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6334223508).
@@ -67,8 +78,10 @@ rendered-матрица, независимый просмотр кадров и
 430/1280@100: вход в контакт, фокус невалидного поля, UI Back/reopen и browser
 Back/Forward, понятные labels/preview-action и сохранённый exact112000/flight0.
 Только четыре новых viewport PNG; прежний полный corpus/meal delta не повторяются.
-Продуктовые байты4442 и публикация39518137791 не меняются. Отдельные full keyboard
-11.C1, physical Safari, delivery и refactor остаются отложенными/not_measured.
+Продуктовые байты4442 и публикация39518137791 не меняются. Physical Safari,
+delivery и refactor остаются отложенными/not_measured. Пометка full keyboard
+11.C1 как отложенного состояния не является отдельным запретом владельца на
+конечное измерение этого заранее названного критерия в существующем CI.
 Оценка10.C2 появится только после фактического CI и независимого review.
 
 Поручение владельца 21.10 — объединить питание в фильтрах через LOCAL;

@@ -9,8 +9,9 @@ const {fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest:c
 const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/';
 const mealOnly=process.argv.includes('--meal-only');
 const leadFocusOnly=process.argv.includes('--lead-focus-only');
-assert(!(mealOnly&&leadFocusOnly),'One finite installed mode at a time');
-const currentInstalled=mealOnly||leadFocusOnly;
+const keyboardOnly=process.argv.includes('--keyboard-only');
+assert([mealOnly,leadFocusOnly,keyboardOnly].filter(Boolean).length<=1,'One finite installed mode at a time');
+const currentInstalled=mealOnly||leadFocusOnly||keyboardOnly;
 const PRIOR_INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
 // ROOT fills these only from the actual one-shot publication terminal receipt.
 const MEAL_INSTALLED=Object.freeze({source:'4442cec9921d0888b43cc7a7137385f1e6223c48',release:'43c6a56e06a7fd634a603e24a890f745c5e49773',publishRun:39518137791,manifestSHA256:'839d40fef279afee958d447858eada8bfac5e536b99b7b76d7bf34d22f8f1d67'});
@@ -28,8 +29,8 @@ const MEAL_HELPER_SHA256='83dc1add39bde2e5d5360d52e36387a0197b71859b9e2a6a8a6324
 const noOp=Buffer.from('/* Controlled installed presentation evidence: canonical transport disabled. */\n');
 const fixtureScript=Buffer.from('('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');');
 const terminalScript=Buffer.from('('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');');
-const report={schema:1,status:'running',mode:leadFocusOnly?'lead-focus-only':mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
-  scope:leadFocusOnly?'Installed HTTPS Lead 10.C2 action clarity and click/programmatic focus on entry, local validation and return, with explicit fictional canonical data; Chromium 430/1280 at 100%; full keyboard, live supplier and delivery not measured':mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
+const report={schema:1,status:'running',mode:keyboardOnly?'keyboard-only':leadFocusOnly?'lead-focus-only':mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
+  scope:keyboardOnly?'Installed HTTPS SEARCH-QUALITY-1 11.C1 core keyboard/focus evidence with explicit fictional canonical data, Chromium 430/1280 at 100%; no physical keyboard/device, assistive technology, supplier or delivery acceptance':leadFocusOnly?'Installed HTTPS Lead 10.C2 action clarity and click/programmatic focus on entry, local validation and return, with explicit fictional canonical data; Chromium 430/1280 at 100%; full keyboard, live supplier and delivery not measured':mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
   fixture:fixture.label,clock:'2026-10-12T08:00:00Z',widths:[430,1280],height:900,textPercent:100,
   manifest:null,graph:[],publicGETs:[],replacements:[],network:[],cases:[],unexpectedRequests:[],
   exclusions:{supplierSearches:0,supplierQuotes:0,canonicalAPIRequests:0,realLeadSubmissions:0,analyticsRequests:0,physicalSafari:'not_measured',liveAuthority:'not_measured'}};
@@ -329,6 +330,182 @@ async function acceptLeadFocus(page,row,product,screen){
     labels:{optionalName:true,requiredPhone:true,separateConsent:true},draftRetained:true,consentRetained:true,
     selectedFullTotal:112000,originalFlightChoiceIndex:0,passiveExtraOperations:0,calls:finalCalls};
 }
+// Finite core keyboard/focus measurement for the named 11.C1 gap. Every action
+// below uses actual Tab/Shift+Tab/Enter/Space/typing, with no DOM focus shortcut.
+async function acceptKeyboard(page,row,product,screen){
+  let tabs=0;
+  const trace=[];
+  row.proof.trace=trace;
+  const proof=async(label,insidePopup=false)=>{
+    const p=await page.evaluate(insidePopup=>{
+      const node=document.activeElement,r=node.getBoundingClientRect(),css=getComputedStyle(node);
+      const popup=document.querySelector('dialog[data-native-form-popup]:modal');
+      const label=node.closest('label'),labelCSS=label&&getComputedStyle(label);
+      const baseline=window.__nativeKeyboardBaselines?.get(node);
+      const outline=c=>c&&c.outlineStyle!=='none'&&parseFloat(c.outlineWidth)>0;
+      const nodeOutline=outline(css)&&(!baseline||baseline.outline!==css.outlineStyle||baseline.outlineWidth!==css.outlineWidth||baseline.outlineColor!==css.outlineColor);
+      const labelOutline=outline(labelCSS)&&(!baseline||baseline.labelOutline!==labelCSS.outlineStyle||baseline.labelOutlineWidth!==labelCSS.outlineWidth);
+      const changedShadow=baseline&&css.boxShadow!=='none'&&baseline.shadow!==css.boxShadow;
+      const changedBorder=baseline&&(baseline.border!==css.borderColor||baseline.borderWidth!==css.borderWidth);
+      const hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+      return{tag:node.tagName,name:node.name||null,text:(node.getAttribute('aria-label')||label?.innerText||node.innerText||'').trim().slice(0,140),
+        data:{...node.dataset},hidden:!!node.closest('[hidden]'),display:css.display,visibility:css.visibility,
+        focusVisible:node.matches(':focus-visible'),outline:css.outlineStyle,outlineWidth:css.outlineWidth,shadow:css.boxShadow,
+        labelOutline:labelCSS?.outlineStyle||null,labelOutlineWidth:labelCSS?.outlineWidth||null,
+        indicator:Boolean((node.matches(':focus-visible')&&(nodeOutline||changedShadow||changedBorder))||labelOutline),
+        unobscured:Boolean(hit&&(hit===node||node.contains(hit)||label?.contains(hit))),baseline:baseline||null,
+        rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height},
+        inPopup:!insidePopup||Boolean(popup?.contains(node)),viewport:{width:innerWidth,height:innerHeight}};
+    },insidePopup);
+    trace.push({label,...p});
+    assert(!p.hidden&&p.display!=='none'&&p.visibility==='visible'&&p.rect.width>0&&p.rect.height>0,label+' visible focus target');
+    assert(p.rect.left>=-1&&p.rect.right<=row.width+1&&p.rect.top>=-1&&p.rect.bottom<=901,label+' focus within actual viewport');
+    assert(p.inPopup,label+' focus stays in the modal');assert(p.unobscured,label+' center is not clipped or covered');
+    assert(p.indicator,label+' visible keyboard focus indicator');return p;
+  };
+  const focused=locator=>locator.evaluate(node=>document.activeElement===node);
+  const key=async value=>{
+    if(value==='Tab'||value==='Shift+Tab'){
+      assert(++tabs<=2200,'Finite keyboard Tab budget per width');
+      row.proof.tabSteps=tabs;
+      await page.evaluate(()=>{
+        window.__nativeKeyboardBaselines ||= new WeakMap();
+        for(const node of document.querySelectorAll('[data-product] a[href],[data-product] button,[data-product] input,[data-product] select,[data-product] textarea,[data-product] summary')){
+          const label=node.closest('label');
+          if(node===document.activeElement||label?.contains(document.activeElement)||!node.getClientRects().length||node.closest('[hidden]'))continue;
+          const c=getComputedStyle(node),l=label&&getComputedStyle(label);
+          window.__nativeKeyboardBaselines.set(node,{outline:c.outlineStyle,outlineWidth:c.outlineWidth,outlineColor:c.outlineColor,
+            shadow:c.boxShadow,border:c.borderColor,borderWidth:c.borderWidth,labelOutline:l?.outlineStyle||null,labelOutlineWidth:l?.outlineWidth||null});
+        }
+      });
+    }
+    await page.keyboard.press(value);
+  };
+  const reach=async(locator,label,limit=180)=>{
+    await locator.waitFor({state:'visible'});
+    for(let n=0;n<=limit;n++){
+      if(await focused(locator)){await proof(label);return;}
+      await key('Tab');
+    }
+    throw Error('Keyboard cannot reach '+label+' within '+limit+' Tab steps');
+  };
+  const activate=async(locator,label,value='Enter')=>{await reach(locator,label);await key(value);};
+  const frame=async(name,locator)=>{
+    assert.equal(await focused(locator),true,name+' focus before capture');await proof(name+' before capture');
+    const file='installed-'+name+'-'+row.width+'-text100.png';
+    await page.screenshot({path:path.join(out,file),fullPage:false,animations:'allow',caret:'initial'});
+    assert.equal(await focused(locator),true,name+' focus after capture');await proof(name+' after capture');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+    const bytes=fs.readFileSync(path.join(out,file));row.frames.push({file,bytes:bytes.length,sha256:hash(bytes)});
+  };
+  const popup=product.locator('[data-native-form-popup]');
+  const modalCycle=async name=>{
+    // Stable DOM indexes record one unmodified modal's actual Tab cycle.
+    const index=()=>page.evaluate(()=>{
+      const popup=document.querySelector('dialog[data-native-form-popup]:modal');
+      const controls=[...popup.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(n=>!n.disabled&&n.tabIndex>=0&&n.getClientRects().length&&!n.closest('[hidden]'));
+      return{index:controls.indexOf(document.activeElement),total:controls.length};
+    });
+    const start=await index();assert(start.index>=0&&start.total>1,name+' initial control');
+    const cycle=async value=>{
+      const seen=new Set([start.index]);let returned=false;
+      for(let n=0;n<=start.total+2;n++){
+        await key(value);await proof(name+' '+value,true);const now=await index();
+        assert.equal(now.total,start.total,name+' stable modal controls');assert(now.index>=0,name+' focus is a modal control');
+        if(now.index===start.index){returned=true;break;}seen.add(now.index);
+      }
+      assert(returned&&seen.size===start.total,name+' every visible enabled control reached in one '+value+' cycle');
+      return seen.size;
+    };
+    const forward=await cycle('Tab'),reverse=await cycle('Shift+Tab');
+    return{controls:start.total,forwardReached:forward,reverseReached:reverse,tabWrap:true,reverseWrap:true};
+  };
+  const editors=[['destination','[data-search-destination-toggle]'],['dates','[data-search-date-toggle]'],
+    ['nights','[data-search-nights-toggle]'],['travelers','[data-search-travelers-toggle]'],
+    ['food','[data-conditions-open="food"]'],['budget','[data-conditions-open="budget"]']];
+  row.proof.editors={};
+  await reach(product.locator('select[name="origin"]'),'Origin select');
+  for(const [name,selector] of editors){
+    const opener=product.locator(selector);await activate(opener,name+' opener');await popup.waitFor({state:'visible'});
+    assert.equal(await popup.evaluate(node=>node.matches(':modal')),true);
+    row.proof.editors[name]=await modalCycle(name);
+    if(name==='nights'){
+      const selected=popup.locator('[data-native-night][aria-pressed="true"]').first();
+      await reach(selected,'Selected nights');await frame('keyboard-popup',selected);
+    }
+    if(name==='travelers'){
+      await activate(popup.locator('[data-search-add-child]'),'Add child');
+      const age=popup.locator('[data-native-age="0"]');await reach(age,'Child age');await key('ArrowDown');
+      assert.equal(await age.inputValue(),'0','Keyboard can choose an explicit age, without a supplier operation');
+      row.proof.editors[name].childAgeReached=true;
+    }
+    if(name==='food'){
+      const family=popup.locator('[data-native-meal-group-toggle="meal-family:all-inclusive"]');
+      await activate(family,'Meal family','Space');assert.equal(await focused(family),true);
+      await key('Space');assert.equal(await focused(family),true);
+      const refine=popup.locator('[data-native-meal-expand="meal-family:all-inclusive"]');
+      await activate(refine,'Meal details');assert.equal(await focused(refine),true);assert.equal(await refine.getAttribute('aria-expanded'),'true');
+      const child=popup.locator('[data-native-form-meal="Ультра всё включено"]:visible');
+      await activate(child,'Exact AI-family meal checkbox','Space');assert.equal(await child.isChecked(),true);assert.equal(await focused(child),true);
+      await proof('Exact AI-family checkbox retains focus',true);await key('Space');assert.equal(await child.isChecked(),false);
+      row.proof.editors[name].familyAndExactReached=true;
+    }
+    if(name==='budget'){
+      const min=popup.locator('[data-search-budget="min"]');await reach(min,'Budget input');
+      await key('Control+A');await page.keyboard.type('0');await key('Enter');
+    }else await key('Escape');
+    await popup.waitFor({state:'hidden'});assert.equal(await focused(opener),true,name+' returns focus to opener');
+    assert.equal((await calls(page)).search,0,name+' local editing never finds tours');
+  }
+  await activate(screen('search').locator('button[type="submit"]'),'Explicit Find');await screen('results').waitFor({state:'visible'});
+  assert.equal((await calls(page)).search,1);
+  const favorite=product.locator('[data-favorite="1"]:visible').first();
+  await activate(favorite,'Favorite','Space');assert.equal(await focused(favorite),true);await proof('Favorite state retains focus');await key('Space');
+  if(row.width===430)await activate(product.locator('[data-action="filters"]:visible').first(),'Open mobile filters');
+  const resultRefine=product.locator('[data-native-meal-expand="meal-family:all-inclusive"]:visible');
+  await activate(resultRefine,'Refine loaded meal family');
+  assert.equal(await focused(resultRefine),true);assert.equal(await resultRefine.getAttribute('aria-expanded'),'true');
+  const facet=product.locator('[data-native-filter="meals"][value="Ультра всё включено"]:visible').first();
+  await activate(facet,'Loaded exact meal filter','Space');assert.equal(await focused(facet),true);await proof('Local filter retains focus');
+  await key('Space');assert.equal(await focused(facet),true);
+  if(row.width===430){await activate(product.locator('[data-action="apply-filters"]'),'Apply local filters');await screen('results').waitFor({state:'visible'});}
+  const sort=product.locator('select.st-sort:visible');await reach(sort,'Sort select');const priorSort=await sort.inputValue();
+  await key('ArrowDown');await proof('Sort change retains focus');await key('ArrowUp');assert.equal(await sort.inputValue(),priorSort);
+  if(row.width===430)await activate(product.locator('[data-native-calendar]'),'Open price calendar');
+  const day=product.locator('[data-native-day="2026-10-12"]');
+  await activate(day,'Date price control');assert.equal(await focused(day),true);assert.equal(await day.getAttribute('aria-pressed'),'true');
+  await proof('Keyboard date selected');await key('Enter');assert.equal(await focused(day),true);assert.equal(await day.getAttribute('aria-pressed'),'false');
+  await proof('Keyboard date cleared');assert.equal((await calls(page)).search,1,'Loaded date selection/clear is local');
+  const next=product.locator('[data-native-calendar-page="next"]');
+  await activate(next,'Next calendar dates');await proof('Calendar paging retains a visible control');
+  await activate(product.locator('[data-native-calendar-page="prev"]'),'Previous calendar dates');
+  await activate(product.locator('[data-hotel-open="1"]:visible').first(),'Open exact hotel');await screen('hotel').waitFor({state:'visible'});
+  assert.equal((await calls(page)).quote,0);
+  await activate(screen('hotel').locator('[data-action="gallery"]'),'Open gallery');await screen('gallery').waitFor({state:'visible'});
+  await activate(screen('gallery').locator('[data-action="hotel"]'),'Return from gallery');await screen('hotel').waitFor({state:'visible'});
+  await activate(product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]'),'Select exact offer');await screen('tour').waitFor({state:'visible'});
+  await activate(product.locator('[data-native-tour-flight="0"]'),'Select flight');
+  await activate(product.locator('[data-action="accept-price"]:visible').first(),'Accept selected price');
+  await proof('Price acceptance retains a visible keyboard control');
+  await activate(screen('tour').locator('[data-action="lead"]:visible').first(),'Continue to contact');await screen('lead').waitFor({state:'visible'});
+  const form=product.locator('[data-lead-form]');
+  await reach(form.locator('[name="name"]'),'Optional contact name');await page.keyboard.type('FICTIONAL KEYBOARD QA');
+  await key('Tab');assert.equal(await focused(form.locator('[name="phone"]')),true);await proof('Required contact phone');
+  await page.keyboard.type('+7 999 000 00 00');await key('Tab');
+  assert.equal(await focused(form.locator('[name="consent"]')),true);await key('Space');assert.equal(await form.locator('[name="consent"]').isChecked(),true);
+  await key('Tab');const submit=form.locator('button[type="submit"]');assert.equal(await focused(submit),true);
+  await frame('keyboard-contact',submit);await key('Enter');assert.equal((await calls(page)).preview,1);assert.equal((await calls(page)).submit,0);
+  await activate(screen('lead').locator('[data-action="tour"]'),'Keyboard return to selected tour');await screen('tour').waitFor({state:'visible'});
+  const opener=screen('tour').locator('[data-action="lead"]:visible').first();assert.equal(await focused(opener),true);
+  await key('Enter');await screen('lead').waitFor({state:'visible'});
+  assert.equal(await form.locator('[name="name"]').inputValue(),'FICTIONAL KEYBOARD QA');assert.equal(await form.locator('[name="consent"]').isChecked(),true);
+  const finalCalls=await calls(page);
+  assert.deepEqual(finalCalls,{init:finalCalls.init,search:1,quote:1,expand:0,flight:[0],preview:1,submit:0});
+  assert.deepEqual(await page.evaluate(()=>({total:window.__nativeFixture.getSelection().total,flight:window.__nativeFixture.getSelection().flightChoiceId})),{total:112000,flight:0});
+  row.proof={...row.proof,criterion:'SEARCH-QUALITY-1 11.C1',keyboardOnlyActions:true,tabSteps:tabs,trace,
+    coreFlow:true,familyEditor:true,physicalKeyboard:'not_measured',assistiveTechnology:'not_measured',
+    selectedFullTotal:112000,originalFlightChoiceIndex:0,passiveExtraOperations:0,calls:finalCalls};
+}
 async function run(){
   assert(/^[0-9a-f]{40}$/.test(INSTALLED.source)&&/^[0-9a-f]{40}$/.test(INSTALLED.release)&&Number.isSafeInteger(INSTALLED.publishRun)&&INSTALLED.publishRun>0&&/^[0-9a-f]{64}$/.test(INSTALLED.manifestSHA256),'Actual terminal publication pins required before installed evidence');
   fs.mkdirSync(out,{recursive:true});
@@ -392,6 +569,11 @@ async function run(){
         await page.goto(TARGET,{waitUntil:'networkidle'});
         row.initialURL=verifyInitialURL(page.url());const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});assert.equal((await calls(page)).search,0);
+        if(keyboardOnly){
+          await acceptKeyboard(page,row,product,screen);
+          assert.equal(row.frames.length,2,'Only two new keyboard-focused states per width');
+          assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';continue;
+        }
         if(leadFocusOnly){
           await acceptLeadFocus(page,row,product,screen);
           assert.equal(row.frames.length,2,'Only two new Lead C2 states per width');
@@ -548,7 +730,7 @@ async function run(){
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
     }
-    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),leadFocusOnly?4:mealOnly?6:24);report.status='passed';
+    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),keyboardOnly||leadFocusOnly?4:mealOnly?6:24);report.status='passed';
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
