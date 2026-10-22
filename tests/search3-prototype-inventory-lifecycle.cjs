@@ -77,7 +77,7 @@ function rehydratableSnapshot(params,provider){
 }
 const defer=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const flush=async()=>{for(let i=0;i<8;i++)await new Promise(setImmediate);};
-const waitFor=async(predicate,message)=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(setImmediate);}assert.fail(message);};
+const waitFor=async(predicate,message)=>{const deadline=performance.now()+2000;do{if(predicate())return;await new Promise(resolve=>setTimeout(resolve,1));}while(performance.now()<deadline);assert.fail(message);};
 function canonicalMealCatalogue(provider,accepted=true){
  const rows=[
   [2,'breakfast','Завтраки','3','BB'],
@@ -1297,7 +1297,11 @@ test('stop aborts a pending explicit Andromeda continuation before another page 
  assert.equal(h.events.length,before,'stopped generation must ignore the late continuation page');
 });
 test('native Andromeda offers are visible without any LOCAL live read',async()=>{
- const h=harness({native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),database:async()=>assert.fail('live search must not read LOCAL offers')});
+ const h=harness({
+  browserCrypto:{subtle:{digest:async(...args)=>{await new Promise(resolve=>setTimeout(resolve,10));return crypto.webcrypto.subtle.digest(...args);}},getRandomValues:values=>crypto.webcrypto.getRandomValues(values)},
+  native:async body=>({response:{ok:true,json:async()=>directAndromeda(body)}}),
+  database:async()=>assert.fail('live search must not read LOCAL offers')
+ });
  await h.start();await waitFor(()=>h.providers().includes('andromeda'),'successful native Andromeda must become visible directly');
  assert.ok(h.providers().includes('andromeda'));
  await h.poll();assert.deepEqual(h.providers(),['andromeda','tourvisor']);

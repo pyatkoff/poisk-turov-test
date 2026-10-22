@@ -1405,6 +1405,48 @@ const compactAnexJourney=async(browser,origin,base,evidence)=>{
  }
 };
 
+const infantChargeQualification=async(browser,origin,base,evidence)=>{
+ for(const width of [430,1280]){
+  const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
+  page.setDefaultTimeout(10000);page.on('pageerror',error=>errors.push(error.message));
+  try{
+   await page.route('**/*',async route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(url.pathname==='/test-photo.svg'){await route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="700" height="500"><rect fill="#bacad5" width="700" height="500"/></svg>'});return;}
+    if(url.origin===origin&&url.pathname.startsWith(base)&&!url.pathname.includes('/data/')){await route.continue();return;}
+    try{
+     const result=await transport.json(request.url(),{body:request.postData()});
+     if(result.data?.provider==='anex'&&Array.isArray(result.data.hotels))for(const hotel of result.data.hotels)for(const tour of hotel.tours){
+      Object.assign(tour,{children:1,infants:1,infant_charge:{status:'unknown',amount:null,included_in_search_price:null}});
+     }
+     await route.fulfill({status:result.ok===false?502:200,contentType:'application/json',body:JSON.stringify(result)});
+    }catch(error){forbidden.push(error.message);await route.abort();}
+   });
+   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'1'}));
+   await page.locator('.search-submit:not(:disabled)').waitFor();await page.locator('.search-submit').click();await page.waitForFunction(()=>document.querySelector('.hotel-card')&&document.querySelector('#search-status').hidden);
+   await page.locator('[data-action="hotel-details"][data-id="501"]').first().click();await page.locator('#hotel-room-count').waitFor();
+   const group=page.locator('.room-offer-choice [data-action="select-hotel-offer"][data-key^="anex%3A"]'),groupRoom=group.locator('xpath=ancestor::*[contains(@class,"hotel-room-card")][1]');
+   if(await groupRoom.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await groupRoom.locator(':scope>summary').click();
+   await group.click();assert.match(await page.locator('#hotel-detail-price-status').textContent(),/доплата за младенца уточняется/i);
+   await page.locator('[data-action="continue-hotel-offer"]').click();await page.waitForFunction(()=>document.querySelector('.hotel-room-cards').textContent.includes('ANEX CONCRETE'));
+   const concrete=page.locator('.hotel-room-card').filter({hasText:'ANEX CONCRETE'});
+   if(await concrete.evaluate(el=>el.tagName==='DETAILS'&&!el.open))await concrete.locator(':scope>summary').click();
+   const choose=concrete.locator('[data-action="select-hotel-offer"]');await choose.click();
+   assert.match(await concrete.locator('.room-offer-price-status').textContent(),/доплата за младенца уточняется/i);
+   assert.equal(Number((await page.locator('#hotel-detail-min').textContent()).replace(/\D/g,'')),121000);
+   assert.match(await page.locator('#hotel-detail-price-status').textContent(),/доплата за младенца уточняется/i);
+   const status=await page.locator('#hotel-detail-price-status').evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth,height:el.clientHeight,scrollHeight:el.scrollHeight}));
+   assert(status.width>0&&status.height>0&&status.scrollWidth<=status.width+1&&status.scrollHeight<=status.height+1,'complete infant qualification fits existing footer at '+width);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+   await page.screenshot({path:path.join(evidence,`infant-charge-selected-${width}.png`)});
+   assert.equal(transport.calls.filter(c=>c.action==='expand').length,1);assert(!transport.calls.some(c=>['offer','additional_prices','quote_start','quote_calculate'].includes(c.action)||/lead|booking|payment/.test(c.url)));
+   assert.deepEqual(transport.calls.find(c=>c.action==='search'&&c.url.endsWith('/api-anex-search3-preview.php')).body.params.childs,[1]);
+   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
+   fs.writeFileSync(path.join(evidence,`infant-charge-${width}.json`),JSON.stringify({width,source:'compiled canonical adapter; fictional intercepted infant listing',listingAmount:121000,age:1,infantCharge:'unknown',amount:null,includedInSearchPrice:null,status,expand:1,quote:0,supplier_HTTP:0,real_leads:0,physical:false},null,2));
+  }finally{await context.close();}
+ }
+ console.log('PASS compiled infant price qualification: exact base amount and complete unknown-charge status at430/1280; supplier/quote/lead0');
+};
 const inlineHotelContactJourney=async(browser,origin,base,evidence)=>{
  for(const width of [430,1280]){
   const transport=fixture(),errors=[],forbidden=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();
@@ -1521,6 +1563,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
    await inlineHotelContactJourney(browser,origin,base,evidence);
+   await infantChargeQualification(browser,origin,base,evidence);
    await localCivilDateJourney(browser,origin,base,evidence);
    await filterRecoveryApplyJourney(browser,origin,base,evidence);
   for(const width of [390,1280]){

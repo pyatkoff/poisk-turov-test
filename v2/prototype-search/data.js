@@ -573,6 +573,13 @@
       ||!(/^[a-f0-9]{32}$/).test(searchRef)||!(/^anex_online:[a-f0-9]{64}$/).test(offerRef)
       ||tour.selection_enabled!==false||tour.final_price_verified!==false||seen.has(offerRef))throw anexProjectionError('offer_scope','Invalid ANEX offer');
     seen.add(offerRef);
+    let infantCharge;
+    if(tour.infants!==undefined||tour.infant_charge!==undefined){
+      const count=p.childs.filter(age=>age<2).length,charge=tour.infant_charge;
+      if(count<1||tour.infants!==count||!charge||charge.status!=='unknown'||charge.amount!==null||charge.included_in_search_price!==null)
+        throw anexProjectionError('infant_charge','Invalid ANEX infant charge');
+      infantCharge=Object.freeze({status:'unknown',amount:null,includedInSearchPrice:null});
+    }
     const total=Number(tour.price.amount),mealName=meal(tour.meal)||'Питание уточняется',plan=providerMealPlan(tour.meal,'anex');
     if(p.priceFrom&&total<Number(p.priceFrom)||p.priceTo&&total>Number(p.priceTo)){onReject?.('amount');return null;}
     const selectedMeals=(run.filters.meals||[]).map(meal).filter(Boolean);
@@ -584,7 +591,7 @@
       operator:{name:'ANEX'},isCharter:flight==='charter'?true:flight==='regular'?false:undefined,
       cachedListing:false,selectionEnabled:false,finalPriceVerified:false,anexKind:String(tour.kind||''),
       anexLocalHotelId:hotel.local_id,anexGeneration:Number.isInteger(run?.generation)?run.generation:generation,
-      anexSessionCurrent:run?.anexSessionCurrent===true};
+      anexSessionCurrent:run?.anexSessionCurrent===true,...(infantCharge?{infantCharge}: {})};
   }
   function directFirstWeekScopes(p){
     const end=plus(p.dateFrom,6)<p.dateTo?plus(p.dateFrom,6):p.dateTo;

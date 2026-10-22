@@ -65,6 +65,30 @@ snapshot(){return JSON.stringify({generation,searchId,context,current:[...anexCu
   samo(data=samoPage(),index=0,total=1){return root.__test.applyDirectAndromeda(run,data,params,index,total);}};
 }
 const tests=[];function test(name,fn){tests.push([name,fn]);}
+test('infant listing retains an unknown charge through initial projection and one group expansion',async()=>{
+ const h=harness(),family={...params,childs:[1,8]},search={origin:'Москва',country:'4',adults:2,ages:[1,8],from:params.dateFrom,to:params.dateTo,minNights:7,maxNights:7};
+ h.t.applied(search);h.t.expansionCatalog();h.run.anexSessionCurrent=true;
+ const familyPage=(kind,id)=>{const p=page(1,'available',[id]);Object.assign(p.hotels[0].tours[0],{children:2,infants:1,kind,infant_charge:{status:'unknown',amount:null,included_in_search_price:null}});return p;};
+ await h.t.applyDirectAnex(h.run,familyPage('group_minimum',1),family,0,1);
+ const group=h.t.offers()[0];
+ assert.equal(group.total,100000);assert.deepEqual(Array.from(group.ages),[1,8]);assert.equal(group.raw.finalPriceVerified,false);
+ assert.deepEqual(JSON.parse(JSON.stringify(group.raw.infantCharge)),{status:'unknown',amount:null,includedInSearchPrice:null});
+ assert(Object.isFrozen(group.raw.infantCharge));assert.equal(h.calls.length,0);
+ h.setFetch(async(url,body)=>({ok:true,data:{...expandIdentity(body),status:'expanded',hotels:familyPage('concrete',2).hotels}}));
+ const result=await h.root.AnyTourPrototypeData.expandAnexGroup(group),exact=result.offers[0];
+ assert.equal(exact.total,100000);assert.deepEqual(Array.from(exact.ages),[1,8]);assert.equal(exact.raw.finalPriceVerified,false);
+ assert.deepEqual(JSON.parse(JSON.stringify(exact.raw.infantCharge)),{status:'unknown',amount:null,includedInSearchPrice:null});
+ assert.equal(h.calls.length,1);assert.equal(h.calls[0].body.action,'expand');assert.equal(h.apiCalls.length,0);
+});
+test('infant charge cannot acquire zero, inclusion or authority from malformed public facts',async()=>{
+ for(const fault of [{infants:0},{infants:2},{infants:'1'},{infant_charge:null},{infant_charge:{status:'unknown',amount:0,included_in_search_price:null}},
+  {infant_charge:{status:'unknown',amount:null,included_in_search_price:false}},{infant_charge:{status:'included',amount:null,included_in_search_price:null}}]){
+  const h=harness(),p=page();Object.assign(p.hotels[0].tours[0],{children:1,infants:1,infant_charge:{status:'unknown',amount:null,included_in_search_price:null}},fault);
+  await assert.rejects(h.t.applyDirectAnex(h.run,p,{...params,childs:[1]},0,1),e=>e.anexClientGuard==='infant_charge');
+  assert.equal(h.stored.size,0);assert.equal(h.calls.length,0);assert.equal(h.apiCalls.length,0);
+ }
+ const legacy=harness();await legacy.initial();assert.equal(legacy.t.offers()[0].raw.infantCharge,undefined,'ordinary no-infant projection stays unchanged');
+});
 test('stop preserves cleanup and the positive int31 generation contract at exhaustion',()=>{
  const h=harness();h.t.epoch(2147483647);
  const next=h.t.stop();assert(Number.isInteger(next)&&next>0&&next<=2147483647);
