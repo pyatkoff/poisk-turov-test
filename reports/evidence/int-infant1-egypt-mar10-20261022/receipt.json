@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "data": {
+    "retained_only": true,
+    "supplier_calls": 0,
+    "records": [],
+    "retained_first_page": {
+      "raw_rows": "nonempty",
+      "retained_offers": 0,
+      "interpretation": "rows_rejected_or_filtered",
+      "normalization": {
+        "rows_seen": 208,
+        "normalized_rows": 0,
+        "rejected_rows": 208,
+        "rejections": {
+          "infant": 208
+        },
+        "party_counts": {
+          "2/0/0": 208
+        },
+        "hotel_filtered_rows": 0,
+        "retained_offers": 0
+      }
+    }
+  }
+}
