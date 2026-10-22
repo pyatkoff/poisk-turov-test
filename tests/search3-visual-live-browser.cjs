@@ -1622,12 +1622,16 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
    resultFilterViewportJourney(browser,origin,base,evidence),
    formPickerActionJourney(browser,origin,base,evidence),
    (async()=>{
-  for(const width of [360,390,430,768,1280]){
-  const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}}),page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
-  let releaseInitialCatalog;transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
+  const pendingWidths=[360,390,430,768,1280],widthFailures=[];
+  const runWidth=async width=>{
+  const transport=fixture({tvFuel:20686}),errors=[],forbidden=[],flightDownloads=[],context=await browser.newContext({viewport:{width,height:900}});
+  let releaseInitialCatalog,releaseAnexQuote,releaseSamoPair;
+  try{
+  const page=await context.newPage();page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/flight-picker-ui-v1.js'))flightDownloads.push(request.url());});
+  transport.state.countryGates['1']=new Promise(resolve=>releaseInitialCatalog=resolve);
   await page.addInitScript(()=>{window.quoteFailures=[];window.addEventListener('anytour:quote-failure',e=>window.quoteFailures.push(e.detail));});
-  let releaseAnexQuote,markAnexQuotePending;let anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
-  let releaseSamoPair,markSamoPairPending;let samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
+  let markAnexQuotePending;let anexQuotePending=new Promise(resolve=>markAnexQuotePending=resolve);
+  let markSamoPairPending;let samoPairGate=new Promise(resolve=>releaseSamoPair=resolve);
   await page.route('**/*',async route=>{
    const req=route.request(),u=new URL(req.url());
    if(u.pathname==='/test-missing-photo.svg'){await route.fulfill({status:404,contentType:'text/plain',body:'Fictional photo unavailable'});return;}
@@ -1639,7 +1643,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
    releaseInitialCatalog();delete transport.state.countryGates['1'];
    await hotelPickerBlock(page,width,transport,origin,base,evidence);
    assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-   receipts.push({width,targeted_hotel_picker:true,supplier_requests:0,lead_requests:0});await context.close();continue;
+   receipts.push({width,targeted_hotel_picker:true,supplier_requests:0,lead_requests:0});return;
   }
   await page.goto(origin+base+'visual-search/?'+new URLSearchParams({...trip,ages:'',searched:'1',stars:'4'}));
   const hydrationControls=page.locator('.intro [data-action="filters"],#search-form [data-action="departure"],#search-form [data-action="destination"],#search-form [data-action="dates"],#search-form [data-action="nights"],#search-form [data-action="guests"],#quick-stars button,#quick-meal,#quick-budget');
@@ -2205,8 +2209,17 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   await page.locator('#modal-back').click();assert.equal(transport.calls.filter(c=>c.action==='quote_select_flights').length,beforeSamoPair+1);
   await hotelPickerBlock(page,width,transport,origin,base,evidence);
   assert.deepEqual(errors,[]);assert.deepEqual(forbidden,[]);
-  receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});await context.close();
- }
+  receipts.push({width,three_sources_one_hotel:true,progressive_hotel_rooms:true,progressive_hotel_meal:true,progressive_hotel_back:true,hotel_more_back:true,hotel_more_forward:true,hotel_moved_offer_back:true,progressive_offer_list:true,progressive_offer_filter_preserved:true,calendar_database_observation:true,search_before_submit:0,total:133500.5,tv_fuel_disclosed:20686,tv_unknown_fuel_preserved:true,tv_explicit_zero_fuel_preserved:true,samo_total:125500,samo_terminal_recovery:true,samo_no_replay:true,departure_recovery_no_search:true,departure_calendar_context:true,provider_return_no_replay:true,tv_chosen_flight_retained:true,tv_reopen_no_replay:true,tv_new_search_invalidation:true,contact_draft_retained:true,anex_estimate_retained:true,local_application:true,progressive_facet_focus:true,late_facet_choice:true,mobile_facet_cancel_query_reset:width<=1100,mobile_filter_resize_state:width<=1100,initial_invalid_budget_blocked:initialInvalidBudgetBlocked,facet_query_scope_reset:true,supplier_requests:0,lead_requests:0});
+  }finally{releaseInitialCatalog?.();releaseAnexQuote?.();releaseSamoPair?.();await context.close();}
+  };
+  // Contexts and evidence are width-local. Drain every case with two slots,
+  // retain every failure, and settle both slots before shared downstream work.
+  const widthWorkers=await Promise.allSettled([0,1].map(async()=>{
+   while(pendingWidths.length){const width=pendingWidths.shift();try{await runWidth(width);}catch(error){widthFailures.push(error);}}
+  }));
+  widthFailures.push(...widthWorkers.filter(result=>result.status==='rejected').map(result=>result.reason));
+  if(widthFailures.length)throw new AggregateError(widthFailures,'Compiled width journeys failed');
+  receipts.sort((a,b)=>a.width-b.width);
  // Each journey owns its context, fictional transport and evidence names. Keep
  // both complete matrices; settle both before closing the shared browser.
  const isolated=await Promise.allSettled([
