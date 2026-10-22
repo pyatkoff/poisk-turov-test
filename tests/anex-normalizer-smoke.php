@@ -149,7 +149,7 @@ anex_normalizer_check($children['search']['child_ages'] === [8] && count($childr
 $travelNights = anytour_anex_normalize_prices(['prices' => [array_replace($row, ['checkOut' => '20260922'])]], $context);
 anex_normalizer_check(count($travelNights['offers']) === 1, 'hotel dates not equated to transport-inclusive nights');
 
-// Synthetic infant fixtures: source-contract inference, not observed supplier acceptance.
+// Listing counts do not establish whether an infant charge is included.
 foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9]] as $ages) {
     $infants = count(array_filter($ages, static fn($age) => $age < 2));
     $familyContext = array_replace($context, ['children' => count($ages), 'child_ages' => $ages]);
@@ -162,10 +162,21 @@ foreach ([[0], [1], [0, 8], [0, 0], [1, 1, 9]] as $ages) {
         && $family['offers'][0]['infants'] === $infants, 'full party and repeated ages preserved');
     anex_normalizer_check($family['offers'][0]['price'] === $group['price']
         && $family['offers'][0]['final_price_verified'] === false, 'infant listing is not a recalculated total');
+    $baseFamily = anytour_anex_normalize_prices(['prices' => [array_replace($familyRow, ['infant' => 0])]], $familyContext);
+    anex_normalizer_check(count($baseFamily['offers']) === 1
+        && $baseFamily['offers'][0]['infants'] === $infants
+        && $baseFamily['offers'][0]['supplier_infants'] === 0
+        && $family['offers'][0]['supplier_infants'] === $infants
+        && $baseFamily['search']['child_ages'] === $ages, 'seated base listing keeps requested family and unchanged supplier counter');
+    anex_normalizer_check($baseFamily['offers'][0]['infant_charge'] ===
+        ['status' => 'unknown', 'amount' => null, 'included_in_search_price' => null]
+        && $family['offers'][0]['infant_charge'] === $baseFamily['offers'][0]['infant_charge']
+        && $baseFamily['offers'][0]['price'] === $group['price']
+        && $baseFamily['offers'][0]['final_price_verified'] === false, 'no zero/default infant fee or fabricated family total');
     $missing = $familyRow; unset($missing['infant']);
     foreach ([$missing, array_replace($familyRow, ['infant' => null]),
         array_replace($familyRow, ['infant' => false]), array_replace($familyRow, ['infant' => 'unknown']),
-        array_replace($familyRow, ['infant' => 0]), array_replace($familyRow, ['infant' => $infants + 1]),
+        array_replace($familyRow, ['infant' => $infants + 1]),
         array_replace($familyRow, ['child' => count($ages)]),
         array_replace($familyRow, ['adult' => 0])] as $wrongFamily) {
         $denied = anytour_anex_normalize_prices(['prices' => [$wrongFamily]], $familyContext);

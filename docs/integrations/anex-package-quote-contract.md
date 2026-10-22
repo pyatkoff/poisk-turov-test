@@ -55,16 +55,39 @@ Returned package identity and selected transport UIDs must match at every stage.
 Only calcfull can produce quote_verified, with expiry no later than the search
 context. Personal/raw supplier documents are neither persisted nor projected.
 
-## Infant family binding — source contract 2026-10-21
+## Infant family binding — listing correction 2026-10-22
 
 The original request keeps every child in CHILD/AGES, including ages0/1. The
 internal/public `children` count continues to mean that entire requested list;
 `infants` is a subset, not an extra passenger or a separate calculated charge.
-For a requested infant family, this normalizer requires explicit supplier infant
-count matching ages below2 and supplier child count equal to the remaining ages.
-Missing or contradictory counts stay rejected. This SearchTour count decomposition
-is a source-contract inference from the documented separate fields; a nonzero
-SearchTour wire specimen and ordinary live acceptance remain separate evidence.
+For a requested infant family, the search normalizer accepts an explicit supplier
+infant count of zero or the requested count, while adults and non-infant children
+must match exactly. Missing, malformed or conflicting nonzero counts stay rejected.
+`infants` means the requested subset; `supplier_infants` preserves the actual
+returned count separately. The original requirement that a search row already
+declare every infant was an unproved inference, not a supplier guarantee.
+
+Every infant listing carries `infant_charge={status:unknown,amount:null,
+included_in_search_price:null}`; the public tour projection carries the same safe
+fact and requested infant count. The raw base price is unchanged. Neither zero
+nor a positive returned head count establishes the fee or whether it is included.
+Existing APD arithmetic still declines an infant party, so its adult/child fuel
+rates cannot replace the infant fee or make this base listing price-ready.
+
+Official ANEX guidance checked22Oct2026 describes an infant boarding-pass charge,
+possible insurance, and automatic inclusion in the final booking calculation:
+https://anextour.ru/help/service/doplaty-turkey . Conditions vary by destination
+and carrier (for example regular fares in the UAE are quoted by tariff):
+https://anextour.ru/help/service/doplaty-uae . These public rules justify treating
+the infant supplement as a separate price component; they do not supply a fee for
+the saved Egypt offers or prove a quote-only API parameter. No static amount is
+copied into runtime. A supplier gross already covering the family is used once;
+an estimated infant charge must never be added on top of that total.
+
+This is a backend search-contract correction. SEARCH consumes the new unknown
+charge fact before runtime exposure; consumer presentation and real whole-party
+quote acceptance remain separately recorded. It authorizes no replay of the
+consumed174-row or208-row cases and introduces no new supplier action.
 
 Primary public sources retrieved on2026-10-21 without supplier API/auth calls:
 - https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:prices
@@ -200,7 +223,7 @@ as the requested whole family, changing age0 to1, inventing an INFANT parameter,
 or treating a missing infant charge as0 would discard the unresolved binding.
 The next provider contract result must establish how the requested infant appears
 in the supported search/package claim and typed quote participants. Until then the
-current strict checks and unknown infant fee remain in force; no whole-family
+strict whole-family quote checks and unknown infant fee remain in force; no whole-family
 flight/final-price acceptance is claimed. The completed14Feb case is consumed and
 must not be rerun, repolled or varied as a fallback. Tourvisor remains independent.
 

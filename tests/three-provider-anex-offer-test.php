@@ -133,6 +133,10 @@ foreach ([[0], [1], [0, 8], [0, 0]] as $ages) {
         && $familyDto['money']['additional_prices_reported'] === []
         && $familyDto['money']['arithmetic_applied'] === false
         && $familyDto['quote_state'] === 'unknown' && $familyDto['final_price_verified'] === false);
+    $baseFamily = bridge_page(['child' => count($ages) - $infants, 'infant' => 0],
+        ['children' => count($ages), 'child_ages' => $ages]);
+    $baseDto = bridge_offer($baseFamily);
+    bridge_check($baseFamily['offers'][0]['supplier_infants'] === 0 && $baseDto === $familyDto);
     foreach ([null, 0, $infants + 1, (string) $infants, false] as $badInfants) {
         $bad = $family; $bad['offers'][0]['infants'] = $badInfants;
         bridge_reject(static fn () => bridge_offer($bad), 'THREE_PROVIDER_ANEX_SEARCH_CONTEXT');

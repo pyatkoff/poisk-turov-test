@@ -628,6 +628,36 @@ foreach ([[], [999, 998]] as $selection) {
 }
 echo "ANEX selected hotel upstream smoke passed\n";
 
+// Infant0 is a usable search listing, with an explicit unresolved price component.
+foreach ([[0], [1], [0, 8]] as $infantAges) {
+    $infantParams = array_replace($params, ['countryId' => 2, 'childs' => $infantAges]);
+    $infantContext = anytour_anex_search3_core($infantParams);
+    $infantRow = array_replace($row, ['id' => 'fixture-base-family', 'grouped' => false,
+        'adult' => 2, 'child' => count($infantAges) - 1, 'infant' => 0]);
+    $infantPage = anytour_anex_normalize_prices(['prices' => [$infantRow]], $infantContext,
+        static fn() => 999);
+    $infantMetadata = [999 => ['id' => 999, 'name' => 'Fixture family hotel', 'country_id' => 2,
+        'country_name' => 'Country', 'category' => 4, 'rating' => '4.5']];
+    $infantPublic = anytour_anex_search3_project($infantPage['offers'], $infantMetadata, $infantParams);
+    $infantTour = $infantPublic[0]['tours'][0] ?? [];
+    search3_check(count($infantPublic) === 1 && $infantTour['infants'] === 1
+        && $infantTour['children'] === count($infantAges)
+        && $infantTour['infant_charge'] === ['status' => 'unknown', 'amount' => null, 'included_in_search_price' => null]
+        && $infantTour['price'] === $infantPage['offers'][0]['price']
+        && $infantTour['final_price_verified'] === false, 'infant base listing retains family, price and unresolved charge');
+    $infantApplication = anytour_anex_search3_additional_application([
+        'rows' => [['price_converted_adult' => '100', 'price_converted_chd' => '20']],
+        'total_count' => 1, 'truncated' => false], $infantPage['offers'][0]);
+    search3_check($infantApplication['application_state'] === 'unknown'
+        && $infantApplication['arithmetic_applied'] === false
+        && $infantApplication['party_surcharge'] === null && $infantApplication['search_plus_additional'] === null,
+        'APD child fuel rate cannot stand in for the infant charge');
+    foreach (['supplier_infants', 'supplier-private', 'supplier_offer_id'] as $privateField) {
+        search3_check(strpos(json_encode($infantPublic), $privateField) === false, 'only safe infant facts are public');
+    }
+}
+echo "ANEX infant listing projection and APD separation passed\n";
+
 
 // Current first-page rejection facts, synthetic transport only; existing receipt does no I/O.
 $diagCalls = 0; $diagFail = false;

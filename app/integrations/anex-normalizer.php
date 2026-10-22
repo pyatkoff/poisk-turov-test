@@ -165,7 +165,10 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
             && $checkin->format('Y-m-d') <= $search['checkin_end'] && $checkin < $checkout,
         'night_scope' => $nights !== null && $nights >= $search['nights_from'] && $nights <= $search['nights_till'],
         'packet_type' => anytour_anex_normalizer_integer($row['packetType'] ?? null, 0, 0) === 0,
-        'infant' => $expectedInfants > 0 ? $infants === $expectedInfants
+        // Search can return the seated base party with infant=0. It remains a
+        // listing for the requested family, with an unconfirmed infant charge.
+        // A nonzero conflicting count or a malformed/missing field is rejected.
+        'infant' => $expectedInfants > 0 ? in_array($infants, [0, $expectedInfants], true)
             : (!array_key_exists('infant', $row) || $infants === 0),
         'grouped' => $grouped !== null,
         'price' => $amount !== null,
@@ -218,7 +221,7 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
         'nights' => $nights,
         'adults' => $adults,
         'children' => $search['children'],
-        'infants' => $infants,
+        'infants' => $expectedInfants > 0 ? $expectedInfants : $infants,
         'meal' => anytour_anex_normalizer_label($row['meal'] ?? null, $sensitive, 80),
         'external_meal_id' => anytour_anex_normalizer_id($row['mealKey'] ?? null),
         'room' => anytour_anex_normalizer_label($row['room'] ?? null, $sensitive),
@@ -239,7 +242,11 @@ function anytour_anex_normalizer_offer(array $row, array $search, ?callable $res
         'flight_type' => anytour_anex_normalizer_flight_type($row['freightExternal'] ?? null),
         'supplier_booking_flag' => anytour_anex_normalizer_flag($row['bron'] ?? null),
         'final_price_verified' => false,
-    ];
+    ] + ($expectedInfants > 0 ? [
+        // Keep the supplier count as evidence, never rewrite it to match intent.
+        'supplier_infants' => $infants,
+        'infant_charge' => ['status' => 'unknown', 'amount' => null, 'included_in_search_price' => null],
+    ] : []);
 }
 
 function anytour_anex_normalizer_integer($value, int $minimum, int $maximum): ?int
