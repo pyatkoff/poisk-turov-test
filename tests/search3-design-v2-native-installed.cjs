@@ -403,22 +403,37 @@ async function acceptKeyboard(page,row,product,screen){
     // Stable DOM indexes record one unmodified modal's actual Tab cycle.
     const index=()=>page.evaluate(()=>{
       const popup=document.querySelector('dialog[data-native-form-popup]:modal');
+      if(!popup)return{index:-1,total:0,modal:false,body:document.activeElement===document.body,documentHasFocus:document.hasFocus()};
       const controls=[...popup.querySelectorAll('a[href],button,input,select,textarea,summary,[tabindex]')].filter(n=>!n.disabled&&n.tabIndex>=0&&n.getClientRects().length&&!n.closest('[hidden]'));
-      return{index:controls.indexOf(document.activeElement),total:controls.length};
+      return{index:controls.indexOf(document.activeElement),total:controls.length,modal:true,body:document.activeElement===document.body,documentHasFocus:document.hasFocus()};
     });
     const start=await index();assert(start.index>=0&&start.total>1,name+' initial control');
+    const uaBoundaryTransitions=[];
+    row.proof.editors[name]={controls:start.total,uaBoundaryTransitions};
     const cycle=async value=>{
-      const seen=new Set([start.index]);let returned=false;
+      const seen=new Set([start.index]);let returned=false,previous=start.index,boundaries=0;
       for(let n=0;n<=start.total+2;n++){
-        await key(value);await proof(name+' '+value,true);const now=await index();
+        await key(value);let now=await index();
+        if(now.body){
+          // Native sequential navigation may visit browser UI at a document
+          // boundary (WHATWG HTML focus navigation; html issue8339). It must
+          // never focus a background page control. Record and prove the exact
+          // one-stop edge round trip with ordinary keyboard input only.
+          const edge=value==='Tab'?start.total-1:0,expected=value==='Tab'?0:start.total-1;
+          const transition={direction:value,from:previous,body:now};uaBoundaryTransitions.push(transition);
+          assert(now.modal&&previous===edge&&++boundaries===1,name+' only one native UA stop at the exact modal edge');
+          await key(value);now=await index();transition.returned=now;
+          assert(now.modal&&!now.body&&now.index===expected,name+' next ordinary Tab returns to the exact modal edge control');
+        }
+        await proof(name+' '+value,true);
         assert.equal(now.total,start.total,name+' stable modal controls');assert(now.index>=0,name+' focus is a modal control');
-        if(now.index===start.index){returned=true;break;}seen.add(now.index);
+        if(now.index===start.index){returned=true;break;}seen.add(now.index);previous=now.index;
       }
       assert(returned&&seen.size===start.total,name+' every visible enabled control reached in one '+value+' cycle');
       return seen.size;
     };
     const forward=await cycle('Tab'),reverse=await cycle('Shift+Tab');
-    return{controls:start.total,forwardReached:forward,reverseReached:reverse,tabWrap:true,reverseWrap:true};
+    return{controls:start.total,forwardReached:forward,reverseReached:reverse,tabWrap:true,reverseWrap:true,uaBoundaryTransitions};
   };
   const editors=[['destination','[data-search-destination-toggle]'],['dates','[data-search-date-toggle]'],
     ['nights','[data-search-nights-toggle]'],['travelers','[data-search-travelers-toggle]'],

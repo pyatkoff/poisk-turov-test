@@ -168,7 +168,7 @@ jobs:
           print('NATIVE_REVIEW_INVENTORY', len(files), os.environ['SOURCE_SHA'])
           PY
       - name: Render donor/native frame pairs and verify controlled journey
-        # This QA-only branch measures the named installed Lead C2 gap below;
+        # These QA-only branches measure the named installed gaps below;
         # unchanged product frames are retained, not replayed. All source checks stay.
         if: github.head_ref != 'test/design-v2-installed-lead-c2-20261022' && github.head_ref != 'test/design-v2-installed-keyboard-20261022'
         shell: bash
