@@ -110,17 +110,14 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
         if ((float)$amount <= 0.0) throw new InvalidArgumentException('TV_FUEL_AMOUNT', 7105);
         $currency = self::currency($fuel['currency'] ?? null);
 
-        /* A positive tour-level value is a second statement about the same party
-         * amount. Null/zero means the search/detail response did not expose it;
-         * the newer flights actualization remains the source of this observation. */
+        // Different stages may report different fuel. Keep both facts for monitoring;
+        // equality is neither a capture requirement nor permission to price another tour.
+        $tourFuel = null;
         if (array_key_exists('fuelCharge', $tour) && $tour['fuelCharge'] !== null) {
             try {
                 $tourFuel = self::money($tour['fuelCharge']);
             } catch (InvalidArgumentException $error) {
                 throw new InvalidArgumentException('TV_FUEL_AMOUNT', 7106, $error);
-            }
-            if ((float)$tourFuel > 0.0 && $tourFuel !== $amount) {
-                throw new DomainException('TV_FUEL_AMOUNT_CONFLICT');
             }
         }
         if (self::currency($tour['currency'] ?? null) !== $currency) {
@@ -153,6 +150,11 @@ final class AnyTourTourvisorOperatorFuelRetainedIntakeV1
             'base_relation' => 'included',
             'amount' => $amount,
             'currency' => $currency,
+            'monitoring' => [
+                'tour_amount' => $tourFuel,
+                'flight_amount' => $amount,
+                'currency' => $currency,
+            ],
             'source' => 'tourvisor_flights_fuel',
             'observed_at' => $observedAt,
             'expires_at' => $expiresAt,

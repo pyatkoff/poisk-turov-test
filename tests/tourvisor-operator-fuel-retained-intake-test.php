@@ -94,11 +94,13 @@ $searchTarget = [
     ],
     'offer_ref_digest'=>tvfi_hash('search-target'),'flight_dates'=>['2026-10-11','2026-10-18'],
 ];
-tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($searchTarget, [$searchObs,$searchObs2], 2000) !== null, 'two search+flights rows confirm rule without tour detail');
+tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($searchTarget, [$searchObs,$searchObs2], 2000) === null, 'two search+flights observations await accuracy evaluation');
 
 $searchConflict = $searchBase;
 $searchConflict['search_row']['fuel_charge'] = 30000;
-tvfi_search_reject($searchConflict, 'search and flights fuel conflict must reject');
+$searchDifferent = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observationFromSearchRow($searchConflict);
+tvfi_ok($searchDifferent['monitoring'] === ['tour_amount'=>'30000','flight_amount'=>'33748',
+    'currency'=>'RUB','comparison'=>'different'], 'different search and flight amounts both retained');
 $searchWrongParty = $searchBase;
 $searchWrongParty['search_row']['adults'] = 1;
 tvfi_search_reject($searchWrongParty, 'search row party mismatch must reject');
@@ -130,11 +132,14 @@ $target = [
     ],
     'offer_ref_digest'=>tvfi_hash('target'),'flight_dates'=>['2026-10-11','2026-10-18'],
 ];
-tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$obs,$obs2], 2000) !== null, 'two retained tours confirm existing rule');
+tvfi_ok(AnyTourOperatorFuelRuleEvidenceV1::confirmedInput($target, [$obs,$obs2], 2000) === null, 'matching tours remain monitoring data until accuracy evaluation');
+tvfi_ok($obs['monitoring']['comparison']==='matched', 'matching stage amounts retained for the same monitoring denominator');
 
 $nullSearchFuel = $base;
 $nullSearchFuel['tour']['fuelCharge'] = null;
 tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($nullSearchFuel)['amount'] === '33748', 'flights source fills absent detail fuel');
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($nullSearchFuel)['monitoring']['tour_amount'] === null,
+    'missing detail fuel is not converted to zero');
 
 // Branch tags are diagnostic metadata; all these original amount guards still reject.
 $amountCases = [
@@ -172,7 +177,18 @@ foreach ([new RuntimeException('TV_FUEL_AMOUNT',7101),new InvalidArgumentExcepti
 }
 
 $conflict = $base; $conflict['tour']['fuelCharge'] = 30000;
-tvfi_reject($conflict, 'conflicting tour and flights fuel must reject');
+$different = AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($conflict);
+tvfi_ok($different['monitoring']['comparison']==='different' && $different['monitoring']['tour_amount']==='30000'
+    && $different['amount']==='33748', 'different valid stage amounts are monitoring evidence');
+$largeDifference = $base; $largeDifference['tour']['fuelCharge']=1;
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($largeDifference)['monitoring']['comparison']==='different',
+    '80 percent objective is not an invented 20 percent per-sample tolerance');
+$zeroDetail = $base; $zeroDetail['tour']['fuelCharge']=0;
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($zeroDetail)['monitoring']['tour_amount']==='0',
+    'explicit supplier zero is retained separately from missing');
+$decimalDetail = $base; $decimalDetail['tour']['fuelCharge']='33748.00';
+tvfi_ok(AnyTourTourvisorOperatorFuelRetainedIntakeV1::observation($decimalDetail)['monitoring']['comparison']==='matched',
+    'decimal spelling is not a price difference');
 $multiLeg = $base; $multiLeg['flights']['flights'][0]['forward'][] = $segment('IST','AYT','2026-10-11','TK2');
 tvfi_reject($multiLeg, 'multi-leg route must not be flattened');
 $wrongParty = $base; $wrongParty['party'] = ['adults'=>1,'children'=>1,'child_ages'=>[5]];

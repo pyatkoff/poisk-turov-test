@@ -97,6 +97,33 @@ final class AnyTourOperatorFuelRuleEvidenceV1
             // Optional so pre-FX v2 observation files remain byte-valid/idempotent.
             $out['exchange'] = $exchange;
         }
+        if (array_key_exists('monitoring', $row)) {
+            // Optional: legacy evidence stays byte-compatible. These are observations
+            // for later accuracy evaluation, never automatic reusable pricing inputs.
+            $monitoring = $row['monitoring'];
+            if ($provider !== 'tourvisor' || $source !== 'tourvisor_flights_fuel'
+                || !is_array($monitoring)) throw new InvalidArgumentException('OPERATOR_FUEL_MONITORING');
+            $keys = array_keys($monitoring); sort($keys);
+            if ($keys !== ['currency','flight_amount','tour_amount']
+                && $keys !== ['comparison','currency','flight_amount','tour_amount']) {
+                throw new InvalidArgumentException('OPERATOR_FUEL_MONITORING');
+            }
+            $tourAmount = $monitoring['tour_amount'] === null ? null : self::money($monitoring['tour_amount']);
+            if ($monitoring['flight_amount'] !== $amount || $monitoring['currency'] !== $currency) {
+                throw new InvalidArgumentException('OPERATOR_FUEL_MONITORING');
+            }
+            $minor = static function(string $value): string {
+                $parts = explode('.', $value, 2);
+                return $parts[0] . '.' . str_pad($parts[1] ?? '', 2, '0');
+            };
+            $comparison = $tourAmount === null ? 'unavailable'
+                : ($minor($tourAmount) === $minor($amount) ? 'matched' : 'different');
+            if (array_key_exists('comparison', $monitoring) && $monitoring['comparison'] !== $comparison) {
+                throw new InvalidArgumentException('OPERATOR_FUEL_MONITORING');
+            }
+            $out['monitoring'] = ['tour_amount'=>$tourAmount,'flight_amount'=>$amount,
+                'currency'=>$currency,'comparison'=>$comparison];
+        }
         return $out;
     }
 
@@ -127,6 +154,9 @@ final class AnyTourOperatorFuelRuleEvidenceV1
         foreach ($rows as $raw) {
             if (!is_array($raw)) continue;
             try { $obs = self::observation($raw); } catch (InvalidArgumentException $ignored) { continue; }
+            // Retention precedes accuracy evaluation. Even identical new TV samples
+            // cannot silently become a rule; the 80% objective is not a capture gate.
+            if (array_key_exists('monitoring', $obs)) continue;
             if ($obs['operator_family'] !== $family || $obs['direction'] !== $direction) continue;
             $unit = $obs['unit'];
             if (!isset($groups[$unit])

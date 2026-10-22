@@ -99,7 +99,7 @@ tvpf_ok(($fuel1['observationCount']??null)===1 && ($fuel1['ruleConfirmed']??null
 $tour2 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id2,tvpf_tour($id2,1010,14),$db,$directory,$now->modify('+30 seconds'));
 tvpf_ok(($tour2['status']??null)==='tour_retained','second tour retained');
 $fuel2 = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,tvpf_flights(),$directory,$now->modify('+30 seconds'));
-tvpf_ok(($fuel2['observationCount']??null)===2 && ($fuel2['ruleConfirmed']??null)===true,'two hotels/nights confirm one rule');
+tvpf_ok(($fuel2['observationCount']??null)===2 && ($fuel2['ruleConfirmed']??null)===false,'two hotels/nights remain monitoring observations');
 $tourDiagnostic = tvpf_diagnostic($directory,'tour',$id1);
 tvpf_ok($tourDiagnostic['code']==='tour_retained' && $tourDiagnostic['outcome']==='retained', 'successful tour diagnostic');
 tvpf_ok($tourDiagnostic['observed_at']===$now->getTimestamp(), 'diagnostic observation time retained');
@@ -107,7 +107,7 @@ tvpf_ok($tourDiagnostic['observation_count']===null && $tourDiagnostic['rule_con
 $oneDiagnostic = tvpf_diagnostic($directory,'flights',$id1);
 tvpf_ok($oneDiagnostic['observation_count']===1 && $oneDiagnostic['rule_confirmed']===false, 'one actual observation stays unconfirmed');
 $twoDiagnostic = tvpf_diagnostic($directory,'flights',$id2);
-tvpf_ok($twoDiagnostic['observation_count']===2 && $twoDiagnostic['rule_confirmed']===true, 'actual persisted count and rule result retained');
+tvpf_ok($twoDiagnostic['observation_count']===2 && $twoDiagnostic['rule_confirmed']===false, 'persisted monitoring count does not mint pricing authority');
 tvpf_ok($twoDiagnostic['normalized_response_sha256']===AnyTourOperatorFuelRuleEvidenceV1::hash(tvpf_flights()), 'normalized response provenance retained');
 
 $rules = glob($directory.'/operator-fuel-rule-v2-*.json');
@@ -375,8 +375,8 @@ $dateFirst = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$d
 tvpf_ok($dateFirst['observationCount']===1 && $dateFirst['ruleConfirmed']===false, 'one dotted observation is not a rule');
 AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id2,tvpf_tour($id2,1010,14),$db,$dateDirectory,$now);
 $dateSecond = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,$dottedFlights,$dateDirectory,$now);
-tvpf_ok($dateSecond['observationCount']===2 && $dateSecond['ruleConfirmed']===true,
-    'two independent mixed-format offers confirm the same rule through canonical target dates');
+tvpf_ok($dateSecond['observationCount']===2 && $dateSecond['ruleConfirmed']===false,
+    'two independent mixed-format offers are retained without automatic rule promotion');
 tvpf_ok($dottedTour===$rawTour && $dottedFlights===$rawFlights, 'tour and flights response transparency preserved');
 $dateRules = glob($dateDirectory.'/operator-fuel-rule-v2-*.json');
 tvpf_ok(count($dateRules)===1, 'date formatting does not split the rule store');
@@ -398,6 +398,48 @@ tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===
 array_map('unlink',array_filter(glob($dateDirectory.'/*')?:[], 'is_file'));
 rmdir($dateDirectory);rmdir(dirname($dateDirectory));
 
+// Persist a complete monitoring cohort, including the differing fifth sample.
+// Four matches out of five do not themselves authorize a reusable price rule.
+$monitorDirectory=$root.'/monitor/searches'; mkdir($monitorDirectory,0700,true);
+$monitorIds=[$id1,$id2,$id3,'43282575574007','43282575574008'];
+$add($monitorIds[3]); $add($monitorIds[4]);
+$dbCount=(int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn();
+foreach ($monitorIds as $i=>$id) {
+    $tour=tvpf_tour($id,1011,7);
+    $tour['private_marker']='must-not-enter-observation';
+    if ($i===4) $tour['fuelCharge']=1;
+    $beforeTour=$tour; $flights=tvpf_flights(); $beforeFlights=$flights;
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id,$tour,$db,$monitorDirectory,$now);
+    $captured=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id,$flights,$monitorDirectory,$now);
+    tvpf_ok($captured['observationCount']===$i+1 && $captured['ruleConfirmed']===false,
+        'every valid comparison retained without automatic pricing authority');
+    tvpf_ok($tour===$beforeTour && $flights===$beforeFlights, 'monitoring cannot change supplier response money');
+}
+$monitorPath=(glob($monitorDirectory.'/operator-fuel-rule-v2-*.json'))[0];
+$monitorBytes=file_get_contents($monitorPath);
+$monitorRows=json_decode($monitorBytes,true,64,JSON_THROW_ON_ERROR)['observations'];
+tvpf_ok(count($monitorRows)===5 && count(array_filter($monitorRows,
+    static fn(array $row): bool=>$row['monitoring']['comparison']==='matched'))===4,
+    'monitoring denominator retains both matches and differences');
+$differentRows=array_values(array_filter($monitorRows,
+    static fn(array $row): bool=>$row['monitoring']['comparison']==='different'));
+tvpf_ok(count($differentRows)===1 && $differentRows[0]['monitoring']===['tour_amount'=>'1','flight_amount'=>'33748',
+    'currency'=>'RUB','comparison'=>'different'], 'different amounts survive canonical store readback');
+tvpf_ok((fileperms($monitorPath)&0777)===0600 && !str_contains($monitorBytes,'private_marker'),
+    'only bounded normalized comparison facts enter private store');
+$diagnostic=tvpf_diagnostic($monitorDirectory,'flights',$monitorIds[4]);
+tvpf_ok($diagnostic['outcome']==='retained' && $diagnostic['observation_count']===5
+    && $diagnostic['rule_confirmed']===false, 'disagreement is a retained observation, not an error');
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($monitorIds[4],$tour,$db,$monitorDirectory,$now);
+$repeated=AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($monitorIds[4],$flights,$monitorDirectory,$now);
+tvpf_ok($repeated['status']==='unchanged' && $repeated['observationCount']===5
+    && file_get_contents($monitorPath)===$monitorBytes, 'same evidence does not inflate monitoring denominator');
+tvpf_ok(glob($monitorDirectory.'/tourvisor-fuel-pending-v1-*.json')===[]
+    && (int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===$dbCount,
+    'monitoring consumes pending pairs without DB writes');
+array_map('unlink',array_filter(glob($monitorDirectory.'/*')?:[], 'is_file'));
+rmdir($monitorDirectory);rmdir(dirname($monitorDirectory));
+
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
-echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money\n";
+echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=0 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money monitoring=matched,different,unavailable\n";
