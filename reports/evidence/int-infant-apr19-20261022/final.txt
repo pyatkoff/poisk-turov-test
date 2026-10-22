@@ -1,0 +1,81 @@
+- dialog "Ваш тур в деталях":
+  - paragraph: ПРОВЕРЬТЕ УСЛОВИЯ
+  - heading "Ваш тур в деталях" [level=2]
+  - button "Закрыть окно":
+  - list "Этапы выбора тура":
+    - generic: "1"
+    - text: Номер и питание
+    - generic: "2"
+    - text: Перелёт
+    - generic: "3"
+    - text: Заявка
+  - status:
+    - strong: Цена с выбранным перелётом
+    - generic: Цена предложения 138 407 ₽ → с выбранной парой 154 146 ₽ за всех туристов.
+  - img "Фото KLEOPATRA RAMIRA"
+  - heading "KLEOPATRA RAMIRA" [level=3]
+  - generic "4 звезды": ★★★★
+  - paragraph: Алания-центр, Турция
+  - region "Выбранные условия тура":
+    - paragraph:
+      - strong: 19 апр — 26 апр · 7 ночей
+      - generic: "2 взр. + 1 реб. · возраст ребёнка: 1 год"
+    - term: Номер
+    - definition: standard room
+    - term: Питание
+    - definition: Всё включено
+    - term: Размещение
+    - definition: 2 взрослых + ребенок
+    - term: Оператор
+    - definition: Библио-Глобус
+    - button "Другие номера и питание"
+  - heading "Перелёт" [level=3]:
+    - text: Перелёт
+  - button "Изменить рейсы"
+  - generic: Туда
+  - generic: 19.04.2027
+  - generic: Без пересадок
+  - strong: 09:15 → 14:30
+  - generic: Москва, Россия → Анталья, Турция
+  - generic: Обратно
+  - generic: 26.04.2027
+  - generic: Без пересадок
+  - strong: 16:10 → 20:55
+  - generic: Анталья, Турция → Москва, Россия
+  - generic: Аэрофлот
+  - generic: "Багаж: 23 кг"
+  - generic: "Ручная кладь: 10 кг"
+  - paragraph: Время местное
+  - generic "Детали рейсов −" [active]
+  - strong: Туда
+  - generic: Аэрофлот SU2124
+  - strong: 09:15
+  - generic: Москва, Россия
+  - generic: 19.04.2027
+  - strong: 14:30
+  - generic: Анталья, Турция
+  - generic: 19.04.2027
+  - text: "Багаж: 23 кг"
+  - generic: "Ручная кладь: 10 кг"
+  - strong: Обратно
+  - generic: Аэрофлот SU2125
+  - strong: 16:10
+  - generic: Анталья, Турция
+  - generic: 26.04.2027
+  - strong: 20:55
+  - generic: Москва, Россия
+  - generic: 26.04.2027
+  - text: "Багаж: 23 кг"
+  - generic: "Ручная кладь: 10 кг"
+  - complementary "Состав и стоимость тура":
+    - heading "Условия тура" [level=3]
+    - paragraph:
+      - text: Условия цены и наличие подтверждаются перед оформлением
+    - generic "Топливный сбор 15 739 ₽ · включён в цену ⌄":
+      - generic: Топливный сбор
+      - strong: 15 739 ₽ · включён в цену
+      - text: ⌄
+  - generic: За всех туристов
+  - strong: 154 146 ₽
+  - generic: Цена с выбранными рейсами · сбор включён
+  - button "К заявке"
