@@ -1,0 +1,77 @@
+Browser tab: 5, Title: "Поиск туров онлайн — AnyTour", URL: "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/".
+0 AXWebArea Поиск туров онлайн — AnyTour, URL: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	1 container
+		2 link Description: AnyTour — на главную, Value: anytoour.ru/_preview/search3-anex-candidate/
+		3 container Основное меню
+			4 link Description: Поиск туров, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+			5 link Description: Страны, Value: anytoour.ru/_preview/search3-anex-candidate/country/
+			6 link Description: Горящие туры, Value: anytoour.ru/_preview/search3-anex-candidate/hot/
+			7 link Description: Раннее бронирование, Value: anytoour.ru/_preview/search3-anex-candidate/rb/
+			8 link Description: Как купить, Value: anytoour.ru/_preview/search3-anex-candidate/how-to-buy/
+			9 link Description: Контакты, Value: anytoour.ru/_preview/search3-anex-candidate/contacts/
+		10 link Description: 8 (800) 100 - 61 - 50, Value: tel:88001006150
+		11 link Description: Найти тур, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	12 container
+		1560 container Description: Источники предложений, ID: anexSearch3Results
+			1561 heading Tourvisor и ANEX API, Value: 2
+				1562 text Tourvisor и ANEX API
+			1563 text Вылеты ANEX: 02.05.2027 — 08.05.2027
+			1564 text Подходящих предложений ANEX пока нет.
+			1565 container
+				1566 text Отели в списке
+				1567 pop up button (collapsed, settable) Отели в списке, Value: Все отели · 96, ID: anexSearch3SourceFilter, Secondary Actions: Expand
+					1568 menu
+						1569 (selected) Все отели · 96
+						1570 С предложениями ANEX API · 0
+						1571 С предложениями Tourvisor · 96
+						1572 В обоих источниках · 0
+		1573 container BIENO CLUB HOTEL SVS (EX. BONE CLUB HOTEL SVS), ID: selectedTour
+			1574 button ← Вернуться к предложениям
+			1576 heading BIENO CLUB HOTEL SVS (EX. BONE CLUB HOTEL SVS), Value: 2, ID: search3-selected-tour-heading
+				1577 text BIENO CLUB HOTEL SVS (EX. BONE CLUB HOTEL SVS)
+			1578 text Турция · Аланья · Махмутлар
+			1582 container
+				1583 text Цена с выбранным рейсом.  Перед оплатой менеджер ещё раз подтвердит итоговую стоимость и детали перелёта.
+			1597 container Выбор перелёта
+				1648 text Рейсы
+				1649 text Выбранный перелёт
+				1600 container
+					1606 text Туда
+					1607 text Southwind · 2S012
+					1608 container
+						1609 text Шереметьево (SVO) 08.05.2027 · 01:10 → Анталья (AYT) 08.05.2027 · 05:25
+					1610 container
+						1611 text Багаж:  10 кг  · Ручная кладь:  8 кг
+					1612 text Обратно
+					1613 text Southwind · 2S001
+					1614 container
+						1615 text Анталья (AYT) 15.05.2027 · 07:25 → Шереметьево (SVO) 15.05.2027 · 11:40
+					1616 container
+						1617 text Багаж:  10 кг  · Ручная кладь:  8 кг
+					1618 text Топливный сбор: 25 562 ₽
+				1619 button Изменить рейс
+			1632 container
+				1633 text Услуги и условия Только данные выбранного тура Питание
+				1634 text Всё включено
+				1635 text Номер
+				1636 text economy room
+				1637 text 2 взрослых
+				1638 text Топливный сбор тура
+				1639 text 31 418 ₽
+				1640 text Топливный сбор рейса
+				1641 text 25 562 ₽
+				1642 text Багаж
+				1643 text багаж 10 кг · ручная кладь 8 кг
+				1644 text Туроператор
+				1645 text Интурист
+			1646 container
+				1647 text Туристы Состав размещения у туроператора Для выбранного варианта 2 взрослых
+			1650 container Ваш тур
+				1651 text Итоговая стоимость
+				1652 container 124 276 ₽, за весь тур · 2 взрослых
+					1653 text За весь тур · 2 взрослых
+					1654 text 124 276 ₽
+				1655 button Перейти к заявке
+				1656 text Перед отправкой проверьте выбранный тур и рейс.
+
+The focused UI element is 1619 button Изменить рейс
