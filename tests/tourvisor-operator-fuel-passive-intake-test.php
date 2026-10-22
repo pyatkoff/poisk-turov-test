@@ -147,6 +147,42 @@ tvpf_ok($rejected['observation_count']===null && $rejected['rule_confirmed']===n
 tvpf_ok(!str_contains(json_encode($rejected,JSON_THROW_ON_ERROR),'private_marker'), 'raw response not retained in diagnostic');
 tvpf_ok(json_decode((string)file_get_contents($rules[0]),true,64,JSON_THROW_ON_ERROR)===$stored, 'rejected capture leaves rule evidence unchanged');
 
+// Existing native capture path, same invalid default even when another pair has fuel.
+foreach ([
+    'flight-missing'=>[null,7101,'TV_FUEL_AMOUNT_FLIGHT_MISSING'],
+    'flight-shape'=>[['private-amount-canary'],7102,'TV_FUEL_AMOUNT_FLIGHT_SHAPE'],
+    'value-missing'=>[['currency'=>'RUB'],7103,'TV_FUEL_AMOUNT_VALUE_MISSING'],
+    'value-format'=>[['value'=>'private-amount-canary','currency'=>'RUB'],7104,'TV_FUEL_AMOUNT_VALUE_FORMAT'],
+    'nonpositive'=>[['value'=>0,'currency'=>'RUB'],7105,'TV_FUEL_AMOUNT_NONPOSITIVE'],
+    'tour-format'=>[tvpf_flights()['flights'][0]['fuelCharge'],7106,'TV_FUEL_AMOUNT_TOUR_VALUE'],
+] as $kind=>[$fuel,$tag,$code]) {
+    $tour = tvpf_tour($id3,1011,7);
+    if ($kind === 'tour-format') $tour['fuelCharge'] = 'private-amount-canary';
+    AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id3,$tour,$db,$directory,$now);
+    $bad = tvpf_flights();
+    $alternative = $bad['flights'][0]; $alternative['isDefault'] = false;
+    $bad['flights'][] = $alternative;
+    $bad['flights'][0]['fuelCharge'] = $fuel;
+    $bad['private_marker'] = 'private-amount-canary';
+    $before = serialize($bad);
+    $pendingFiles = glob($directory.'/tourvisor-fuel-pending-v1-*.json');
+    $pendingBefore = array_map('file_get_contents',$pendingFiles);
+    try {
+        AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id3,$bad,$directory,$now);
+        throw new RuntimeException('Missing original amount rejection: '.$kind);
+    } catch (InvalidArgumentException $error) {
+        tvpf_ok($error->getMessage()==='TV_FUEL_AMOUNT' && $error->getCode()===$tag, 'original amount exception preserved: '.$kind);
+    }
+    $diagnostic = tvpf_diagnostic($directory,'flights',$id3);
+    tvpf_ok($diagnostic['outcome']==='rejected' && $diagnostic['code']===$code, 'allowlisted exact amount branch retained: '.$kind);
+    tvpf_ok($diagnostic['observation_count']===null && $diagnostic['rule_confirmed']===null, 'amount failure cannot mint count or rule: '.$kind);
+    tvpf_ok(!str_contains(json_encode($diagnostic,JSON_THROW_ON_ERROR),'private-amount-canary'), 'no raw amount, payload or private text retained: '.$kind);
+    tvpf_ok($diagnostic['normalized_response_sha256']===AnyTourOperatorFuelRuleEvidenceV1::hash($bad)
+        && serialize($bad)===$before, 'raw money and provenance unchanged: '.$kind);
+    tvpf_ok(array_map('file_get_contents',$pendingFiles)===$pendingBefore, 'rejected amount leaves pending bytes unchanged: '.$kind);
+    tvpf_ok(json_decode((string)file_get_contents($rules[0]),true,64,JSON_THROW_ON_ERROR)===$stored, 'alternative pair never borrowed into rule: '.$kind);
+}
+
 $privateError = new RuntimeException('opaque database detail must not be retained');
 $brokenDb = new class($privateError) extends PDO {
     public function __construct(private Throwable $error) {}

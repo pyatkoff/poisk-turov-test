@@ -27,6 +27,9 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
         'TV_FUEL_TOUR', 'TV_FUEL_FLIGHTS', 'TV_FUEL_TOUR_ID', 'TV_FUEL_OPERATOR',
         'TV_FUEL_PARTY', 'TV_FUEL_RESPONSE_ERROR', 'TV_FUEL_COMBINATIONS', 'TV_FUEL_DEFAULT',
         'TV_FUEL_FORWARD', 'TV_FUEL_BACKWARD', 'TV_FUEL_DATE', 'TV_FUEL_AMOUNT',
+        'TV_FUEL_AMOUNT_FLIGHT_MISSING', 'TV_FUEL_AMOUNT_FLIGHT_SHAPE',
+        'TV_FUEL_AMOUNT_VALUE_MISSING', 'TV_FUEL_AMOUNT_VALUE_FORMAT',
+        'TV_FUEL_AMOUNT_NONPOSITIVE', 'TV_FUEL_AMOUNT_TOUR_VALUE',
         'TV_FUEL_AMOUNT_CONFLICT', 'TV_FUEL_CURRENCY_CONFLICT', 'TV_FUEL_INFO', 'TV_FUEL_FLAGS',
         'TV_FUEL_REQUIRED_CHARGES', 'TV_FUEL_SOURCE_DIGEST', 'TV_FUEL_TIME', 'TV_FUEL_MARKET',
         'TV_FUEL_PERIOD', 'TV_FUEL_LEG', 'TV_FUEL_PORT', 'TV_FUEL_CARRIER', 'TV_FUEL_FLIGHT',
@@ -196,6 +199,9 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
                 self::directory($directory);
                 $id = self::tourId($tourId);
                 $code = $error === null ? ($result['status'] ?? $result['reason'] ?? null) : $error->getMessage();
+                if ($stage === 'flights' && $error !== null) {
+                    $code = AnyTourTourvisorOperatorFuelRetainedIntakeV1::amountDiagnostic($error) ?? $code;
+                }
                 $allowed = $error === null
                     ? ['tour_retained', 'created', 'appended', 'unchanged', 'operator_not_target',
                        'offer_context_missing', 'tour_pair_missing', 'tour_pair_expired']
