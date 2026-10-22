@@ -8,10 +8,13 @@ const {chromium,request:playwrightRequest}=require('playwright');
 const {fixture,fixtureBridge,terminalDataFixture,recordTerminalBridge,manifest:compiledManifest,sourceSHA,hash,base,retainedMedia,mediaByURL}=require('./search3-design-v2-native-browser.cjs');
 const TARGET='https://anytoour.ru/_preview/search3-design-v2-candidate/visual-search/';
 const mealOnly=process.argv.includes('--meal-only');
+const leadFocusOnly=process.argv.includes('--lead-focus-only');
+assert(!(mealOnly&&leadFocusOnly),'One finite installed mode at a time');
+const currentInstalled=mealOnly||leadFocusOnly;
 const PRIOR_INSTALLED=Object.freeze({source:'09f5e18d5eb40f4f62bb723a9fd9e4092f784060',release:'d8dab6b8748d70a0892b5b0c065c9de4b2676b4f',publishRun:39458975873,manifestSHA256:'4c9874357d026f428d53ea018bb2f78037322b1c1e3dfb3b5c08ea12d6080aed'});
 // ROOT fills these only from the actual one-shot publication terminal receipt.
 const MEAL_INSTALLED=Object.freeze({source:'4442cec9921d0888b43cc7a7137385f1e6223c48',release:'43c6a56e06a7fd634a603e24a890f745c5e49773',publishRun:39518137791,manifestSHA256:'839d40fef279afee958d447858eada8bfac5e536b99b7b76d7bf34d22f8f1d67'});
-const INSTALLED=mealOnly?MEAL_INSTALLED:PRIOR_INSTALLED;
+const INSTALLED=currentInstalled?MEAL_INSTALLED:PRIOR_INSTALLED;
 const MANIFEST_URL=TARGET+'native-v2/source-manifest.json';
 const out=path.resolve(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE||'');
 assert(process.env.SEARCH3_NATIVE_INSTALLED_EVIDENCE,'Explicit installed evidence directory required');
@@ -25,8 +28,8 @@ const MEAL_HELPER_SHA256='83dc1add39bde2e5d5360d52e36387a0197b71859b9e2a6a8a6324
 const noOp=Buffer.from('/* Controlled installed presentation evidence: canonical transport disabled. */\n');
 const fixtureScript=Buffer.from('('+fixtureBridge.toString()+')('+JSON.stringify(fixture)+');');
 const terminalScript=Buffer.from('('+terminalDataFixture.toString()+')('+JSON.stringify(fixture)+');');
-const report={schema:1,status:'running',mode:mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
-  scope:mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
+const report={schema:1,status:'running',mode:leadFocusOnly?'lead-focus-only':mealOnly?'meal-only':'full-clarity',testSourceSHA:sourceSHA,installed:INSTALLED,target:TARGET,
+  scope:leadFocusOnly?'Installed HTTPS Lead 10.C2 action clarity and click/programmatic focus on entry, local validation and return, with explicit fictional canonical data; Chromium 430/1280 at 100%; full keyboard, live supplier and delivery not measured':mealOnly?'Installed HTTPS meal-filter and food-popup presentation using the actual installed LOCAL helper, with explicit fictional canonical data; Chromium 430/1280 at 100%; not live supplier or delivery authority':'Installed HTTPS native presentation and actual installed bridge denial handling with explicit fictional data seams, Chromium 430/1280 at 100%; not live supplier or delivery authority',
   fixture:fixture.label,clock:'2026-10-12T08:00:00Z',widths:[430,1280],height:900,textPercent:100,
   manifest:null,graph:[],publicGETs:[],replacements:[],network:[],cases:[],unexpectedRequests:[],
   exclusions:{supplierSearches:0,supplierQuotes:0,canonicalAPIRequests:0,realLeadSubmissions:0,analyticsRequests:0,physicalSafari:'not_measured',liveAuthority:'not_measured'}};
@@ -56,7 +59,7 @@ function installGraph(manifest){
     assert(row.kind==='script'?url.pathname.endsWith('.js'):url.pathname.endsWith('.css'));
     allowed.set(url.pathname,row);
   }
-  if(mealOnly){
+  if(currentInstalled){
     const actual=rows.find(row=>base+'/'+row.path===localHelperPath),compiled=compiledManifest.graph.scripts.find(row=>base+'/'+row.path===localHelperPath);
     assert(actual&&compiled,'LOCAL meal helper belongs to both exact graphs');
     assert.equal(actual.sha256,MEAL_HELPER_SHA256,'Exact reviewed LOCAL meal helper hash');assert.equal(actual.bytes,12283,'Exact reviewed LOCAL meal helper bytes');assert.equal(actual.sha256,compiled.sha256);assert.equal(actual.bytes,compiled.bytes);
@@ -244,6 +247,88 @@ async function acceptMealFamilies(page,row,product,screen,installedManifest){
     canonicalLabelsOnlyURL:true,oneFamilyChip:true,partialExactSelection:true,formCancelAndResponsiveRetained:true,applyExtraOperations:0,
     extraOperations:0,selectedReceiptRetained:true,selectedFullTotal:112000,originalFlightChoiceIndex:0,backForwardRetained:true,favorites:[1],fit,popupFit,calls:await calls(page)};
 }
+// A finite measurement of the existing Lead 10.C2 gap. This does not score the
+// separate full keyboard criterion or repeat the retained full journey corpus.
+async function acceptLeadFocus(page,row,product,screen){
+  const form=product.locator('[data-lead-form]');
+  const phone=form.locator('[name="phone"]'),consent=form.locator('[name="consent"]');
+  const contactAction=()=>screen('tour').locator('[data-action="lead"]:visible').first();
+  const back=()=>screen('lead').locator('[data-action="tour"]');
+  const focused=locator=>locator.evaluate(node=>document.activeElement===node);
+  const focusProof=async(locator,label)=>{
+    assert.equal(await focused(locator),true,label);
+    const value=await locator.evaluate(node=>{
+      const r=node.getBoundingClientRect(),css=getComputedStyle(node);
+      return{tag:node.tagName,name:node.getAttribute('name'),text:node.textContent.trim(),
+        hiddenAncestor:!!node.closest('[hidden]'),display:css.display,visibility:css.visibility,
+        rect:{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height},
+        viewport:{width:innerWidth,height:innerHeight}};
+    });
+    assert(!value.hiddenAncestor&&value.display!=='none'&&value.visibility==='visible',label+' visible');
+    assert(value.rect.width>0&&value.rect.height>0&&value.rect.left>=-1&&value.rect.right<=row.width+1,label+' horizontal fit');
+    assert(value.rect.top>=-1&&value.rect.bottom<=900+1,label+' within actual viewport');
+    return value;
+  };
+  const frame=async(name,target)=>{
+    await page.evaluate(()=>document.fonts.ready);
+    const before=await focusProof(target,name+' before capture');
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+    const file='installed-'+name+'-'+row.width+'-text100.png';
+    // Fixed actual viewport: no full-page expansion or screenshot style changes.
+    await page.screenshot({path:path.join(out,file),fullPage:false,animations:'allow',caret:'initial'});
+    const after=await focusProof(target,name+' after capture');
+    const bytes=fs.readFileSync(path.join(out,file));row.frames.push({file,sha256:hash(bytes),bytes:bytes.length});
+    return{before,after};
+  };
+  await screen('search').locator('button[type="submit"]').click();await screen('results').waitFor({state:'visible'});
+  await product.locator('[data-hotel-open="1"]').first().click();await screen('hotel').waitFor({state:'visible'});
+  assert.equal((await calls(page)).quote,0,'Passive hotel opening does not quote');
+  await product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]').click();await screen('tour').waitFor({state:'visible'});
+  await product.locator('[data-native-tour-flight="0"]').click();
+  await product.locator('[data-action="accept-price"]:visible').first().click();
+  const setupCalls=await calls(page);
+  assert.deepEqual(setupCalls,{init:setupCalls.init,search:1,quote:1,expand:0,flight:[0],preview:0,submit:0});
+  await contactAction().click();await screen('lead').waitFor({state:'visible'});
+  const heading=screen('lead').getByRole('heading',{name:'Обсудим ваше путешествие',exact:true});
+  row.proof.entry=await frame('lead-focus-entry',heading);
+  const submit=form.getByRole('button',{name:'Проверить заявку',exact:true});
+  assert.equal(await submit.isEnabled(),true);
+  assert.equal(await form.getAttribute('data-delivery'),'preview-disabled');
+  assert.match(await form.innerText(),/Заявка не отправляется/);
+  assert.equal(await form.getByLabel('Имя (необязательно)',{exact:true}).getAttribute('required'),null);
+  assert.equal(await form.getByLabel('Номер телефона',{exact:true}).getAttribute('type'),'tel');
+  assert.equal(await phone.getAttribute('required'),'');
+  assert.equal(await consent.getAttribute('required'),'');assert.equal(await consent.isChecked(),false);
+  await submit.click();row.proof.emptyPhone=await focusProof(phone,'Empty required phone gets focus');
+  assert.match(await form.locator('[data-native-contact-status]').innerText(),/Укажите номер телефона/);
+  assert.equal((await calls(page)).preview,0);
+  await form.locator('[name="name"]').fill('FICTIONAL QA');await phone.fill('+7 999 000 00 00');
+  await submit.click();row.proof.missingConsent=await focusProof(consent,'Missing consent gets focus');
+  assert.match(await form.locator('[data-native-contact-status]').innerText(),/Подтвердите согласие/);
+  assert.equal((await calls(page)).preview,0);
+  await consent.check();await submit.click();
+  assert.equal(await form.getAttribute('data-checked'),'1');
+  assert.match(await form.locator('[data-native-contact-status]').innerText(),/Заявка не отправлена/);
+  assert.deepEqual(await page.evaluate(()=>({total:window.__nativeFixture.payload.price,flight:window.__nativeFixture.payload.flightChoiceId,tour:window.__nativeFixture.payload.tourId,submit:window.__nativeFixture.calls.submit})),{total:112000,flight:0,tour:'fixture-tour:1',submit:0});
+  row.proof.checkedAction={label:await submit.innerText(),delivery:'preview-disabled',localPreview:1,realSend:0};
+  await back().click();await screen('tour').waitFor({state:'visible'});
+  row.proof.uiBack=await focusProof(contactAction(),'UI Back restores the contact opener');
+  await contactAction().click();await screen('lead').waitFor({state:'visible'});
+  row.proof.uiReopen=await focusProof(back(),'UI reopen restores its last visible control');
+  await phone.click();
+  await page.goBack();await screen('tour').waitFor({state:'visible'});
+  row.proof.historyBack=await focusProof(contactAction(),'Browser Back restores the contact opener');
+  await page.goForward();await screen('lead').waitFor({state:'visible'});
+  row.proof.historyForward=await frame('lead-focus-return',phone);
+  assert.equal(await form.locator('[name="name"]').inputValue(),'FICTIONAL QA');
+  assert.equal(await phone.inputValue(),'+7 999 000 00 00');assert.equal(await consent.isChecked(),true);
+  assert.deepEqual(await page.evaluate(()=>({exact:window.__nativeFixture.getSelection().offer===window.__nativeFixture.hotels[0].offers[0],total:window.__nativeFixture.getSelection().total,flight:window.__nativeFixture.getSelection().flightChoiceId})),{exact:true,total:112000,flight:0});
+  const finalCalls=await calls(page);
+  assert.deepEqual(finalCalls,{...setupCalls,preview:1});
+  row.proof={...row.proof,criterion:'SEARCH-QUALITY-1 10.C2',fullKeyboard:'not_measured',
+    labels:{optionalName:true,requiredPhone:true,separateConsent:true},draftRetained:true,consentRetained:true,
+    selectedFullTotal:112000,originalFlightChoiceIndex:0,passiveExtraOperations:0,calls:finalCalls};
+}
 async function run(){
   assert(/^[0-9a-f]{40}$/.test(INSTALLED.source)&&/^[0-9a-f]{40}$/.test(INSTALLED.release)&&Number.isSafeInteger(INSTALLED.publishRun)&&INSTALLED.publishRun>0&&/^[0-9a-f]{64}$/.test(INSTALLED.manifestSHA256),'Actual terminal publication pins required before installed evidence');
   fs.mkdirSync(out,{recursive:true});
@@ -291,7 +376,7 @@ async function run(){
             entry.action=terminalJourney?'verified-installed-bridge-instrumentation':'fixture-bridge';
           }
           else if(terminalJourney&&url.pathname===base+'/prototype-search/data.js'){body=terminalScript;entry.action='fictional-canonical-data';}
-          else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')&&!(mealOnly&&url.pathname===localHelperPath)){body=noOp;entry.action='canonical-script-disabled';}
+          else if(spec.kind==='script'&&!url.pathname.startsWith(nativePrefix)&&!url.pathname.endsWith('/lead-form-guard-v1.js')&&!(currentInstalled&&url.pathname===localHelperPath)){body=noOp;entry.action='canonical-script-disabled';}
           else entry.action='verified-installed-bytes';
           if(body!==actual.body){const change={path:url.pathname,originalSHA256:actual.sha256,replacementSHA256:hash(body),reason:entry.action};if(!report.replacements.some(r=>r.path===change.path&&r.replacementSHA256===change.replacementSHA256))report.replacements.push(change);}
           entry.servedSHA256=hash(body);
@@ -307,6 +392,11 @@ async function run(){
         await page.goto(TARGET,{waitUntil:'networkidle'});
         row.initialURL=verifyInitialURL(page.url());const product=page.locator('[data-product]:visible');const screen=name=>product.locator('[data-screen="'+name+'"]');
         await screen('search').waitFor({state:'visible'});assert.equal((await calls(page)).search,0);
+        if(leadFocusOnly){
+          await acceptLeadFocus(page,row,product,screen);
+          assert.equal(row.frames.length,2,'Only two new Lead C2 states per width');
+          assert.deepEqual(row.errors,[]);assert.deepEqual(report.unexpectedRequests,[]);row.status='passed';continue;
+        }
         if(mealOnly){
           await acceptMealFamilies(page,row,product,screen,installedManifest);
           assert.equal(row.frames.length,3,'Only the three changed installed meal states per width');
@@ -458,13 +548,13 @@ async function run(){
       }catch(error){row.status='failed';row.error=error.stack||String(error);if(page)try{await page.screenshot({path:path.join(out,'failure-'+width+'-text100.png'),fullPage:true});}catch{}throw error;}
       finally{await context.close();writeReport();}
     }
-    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),mealOnly?6:24);report.status='passed';
+    assert.deepEqual(report.unexpectedRequests,[]);assert.equal(report.cases.reduce((n,row)=>n+row.frames.length,0),leadFocusOnly?4:mealOnly?6:24);report.status='passed';
   }catch(error){report.status='failed';report.error=error.stack||String(error);throw error;}
   finally{await browser?.close();await api.dispose();writeReport();}
 }
 if(process.argv.includes('--policy-only')){
   installGraph(compiledManifest);
-  if(mealOnly){
+  if(currentInstalled){
     const wrong=structuredClone(compiledManifest);wrong.graph.scripts.find(row=>base+'/'+row.path===localHelperPath).sha256='0'.repeat(64);
     assert.throws(()=>installGraph(wrong),/Exact reviewed LOCAL meal helper hash/,'The helper cannot execute after graph hash drift');
     const missing=structuredClone(compiledManifest);missing.graph.scripts=missing.graph.scripts.filter(row=>base+'/'+row.path!==localHelperPath);
