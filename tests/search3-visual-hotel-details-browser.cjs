@@ -52,7 +52,7 @@ async function roomPriceStatusAcceptance(browser,width,height,port){
   const card=page.locator('.hotel-card').first();await card.waitFor();
   const listingNote=(await card.locator('.fuel-note').innerText()).trim();
   assert.match(listingNote,/Снимок.*требует проверки/);
-  await card.locator('[data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();
+  await card.locator('h3 [data-action="hotel-details"]').click();await page.locator('#hotel-room-count').waitFor();
   await page.getByRole('button',{name:'Номера и цены',exact:true}).click();
   const room=page.locator('.hotel-room-card').first();
   if(await room.evaluate(el=>el.tagName==='DETAILS'))await room.locator(':scope > summary').click();
