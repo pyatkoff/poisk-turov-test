@@ -1,0 +1,75 @@
+Browser tab: 4, Title: "Поиск туров онлайн — AnyTour", URL: "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/".
+0 AXWebArea Поиск туров онлайн — AnyTour, URL: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	1 container
+		2 link Description: AnyTour — на главную, Value: anytoour.ru/_preview/search3-anex-candidate/
+		3 container Основное меню
+			4 link Description: Поиск туров, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+			5 link Description: Страны, Value: anytoour.ru/_preview/search3-anex-candidate/country/
+			6 link Description: Горящие туры, Value: anytoour.ru/_preview/search3-anex-candidate/hot/
+			7 link Description: Раннее бронирование, Value: anytoour.ru/_preview/search3-anex-candidate/rb/
+			8 link Description: Как купить, Value: anytoour.ru/_preview/search3-anex-candidate/how-to-buy/
+			9 link Description: Контакты, Value: anytoour.ru/_preview/search3-anex-candidate/contacts/
+		10 link Description: 8 (800) 100 - 61 - 50, Value: tel:88001006150
+		11 link Description: Найти тур, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	12 container
+		854 container Description: Источники предложений, ID: anexSearch3Results
+			855 heading Tourvisor и ANEX API, Value: 2
+				856 text Tourvisor и ANEX API
+			857 text Вылеты ANEX: 25.04.2027 — 01.05.2027
+			858 text Показано отелей: 36 из 36. Подходящих предложений ANEX пока нет.
+			859 container
+				860 text Отели в списке
+				861 pop up button (collapsed, settable) Отели в списке, Value: С предложениями Tourvisor · 36, ID: anexSearch3SourceFilter, Secondary Actions: Expand
+					862 menu
+						863 Все отели · 36
+						864 С предложениями ANEX API · 0
+						865 (selected) С предложениями Tourvisor · 36
+						866 В обоих источниках · 0
+		867 container SWISS HEAVEN SHARMING INN, ID: selectedTour
+			868 button ← Вернуться к предложениям
+			870 heading SWISS HEAVEN SHARMING INN, Value: 2, ID: search3-selected-tour-heading
+				871 text SWISS HEAVEN SHARMING INN
+			872 text Египет · Шарм-эль-Шейх · Хадаба
+			876 container
+				950 text Цена с выбранным рейсом.  Перед оплатой менеджер ещё раз подтвердит итоговую стоимость и детали перелёта.
+			894 container Выбор перелёта
+				1003 text Рейсы
+				1004 text Выбранный перелёт
+				956 container
+					962 text Туда
+					963 text Аэрофлот · SU426
+					964 container
+						965 text Шереметьево (SVO) 26.04.2027 · 09:00 → Шарм-эль-Шейх (SSH) 26.04.2027 · 13:00
+					966 container
+						967 text Багаж:  23 кг  · Ручная кладь:  10 кг
+					968 text Обратно
+					969 text Аэрофлот · SU427
+					970 container
+						971 text Шарм-эль-Шейх (SSH) 03.05.2027 · 15:15 → Шереметьево (SVO) 03.05.2027 · 21:10
+					972 container
+						973 text Багаж:  23 кг  · Ручная кладь:  10 кг
+					974 text Топливный сбор: 14 034 ₽
+				946 button Изменить рейс
+			981 container
+				982 text Услуги и условия Только данные выбранного тура Питание
+				1002 text Всё включено
+				984 text Номер
+				985 text standard room with garden view
+				986 text 2 взрослых
+				987 text Топливный сбор рейса
+				988 text 14 034 ₽
+				989 text Багаж
+				990 text багаж 23 кг · ручная кладь 10 кг
+				991 text Туроператор
+				992 text Biblioglobus
+			993 container
+				994 text Туристы Состав размещения у туроператора Для выбранного варианта 2 взрослых
+			1005 container Ваш тур
+				1006 text Итоговая стоимость
+				1007 container 166 737 ₽, за весь тур · 2 взрослых
+					1008 text За весь тур · 2 взрослых
+					1009 text 166 737 ₽
+				1010 button Перейти к заявке
+				1011 text Перед отправкой проверьте выбранный тур и рейс.
+
+The focused UI element is 946 button Изменить рейс
