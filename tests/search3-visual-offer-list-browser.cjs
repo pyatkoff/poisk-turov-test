@@ -208,8 +208,7 @@ const server=http.createServer((req,res)=>{
      await profile.click();const choose=page.locator('[data-action="select-hotel-offer"][data-key="demo-flight-24"]');await choose.waitFor();
      await reachable(choose,'family exact room selection');await capture('hotel-room');await choose.click();
      await page.locator('[data-action="continue-hotel-offer"][data-key="demo-flight-24"]').click();
-     await page.locator('[data-action="start-lead"]').waitFor();assert.equal(await page.locator('#modal').getAttribute('data-offer-key'),'demo-flight-24');await party('.chosen-trip');await total(186400);await capture('tour-manager');
-     await reachable(page.locator('[data-action="start-lead"]'),'family manager-flight application');await page.locator('[data-action="start-lead"]').click();await contact().waitFor();
+     await contact().waitFor();await total(186400);assert.equal(await page.locator('[data-action="start-lead"]').count(),0,'room footer reaches contacts without an intermediate tour action');
      await party('.application-review');assert.match(await page.locator('.application-review').textContent(),/Рейс уточнит менеджер/);await total(186400);await capture('contact-manager');
      await submit().click();assert.equal(await contact().locator('[name="phone"]').evaluate(el=>document.activeElement===el),true,'invalid phone receives focus');
      await contact().locator('[name="phone"]').fill(draft.phone);
@@ -219,7 +218,7 @@ const server=http.createServer((req,res)=>{
      for(const name of ['name','comment'])await contact().locator(`[name="${name}"]`).fill(draft[name]);
      await contact().locator('[name="consent"]').check();await submit().click();
      assert.equal(await contact().getAttribute('data-checked'),'1');assert.match(await contact().locator('.handoff-status').textContent(),/Заявка не отправлена\. Контакты не сохранены\./);await assertDraft();await capture('contact-manager-checked');
-     await page.locator('#modal-back').click();await page.locator('[data-action="retry-flights"]').waitFor();await page.locator('[data-action="retry-flights"]').click();
+     await page.locator('#modal-back').click();await page.locator('#hotel-room-count').waitFor();await page.locator('.room-offer-choice [data-action="offer"][data-key="demo-flight-24"]').click();await page.locator('[data-action="retry-flights"]').waitFor();await page.locator('[data-action="retry-flights"]').click();
      await page.locator('[name="flight-pair"][value="2"]').waitFor();assert.equal(await page.locator('[name="flight-pair"]').count(),3,'family uses its existing three fictional pairs');
      await page.locator('[name="flight-pair"][value="2"]').check();await total(189000);
      const pair=page.locator('.flight-option[data-flight-index="2"]');assert.equal(await pair.getAttribute('data-flight-price'),'189000');assert.match(await page.locator('#flight-price-change').textContent(),/2[\s\u00a0\u202f]*600/);

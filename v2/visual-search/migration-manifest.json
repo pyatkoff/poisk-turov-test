@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "stage": "approved-sites203-presentation-candidate",
+  "stage": "approved-sites209-presentation-candidate",
   "visualVersion": 227,
-  "siteCommit": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
+  "siteCommit": "bf2f8f9b9108f36823c47457b0fb614c2c16f660",
   "functionalBase": "b74ac0fea3e0ef2c4c568f4f4db0da9a1002299f",
   "entry": "/_preview/search3-next-candidate/visual-search/",
   "liveConnected": true,
@@ -55,7 +55,7 @@
   "acceptanceSupplierRequests": 0,
   "publicationStatus": "implementation-candidate-not-published",
   "adaptedFiles": {
-    "app.js": "8a31f50c2798bbf3bada45889c5a31b7dcb79c1cca07e71e47fbacadefa53d89",
+    "app.js": "2be1984d32cba84764d700d52b87e67ae3e674849905f2f0477eb635051dea63",
     "fixture-data.js": "b741a812724427b0e9dfa0f180270b7d9a89e2b7f829e5599d1835dc47b97993",
     "index.html": "ec1fae2495784d93ce9ce1e52bb793f5eeae831ed238fa5c7c75a57df39cbf21",
     "styles.css": "dd02691d24e221ba577c18b6dd017c9c9a86943770815506d6539b3eb2d9bfa5",
@@ -64,7 +64,7 @@
     "flight-picker-v18.js": "af3835dda17015a37e36f7a5137530417cbea1ff1259bcc327564cb112e37ae2",
     "offer-list-v1.js": "8b54bbcb4565282d2dd29db467e5c66c2b6bd77608254331ab6faacaa8a8d269",
     "mobile-controls-v1.css": "20c8fbfcd8322876f323fadefc06c0d5568e76162476f31239c17427266cafe1",
-    "hotel-details-v1.js": "1c824142f9190b00a6a98b099cc054613f8f617b73398935a8ce5334eb4b379d",
+    "hotel-details-v1.js": "b561b74d2ee8edd407d3441ea49d6bbf365fbe43defa638bd5a44947a43cb130",
     "filter-panel-v1.js": "d909e1a8ce1ac875967328a0c2debfc17844d21e8875d5b786f274c7b87ad8a6",
     "index.php": "e4bd6ed9ecb93299a7ab88c225f56adbcb65d0ebaa7a835c43b357ae31e223f4",
     "flight-picker-ui-v1.js": "4eef99bf61415e7a4a943f790ff4c822a8494dacfb17e68b8ea650da9c9cb7e6",
@@ -78,22 +78,22 @@
     "realSupplierAcceptance": false
   },
   "approvedPresentation": {
-    "site": 203,
+    "site": 209,
     "package": 98,
     "visualVersion": 234,
     "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "sourceSha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
-    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_772af9e555dc81918f156f855376146f",
-    "archiveSha256": "532c18f9df32da40a4b6a759440acb03bcf28c85caa1ac074a8579f41f1be6c2",
-    "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261019",
-    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744",
+    "sourceSha": "bf2f8f9b9108f36823c47457b0fb614c2c16f660",
+    "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_8140190643648191b9c33e4b988abfd1",
+    "archiveSha256": "6afc6466bc8e78a4e267ed62770562d8f03c91958730461bf31ab5bff1e9cf0b",
+    "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261022",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6347757208",
     "mobilePhotoRatio": 1.8,
     "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
     "transportOwners": "retained from current NEXT canonical lead/data/quote/price/lifecycle owners; no donor rehearsal transport copied",
     "physicalSafariAcceptance": false,
     "keyboardSafeAreaText200Acceptance": false,
-    "acceptanceReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393",
-    "nativeArchiveSha256": "532c18f9df32da40a4b6a759440acb03bcf28c85caa1ac074a8579f41f1be6c2",
+    "acceptanceReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6338889940",
+    "nativeArchiveSha256": "6afc6466bc8e78a4e267ed62770562d8f03c91958730461bf31ab5bff1e9cf0b",
     "desktopKeyboardOrder": "approved disclosed caveat: CTA/About/AllVariants before operator-info; no complete keyboard acceptance"
   },
   "publicationHistory": {
@@ -235,30 +235,49 @@
       "acceptanceReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6180893265",
       "nativeArchiveSha256": "a39026a58f613792d9de1da770a7f8e3da97618c8bae38e19dbdd92e5d6ce904",
       "desktopKeyboardOrder": "approved disclosed caveat: CTA/About/AllVariants before operator-info; no complete keyboard acceptance"
+    },
+    {
+      "site": 203,
+      "package": 98,
+      "visualVersion": 234,
+      "projectId": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
+      "sourceSha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
+      "nativeVersion": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a~appgver_772af9e555dc81918f156f855376146f",
+      "archiveSha256": "532c18f9df32da40a4b6a759440acb03bcf28c85caa1ac074a8579f41f1be6c2",
+      "designApproval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261019",
+      "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744",
+      "mobilePhotoRatio": 1.8,
+      "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
+      "transportOwners": "retained from current NEXT canonical lead/data/quote/price/lifecycle owners; no donor rehearsal transport copied",
+      "physicalSafariAcceptance": false,
+      "keyboardSafeAreaText200Acceptance": false,
+      "acceptanceReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270378393",
+      "nativeArchiveSha256": "532c18f9df32da40a4b6a759440acb03bcf28c85caa1ac074a8579f41f1be6c2",
+      "desktopKeyboardOrder": "approved disclosed caveat: CTA/About/AllVariants before operator-info; no complete keyboard acceptance"
     }
   ],
   "approvedDesignLab": {
     "project": "appgprj_6abcd9299ef88191bbce1fc1bf8c767a",
-    "site": 203,
+    "site": 209,
     "package": 98,
     "prototype": 234,
-    "source": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
-    "approvalIssueComment": 6270421744,
-    "evidenceSource": "dd7a48c0b018bd3b55a69a584de1f50d68b617fd"
+    "source": "bf2f8f9b9108f36823c47457b0fb614c2c16f660",
+    "approvalIssueComment": 6347757208,
+    "evidenceSource": "fbe1847906302f7288feed624eb9dbe5a88db6d7"
   },
   "preparedPresentation": {
     "site194Approval": "OWNER_WHOLE_VERSION_VISUAL_BEHAVIOR_APPROVAL_20261014",
     "site194SourceSha": "d55d1604457ecb12597d1faf3cfaf74543c23ad9",
     "site194FixtureTransfer": "not-applicable: design-lab multi-date acceptance generator; live NEXT unchanged",
-    "candidateSite": 203,
+    "candidateSite": 209,
     "candidatePackage": 98,
     "candidateVisualVersion": 234,
     "stage": "APPROVED_FOR_EXISTING_NEXT_TRANSFER_PENDING_EXACT_HEAD_ACCEPTANCE",
     "resultsPriceTape": "mobile-default-collapsed-with-dates-visible; desktop-always-open",
-    "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270542519",
+    "claim": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6345148273",
     "publicationStatus": "not-published",
-    "approvedSourceSha": "8c826b44bce5713adc04b5d06db19c4f6f3d67cd",
-    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4217#issuecomment-6270421744",
-    "scope": "approved whole compact exact-tour/optional-flight/contact/return journey; existing NEXT canonical data/price/pair/lead owners retained"
+    "approvedSourceSha": "bf2f8f9b9108f36823c47457b0fb614c2c16f660",
+    "approvalReceipt": "https://github.com/pyatkoff/poisk-turov-test/issues/4709#issuecomment-6347757208",
+    "scope": "approved whole hotel/group → rooms → inline exact-identity check → canonical contacts/return; conditions and flights optional; existing NEXT canonical data/price/pair/lead owners retained; ANEX estimate remains explicitly unverified"
   }
 }

@@ -86,7 +86,7 @@ function verifyRoomPriceStatus(appSource,hotelSource){
  context.selectedOffer=null;helpers.cardPriceNote=()=>'<unverified>';
  assert.equal(rowNote(row(listing)),'&lt;unverified&gt;','price-note text stays escaped');
  const nodes={'#hotel-detail-min':{},'#hotel-detail-price-status':{},'#hotel-detail-offers':{dataset:{}}};
- const f={hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:null,selectedOffer:null,state:{search},searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:same,selectedPriceStatus:helpers.selectedPriceStatus,cardPriceNote:()=>snapshot,money:helpers.money,mealLabel:helpers.displayMealLabel,dateText:helpers.dateText,needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[]};
+ const f={hotelOfferCheckActive:()=>false,hotels:[{id:1}],hotelOffers:()=>[listing],hotelOfferDraft:null,selectedOffer:null,state:{search},searchKey:s=>JSON.stringify(s),sameSelectedTourConditions:same,selectedPriceStatus:helpers.selectedPriceStatus,cardPriceNote:()=>snapshot,money:helpers.money,mealLabel:helpers.displayMealLabel,dateText:helpers.dateText,needsRefresh:()=>true,$:s=>nodes[s],$$:()=>[]};
  vm.createContext(f);vm.runInContext(appSource.slice(footerStart,footerEnd),f);
  f.syncHotelOfferSelection(1);
  assert.match(nodes['#hotel-detail-price-status'].textContent,/Снимок · цена требует проверки/,'minimum footer identifies listing price');
