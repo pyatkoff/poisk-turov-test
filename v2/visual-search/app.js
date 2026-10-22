@@ -1273,7 +1273,9 @@ function updateModalBack(){
  $('#modal-back-label').textContent=label;
 }
 function captureModalStep(m){
- return {type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,route:uiRoute(),focus:focusReference(modalType==='hotel-details'&&['continue-hotel-offer','offer'].includes(actionTrigger?.dataset.action)?$$('#modal-body [data-action="select-hotel-offer"]').find(row=>row.dataset.key===actionTrigger.dataset.key)||actionTrigger:actionTrigger||document.activeElement,m)};
+ const roomKey=modalType==='hotel-details'&&(['continue-hotel-offer','offer','anex-application-preview'].includes(actionTrigger?.dataset.action)||!actionTrigger&&hotelOfferCheckActive(selectedOffer?.key))?(actionTrigger?.dataset.key||hotelOfferDraft?.key):null;
+ const returningRoom=roomKey&&$$('#modal-body [data-action="select-hotel-offer"]').find(row=>row.dataset.key===roomKey);
+ return {type:modalType,title:$('#modal-title').textContent,kicker:$('#modal-kicker').textContent,body:$('#modal-body').innerHTML,footer:$('#modal-footer').innerHTML,footerHidden:$('#modal-footer').hidden,className:m.className,scroll:$('#modal-body').scrollTop,gallery:{...gallery},offer:selectedOffer,route:uiRoute(),focus:focusReference(returningRoom||actionTrigger||document.activeElement,m)};
 }
 function restoreModalStepSnapshot(previous){
  $('#modal').className=previous.className;$('#modal-footer').innerHTML=previous.footer;$('#modal-footer').hidden=previous.footerHidden;gallery=previous.gallery;

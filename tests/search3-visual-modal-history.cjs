@@ -163,8 +163,15 @@ const continuedRoom={kind:'show',open:true,current:'hotel-details',next:'offer',
 }};
 const continued=observe(source,continuedRoom),continuedFocus=continued.trace.find(row=>row[0]==='focusReference');
 assert.equal(continuedFocus[1],'#modal-body [data-action="select-hotel-offer"][0]','footer continuation captures the exact selected room row');
-const oldCapture=source.replace(/modalType==='hotel-details'&&\['continue-hotel-offer','offer'\]\.includes\(actionTrigger\?\.dataset.action\)\?\$\$\('#modal-body \[data-action="select-hotel-offer"\]'\)\.find\(row=>row.dataset.key===actionTrigger.dataset.key\)\|\|actionTrigger:actionTrigger\|\|document.activeElement/,'actionTrigger||document.activeElement');
+const oldCapture=source.replace('focusReference(returningRoom||actionTrigger||document.activeElement,m)','focusReference(actionTrigger||document.activeElement,m)');
 assert.notDeepEqual(observe(oldCapture,continuedRoom),continued,'footer-only return target regression detected');
+const deferredRoom={kind:'show',open:true,current:'hotel-details',next:'selected-tour',setup:(c,n)=>{
+ c.actionTrigger=null;c.selectedOffer.key='exact-room';c.hotelOfferDraft={hotelId:7,key:'exact-room'};c.hotelDetailsView={id:7,checkKey:'exact-room'};
+ n('#modal-body [data-action="select-hotel-offer"][0]').dataset.key='exact-room';
+}};
+const deferredFocus=observe(source,deferredRoom);
+assert.equal(deferredFocus.trace.find(row=>row[0]==='focusReference')[1],'#modal-body [data-action="select-hotel-offer"][0]','a completed asynchronous price check returns to the same room after the click trigger expires');
+assert.notDeepEqual(observe(oldCapture,deferredRoom),deferredFocus,'lost asynchronous room return target detected');
 
 // Execute the actual passive route owner: browser history is a locator, never
 // enough to rebuild absent/expired/foreign inventory or authorize a request.
