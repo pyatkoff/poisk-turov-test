@@ -92,7 +92,9 @@ foreach (['binding','currency','classification','extra','shape','provider'] as $
     if ($case==='classification') $bad['monitoring']['comparison']='matched';
     if ($case==='extra') $bad['monitoring']['private']='must not be retained';
     if ($case==='shape') $bad['monitoring']=null;
-    if ($case==='provider') $bad['provider']='andromeda';
+    if ($case==='provider') {
+        $bad['provider']='andromeda'; $bad['scope']=$scopeB; $bad['source']='andromeda_claim_service';
+    }
     try { AnyTourOperatorFuelRuleEvidenceV1::observation($bad); throw new RuntimeException('Missing invalid monitoring rejection: '.$case); }
     catch (InvalidArgumentException $expected) {
         fuel_ok($expected->getMessage()==='OPERATOR_FUEL_MONITORING','invalid monitoring cannot mint comparison facts: '.$case);
