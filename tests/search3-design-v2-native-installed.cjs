@@ -497,11 +497,24 @@ async function acceptKeyboard(page,row,product,screen){
   const next=product.locator('[data-native-calendar-page="next"]');
   await activate(next,'Next calendar dates');await proof('Calendar paging retains a visible control');
   await activate(product.locator('[data-native-calendar-page="prev"]'),'Previous calendar dates');
-  await activate(product.locator('[data-hotel-open="1"]:visible').first(),'Open exact hotel');await screen('hotel').waitFor({state:'visible'});
+  // The base fictional hotel deliberately has no photographs. Use the existing
+  // saved-content seam for a genuine gallery, without another Find or quote.
+  const beforeContent=await calls(page);
+  await page.evaluate(()=>window.__nativeFixture.installContent());
+  assert.deepEqual(await calls(page),beforeContent,'Retained photo fixture adds no operation');
+  row.proof.retainedContent={hotelId:retainedMedia.hotel.id,snapshotSHA256:retainedMedia.snapshotSHA256,
+    images:retainedMedia.images.map(({file,sourceURL,sha256})=>({file,sourceURL,sha256})),fictionalOffer:true};
+  await activate(product.locator('[data-hotel-open="'+retainedMedia.hotel.id+'"]:visible').first(),'Open exact hotel');await screen('hotel').waitFor({state:'visible'});
   assert.equal((await calls(page)).quote,0);
   await activate(screen('hotel').locator('[data-action="gallery"]'),'Open gallery');await screen('gallery').waitFor({state:'visible'});
+  await activate(screen('gallery').locator('[data-direction="1"]'),'Next gallery photo');
+  assert.equal(await product.locator('[data-gallery-counter]').innerText(),'2 / 2');
+  assert.equal(await focused(screen('gallery').locator('[data-direction="1"]')),true);await proof('Next photo retains focus');
+  await activate(screen('gallery').locator('[data-direction="-1"]'),'Previous gallery photo');
+  assert.equal(await product.locator('[data-gallery-counter]').innerText(),'1 / 2');
+  assert.equal(await focused(screen('gallery').locator('[data-direction="-1"]')),true);await proof('Previous photo retains focus');
   await activate(screen('gallery').locator('[data-action="hotel"]'),'Return from gallery');await screen('hotel').waitFor({state:'visible'});
-  await activate(product.locator('[data-hotel-offers] [data-offer="fixture:offer:1"]'),'Select exact offer');await screen('tour').waitFor({state:'visible'});
+  await activate(product.locator('[data-hotel-offers] [data-offer="fixture:retained-media:'+retainedMedia.hotel.id+'"]'),'Select exact offer');await screen('tour').waitFor({state:'visible'});
   await activate(product.locator('[data-native-tour-flight="0"]'),'Select flight');
   await activate(product.locator('[data-action="accept-price"]:visible').first(),'Accept selected price');
   await proof('Price acceptance retains a visible keyboard control');
