@@ -132,6 +132,7 @@ final class AnyTourTourvisorOfferAutosaveV1
             ]);
         }
 
+        self::captureFuelContexts($entries, $now);
         $result = AnyTourIntOfferSnapshotProducerV1::produce(
             'tourvisor',
             $scope,
@@ -148,6 +149,24 @@ final class AnyTourTourvisorOfferAutosaveV1
         }
         $result['skippedIncompleteOfferCount'] = $skippedIncompleteOfferCount;
         return $result;
+    }
+
+    /** Exact search identity/party is evidence even while fuel is still unknown. */
+    private static function captureFuelContexts(array $entries, DateTimeImmutable $now): void
+    {
+        // The shared gateway already loads this INT-owned private runtime. Either
+        // installation order is safe; do not bootstrap a second helper/DB copy.
+        $class = 'AnyTourTourvisorOperatorFuelPassiveIntakeV1';
+        if (!class_exists($class, false) || !method_exists($class, 'captureSearchContexts')
+            || !function_exists('tourvisor_fuel_passive_runtime')) return;
+        try {
+            $runtime = tourvisor_fuel_passive_runtime();
+            if (!is_array($runtime) || !is_string($runtime['directory'] ?? null)) return;
+            $class::captureSearchContexts($entries, $runtime['directory'], $now);
+        } catch (Throwable $ignored) {
+            // Context retention is best effort and cannot suppress the existing
+            // final-price-ready snapshot, alter its amounts, or issue a request.
+        }
     }
 
     private static function compileEntries(
