@@ -318,6 +318,50 @@ unlink($held);clearstatcache(true,$contextPath);
 array_map('unlink',array_filter(glob($contextDirectory.'/*')?:[], 'is_file'));
 rmdir($contextDirectory);rmdir(dirname($contextDirectory));
 
+
+ // A dotted supplier date must pass the real tour -> pending -> flights -> store
+ // path and converge with ISO notation, without mutating either response.
+$dateDirectory = $root.'/date/searches'; mkdir($dateDirectory,0700,true);
+$dottedTour = tvpf_tour($id1,1006,7); $dottedTour['date'] = '11.10.2026';
+$dottedFlights = tvpf_flights();
+$dottedFlights['flights'][0]['dateForward'] = '11.10.2026';
+$dottedFlights['flights'][0]['dateBackward'] = '18.10.2026';
+foreach (['forward'=>'11.10.2026','backward'=>'18.10.2026'] as $leg=>$day) {
+    foreach (['departure','arrival'] as $point) $dottedFlights['flights'][0][$leg][0][$point]['date'] = $day;
+}
+$rawTour = $dottedTour; $rawFlights = $dottedFlights;
+tvpf_ok((AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$dottedTour,$db,$dateDirectory,$now)['status']??null)==='tour_retained',
+    'supported dotted tour date matches strict ISO stored context');
+$pendingRaw = json_decode((string)file_get_contents($dateDirectory.'/tourvisor-fuel-pending-v1-'.hash('sha256',$id1).'.json'),true,64,JSON_THROW_ON_ERROR);
+tvpf_ok($pendingRaw['tour'] === $rawTour && $pendingRaw['valid_from']==='2026-10-01'
+    && $pendingRaw['valid_to']==='2026-10-31', 'raw tour retained unchanged with canonical validity dates');
+$dateFirst = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id1,$dottedFlights,$dateDirectory,$now);
+tvpf_ok($dateFirst['observationCount']===1 && $dateFirst['ruleConfirmed']===false, 'one dotted observation is not a rule');
+AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id2,tvpf_tour($id2,1010,14),$db,$dateDirectory,$now);
+$dateSecond = AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureFlights($id2,$dottedFlights,$dateDirectory,$now);
+tvpf_ok($dateSecond['observationCount']===2 && $dateSecond['ruleConfirmed']===true,
+    'two independent mixed-format offers confirm the same rule through canonical target dates');
+tvpf_ok($dottedTour===$rawTour && $dottedFlights===$rawFlights, 'tour and flights response transparency preserved');
+$dateRules = glob($dateDirectory.'/operator-fuel-rule-v2-*.json');
+tvpf_ok(count($dateRules)===1, 'date formatting does not split the rule store');
+$beforeDateRules = file_get_contents($dateRules[0]);
+foreach ([null, '31.02.2026', '2026-02-30', '11/10/2026', '2026-10-11T00:00:00Z'] as $invalid) {
+    $badDateTour = $dottedTour; $badDateTour['date']=$invalid;
+    try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$badDateTour,$db,$dateDirectory,$now); throw new RuntimeException('Missing invalid date rejection'); }
+    catch (InvalidArgumentException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_DATE', 'invalid supplier date stays rejected'); }
+}
+$wrongDateTour=$dottedTour; $wrongDateTour['date']='12.10.2026';
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureTour($id1,$wrongDateTour,$db,$dateDirectory,$now); throw new RuntimeException('Missing date conflict'); }
+catch (DomainException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_DATE_CONFLICT', 'valid but different day does not borrow context'); }
+$badInternal=tvpf_search_entry('73333333333335',1111,$now); $badInternal['offer']['checkin']='11.10.2026';
+try { AnyTourTourvisorOperatorFuelPassiveIntakeV1::captureSearchContexts([$badInternal],$dateDirectory,$now); throw new RuntimeException('Missing internal ISO rejection'); }
+catch (InvalidArgumentException $error) { tvpf_ok($error->getMessage()==='TV_PASSIVE_CONTEXT_INTEGRITY', 'internal context remains strict ISO'); }
+tvpf_ok(file_get_contents($dateRules[0])===$beforeDateRules
+    && glob($dateDirectory.'/tourvisor-fuel-pending-v1-*.json')===[], 'date rejections create no pending state or rule mutations');
+tvpf_ok((int)$db->query('SELECT COUNT(*) FROM anytour_offers')->fetchColumn()===3, 'date conversion adds no offer DB writes');
+array_map('unlink',array_filter(glob($dateDirectory.'/*')?:[], 'is_file'));
+rmdir($dateDirectory);rmdir(dirname($dateDirectory));
+
 array_map('unlink',array_filter(glob($directory.'/*')?:[], 'is_file'));
 rmdir($directory); rmdir($root);
 echo "TOURVISOR_PASSIVE_FUEL_OK observations=2 rules=1 supplier_http_added=0 db_writes=0 hotels=2 nights=7,14 include_cases=4 diagnostics=success,skip,reject,redaction,write_failure,expiry search_context=party,identity,unknown,expiry,conflict,no_money\n";

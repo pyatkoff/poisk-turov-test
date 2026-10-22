@@ -70,7 +70,7 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
             throw new DomainException('TV_PASSIVE_OPERATOR_CONFLICT');
         }
 
-        $checkin = self::date($tour['date'] ?? null, 'TV_PASSIVE_DATE');
+        $checkin = AnyTourTourvisorOperatorFuelRetainedIntakeV1::supplierDate($tour['date'] ?? null, 'TV_PASSIVE_DATE');
         if ($checkin !== $context['checkin']) throw new DomainException('TV_PASSIVE_DATE_CONFLICT');
         if (($tour['adults'] ?? null) !== $context['party']['adults']
             || ($tour['childs'] ?? null) !== $context['party']['children']) {
@@ -155,7 +155,10 @@ final class AnyTourTourvisorOperatorFuelPassiveIntakeV1
                 'operator' => $observation['operator_raw'],
                 'scope' => $observation['scope'],
                 'offer_ref_digest' => $observation['offer_ref_digest'],
-                'flight_dates' => [$default['dateForward'], $default['dateBackward']],
+                'flight_dates' => [
+                    AnyTourTourvisorOperatorFuelRetainedIntakeV1::supplierDate($default['dateForward'], 'TV_FUEL_DATE'),
+                    AnyTourTourvisorOperatorFuelRetainedIntakeV1::supplierDate($default['dateBackward'], 'TV_FUEL_DATE'),
+                ],
             ], $nowTs) !== null;
             @unlink($path);
             return self::receipt(true, null, [
