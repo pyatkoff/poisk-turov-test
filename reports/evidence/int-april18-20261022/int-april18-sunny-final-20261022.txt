@@ -1,0 +1,72 @@
+Browser tab: 3, Title: "Поиск туров онлайн — AnyTour", URL: "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/".
+0 AXWebArea Поиск туров онлайн — AnyTour, URL: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	1 container
+		2 link Description: AnyTour — на главную, Value: anytoour.ru/_preview/search3-anex-candidate/
+		3 container Основное меню
+			4 link Description: Поиск туров, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+			5 link Description: Страны, Value: anytoour.ru/_preview/search3-anex-candidate/country/
+			6 link Description: Горящие туры, Value: anytoour.ru/_preview/search3-anex-candidate/hot/
+			7 link Description: Раннее бронирование, Value: anytoour.ru/_preview/search3-anex-candidate/rb/
+			8 link Description: Как купить, Value: anytoour.ru/_preview/search3-anex-candidate/how-to-buy/
+			9 link Description: Контакты, Value: anytoour.ru/_preview/search3-anex-candidate/contacts/
+		10 link Description: 8 (800) 100 - 61 - 50, Value: tel:88001006150
+		11 link Description: Найти тур, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	12 container
+		359 container Description: Источники предложений, ID: anexSearch3Results
+			360 heading Tourvisor и ANEX API, Value: 2
+				361 text Tourvisor и ANEX API
+			362 text Вылеты ANEX: 18.04.2027 — 24.04.2027
+			363 text Показано отелей: 74 из 85.
+			364 container
+				365 text Отели в списке
+				366 pop up button (collapsed, settable) Отели в списке, Value: С предложениями Tourvisor · 74, ID: anexSearch3SourceFilter, Secondary Actions: Expand
+					367 menu
+						368 Все отели · 85
+						369 С предложениями ANEX API · 37
+						370 (selected) С предложениями Tourvisor · 74
+						371 В обоих источниках · 26
+		372 container SUNNY DAYS MIRETTE FAMILY AQUAPARK, ID: selectedTour
+			373 button ← Вернуться к предложениям
+			375 heading SUNNY DAYS MIRETTE FAMILY AQUAPARK, Value: 2, ID: search3-selected-tour-heading
+				376 text SUNNY DAYS MIRETTE FAMILY AQUAPARK
+			377 text Египет · Хургада · Хургада
+			381 container
+				419 text Цена с выбранным рейсом.  Перед оплатой менеджер ещё раз подтвердит итоговую стоимость и детали перелёта.
+			400 container Выбор перелёта
+				459 text Рейсы
+				460 text Выбранный перелёт
+				422 container
+					428 text Туда
+					429 text Air Cairo · SM944
+					430 container
+						431 text Шереметьево (SVO) 18.04.2027 · 06:45 → Хургада (HRG) 18.04.2027 · 11:50
+					432 container
+						433 text Багаж:  20 кг  · Ручная кладь:  7 кг
+					434 text Обратно
+					435 text Air Cairo · SM945
+					436 container
+						437 text Хургада (HRG) 25.04.2027 · 16:05 → Шереметьево (SVO) 25.04.2027 · 23:00
+					438 container
+						439 text Багаж:  20 кг  · Ручная кладь:  7 кг
+				440 button Изменить рейс
+			447 container
+				448 text Услуги и условия Только данные выбранного тура Питание
+				449 text Всё включено
+				450 text Номер
+				451 text family one bedroom
+				452 text 2 взрослых
+				453 text Багаж
+				454 text багаж 20 кг · ручная кладь 7 кг
+				455 text Туроператор
+				456 text Fun&Sun (RU)
+			457 container
+				458 text Туристы Состав размещения у туроператора Для выбранного варианта 2 взрослых
+			461 container Ваш тур
+				462 text Итоговая стоимость
+				463 container 185 038 ₽, за весь тур · 2 взрослых
+					464 text За весь тур · 2 взрослых
+					465 text 185 038 ₽
+				466 button Перейти к заявке
+				467 text Перед отправкой проверьте выбранный тур и рейс.
+
+The focused UI element is 440 button Изменить рейс

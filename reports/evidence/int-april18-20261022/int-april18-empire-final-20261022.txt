@@ -1,0 +1,72 @@
+Browser tab: 3, Title: "Поиск туров онлайн — AnyTour", URL: "https://anytoour.ru/_preview/search3-anex-candidate/poisk-turov/".
+0 AXWebArea Поиск туров онлайн — AnyTour, URL: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	1 container
+		2 link Description: AnyTour — на главную, Value: anytoour.ru/_preview/search3-anex-candidate/
+		3 container Основное меню
+			4 link Description: Поиск туров, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+			5 link Description: Страны, Value: anytoour.ru/_preview/search3-anex-candidate/country/
+			6 link Description: Горящие туры, Value: anytoour.ru/_preview/search3-anex-candidate/hot/
+			7 link Description: Раннее бронирование, Value: anytoour.ru/_preview/search3-anex-candidate/rb/
+			8 link Description: Как купить, Value: anytoour.ru/_preview/search3-anex-candidate/how-to-buy/
+			9 link Description: Контакты, Value: anytoour.ru/_preview/search3-anex-candidate/contacts/
+		10 link Description: 8 (800) 100 - 61 - 50, Value: tel:88001006150
+		11 link Description: Найти тур, Value: anytoour.ru/_preview/search3-anex-candidate/poisk-turov/
+	12 container
+		359 container Description: Источники предложений, ID: anexSearch3Results
+			360 heading Tourvisor и ANEX API, Value: 2
+				361 text Tourvisor и ANEX API
+			362 text Вылеты ANEX: 18.04.2027 — 24.04.2027
+			363 text Показано отелей: 74 из 85.
+			364 container
+				365 text Отели в списке
+				366 pop up button (collapsed, settable) Отели в списке, Value: С предложениями Tourvisor · 74, ID: anexSearch3SourceFilter, Secondary Actions: Expand
+					367 menu
+						368 Все отели · 85
+						369 С предложениями ANEX API · 37
+						370 (selected) С предложениями Tourvisor · 74
+						371 В обоих источниках · 26
+		372 container EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT), ID: selectedTour
+			373 button ← Вернуться к предложениям
+			375 heading EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT), Value: 2, ID: search3-selected-tour-heading
+				376 text EMPIRE BEACH AQUA PARK (EX.ROYAL STAR EMPIRE BEACH RESORT)
+			377 text Египет · Хургада
+			381 container
+				382 text Цена с выбранным рейсом.  Перед оплатой менеджер ещё раз подтвердит итоговую стоимость и детали перелёта.
+			399 container Выбор перелёта
+				445 text Рейсы
+				446 text Выбранный перелёт
+				402 container
+					408 text Туда
+					409 text Air Cairo · SM944
+					410 container
+						411 text Шереметьево (SVO) 18.04.2027 · 06:45 → Хургада (HRG) 18.04.2027 · 11:50
+					412 container
+						413 text Багаж:  20 кг  · Ручная кладь:  7 кг
+					414 text Обратно
+					415 text Air Cairo · SM945
+					416 container
+						417 text Хургада (HRG) 25.04.2027 · 16:05 → Шереметьево (SVO) 25.04.2027 · 23:00
+					418 container
+						419 text Багаж:  20 кг  · Ручная кладь:  7 кг
+				420 button Изменить рейс
+			433 container
+				434 text Услуги и условия Только данные выбранного тура Питание
+				435 text Всё включено
+				436 text Номер
+				437 text Стандартный номер
+				438 text 2 взрослых
+				439 text Багаж
+				440 text багаж 20 кг · ручная кладь 7 кг
+				441 text Туроператор
+				442 text Fun&Sun (RU)
+			443 container
+				444 text Туристы Состав размещения у туроператора Для выбранного варианта 2 взрослых
+			447 container Ваш тур
+				448 text Итоговая стоимость
+				449 container 166 639 ₽, за весь тур · 2 взрослых
+					450 text За весь тур · 2 взрослых
+					451 text 166 639 ₽
+				452 button Перейти к заявке
+				453 text Перед отправкой проверьте выбранный тур и рейс.
+
+The focused UI element is 420 button Изменить рейс
