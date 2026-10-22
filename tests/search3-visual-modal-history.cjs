@@ -163,7 +163,7 @@ const continuedRoom={kind:'show',open:true,current:'hotel-details',next:'offer',
 }};
 const continued=observe(source,continuedRoom),continuedFocus=continued.trace.find(row=>row[0]==='focusReference');
 assert.equal(continuedFocus[1],'#modal-body [data-action="select-hotel-offer"][0]','footer continuation captures the exact selected room row');
-const oldCapture=source.replace(/modalType==='hotel-details'&&actionTrigger\?\.dataset.action==='continue-hotel-offer'\?\$\$\('#modal-body \[data-action="select-hotel-offer"\]'\)\.find\(row=>row.dataset.key===actionTrigger.dataset.key\)\|\|actionTrigger:actionTrigger\|\|document.activeElement/,'actionTrigger||document.activeElement');
+const oldCapture=source.replace(/modalType==='hotel-details'&&\['continue-hotel-offer','offer'\]\.includes\(actionTrigger\?\.dataset.action\)\?\$\$\('#modal-body \[data-action="select-hotel-offer"\]'\)\.find\(row=>row.dataset.key===actionTrigger.dataset.key\)\|\|actionTrigger:actionTrigger\|\|document.activeElement/,'actionTrigger||document.activeElement');
 assert.notDeepEqual(observe(oldCapture,continuedRoom),continued,'footer-only return target regression detected');
 
 // Execute the actual passive route owner: browser history is a locator, never
