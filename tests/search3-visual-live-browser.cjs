@@ -1452,6 +1452,7 @@ const inlineHotelContactJourney=async(browser,origin,base,evidence)=>{
    fs.writeFileSync(path.join(evidence,`inline-hotel-${width}.json`),JSON.stringify({width,source:'compiled current actual adapters; fictional intercepted provider data',key,wholePartyEstimate:123000,finalPriceVerified:false,group:1,current:1,additional:1,package:0,ordinaryReturnRequests:0,supplier_HTTP:0,real_leads:0,physical:false},null,2));
   }finally{expandRelease();additionalRelease();await context.close();}
  }
+ console.log('PASS compiled inline hotel journey: group/current/additional estimate/contacts/Back at430/1280; package/supplier/lead calls0');
 };
 
 const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
@@ -1519,6 +1520,7 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
 (async()=>{
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch();const receipts=[];
  try{
+   await inlineHotelContactJourney(browser,origin,base,evidence);
    await localCivilDateJourney(browser,origin,base,evidence);
    await filterRecoveryApplyJourney(browser,origin,base,evidence);
   for(const width of [390,1280]){
@@ -2046,7 +2048,8 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   const moreTours=manyRoom.locator('.hotel-room-more');await moreTours.locator(':scope>summary').click();
   const nestedOffer=moreTours.locator('[data-action="select-hotel-offer"][data-key="tourvisor%3Aoperator-tour-1"]');await nestedOffer.scrollIntoViewIfNeeded();await nestedOffer.focus();
   await nestedOffer.click();await settledHotelScroll(page);
-  const moreBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await moreTours.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-1"]').click();await page.locator('[data-action="start-tour-flights"]').click();
+  const moreDetails=moreTours.locator('[data-action="offer"][data-key="tourvisor%3Aoperator-tour-1"]');await moreDetails.scrollIntoViewIfNeeded();await moreDetails.focus();await settledHotelScroll(page);
+  const moreBackScroll=await page.locator('#modal-body').evaluate(el=>el.scrollTop);await moreDetails.click();await page.locator('[data-action="start-tour-flights"]').click();
   await page.waitForFunction(()=>/Не удалось проверить цену и наличие тура|Итоговая цена выбранного тура не подтверждена/.test(document.querySelector('#modal-body').textContent));await page.locator('#modal-back').click();
   assert(await manyRoom.evaluate(el=>el.open));assert(await moreTours.evaluate(el=>el.open),'Back retains the expanded nested tour list');
   assert(await nestedOffer.evaluate(el=>document.activeElement===el));assert.equal(await page.locator('#modal-body').evaluate(el=>el.scrollTop),moreBackScroll);
@@ -2156,7 +2159,6 @@ const filterRecoveryApplyJourney=async(browser,origin,base,evidence)=>{
   })()
  ]),tailFailures=tail.filter(result=>result.status==='rejected');
  if(tailFailures.length)throw new AggregateError(tailFailures.map(result=>result.reason),'Independent date and reprice journeys failed');
- await inlineHotelContactJourney(browser,origin,base,evidence);
  await require('./search3-visual-selected-session.cjs')({browser,origin,base,evidence});
  await require('./search3-visual-catalog-recovery.cjs')({browser,origin,base,evidence});
  await multiHotelReload(browser,origin,base,evidence);
