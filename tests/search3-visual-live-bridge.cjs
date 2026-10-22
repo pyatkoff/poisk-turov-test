@@ -715,6 +715,15 @@ async function pickerRetainedDraftRegressions(){
    assert.equal(q('#modal-footer .primary').dataset.action,code?'close-modal':'start-lead','terminal errors exit; temporary errors allow explicit retry');
    assert(!q('#prototype-lead-form'));quoteControl=null;
    click('[data-action="close-modal"]');await settle();
+   if(code){
+    const deniedRequests=tvActions().length;openTv();
+    assert(!q('[data-action="start-lead"]')&&!q('[data-action="start-tour-flights"]'),'reopening a terminal offer cannot expose another quote intent');
+    assert.equal(tvActions().length,deniedRequests,'terminal reopen is passive');click('[data-action="close-modal"]');await settle();
+    // The next independent entry-point case needs a new real search identity,
+    // rather than clearing the retained terminal result behind the UI owner.
+    const beforeFresh=starts();click('#applied-search [data-action="edit-search"]');click('.search-submit');
+    await wait(()=>starts()===beforeFresh+1&&!q('[data-action="stop-search"]')&&q('[data-action="all-offers"][data-id="501"]'));
+   }
   }
  }
  const tvCallsBeforeSelection=tvActions().length;
@@ -882,9 +891,9 @@ async function pickerRetainedDraftRegressions(){
  assert.equal(transport.calls.length,callsBeforeCrossReturn);
 
  click('[data-action="close-modal"]');await settle();
- const previousCards=q('#cards').innerHTML,previousURL=w.location.search;
+ const previousCards=q('#cards').innerHTML,previousURL=w.location.search,previousSearches=starts();
  click('#applied-search [data-action="edit-search"]');click('#quick-stars [data-value="4"]');click('#search-return');await settle();
- assert.equal(q('#cards').innerHTML,previousCards);assert.equal(w.location.search,previousURL);assert.equal(starts(),2,'Cancel never starts another provider search');
+ assert.equal(q('#cards').innerHTML,previousCards);assert.equal(w.location.search,previousURL);assert.equal(starts(),previousSearches,'Cancel never starts another provider search');
  transport.state.tvFlightFuel=' \t ';transport.state.failAnex=true;click('#applied-search [data-action="edit-search"]');click('.search-submit');await wait(()=>q('#results-summary').textContent.includes('2 варианта'));assert.match(q('#search-status').textContent,/Получены не все предложения/);
  assert.doesNotMatch(q('#search-status').textContent,/Получаем предложения|100%/,'terminal partial search must not reuse a loading message');
  assert.match(q('#search-status').textContent,/найденные туры доступны для выбора/);
