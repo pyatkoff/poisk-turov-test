@@ -302,7 +302,14 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
         if ($infants !== $expectedInfants) return array_replace($base, ['status' => 'quote_unknown']);
     }
     $attempt = $state['package_quotes'][$key] ?? null;
-    if ($attempt !== null && (!is_array($attempt) || ($attempt['expires_at'] ?? 0) <= $now)) {
+    // Gateway identity/metadata work can outlast its entry timestamp, even on a cache hit.
+    $clock = $clock ?? static fn(): int => $now;
+    $currentNow = $clock();
+    if (!is_int($currentNow) || $currentNow < 1) {
+        $unknown = array_replace($base, ['status' => 'quote_unknown']);
+        return is_array($attempt) ? anytour_anex_quote_reply($unknown, $attempt, false) : $unknown;
+    }
+    if ($attempt !== null && (!is_array($attempt) || ($attempt['expires_at'] ?? 0) <= max($now, $currentNow))) {
         return is_array($attempt) ? anytour_anex_quote_reply(array_replace($base, ['status' => 'quote_expired']), $attempt, false)
             : array_replace($base, ['status' => 'quote_expired']);
     }
@@ -331,7 +338,6 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
             return anytour_anex_quote_reply($public, $attempt, false);
         }
     }
-    $clock = $clock ?? static fn(): int => $now;
     $checkpointing = false;
     $reservation = null;
     $ref = null;
@@ -481,3 +487,4 @@ function anytour_anex_quote_run(array $request, array &$state, array $offer, arr
     return anytour_anex_quote_reply($attempt['public'] ?? array_replace($base, ['status' => 'quote_unknown']), $attempt,
         $repeat && anytour_anex_quote_reprice_ready($attempt));
 }
+

@@ -785,4 +785,49 @@ foreach ([null, 0, 2, '1', false] as $badInfants) {
     qp_unverified($reply, 'foreign infant binding cannot verify');
     qp_assert($f->calls === [] && $f->factory_calls === 0, 'invalid or legacy infant binding rejected before client creation');
 }
+// Hotel identity/metadata work may cross expiry after the gateway's entry-time check.
+foreach ([false, true] as $delayedLegacy) {
+    [$delayedState, $delayedRequest, , , , $delayedFacts, $delayedFactory, $delayedPersist] = qp_fixture();
+    $delayedChoices = qp_run($delayedRequest, $delayedState, $delayedFactory, $delayedPersist);
+    $delayedUnpriced = $delayedState;
+    $delayedPair = array_replace($delayedRequest,
+        ['action' => 'quote_calculate', 'choice_ref' => $delayedChoices['choices'][0]['choice_ref']]);
+    qp_run($delayedPair, $delayedState, $delayedFactory, $delayedPersist);
+    $delayedKey = $delayedRequest['offer_ref'];
+    if ($delayedLegacy) {
+        foreach (['version', 'context_digest', 'reserved_calls', 'pairs', 'active_pair', 'sealed'] as $field) {
+            unset($delayedState['package_quotes'][$delayedKey][$field], $delayedUnpriced['package_quotes'][$delayedKey][$field]);
+        }
+        $delayedState['package_quotes'][$delayedKey]['chosen'] = $delayedPair['choice_ref'];
+    }
+    foreach ([[$delayedUnpriced, $delayedRequest], [$delayedState, $delayedRequest], [$delayedState, $delayedPair]] as [$delayedSaved, $delayedRead]) {
+        $deadline = $delayedSaved['package_quotes'][$delayedKey]['expires_at'];
+        $beforeDelay = qp_no_work($delayedRead, $delayedSaved, $deadline - 2);
+        foreach ([$deadline - 1, $deadline, $deadline + 1, 0, (string) $deadline] as $afterMetadata) {
+            $delayedRestore = $delayedSaved; $delayedBefore = serialize($delayedRestore); $delayedTime = $deadline - 2;
+            $delayedReply = anytour_anex_search3_followup($delayedRead, $delayedRestore,
+                static fn($ns, $id) => 245,
+                static function () { throw new RuntimeException('delayed cached read must not construct a parser'); },
+                static function ($offers) use (&$delayedTime, $afterMetadata): array {
+                    $delayedTime = $afterMetadata;
+                    return [245 => ['id' => 245, 'name' => 'Fixture hotel', 'country_id' => 4, 'country_name' => 'Turkey', 'category' => 4]];
+                },
+                static function () use (&$delayedTime) { return $delayedTime; },
+                static function () { throw new RuntimeException('delayed cached read must not checkpoint'); }, null, false,
+                static function () { throw new RuntimeException('delayed cached read must not construct a quote client'); });
+            qp_assert(serialize($delayedRestore) === $delayedBefore, 'metadata-delay reads never renew or mutate retained state');
+            if ($afterMetadata === $deadline - 1) {
+                qp_assert($delayedReply === $beforeDelay, 'before-expiry read preserves exact price/choices/times and capacity');
+            } else {
+                $delayedStatus = is_int($afterMetadata) && $afterMetadata > 0 ? 'quote_expired' : 'quote_unknown';
+                qp_assert($delayedReply['status'] === $delayedStatus && !isset($delayedReply['choices']),
+                    'current time after metadata gates both cached prices and retained choices');
+                qp_unverified($delayedReply, 'metadata-delay boundary cannot promote a retained price');
+                qp_assert($delayedLegacy ? !isset($delayedReply['repricing']) : $delayedReply['repricing']['remaining_pairs'] === 0,
+                    'expired or invalid clock cannot grant pair capacity or upgrade legacy state');
+            }
+        }
+    }
+}
 echo "ANEX package quote: {$checks} checks passed (offline contract fixtures; no live supplier calls)\n";
+

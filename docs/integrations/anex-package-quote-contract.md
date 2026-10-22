@@ -117,6 +117,11 @@ The immutable binding includes the exact offer, search/generation, supplier clai
 selected currency and retained child ages. Foreign bindings cannot spend calls.
 The current clock is checked before every HTTP call, after its response and after
 the result checkpoint; expiry never grants a renewed budget or a verified result.
+Retained choices and cached prices also recheck the current clock after the gateway's
+hotel identity/metadata work. A request entering before expiry cannot promote a
+cached quote if that work crosses the original deadline; an invalid current clock
+returns an unverified unknown result. These reads do not mutate retained state,
+renew its deadline or perform supplier/checkpoint calls, including legacy attempts.
 
 An open-context A -> B -> A cache hit returns A's original exact gross total,
 pair reference, verified_at and expires_at. It makes no supplier/factory/checkpoint
@@ -240,3 +245,4 @@ party across the existing quote stages. No live call is justified merely to gues
 a parameter or synthesize a participant. Booking/save or personal-data submission
 is outside this contract investigation. Infant fee remains unknown until explicitly
 returned; a listing or an adults-only calculation cannot become final_verified.
+
